@@ -11,7 +11,7 @@ S-44 agenda.
 ## Context
 
 The attestation has been decided twice - in
-[`0049`](0049-an-operator-may-exclude-a-domain-under-attestation.md) and again in
+`0049` and again in
 [`0052`](0052-the-domain-is-the-only-unit-of-scope.md) - and has had no code, no test and no screen
 in either. What it asks for was never written down, so nothing could be built without guessing.
 

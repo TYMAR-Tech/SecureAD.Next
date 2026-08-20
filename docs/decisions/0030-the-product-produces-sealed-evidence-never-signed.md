@@ -5,9 +5,9 @@ Status: Accepted
 
 Withdraws the word *signed* from [`0003`](0003-refuse-to-reanalyse-an-incomplete-capture.md),
 [`0004`](0004-unknown-counts-name-the-failed-phase.md),
-[`0009`](0009-greenfield-in-place-with-the-bundle-as-seam.md),
+`0009`,
 [`0015`](0015-a-bundle-names-a-pattern-it-never-explains-one-away.md) and
-[`0017`](0017-capture-reads-the-whole-forest.md). Every decision in those records stands; only the
+`0017`. Every decision in those records stands; only the
 word changes.
 
 ## Context
@@ -15,7 +15,7 @@ word changes.
 [`0020`](0020-the-seal-detects-corruption-not-tampering.md) established what the seal is. It adds up
 the bytes of the evidence file into one number and writes that number beside it, so a file that
 changed no longer matches. There is no key anywhere in this product, so it proves the bytes have not
-changed and proves nothing about who produced them. [`0019`](0019-the-bundle-carries-a-seal.md) said
+changed and proves nothing about who produced them. `0019` said
 the same in one sentence - *"It is called a seal and not a signature, because it is not one"* - and
 `0019` carries a supersession marker, so a reader is told to move past it.
 

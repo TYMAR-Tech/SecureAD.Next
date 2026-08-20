@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-[`0009`](0009-greenfield-in-place-with-the-bundle-as-seam.md) made the `audit.db` bundle the seam
+`0009` made the `audit.db` bundle the seam
 between the old implementation and the rebuild, so that each stage could be replaced independently
 and a working product existed throughout. That was one clause carrying two separate promises: the
 rebuild can read a bundle the old pipeline wrote, and the rebuild must write a bundle the old

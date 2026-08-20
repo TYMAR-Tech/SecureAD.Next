@@ -3,12 +3,12 @@
 Date: 2026-08-12
 Status: Accepted
 
-Supersedes [`0019`](0019-the-bundle-carries-a-seal.md), which was written without the owner and
+Supersedes `0019`, which was written without the owner and
 justified the seal partly as a defence against tampering.
 
 ## Context
 
-[`0019`](0019-the-bundle-carries-a-seal.md) established that the bundle is sealed with SHA-256 and
+`0019` established that the bundle is sealed with SHA-256 and
 that the mechanism is what [`0003`](0003-refuse-to-reanalyse-an-incomplete-capture.md) rests on. It
 also argued several points as tamper resistance. On review the owner rejected that framing, and was
 right to:

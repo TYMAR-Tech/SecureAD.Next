@@ -1,4 +1,4 @@
-﻿# Accepting a finding
+# Accepting a finding
 
 **Area.** How an operator says *"yes, we know, and that is fine here"* about a finding, what that
 statement carries, where it is kept, and what stops it becoming a way to hide a problem.
@@ -21,7 +21,7 @@ wins and the disagreement is a finding.
 | requires a reason, the person accepting, and the time, on every acceptance | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) |
 | keeps an accepted finding visible as a finding, marked rather than removed | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) |
 | makes an acceptance permanent until revoked, and surfaces its age instead of expiring it | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) |
-| stores acceptances beside the evidence and never inside the sealed bundle | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md), [`0019`](../decisions/0019-the-bundle-carries-a-seal.md) |
+| stores acceptances beside the evidence and never inside the sealed bundle | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md), `0019` |
 | records which run an acceptance came from, so inherited decisions are distinguishable | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) |
 | refuses to apply acceptances from a run that may not be compared to this one | [`0026`](../decisions/0026-one-answer-to-whether-runs-may-be-compared.md), [`0061`](../decisions/0061-runs-of-different-scope-are-not-comparable.md) |
 | relies on a finding's identity being stable, or an acceptance silently lapses | [`0023`](../decisions/0023-a-finding-has-a-stable-identity.md) |

@@ -1,4 +1,4 @@
-﻿# Who is who
+# Who is who
 
 **Area.** How the product turns an identifier into a principal a person recognises, and how it keeps
 track of who is who across domains and across time. Every permission names a trustee by identifier;
@@ -19,7 +19,7 @@ wins and the disagreement is a finding.
 |---|---|
 | keeps Tier 0 and expected-administrator as two separate sets, because they answer different questions | [`0006`](../decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) |
 | captures the identity attributes needed to name a principal, including SID history | [`0065`](../decisions/0065-the-catalogue-recovers-what-the-rebuild-dropped.md) |
-| reads the whole forest, so a principal from any domain in it can be resolved | [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) |
+| reads the whole forest, so a principal from any domain in it can be resolved | `0017` |
 | never enumerates a foreign forest, so a principal from one cannot be resolved | [`0051`](../decisions/0051-trusts-describe-a-boundary-and-never-widen-a-run.md) |
 | stores an object under an identity that survives a rename or a move | [`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md) |
 

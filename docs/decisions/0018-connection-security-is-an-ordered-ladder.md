@@ -8,7 +8,7 @@ that the controller refused.
 
 Everything this product ever says about a customer's forest crosses a network once, during capture.
 Per [`0008`](0008-live-verification-is-removed.md) capture is the only stage that touches a domain
-controller, and per [`0009`](0009-greenfield-in-place-with-the-bundle-as-seam.md) the bundle it
+controller, and per `0009` the bundle it
 produces is the sole evidence anything downstream reads. So the connection is not one component
 among many. It is the single point at which a customer's credentials and a customer's evidence are
 both exposed, and it happens once per run with nothing afterwards that could detect a problem.
@@ -87,7 +87,7 @@ run is started and it dies with the run.
 
 A persisted setting is one somebody turned on once, for a reason that was probably good, and nobody
 has thought about since - which is the shape of the container exclusion
-[`0017`](0017-capture-reads-the-whole-forest.md) removed, and of the five capture settings with no
+`0017` removed, and of the five capture settings with no
 consumer that ledger row B1 refuses to carry. This product has already deleted a batch of levers
 that were not levers. This one is a real lever, and it is pulled fresh each time.
 

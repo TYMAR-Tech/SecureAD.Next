@@ -13,7 +13,7 @@ than a fault of the run. It then said the run **records it and continues**.
 That last step does not hold. The run continues to a sealed bundle which is missing an entire
 domain, with nothing human attached to the gap. Every other way a domain leaves a run carries an
 operator's statement:
-[`0049`](0049-an-operator-may-exclude-a-domain-under-attestation.md) requires a posture, and
+`0049` requires a posture, and
 [`0052`](0052-the-domain-is-the-only-unit-of-scope.md) forbids a failure being recorded as a
 decision. A domain nobody chose to leave out would be the one hole in a bundle that no one signed.
 

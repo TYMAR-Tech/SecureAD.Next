@@ -16,7 +16,7 @@ wins and the disagreement is a finding.
 
 | The product… | Decided by |
 |---|---|
-| lets an operator exclude a domain only under an attestation | [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md), [`0049`](../decisions/0049-an-operator-may-exclude-a-domain-under-attestation.md) *(superseded, kept for its reasoning)* |
+| lets an operator exclude a domain only under an attestation | [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md), `0049` *(superseded, kept for its reasoning)* |
 | asks for a reason from a fixed list, free text, the signed-in account and an authorising name | [`0062`](../decisions/0062-what-an-exclusion-attestation-asks-for.md) |
 | stores that attestation in the bundle, so an auditor reading the run later can see it | [`0062`](../decisions/0062-what-an-exclusion-attestation-asks-for.md) |
 | re-asks for the attestation every run, and never carries one forward or pre-fills it | [`0059`](../decisions/0059-an-exclusion-is-attested-once-per-run.md) |
@@ -25,7 +25,7 @@ wins and the disagreement is a finding.
 | treats a domain with no candidate controllers as an attested exclusion, never a silent gap | [`0054`](../decisions/0054-a-domain-with-no-candidates-is-an-attested-exclusion.md) |
 | treats the domain as the only unit of scope — there is no partial domain | [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md) |
 | reads trusts as a description of a boundary, and never widens a run because of one | [`0051`](../decisions/0051-trusts-describe-a-boundary-and-never-widen-a-run.md) |
-| reads the whole forest by default, so skipping is the exception that must be argued for | [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) |
+| reads the whole forest by default, so skipping is the exception that must be argued for | `0017` |
 | never renders an unasked question as a negative answer | [`0002`](../decisions/0002-absent-view-means-degraded-run.md) |
 
 ---

@@ -96,7 +96,7 @@ administrative container from a product nobody remembers installing — a danger
 of those was invisible, and "Comprehensive All Objects" was the only way to see it.
 
 That hole is also flatly at odds with
-[`0017`](../decisions/0017-capture-reads-the-whole-forest.md), which says capture reads the whole
+`0017`, which says capture reads the whole
 forest and scope is applied to reading rather than to evidence.
 
 **What the inclusion list was really keeping out — corrected 2026-08-11.** The first version of this

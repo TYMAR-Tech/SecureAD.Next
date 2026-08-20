@@ -45,7 +45,7 @@ and run by whoever is signed in.
 
 **The run library path is the only thing the operator sets.** Not a preference among many with one
 currently implemented - the only one. Consistent with
-[`0017`](0017-capture-reads-the-whole-forest.md) and
+`0017` and
 [`0042`](0042-dns-zones-and-records-are-out-of-scope.md): nothing a customer can switch makes a run
 read more or less, and there is no setting that changes what the product looks at. A second setting
 is added by overturning this sentence, not by adding a field.

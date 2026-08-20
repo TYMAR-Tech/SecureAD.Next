@@ -19,7 +19,7 @@ caught every exception and returned one sentinel, so a corrupt file and a file t
 bundle read identically; the operator was told *required run metadata is missing* for both.
 
 A vocabulary is only worth having if each of its words can be arrived at from evidence. As the
-bundle stands - four files, per [`0019`](0019-the-bundle-carries-a-seal.md) and
+bundle stands - four files, per `0019` and
 [`0029`](0029-a-run-that-ends-badly-says-so.md) - a run that failed, a run the operator cancelled,
 a run killed by a reboot and a run still capturing all leave the same thing behind: an
 `evidence.db.partial` and no `evidence.db`. Four words for one observation is how the predecessor

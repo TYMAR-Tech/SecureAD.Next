@@ -1,8 +1,8 @@
 # 0052 - The domain is the only unit of scope
 
 Date: 2026-08-15
-Status: Accepted. Supersedes [0017](0017-capture-reads-the-whole-forest.md) and
-[0049](0049-an-operator-may-exclude-a-domain-under-attestation.md), which are closed by this record.
+Status: Accepted. Supersedes 0017 and
+0049, which are closed by this record.
 
 ## Context
 

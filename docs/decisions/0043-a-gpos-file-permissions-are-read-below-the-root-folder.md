@@ -105,7 +105,7 @@ them; directories are bounded in every normal GPO but not by anything the format
 extracted installation tree is the case that could hold many. If measurement shows a GPO where the
 directory count is the cost, the remedy is a cap that reports having been hit, not a silent one.
 
-**Nothing here is an operator setting.** Consistent with [`0017`](0017-capture-reads-the-whole-forest.md),
+**Nothing here is an operator setting.** Consistent with `0017`,
 [`0034`](0034-capture-excludes-a-shipped-noise-list.md) and
 [`0042`](0042-dns-zones-and-records-are-out-of-scope.md): there is no configuration that makes a run
 read shallower or deeper. If the depth changes, it is because this record changed.

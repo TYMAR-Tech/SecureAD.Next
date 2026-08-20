@@ -7,7 +7,7 @@ one of the endings that writes into the bundle directory.** A run the operator s
 and must not appear in the run library, so its marker is written where the library does not read.
 This record now governs failure only.
 
-Restates the partial-file mechanism decided in [`0019`](0019-the-bundle-carries-a-seal.md), which
+Restates the partial-file mechanism decided in `0019`, which
 is marked superseded by [`0020`](0020-the-seal-detects-corruption-not-tampering.md) even though
 `0020` replaced only what the seal proves. The rename rule survived in code and tests with no live
 record naming it, so a session reading `0019`, seeing *superseded* and moving on would have lost it.

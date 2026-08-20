@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-[`0017`](0017-capture-reads-the-whole-forest.md) decided that capture reads the whole forest, and
+`0017` decided that capture reads the whole forest, and
 recorded that the cost of doing so was unmeasured. It is measured now: in one production forest a
 single vendor class — an SSO profile object hung beneath each user — accounts for **two thirds of
 all objects captured**. Three objects are read, stored and analysed for every real user.

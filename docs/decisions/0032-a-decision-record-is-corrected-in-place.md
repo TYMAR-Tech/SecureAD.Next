@@ -26,7 +26,7 @@ product. The corrections were applied as notes on each record's status line. A `
 date. The correction is real and invisible in the reading mode most used.
 
 **A whole-file supersession marker is too blunt when only part of a record changed.**
-[`0019`](0019-the-bundle-carries-a-seal.md) was marked superseded by `0020`, which replaced only
+`0019` was marked superseded by `0020`, which replaced only
 what the seal proves. Its partial-file rename rule - the mechanism that stops a half-written bundle
 being read as a whole one - survived in code with no live record naming it, and a session that read
 `0019`, saw *superseded* and moved on would have lost it.

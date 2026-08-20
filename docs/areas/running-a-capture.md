@@ -24,7 +24,7 @@ wins and the disagreement is a finding.
 | makes a run that ended badly say so, rather than leaving it to look finished | [`0029`](../decisions/0029-a-run-that-ends-badly-says-so.md) |
 | produces a new bundle when it re-analyses, never editing the old one | [`0021`](../decisions/0021-re-analysis-produces-a-new-bundle.md) |
 | refuses to re-analyse a capture that was never complete | [`0003`](../decisions/0003-refuse-to-reanalyse-an-incomplete-capture.md) |
-| surfaces no assessment mode to the operator | [`0007`](../decisions/0007-the-product-surfaces-no-assessment-mode.md), [`0031`](../decisions/0031-there-is-no-assessment-mode.md) |
+| surfaces no assessment mode to the operator | `0007`, [`0031`](../decisions/0031-there-is-no-assessment-mode.md) |
 | lets an operator stop a run, and keeps nothing at all when he does | [`0058`](../decisions/0058-a-run-may-be-stopped-and-stopping-it-keeps-nothing.md) |
 | shows a line for the run and a row for each domain while a capture is going | [`0060`](../decisions/0060-a-running-capture-reports-one-line-per-domain.md) |
 | counts errors per domain as they happen, without calling that domain failed | [`0060`](../decisions/0060-a-running-capture-reports-one-line-per-domain.md) |

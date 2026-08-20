@@ -17,7 +17,7 @@ wins and the disagreement is a finding.
 
 | The product… | Decided by |
 |---|---|
-| reads the whole forest, not a chosen corner of it | [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) |
+| reads the whole forest, not a chosen corner of it | `0017` |
 | reads the schema partition, so a permission can be named rather than shown as a GUID | [`0014`](../decisions/0014-capture-reads-the-schema-partition.md) |
 | stores objects as typed columns, not as a bag of text | [`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md) |
 | ships a noise list and excludes it from capture | [`0034`](../decisions/0034-capture-excludes-a-shipped-noise-list.md) |
@@ -25,7 +25,7 @@ wins and the disagreement is a finding.
 | never asks for the SACL | [`0036`](../decisions/0036-capture-never-requests-the-sacl.md) |
 | says so when a DACL could not be read, rather than recording an empty one | [`0037`](../decisions/0037-an-unreadable-dacl-says-so.md) |
 | records whether each descriptor's DACL was in canonical order | [`0038`](../decisions/0038-a-descriptor-records-whether-its-dacl-was-canonical.md) |
-| treats nothing inherited as definitive | [`0033`](../decisions/0033-nothing-inherited-is-definitive.md) |
+| treats nothing inherited as definitive | `0033` |
 | reads a GPO's file permissions below the root folder, not only on it | [`0043`](../decisions/0043-a-gpos-file-permissions-are-read-below-the-root-folder.md) |
 | justifies a captured attribute by a rule that reads it, or a field of the object view it fills | [`0064`](../decisions/0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md) |
 | refuses to capture an attribute speculatively, for a rule nobody has written | [`0064`](../decisions/0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md) |

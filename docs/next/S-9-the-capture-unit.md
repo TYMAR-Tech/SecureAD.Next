@@ -179,7 +179,7 @@ article and the same second bullet.
 
 | Avoidance refused | Why | Finding |
 |---|---|---|
-| Basing the search below the domain root | It works, and it means enumerating containers and searching each one. Objects sitting directly in the domain root, and any container the enumeration did not think of, are then never read — and nothing says so. That is precisely the incompleteness [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) refuses, arrived at by accident instead of by an operator ticking a box | — |
+| Basing the search below the domain root | It works, and it means enumerating containers and searching each one. Objects sitting directly in the domain root, and any container the enumeration did not think of, are then never read — and nothing says so. That is precisely the incompleteness `0017` refuses, arrived at by accident instead of by an operator ticking a box | — |
 | Searching the global catalog | The one a later session will reach for, because it looks like one server, no referrals and the whole forest in a single pass. It is wrong three ways and all three are silent: a filter term naming an attribute absent from the catalog is *evaluated as false*, a requested attribute absent from it is simply not returned — and `attributeSecurityGUID`, which B2 added so a property-set permission can be expanded into what it really grants, is not in it — and objects in an application directory partition are not replicated to it at all | F-S7-10 |
 | Chasing referrals and handling the cookie carefully | There is nothing to handle carefully. The cookie is overwritten inside the LDAP runtime; the application never sees the moment it happens | F-S7-4 |
 

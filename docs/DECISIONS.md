@@ -13,19 +13,14 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0004](decisions/0004-unknown-counts-name-the-failed-phase.md) | 2026-08-07 | Accepted *(see record)* | A count the run cannot vouch for renders as unknown, naming the phase |
 | [0005](decisions/0005-withhold-at-the-widest-scope-that-shares-the-verdict.md) | 2026-08-07 | Accepted | A withheld count is withheld at the widest scope that shares its verdict |
 | [0006](decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) | 2026-08-07 | Accepted | Tier-0 membership and expected-admin suppression are separate sets |
-| [0007](decisions/0007-the-product-surfaces-no-assessment-mode.md) | 2026-08-08 | Superseded by 0031 *(see record)* | The product surfaces no assessment mode, because it captures only one |
 | [0008](decisions/0008-live-verification-is-removed.md) | 2026-08-09 | Accepted *(see record)* | Live directory verification is removed from the product |
-| [0009](decisions/0009-greenfield-in-place-with-the-bundle-as-seam.md) | 2026-08-09 | Accepted as to the rebuild happening in this repository *(see record)* | The rebuild happens in this repository, with the bundle as the seam |
 | [0010](decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) | 2026-08-09 | Accepted | The rule catalogue is data; the rule logic is code |
 | [0011](decisions/0011-rebuild-documentation-is-written-fresh-and-bound-by-tests.md) | 2026-08-09 | Accepted | The rebuild's documentation is written fresh and bound by tests |
-| [0012](decisions/0012-the-rebuild-lives-outside-src-with-its-own-solution.md) | 2026-08-09 | Accepted | The rebuild lives outside src/ and builds from its own solution |
 | [0013](decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) | 2026-08-10 | Accepted | The bundle is no longer a two-way contract |
 | [0014](decisions/0014-capture-reads-the-schema-partition.md) | 2026-08-10 | Accepted | Capture reads the schema partition, and names come with it |
 | [0015](decisions/0015-a-bundle-names-a-pattern-it-never-explains-one-away.md) | 2026-08-10 | Accepted *(see record)* | A delegation bundle names a pattern; it never explains one away |
 | [0016](decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) | 2026-08-08 | Accepted | The filtered-set replication route is a product judgement, not a documented fact |
-| [0017](decisions/0017-capture-reads-the-whole-forest.md) | 2026-08-10 | Superseded by 0052 *(see record)* *(see record)* | Capture reads the whole forest; scope is applied to reading, never to evidence |
 | [0018](decisions/0018-connection-security-is-an-ordered-ladder.md) | 2026-08-12 | Accepted *(see record)* | Connection security is an ordered ladder of named rungs, and the bottom rung is declared rather than reached |
-| [0019](decisions/0019-the-bundle-carries-a-seal.md) | 2026-08-12 | Superseded *(see record)* | The bundle carries a seal, and only a bundle whose seal is intact is opened |
 | [0020](decisions/0020-the-seal-detects-corruption-not-tampering.md) | 2026-08-12 | Accepted | The seal detects corruption, not tampering, and only an intact bundle opens |
 | [0021](decisions/0021-re-analysis-produces-a-new-bundle.md) | 2026-08-12 | Accepted | Re-analysis produces a new bundle and never alters the one it read |
 | [0022](decisions/0022-objects-are-stored-as-typed-columns.md) | 2026-08-12 | Accepted | An object is stored as typed columns, and what was never captured is recorded by reference |
@@ -39,7 +34,6 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0030](decisions/0030-the-product-produces-sealed-evidence-never-signed.md) | 2026-08-12 | Accepted | The product produces sealed evidence, never signed |
 | [0031](decisions/0031-there-is-no-assessment-mode.md) | 2026-08-12 | Accepted | There is no assessment mode |
 | [0032](decisions/0032-a-decision-record-is-corrected-in-place.md) | 2026-08-12 | Accepted | A decision record is corrected in place, and git is the history |
-| [0033](decisions/0033-nothing-inherited-is-definitive.md) | 2026-08-12 | Accepted | Nothing inherited is definitive: the map, the old code and the old documentation are evidence, not answers |
 | [0034](decisions/0034-capture-excludes-a-shipped-noise-list.md) | 2026-08-13 | Accepted | Capture reads every object class except a shipped list of noise, and the operator may only widen it |
 | [0035](decisions/0035-coverage-is-recorded-once-per-capture-unit.md) | 2026-08-13 | Accepted | Coverage is recorded once per capture unit, and every other statement of coverage is derived from it |
 | [0036](decisions/0036-capture-never-requests-the-sacl.md) | 2026-08-13 | Accepted | Capture never requests the SACL, and the product reports nothing about audit configuration |
@@ -55,7 +49,6 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0046](decisions/0046-the-shell-is-wpf.md) | 2026-08-14 | Accepted | The shell is WPF, because of the grid and the single executable |
 | [0047](decisions/0047-settings-are-per-user-and-per-machine.md) | 2026-08-14 | Accepted | Settings are per-user and per-machine, and there is one of them |
 | [0048](decisions/0048-preflight-proves-a-controller-before-a-run-commits.md) | 2026-08-14 | Accepted *(see record)* | Preflight proves a controller before a run commits, and records what it proved |
-| [0049](decisions/0049-an-operator-may-exclude-a-domain-under-attestation.md) | 2026-08-14 | Superseded by 0052 *(see record)* *(see record)* | An operator may exclude a domain, and must state a posture for it |
 | [0050](decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md) | 2026-08-14 | Accepted | The candidate list comes from the configuration partition, and a controller is chosen from it |
 | [0051](decisions/0051-trusts-describe-a-boundary-and-never-widen-a-run.md) | 2026-08-14 | Accepted | Trusts describe a boundary; they never widen a run |
 | [0052](decisions/0052-the-domain-is-the-only-unit-of-scope.md) | 2026-08-15 | Accepted *(see record)* | The domain is the only unit of scope |

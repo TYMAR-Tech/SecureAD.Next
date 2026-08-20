@@ -55,7 +55,7 @@ key.
 
 Splitting the baseline further - by forest and declared coverage - was considered and rejected,
 because the attestation ladder already removes the runs that would make it necessary. Every run
-declares the whole forest per [`0017`](0017-capture-reads-the-whole-forest.md). The only way
+declares the whole forest per `0017`. The only way
 coverage varies is an excluded domain, and an exclusion is attested. A domain excluded as populated
 is recorded degraded and costs the run its baseline eligibility. A domain excluded as empty is
 tested after capture against the members the forest actually reported, and a falsified claim is

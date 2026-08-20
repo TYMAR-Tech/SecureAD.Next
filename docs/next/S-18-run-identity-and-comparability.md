@@ -32,7 +32,7 @@ groups runs that must not be compared.
 **Coverage varies two ways, and they are not alike.** Either a domain could not be fully read — a
 failure nobody chose — or the forest itself changed shape. The predecessor could not tell these
 apart, because an operator-set exclusion looked like both. There are no exclusions now:
-[`0017`](../decisions/0017-capture-reads-the-whole-forest.md) removed them and capture reads the
+`0017` removed them and capture reads the
 whole forest.
 
 **A partially read domain counts as failed.** `DomainReadOutcome` has five members and only
@@ -255,7 +255,7 @@ surface register records against F17.
 - **Confidence:** verified
 - **Evidence:** [`0025`](../decisions/0025-the-run-library-is-a-managed-root.md) and
   [`0026`](../decisions/0026-one-answer-to-whether-runs-may-be-compared.md) against
-  [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) and inventory row B3; confirmed
+  `0017` and inventory row B3; confirmed
   against `next/src/SecureAD.Audit/Capture/CapturePlan.cs`
 - **What happens to a user:** nothing yet, because it was caught before code. Had it not been,
   four of the drift card's eleven states would have been unreachable, and the document binding
@@ -290,7 +290,7 @@ surface register records against F17.
 
 - **Severity:** maintainability
 - **Confidence:** verified
-- **Evidence:** [`0019`](../decisions/0019-the-bundle-carries-a-seal.md) reads
+- **Evidence:** `0019` reads
   `Superseded by 0020`, and `0020` restates only what the seal proves
 - **What happens to a user:** nothing directly. The rename mechanism that decides whether a
   directory is a finished bundle survived only in code and in `BundleWriterTests`. A session

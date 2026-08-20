@@ -82,7 +82,7 @@ captured, assessed and reported like any other group.
 `unread_partition`, written before the first read. Without it a reader cannot distinguish a forest
 whose DNS partitions were skipped from a forest that has none, which is the inference
 [`0002`](0002-absent-view-means-degraded-run.md) forbids being available, about a part of the
-directory [`0017`](0017-capture-reads-the-whole-forest.md) requires a run to state it did not reach.
+directory `0017` requires a run to state it did not reach.
 The operator's console already said it; a console is not evidence.
 
 **The product's help states it too**, because a customer deciding whether DNS zone permissions have

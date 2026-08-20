@@ -209,7 +209,7 @@ public sealed record DomainPreflight(
 /// <para>
 /// <b>Nothing here is an exclusion.</b> A domain the run could not read and a domain an operator
 /// chose to leave out are different events with opposite meanings, and
-/// <c>docs/decisions/0049-an-operator-may-exclude-a-domain-under-attestation.md</c> requires that
+/// <c>docs/decisions/0063-excluded-never-looks-like-unreachable.md</c> requires that
 /// they never share a representation. There is no member here an exclusion could be recorded in,
 /// and that is deliberate rather than pending.
 /// </para>

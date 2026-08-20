@@ -18,7 +18,7 @@ wins and the disagreement is a finding.
 | The product… | Decided by |
 |---|---|
 | treats the bundle as an output, never as a format something else writes | [`0013`](../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) |
-| carries a seal in every bundle | [`0019`](../decisions/0019-the-bundle-carries-a-seal.md) |
+| carries a seal in every bundle | `0019` |
 | uses that seal to detect corruption, and does not claim it detects tampering | [`0020`](../decisions/0020-the-seal-detects-corruption-not-tampering.md) |
 | produces sealed evidence and never signed evidence | [`0030`](../decisions/0030-the-product-produces-sealed-evidence-never-signed.md) |
 | stores objects as typed columns rather than as opaque blobs | [`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md) |

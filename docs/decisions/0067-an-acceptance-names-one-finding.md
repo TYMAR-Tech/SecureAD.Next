@@ -4,7 +4,7 @@ Date: 2026-08-16
 Status: Accepted
 
 Sits under [0023](0023-a-finding-has-a-stable-identity.md),
-[0019](0019-the-bundle-carries-a-seal.md) and
+0019 and
 [0066](0066-a-finding-is-called-a-finding.md). Names a door
 [0026](0026-one-answer-to-whether-runs-may-be-compared.md) already anticipated. Answers `B2` of the
 S-44 agenda.
@@ -59,7 +59,7 @@ fires whether or not anyone is watching.
 of a finding reads as a sequence of decisions rather than a current state.
 
 **An acceptance is stored beside the evidence, never inside it.** The bundle is sealed under
-[`0019`](0019-the-bundle-carries-a-seal.md) and opened read-only; the acceptances are a separate,
+`0019` and opened read-only; the acceptances are a separate,
 writable companion. Evidence is what the directory said, and an acceptance is what a person decided
 about it. The predecessor drew this line - its read connection *physically cannot* write the
 sidecar - and it is the right line.

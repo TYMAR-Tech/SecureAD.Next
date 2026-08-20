@@ -122,7 +122,7 @@ product can be taken apart at, and they are worth naming because they are what m
 replaceable.
 
 - **The bundle** is the seam between capture and everything else. Per
-  [`0009`](../decisions/0009-greenfield-in-place-with-the-bundle-as-seam.md) it is the reason the
+  `0009` it is the reason the
   rebuild can proceed in stages at all. Per
   [`0013`](../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) it is no longer shared
   with the old product, so its schema is free.
@@ -169,7 +169,7 @@ replaceable.
   the value is bound by a test.
 - **The sidecar** is the seam between a customer's annotations — notes, suppressions, declared scope
   — and the evidence. Per [`0015`](../decisions/0015-a-bundle-names-a-pattern-it-never-explains-one-away.md)
-  and [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) a customer's opinion never
+  and `0017` a customer's opinion never
   edits, filters or reduces the evidence; it sits beside it. That is what stops a clean report being
   produced by ticking a box.
 

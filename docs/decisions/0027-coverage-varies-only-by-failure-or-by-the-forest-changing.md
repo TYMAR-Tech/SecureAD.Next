@@ -14,7 +14,7 @@ longer has.
 an operator excluding part of the directory had to state whether the excluded part was populated or
 empty, with the second claim tested after capture against what the forest reported.
 
-That mechanism does not exist. [`0017`](0017-capture-reads-the-whole-forest.md), decided eight days
+That mechanism does not exist. `0017`, decided eight days
 earlier, removed operator-configurable exclusion entirely, and its consequences name the exclusion
 attestation among what goes with it. Ledger row B3 records the same and adds that the attestation
 has nothing left to falsify. The rebuild's `CapturePlan` plans a unit for every domain partition it

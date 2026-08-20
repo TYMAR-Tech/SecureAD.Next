@@ -23,7 +23,7 @@ wins and the disagreement is a finding.
 | builds the shell before the judgement half | [`0045`](../decisions/0045-the-shell-is-built-before-the-judgement-half.md) |
 | shows no live directory browsing, and no verification state | [`0008`](../decisions/0008-live-verification-is-removed.md) |
 | keeps an accepted finding visible as a finding rather than removing it | [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) |
-| surfaces no assessment mode to the operator | [`0007`](../decisions/0007-the-product-surfaces-no-assessment-mode.md) |
+| surfaces no assessment mode to the operator | `0007` |
 
 ---
 

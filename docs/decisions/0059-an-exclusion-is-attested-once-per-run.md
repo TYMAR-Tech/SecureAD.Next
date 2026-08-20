@@ -10,7 +10,7 @@ S-44 agenda.
 ## Context
 
 [`0052`](0052-the-domain-is-the-only-unit-of-scope.md) carries forward
-[`0049`](0049-an-operator-may-exclude-a-domain-under-attestation.md)'s rule that a domain may be left
+`0049`'s rule that a domain may be left
 out of a run only if the operator states a posture for it. Neither record says whether that
 statement is made once and remembered, or made again every time.
 

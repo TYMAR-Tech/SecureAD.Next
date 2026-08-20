@@ -1,4 +1,4 @@
-﻿# How privilege escalates
+# How privilege escalates
 
 **Area.** How the product works out that one principal can reach another's privileges through a
 chain of permissions and memberships, and what it says about such a chain. A single permission is
@@ -18,7 +18,7 @@ wins and the disagreement is a finding.
 | The product… | Decided by |
 |---|---|
 | keeps Tier 0 and expected-administrator as two separate sets | [`0006`](../decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) |
-| treats nothing inherited as definitive | [`0033`](../decisions/0033-nothing-inherited-is-definitive.md) |
+| treats nothing inherited as definitive | `0033` |
 | holds the rule catalogue as data and the rule logic as code | [`0010`](../decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) |
 | gives a finding a stable identity, whatever produced it | [`0023`](../decisions/0023-a-finding-has-a-stable-identity.md) |
 | never lets a run appear clean while carrying unknowns | [`0056`](../decisions/0056-the-visual-language-encodes-three-states.md) |

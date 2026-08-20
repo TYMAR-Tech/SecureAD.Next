@@ -67,7 +67,7 @@ mislead every caller about what it costs.
 
 ## The seal
 
-The reasoning is [`0019`](../decisions/0019-the-bundle-carries-a-seal.md). What matters at the
+The reasoning is `0019`. What matters at the
 point of use:
 
 **What it proves.** The bytes of `evidence.db` are the bytes that were there when the run declared

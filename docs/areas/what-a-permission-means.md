@@ -1,4 +1,4 @@
-﻿# What a permission means
+# What a permission means
 
 **Area.** How the product reads a permission off an object and decides what it lets somebody do:
 expanding shorthand rights, naming the thing a right applies to, and judging which permissions are
@@ -17,7 +17,7 @@ wins and the disagreement is a finding.
 
 | The product… | Decided by |
 |---|---|
-| treats nothing inherited as definitive, because inheritance can be blocked or replaced | [`0033`](../decisions/0033-nothing-inherited-is-definitive.md) |
+| treats nothing inherited as definitive, because inheritance can be blocked or replaced | `0033` |
 | says so when a DACL could not be read, rather than reporting no permissions | [`0037`](../decisions/0037-an-unreadable-dacl-says-so.md) |
 | records whether a DACL arrived in canonical order, because order changes the answer | [`0038`](../decisions/0038-a-descriptor-records-whether-its-dacl-was-canonical.md) |
 | never requests the audit portion of a descriptor | [`0036`](../decisions/0036-capture-never-requests-the-sacl.md) |

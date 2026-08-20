@@ -3,11 +3,11 @@
 Date: 2026-08-12
 Status: Accepted
 
-Supersedes [`0007`](0007-the-product-surfaces-no-assessment-mode.md) entirely.
+Supersedes `0007` entirely.
 
 ## Context
 
-[`0007`](0007-the-product-surfaces-no-assessment-mode.md) removed the assessment mode from every
+`0007` removed the assessment mode from every
 screen, and kept the value in the bundle on two grounds: that it is evidence of what the capture
 was, and that comparison refuses to compare runs whose modes differ.
 

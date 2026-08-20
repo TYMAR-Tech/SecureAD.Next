@@ -2,12 +2,12 @@
 
 The new product's library, and the record of building it.
 
-Per [`0009`](../decisions/0009-greenfield-in-place-with-the-bundle-as-seam.md) the new
+Per `0009` the new
 implementation is built in this repository, beside the existing one. Per
 [`0013`](../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) the `audit.db` bundle is
 no longer a contract between them: the rebuild writes whatever schema it needs and the old
 application is not expected to open it, so there is no working product end to end until connect,
-capture and storage are rebuilt. Per [`0012`](../decisions/0012-the-rebuild-lives-outside-src-with-its-own-solution.md)
+capture and storage are rebuilt. Per `0012`
 it lives at [`next/`](../../next/README.md) and builds from `next/SecureAD.Next.sln`, so the old
 tree's architecture tests do not govern it. This folder is where its documentation lives while that
 is true.
@@ -488,7 +488,7 @@ compares the document against the tables SQLite reports in a real database rathe
 list in the code, so the two cannot be wrong together.
 
 **The seal is the load-bearing part**, and it is recorded at
-[`0019`](../decisions/0019-the-bundle-carries-a-seal.md) because
+`0019` because
 [`0003`](../decisions/0003-refuse-to-reanalyse-an-incomplete-capture.md) has depended on it since
 it was accepted while the mechanism did not exist. Three things came out of re-deriving it rather
 than inheriting it. It is a **seal and not a signature**: there is no key anywhere in this product,
@@ -541,7 +541,7 @@ permitted to say that nothing changed.
 **Both of those records rested on a mechanism that had already been removed, and the next session
 caught it before writing code.** `0025` and `0026` reasoned from the attestation ladder — the rule
 that an operator excluding part of the directory had to state whether it was populated or empty, and
-have the claim checked. [`0017`](../decisions/0017-capture-reads-the-whole-forest.md) deleted all of
+have the claim checked. `0017` deleted all of
 it eight days earlier and said so; inventory row B3 says the attestation has nothing left to falsify.
 Four of the eleven drift states therefore described situations no run could reach, and a document
 binding them would have passed while asserting the impossible. The replacement is
@@ -587,11 +587,11 @@ against another.
 
 **It found what it was commissioned to find, and the finding was customer-facing.** Five accepted
 records described the bundle as **signed** — including the product's own identity sentence in
-[`0009`](../decisions/0009-greenfield-in-place-with-the-bundle-as-seam.md) — while
+`0009` — while
 [`0020`](../decisions/0020-the-seal-detects-corruption-not-tampering.md) had already established
 that there is no key anywhere in this product and the seal proves only that the bytes have not
 changed. Two slice documents repeated the claim to a customer, in the sentence justifying the
-credential-attribute guard. [`0019`](../decisions/0019-the-bundle-carries-a-seal.md) said it in one
+credential-attribute guard. `0019` said it in one
 line — *"It is called a seal and not a signature, because it is not one"* — and `0019` is the record
 a reader is told to move past. The owner withdrew the word on 2026-08-12 and it is recorded at
 [`0030`](../decisions/0030-the-product-produces-sealed-evidence-never-signed.md). Every decision in
