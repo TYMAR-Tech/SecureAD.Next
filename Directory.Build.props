@@ -1,24 +1,33 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <!-- Product version. The .NET SDK appends the commit sha to
-         AssemblyInformationalVersion by default (IncludeSourceRevisionInInformationalVersion),
-         so this yields "3.0.0+<sha>" and every build is distinguishable. ToolVersion.Current
-         reads it, and run.tool_version records it, so a bundle names the code that produced it.
+    <!-- Product version, inherited from the repository this rebuild was cut out of.
 
-         Only the MAJOR component is compared (CompareCompatibilityValidator.cs:107-114, via
-         ToolVersion.ParseMajor), so the appended sha cannot make two builds of the same
-         release look incompatible. [F-12-6] -->
+         NOTHING IN THIS REPOSITORY READS IT. The comment that stood here described
+         ToolVersion.Current reading it and run.tool_version recording it so a bundle could
+         name the code that produced it, and CompareCompatibilityValidator comparing only the
+         major component. None of those types travelled - all four names resolve to zero
+         references here. The machinery is in the predecessor repository with the old
+         application.
+
+         The value is left as it was rather than guessed at, because choosing the rebuild's
+         version is a product decision and inventing one would be worse than carrying a
+         number that is at least traceable. When the rebuild records its own version in a
+         bundle, this comment should describe what does the reading. -->
     <Version>3.0.0</Version>
 
-    <!-- Static analysis: run the .NET + code-style analyzers. AnalysisMode is set to the
-         curated high-signal "minimum" set (genuine correctness/reliability/security rules)
-         rather than the full recommended set, which floods an established 123K-LOC codebase
-         with style nits. Warnings are surfaced but NOT treated as errors, so findings are
-         visible in build output / IDE without breaking the existing green build. Per-rule
-         severities are tuned in .editorconfig. -->
+    <!-- Static analysis: the .NET and code-style analyzers, at the curated high-signal
+         "minimum" set - genuine correctness, reliability and security rules rather than the
+         full recommended set. Warnings are surfaced but not treated as errors, so findings
+         are visible in build output and the IDE without breaking a green build. Per-rule
+         severities are tuned in .editorconfig.
+
+         The reasoning for "minimum" was that the recommended set floods an established
+         123K-line codebase with style nits. That codebase was the old application. This one
+         is 32,348 lines, so the original justification no longer holds and the setting is
+         worth revisiting on its own merits rather than inherited. -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-minimum</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
