@@ -17,6 +17,35 @@ namespace SecureAD.Next.Tests.Evidence;
 /// </summary>
 public sealed class ProfileIdTests
 {
+    /// <summary>
+    /// Scoped capture is gone, and with it any way to build a profile from anything but a forest.
+    /// </summary>
+    /// <remarks>
+    /// <c>.github/copilot-instructions.md</c> told every session that this assertion already
+    /// existed. It did not - the fact was true because nobody had reinstated the member, not
+    /// because anything stopped them. That is the same shape as a document naming an enforcing
+    /// test that is not in the tree, which is how eleven wrong schema GUIDs survived. Written
+    /// 2026-09-XX so the claim and the guard match.
+    /// </remarks>
+    [Fact]
+    public void NoMemberNamedFromComponentsExists()
+    {
+        var offenders = typeof(ProfileId)
+            .GetMembers(System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Static
+                | System.Reflection.BindingFlags.Instance)
+            .Where(m => m.Name.Contains("FromComponents", StringComparison.Ordinal))
+            .Select(m => m.Name)
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "ProfileId.FromComponents was deleted with scoped capture and must not come back: a "
+            + "profile keyed on anything but the forest makes two runs of different scope look "
+            + "comparable. Found: " + string.Join(", ", offenders));
+    }
+
     [Fact]
     public void TheSameForestAlwaysProducesTheSameProfile()
     {
