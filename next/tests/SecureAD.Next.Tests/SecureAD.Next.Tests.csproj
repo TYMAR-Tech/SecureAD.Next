@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>SecureAD.Next.Tests</RootNamespace>
+    <AssemblyName>SecureAD.Next.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The guards reflect over SecureAD.Shell, which is a WPF assembly, so PresentationFramework
+         must resolve here. Taken as a framework reference rather than by setting UseWPF: UseWPF
+         swaps the implicit-usings set, which silently removes System.IO from every existing test
+         file in this project. -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SecureAD.Kernel\SecureAD.Kernel.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Audit\SecureAD.Audit.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Cli\SecureAD.Cli.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Shell\SecureAD.Shell.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,421 @@
+﻿<!--
+    Controls.xaml - templates for the controls this product uses, and no others.
+
+    Deliberately not a complete control library. 0046 forbids a third-party package, and the
+    answer to that is not to write one by hand: a template for a control nothing uses is dead
+    surface with a nicer name. What is here is what the four screens actually contain.
+
+    Every style below is applied by TargetType with no key, so a plain <Button> in a view is
+    already styled and a view has nothing to remember. That is deliberate: a design system a view
+    must opt into is a design system half the views will not.
+
+    Colour comes from Brushes.xaml, size from Type.xaml, spacing from Spacing.xaml. Nothing here
+    holds a literal of any of the three.
+
+    ===================================================================================
+    SET A COLOUR ON THE THING THAT DRAWS, NEVER ON THE THING THAT HOLDS.
+
+    Learned three times in one session, 2026-09-10, each time costing a round trip through a
+    person with a screenshot:
+
+      1. The table header. Foreground was set on the header and on the Border in its template.
+         The background obeyed and the TEXT DID NOT, so it rendered dark on dark navy and could
+         not be read. Fixed by a ContentTemplate whose TextBlock names the brush itself.
+      2. The state marks. Content was set to the TEXT "EstablishedBad" where the triggers switch
+         on the FactState TYPE, so every mark fell through to the hollow ring - the symbol
+         meaning "not established". The product told an operator a fact was unknown when it was
+         known and bad.
+      3. The rail LOOKED like a third case and was not. Four rounds went into it before a
+         magenta brush proved the style reaches the text perfectly well: the lab machine was
+         running a stale copy of the product, and no fix could show. The TextBlock below is kept
+         because the rule above is right, not because it fixed anything. THE LESSON IS THE
+         OTHER ONE: the product is built on one machine and run on another, so a screenshot is
+         evidence of nothing until it says which build it is. That is what the build marker in
+         ShellWindow.xaml exists for.
+
+    The rule: a ContentPresenter may or may not carry an inherited value down to whatever it
+    builds, and which it does cannot be told by reading. A local value on a TextBlock always
+    arrives. When a control shows text, template a TextBlock and bind the colour onto it.
+
+    NOTHING CATCHES THIS. XAML has no compiler check for it, the build goes green, and 1232
+    tests pass against a header nobody can read. The only instrument is a person looking, which
+    is what next/tools/SecureAD.Gallery exists to make cheap.
+    ===================================================================================
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Merges what it uses, so resolution does not depend on merge order elsewhere. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Brushes.xaml" />
+        <ResourceDictionary Source="Type.xaml" />
+        <ResourceDictionary Source="Spacing.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ===================================================================================
+         Text
+         =================================================================================== -->
+
+    <Style x:Key="BaseTextBlock" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- The name of a screen. One per screen. -->
+    <Style x:Key="ScreenTitle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontSize" Value="{StaticResource ScreenTitleFontSize}" />
+        <Setter Property="FontWeight" Value="{StaticResource TitleFontWeight}" />
+    </Style>
+
+    <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontSize" Value="{StaticResource SectionTitleFontSize}" />
+        <Setter Property="FontWeight" Value="{StaticResource TitleFontWeight}" />
+    </Style>
+
+    <!-- The heading of one row - a domain's name. -->
+    <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontSize" Value="{StaticResource RowTitleFontSize}" />
+        <Setter Property="FontWeight" Value="{StaticResource TitleFontWeight}" />
+    </Style>
+
+    <!-- The label in a label-and-value row. Quieter than the value it labels, and fixed width so
+         every such row in the product lines up. -->
+    <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontSize" Value="{StaticResource LabelFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource LabelTextBrush}" />
+        <Setter Property="Width" Value="{StaticResource LabelColumnWidth}" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
+    <!-- Explanation, provenance, counts. -->
+    <Style x:Key="Caption" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+    </Style>
+
+    <!-- A distinguished name, host name, SID or GUID: monospaced so an operator can compare two
+         of them by eye without being misled by proportional spacing. -->
+    <Style x:Key="Identifier" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontFamily" Value="{StaticResource IdentifierFontFamily}" />
+    </Style>
+
+    <!-- ===================================================================================
+         Button
+
+         Two roles only: the ordinary button, and the one action a screen is for. A product with
+         five button kinds is a product where none of them means anything.
+         =================================================================================== -->
+
+    <Style x:Key="BaseButton" TargetType="Button">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Padding" Value="{StaticResource ComfortableButtonPadding}" />
+        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource ControlCornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- Hover and press dim the chrome rather than repainting it. Repainting hard-coded
+                        the secondary button's colours into the base, so a Primary button lost its blue on
+                        hover and a Danger button would have lost its red. Dimming works whatever colour a
+                        button is, which is what a base style has to do. -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.90" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.75" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource DisabledBackground}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The one action a screen exists for: Start, on the Review step. At most one per screen. -->
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OnAccentTextBrush}" />
+        <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+    </Style>
+
+    <!-- ===================================================================================
+         TextBox
+
+         Two uses in this product, and they are not the same thing. An editable box takes a
+         controller name. A read-only box holds a refusal the operator needs to be able to select
+         and copy - a WPF TextBlock cannot be selected, which is why a refusal is a TextBox at all.
+         =================================================================================== -->
+
+    <!-- The way out of something already running: Cancel, and Stop. 0070.
+
+         NOT a warning that pressing it is dangerous - nothing is written by a pass, and a stopped
+         capture records why it stopped. It is red so that somebody who has decided he wants out
+         of a three-hour read can find it without reading button labels. -->
+    <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OnAccentTextBrush}" />
+        <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+    </Style>
+
+    <Style x:Key="BaseTextBox" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="{StaticResource ComfortableFieldPadding}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource ControlCornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource DisabledTextBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        A message the operator must be able to select and copy, rendered as text rather than as a
+        field. No border, no background, no padding: it should read as a sentence on the screen,
+        because that is what it is.
+
+        Foreground is left to the caller, which sets it from the state vocabulary.
+    -->
+    <Style x:Key="SelectableMessage" TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}">
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="IsTabStop" Value="False" />
+    </Style>
+
+    <!-- ===================================================================================
+         RadioButton - the navigation rail
+         =================================================================================== -->
+
+    <Style TargetType="RadioButton">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource RailTextBrush}" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Chrome"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            BorderThickness="3,0,0,0"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <!-- A TextBlock rather than a ContentPresenter, so the colour lands on the
+                             element that DRAWS the text. Seen on screen 2026-09-10: the selected
+                             entry rendered grey where it names white, because a Foreground set on
+                             the control never reached whatever the presenter built. Same fault as
+                             the table header. TemplateBinding on TextBlock.Foreground is an
+                             ordinary property and does reach it, so the triggers below still work. -->
+                        <TextBlock Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   FontWeight="{TemplateBinding FontWeight}"
+                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource RailSelectedBackground}" />
+                        </Trigger>
+                        <!-- The selected section. Colour plus weight, so the current screen is
+                             identifiable without relying on hue. -->
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource RailSelectedBackground}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource RailSelectedTextBrush}" />
+                            <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+                        </Trigger>
+                        <!-- Focus is shown with the accent EDGE, not with a pale background.
+                             AccentSubtleBrush is a light tint meant for light surfaces; on the
+                             navy rail it inverted the entry and left white text on near-white.
+                             Seen on screen 2026-08-18. -->
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================================================================================
+         Containers
+         =================================================================================== -->
+
+    <!-- One row in a list of rows, ruled beneath. -->
+    <Style x:Key="RowBorder" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="{StaticResource ComfortableRowPadding}" />
+    </Style>
+
+    <!-- A block of content set apart from what surrounds it. -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+        <Setter Property="Padding" Value="{StaticResource ComfortableRowPadding}" />
+    </Style>
+
+    <!--
+        NO IMPLICIT ScrollViewer STYLE.
+
+        There was one here, setting HorizontalScrollBarVisibility="Disabled". An implicit style
+        applies to every ScrollViewer in the tree INCLUDING the ones inside other controls'
+        templates - a DataGrid has one, a TextBox has one - so a rule written for a screen silently
+        rewrote the internals of every control that scrolls. Scroll behaviour is a property of the
+        surface that scrolls and is set there.
+    -->
+
+    <!-- ===================================================================================
+         Shared converters
+
+         Held here rather than declared per view. Three views each declaring their own
+         BooleanToVisibilityConverter is three keys named the same thing meaning the same thing,
+         which is how a fourth comes to mean something slightly different.
+         =================================================================================== -->
+
+    <!-- ===================================================================================
+         The grid. F-0056-2: untemplated, a DataGrid renders in Windows own palette, so a screen
+         ends up half in each language. These three types only ever appear inside a DataGrid, so
+         an implicit style for them cannot leak into another control the way a ScrollViewer one
+         did. The grid itself keeps its keyed styling on the view, where the surface that scrolls
+         decides how it scrolls.
+         =================================================================================== -->
+
+    <Style TargetType="DataGridColumnHeader">
+        <Setter Property="Background" Value="{StaticResource TableHeaderBackground}" />
+        <Setter Property="Foreground" Value="{StaticResource TableHeaderTextBrush}" />
+
+        <!-- The colour is set on the TEXTBLOCK THAT DRAWS THE TEXT, not on anything holding
+             it. Setting TextElement.Foreground on the Border below was tried twice - once by
+             TemplateBinding, once by naming the brush - and the header rendered dark on dark
+             both times, because whatever the ContentPresenter builds does not take it. A local
+             value on the TextBlock cannot be lost to inheritance. Every header here is a plain
+             string, so {Binding} is that string. -->
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}"
+                               Foreground="{StaticResource TableHeaderTextBrush}"
+                               VerticalAlignment="Center" />
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}" />
+        <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+        <Setter Property="Padding" Value="{StaticResource DenseHeaderPadding}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Border Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            TextElement.Foreground="{StaticResource TableHeaderTextBrush}">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- The same style, keyed, so a DataGrid can be told to use it BY NAME.
+
+         F-0056-2, found on screen 2026-09-10: the header rendered dark text on the dark navy
+         background and could not be read, despite the style above. WPF Fluent theme sets
+         ColumnHeaderStyle directly on the DataGrid, and a style set on the control beats an
+         implicit one. Every DataGrid names this, which is the only way to win that. -->
+    <Style x:Key="TableColumnHeader" TargetType="DataGridColumnHeader"
+           BasedOn="{StaticResource {x:Type DataGridColumnHeader}}" />
+
+    <Style TargetType="DataGridRow">
+        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+    </Style>
+
+    <Style TargetType="DataGridCell">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="{StaticResource DenseCellPadding}" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+    </Style>
+
+    <BooleanToVisibilityConverter x:Key="Shown" />
+
+    <!-- ===================================================================================
+         The implicit styles.
+
+         Each base above carries a key, because a style cannot be BasedOn an implicit style
+         declared in the same dictionary - that is a circular reference and WPF refuses it while
+         parsing. The keyed base is the real definition; these three make it the default so that a
+         plain <Button> in a view is already styled and a view has nothing to opt into.
+
+         Without these, an untouched control falls through to the Fluent theme merged beneath, and
+         a screen ends up half in this product's language and half in Windows'.
+         =================================================================================== -->
+
+    <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}" />
+    <Style TargetType="Button" BasedOn="{StaticResource BaseButton}" />
+    <Style TargetType="TextBox" BasedOn="{StaticResource BaseTextBox}" />
+
+</ResourceDictionary>

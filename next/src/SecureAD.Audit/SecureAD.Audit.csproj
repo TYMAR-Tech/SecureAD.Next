@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net8.0-windows because capture uses System.DirectoryServices.Protocols.
+         This is the only new project below the app that is Windows-bound, and the
+         reason is LDAP, not presentation. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>SecureAD.Audit</RootNamespace>
+    <AssemblyName>SecureAD.Audit</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="System.DirectoryServices.Protocols" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SecureAD.Kernel\SecureAD.Kernel.csproj" />
+    <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+  </ItemGroup>
+
+</Project>

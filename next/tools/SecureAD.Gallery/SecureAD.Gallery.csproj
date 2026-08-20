@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    THE CONTROL GALLERY. Not part of the product.
+
+    A throwaway harness showing every control the design system dresses, once, on one page. It
+    exists because appearance is the one thing this repository cannot test: the build goes green
+    and 1232 tests pass against a table header rendering dark text on a dark background. The only
+    instrument is a person looking, and a person looking at ONE page costs a fraction of a person
+    looking at every screen for every fix.
+
+    IT IS A SEPARATE EXECUTABLE ON PURPOSE. Not a hidden page behind a flag and not a rail entry:
+    record 0045 leaves a screen out rather than stubbing it, and a page with nothing behind it
+    would be a stub. Being its own program means it CANNOT appear in SecureAD by a flag, by a
+    mistake, or because someone forgot.
+
+    IT IS NOT IN THE SOLUTION and lives outside next/src, so the architecture gates (which scan
+    next/src) do not govern it, and a normal solution build does not build it. Build this project
+    file directly and run the executable it produces, under bin/Debug/net10.0-windows.
+
+    DELETE THIS FOLDER when the styling work is done. It shares the paint but not the product, so
+    it can drift and show a control the real screens no longer use. That risk is why it is
+    temporary rather than kept.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SecureAD.Gallery</RootNamespace>
+    <AssemblyName>SecureAD.Gallery</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The product's own theme files, by link rather than by copy. A copy would be a second set of
+      colours that can disagree with the first, which is the whole failure this harness exists to
+      catch. These are the same files the shell compiles.
+    -->
+    <Page Include="..\..\src\SecureAD.Shell\Themes\*.xaml" Link="Themes\%(Filename)%(Extension)" />
+
+    <!--
+      StateMarks.xaml keys its four treatments off the shell's FactState, so the harness needs
+      that type to compile the dictionary. Linked rather than copied, and linked rather than
+      taken by a project reference, because the type is internal to the shell. One source of
+      truth either way: this compiles the shell's own file.
+    -->
+    <Compile Include="..\..\src\SecureAD.Shell\ViewModels\FactState.cs" Link="FactState.cs" />
+  </ItemGroup>
+
+</Project>

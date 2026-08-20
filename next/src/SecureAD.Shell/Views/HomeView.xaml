@@ -1,0 +1,125 @@
+<UserControl x:Class="SecureAD.Shell.Views.HomeView" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Home. Where the run library is chosen, where a run is started from, and where the runs
+        already taken are listed.
+
+        0057 made starting an audit a modal act, so this screen carries the button that opens it
+        rather than the rail carrying an entry. Home is also where the operator lands when the
+        window closes, which is why it says what a run is before offering to start one.
+
+        NOTHING HERE REPORTS POSTURE. 0045: no part of this product produces a finding yet, and a
+        card saying "0 findings" would be read as "your directory is clean" rather than "nothing has
+        looked". The card on the right says what became of a run, which was observed.
+
+        Comfortable density, per 0056 decision 8: this is a screen where a decision is made, not a
+        list to be scanned.
+    -->
+    <Grid Margin="{StaticResource ScreenPadding}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="320" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2">
+            <TextBlock Text="Home" Style="{StaticResource ScreenTitle}" Margin="0,0,0,16" />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Run library" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
+                    <TextBlock Text="{Binding LibraryDescription}"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource SecondaryTextBrush}" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="Choose run library..."
+                                Command="{Binding ChooseLibraryCommand}" />
+
+                        <!-- Disabled until a library is chosen. A wizard whose every action refuses
+                             would teach an operator that this product's refusals are noise. -->
+                        <Button Content="New audit"
+                                Command="{Binding NewAuditCommand}"
+                                Style="{StaticResource PrimaryButton}"
+                                Margin="10,0,0,0" />
+                    </StackPanel>
+
+                    <!-- Read-only TextBox rather than TextBlock: a WPF TextBlock cannot be selected,
+                         and the one thing an operator needs from a failure is to copy it. -->
+                    <TextBox Text="{Binding Location.Problem, Mode=OneWay}"
+                             Style="{StaticResource SelectableMessage}"
+                             Foreground="{StaticResource FaultBrush}"
+                             Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Runs taken" Style="{StaticResource SectionTitle}" Margin="0,28,0,4" />
+            <TextBlock Text="Runs are started from New audit. It finds the forest this machine is in, shows you every domain and the controller each would be read from, and starts the run once you have looked."
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Margin="0,0,0,10" />
+        </StackPanel>
+
+        <!-- Said only when the library was read and genuinely held nothing. "No runs" and
+             "I could not look" are different sentences. -->
+        <TextBlock Grid.Row="1" Grid.Column="0"
+                   Text="This run library holds no runs yet."
+                   VerticalAlignment="Top"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Visibility="{Binding Library.IsEmpty, Converter={StaticResource Shown}}" />
+
+        <DataGrid Grid.Row="1" Grid.Column="0"
+                  ItemsSource="{Binding Library.Runs}"
+                  ColumnHeaderStyle="{StaticResource TableColumnHeader}"
+                  SelectedItem="{Binding Library.Selected}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  Margin="0,0,20,0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Run" Binding="{Binding Identifier}" Width="2*" />
+                <DataGridTextColumn Header="Outcome" Binding="{Binding State}" Width="Auto" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- The details card. Only what a listing observed - never coverage, which lives inside the
+             bundle and would have to be opened to be known. -->
+        <Border Grid.Row="1" Grid.Column="1"
+                Style="{StaticResource Card}"
+                VerticalAlignment="Top"
+                Visibility="{Binding Library.HasSelection, Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="{Binding Library.Selected.Identifier}"
+                           Style="{StaticResource RowTitle}"
+                           TextWrapping="Wrap" />
+
+                <TextBlock Text="{Binding Library.Selected.State}"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,10,0,2" />
+                <TextBlock Text="{Binding Library.Selected.Meaning}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+
+                <TextBlock Text="What it recorded"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,14,0,2"
+                           Visibility="{Binding Library.Selected.HasDetail, Converter={StaticResource Shown}}" />
+                <TextBox Text="{Binding Library.Selected.Detail, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Visibility="{Binding Library.Selected.HasDetail, Converter={StaticResource Shown}}" />
+
+                <TextBlock Text="Where it is"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,14,0,2" />
+                <TextBox Text="{Binding Library.Selected.Path, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

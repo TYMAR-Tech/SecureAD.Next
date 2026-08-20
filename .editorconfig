@@ -1,0 +1,30 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+indent_size = 4
+
+# ── Analyzer severity tuning ──────────────────────────────────────────────
+# Silence rules that conflict with this repo's established, intentional conventions.
+# CA1707: test methods use the idiomatic xUnit "When_Then" naming with underscores.
+dotnet_diagnostic.CA1707.severity = none
+
+[*.{xml,csproj}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# ── Test projects: relax analyzers that don't add value in test code ──────────
+[tests/**/*.cs]
+# CA1816: xUnit manages test-class disposal; GC.SuppressFinalize is unnecessary noise here.
+dotnet_diagnostic.CA1816.severity = none
+# CA1707: underscore-separated test names are the intended convention.
+dotnet_diagnostic.CA1707.severity = none

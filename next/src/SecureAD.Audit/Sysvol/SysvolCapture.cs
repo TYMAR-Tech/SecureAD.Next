@@ -1,0 +1,549 @@
+using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
+using SecureAD.Kernel.GroupPolicy;
+using SecureAD.Kernel.Security;
+
+namespace SecureAD.Audit.Sysvol;
+
+/// <summary>
+/// Reads the Group Policy files on SYSVOL into the bundle: inventory row B14.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>This is the first read in the product that is allowed to fail.</b> Every capture before it is
+/// fail-fast per <c>docs/decisions/0003</c>: a unit that could not be read returns before the seal,
+/// so a bundle exists only when everything was read. <c>docs/decisions/0044</c> makes SYSVOL the
+/// single stated exception, because SYSVOL is a file share, permission problems on it are ordinary
+/// rather than exceptional, and a run that died because one policy folder out of four hundred was
+/// locked would be unusable in the field.
+/// </para>
+/// <para>
+/// So nothing in here returns early on a failure. Every failure is caught, attributed to the policy
+/// it happened under, and carried into <see cref="SysvolCoverage"/> - which is what makes the
+/// difference between a partial result and a quiet one. The rule this class is written to is that
+/// <b>a file that could not be read never produces the same evidence as a file that held
+/// nothing</b>.
+/// </para>
+/// <para>
+/// <b>How deep it reads is settled by
+/// <c>docs/decisions/0043-a-gpos-file-permissions-are-read-below-the-root-folder.md</c></b>: the
+/// policy's own folder, every folder beneath it, every file whose contents are read, and every file
+/// under <c>Machine\Scripts</c> and <c>User\Scripts</c>. Scripts are in scope because a logon script
+/// that anybody can rewrite runs on every machine the policy reaches, and the predecessor's read
+/// stopped at the root folder and could not see it.
+/// </para>
+/// </remarks>
+public sealed class SysvolCapture
+{
+    /// <summary>
+    /// The registry-backed settings, one file per half of a policy.
+    /// </summary>
+    private static readonly (string RelativePath, GpoSettingScope Scope)[] RegistryPolicyFiles =
+    [
+        (@"Machine\Registry.pol", GpoSettingScope.Machine),
+        (@"User\Registry.pol", GpoSettingScope.User),
+    ];
+
+    /// <summary>
+    /// The security template: the privileges a policy grants, the local groups it populates and the
+    /// signing settings it can weaken. SEC-064, SEC-065 and SEC-066 all read this one file.
+    /// </summary>
+    private const string SecurityTemplateFile =
+        @"Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf";
+
+    /// <summary>
+    /// The two folders whose files are permission-read whether or not their contents are parsed,
+    /// per <c>docs/decisions/0043</c>.
+    /// </summary>
+    private static readonly string[] ScriptFolders = [@"Machine\Scripts", @"User\Scripts"];
+
+    /// <summary>The policy's own folder, which has no path beneath the policy root.</summary>
+    private const string PolicyRoot = "";
+
+    private readonly ISysvolFileReader _reader;
+    private readonly BundleWriter _writer;
+
+    /// <summary>
+    /// Creates a SYSVOL capture writing into <paramref name="writer"/>.
+    /// </summary>
+    /// <param name="reader">How the share is read.</param>
+    /// <param name="writer">The bundle being written.</param>
+    public SysvolCapture(ISysvolFileReader reader, BundleWriter writer)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(writer);
+
+        _reader = reader;
+        _writer = writer;
+    }
+
+    /// <summary>
+    /// Reads every policy the directory declared, and reports what became of each.
+    /// </summary>
+    /// <param name="inventory">
+    /// The policies the directory declared - the denominator. Both halves of it are used: the ones
+    /// that can be read, and the ones the directory declared without saying where their files are.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation for a capture an operator stopped.</param>
+    /// <returns>
+    /// What became of each policy. This is the only account of a SYSVOL failure that will ever
+    /// reach an operator, because the run does not stop for one.
+    /// </returns>
+    /// <remarks>
+    /// Cancellation is not a SYSVOL failure and is not swallowed. An operator who stopped the run
+    /// has not discovered anything about his policies, and recording a cancelled read as an
+    /// unreadable policy would put a finding in front of him that says more than he knows.
+    /// </remarks>
+    public async Task<SysvolCoverage> ReadAsync(
+        GpoInventory inventory,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(inventory);
+
+        var policies = new List<GpoCoverage>(inventory.UnlocatablePolicies);
+
+        foreach (var target in inventory.Policies)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            policies.Add(await ReadPolicyAsync(target, cancellationToken).ConfigureAwait(false));
+        }
+
+        return SysvolCoverage.Of(policies);
+    }
+
+    /// <summary>
+    /// Reads one policy's folder, recording what it holds and what could not be reached.
+    /// </summary>
+    private async Task<GpoCoverage> ReadPolicyAsync(GpoTarget target, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        var progress = new PolicyProgress(target, _writer);
+
+        var root = await _reader
+            .ReadSecurityDescriptorAsync(target.FileSysPath, PolicyRoot, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!root.IsSuccess)
+        {
+            // The policy's own folder was refused. Nothing beneath it is worth attempting, and
+            // reporting the whole policy as unread is the honest answer rather than a partial one.
+            return GpoCoverage.Unreadable(
+                target.GpoGuid, target.DisplayName, target.FileSysPath, root.Error.Description);
+        }
+
+        if (root.Value is null)
+        {
+            // The directory says this policy exists and the share does not hold its folder. That is
+            // a fact about the customer's forest - an orphaned policy object - and not a failure of
+            // this run, but it is still a policy nothing was read from.
+            return GpoCoverage.Unreadable(
+                target.GpoGuid,
+                target.DisplayName,
+                target.FileSysPath,
+                "The policy's folder is not on the SYSVOL share. The directory holds the policy "
+                + "object and its files are missing, so what it configures cannot be known.");
+        }
+
+        progress.WriteDescriptor(PolicyRoot, root.Value);
+
+        await ReadFolderPermissionsAsync(target, progress, cancellationToken).ConfigureAwait(false);
+        await ReadRegistryPoliciesAsync(target, progress, cancellationToken).ConfigureAwait(false);
+        await ReadSecurityTemplateAsync(target, progress, cancellationToken).ConfigureAwait(false);
+        await ReadPreferenceFilesAsync(target, progress, cancellationToken).ConfigureAwait(false);
+        await ReadScriptPermissionsAsync(target, progress, cancellationToken).ConfigureAwait(false);
+
+        return progress.Outcome();
+    }
+
+    /// <summary>
+    /// Reads the permissions on every folder beneath the policy root, per
+    /// <c>docs/decisions/0043</c>.
+    /// </summary>
+    private async Task ReadFolderPermissionsAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
+    {
+        var folders = await _reader
+            .EnumerateRelativeDirectoriesAsync(target.FileSysPath, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!folders.IsSuccess)
+        {
+            progress.RecordFailure(folders.Error);
+            return;
+        }
+
+        foreach (var folder in folders.Value)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await ReadPermissionsAsync(target, progress, folder, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Reads the registry-backed settings out of both halves of the policy.</summary>
+    private async Task ReadRegistryPoliciesAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
+    {
+        foreach (var (relativePath, scope) in RegistryPolicyFiles)
+        {
+            var file = await ReadFileAsync(target, progress, relativePath, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (file is null)
+            {
+                continue;
+            }
+
+            var parsed = RegistryPolicyParser.ParsePolicyFile(file);
+
+            progress.WriteFileErrors(relativePath, parsed.Errors);
+
+            foreach (var entry in parsed.Entries)
+            {
+                progress.WriteRegistrySetting(scope, entry);
+            }
+        }
+    }
+
+    /// <summary>Reads the security template: privileges, restricted groups and signing settings.</summary>
+    private async Task ReadSecurityTemplateAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
+    {
+        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (file is null)
+        {
+            return;
+        }
+
+        var parsed = SecurityTemplateParser.ParseTemplateFile(file);
+
+        progress.WriteFileErrors(SecurityTemplateFile, parsed.Errors);
+
+        foreach (var section in parsed.Sections)
+        {
+            foreach (var setting in section.Value)
+            {
+                progress.WriteSecuritySetting(section.Key, setting);
+            }
+        }
+
+        foreach (var group in parsed.GetGroupMemberships())
+        {
+            progress.WriteRestrictedGroup(group);
+        }
+    }
+
+    /// <summary>
+    /// Scans the policy's preference files for a stored credential.
+    /// </summary>
+    /// <remarks>
+    /// The files are found by listing the share rather than by trusting the policy's declared
+    /// extension list, because what a workstation applies is what is on the share.
+    /// </remarks>
+    private async Task ReadPreferenceFilesAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
+    {
+        var files = await _reader
+            .EnumerateRelativeFilesAsync(target.FileSysPath, "*.xml", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!files.IsSuccess)
+        {
+            progress.RecordFailure(files.Error);
+            return;
+        }
+
+        foreach (var relativePath in files.Value)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var content = await ReadFileAsync(target, progress, relativePath, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (content is null)
+            {
+                continue;
+            }
+
+            var parsed = GroupPolicyPreferenceParser.ParsePreferenceFile(content);
+
+            progress.WriteFileErrors(relativePath, parsed.Errors);
+
+            foreach (var finding in parsed.Findings)
+            {
+                progress.WriteStoredCredential(relativePath, finding);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads the permissions on the logon and startup scripts, which
+    /// <c>docs/decisions/0043</c> puts in scope for SEC-082 even though their contents are not
+    /// parsed.
+    /// </summary>
+    private async Task ReadScriptPermissionsAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
+    {
+        var files = await _reader
+            .EnumerateRelativeFilesAsync(target.FileSysPath, "*", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!files.IsSuccess)
+        {
+            progress.RecordFailure(files.Error);
+            return;
+        }
+
+        foreach (var relativePath in files.Value.Where(IsUnderAScriptFolder))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await ReadPermissionsAsync(target, progress, relativePath, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private static bool IsUnderAScriptFolder(string relativePath) =>
+        ScriptFolders.Any(folder =>
+            relativePath.StartsWith(folder + "\\", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Reads one file's contents, recording a refusal against the policy and writing the
+    /// permissions of every file it did open, per <c>docs/decisions/0043</c>.
+    /// </summary>
+    /// <returns>The bytes, or null if the file is not there or could not be read.</returns>
+    private async Task<byte[]?> ReadFileAsync(
+        GpoTarget target,
+        PolicyProgress progress,
+        string relativePath,
+        CancellationToken cancellationToken)
+    {
+        var file = await _reader
+            .ReadFileAsync(target.FileSysPath, relativePath, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!file.IsSuccess)
+        {
+            progress.RecordFailure(file.Error);
+            return null;
+        }
+
+        if (file.Value is null)
+        {
+            // Genuinely absent, and that is an answer rather than a gap. A policy with no
+            // GptTmpl.inf assigns no user rights.
+            return null;
+        }
+
+        await ReadPermissionsAsync(target, progress, relativePath, cancellationToken)
+            .ConfigureAwait(false);
+
+        return file.Value;
+    }
+
+    /// <summary>Reads and stores the permissions on one path inside the policy's folder.</summary>
+    private async Task ReadPermissionsAsync(
+        GpoTarget target,
+        PolicyProgress progress,
+        string relativePath,
+        CancellationToken cancellationToken)
+    {
+        var descriptor = await _reader
+            .ReadSecurityDescriptorAsync(target.FileSysPath, relativePath, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!descriptor.IsSuccess)
+        {
+            progress.RecordUnreadablePermissions(relativePath, descriptor.Error);
+            return;
+        }
+
+        if (descriptor.Value is null)
+        {
+            // The path was there a moment ago and is not now. Nothing was denied and nothing is
+            // known about it either, so it is recorded rather than dropped.
+            progress.RecordVanished(relativePath);
+            return;
+        }
+
+        progress.WriteDescriptor(relativePath, descriptor.Value);
+    }
+
+    /// <summary>
+    /// What one policy's read has produced so far: the rows written, and the failures that have to
+    /// be answered for at the end of it.
+    /// </summary>
+    /// <remarks>
+    /// Held as a class rather than as loose variables because the ordinals, the failures and the
+    /// final outcome are one bookkeeping problem. The previous product's SYSVOL writer kept its
+    /// counter below the early return that ran on failure, so nothing recorded the failures at all.
+    /// </remarks>
+    private sealed class PolicyProgress(GpoTarget target, BundleWriter writer)
+    {
+        private readonly List<string> _failures = [];
+        private int _registryOrdinal;
+        private int _securityOrdinal;
+        private int _restrictedGroupOrdinal;
+        private int _credentialOrdinal;
+        private int _errorOrdinal;
+        private bool _anythingRead;
+
+        public void WriteDescriptor(string relativePath, byte[] descriptorBytes)
+        {
+            var parsed = SecurityDescriptorParser.Parse(descriptorBytes);
+            var normalized = AceNormalizer.Normalize(Guid.Empty, parsed);
+
+            writer.WriteSysvolSecurityDescriptor(
+                target.GpoGuid, relativePath, descriptorBytes, normalized);
+
+            _anythingRead = true;
+        }
+
+        public void WriteRegistrySetting(GpoSettingScope scope, RegistryPolicyEntry entry)
+        {
+            writer.WriteGpoRegistrySetting(
+                target.GpoGuid,
+                _registryOrdinal++,
+                scope,
+                entry.KeyPath,
+                entry.ValueName,
+                entry.RegistryType,
+                entry.Data);
+
+            _anythingRead = true;
+        }
+
+        public void WriteSecuritySetting(string section, SecurityTemplateSetting setting)
+        {
+            writer.WriteGpoSecuritySetting(
+                target.GpoGuid, _securityOrdinal++, section, setting.Name, setting.Value);
+
+            _anythingRead = true;
+        }
+
+        public void WriteRestrictedGroup(RestrictedGroup group)
+        {
+            foreach (var member in group.Members)
+            {
+                writer.WriteGpoRestrictedGroup(
+                    target.GpoGuid,
+                    _restrictedGroupOrdinal++,
+                    group.GroupName,
+                    RestrictedGroupRelationship.Member,
+                    member);
+            }
+
+            foreach (var container in group.MemberOf)
+            {
+                writer.WriteGpoRestrictedGroup(
+                    target.GpoGuid,
+                    _restrictedGroupOrdinal++,
+                    group.GroupName,
+                    RestrictedGroupRelationship.MemberOf,
+                    container);
+            }
+
+            _anythingRead = true;
+        }
+
+        public void WriteStoredCredential(string relativePath, GppPasswordFinding finding)
+        {
+            writer.WriteGpoStoredCredential(
+                target.GpoGuid,
+                _credentialOrdinal++,
+                relativePath,
+                finding.ElementType,
+                finding.AccountName,
+                finding.SourceAttribute);
+
+            _anythingRead = true;
+        }
+
+        public void WriteFileErrors(string relativePath, IReadOnlyList<string> errors)
+        {
+            foreach (var error in errors)
+            {
+                writer.WriteGpoFileError(target.GpoGuid, _errorOrdinal++, relativePath, error);
+            }
+        }
+
+        /// <summary>
+        /// Records that a path's permissions could not be read: a row in the bundle, and a mark
+        /// against the policy's coverage.
+        /// </summary>
+        public void RecordUnreadablePermissions(string relativePath, AuditError error)
+        {
+            writer.WriteUnreadableSysvolDescriptor(target.GpoGuid, relativePath, error.Description);
+            RecordFailure(error);
+        }
+
+        /// <summary>
+        /// Records a path that was listed and then was not there. Rare, and recorded rather than
+        /// ignored, because a policy being rewritten while it is audited is worth knowing about.
+        /// </summary>
+        public void RecordVanished(string relativePath)
+        {
+            const string reason =
+                "This path was listed and then was gone before its permissions could be read. "
+                + "Something changed the policy's folder while the audit was reading it.";
+
+            writer.WriteUnreadableSysvolDescriptor(target.GpoGuid, relativePath, reason);
+            _failures.Add(reason);
+        }
+
+        public void RecordFailure(AuditError error)
+        {
+            ArgumentNullException.ThrowIfNull(error);
+            _failures.Add(error.Description);
+        }
+
+        /// <summary>
+        /// What to report for this policy.
+        /// </summary>
+        /// <remarks>
+        /// The three answers are kept apart deliberately. <c>Read</c> means nothing was refused;
+        /// <c>PartiallyRead</c> means some of the policy is in the evidence and some is not, which
+        /// is the state a report has to caveat; <c>Unreadable</c> means the policy is in the
+        /// evidence in name only. Collapsing the middle one into either neighbour is how a customer
+        /// ends up reading a partial answer as a complete one.
+        /// </remarks>
+        public GpoCoverage Outcome()
+        {
+            if (_failures.Count == 0)
+            {
+                return GpoCoverage.Read(target.GpoGuid, target.DisplayName, target.FileSysPath);
+            }
+
+            var reason = Summarize();
+
+            return _anythingRead
+                ? GpoCoverage.PartiallyRead(
+                    target.GpoGuid, target.DisplayName, target.FileSysPath, reason)
+                : GpoCoverage.Unreadable(
+                    target.GpoGuid, target.DisplayName, target.FileSysPath, reason);
+        }
+
+        /// <summary>
+        /// Turns the failures into one sentence an operator can act on.
+        /// </summary>
+        /// <remarks>
+        /// Distinct reasons only, and at most three of them. A locked-down policy folder produces
+        /// the same refusal on every path beneath it, and a reason repeated forty times is a reason
+        /// nobody reads. The count of the rest is stated rather than dropped, so the summary never
+        /// claims to be shorter than the truth.
+        /// </remarks>
+        private string Summarize()
+        {
+            var distinct = _failures.Distinct(StringComparer.Ordinal).ToArray();
+            var shown = distinct.Take(3).ToArray();
+            var summary = string.Join(" ", shown);
+
+            return distinct.Length > shown.Length
+                ? summary + $" ({distinct.Length - shown.Length} further failures of other kinds "
+                    + "were recorded against this policy.)"
+                : summary;
+        }
+    }
+}

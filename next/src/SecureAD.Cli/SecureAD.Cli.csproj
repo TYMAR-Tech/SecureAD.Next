@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows-bound for the same single reason SecureAD.Audit is: capture reaches a directory
+         through System.DirectoryServices.Protocols. Nothing here is about presentation. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>SecureAD.Cli</RootNamespace>
+    <AssemblyName>securead-cli</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- The product runs on 64-bit Windows and nowhere else: capture reaches a directory through
+         System.DirectoryServices.Protocols. Stated rather than left to the SDK's default, so a
+         build here produces what a publish produces. SelfContained stays off, so this costs a
+         cached runtime pack rather than a runtime-carrying output on every build. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The argument rules are worth testing and CommandLine is not worth publishing: it would
+         widen the surface SURFACE-REGISTER.md polices for a type nothing outside this executable
+         should ever hold. First use of InternalsVisibleTo in the rebuild, deliberately narrow -
+         one assembly, one direction. -->
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SecureAD.Kernel\SecureAD.Kernel.csproj" />
+    <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+    <ProjectReference Include="..\SecureAD.Audit\SecureAD.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

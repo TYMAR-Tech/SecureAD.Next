@@ -1,0 +1,207 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using SecureAD.Evidence;
+using SecureAD.Kernel.Naming;
+
+namespace SecureAD.Shell.ViewModels;
+
+/// <summary>
+/// How many objects a page holds, said where the shell can read it without reaching into the
+/// evidence layer's internals.
+/// </summary>
+internal static class ObjectPaging
+{
+    /// <summary>How many objects one page holds.</summary>
+    public const int PageSize = 100;
+}
+
+/// <summary>
+/// One container in the tree, as a screen shows it.
+/// </summary>
+/// <remarks>
+/// <b>The state is a state and not a sentence.</b> A view keys a treatment off <see cref="State"/>,
+/// which is a <see cref="FactState"/>, and never off the text beside it - the four state marks were
+/// once set with the words rather than the values, nothing matched, and every mark fell through to
+/// the one meaning <i>not established</i>.
+/// </remarks>
+internal sealed partial class TreeNodeViewModel : ObservableObject
+{
+    private readonly TreeNode _node;
+
+    /// <summary>
+    /// Whether this container is the one selected.
+    /// </summary>
+    /// <remarks>
+    /// <b>Selection lives on the node because a tree cannot report it any other way.</b> A
+    /// <c>TreeView</c>'s selected item is read-only and cannot be bound, so the alternative is an
+    /// event handled in the view's code-behind - which is where logic goes to avoid being tested,
+    /// and which <c>ShellMvvmGateTests</c> fails the build for.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isSelected;
+
+    /// <summary>Creates a screen's view of one container.</summary>
+    /// <param name="node">The container as the evidence rebuilt it.</param>
+    public TreeNodeViewModel(TreeNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        _node = node;
+        Children = [.. node.Children.Select(c => new TreeNodeViewModel(c))];
+    }
+
+    /// <summary>The container's name, for showing.</summary>
+    public string Name => _node.Name;
+
+    /// <summary>The container's full name, for an operator who needs to be certain which it is.</summary>
+    public string DistinguishedName => _node.DistinguishedName;
+
+    /// <summary>The containers directly beneath it.</summary>
+    public IReadOnlyList<TreeNodeViewModel> Children { get; }
+
+    /// <summary>
+    /// What this run established about the container itself.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A container that was never captured is <see cref="FactState.NotEstablished"/> and not a
+    /// fault: nothing is claimed about it either way, which is exactly true - objects name it as
+    /// their parent and the run never read it, so what else it holds is unknown.
+    /// </para>
+    /// <para>
+    /// <b>Nothing here is ever <see cref="FactState.EstablishedBad"/>.</b> That would be a
+    /// judgement about the customer's directory, and this screen makes none.
+    /// </para>
+    /// </remarks>
+    public FactState State => _node.Origin == TreeNodeOrigin.NeverCaptured
+        ? FactState.NotEstablished
+        : FactState.EstablishedGood;
+
+    /// <summary>
+    /// What is known about the container, where that is not simply "it was read". Null when the
+    /// container was captured like any other object.
+    /// </summary>
+    public string? Detail => _node.Origin == TreeNodeOrigin.NeverCaptured
+        ? "This container was never captured. Objects beneath it were, so it is shown to reach "
+          + "them, but what else it holds is unknown."
+        : null;
+
+    /// <summary>Whether there is a detail worth a line of its own.</summary>
+    public bool HasDetail => Detail is not null;
+
+    /// <summary>This container and every container beneath it.</summary>
+    /// <remarks>
+    /// So the screen can listen to all of them for a selection. A tree reports selection on the
+    /// item, and the item is wherever the operator clicked.
+    /// </remarks>
+    public IEnumerable<TreeNodeViewModel> ThisAndBelow() =>
+        new[] { this }.Concat(Children.SelectMany(c => c.ThisAndBelow()));
+}
+
+/// <summary>
+/// One part of the directory the tree cannot show, as a screen states it.
+/// </summary>
+/// <remarks>
+/// This exists to keep an enumeration member off the screen, for the reason
+/// <see cref="RunSummaryViewModel"/> gives: <c>DomainNotFullyRead</c> is a name chosen to be
+/// unambiguous to a compiler, and an operator has to work out what it means.
+/// </remarks>
+internal sealed class TreeGapViewModel
+{
+    private readonly TreeGap _gap;
+
+    /// <summary>Creates a screen's view of one gap.</summary>
+    /// <param name="gap">The gap as the evidence reported it.</param>
+    public TreeGapViewModel(TreeGap gap)
+    {
+        ArgumentNullException.ThrowIfNull(gap);
+
+        _gap = gap;
+    }
+
+    /// <summary>What the gap is about.</summary>
+    public string Subject => _gap.DistinguishedName;
+
+    /// <summary>What kind of gap it is, in words rather than in a member name.</summary>
+    public string Kind => _gap.Reason switch
+    {
+        TreeGapReason.DomainNotFullyRead => "A domain was not read in full",
+        TreeGapReason.ForestPartitionNotFullyRead => "A forest partition was not read in full",
+        TreeGapReason.PartitionNotRead => "A partition this product does not read",
+        TreeGapReason.ContainerNeverCaptured => "A container was never captured",
+        _ => "Something was not read",
+    };
+
+    /// <summary>What the run recorded about it, in the evidence layer's own words.</summary>
+    public string Detail => _gap.Detail;
+
+    /// <summary>
+    /// What this means for what is on the screen.
+    /// </summary>
+    /// <remarks>
+    /// A partition this product does not read is a decision, not a failure, and its mark says so.
+    /// Both leave the same hole in the tree, and an operator's remedy differs: one is a run to
+    /// repeat, the other is a scope to know about.
+    /// </remarks>
+    public FactState State => _gap.Reason switch
+    {
+        TreeGapReason.DomainNotFullyRead => FactState.Fault,
+        TreeGapReason.ForestPartitionNotFullyRead => FactState.Fault,
+        _ => FactState.NotEstablished,
+    };
+}
+
+/// <summary>
+/// One object in the listing, as a screen shows it.
+/// </summary>
+internal sealed class ListedObjectViewModel
+{
+    private readonly ListedObject _listed;
+
+    /// <summary>Creates a screen's view of one object.</summary>
+    /// <param name="listed">The object as the evidence holds it.</param>
+    public ListedObjectViewModel(ListedObject listed)
+    {
+        ArgumentNullException.ThrowIfNull(listed);
+
+        _listed = listed;
+    }
+
+    /// <summary>The object's name.</summary>
+    public string Name => _listed.Name;
+
+    /// <summary>The object's full name, for an operator who needs to be certain which it is.</summary>
+    public string DistinguishedName => _listed.DistinguishedName;
+
+    /// <summary>
+    /// What kind of object it is. Says so plainly when the class did not arrive, rather than
+    /// leaving a blank cell that reads as though the object had no class.
+    /// </summary>
+    public string ObjectType => _listed.ObjectClass ?? "not recorded";
+
+    /// <summary>
+    /// The class as the directory spells it, or null when it did not arrive.
+    /// </summary>
+    /// <remarks>
+    /// Beside <see cref="ObjectType"/> rather than instead of it, because they answer different
+    /// questions. That one is words for a cell and reads "not recorded" when nothing arrived; this
+    /// one is the schema's own spelling, and is what decides which sections an object opened from
+    /// this row has. Wording it would make "not recorded" a class name.
+    /// </remarks>
+    public string? ObjectClass => _listed.ObjectClass;
+
+    /// <summary>The container it sits in, named as an operator would say it.</summary>
+    public string Parent => _listed.ParentDistinguishedName is { } parent
+        ? DnHelper.ExtractFirstRdn(parent)
+        : string.Empty;
+
+    /// <summary>
+    /// What this run established about the object.
+    /// </summary>
+    /// <remarks>
+    /// Never <see cref="FactState.EstablishedBad"/>. That would be a judgement about the
+    /// customer's directory, and this screen makes none.
+    /// </remarks>
+    public FactState State => _listed.ObjectClass is null
+        ? FactState.NotEstablished
+        : FactState.EstablishedGood;
+}

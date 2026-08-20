@@ -1,0 +1,75 @@
+# Build output
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.nupkg
+packages/
+[Tt]est[Rr]esult*/
+.idea/
+
+# Log files
+*.log
+securead.log
+
+# Scratch databases
+synthetic-*.db
+
+# Archives (review bundles, snapshots) are never committed
+*.zip
+
+# Commit messages are written to a file and passed with `git commit -F`, because chained
+# -m flags get their quoting mangled by PowerShell (docs/review/README.md, Agent operating
+# notes). The file is scaffolding for one commit and is never content; ignored by pattern
+# so it cannot accumulate untracked in docs/review/ the way five of them did.
+.git_commit_msg.tmp
+.commit-msg*.tmp
+**/.commit-msg*.tmp
+
+# Lab verification data (local only, never commit)
+audit.db
+audit.db-wal
+audit.db-shm
+verification-output/
+
+# lab/ is deliberately NOT ignored here. The directory is tracked so that it exists on a
+# fresh clone and can carry a README explaining what it is for; its own lab/.gitignore
+# excludes everything dropped inside it. Ignoring it from this file would stop git
+# descending into it, and the nested rule and the README would never be seen.
+
+# Local-only lab probe harness - kept on disk for iterative validation against a real
+# audit.db; intentionally NOT committed. Delete this line when it should be tracked.
+tests/SecureAD.Infrastructure.Tests/Lab/
+
+# Test coverage output
+[Tt]est[Rr]esults/
+coverage.cobertura.xml
+
+# DocFX leftovers. The site is no longer built or published; these entries stay so a
+# stale local build cannot be committed by accident.
+_site/
+api/
+
+# A capture bundle written outside lab/ by accident. The run library root is an argument,
+# so a run started with --library pointed at the repository writes a real forest's evidence
+# into the tree. That happened once and the bundle sat untracked for weeks. lab/ is where
+# these belong; this is the net under it.
+evidence.db
+evidence.db-wal
+evidence.db-shm
+evidence.db.partial
+evidence.db.seal
+run-outcome.json
+preflight.json
+# annotations.db completes the net. It was missing until 2026-09-14, when a bundle dropped in
+# for analysis showed up as the one untracked file of six - the other five were caught and this
+# one was not, which is the worst way for a net to fail because it looks like it worked.
+# BundleLayout declares exactly these names; anything added there belongs here too.
+annotations.db
+
+# Bundles dropped in for analysis. Local only: this is a real forest's evidence, and the
+# repository is not where it lives.
+Lab Databases/

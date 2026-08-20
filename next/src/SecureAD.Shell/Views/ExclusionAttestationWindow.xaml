@@ -1,0 +1,116 @@
+<Window x:Class="SecureAD.Shell.Views.ExclusionAttestationWindow" x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Leaving a domain out"
+        SizeToContent="Height" Width="620"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <!--
+        The exclusion attestation. docs/decisions/0062-what-an-exclusion-attestation-asks-for.md
+        and docs/decisions/0059-an-exclusion-is-attested-once-per-run.md.
+
+        NOTHING IS PRE-FILLED. 0059 refuses to carry an attestation forward or to offer the last
+        one for confirmation. A remembered reason presented for confirmation is a button an
+        operator presses without reading by the third run, and it produces a stale attestation
+        while looking like it does not.
+
+        THE ACCOUNT IS SHOWN, NOT TYPED. 0062 captures it from Windows, because a name an operator
+        types for himself is a name he can get wrong. It is displayed so that whose name this
+        carries is not a discovery made months later.
+
+        THE AUTHORISING NAME IS NOT VALIDATED AND IS NOT PRESENTED AS THOUGH IT WERE. It is a
+        statement of accountability, not an identity - 0062, last consequence.
+    -->
+
+    <StackPanel Margin="24">
+
+        <TextBlock Text="Leaving a domain out"
+                   Style="{StaticResource ScreenTitle}" />
+
+        <!-- Worded for the kind of exclusion. 0063: the two are never told alike. -->
+        <TextBlock Text="{Binding Preamble}"
+                   Style="{StaticResource BaseTextBlock}"
+                   TextWrapping="Wrap"
+                   Margin="0,8,0,0" />
+
+        <TextBlock Text="Why"
+                   Style="{StaticResource SectionTitle}"
+                   Margin="0,20,0,4" />
+
+        <!-- A closed list, so that exclusions can be counted and compared across runs. 0062.
+             A ListBox rather than loose RadioButtons: the selection is then one bound value the
+             view model owns, instead of a group of controls it has to be kept in step with. -->
+        <ListBox ItemsSource="{Binding Reasons}"
+                 SelectedItem="{Binding Reason, Mode=TwoWay}"
+                 BorderThickness="0"
+                 Background="Transparent">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <RadioButton Content="{Binding Wording}"
+                                             GroupName="Reason"
+                                             Margin="0,3"
+                                             IsChecked="{Binding IsSelected,
+                                                 RelativeSource={RelativeSource TemplatedParent},
+                                                 Mode=TwoWay}" />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+        </ListBox>
+
+        <TextBlock Text="Anything to add (optional)"
+                   Style="{StaticResource SectionTitle}"
+                   Margin="0,20,0,4" />
+
+        <!-- The escape that stops the closed list lying. Without it an operator picks the nearest
+             wrong answer and it is recorded as though it were right. 0062. -->
+        <TextBox Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 Height="64"
+                 VerticalScrollBarVisibility="Auto" />
+
+        <TextBlock Text="Authorised by"
+                   Style="{StaticResource SectionTitle}"
+                   Margin="0,20,0,4" />
+
+        <TextBox Text="{Binding AuthorisedBy, UpdateSourceTrigger=PropertyChanged}" />
+
+        <TextBlock Style="{StaticResource Caption}"
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Margin="0,4,0,0"
+                   Text="Typed, and recorded as typed. This product does not check it against anything and does not present it as verified." />
+
+        <TextBlock Style="{StaticResource Caption}"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Margin="0,16,0,0">
+            <Run Text="Recorded against" />
+            <Run Text="{Binding RunBy, Mode=OneWay}" />
+            <Run Text=", the account running this audit." />
+        </TextBlock>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,24,0,0">
+            <Button Content="Cancel"
+                    IsCancel="True"
+                    MinWidth="100"
+                    Margin="0,0,8,0" />
+            <!-- No Click handler: a view's code-behind does nothing but InitializeComponent, and
+                 ShellMvvmGateTests fails the build for one. The window is closed by whatever opened
+                 it, which watches the view model for the attestation being completed. -->
+            <Button Content="Attest and exclude"
+                    IsDefault="True"
+                    MinWidth="140"
+                    Command="{Binding AttestCommand}" />
+        </StackPanel>
+
+    </StackPanel>
+</Window>

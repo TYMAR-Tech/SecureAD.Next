@@ -1,0 +1,74 @@
+<!--
+    Spacing.xaml - the spacing scale, at two densities.
+
+    0056 decision 8: tables and grids are dense, wizards and settings are comfortable. Both
+    resolve through named steps so the balance retunes here rather than across every screen.
+
+    The owner accepted dense tables with an explicit caveat - they may need loosening once seen
+    against a real forest. That retuning is expected, and it is why nothing below is written into
+    a view.
+
+    Steps are multiples of 4, which keeps everything on a common rhythm and makes an accidental
+    one-pixel misalignment visible rather than plausible.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- ===================================================================================
+         The base scale. Used directly where a surface is neither a table nor a form - margins
+         between sections, gaps between a heading and what it heads.
+         =================================================================================== -->
+
+    <sys:Double x:Key="SpaceNone">0</sys:Double>
+    <sys:Double x:Key="SpaceHair">2</sys:Double>
+    <sys:Double x:Key="SpaceTight">4</sys:Double>
+    <sys:Double x:Key="SpaceSnug">8</sys:Double>
+    <sys:Double x:Key="SpaceNormal">12</sys:Double>
+    <sys:Double x:Key="SpaceLoose">16</sys:Double>
+    <sys:Double x:Key="SpaceSection">24</sys:Double>
+    <sys:Double x:Key="SpaceScreen">32</sys:Double>
+
+    <!-- ===================================================================================
+         DENSE - tables and grids.
+
+         An administrator reads these for hours, and vertical space spent on padding is a row he
+         has to scroll for. A forty-domain forest should not need three screens.
+         =================================================================================== -->
+
+    <Thickness x:Key="DenseRowPadding">8,4</Thickness>
+    <Thickness x:Key="DenseCellPadding">8,3</Thickness>
+    <Thickness x:Key="DenseHeaderPadding">8,6</Thickness>
+    <sys:Double x:Key="DenseRowMinHeight">26</sys:Double>
+
+    <!-- ===================================================================================
+         COMFORTABLE - wizards and settings.
+
+         A screen an operator meets once per run, where a decision is being made rather than a
+         list being scanned. Room to read is worth more than room to fit.
+         =================================================================================== -->
+
+    <Thickness x:Key="ComfortableRowPadding">12,10</Thickness>
+    <Thickness x:Key="ComfortableFieldPadding">8,6</Thickness>
+    <Thickness x:Key="ComfortableButtonPadding">14,7</Thickness>
+    <sys:Double x:Key="ComfortableRowMinHeight">32</sys:Double>
+
+    <!-- ===================================================================================
+         Shared measures
+         =================================================================================== -->
+
+    <!-- The padding inside a screen, between its content and the window chrome. -->
+    <Thickness x:Key="ScreenPadding">20</Thickness>
+
+    <!-- The width of the label column in a label-and-value row. One value, so that every such row
+         in the product lines up whether or not it is on the same screen. -->
+    <sys:Double x:Key="LabelColumnWidth">150</sys:Double>
+
+    <!-- Corner rounding. One value: a product with three radii looks like three products. -->
+    <CornerRadius x:Key="ControlCornerRadius">3</CornerRadius>
+
+    <!-- The width of the mark that carries a state without using colour. See StateMarks.xaml. -->
+    <sys:Double x:Key="StateMarkSize">10</sys:Double>
+    <sys:Double x:Key="StateMarkGutter">18</sys:Double>
+
+</ResourceDictionary>

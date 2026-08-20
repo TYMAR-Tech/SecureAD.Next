@@ -1,0 +1,165 @@
+<Window x:Class="SecureAD.Shell.Views.ShellWindow" x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
+        xmlns:views="clr-namespace:SecureAD.Shell.Views"
+        Title="SecureAD" Height="720" Width="1180"
+        WindowState="Maximized" MinHeight="560" MinWidth="900">
+
+    <!-- Navigation is two rows of tabs across the top, replacing the side rail. Changed
+         2026-09-12 on the owner's instruction. The rail cost about 190px of width on the widest
+         screen in the product, and the second question - which view of this section - had nowhere
+         to live: the predecessor asked it with a tab strip in exactly this place.
+
+         THE TWO ROWS MEAN DIFFERENT THINGS AND ARE DRAWN DIFFERENTLY. See Themes/Tabs.xaml.
+
+         The audit entry appears only while there is an audit, and is reachable only once the
+         capture is running. It is not the New Audit entry 0057 removed: an audit is still started
+         from Home, and this is the way back to one already running. -->
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:HomeViewModel}">
+            <views:HomeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RunLibraryViewModel}">
+            <views:RunLibraryView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AssetsViewModel}">
+            <views:AssetsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SectionView}">
+            <views:NotBuiltView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:NewAuditViewModel}">
+            <views:NewAuditView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource WindowBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Tier one: where you are in the product. -->
+        <Border Grid.Row="0" Background="{StaticResource RailBackground}"
+                IsEnabled="{Binding RailIsLive}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="18,0,24,0">
+                    <TextBlock Text="SecureAD"
+                               FontFamily="{StaticResource UiFontFamily}"
+                               FontSize="{StaticResource ScreenTitleFontSize}"
+                               FontWeight="{StaticResource EmphasisFontWeight}"
+                               Foreground="{StaticResource RailSelectedTextBrush}" />
+
+                    <!-- TEMPORARY BUILD MARKER. Delete when the styling work is done.
+
+                         The product is built on one machine and run on another, so a screenshot
+                         would otherwise be silent about WHICH build it shows. A round was lost to
+                         that: a rail fix was judged not to work when the copy under test may have
+                         predated it. Bumped by hand with every change. -->
+                    <TextBlock Text="build Z"
+                               FontFamily="{StaticResource UiFontFamily}"
+                               FontSize="{StaticResource CaptionFontSize}"
+                               Foreground="{StaticResource RailTextBrush}"
+                               VerticalAlignment="Bottom"
+                               Margin="10,0,0,3" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Content="Home" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 IsChecked="{Binding IsHome, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Home}" />
+
+                    <RadioButton Content="Dashboard" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 IsChecked="{Binding IsDashboard, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Dashboard}" />
+
+                    <RadioButton Content="Assets" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 IsChecked="{Binding IsAssets, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Assets}" />
+
+                    <RadioButton Content="Runs" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 IsChecked="{Binding IsRuns, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Runs}" />
+
+                    <RadioButton Content="Settings" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 IsChecked="{Binding IsSettings, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Settings}" />
+
+                    <RadioButton Content="Audit" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 Visibility="{Binding HasAudit, Converter={StaticResource Shown}}"
+                                 IsChecked="{Binding IsAudit, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Audit}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Tier two: which view of this section. Absent entirely for a section with one view,
+             rather than a single tab that switches to where the operator already is. -->
+        <Border Grid.Row="1"
+                Background="{StaticResource SurfaceRaisedBackground}"
+                BorderBrush="{StaticResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                IsEnabled="{Binding RailIsLive}"
+                Visibility="{Binding HasViews, Converter={StaticResource Shown}}">
+            <ItemsControl ItemsSource="{Binding Views}" Margin="18,0,0,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <RadioButton Content="{Binding Name}" GroupName="View"
+                                     Style="{StaticResource SecondaryTab}"
+                                     IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- No margin here. Each view carries its own ScreenPadding, and a margin on both would
+             pad every screen twice by an amount neither one states. -->
+        <ContentControl Grid.Row="2" Content="{Binding Current}" />
+
+        <!-- =========================================================================
+             The audit, as a card over the whole window. 0071, and 0057 before it.
+
+             SPANS EVERY ROW ON PURPOSE, the tabs included. The dimming is the product saying
+             "deal with this first", which is the thing 0057 wanted a modal window for and the
+             thing a page cannot say. Drawn as a page it read as a fourth place to be.
+
+             THE SHELL STAYS WHERE IT WAS. Home or Runs remains behind the scrim rather than
+             being replaced, so leaving the audit puts the operator back where he was.
+             ========================================================================= -->
+        <Border Grid.Row="0" Grid.RowSpan="3"
+                Background="{StaticResource ScrimBrush}"
+                Visibility="{Binding ShowingAudit, Converter={StaticResource Shown}}">
+            <Border Background="{StaticResource WindowBackground}"
+                    BorderBrush="{StaticResource DividerBrush}"
+                    BorderThickness="1"
+                    MaxWidth="1040"
+                    MaxHeight="660"
+                    Margin="40"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <ContentControl Content="{Binding Audit}" />
+            </Border>
+        </Border>
+    </Grid>
+</Window>
+

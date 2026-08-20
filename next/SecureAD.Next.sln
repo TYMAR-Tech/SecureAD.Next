@@ -1,0 +1,261 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.8.12023.21
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Kernel", "src\SecureAD.Kernel\SecureAD.Kernel.csproj", "{11B098F9-6313-4BE6-B2ED-9331C543E63C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Evidence", "src\SecureAD.Evidence\SecureAD.Evidence.csproj", "{9ABBDC85-153F-49CA-907F-62765089FA5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Audit", "src\SecureAD.Audit\SecureAD.Audit.csproj", "{D40FF567-5805-4D47-8CD3-FCC0041065F0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3DF1F0FC-CAA7-43FD-B6D9-A4664DFE256C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Next.Tests", "tests\SecureAD.Next.Tests\SecureAD.Next.Tests.csproj", "{1B42F291-E910-49AD-A3C9-60422FB807CF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{D0C50000-0000-0000-0000-00000000D0C5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "decisions", "decisions", "{D0C50000-0000-0000-0000-0000000DEC15}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\decisions\0001-no-backward-compatibility.md = ..\docs\decisions\0001-no-backward-compatibility.md
+		..\docs\decisions\0002-absent-view-means-degraded-run.md = ..\docs\decisions\0002-absent-view-means-degraded-run.md
+		..\docs\decisions\0003-refuse-to-reanalyse-an-incomplete-capture.md = ..\docs\decisions\0003-refuse-to-reanalyse-an-incomplete-capture.md
+		..\docs\decisions\0004-unknown-counts-name-the-failed-phase.md = ..\docs\decisions\0004-unknown-counts-name-the-failed-phase.md
+		..\docs\decisions\0005-withhold-at-the-widest-scope-that-shares-the-verdict.md = ..\docs\decisions\0005-withhold-at-the-widest-scope-that-shares-the-verdict.md
+		..\docs\decisions\0006-tier-0-and-expected-admin-are-separate-sets.md = ..\docs\decisions\0006-tier-0-and-expected-admin-are-separate-sets.md
+		..\docs\decisions\0007-the-product-surfaces-no-assessment-mode.md = ..\docs\decisions\0007-the-product-surfaces-no-assessment-mode.md
+		..\docs\decisions\0008-live-verification-is-removed.md = ..\docs\decisions\0008-live-verification-is-removed.md
+		..\docs\decisions\0009-greenfield-in-place-with-the-bundle-as-seam.md = ..\docs\decisions\0009-greenfield-in-place-with-the-bundle-as-seam.md
+		..\docs\decisions\0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md = ..\docs\decisions\0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md
+		..\docs\decisions\0011-rebuild-documentation-is-written-fresh-and-bound-by-tests.md = ..\docs\decisions\0011-rebuild-documentation-is-written-fresh-and-bound-by-tests.md
+		..\docs\decisions\0012-the-rebuild-lives-outside-src-with-its-own-solution.md = ..\docs\decisions\0012-the-rebuild-lives-outside-src-with-its-own-solution.md
+		..\docs\decisions\0013-the-bundle-is-no-longer-a-two-way-contract.md = ..\docs\decisions\0013-the-bundle-is-no-longer-a-two-way-contract.md
+		..\docs\decisions\0014-capture-reads-the-schema-partition.md = ..\docs\decisions\0014-capture-reads-the-schema-partition.md
+		..\docs\decisions\0015-a-bundle-names-a-pattern-it-never-explains-one-away.md = ..\docs\decisions\0015-a-bundle-names-a-pattern-it-never-explains-one-away.md
+		..\docs\decisions\0016-the-filtered-set-replication-route-is-a-product-judgement.md = ..\docs\decisions\0016-the-filtered-set-replication-route-is-a-product-judgement.md
+		..\docs\decisions\0017-capture-reads-the-whole-forest.md = ..\docs\decisions\0017-capture-reads-the-whole-forest.md
+		..\docs\decisions\0018-connection-security-is-an-ordered-ladder.md = ..\docs\decisions\0018-connection-security-is-an-ordered-ladder.md
+		..\docs\decisions\0019-the-bundle-carries-a-seal.md = ..\docs\decisions\0019-the-bundle-carries-a-seal.md
+		..\docs\decisions\0020-the-seal-detects-corruption-not-tampering.md = ..\docs\decisions\0020-the-seal-detects-corruption-not-tampering.md
+		..\docs\decisions\0021-re-analysis-produces-a-new-bundle.md = ..\docs\decisions\0021-re-analysis-produces-a-new-bundle.md
+		..\docs\decisions\0022-objects-are-stored-as-typed-columns.md = ..\docs\decisions\0022-objects-are-stored-as-typed-columns.md
+		..\docs\decisions\0023-a-finding-has-a-stable-identity.md = ..\docs\decisions\0023-a-finding-has-a-stable-identity.md
+		..\docs\decisions\0024-a-rule-identifier-is-permanent.md = ..\docs\decisions\0024-a-rule-identifier-is-permanent.md
+		..\docs\decisions\0025-the-run-library-is-a-managed-root.md = ..\docs\decisions\0025-the-run-library-is-a-managed-root.md
+		..\docs\decisions\0026-one-answer-to-whether-runs-may-be-compared.md = ..\docs\decisions\0026-one-answer-to-whether-runs-may-be-compared.md
+		..\docs\decisions\0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md = ..\docs\decisions\0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md
+		..\docs\decisions\0028-one-run-state-vocabulary.md = ..\docs\decisions\0028-one-run-state-vocabulary.md
+		..\docs\decisions\0029-a-run-that-ends-badly-says-so.md = ..\docs\decisions\0029-a-run-that-ends-badly-says-so.md
+		..\docs\decisions\0030-the-product-produces-sealed-evidence-never-signed.md = ..\docs\decisions\0030-the-product-produces-sealed-evidence-never-signed.md
+		..\docs\decisions\0031-there-is-no-assessment-mode.md = ..\docs\decisions\0031-there-is-no-assessment-mode.md
+		..\docs\decisions\0032-a-decision-record-is-corrected-in-place.md = ..\docs\decisions\0032-a-decision-record-is-corrected-in-place.md
+		..\docs\decisions\0033-nothing-inherited-is-definitive.md = ..\docs\decisions\0033-nothing-inherited-is-definitive.md
+		..\docs\decisions\0034-capture-excludes-a-shipped-noise-list.md = ..\docs\decisions\0034-capture-excludes-a-shipped-noise-list.md
+		..\docs\decisions\0035-coverage-is-recorded-once-per-capture-unit.md = ..\docs\decisions\0035-coverage-is-recorded-once-per-capture-unit.md
+		..\docs\decisions\0036-capture-never-requests-the-sacl.md = ..\docs\decisions\0036-capture-never-requests-the-sacl.md
+		..\docs\decisions\0037-an-unreadable-dacl-says-so.md = ..\docs\decisions\0037-an-unreadable-dacl-says-so.md
+		..\docs\decisions\0038-a-descriptor-records-whether-its-dacl-was-canonical.md = ..\docs\decisions\0038-a-descriptor-records-whether-its-dacl-was-canonical.md
+		..\docs\decisions\0039-one-way-to-start-a-capture.md = ..\docs\decisions\0039-one-way-to-start-a-capture.md
+		..\docs\decisions\README.md = ..\docs\decisions\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0000-0000-0000-00000000E787}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\next\ARCHITECTURE.md = ..\docs\next\ARCHITECTURE.md
+		..\docs\next\CONCEPT-REGISTRY.md = ..\docs\next\CONCEPT-REGISTRY.md
+		..\docs\next\WHAT-THE-OLD-APP-HAD.md = ..\docs\next\WHAT-THE-OLD-APP-HAD.md
+		..\docs\next\README.md = ..\docs\next\README.md
+		..\docs\next\S-1-security-descriptor-parsing.md = ..\docs\next\S-1-security-descriptor-parsing.md
+		..\docs\next\S-10-politeness.md = ..\docs\next\S-10-politeness.md
+		..\docs\next\S-11-reading-what-a-controller-returns.md = ..\docs\next\S-11-reading-what-a-controller-returns.md
+		..\docs\next\S-12-the-capture-passes.md = ..\docs\next\S-12-the-capture-passes.md
+		..\docs\next\S-14-the-connection.md = ..\docs\next\S-14-the-connection.md
+		..\docs\next\S-16-the-bundle.md = ..\docs\next\S-16-the-bundle.md
+		..\docs\next\S-18-run-identity-and-comparability.md = ..\docs\next\S-18-run-identity-and-comparability.md
+		..\docs\next\S-2-distinguished-name-manipulation.md = ..\docs\next\S-2-distinguished-name-manipulation.md
+		..\docs\next\S-23-what-capture-must-read.md = ..\docs\next\S-23-what-capture-must-read.md
+		..\docs\next\S-3-schema-guid-catalogue.md = ..\docs\next\S-3-schema-guid-catalogue.md
+		..\docs\next\S-4-dangerous-permission-classification.md = ..\docs\next\S-4-dangerous-permission-classification.md
+		..\docs\next\S-8-captured-attribute-catalogue.md = ..\docs\next\S-8-captured-attribute-catalogue.md
+		..\docs\next\S-9-the-capture-unit.md = ..\docs\next\S-9-the-capture-unit.md
+		..\docs\next\SURFACE-REGISTER.md = ..\docs\next\SURFACE-REGISTER.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sessions", "sessions", "{D0C50000-0000-0000-0000-0000005E5510}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\next\READING-ORDER.md = ..\docs\next\READING-ORDER.md
+		..\docs\next\sessions\README.md = ..\docs\next\sessions\README.md
+		..\docs\next\sessions\S-19-point-in-time-review.md = ..\docs\next\sessions\S-19-point-in-time-review.md
+		..\docs\next\sessions\S-20-what-a-bundle-stores.md = ..\docs\next\sessions\S-20-what-a-bundle-stores.md
+		..\docs\next\sessions\S-21-the-security-descriptor-parser.md = ..\docs\next\sessions\S-21-the-security-descriptor-parser.md
+		..\docs\next\sessions\S-22-what-the-old-app-does-with-the-data.md = ..\docs\next\sessions\S-22-what-the-old-app-does-with-the-data.md
+		..\docs\next\sessions\S-23-what-capture-must-read.md = ..\docs\next\sessions\S-23-what-capture-must-read.md
+		..\docs\next\sessions\S-24-the-audit-database-schema.md = ..\docs\next\sessions\S-24-the-audit-database-schema.md
+		..\docs\next\sessions\S-25-finishing-the-audit-database-schema.md = ..\docs\next\sessions\S-25-finishing-the-audit-database-schema.md
+		..\docs\next\sessions\S-26-reconciling-the-documentation.md = ..\docs\next\sessions\S-26-reconciling-the-documentation.md
+		..\docs\next\sessions\S-27-the-capture-to-bundle-seam.md = ..\docs\next\sessions\S-27-the-capture-to-bundle-seam.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "review", "review", "{D0C50000-0000-0000-0000-000000E71E00}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\review\SESSION-LOG.md = ..\docs\review\SESSION-LOG.md
+		..\docs\review\TEMPLATE.md = ..\docs\review\TEMPLATE.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "history", "history", "{D0C50000-0000-0000-0000-000000415707}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\history\DESIGN-challenges-to-the-inherited-shape.md = ..\docs\history\DESIGN-challenges-to-the-inherited-shape.md
+		..\docs\history\DESIGN-measuring-and-comparing-risk.md = ..\docs\history\DESIGN-measuring-and-comparing-risk.md
+		..\docs\history\DESIGN-the-run-library.md = ..\docs\history\DESIGN-the-run-library.md
+		..\docs\history\DESIGN-what-makes-a-finding.md = ..\docs\history\DESIGN-what-makes-a-finding.md
+		..\docs\history\POINT-IN-TIME-REVIEW.md = ..\docs\history\POINT-IN-TIME-REVIEW.md
+		..\docs\history\README.md = ..\docs\history\README.md
+		..\docs\history\S-13-connect-and-discover-dispositions.md = ..\docs\history\S-13-connect-and-discover-dispositions.md
+		..\docs\history\S-15-storage-dispositions.md = ..\docs\history\S-15-storage-dispositions.md
+		..\docs\history\S-17-the-run-library.md = ..\docs\history\S-17-the-run-library.md
+		..\docs\history\S-19-the-point-in-time-review.md = ..\docs\history\S-19-the-point-in-time-review.md
+		..\docs\history\S-20-what-a-bundle-stores.md = ..\docs\history\S-20-what-a-bundle-stores.md
+		..\docs\history\S-21-the-security-descriptor-parser.md = ..\docs\history\S-21-the-security-descriptor-parser.md
+		..\docs\history\S-22-what-the-old-app-does-with-the-data.md = ..\docs\history\S-22-what-the-old-app-does-with-the-data.md
+		..\docs\history\S-24-the-audit-database-schema.md = ..\docs\history\S-24-the-audit-database-schema.md
+		..\docs\history\S-25-the-finished-schema.md = ..\docs\history\S-25-the-finished-schema.md
+		..\docs\history\S-26-reconciling-the-documentation.md = ..\docs\history\S-26-reconciling-the-documentation.md
+		..\docs\history\S-5-concept-registry.md = ..\docs\history\S-5-concept-registry.md
+		..\docs\history\S-6-vouched-returns.md = ..\docs\history\S-6-vouched-returns.md
+		..\docs\history\S-7-capture-dispositions.md = ..\docs\history\S-7-capture-dispositions.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "generated", "generated", "{D0C50000-0000-0000-0000-00000047454E}"
+	ProjectSection(SolutionItems) = preProject
+		tools\Build-DecisionIndex.ps1 = tools\Build-DecisionIndex.ps1
+		..\docs\DECISIONS.md = ..\docs\DECISIONS.md
+		tools\Replace-InventoryRow.ps1 = tools\Replace-InventoryRow.ps1
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Cli", "src\SecureAD.Cli\SecureAD.Cli.csproj", "{8E96D2E4-23D0-4844-8A17-5F0F015211B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Shell", "src\SecureAD.Shell\SecureAD.Shell.csproj", "{5938BBCA-A8F6-4324-9563-EEA049856BF0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Gallery", "tools\SecureAD.Gallery\SecureAD.Gallery.csproj", "{674413E6-349B-45A0-8486-CCA42EAFC875}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Debug|x64.Build.0 = Debug|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Debug|x86.Build.0 = Debug|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Release|x64.ActiveCfg = Release|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Release|x64.Build.0 = Release|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Release|x86.ActiveCfg = Release|Any CPU
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C}.Release|x86.Build.0 = Release|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Debug|x64.Build.0 = Debug|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Debug|x86.Build.0 = Debug|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Release|x64.ActiveCfg = Release|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Release|x64.Build.0 = Release|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Release|x86.ActiveCfg = Release|Any CPU
+		{9ABBDC85-153F-49CA-907F-62765089FA5F}.Release|x86.Build.0 = Release|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Debug|x64.Build.0 = Debug|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Debug|x86.Build.0 = Debug|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Release|x64.ActiveCfg = Release|x64
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Release|x64.Build.0 = Release|x64
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Release|x86.ActiveCfg = Release|Any CPU
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0}.Release|x86.Build.0 = Release|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Debug|x64.Build.0 = Debug|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Debug|x86.Build.0 = Debug|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Release|x64.ActiveCfg = Release|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Release|x64.Build.0 = Release|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Release|x86.ActiveCfg = Release|Any CPU
+		{1B42F291-E910-49AD-A3C9-60422FB807CF}.Release|x86.Build.0 = Release|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Debug|x64.Build.0 = Debug|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Debug|x86.Build.0 = Debug|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Release|x64.ActiveCfg = Release|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Release|x64.Build.0 = Release|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Release|x86.ActiveCfg = Release|Any CPU
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3}.Release|x86.Build.0 = Release|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Debug|x64.Build.0 = Debug|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Debug|x86.Build.0 = Debug|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Release|x64.ActiveCfg = Release|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Release|x64.Build.0 = Release|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Release|x86.ActiveCfg = Release|Any CPU
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0}.Release|x86.Build.0 = Release|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Debug|x64.Build.0 = Debug|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Debug|x86.Build.0 = Debug|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Release|Any CPU.Build.0 = Release|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Release|x64.ActiveCfg = Release|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Release|x64.Build.0 = Release|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Release|x86.ActiveCfg = Release|Any CPU
+		{674413E6-349B-45A0-8486-CCA42EAFC875}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{11B098F9-6313-4BE6-B2ED-9331C543E63C} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
+		{9ABBDC85-153F-49CA-907F-62765089FA5F} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
+		{D40FF567-5805-4D47-8CD3-FCC0041065F0} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
+		{1B42F291-E910-49AD-A3C9-60422FB807CF} = {3DF1F0FC-CAA7-43FD-B6D9-A4664DFE256C}
+		{D0C50000-0000-0000-0000-0000000DEC15} = {D0C50000-0000-0000-0000-00000000D0C5}
+		{D0C50000-0000-0000-0000-00000000E787} = {D0C50000-0000-0000-0000-00000000D0C5}
+		{D0C50000-0000-0000-0000-0000005E5510} = {D0C50000-0000-0000-0000-00000000E787}
+		{D0C50000-0000-0000-0000-000000E71E00} = {D0C50000-0000-0000-0000-00000000D0C5}
+		{D0C50000-0000-0000-0000-000000415707} = {D0C50000-0000-0000-0000-00000000D0C5}
+		{D0C50000-0000-0000-0000-00000047454E} = {D0C50000-0000-0000-0000-00000000D0C5}
+		{8E96D2E4-23D0-4844-8A17-5F0F015211B3} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
+		{5938BBCA-A8F6-4324-9563-EEA049856BF0} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
+		{674413E6-349B-45A0-8486-CCA42EAFC875} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DB05C39B-5380-41D3-A685-E12726E9B537}
+	EndGlobalSection
+EndGlobal

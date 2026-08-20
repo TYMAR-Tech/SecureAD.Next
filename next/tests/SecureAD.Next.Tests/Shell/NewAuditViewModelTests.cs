@@ -1,0 +1,1507 @@
+using SecureAD.Shell.Services;
+using SecureAD.Shell.Settings;
+using SecureAD.Shell.ViewModels;
+using Xunit;
+
+namespace SecureAD.Next.Tests.Shell;
+
+/// <summary>
+/// The New Audit window: the domain table, the override, the PDC emulator prompt, and Start.
+///
+/// <para>
+/// <b>The standing rule of this screen is that nothing on it may state a fact the run did not
+/// measure.</b> Three of <c>S-40</c>'s findings - <c>F-S40-8</c>, <c>F-S40-10</c> and
+/// <c>F-S40-11</c> - were one mistake made three times: an unasked question rendered as a negative
+/// answer. A window is more exposed to that than a command line is, not less, which is why the
+/// unknown cases are tested here rather than assumed.
+/// </para>
+/// </summary>
+public sealed class NewAuditViewModelTests
+{
+    private readonly FakeSettingsStore _settings = new();
+    private readonly FakeCaptureLauncher _capture = new();
+    private readonly FakeNewAuditDialog _dialogs = new();
+
+    /// <summary>
+    /// The refusal that must survive the trip to a window. <c>ControllerSelection</c> refuses a
+    /// named controller the forest does not list for that domain, and never falls back to the
+    /// ranked choice - a pinned controller that was quietly not the pinned controller defeats the
+    /// point of pinning.
+    /// </summary>
+    private const string Refusal =
+        "dc99.ad.lab was named as the controller to read DC=ad,DC=lab from, and the forest does "
+        + "not list it as holding a writable replica of that domain.";
+
+    /// <summary>
+    /// Discovery fills the table without contacting a single domain's controller.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two halves of the opening pass are separable and this proves it, by letting the second
+    /// half fail: the table is still filled from the first, and every answer the second would have
+    /// established reads as unasked rather than as no.
+    /// </para>
+    /// <para>
+    /// Have the plan half contact controllers, or have a failed check half wipe the table, and this
+    /// fails.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task TheTableIsFilledBeforeAnyControllerIsContacted()
+    {
+        var screen = await Planned();
+
+        var row = Assert.Single(screen.Domains);
+
+        Assert.Equal(Forests.Root, row.NamingContext);
+        Assert.False(row.Plan.WasPreflighted);
+    }
+
+    /// <summary>
+    /// Opening the window asks every domain, without the operator pressing anything.
+    /// </summary>
+    /// <remarks>
+    /// The press this replaced asked an operator to ask for something he had already asked for by
+    /// opening a window called New Audit. Remove either half of the opening pass and this fails.
+    /// </remarks>
+    [Fact]
+    public async Task OpeningTheWindowWorksTheWholeThingOutWithoutAPress()
+    {
+        var screen = Screen();
+
+        await screen.OpenAsync();
+
+        Assert.Equal(1, _capture.TimesPlanned);
+        Assert.Equal(1, _capture.TimesChecked);
+        Assert.True(Assert.Single(screen.Domains).Plan.WasPreflighted);
+    }
+
+    /// <summary>
+    /// The pass the window began can be stopped.
+    /// </summary>
+    /// <remarks>
+    /// Opening the window is now a network act against every domain in the forest, begun without
+    /// being asked for. A Stop that were only enabled during a capture would leave killing the
+    /// process as the way out of it.
+    /// </remarks>
+    [Fact]
+    public async Task ThePassTheWindowBeganCanBeStopped()
+    {
+        var screen = Screen();
+
+        _capture.WhileChecking = screen.Stop;
+
+        await screen.OpenAsync();
+
+        Assert.True(screen.WasStopped);
+    }
+
+    /// <summary>
+    /// A stopped pass leaves what it reached, and calls the rest unasked rather than unreachable.
+    /// </summary>
+    /// <remarks>
+    /// A domain nobody put a question to has no answer, and rendering one is what
+    /// <c>docs/decisions/0002-absent-view-means-degraded-run.md</c> forbids. Cancelling is not a
+    /// finding about the customer's forest.
+    /// </remarks>
+    [Fact]
+    public async Task AStoppedPassLeavesWhatItReachedAndAsksNothingOfTheRest()
+    {
+        var screen = Screen();
+
+        _capture.WhileChecking = screen.Stop;
+
+        await screen.OpenAsync();
+
+        var row = Assert.Single(screen.Domains);
+
+        Assert.False(row.Plan.WasPreflighted);
+        Assert.Equal("Not asked yet.", row.Connection);
+    }
+
+    // Five tests stood here and were superseded when the Review step became a dialog.
+    //
+    // OpeningTheWindowLandsOnDomainsAndNotOnReview and TheRunStartsOnTheDomainsStep both held one
+    // property - opening the window is never one click from a capture - by asserting which step was
+    // showing. The steps are gone and the property is not, so it is now held by
+    // OpeningTheWindowIsNeverOneClickFromACapture against what actually matters: no capture, and no
+    // review, until he asks for one.
+    //
+    // CheckingEveryDomainMovesToReview asserted the step changed. What was worth keeping was that
+    // the domains are asked again rather than the opening pass being trusted, which is now
+    // ReviewingAsksEveryDomainAgain.
+    //
+    // ARunCannotStartFromTheDomainsStep and ARunCanStartOnceEveryDomainHasAnswered asserted
+    // CanStart either side of a step change. CanStart no longer knows about steps; what it still
+    // refuses is a run with an unanswered exclusion, which AnUnansweredExclusionStopsTheReviewBeing
+    // Offered holds directly.
+    //
+    // TheStepsAreAListRatherThanAChainOfConditions is not superseded, because the property is gone
+    // rather than moved. It asserted the step order was data so a third step could arrive by being
+    // added to a list. No third step ever arrived, and what the second one was reaching for turned
+    // out to be a summary of the whole run rather than another page of the same one.
+
+    [Fact]
+    public async Task ARunIsCapturedIntoTheChosenLibrary()
+    {
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(@"D:\audits", _capture.AskedForRoot);
+    }
+
+    [Fact]
+    public async Task ASealedRunReportsWhereItsEvidenceIs()
+    {
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains(@"D:\audits\run", screen.Report, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A run that happened and produced nothing is not a run that failed to start.
+    /// </summary>
+    [Fact]
+    public async Task ARunThatProducedNoBundleSaysSoAndSaysWhereToLook()
+    {
+        _capture.Outcome = new CaptureOutcome(ProducedABundle: false, @"D:\audits\run");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("without a sealed bundle", screen.Report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AStoppedRunIsReportedAsStoppedRatherThanFailed()
+    {
+        _capture.Cancels = true;
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("Stopped", screen.Report, StringComparison.Ordinal);
+    }
+
+    // A domain the forest names no controller for used to stop the run outright, proved here by
+    // ADomainTheForestNamesNoControllerForStopsTheRun. That rule was standing in for an attestation
+    // nothing had built yet. 0054 makes such a domain an exclusion rather than a gap and 0062 gives
+    // it something to be accounted for with, so the rule is now narrower and truer: it stops the run
+    // while nobody has answered for it, and not once somebody has. The two halves are
+    // AnUnreadableDomainNobodyAnsweredForStopsTheRun and
+    // AnUnreadableDomainThatWasAttestedLetsTheRunStart, below.
+
+    [Fact]
+    public async Task ADomainThatCouldNotBeReadStopsTheRun()
+    {
+        _capture.Check = new AuditCheck(RunMayProceed: false, [Forests.Answers()]);
+
+        var screen = await Opened();
+
+        Assert.False(screen.CanStart);
+    }
+
+    // The override, and the refusal that must not be softened.
+
+    [Fact]
+    public async Task AControllerAnOperatorNamesIsCarriedIntoTheRun()
+    {
+        var screen = await Opened();
+        Assert.Single(screen.Domains).NamedController = "dc02.ad.lab";
+
+        await screen.StartAsync();
+
+        Assert.Equal("dc02.ad.lab", _capture.AskedWithOverrides[Forests.Root]);
+    }
+
+    /// <summary>
+    /// Checking a typed controller contacts that controller and does not plan the forest again.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is finding <c>F-S41-4</c>. Each press used to cost a full discovery pass - a bootstrap
+    /// connection, the configuration partition, and the candidate list for every domain - to answer
+    /// a question about one machine. An operator correcting a typo in a nine-domain forest paid for
+    /// the whole forest every time.
+    /// </para>
+    /// <para>
+    /// The count of planning passes is asserted, not just the count of checks: a check that were
+    /// added alongside the old pass rather than in place of it would satisfy every other assertion
+    /// here while costing exactly what it did before.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task CheckingATypedControllerCostsOneMachineAndNotAForest()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc02.ad.lab";
+
+        var plannedByLoading = _capture.TimesPlanned;
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(1, _capture.NamedControllersChecked);
+        Assert.Equal(plannedByLoading, _capture.TimesPlanned);
+        Assert.Equal(("dc02.ad.lab", Forests.Root), _capture.LastNamedControllerCheck);
+    }
+
+    /// <summary>
+    /// A forest that cannot be reached on opening says so, rather than leaving an empty table.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// There is no button left to press. The window works itself out on opening, so a failure that
+    /// only set a field somewhere would leave an operator looking at an empty table with nothing to
+    /// point at and no reason given - which is the worst thing this screen could do.
+    /// </para>
+    /// <para>
+    /// The audit layer's words are passed through unchanged, because they name the stage that
+    /// failed and those stages have different remedies: a name that did not resolve, a controller
+    /// that rejected the account, and one that let the run in and would not answer send an operator
+    /// to three different places.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task AForestThatCannotBeReachedOnOpeningSaysSoRatherThanShowingAnEmptyTable()
+    {
+        const string Reason = "ad.lab did not answer on any port that was tried.";
+
+        _capture.PlanFails = Failures.Any(Reason);
+
+        var screen = Screen();
+        await screen.OpenAsync();
+
+        Assert.NotNull(screen.Notice);
+
+        Assert.Equal(Reason, screen.Notice!.Detail);
+        Assert.Equal(Reason, screen.Problem);
+        Assert.True(screen.MayLookAgain);
+    }
+
+    /// <summary>
+    /// A pass that failed can be run again without closing the window.
+    /// </summary>
+    /// <remarks>
+    /// Nothing was written, so there is nothing to undo. Making an operator close a modal and
+    /// reopen it to retry a network act is a way of telling him the product cannot recover from
+    /// anything.
+    /// </remarks>
+    [Fact]
+    public async Task APassThatCouldNotFinishCanBeRunAgain()
+    {
+        _capture.PlanFails = Failures.Any("Nothing answered.");
+
+        var screen = Screen();
+        await screen.OpenAsync();
+
+        Assert.True(screen.MayLookAgain);
+
+        _capture.PlanFails = null;
+        await screen.OpenAsync();
+
+        Assert.False(screen.MayLookAgain);
+        Assert.Single(screen.Domains);
+    }
+
+    /// <summary>
+    /// The rung is shown in words rather than as the name the type spells it with.
+    /// </summary>
+    /// <remarks>
+    /// Found on the first filled table: every cell on the row was ordinary English except this one,
+    /// which read <c>SignedAndSealed</c>. The stored value is unchanged - bundles must keep reading
+    /// the same way in six months - and only the rendering differs.
+    /// </remarks>
+    [Fact]
+    public void TheRungIsShownInWordsRatherThanAsAnEnumName()
+    {
+        var row = new DomainRowViewModel(
+            Forests.Domain().With(
+                Forests.Answers() with { RungReached = "SignedAndSealed" },
+                new Dictionary<string, string>(),
+                thisMachinesSite: null),
+            _ => Task.CompletedTask,
+            (_, _) => { });
+
+        Assert.Equal("Signed and sealed", row.Connection);
+    }
+
+    /// <summary>
+    /// A row is headed by the name the forest declared for the domain, not by two spellings of it.
+    /// </summary>
+    /// <remarks>
+    /// The table used to head a row <c>DC=ph,DC=ad,DC=lab</c> above a line saying
+    /// <c>ph.ad.lab</c> - one domain, two spellings, and an operator left to work out they are the
+    /// same place. Where the forest declared no name to pair with, the naming context stands, which
+    /// is what it did before.
+    /// </remarks>
+    [Fact]
+    public void ARowIsHeadedByTheNameTheForestDeclaredForTheDomain()
+    {
+        var named = new DomainRowViewModel(
+            Forests.Domain() with { DnsName = "ad.lab" },
+            _ => Task.CompletedTask,
+            (_, _) => { });
+
+        var unpaired = new DomainRowViewModel(
+            Forests.Domain(), _ => Task.CompletedTask, (_, _) => { });
+
+        Assert.Equal("ad.lab", named.Domain);
+        Assert.Equal(Forests.Root, unpaired.Domain);
+    }
+
+    /// <summary>
+    /// The library refuses an ineligible name, and this window says exactly what the library said.
+    /// Softening it into a warning would leave the operator with a run against a controller he did
+    /// not name.
+    /// </summary>
+    [Fact]
+    public async Task AnIneligibleControllerIsRefusedInTheLibrarysOwnWords()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Refusal, row.Problem);
+    }
+
+    [Fact]
+    public async Task AnIneligibleControllerStopsTheRunFromStarting()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.False(screen.CanStart);
+    }
+
+    /// <summary>
+    /// A refused name does fall back to the ranked choice - and the operator is told, by name,
+    /// before it does.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The predecessor fell back silently, so an operator who mistyped a host name got a successful
+    /// run against a controller he did not name, with nothing recording the substitution. What is
+    /// forbidden is the silence, not the fallback: holding him in a refusal whose only exit is
+    /// closing the window would trade one bad outcome for another.
+    /// </para>
+    /// <para>
+    /// So three things are asserted together, and the first is the one that matters: he was told,
+    /// and told which host. Remove the notice and this fails even though the box still clears.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task AnIneligibleControllerIsNotQuietlyReplacedByTheRankedChoice()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.NotNull(screen.Notice);
+
+        Assert.Contains("dc99.ad.lab", screen.Notice!.Title, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, row.NamedController);
+        Assert.False(_capture.WasRun);
+    }
+
+    // The PDC emulator prompt, narrowed.
+
+    /// <summary>
+    /// The forest names somewhere else this domain could have been read from, so the operator can
+    /// act on the warning.
+    /// </summary>
+    [Fact]
+    public void ThePdcEmulatorPromptAppearsWhereTheDomainHasAlternatives()
+    {
+        var row = Row(readFromPdcEmulator: true, alternatives: [Forests.Other]);
+
+        Assert.NotNull(row.PdcEmulatorWarning);
+    }
+
+    /// <summary>
+    /// A warning that fires on every domain of a single-controller forest teaches an operator to
+    /// click past warnings, and the next one he clicks past will matter. The record of it is not
+    /// narrowed - only the prompting is.
+    /// </summary>
+    [Fact]
+    public void ThePdcEmulatorPromptDoesNotAppearWhereTheDomainHasNoAlternatives()
+    {
+        var row = Row(readFromPdcEmulator: true, alternatives: []);
+
+        Assert.Null(row.PdcEmulatorWarning);
+    }
+
+    [Fact]
+    public void ThePdcEmulatorPromptDoesNotAppearWhereTheDomainIsNotReadFromIt()
+    {
+        var row = Row(readFromPdcEmulator: false, alternatives: [Forests.Other]);
+
+        Assert.Null(row.PdcEmulatorWarning);
+    }
+
+    // Nothing on screen may state a fact the run did not measure.
+
+    /// <summary>
+    /// The case the owner's own lab produces on every run: no subnets declared, so no machine can
+    /// be placed in a site by address.
+    /// </summary>
+    [Fact]
+    public async Task AMachineWithNoSiteSaysSoRatherThanNamingOne()
+    {
+        var screen = await Opened();
+
+        Assert.Contains("declares no subnets", screen.SiteDescription, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A forest that declares subnets and a forest that declares none are different faults with
+    /// different remedies, and one sentence covering both sends an operator to the wrong place.
+    /// </summary>
+    [Fact]
+    public async Task AMachineInNoDeclaredSubnetIsToldWhichFaultItIs()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            SiteKnowledge = SiteKnowledge.NoSubnetContainsThisMachine,
+        };
+
+        var screen = await Opened();
+
+        Assert.Contains("none of the subnets", screen.SiteDescription, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A run with no site of its own has measured nothing about where a controller is relative to
+    /// it. Rendering that as "another site" is a claim about a customer's forest the product did
+    /// not make.
+    /// </summary>
+    [Fact]
+    public async Task AControllerIsNotReportedAsElsewhereByARunWithNoSite()
+    {
+        var screen = await Opened();
+
+        Assert.DoesNotContain(
+            "is not this machine's site",
+            Assert.Single(screen.Domains).Site,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AControllerWhoseSiteWasNotComparedSaysThatItWasNot()
+    {
+        var screen = await Opened();
+
+        Assert.Contains(
+            "not known",
+            Assert.Single(screen.Domains).Site,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The four answers before preflight. An empty column would read as "no" on a screen, which is
+    /// the whole of <c>F-S40-8</c>.
+    /// </summary>
+    [Fact]
+    public async Task AQuestionNotYetPutIsShownAsNotYetPutRatherThanAsNo()
+    {
+        var screen = await Planned();
+        var row = Assert.Single(screen.Domains);
+
+        Assert.Equal("Not asked yet.", row.ServesThePartition);
+    }
+
+    [Fact]
+    public async Task ThePdcEmulatorIsNotReportedAsAbsentBeforeItIsEstablished()
+    {
+        var screen = await Planned();
+
+        Assert.Equal("Not asked yet.", Assert.Single(screen.Domains).PdcEmulator);
+    }
+
+    /// <summary>
+    /// A PDC emulator read that failed leaves the question with no answer.
+    /// <c>0055</c> forbids either unestablished state rendering as "holds no role".
+    /// </summary>
+    [Fact]
+    public void APdcEmulatorThatCouldNotBeEstablishedIsNotReportedAsHoldingNoRole()
+    {
+        var row = new DomainRowViewModel(
+            Forests.Domain().With(
+                Forests.Answers() with { IsThisDomainsPdcEmulator = Established.NotEstablished },
+                new Dictionary<string, string>(),
+                thisMachinesSite: null),
+            _ => Task.CompletedTask,
+            (_, _) => { });
+
+        Assert.Equal("Could not be established.", row.PdcEmulator);
+    }
+
+    /// <summary>
+    /// A controller nothing answered from has told the product nothing about how it protects
+    /// connections. Reporting that walk as a refusal of every protected rung is <c>F-S35-1</c>.
+    /// </summary>
+    [Fact]
+    public void AControllerNothingAnsweredFromIsNotReportedAsRefusingProtection()
+    {
+        var row = new DomainRowViewModel(
+            Forests.Domain().With(
+                Forests.Answers() with { Answered = Established.No, RungReached = null },
+                new Dictionary<string, string>(),
+                thisMachinesSite: null),
+            _ => Task.CompletedTask,
+            (_, _) => { });
+
+        Assert.Equal("Nothing answered", row.Connection);
+        Assert.Contains("nothing is known", row.ConnectionDetail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A domain the forest names one controller for and a domain whose alternatives were considered
+    /// and not preferred are different facts, and a message covering both says neither.
+    /// </summary>
+    [Fact]
+    public async Task ADomainWithOneControllerSaysThereIsNowhereElseToGo()
+    {
+        var screen = await Opened();
+
+        Assert.Contains(
+            "only controller",
+            Assert.Single(screen.Domains).Failover,
+            StringComparison.Ordinal);
+    }
+
+    private DomainRowViewModel Row(bool readFromPdcEmulator, string[] alternatives) =>
+        new(
+            Forests.Domain().With(
+                Forests.Answers(readFromPdcEmulator, alternatives),
+                new Dictionary<string, string>(),
+                thisMachinesSite: null),
+            _ => Task.CompletedTask,
+            (_, _) => { });
+
+    // =====================================================================================
+    // The exclusion attestation. 0062 settles what it asks for, 0059 that it is asked every
+    // run, 0054 that a domain with no candidates is one of these too, and 0063 that the two
+    // kinds are never shown alike.
+    // =====================================================================================
+
+    /// <summary>
+    /// Unticking a domain asks the operator to account for it before it leaves the run.
+    /// </summary>
+    /// <remarks>
+    /// The whole of <c>0062</c> rests on the question being put. A tick box that took a domain out
+    /// on its own would be the exclusion without the attestation, which is the liability waiver
+    /// <c>0049</c> warned against wearing the shape of a feature.
+    /// </remarks>
+    [Fact]
+    public async Task UntickingADomainAsksTheOperatorToAccountForIt()
+    {
+        var screen = await Opened();
+
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        var asked = Assert.Single(_dialogs.Attestations);
+
+        Assert.Equal(DomainInclusion.ExcludedByChoice, asked.Kind);
+    }
+
+    /// <summary>
+    /// An operator who walks away from the dialog gets the domain back, rather than a silent
+    /// exclusion.
+    /// </summary>
+    /// <remarks>
+    /// <c>0059</c> makes the friction the control. A dismissed dialog that still excluded the
+    /// domain would produce exactly the unattested exclusion the record exists to prevent, and it
+    /// would look like the operator had chosen it.
+    /// </remarks>
+    [Fact]
+    public async Task ADismissedAttestationLeavesTheDomainInTheRun()
+    {
+        _dialogs.Statement = null;
+
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        row.IsIncluded = false;
+
+        Assert.True(row.IsIncluded);
+        Assert.Equal(DomainInclusion.Included, row.Inclusion);
+        Assert.Null(row.Attestation);
+    }
+
+    /// <summary>
+    /// A completed attestation takes the domain out and keeps everything <c>0062</c> asked for.
+    /// </summary>
+    [Fact]
+    public async Task AnAttestedExclusionKeepsEverythingTheRecordAsksFor()
+    {
+        _dialogs.Statement = new ExclusionStatement(
+            ExclusionReason.CredentialsNotHeld, "Waiting on the forest team.", "R. Zamus");
+
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        row.IsIncluded = false;
+
+        var attestation = Assert.IsType<ExclusionAttestation>(row.Attestation);
+
+        Assert.Equal(ExclusionReason.CredentialsNotHeld, attestation.Reason);
+        Assert.Equal("Waiting on the forest team.", attestation.Note);
+        Assert.Equal("R. Zamus", attestation.AuthorisedBy);
+        Assert.Equal(SignedInAccount.Name(), attestation.RunBy);
+        Assert.NotEqual(default, attestation.MadeUtc);
+    }
+
+    /// <summary>
+    /// The account is captured rather than typed, so it is never the operator's to get wrong.
+    /// </summary>
+    /// <remarks>
+    /// <c>0062</c>: a name an operator types for himself is a name he can get wrong. The dialog is
+    /// given no opportunity to supply one - <see cref="ExclusionStatement"/> has no field for it -
+    /// and this proves the run stamps it instead.
+    /// </remarks>
+    [Fact]
+    public async Task TheAccountBehindAnExclusionIsCapturedRatherThanTyped()
+    {
+        var screen = await Opened();
+
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        Assert.Equal(
+            SignedInAccount.Name(),
+            Assert.Single(screen.Exclusions).Attestation!.RunBy);
+    }
+
+    /// <summary>
+    /// Putting a domain back drops what was stated for it rather than keeping it to offer again.
+    /// </summary>
+    /// <remarks>
+    /// <c>0059</c> refuses to carry a reason forward or pre-fill one. A reason kept against a
+    /// domain that is back in the run is the stale attestation that record exists to prevent,
+    /// waiting to be re-applied without being read.
+    /// </remarks>
+    [Fact]
+    public async Task PuttingADomainBackDropsWhatWasStatedForIt()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        row.IsIncluded = false;
+        Assert.NotNull(row.Attestation);
+
+        row.IsIncluded = true;
+
+        Assert.Null(row.Attestation);
+        Assert.Empty(screen.Exclusions);
+    }
+
+    /// <summary>
+    /// Putting a domain back asks nothing, because reading it is not a decision to account for.
+    /// </summary>
+    [Fact]
+    public async Task PuttingADomainBackAsksTheOperatorNothing()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        row.IsIncluded = false;
+        row.IsIncluded = true;
+
+        Assert.Single(_dialogs.Attestations);
+    }
+
+    /// <summary>
+    /// A domain the forest names no controller for is attested when the window works itself out,
+    /// without the operator having to find it.
+    /// </summary>
+    /// <remarks>
+    /// It has no tick to untick, so nothing else would ever raise the question. <c>0054</c> makes
+    /// it an exclusion rather than a gap, and an exclusion nobody is asked about is one nobody
+    /// accounts for.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainWithNoControllerIsAttestedWhenTheWindowWorksItselfOut()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        var asked = Assert.Single(_dialogs.Attestations);
+
+        Assert.Equal("DC=orphan,DC=ad,DC=lab", asked.Domain);
+        Assert.Equal(DomainInclusion.ExcludedForWantOfCandidates, asked.Kind);
+        Assert.NotNull(Assert.Single(screen.DomainsWithNoController).Attestation);
+    }
+
+    /// <summary>
+    /// Several unreadable domains are put to the operator one at a time, each named.
+    /// </summary>
+    /// <remarks>
+    /// One dialog covering three domains would collect one reason and one authorising name for
+    /// three different situations, and <c>0062</c>'s closed list exists so that an exclusion can be
+    /// counted and compared per domain later.
+    /// </remarks>
+    [Fact]
+    public async Task EveryUnreadableDomainIsPutToTheOperatorSeparately()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=one,DC=ad,DC=lab", "DC=two,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        Assert.Equal(2, _dialogs.Attestations.Count);
+        Assert.Equal(
+            ["DC=one,DC=ad,DC=lab", "DC=two,DC=ad,DC=lab"],
+            _dialogs.Attestations.Select(a => a.Domain));
+    }
+
+    /// <summary>
+    /// A second pass does not ask again about a domain already accounted for.
+    /// </summary>
+    /// <remarks>
+    /// <c>0059</c> re-asks every <i>run</i>, not every pass. Asking again inside one run would
+    /// train an operator to click through the dialog, which is the behaviour that record is
+    /// written to prevent.
+    /// </remarks>
+    [Fact]
+    public async Task AnAlreadyAttestedDomainIsNotAskedAboutAgainInTheSameRun()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+        await screen.OpenAsync();
+
+        Assert.Single(_dialogs.Attestations);
+    }
+
+    /// <summary>
+    /// An unreadable domain the operator walked away from stays out and stops the run.
+    /// </summary>
+    /// <remarks>
+    /// The one asymmetry with a domain excluded by choice, and it is not an inconsistency: there is
+    /// nothing to put this domain back into, because the forest names no controller to read it
+    /// from. So it cannot be re-included, and <c>0054</c> will not let it leave silently either.
+    /// </remarks>
+    [Fact]
+    public async Task AnUnreadableDomainNobodyAnsweredForStopsTheRun()
+    {
+        _dialogs.Statement = null;
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        Assert.Null(Assert.Single(screen.DomainsWithNoController).Attestation);
+        Assert.Equal(1, screen.UnattestedExclusionCount);
+        Assert.False(screen.CanStart);
+    }
+
+    /// <summary>
+    /// Once it has been accounted for, the same run may start.
+    /// </summary>
+    /// <remarks>
+    /// The other half of the rule above, and the one that shows the guard is the attestation rather
+    /// than the domain: nothing about the forest changed between the two tests.
+    /// </remarks>
+    [Fact]
+    public async Task AnUnreadableDomainThatWasAttestedLetsTheRunStart()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        Assert.Equal(0, screen.UnattestedExclusionCount);
+        Assert.True(screen.CanStart);
+    }
+
+    /// <summary>
+    /// A domain excluded by choice and one with no controller are never described alike.
+    /// </summary>
+    /// <remarks>
+    /// <c>0063</c>. Two different states with two different remedies: one is a decision the
+    /// operator can reverse, the other is a fact about the forest he cannot. A screen that worded
+    /// them the same would send him looking in the wrong place.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainExcludedByChoiceIsNotDescribedLikeOneWithNoController()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        var byChoice = screen.Exclusions.Single(
+            e => e.Kind == DomainInclusion.ExcludedByChoice);
+        var unreadable = screen.Exclusions.Single(
+            e => e.Kind == DomainInclusion.ExcludedForWantOfCandidates);
+
+        Assert.NotEqual(byChoice.Why, unreadable.Why);
+    }
+
+    /// <summary>
+    /// Every attestation reaches the run that was started.
+    /// </summary>
+    /// <remarks>
+    /// <c>0062</c> requires the whole attestation reach the bundle. This proves the shell hands it
+    /// over; <c>BundleWriterTests</c> proves what the bundle does with it.
+    /// </remarks>
+    [Fact]
+    public async Task EveryAttestationIsCarriedIntoTheRun()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(
+            ["DC=orphan,DC=ad,DC=lab"],
+            _capture.AskedWithExclusions.Select(e => e.NamingContext));
+    }
+
+    /// <summary>
+    /// A domain the operator took out is not read by the run he started.
+    /// </summary>
+    [Fact]
+    public async Task ADomainTakenOutIsCarriedIntoTheRunAsAnExclusion()
+    {
+        var screen = await Opened();
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        await screen.ReviewAsync();
+        await screen.StartAsync();
+
+        var carried = Assert.Single(_capture.AskedWithExclusions);
+
+        Assert.Equal(Forests.Root, carried.NamingContext);
+        Assert.Equal(DomainInclusion.ExcludedByChoice, carried.Kind);
+    }
+
+    /// <summary>
+    /// A reason's stored identifier is not derived from the sentence an operator read.
+    /// </summary>
+    /// <remarks>
+    /// <c>0062</c> puts a reason on the footing <c>0024</c> sets for rule identifiers: the wording
+    /// may be improved, the meaning may not. Deriving one from the other would make rewording a
+    /// sentence silently rewrite what runs already recorded appear to say.
+    /// </remarks>
+    [Fact]
+    public void AReasonsStoredNameIsNotItsWording()
+    {
+        foreach (var reason in ExclusionReasons.All)
+        {
+            Assert.NotEqual(ExclusionReasons.Wording(reason), ExclusionReasons.WireName(reason));
+            Assert.NotEmpty(ExclusionReasons.WireName(reason));
+        }
+    }
+
+    /// <summary>
+    /// Every reason in the closed list is offered, and each is offered once.
+    /// </summary>
+    [Fact]
+    public void EveryReasonInTheClosedListIsOfferedExactlyOnce()
+    {
+        Assert.Equal(
+            Enum.GetValues<ExclusionReason>().Order(),
+            ExclusionReasons.All.Order());
+    }
+
+    // =====================================================================================
+    // F-0056-1: how much this run will not establish, before it commits.
+    // =====================================================================================
+
+    /// <summary>
+    /// The count of unestablished facts is derived from the states the table renders.
+    /// </summary>
+    /// <remarks>
+    /// A total counted from a second list beside the cells would be a number an operator cannot
+    /// reconcile with the rows in front of him. Derived here from the row's own
+    /// <see cref="DomainRowViewModel.FactStates"/> rather than pinned to a literal, so a column
+    /// added or removed moves both together.
+    /// </remarks>
+    [Fact]
+    public async Task TheCountOfWhatWillNotBeEstablishedComesFromTheStatesTheTableShows()
+    {
+        var screen = await Planned();
+
+        Assert.Equal(
+            screen.Domains.Sum(d => d.FactStates.Count(s => s == FactState.NotEstablished)),
+            screen.UnestablishedFactCount);
+    }
+
+    /// <summary>
+    /// Before anything has been worked out, the total says so rather than showing zero.
+    /// </summary>
+    /// <remarks>
+    /// The standing rule of this screen. A count of unestablished facts is itself a fact, and a
+    /// confident "0 facts this run will not establish" over a forest nobody has looked at is the
+    /// screen stating something the run did not measure.
+    /// </remarks>
+    [Fact]
+    public void ATotalThatCannotBeComputedSaysSoRatherThanShowingZero()
+    {
+        var screen = Screen();
+
+        Assert.False(screen.HasPlan);
+        Assert.DoesNotContain("0", screen.UnestablishedFactSummary, StringComparison.Ordinal);
+        Assert.Contains("Not known yet", screen.UnestablishedFactSummary, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A domain leaving the run counts as establishing none of its facts.
+    /// </summary>
+    /// <remarks>
+    /// It is the point of the number. An operator about to commit hours to a capture is told how
+    /// much of the forest it will not speak for, and a domain nobody reads contributes all of it.
+    /// </remarks>
+    [Fact]
+    public async Task AnExcludedDomainCountsAsEstablishingNoneOfItsFacts()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        row.IsIncluded = false;
+
+        Assert.Equal(DomainRowViewModel.FactsPerDomain, screen.UnestablishedFactCount);
+    }
+
+    /// <summary>
+    /// The number of facts a domain has and the number counted for an absent one agree.
+    /// </summary>
+    /// <remarks>
+    /// A domain with no controller has no row to count, so its contribution is a constant. Bound to
+    /// the row's own list here, so adding a column cannot leave the constant behind.
+    /// </remarks>
+    [Fact]
+    public async Task TheFactsCountedForAnAbsentDomainMatchTheFactsARowCarries()
+    {
+        var screen = await Opened();
+
+        Assert.Equal(
+            DomainRowViewModel.FactsPerDomain,
+            Assert.Single(screen.Domains).FactStates.Count);
+    }
+
+    /// <summary>
+    /// An exclusion nobody has answered for is not shown as though somebody had.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The window decides what to show from booleans rather than by testing an object for null
+    /// through a visibility converter. <c>Shown</c> is a <c>BooleanToVisibilityConverter</c>, and a
+    /// binding it cannot convert does not fail loudly - WPF falls back to <i>visible</i>. Bound to
+    /// the attestation object itself, the screen would have shown "authorised by" with an empty
+    /// name against an exclusion nobody had answered for.
+    /// </para>
+    /// <para>
+    /// That is the standing rule of this screen in its smallest form: nothing states a fact the run
+    /// did not measure.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task AnUnansweredExclusionIsNotShownAsAuthorised()
+    {
+        _dialogs.Statement = null;
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        var unreadable = Assert.Single(screen.DomainsWithNoController);
+        var listed = Assert.Single(screen.Exclusions);
+
+        Assert.False(unreadable.IsAttested);
+        Assert.True(unreadable.IsExcludedWithoutAttestation);
+        Assert.False(listed.IsAttested);
+        Assert.Null(listed.AuthorisedBy);
+        Assert.True(screen.HasUnattestedExclusions);
+    }
+
+    /// <summary>
+    /// Once it has been answered for, the same row says so.
+    /// </summary>
+    [Fact]
+    public async Task AnAnsweredExclusionSaysWhoAuthorisedIt()
+    {
+        _dialogs.Statement = new ExclusionStatement(
+            ExclusionReason.OutsideThisAuditsRemit, Note: null, "R. Zamus");
+
+        var screen = await Opened();
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        var listed = Assert.Single(screen.Exclusions);
+
+        Assert.True(listed.IsAttested);
+        Assert.False(listed.HasNote);
+        Assert.Equal("R. Zamus", listed.AuthorisedBy);
+        Assert.False(screen.HasUnattestedExclusions);
+    }
+
+    /// <summary>
+    /// A capture that throws is reported, and does not take the application down.
+    /// </summary>
+    /// <remarks>
+    /// Found in the lab: a defect in the audit layer reached the dispatcher unhandled and killed
+    /// the process mid-run. The operator lost the window, the plan he had just worked through, and
+    /// any account of what went wrong beyond a Windows crash dialog. Nothing is swallowed - the
+    /// failure's own words are put in front of him and left on the screen.
+    /// </remarks>
+    [Fact]
+    public async Task ARunThatThrowsIsReportedRatherThanTakingTheWindowDown()
+    {
+        _capture.Throws = new InvalidOperationException("No coverage was reported for ba.ad.lab.");
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("ba.ad.lab", screen.Report, StringComparison.Ordinal);
+        Assert.Contains("No bundle was sealed", screen.Report, StringComparison.Ordinal);
+        Assert.False(screen.IsCapturing);
+        Assert.NotNull(screen.Notice);
+        Assert.Contains("could not finish", screen.Notice!.Title, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The list of what is leaving the run keeps its identity and is filled before anything
+    /// derived from it is announced.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Found in the lab: the Review step drew the heading "Leaving this run" with nothing under it.
+    /// The list was a computed property returning a fresh instance on every read, rebuilt while the
+    /// panel holding it was still collapsed - and an items control told its source changed while it
+    /// cannot measure has no reason to look again once it can.
+    /// </para>
+    /// <para>
+    /// A view model test cannot see a window draw, so what is held here is the shape the fix
+    /// depends on: one collection instance for the life of the screen, populated by the time the
+    /// flag that reveals it is raised.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task TheListOfWhatIsLeavingTheRunKeepsOneIdentity()
+    {
+        var screen = await Opened();
+        var before = screen.Exclusions;
+
+        Assert.Empty(before);
+        Assert.False(screen.HasExclusions);
+
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        Assert.Same(before, screen.Exclusions);
+        Assert.True(screen.HasExclusions);
+        Assert.Equal(Forests.Root, Assert.Single(screen.Exclusions).Domain);
+    }
+
+    /// <summary>
+    /// Opening the window is never one click from a capture.
+    /// </summary>
+    /// <remarks>
+    /// The two-step wizard provided this by keeping Start on a second page, and it is provided the
+    /// same way again: the window opens on the domains, and Start exists only on the review screen
+    /// reached by pressing Next. What changed between them is that the second screen now states
+    /// something the first cannot.
+    /// </remarks>
+    [Fact]
+    public async Task OpeningTheWindowIsNeverOneClickFromACapture()
+    {
+        var screen = await Opened();
+
+        Assert.True(screen.IsOnDomains);
+        Assert.False(screen.IsOnReview);
+        Assert.False(_capture.WasRun);
+    }
+
+    /// <summary>
+    /// A run does not begin merely by moving to the review screen.
+    /// </summary>
+    /// <remarks>
+    /// Next carries the operator to what the run will and will not do. It does not commit him to
+    /// it: Start is a separate press, on the screen that told him what he is starting.
+    /// </remarks>
+    [Fact]
+    public async Task ReachingTheReviewScreenStartsNothing()
+    {
+        var screen = await Opened();
+
+        await screen.ReviewAsync();
+
+        Assert.True(screen.IsOnReview);
+        Assert.False(_capture.WasRun);
+    }
+
+    /// <summary>
+    /// Going back from the review leaves the window exactly as it was.
+    /// </summary>
+    /// <remarks>
+    /// Nothing has been written at that moment, so there is nothing to undo and no reason to make
+    /// an operator close the window to change one controller.
+    /// </remarks>
+    [Fact]
+    public async Task GoingBackFromTheReviewStartsNothing()
+    {
+        var screen = await Opened();
+
+        await screen.ReviewAsync();
+        Assert.True(screen.CanGoBack);
+
+        screen.Back();
+
+        Assert.True(screen.IsOnDomains);
+        Assert.False(_capture.WasRun);
+        Assert.True(screen.CanStart);
+    }
+
+    /// <summary>
+    /// Reviewing asks every domain again rather than trusting the opening pass.
+    /// </summary>
+    /// <remarks>
+    /// What an operator does on this screen is change controllers, so the answers on screen may
+    /// have been established about machines the run will no longer read. Reviewing with them would
+    /// carry a measurement of one controller under the name of another.
+    /// </remarks>
+    [Fact]
+    public async Task ReviewingAsksEveryDomainAgain()
+    {
+        var screen = await Opened();
+
+        Assert.Equal(1, _capture.TimesChecked);
+
+        await screen.ReviewAsync();
+
+        Assert.Equal(2, _capture.TimesChecked);
+    }
+
+    /// <summary>
+    /// The review states what the run will read, what it will not, and what it cannot say.
+    /// </summary>
+    [Fact]
+    public async Task TheReviewStatesWhatTheRunWillAndWillNotDo()
+    {
+        var screen = await Opened();
+        Assert.Single(screen.Domains).IsIncluded = false;
+
+        await screen.ReviewAsync();
+
+        var review = screen.Review;
+
+        Assert.NotEmpty(review.ForestFqdn);
+        Assert.Empty(review.WillBeRead);
+        Assert.Equal(Forests.Root, Assert.Single(review.WillNotBeRead).Domain);
+        Assert.NotEmpty(review.UnestablishedFactSummary);
+    }
+
+    /// <summary>
+    /// A run carrying an exclusion nobody answered for never reaches the review screen.
+    /// </summary>
+    /// <remarks>
+    /// The same rule Start enforces, enforced one screen earlier: there is no point walking an
+    /// operator through a summary when the answer at the end of it has to be no.
+    /// </remarks>
+    [Fact]
+    public async Task AnUnansweredExclusionStopsTheReviewBeingReached()
+    {
+        _dialogs.Statement = null;
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        Assert.False(screen.CanStart);
+
+        await screen.ReviewAsync();
+
+        Assert.True(screen.IsOnDomains);
+        Assert.False(_capture.WasRun);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // The details panel, and the mark that stops trimming a column from hiding something.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Everything the table stopped carrying is one press away, for every domain at once.
+    /// </summary>
+    [Fact]
+    public async Task DetailsShowsEveryDomainAtOnce()
+    {
+        var screen = await Opened();
+
+        screen.ShowDetails();
+
+        Assert.Equal(screen.Domains, screen.Details?.Domains);
+    }
+
+    /// <summary>
+    /// The panel puts itself away, since there is no window whose closing would do it.
+    /// </summary>
+    /// <remarks>
+    /// It became a panel over the audit surface rather than a window over the shell in
+    /// <c>0071</c>, which took away the close box and the Escape key that used to do this for
+    /// free. Without a Close that works, an operator who opened it is looking at a scrim he
+    /// cannot get out from behind.
+    /// </remarks>
+    [Fact]
+    public async Task ClosingTheDetailsPanelPutsItAway()
+    {
+        var screen = await Opened();
+
+        screen.ShowDetails();
+        Assert.True(screen.HasDetails);
+
+        screen.Details!.Close();
+
+        Assert.Null(screen.Details);
+        Assert.False(screen.HasDetails);
+    }
+
+    /// <summary>
+    /// The way out of the opening pass stops being offered once the pass has ended.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Found on screen, not by a test.</b> Stop sat in the footer of a finished screen with
+    /// nothing running, drawn in the colour <c>0070</c> reserves for the exit of something that is
+    /// running. An operator reading that footer is told a capture is under way when none is.
+    /// </para>
+    /// <para>
+    /// <b>The cause was a missing announcement, not a wrong value.</b> <c>CanStop</c> is computed
+    /// from <c>IsBusy</c>, and nothing told the screen to look at it again when the pass ended, so
+    /// the button held whatever it had read at load. It survived while the wizard was its own
+    /// window because the binding happened to be evaluated before the pass began; hosting it in
+    /// the shell changed that order and the latch showed.
+    /// </para>
+    /// <para>
+    /// So the announcement is what is asserted, not just the value. Reading <c>CanStop</c> alone
+    /// would pass against exactly the bug this records.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task TheWayOutOfTheOpeningPassIsWithdrawnWhenThePassEnds()
+    {
+        var screen = Screen();
+
+        var announced = new List<string?>();
+        screen.PropertyChanged += (_, e) => announced.Add(e.PropertyName);
+
+        await screen.OpenAsync();
+
+        Assert.False(screen.IsBusy);
+        Assert.False(screen.CanStop);
+        Assert.Contains(nameof(NewAuditViewModel.CanStop), announced);
+    }
+
+    /// <summary>
+    /// A domain with an unanswered question is worth attention, not just one with a bad answer.
+    /// </summary>
+    /// <remarks>
+    /// <c>0056</c> has three states and the third is not a quiet success. A domain nobody could
+    /// answer for must not sit behind a button that looks clean, because the column that would have
+    /// shown it is no longer on the table.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainWithAnUnansweredQuestionIsWorthAttention()
+    {
+        var screen = await Planned();
+
+        var row = Assert.Single(screen.Domains);
+
+        Assert.Contains(row.FactStates, s => s == FactState.NotEstablished);
+        Assert.True(row.NeedsAttention);
+        Assert.True(screen.AnyDomainNeedsAttention);
+    }
+
+    /// <summary>
+    /// A domain the forest names no controller for is a row of the table, not a note beneath it.
+    /// </summary>
+    /// <remarks>
+    /// It lived in a list under the table until that area was cleared, and would have vanished from
+    /// the domain screen entirely. A domain missing from an audit with nothing saying it is missing
+    /// is the one outcome this product must not produce, so it is a row - and an operator counting
+    /// rows gets the number the forest declared rather than the number that happened to be
+    /// readable.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainWithNoControllerIsARowOfTheTable()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        Assert.Equal(2, screen.Rows.Count);
+        Assert.Contains(screen.Rows, r => r.NamingContext == "DC=orphan,DC=ad,DC=lab");
+    }
+
+    /// <summary>
+    /// That row refuses the controls it cannot honour.
+    /// </summary>
+    /// <remarks>
+    /// There is nothing to tick such a domain back into and no controller to prefer over another,
+    /// so the tick box and the override are not offered. A control that did nothing would be the
+    /// screen offering a choice the product cannot make good on.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainWithNoControllerOffersNoChoiceItCannotHonour()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        var orphan = Assert.Single(
+            screen.Rows.Where(r => r.NamingContext == "DC=orphan,DC=ad,DC=lab"));
+
+        Assert.False(orphan.MayChangeInclusion);
+        Assert.False(orphan.MayNameAController);
+        Assert.False(orphan.IsIncluded);
+        Assert.True(orphan.NeedsAttention);
+    }
+
+    /// <summary>
+    /// It says the forest names no controller rather than leaving the cell blank.
+    /// </summary>
+    /// <remarks>
+    /// An empty cell in a column of host names reads as a value that failed to load. This is not a
+    /// failure to find something out - it is something the run found out.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainWithNoControllerSaysSoRatherThanShowingNothing()
+    {
+        _capture.Plan = Forests.OneDomain() with
+        {
+            DomainsWithNoCandidates = ["DC=orphan,DC=ad,DC=lab"],
+        };
+
+        var screen = await Opened();
+
+        var orphan = Assert.Single(
+            screen.Rows.Where(r => r.NamingContext == "DC=orphan,DC=ad,DC=lab"));
+
+        Assert.NotEmpty(orphan.Controller);
+        Assert.Contains("None named", orphan.Controller, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A finished run says where the evidence is and that reading it is not built yet.
+    /// </summary>
+    /// <remarks>
+    /// There is no screen that reads a bundle. An enabled control that quietly did nothing would be
+    /// the product claiming a capability it does not have; a disabled one with no reason beside it
+    /// is a refusal an operator cannot act on. So the path is given, because opening that folder is
+    /// what he can actually do today.
+    /// </remarks>
+    [Fact]
+    public async Task AFinishedRunSaysWhereTheEvidenceIsAndThatReadingItIsNotBuilt()
+    {
+        var screen = await Opened();
+
+        await screen.ReviewAsync();
+        await screen.StartAsync();
+
+        Assert.True(screen.HasFinished);
+        Assert.Contains("not built yet", screen.ResultsNote, StringComparison.Ordinal);
+        Assert.Contains(@"D:\audits\run", screen.ResultsNote, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A finished run cannot be walked back to the domain screen.
+    /// </summary>
+    /// <remarks>
+    /// Evidence has been written by then. Offering Back would suggest the run could be changed and
+    /// re-made, when what it actually produced is already sealed on disk.
+    /// </remarks>
+    [Fact]
+    public async Task AFinishedRunDoesNotOfferTheWayBack()
+    {
+        var screen = await Opened();
+
+        await screen.ReviewAsync();
+        Assert.True(screen.CanGoBack);
+
+        await screen.StartAsync();
+
+        Assert.False(screen.CanGoBack);
+    }
+
+    private async Task<NewAuditViewModel> Opened()
+    {
+        var screen = Screen();
+        await screen.OpenAsync();
+        return screen;
+    }
+
+    /// <summary>
+    /// The window as it stands when discovery answered and the per-domain pass did not.
+    /// </summary>
+    /// <remarks>
+    /// The state in which the preflight questions have genuinely not been put, which is what the
+    /// three-state rendering has to be judged against. Reaching it by letting the second half fail
+    /// keeps the two halves separable in the test as they are in the code.
+    /// </remarks>
+    private async Task<NewAuditViewModel> Planned()
+    {
+        _capture.CheckFails = Failures.Any("Nothing answered.");
+
+        var screen = Screen();
+        await screen.OpenAsync();
+        return screen;
+    }
+
+    // A Reviewed() helper stood here, opening the window and then moving to the Review step so that
+    // CanStart was true. There is no such state now: the window works itself out on opening, and
+    // reviewing is the act that starts the run rather than a page reached before it. Tests that
+    // wanted a startable screen use Opened(); the one that wants a started run calls StartAsync.
+
+    private NewAuditViewModel Screen()
+    {
+        _settings.Stored = new ShellSettings(@"D:\audits");
+
+        var location = new RunLibraryLocation(_settings);
+        location.Load();
+
+        return new NewAuditViewModel(location, _capture, _dialogs);
+    }
+}

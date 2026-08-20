@@ -1,0 +1,59 @@
+<!--
+    Type.xaml - the type scale.
+
+    Sizes are named for the job they do, not for how big they are: ScreenTitleFontSize survives a
+    decision to make titles smaller, and FontSize18 does not.
+
+    The scale is deliberately short. Six sizes is enough for this product and a longer scale
+    produces screens where two nearly-equal sizes sit beside each other and neither reads as
+    deliberate. If a seventh is wanted, that is a sign a surface is doing too much rather than a
+    sign the scale is too small.
+
+    Segoe UI is Windows' own face and is present on every machine this product runs on. Naming it
+    here rather than leaving it to WPF's default means a font change is one edit.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <FontFamily x:Key="UiFontFamily">Segoe UI</FontFamily>
+
+    <!--
+        A monospaced face for values an operator reads character by character and may need to
+        compare by eye: distinguished names, host names, security identifiers, GUIDs. A
+        proportional face makes DC=ph,DC=ad,DC=lab harder to scan and hides the difference between
+        two similar names, which in an audit tool is a correctness problem rather than a
+        typographic one.
+    -->
+    <FontFamily x:Key="IdentifierFontFamily">Cascadia Mono, Consolas</FontFamily>
+
+    <!-- The name of the screen: "New audit". One per screen. -->
+    <sys:Double x:Key="ScreenTitleFontSize">24</sys:Double>
+
+    <!-- A section within a screen. -->
+    <sys:Double x:Key="SectionTitleFontSize">18</sys:Double>
+
+    <!-- The heading of one row or card - a domain's name. -->
+    <sys:Double x:Key="RowTitleFontSize">16</sys:Double>
+
+    <!-- Ordinary text, and the default for everything not named otherwise. -->
+    <sys:Double x:Key="BodyFontSize">15</sys:Double>
+
+    <!-- Labels beside values, and text in a dense table. -->
+    <sys:Double x:Key="LabelFontSize">14</sys:Double>
+
+    <!-- Provenance and counts. The smallest size the product uses; nothing an operator must read
+         to make a decision is set at this size. -->
+    <sys:Double x:Key="CaptionFontSize">13</sys:Double>
+
+    <!--
+        Weights, named for role.
+
+        Weight is one of the non-colour carriers 0056 decision 2 requires, so these are part of
+        the state vocabulary and not only a typographic convenience.
+    -->
+    <FontWeight x:Key="BodyFontWeight">Normal</FontWeight>
+    <FontWeight x:Key="EmphasisFontWeight">SemiBold</FontWeight>
+    <FontWeight x:Key="TitleFontWeight">SemiBold</FontWeight>
+
+</ResourceDictionary>

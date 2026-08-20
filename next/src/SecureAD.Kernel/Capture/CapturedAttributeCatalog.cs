@@ -1,0 +1,399 @@
+namespace SecureAD.Kernel.Capture;
+
+/// <summary>
+/// Every attribute the product asks a domain controller for, and the object classes it asks about.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This is the ceiling on everything the product can ever say. Inventory row B2 owns it, and
+/// <c>docs/next/S-8-captured-attribute-catalogue.md</c> is the document that says, for each entry,
+/// what reads it and why - bound by <c>CapturedAttributeCatalogDocumentationTests</c>, so an
+/// attribute that cannot name a consumer fails the build rather than sitting in every bundle
+/// forever.
+/// </para>
+/// <para>
+/// <b>One filter, and it excludes rather than includes.</b> The previous product offered two
+/// object-class filters as radio buttons and asked an operator to choose between them. The
+/// rebuild has one behaviour: every object in every naming context capture reads is captured,
+/// with <see cref="Universal"/> requested for it whatever its class, and the classes enumerated in
+/// <see cref="ObjectClasses"/> getting the extra attributes listed for them. Nothing is invisible
+/// because nobody thought of its class. The one exclusion is
+/// <see cref="UnreadObjectClasses"/>, which is the 2026-08-11 decision that DNS zones and records
+/// are out of scope, stated as a named exclusion so a report can say so rather than reporting
+/// silence.
+/// </para>
+/// <para>
+/// <b>This type is a table compiled into the assembly.</b> It reads nothing, opens nothing and
+/// cannot fail, so an empty answer means one thing only: the class has no extra attributes. That
+/// is why gate 4 exempts it from the bare-collection rule, on the same terms as
+/// <c>SchemaGuidCatalog</c> and with the same guard against the exemption outliving its reason.
+/// </para>
+/// </remarks>
+public static class CapturedAttributeCatalog
+{
+    /// <summary>
+    /// The version of this catalogue, recorded in every bundle so a bundle can state what it was
+    /// allowed to see.
+    /// </summary>
+    /// <remarks>
+    /// Starts at 1. The previous product's catalogue had reached version 10, and that number is not
+    /// carried: per <c>docs/decisions/0001</c> there is no backward compatibility to preserve, and
+    /// a version number continuing a sequence would imply that a bundle stamped 10 and a bundle
+    /// stamped 11 hold comparable evidence. They do not. Increment when an entry is added or
+    /// removed.
+    /// <para>
+    /// <b>2 - 2026-08-13, at S-23.</b> <see cref="ComputerAttributes"/> added, carrying
+    /// <c>operatingSystem</c> and the two LAPS expiration timestamps. Without them SEC-091 and
+    /// SEC-092 cannot be answered at all, and a bundle stamped 1 therefore cannot support a LAPS
+    /// finding however it is analysed later.
+    /// </para>
+    /// <para>
+    /// <b>3 - 2026-08-18, at S-51.</b> <c>whenCreated</c> on every object, and
+    /// <c>userPrincipalName</c>, <c>description</c>, <c>accountExpires</c> and
+    /// <c>lastLogonTimestamp</c> on accounts. An object view that can say who a principal is and
+    /// whether anybody still uses it needs all five, and a bundle stamped 2 cannot answer a
+    /// stale-account question at all.
+    /// <para>
+    /// <b>Two were refused, and for the same reason.</b> <c>lastLogon</c> and <c>whenChanged</c>
+    /// are both documented by Microsoft as not replicated, so each controller holds its own value.
+    /// This product reads one controller per domain, so reporting either would present one
+    /// controller's view as a fact about the domain - and every judgement built on it would be
+    /// wrong in a way nothing on screen could reveal. See <see cref="NotCaptured"/>.
+    /// </para>
+    /// </para>
+    /// </remarks>
+    public const int Version = 3;
+
+    /// <summary>
+    /// Requested for every object, of every class, in every naming context capture reads.
+    /// </summary>
+    public static IReadOnlyList<CapturedAttribute> Universal { get; } =
+    [
+        new("distinguishedName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("objectGUID", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+        new("objectClass", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("objectCategory", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("objectSid", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+        new("nTSecurityDescriptor", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+
+        // Replicated, and in the global catalogue, so one controller's answer is the domain's
+        // answer. Its unreplicated counterpart whenChanged is refused - see NotCaptured.
+        new("whenCreated", AttributeCardinality.SingleValued, AttributeStorage.Text),
+
+        new("description", AttributeCardinality.MultiValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// Attributes carried by anything that can hold credentials and act - a user, a computer, or a
+    /// managed service account. They are one set because they are one kind of thing: the previous
+    /// product kept four near-identical lists and they had drifted apart.
+    /// </summary>
+    private static IReadOnlyList<CapturedAttribute> AccountAttributes { get; } =
+    [
+        new("sAMAccountName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("userAccountControl", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("adminCount", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("primaryGroupID", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("memberOf", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("sIDHistory", AttributeCardinality.MultiValued, AttributeStorage.Binary),
+        new("servicePrincipalName", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("msDS-AllowedToDelegateTo", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("msDS-AllowedToActOnBehalfOfOtherIdentity", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+        new("msDS-KeyCredentialLink", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("msDS-SupportedEncryptionTypes", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("pwdLastSet", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("userPrincipalName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("accountExpires", AttributeCardinality.SingleValued, AttributeStorage.Text),
+
+        // Replicated, unlike lastLogon - but deliberately coarse: a controller only updates it
+        // when the value it holds is older than msDS-LogonTimeSyncInterval, which defaults to
+        // between 9 and 14 days. Anything worded from it must say so.
+        new("lastLogonTimestamp", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// A computer is an account plus the three things that decide whether its local administrator
+    /// password is being managed, and by which of the two LAPS products.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Added 2026-08-13 at S-23, on the owner's decision, when the catalogue was re-derived against
+    /// all sixty-two rule cards rather than against the rebuild's progress. SEC-091 decides which
+    /// LAPS variant a machine <i>should</i> have from <c>operatingSystem</c>, and SEC-092 decides
+    /// whether the password is still being rotated from whichever expiration timestamp is present.
+    /// Without these three, both rules report a clean forest whatever the forest looks like - which
+    /// is the one thing an audit tool must not do.
+    /// </para>
+    /// <para>
+    /// <b>The timestamps only, never a password.</b> <c>ms-Mcs-AdmPwd</c>, <c>msLAPS-Password</c>
+    /// and the encrypted forms sit on the same object and are forbidden by
+    /// <c>CredentialAttributeGuardTests</c>. Who may <i>read</i> a LAPS password is answered from
+    /// the computer's access control list, which arrives with every object.
+    /// </para>
+    /// <para>
+    /// Both LAPS attributes are schema extensions rather than base-schema attributes, so either can
+    /// be marked confidential and withheld without an error. Telling that apart from <i>not
+    /// deployed</i> is the absence work <c>docs/decisions/0002</c> requires, and it is answered per
+    /// forest from <c>searchFlags</c> in <see cref="SchemaPartition"/> rather than guessed.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<CapturedAttribute> ComputerAttributes { get; } =
+    [
+        .. AccountAttributes,
+        new("operatingSystem", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("ms-Mcs-AdmPwdExpirationTime", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msLAPS-PasswordExpirationTime", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// A group managed service account is an account plus one thing no other account has: a
+    /// security descriptor naming who may retrieve its password.
+    /// </summary>
+    private static IReadOnlyList<CapturedAttribute> GroupManagedServiceAccountAttributes { get; } =
+    [
+        .. AccountAttributes,
+        new("msDS-GroupMSAMembership", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+    ];
+
+    private static IReadOnlyList<CapturedAttribute> GroupAttributes { get; } =
+    [
+        new("sAMAccountName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("groupType", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("adminCount", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("member", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("memberOf", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("sIDHistory", AttributeCardinality.MultiValued, AttributeStorage.Binary),
+    ];
+
+    private static IReadOnlyList<CapturedAttribute> OrganizationalUnitAttributes { get; } =
+    [
+        new("gPLink", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("gPOptions", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    private static IReadOnlyList<CapturedAttribute> GroupPolicyContainerAttributes { get; } =
+    [
+        new("displayName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("gPCFileSysPath", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("flags", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("versionNumber", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("gPCMachineExtensionNames", AttributeCardinality.MultiValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// The object classes that get attributes beyond <see cref="Universal"/>, keyed by
+    /// <c>lDAPDisplayName</c>. Matched without regard to case, because an LDAP class name is.
+    /// </summary>
+    private static readonly Dictionary<string, IReadOnlyList<CapturedAttribute>> ClassSpecific =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["user"] = AccountAttributes,
+            ["inetOrgPerson"] = AccountAttributes,
+            ["computer"] = ComputerAttributes,
+            ["msDS-ManagedServiceAccount"] = AccountAttributes,
+            ["msDS-GroupManagedServiceAccount"] = GroupManagedServiceAccountAttributes,
+            ["group"] = GroupAttributes,
+            ["organizationalUnit"] = OrganizationalUnitAttributes,
+            ["groupPolicyContainer"] = GroupPolicyContainerAttributes,
+        };
+
+    /// <summary>
+    /// Requested for each <c>attributeSchema</c> and <c>classSchema</c> object in the schema
+    /// partition, per <c>docs/decisions/0014</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>attributeSecurityGUID</c> is the join that turns a property-set permission into the
+    /// attributes it really grants: the property set is a <c>controlAccessRight</c> object, it names
+    /// no attributes, and each attribute instead points back at the set through this value
+    /// (<see href="https://learn.microsoft.com/windows/win32/ad/creating-a-control-access-right">Creating
+    /// a Control Access Right</see>). It is an octet string, and <c>rightsGuid</c> on the other side
+    /// of the join is a 36-character string, so the two are the same GUID in two different
+    /// representations and comparing them as they arrive never matches.
+    /// </remarks>
+    public static IReadOnlyList<CapturedAttribute> SchemaPartition { get; } =
+    [
+        new("lDAPDisplayName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("cn", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("schemaIDGUID", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+        new("attributeSecurityGUID", AttributeCardinality.SingleValued, AttributeStorage.Binary),
+        new("isSingleValued", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("searchFlags", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("systemFlags", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// Requested for each <c>controlAccessRight</c> object in the extended-rights container, per
+    /// <c>docs/decisions/0014</c>.
+    /// </summary>
+    /// <remarks>
+    /// One container read resolves three of the five things a GUID in an access control entry can
+    /// mean. Extended rights, property sets and validated writes all live here - Microsoft says
+    /// outright that the last two are stored there "for convenience" despite not being extended
+    /// rights - and <c>validAccesses</c> is what tells them apart: 256 for an extended right, 48 for
+    /// a property set, 8 for a validated write
+    /// (<see href="https://learn.microsoft.com/windows/win32/ad/control-access-rights">Control
+    /// Access Rights</see>).
+    /// </remarks>
+    public static IReadOnlyList<CapturedAttribute> ExtendedRights { get; } =
+    [
+        new("cn", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("displayName", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("rightsGuid", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("validAccesses", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("appliesTo", AttributeCardinality.MultiValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// The object classes that get more than <see cref="Universal"/>, in the spelling the schema
+    /// uses.
+    /// </summary>
+    public static IReadOnlyList<string> ObjectClasses { get; } =
+        ClassSpecific.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray();
+
+    /// <summary>
+    /// The only object classes capture does not read at all.
+    /// </summary>
+    /// <remarks>
+    /// The DNS scope decision of 2026-08-11, recorded at
+    /// <c>docs/decisions/0042-dns-zones-and-records-are-out-of-scope.md</c>, puts DNS zones and
+    /// records out of scope. They are
+    /// excluded here by name rather than left out of an inclusion list, because the two are not the
+    /// same thing: an exclusion is a statement the product can put in a report, and a large forest
+    /// holds hundreds of thousands of <c>dnsNode</c> objects whose records are values of
+    /// <c>dnsRecord</c>
+    /// (<see href="https://learn.microsoft.com/troubleshoot/windows-server/networking/event-4015-dns-server-encounters-critical-error">Event
+    /// ID 4015</see>). What the product must say is precise: DNS zone and record permissions are not
+    /// assessed, and DNS administrative group membership is.
+    ///
+    /// <para>
+    /// This is one of two places the decision is enforced. The other is the partition skip in
+    /// <c>ForestPartitions</c>, and <c>0042</c> asks that they be changed together.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyList<string> UnreadObjectClasses { get; } = ["dnsNode", "dnsZone"];
+
+    /// <summary>
+    /// Every distinct attribute the catalogue asks for anywhere, ordered so the list reads the same
+    /// on every run.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the request.</b> Capture adds every entry here to every search, and asks every
+    /// object for all of them whatever its class. The per-class lists this is built from group the
+    /// attributes by the reason they are captured; they do not scope anything.
+    /// </para>
+    /// <para>
+    /// <b>A per-class request is not possible in one pass.</b> An LDAP search names its attributes in
+    /// the request, and an object's class is not known until the response arrives, so there is no
+    /// query meaning <i>send each object the attributes suited to its class</i>. Scoping by class
+    /// would mean one paged search per class over every partition - each with its own paging
+    /// bookmark, retry handling and referral exposure - to save absent attributes on the wire, which
+    /// cost nothing. The union is therefore the cheap option and not the lazy one.
+    /// </para>
+    /// <para>
+    /// It also means a value missing from a captured object has exactly two possible causes, which
+    /// the directory does not distinguish: the object has no value, or the reader was not permitted
+    /// to see it. It can never mean <i>this class was not asked</i>. See
+    /// <c>docs/decisions/0022</c>.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyList<CapturedAttribute> All { get; } =
+        Universal
+            .Concat(ClassSpecific.Values.SelectMany(a => a))
+            .Concat(SchemaPartition)
+            .Concat(ExtendedRights)
+            .DistinctBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    /// <summary>
+    /// Every attribute that can exceed the server's value limit, and therefore every attribute a
+    /// reader must range-retrieve.
+    /// </summary>
+    /// <remarks>
+    /// Derived rather than listed. A hand-maintained second list is the shape of the defect gate 2
+    /// exists for: it agrees with the catalogue on the day it is written and silently stops
+    /// agreeing when somebody adds a multi-valued entry. B8 reads this and never tests an attribute
+    /// name.
+    /// </remarks>
+    public static IReadOnlyList<CapturedAttribute> RangeLiable { get; } =
+        All.Where(a => a.Cardinality == AttributeCardinality.MultiValued).ToArray();
+
+    /// <summary>
+    /// Attributes an audit of this kind would obviously want, and that this product refuses to
+    /// capture, with the reason for each.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A refusal that is not written down is indistinguishable from an oversight.</b> Every one
+    /// of these will be proposed again - they are the obvious things to want - and without a record
+    /// the argument is had from scratch each time, by somebody who does not know it was already
+    /// settled and against what evidence.
+    /// </para>
+    /// <para>
+    /// Both entries fail the same test, which is the test that matters for a product reading one
+    /// controller per domain: <b>is this value replicated?</b> An unreplicated attribute is one
+    /// controller's opinion, and printing it as the domain's answer produces a finding that is
+    /// wrong in a way nothing on screen can reveal.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyDictionary<string, string> NotCaptured { get; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["lastLogon"] =
+                "Not replicated. Each controller holds only the logons it served, so the value on "
+                + "the one controller this product reads is not the account's last logon - it is "
+                + "the last logon that controller saw. An account logging on daily elsewhere would "
+                + "be reported as dormant. lastLogonTimestamp is captured instead: it is "
+                + "replicated, and coarse in a way that can be stated.",
+            ["whenChanged"] =
+                "Not replicated, on Microsoft's own statement, though it is in the global "
+                + "catalogue. Two controllers can disagree about when an object last changed, so a "
+                + "run reading one of them cannot report it as a fact about the object. "
+                + "whenCreated is replicated and is captured.",
+        };
+
+    /// <summary>
+    /// Which attributes an object of <paramref name="ldapObjectClass"/> is the reason for capturing:
+    /// <see cref="Universal"/> plus whatever that class adds.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is not what capture requests, and nothing about a request is decided here.</b> Capture
+    /// asks every object for <see cref="All"/> whatever its class - see that member for why the
+    /// request cannot be scoped by class at all. This answers the different question <i>which class's
+    /// needs justify carrying this attribute in the catalogue</i>, which is what
+    /// <c>docs/next/S-8-captured-attribute-catalogue.md</c> records and what
+    /// <c>CredentialAttributeGuardTests</c> asks when it checks that computers justify the LAPS
+    /// expiry timestamp and never the LAPS password.
+    /// </para>
+    /// <para>
+    /// It was called <c>AttributesFor</c> until 2026-08-13, and that name cost real time: a session
+    /// read it as the request scope, concluded that a null column could mean <i>this class was never
+    /// asked</i>, and raised a finding that reading the capture pipeline disproved. The shape of the
+    /// catalogue suggests a per-class request and there has never been one.
+    /// </para>
+    /// <para>
+    /// A class the catalogue has never heard of yields <see cref="Universal"/>, which includes the
+    /// security descriptor - so a vendor object nobody anticipated is still justified in full for the
+    /// thing this product assesses, and only the extra attributes are absent. It is never empty, so
+    /// an empty answer is not a state a caller has to handle.
+    /// </para>
+    /// </remarks>
+    /// <param name="ldapObjectClass">The class's <c>lDAPDisplayName</c>. Matched without case.</param>
+    public static IReadOnlyList<CapturedAttribute> AttributesJustifiedBy(string ldapObjectClass)
+    {
+        ArgumentNullException.ThrowIfNull(ldapObjectClass);
+
+        if (!ClassSpecific.TryGetValue(ldapObjectClass, out var specific))
+        {
+            return Universal;
+        }
+
+        return Universal
+            .Concat(specific)
+            .DistinctBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+}

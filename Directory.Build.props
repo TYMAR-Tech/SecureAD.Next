@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Product version. The .NET SDK appends the commit sha to
+         AssemblyInformationalVersion by default (IncludeSourceRevisionInInformationalVersion),
+         so this yields "3.0.0+<sha>" and every build is distinguishable. ToolVersion.Current
+         reads it, and run.tool_version records it, so a bundle names the code that produced it.
+
+         Only the MAJOR component is compared (CompareCompatibilityValidator.cs:107-114, via
+         ToolVersion.ParseMajor), so the appended sha cannot make two builds of the same
+         release look incompatible. [F-12-6] -->
+    <Version>3.0.0</Version>
+
+    <!-- Static analysis: run the .NET + code-style analyzers. AnalysisMode is set to the
+         curated high-signal "minimum" set (genuine correctness/reliability/security rules)
+         rather than the full recommended set, which floods an established 123K-LOC codebase
+         with style nits. Warnings are surfaced but NOT treated as errors, so findings are
+         visible in build output / IDE without breaking the existing green build. Per-rule
+         severities are tuned in .editorconfig. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-minimum</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+</Project>

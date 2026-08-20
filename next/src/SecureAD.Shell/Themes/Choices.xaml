@@ -1,0 +1,51 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- A choice between a few options, on a light surface.
+
+         WHY THIS EXISTS. The product's only RadioButton style is the one the rail wears: light
+         text for a navy background. Worn on a white screen, an unselected option is white on
+         white - invisible until clicked. Seen on screen 2026-09-12 on the Assets level control,
+         where two of the three options could not be read.
+
+         Keyed rather than implicit, and the rail's style is left alone: the rail has been looked
+         at and is right, and restyling it to fix a different screen is how a reviewed thing
+         quietly breaks.
+
+         THE COLOUR IS SET ON THE TEXTBLOCK THAT DRAWS THE TEXT. A ContentPresenter may or may not
+         pass an inherited Foreground to whatever it builds, and the XAML will not tell you which. -->
+
+    <Style x:Key="ChoiceButton" TargetType="RadioButton">
+        <Setter Property="Margin" Value="0,0,8,0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Pill"
+                            Background="{StaticResource SurfaceRaisedBackground}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            Padding="12,5">
+                        <TextBlock x:Name="Label"
+                                   Text="{TemplateBinding Content}"
+                                   Foreground="{StaticResource PrimaryTextBrush}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Pill" Property="Background"
+                                    Value="{StaticResource AccentSubtleBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Pill" Property="Background"
+                                    Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Pill" Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Label" Property="Foreground"
+                                    Value="{StaticResource OnAccentTextBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

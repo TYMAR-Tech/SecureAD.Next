@@ -1,0 +1,561 @@
+<UserControl x:Class="SecureAD.Shell.Views.NewAuditView" x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
+        xmlns:views="clr-namespace:SecureAD.Shell.Views">
+
+    <UserControl.Resources>
+        <DataTemplate DataType="{x:Type vm:DomainDetailsViewModel}">
+            <views:DomainDetailsView />
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <!--
+        The audit surface. docs/decisions/0071-the-audit-is-modal-in-effect-not-in-its-own-window.md,
+        amending docs/decisions/0057-starting-an-audit-is-a-modal-act.md.
+
+        NOT A WINDOW. Starting an audit is still a distinct act with a beginning and an end, and an
+        operator still cannot wander away from a half-planned run - the shell's rail is inert until
+        the capture starts. What changed is that the act is enforced by the shell's state rather
+        than by a second title bar the product does not draw.
+
+        THE HEADER AND FOOTER ARE 0057's, kept whole. Neither was a consequence of being a window.
+
+        NO STATUS BAR, on this surface or the shell. The predecessor's reported the live controller
+        and a verification flag, and 0008 removed both from the product.
+
+        NOT ONE SENTENCE ABOUT A DOMAIN CHANGED. Everything said about a domain is what S-41 wrote.
+    -->
+
+    <Grid>
+      <DockPanel>
+
+        <!-- =========================================================================
+             Header. What forest, how many domains, which step, and what it asks.
+             ========================================================================= -->
+        <Border DockPanel.Dock="Top"
+                Background="{StaticResource SurfaceBackground}"
+                BorderBrush="{StaticResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="20,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="New audit" Style="{StaticResource ScreenTitle}" />
+                    <TextBlock Text="{Binding ForestFqdn}"
+                               Style="{StaticResource Identifier}"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+
+                <!-- The count of domains the plan covers. Not "3/3": nothing is being selected
+                     from anything, because every domain of the forest is read. -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding DomainCountLabel}"
+                           Style="{StaticResource SectionTitle}"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- The question this window asks. There is no step ordinal: there is one screen, and the
+             second step it used to carry showed this same table under a different heading. -->
+        <StackPanel DockPanel.Dock="Top" Margin="20,16,20,0">
+            <TextBlock Text="{Binding StepQuestion}"
+                       Style="{StaticResource SectionTitle}" />
+        </StackPanel>
+
+        <!-- =========================================================================
+             The notice. What used to be a MessageBox - 0071.
+
+             It sits under the question and above the work, because both things it reports are
+             answers to something the operator just did: a controller he typed, or a pass that
+             would not run. A banner further down would be found after he had stopped looking.
+
+             AMBER, NOT RED. 0056 decision 5 reserves red for critical findings and 0070 spends it
+             only on the control that stops something running. A refused host name is neither. The
+             fault brushes are the ones the footer already uses for this same kind of message -
+             something that happened to the tool, rather than a fact about a forest.
+             ========================================================================= -->
+        <Border DockPanel.Dock="Top"
+                Margin="20,12,20,0"
+                Padding="12,10"
+                Background="{StaticResource FaultSubtleBrush}"
+                BorderBrush="{StaticResource FaultBrush}"
+                BorderThickness="1"
+                Visibility="{Binding HasNotice, Converter={StaticResource Shown}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding Notice.Title}"
+                               FontWeight="{StaticResource EmphasisFontWeight}"
+                               TextWrapping="Wrap" />
+
+                    <!-- Read-only TextBox rather than TextBlock: a WPF TextBlock cannot be
+                         selected, and the one thing an operator needs from a refusal is the
+                         ability to copy it. -->
+                    <TextBox Text="{Binding Notice.Detail, Mode=OneWay}"
+                             Style="{StaticResource SelectableMessage}"
+                             Margin="0,4,0,0" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="Dismiss"
+                        Command="{Binding DismissNoticeCommand}"
+                        VerticalAlignment="Top" />
+            </Grid>
+        </Border>
+
+        <!-- =========================================================================
+             Footer. The actions, and any refusal beside the button it blocks.
+             ========================================================================= -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{StaticResource SurfaceBackground}"
+                BorderBrush="{StaticResource DividerBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Read-only TextBox rather than TextBlock: a WPF TextBlock cannot be selected,
+                     and the one thing an operator needs from a refusal is the ability to copy
+                     it. -->
+                <TextBox Grid.Column="0"
+                         Text="{Binding Problem, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource FaultBrush}"
+                         VerticalAlignment="Center"
+                         Margin="0,0,16,0" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <!-- The way off this surface. It exists because the rail is inert while a run
+                         is being planned - 0071 - so without it an operator who changed his mind
+                         has nowhere to go. It hides while anything is running, because Stop is the
+                         way out of those and two controls meaning "get me out of here" is one too
+                         many. -->
+                    <Button Content="{Binding LeaveLabel}"
+                            Command="{Binding LeaveCommand}"
+                            Margin="0,0,8,0"
+                            Visibility="{Binding CanLeave, Converter={StaticResource Shown}}" />
+
+                    <!-- Everything the table stopped carrying is one press away, and the mark says
+                         when there is something under it. Trimming a column is only honest if what
+                         it carried can still announce itself. -->
+                    <Button Command="{Binding ShowDetailsCommand}"
+                            Margin="0,0,8,0"
+                            Visibility="{Binding IsOnDomains, Converter={StaticResource Shown}}">
+                        <StackPanel Orientation="Horizontal">
+                            <ContentControl Content="{x:Static vm:FactState.EstablishedBad}"
+                                            Style="{StaticResource StateMark}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,6,0"
+                                            Visibility="{Binding AnyDomainNeedsAttention, Converter={StaticResource Shown}}" />
+                            <TextBlock Text="Details" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Content="Back"
+                            Command="{Binding BackCommand}"
+                            Margin="0,0,8,0"
+                            Visibility="{Binding IsOnReview, Converter={StaticResource Shown}}" />
+
+                    <!-- Next leads to the review, which is the only place Start lives. That is
+                         what keeps opening this window from being one click from a capture. -->
+                    <Button Content="Next"
+                            Command="{Binding ReviewCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0,0,8,0"
+                            Visibility="{Binding IsOnDomains, Converter={StaticResource Shown}}" />
+
+                    <Button Content="Start"
+                            Command="{Binding StartCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0,0,8,0"
+                            Visibility="{Binding IsOnReview, Converter={StaticResource Shown}}" />
+
+                    <!-- Shown only while something is running. A Stop that sits there disabled
+                         whenever nothing is happening is a control an operator learns to read past,
+                         which is the opposite of what 0070 spends red on. -->
+                    <Button Content="Stop"
+                            Style="{StaticResource DangerButton}"
+                            Command="{Binding StopCommand}"
+                            Visibility="{Binding CanStop, Converter={StaticResource Shown}}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- =========================================================================
+             The body. Two screens, drawn one at a time.
+
+             The first is what the run would read and the one place an operator changes it. The
+             second states what it will and will not do, starts it, reports it running, and then
+             reports what it produced - three moments of one decision, so they share a screen and
+             an operator watches the thing he authorised where he authorised it.
+             ========================================================================= -->
+        <!-- No cap here. The card the shell draws this in sets the width now - 0071 - so a second
+             constraint would fight it. -->
+        <Grid Margin="20,12,20,0">
+
+          <!-- ===================== Screen one: the domains. ===================== -->
+          <DockPanel Visibility="{Binding IsOnDomains, Converter={StaticResource Shown}}">
+
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <TextBlock Text="This reads every domain of the forest this machine is in. Nothing needs naming: the forest is found, and a controller is chosen for each domain."
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <TextBlock Text="This machine's site" Style="{StaticResource FieldLabel}" />
+                    <ContentControl Content="{x:Static vm:FactState.NotEstablished}"
+                                    Style="{StaticResource StateMark}"
+                                    Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding SiteDescription}"
+                               Foreground="{StaticResource NotEstablishedBrush}" />
+                </StackPanel>
+
+                <!-- =============================================================
+                     What the window is doing, and the way out of it.
+
+                     Indeterminate on purpose. The audit layer returns one result at the end of a
+                     pass, so a bar claiming to be four domains through nine would be a number
+                     this window invented to look responsive.
+
+                     The Cancel sits beside the message rather than in the footer, because it is
+                     the way out of THIS pass and an operator should not have to work out which
+                     of the window's controls applies to the thing he is watching.
+                     ============================================================= -->
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,10,0,0"
+                            Visibility="{Binding IsBusy, Converter={StaticResource Shown}}">
+                    <ProgressBar IsIndeterminate="True"
+                                 Width="140"
+                                 Height="4"
+                                 VerticalAlignment="Center" />
+
+                    <TextBlock Text="{Binding BusyMessage}"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource SecondaryTextBrush}" />
+
+                    <Button Content="Cancel"
+                            Style="{StaticResource DangerButton}"
+                            Command="{Binding StopCommand}"
+                            Margin="10,0,0,0" />
+                </StackPanel>
+
+                <!-- A pass that was stopped or could not finish leaves the table as far as it got.
+                     Offering it again is the whole remedy: nothing was written, so there is
+                     nothing to undo. -->
+                <Button Content="Look again"
+                        Command="{Binding OpenCommand}"
+                        HorizontalAlignment="Left"
+                        Margin="0,10,0,0"
+                        Visibility="{Binding MayLookAgain, Converter={StaticResource Shown}}" />
+            </StackPanel>
+
+            <!-- =====================================================================
+                 One row per domain, every fact visible at once.
+
+                 Dense, per 0056 decision 8: an administrator reads this for hours and vertical
+                 space spent on padding is a row he has to scroll for.
+
+                 The mark and the sentence travel together in every cell. The marks form columns
+                 the eye can run without reading, which is the whole point of giving them
+                 silhouettes rather than only colours.
+
+                 F-0056-2 applies here: DataGrid is not templated by this product's design system,
+                 so its chrome comes from WPF's Fluent theme. It is the first place the two
+                 languages meet, and it is the thing to look at hardest.
+                 ===================================================================== -->
+            <DataGrid ItemsSource="{Binding Rows}"
+                      ColumnHeaderStyle="{StaticResource TableColumnHeader}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserResizeRows="False"
+                      SelectionMode="Single"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalScrollBarVisibility="Auto"
+					  MinRowHeight="{StaticResource DenseRowMinHeight}"
+					  ColumnHeaderHeight="34"
+					  VerticalAlignment="Top"
+					  MaxHeight="300"
+                      Background="Transparent"
+                      BorderBrush="{StaticResource DividerBrush}"
+                      HorizontalGridLinesBrush="{StaticResource DividerBrush}">
+
+                <!-- A FactCell template stood here: a state mark beside a trimmed sentence, used by
+                     the five fact columns. Those columns moved behind Details and took their last
+                     reference with them, so what was left was markup nothing drew - and it was the
+                     last thing in this window that could cut a sentence mid-word, which is
+                     F-0056-4. -->
+
+                <DataGrid.Columns>
+                    <!-- =========================================================
+                         Include. The one column an operator acts on rather than reads.
+
+                         UNTICKING RAISES THE ATTESTATION. It does not take the domain out on its
+                         own: the domain leaves only once a reason and an authorising name have
+                         been given, per 0062, and a dismissed dialog puts the tick back. 0059
+                         makes that friction the control rather than an inconvenience.
+
+                         Every domain starts ticked, every run. 0059 forbids a domain being shown
+                         as pre-excluded, so nothing here is remembered from last time.
+                         ========================================================= -->
+                    <DataGridTemplateColumn Header="Include" Width="Auto">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsIncluded, Mode=TwoWay,
+                                              UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding MayChangeInclusion}"
+                                          HorizontalAlignment="Center"
+                                          ToolTip="Untick to leave this domain out of the run. You will be asked to account for it." />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTemplateColumn Header="Domain" Width="SizeToCells" MinWidth="150">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Domain}"
+                                           Style="{StaticResource Identifier}"
+                                           FontWeight="{StaticResource EmphasisFontWeight}"
+                                           TextWrapping="NoWrap"
+                                           ToolTip="{Binding NamingContext}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTemplateColumn Header="Read from" Width="SizeToCells" MinWidth="190">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Controller}"
+                                           Style="{StaticResource Identifier}"
+                                           TextWrapping="NoWrap" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Site, Connection, Serves it, Password settings and PDC emulator stood
+                         here and moved behind the Details button. Each said the same thing on
+                         every row of a healthy forest, and a column that always agrees with
+                         itself is a column nobody reads. Nothing was deleted - it moved, and
+                         the warning mark on that button is what stops the move being a way of
+                         hiding something. -->
+                    <!-- The override, on the row it applies to, as the predecessor had it. Star
+                         width so the header band reaches the table's edge: with every column sized
+                         to its content the header stopped mid-table and the rest of the strip
+                         rendered as bare background, which read as a rendering fault. -->
+                    <DataGridTemplateColumn Header="Read it from instead" Width="*" MinWidth="300">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal"
+                                            Visibility="{Binding MayNameAController, Converter={StaticResource Shown}}">
+                                    <TextBox Text="{Binding NamedController, UpdateSourceTrigger=PropertyChanged}"
+                                             FontFamily="{StaticResource IdentifierFontFamily}"
+                                             Width="220"
+                                             Padding="{StaticResource DenseCellPadding}" />
+                                    <Button Content="Validate"
+                                            Command="{Binding ValidateCommand}"
+                                            Padding="{StaticResource DenseCellPadding}"
+                                            Margin="6,0,0,0" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+
+          <!-- Nothing is printed under the table any more. The PDC emulator prompt, the failover
+               and choice notes, the per-domain faults and the refusals all moved into the Details
+               window, and the mark on that button is what says there is something to look at. A
+               paragraph under a table is only read by somebody already looking down there. -->
+
+            <!-- ============ Screen two: what the run will do, is doing, and did. ============ -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          Visibility="{Binding IsOnReview, Converter={StaticResource Shown}}">
+              <StackPanel Margin="0,0,0,10">
+
+                  <!-- What will be read, and from where. -->
+                  <TextBlock Text="{Binding Review.ReadHeading}"
+                             Style="{StaticResource SectionTitle}" />
+
+                  <ItemsControl ItemsSource="{Binding Review.WillBeRead}" Margin="0,6,0,0">
+                      <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                              <StackPanel Orientation="Horizontal" Margin="0,2">
+                                  <TextBlock Text="{Binding Domain}"
+                                             Style="{StaticResource Identifier}"
+                                             FontWeight="{StaticResource EmphasisFontWeight}"
+                                             MinWidth="180" />
+                                  <TextBlock Text="{Binding Controller}"
+                                             Style="{StaticResource Identifier}"
+                                             Foreground="{StaticResource SecondaryTextBrush}" />
+                              </StackPanel>
+                          </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <!-- F-0056-1. 0056 has every fact show in three states, and the third one was
+                       visible only one cell at a time: an operator could see each gap and was nowhere
+                       told there were eleven of them. This is the number he acts on before committing
+                       a machine to a capture measured in hours.
+
+                       It never shows zero for "not worked out yet" - the view model says so instead,
+                       because a count of unestablished facts is itself a fact. -->
+                  <TextBlock Text="{Binding UnestablishedFactSummary}"
+                             Style="{StaticResource SectionTitle}"
+                             TextWrapping="Wrap"
+                           Margin="0,10,0,0" />
+
+                <!-- Said rather than left to a disabled Start. A button an operator cannot press
+                     and cannot see a reason for is the screen refusing without explaining itself. -->
+                <TextBlock Text="{Binding UnattestedExclusionNote}"
+                           Tag="Fault"
+                           Style="{StaticResource StateText}"
+                           TextWrapping="Wrap"
+                           Margin="0,6,0,0"
+                           Visibility="{Binding HasUnattestedExclusions, Converter={StaticResource Shown}}" />
+
+                <!-- Every domain leaving this run, of either kind. The kind travels with each one
+                     so the two are told apart here too - 0063. Shown even when empty, because a
+                     review listing only what will be read would let a run with three excluded
+                     domains look like a run with none. -->
+                <TextBlock Text="{Binding Review.NotReadHeading}"
+                           Style="{StaticResource SectionTitle}"
+                           Margin="0,20,0,0" />
+
+                <TextBlock Text="Nothing is being left out of this audit."
+                           Style="{StaticResource BaseTextBlock}"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Margin="0,6,0,0"
+                           Visibility="{Binding HasNoExclusions, Converter={StaticResource Shown}}" />
+
+                <StackPanel Margin="0,6,0,0"
+                            Visibility="{Binding HasExclusions, Converter={StaticResource Shown}}">
+                    <ItemsControl ItemsSource="{Binding Exclusions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,6,0,0">
+                                    <TextBlock Text="{Binding Domain}"
+                                               Style="{StaticResource Identifier}"
+                                               FontWeight="{StaticResource EmphasisFontWeight}" />
+
+                                    <TextBlock Text="{Binding Why}"
+                                               Style="{StaticResource Caption}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource SecondaryTextBrush}" />
+
+                                    <TextBlock Text="{Binding Stated}"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource BaseTextBlock}" />
+
+                                    <TextBlock Text="{Binding Note}"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource Caption}"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               Visibility="{Binding HasNote, Converter={StaticResource Shown}}" />
+
+                                    <!-- Typed, and never presented as though it had been checked.
+                                         0062, last consequence. -->
+                                    <TextBlock Style="{StaticResource Caption}"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               Visibility="{Binding IsAttested, Converter={StaticResource Shown}}"
+                                               Text="{Binding AuthorisedBy, StringFormat='Authorised by {0}, as typed.'}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- What the run has to say about particular domains, in its own words. -->
+                <StackPanel Margin="0,20,0,0"
+                            Visibility="{Binding Review.HasWarnings, Converter={StaticResource Shown}}">
+                    <TextBlock Text="Worth knowing before you start"
+                               Style="{StaticResource SectionTitle}" />
+
+                    <ItemsControl ItemsSource="{Binding Review.Warnings}" Margin="0,6,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,3">
+                                    <ContentControl Content="{x:Static vm:FactState.EstablishedBad}"
+                                                    Style="{StaticResource StateMark}"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,3,8,0" />
+                                    <TextBlock Text="{Binding}"
+                                               TextWrapping="Wrap"
+                                               Style="{StaticResource BaseTextBlock}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- While it runs. Indeterminate for the same reason the opening pass is: the
+                     audit layer returns one result at the end, so a proportion would be invented. -->
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,20,0,0"
+                            Visibility="{Binding IsCapturing, Converter={StaticResource Shown}}">
+                    <ProgressBar IsIndeterminate="True" Width="140" Height="4"
+                                 VerticalAlignment="Center" />
+                    <TextBlock Text="Reading every partition in the forest. This may take a while."
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource SecondaryTextBrush}" />
+                </StackPanel>
+
+                <!-- What it produced. The button is disabled and says why: there is no screen that
+                     reads a bundle yet, and an enabled control that quietly did nothing would be
+                     the product claiming a capability it does not have. The path is given, because
+                     opening that folder is what an operator can actually do today. -->
+                <StackPanel Margin="0,20,0,0"
+                            Visibility="{Binding HasFinished, Converter={StaticResource Shown}}">
+                    <Button Content="View results"
+                            IsEnabled="False"
+                            HorizontalAlignment="Left" />
+
+                    <TextBlock Text="{Binding ResultsNote}"
+                               Style="{StaticResource Caption}"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,6,0,0" />
+                </StackPanel>
+
+                <TextBox Text="{Binding Report, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         MaxHeight="120"
+                         Margin="0,10,0,0"
+                         VerticalScrollBarVisibility="Auto" />
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </DockPanel>
+
+        <!-- The details panel, over everything it came from. Only drawn when there is one, so
+             nothing here is a hidden control an operator could tab into. The scrim is what says
+             the surface beneath is not the one being used - the same thing a window's shadow used
+             to say, drawn by the product this time. -->
+        <Border Background="{StaticResource ScrimBrush}"
+                Visibility="{Binding HasDetails, Converter={StaticResource Shown}}">
+            <Border Background="{StaticResource SurfaceBackground}"
+                    BorderBrush="{StaticResource DividerBrush}"
+                    BorderThickness="1"
+                    Margin="40"
+                    MaxWidth="820">
+                <ContentControl Content="{Binding Details}" />
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>

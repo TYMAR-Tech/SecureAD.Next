@@ -1,0 +1,171 @@
+<!--
+    StateMarks.xaml - four states, four treatments, and colour is never the only difference.
+
+    0056 decisions 1 and 2. This is the file the whole visual language exists for.
+
+    THE RULE THIS ENFORCES. Every fact on a screen has three states, not two: established and
+    good, established and bad, and not established. The ordinary way to style a status is two
+    colours - green and red, tick and cross - and applying that to a three-state fact deletes the
+    middle state silently, in the one layer a customer looks at. An operator would then see a fact
+    the run never measured rendered identically to one the run measured and found wanting, and
+    would make a security decision on it.
+
+    WHY EACH MARK IS A DIFFERENT SHAPE. Colour may not be the only carrier. An operator who cannot
+    distinguish red from green must still be able to tell a fault from a gap from a clean answer,
+    so the four marks differ in silhouette before they differ in hue:
+
+        established, good  - a filled disc          (solid, closed, complete)
+        established, bad   - a filled triangle      (pointed, directional, demands a look)
+        not established    - a hollow ring          (an outline with nothing in it: a gap)
+        fault              - a cross                (crossed strokes, unlike anything else here)
+
+    Print this screen in black and white and the four are still four things. That is the test.
+
+    THE HOLLOW RING IS THE IMPORTANT ONE. It is deliberately the quietest mark and the only one
+    that is not filled - 0056 decision 3, quiet by default. A gap is not a failure, and styling
+    every gap as one teaches an operator to dismiss the treatment within a week, at which point it
+    hides real problems rather than surfacing them. Quiet is a default and not a law: where the
+    owner judges that a gap carries risk, that screen raises it, and the judgement is recorded in
+    docs/areas/how-the-app-looks.md rather than re-argued.
+
+    RED, AND WHERE IT IS NOW SPENT. 0056 decision 5 reserved red for critical findings. It has since
+    been spent twice, both deliberately and both recorded: 0070 gives it to the control that stops
+    something already running, and 0074 gives it to a permission the classifier calls a takeover -
+    but only while the operator has turned on "Highlight risky permissions", so a screen nobody has
+    touched carries none of it.
+
+    NOTHING IN THIS FILE BINDS CriticalFindingBrush. The four marks below are about whether a fact
+    was established, which is a different question from how bad the answer is, and none of them is
+    red. The permission mark that is red lives in the permissions data template and not here,
+    because it is a classifier's verdict rather than one of these four states.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels">
+
+    <!-- Merges what it uses, so resolution does not depend on merge order elsewhere. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Brushes.xaml" />
+        <ResourceDictionary Source="Type.xaml" />
+        <ResourceDictionary Source="Spacing.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ===================================================================================
+         The four marks
+         =================================================================================== -->
+
+    <!-- Established and good: a filled disc. Closed and complete. -->
+    <DataTemplate x:Key="EstablishedGoodMark">
+        <Ellipse Width="{StaticResource StateMarkSize}"
+                 Height="{StaticResource StateMarkSize}"
+                 Fill="{StaticResource EstablishedGoodBrush}"
+                 ToolTip="Established"
+                 AutomationProperties.Name="Established" />
+    </DataTemplate>
+
+    <!-- Established and bad: a filled triangle. Pointed, and the only mark with a vertex at the
+         top, so it reads differently at a glance and at a squint. -->
+    <DataTemplate x:Key="EstablishedBadMark">
+        <Path Fill="{StaticResource EstablishedBadBrush}"
+              Stretch="Uniform"
+              Width="{StaticResource StateMarkSize}"
+              Height="{StaticResource StateMarkSize}"
+              Data="M 5,0 L 10,9 L 0,9 Z"
+              ToolTip="Established, and worth your attention"
+              AutomationProperties.Name="Established, and worth your attention" />
+    </DataTemplate>
+
+    <!--
+        Not established: a hollow ring.
+
+        An outline with nothing inside it, which is what a gap is. The quietest of the four: it
+        uses the neutral brush, it is not filled, and it carries no weight change. It should read
+        as "nothing here", never as "something is wrong".
+    -->
+    <DataTemplate x:Key="NotEstablishedMark">
+        <Ellipse Width="{StaticResource StateMarkSize}"
+                 Height="{StaticResource StateMarkSize}"
+                 Fill="Transparent"
+                 Stroke="{StaticResource NotEstablishedBrush}"
+                 StrokeThickness="1.25"
+                 ToolTip="Not established - the run did not measure this"
+                 AutomationProperties.Name="Not established. The run did not measure this." />
+    </DataTemplate>
+
+    <!-- A fault the run reported: a cross. Two crossed strokes, sharing no silhouette with the
+         other three. -->
+    <DataTemplate x:Key="FaultMark">
+        <Path Stroke="{StaticResource FaultBrush}"
+              StrokeThickness="1.75"
+              StrokeStartLineCap="Round"
+              StrokeEndLineCap="Round"
+              Stretch="Uniform"
+              Width="{StaticResource StateMarkSize}"
+              Height="{StaticResource StateMarkSize}"
+              Data="M 0,0 L 10,10 M 10,0 L 0,10"
+              ToolTip="The run reported a fault here"
+              AutomationProperties.Name="The run reported a fault here." />
+    </DataTemplate>
+
+    <!-- ===================================================================================
+         The mark itself
+
+         Bind Content to a FactState. The default template is the hollow ring, so a mark whose
+         state was never set claims nothing rather than claiming a clean answer.
+         =================================================================================== -->
+
+    <Style x:Key="StateMark" TargetType="ContentControl">
+        <Setter Property="Width" Value="{StaticResource StateMarkSize}" />
+        <Setter Property="Height" Value="{StaticResource StateMarkSize}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="ContentTemplate" Value="{StaticResource NotEstablishedMark}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Content, RelativeSource={RelativeSource Self}}"
+                         Value="{x:Static vm:FactState.EstablishedGood}">
+                <Setter Property="ContentTemplate" Value="{StaticResource EstablishedGoodMark}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Content, RelativeSource={RelativeSource Self}}"
+                         Value="{x:Static vm:FactState.EstablishedBad}">
+                <Setter Property="ContentTemplate" Value="{StaticResource EstablishedBadMark}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Content, RelativeSource={RelativeSource Self}}"
+                         Value="{x:Static vm:FactState.Fault}">
+                <Setter Property="ContentTemplate" Value="{StaticResource FaultMark}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ===================================================================================
+         The sentence beside the mark
+
+         The second non-colour carrier is weight. Established-bad and fault are SemiBold;
+         not-established is normal weight and a muted colour, so it recedes rather than shouts.
+         Bind Tag to the FactState.
+         =================================================================================== -->
+
+    <Style x:Key="StateText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="FontWeight" Value="{StaticResource BodyFontWeight}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{StaticResource NotEstablishedBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                         Value="{x:Static vm:FactState.EstablishedGood}">
+                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                         Value="{x:Static vm:FactState.EstablishedBad}">
+                <Setter Property="Foreground" Value="{StaticResource EstablishedBadBrush}" />
+                <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                         Value="{x:Static vm:FactState.Fault}">
+                <Setter Property="Foreground" Value="{StaticResource FaultBrush}" />
+                <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+</ResourceDictionary>

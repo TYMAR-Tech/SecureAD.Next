@@ -1,0 +1,90 @@
+﻿<!--
+    Palette.xaml - raw colour values, and nothing else.
+
+    This file is the only one a second theme replaces. Nothing here knows what a colour is FOR:
+    these are values named for hue and step, and the meaning is applied one layer up in
+    Brushes.xaml. That split is what makes 0056 decision 7 real - a dark palette later supplies
+    this file and touches no screen, no template and no brush name.
+
+    Consequently: never reference a key from this file outside Brushes.xaml. A view that binds
+    Neutral500 has hard-coded a grey under a different name, and the day the palette changes it
+    will be the one thing that does not move.
+
+    Only the light palette ships. 0056 decision 7.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Neutrals carry almost the whole product. An audit tool is mostly text on a surface, and a
+        palette that reaches for colour to make a screen legible has usually made it louder
+        instead. The steps are spaced so that adjacent ones are distinguishable on a poor display
+        without any pair being an accidental near-match.
+    -->
+    <Color x:Key="Neutral0">#FFFFFFFF</Color>
+    <Color x:Key="Neutral50">#FFF7F8FA</Color>
+    <Color x:Key="Neutral100">#FFEDEFF2</Color>
+    <Color x:Key="Neutral200">#FFDDE1E6</Color>
+    <Color x:Key="Neutral300">#FFC3C9D0</Color>
+    <Color x:Key="Neutral400">#FF9AA2AC</Color>
+    <Color x:Key="Neutral500">#FF6B747F</Color>
+    <Color x:Key="Neutral600">#FF4C555F</Color>
+    <Color x:Key="Neutral700">#FF343B43</Color>
+    <Color x:Key="Neutral800">#FF22282E</Color>
+    <Color x:Key="Neutral900">#FF12161A</Color>
+
+    <!--
+        Blue is the product's one accent: selection, focus, and the things an operator acts on. It
+        is deliberately not a status colour, so that nothing an operator clicks can be mistaken for
+        a verdict.
+    -->
+    <Color x:Key="Blue100">#FFDCE8FD</Color>
+    <Color x:Key="Blue300">#FF7FAAF5</Color>
+    <Color x:Key="Blue500">#FF2F7BEF</Color>
+    <Color x:Key="Blue600">#FF1A5FCC</Color>
+    <Color x:Key="Blue700">#FF13489C</Color>
+
+    <!-- Green: a question that was asked and answered well. -->
+    <Color x:Key="Green100">#FFDFF3E4</Color>
+    <Color x:Key="Green500">#FF2E9E52</Color>
+    <Color x:Key="Green600">#FF1E7A3E</Color>
+    <Color x:Key="Green700">#FF15602F</Color>
+
+    <!--
+        Amber: a question that was asked and answered badly, and operator prompts. Not red. Under
+        0056 decision 5 the capture-side screens spend no red at all, so amber is the strongest
+        colour any screen built before findings may use.
+    -->
+    <Color x:Key="Amber100">#FFFBEEC9</Color>
+    <Color x:Key="Amber500">#FFC08000</Color>
+    <Color x:Key="Amber600">#FF9A6300</Color>
+    <Color x:Key="Amber700">#FF7A4E00</Color>
+
+    <!-- Navy: chrome only - the rail, and what frames the content rather than being it. Held
+         apart from the neutrals: those are chosen to be legible, these to recede. -->
+    <Color x:Key="Navy700">#FF2A3648</Color>
+    <Color x:Key="Navy800">#FF1E2938</Color>
+    <Color x:Key="Navy900">#FF161E2A</Color>
+
+    <!-- The scrim: the darkest chrome navy at a third, laid over a surface that is still
+         there but is not the one being used. It does what a window shadow used to do, which
+         is why it comes from the chrome ramp: it frames, and it states nothing. -->
+    <Color x:Key="NavyScrim">#55161E2A</Color>
+
+    <!--
+        Red: CRITICAL FINDINGS, AND THE WAY OUT OF SOMETHING RUNNING. 0056 decision 5, amended by 0070.
+
+        The reservation still holds for FACTS: nothing a capture-side screen says about a domain is red.
+        The ramp exists now so that the findings work inherits a colour that still carries its
+        meaning; a palette that has already spent its strongest signal on gaps and prompts has
+        nothing left for the thing an auditor came for.
+
+        A screen painting a state mark, a cell or a row in one of these keys is making the mistake
+        this reservation exists to prevent.
+    -->
+    <Color x:Key="Red100">#FFFBE0E0</Color>
+    <Color x:Key="Red500">#FFE03131</Color>
+    <Color x:Key="Red600">#FFC02626</Color>
+    <Color x:Key="Red700">#FF9B1C1C</Color>
+
+</ResourceDictionary>

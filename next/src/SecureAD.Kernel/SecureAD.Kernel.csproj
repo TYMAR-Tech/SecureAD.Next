@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Deliberately net8.0, not net8.0-windows. The directory kernel parses bytes and
+         manipulates strings; it has no Windows dependency and must never acquire one.
+         The existing SecureAD.Core targets net8.0-windows, which let UI-shaped types
+         (DisplayFormatting) settle in the domain project. This target makes that a
+         compile error rather than a convention. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SecureAD.Kernel</RootNamespace>
+    <AssemblyName>SecureAD.Kernel</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,50 @@
+<UserControl x:Class="SecureAD.Shell.Views.ObjectSectionList" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- THE LEFT COLUMN, WHILE AN OBJECT IS BEING READ.
+
+         It takes the tree's place rather than sitting beside it. The geometry does not change, so
+         nothing reflows and the content area stays full width - which is what a table of permission
+         entries needs and what a growing list of sections needs.
+
+         The tree is not gone, it is one click away, and the object being read is named at the top
+         so the column never leaves an operator wondering what these sections are of. -->
+
+    <DockPanel>
+
+        <Button DockPanel.Dock="Top" Content="Back to the listing"
+                Command="{Binding CloseObjectCommand}"
+                HorizontalAlignment="Left" Margin="0,0,0,12" />
+
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock Text="{Binding Opened.Name}" Style="{StaticResource RowTitle}"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding Opened.ObjectType}"
+                       Foreground="{StaticResource SecondaryTextBrush}" />
+        </StackPanel>
+
+        <!-- WHICH SECTIONS EXIST IS DECIDED BY THE OBJECT'S CLASS, in ObjectSectionCatalog. A user
+             does not get a section about local administrator passwords, because a user is not a
+             thing LAPS applies to - and NOT because the value was missing, which would be an
+             inference from a silence the directory does not let anyone read. -->
+        <ListBox ItemsSource="{Binding Opened.Sections}"
+                 SelectedItem="{Binding Opened.Selected, Mode=TwoWay}"
+                 BorderThickness="0" Background="Transparent"
+                 HorizontalContentAlignment="Stretch">
+            <!-- Tight enough that the whole section list is one glance. It grew a row every
+                 time a section was added, and at the padding a ListBoxItem defaults to, eight
+                 sections filled the column. -->
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="8,5" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

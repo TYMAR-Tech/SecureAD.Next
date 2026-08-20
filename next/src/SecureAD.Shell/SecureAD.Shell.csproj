@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WPF rather than WinUI 3, under 0046. Two measurements decided it: the product is
+         grid-shaped and WinUI 3 has no first-party DataGrid, and the product ships as a single
+         self-contained executable, which WinUI 3 cannot produce. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>SecureAD.Shell</RootNamespace>
+    <!-- The product's executable. The command line publishes as "securead-cli" so the two do not
+         collide: Windows filenames and assembly resolution are both case-insensitive, so this and
+         a "securead" would be one name, and CommandLineSurfaceGateTests would load whichever it
+         found first. -->
+    <AssemblyName>SecureAD</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- The product runs on 64-bit Windows and nowhere else. Stated here rather than left to the
+         SDK's default, so what a build produces matches what a publish produces, and so a publish
+         needs no -r on the command line. SelfContained is deliberately NOT set here: it belongs to
+         the publish, and setting it would make every ordinary build carry a runtime.
+         See docs/decisions/0046-the-shell-is-wpf.md for the publish switches. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SecureAD.Kernel\SecureAD.Kernel.csproj" />
+    <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+    <ProjectReference Include="..\SecureAD.Audit\SecureAD.Audit.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <!-- The window exports nothing: a shell offers screens, not types, and a public view model is
+       surface nothing outside this project could ever legitimately consume. The test project is
+       the one exception, so the seal is opened for it explicitly rather than by making the
+       product's surface wider than it needs to be. Held to its terms by ShellSurfaceGateTests. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
+  </ItemGroup>
+
+</Project>

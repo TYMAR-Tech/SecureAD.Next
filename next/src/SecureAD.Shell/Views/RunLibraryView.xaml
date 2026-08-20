@@ -1,0 +1,57 @@
+<UserControl x:Class="SecureAD.Shell.Views.RunLibraryView" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="{StaticResource ScreenPadding}">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="Runs" Style="{StaticResource ScreenTitle}" Margin="0,0,0,12" />
+
+            <Button Content="Refresh"
+                    Command="{Binding RefreshCommand}"
+                    HorizontalAlignment="Left"
+                    Margin="0,0,0,8" />
+
+            <!-- Read-only TextBox rather than TextBlock: a TextBlock cannot be selected, and a
+                 failure an operator cannot copy is a failure they cannot report. -->
+            <TextBox Text="{Binding Problem, Mode=OneWay}"
+                     Style="{StaticResource SelectableMessage}"
+                     Foreground="{StaticResource FaultBrush}"
+                     Margin="0,0,0,8" />
+        </StackPanel>
+
+        <!-- Said only when the library was read and genuinely held nothing. "No runs" and
+             "I could not look" are different sentences. -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="This run library holds no runs."
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Margin="0,0,0,8"
+                   Visibility="{Binding IsEmpty, Converter={StaticResource Shown}}" />
+
+        <DataGrid ItemsSource="{Binding Runs}"
+                  ColumnHeaderStyle="{StaticResource TableColumnHeader}"
+                  SelectedItem="{Binding Selected}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Run" Binding="{Binding Identifier}" Width="2*" />
+                <DataGridTextColumn Header="Outcome" Binding="{Binding State}" Width="Auto" />
+
+                <!-- A template column rather than a text column, because a DataGridTextColumn
+                     CLIPS rather than wraps. Seen on screen 2026-08-18: an interrupted run's
+                     sentence stopped at "so the reason is on the mach". That sentence is the
+                     remedy - Interrupted and Damaged are separate states BECAUSE what to do about
+                     them differs - so the half being cut was the half worth reading. F-0056-3. -->
+                <DataGridTemplateColumn Header="What it means" Width="3*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Meaning}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,8,4" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

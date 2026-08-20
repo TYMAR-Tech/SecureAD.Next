@@ -1,0 +1,43 @@
+﻿<UserControl x:Class="SecureAD.Shell.Views.GapsCard" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- What the tree cannot show, and why.
+
+         ON THE SCREEN RATHER THAN BEHIND A TAB. It was briefly going to be a peer of Objects in
+         the second row; that would put what the run FAILED to read one click away from being
+         missed, and a tree with a branch missing looks exactly like a smaller forest. It stays
+         where the tree is.
+
+         Absent entirely when there are no gaps, rather than an empty card reading "none", which
+         would be one more thing to read on the common path. -->
+
+    <Border Style="{StaticResource Card}" Margin="0,8,0,0"
+            MaxHeight="220"
+            Visibility="{Binding HasGaps, Converter={StaticResource Shown}}">
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Not shown, and why"
+                       Style="{StaticResource SectionTitle}" />
+
+            <!-- Its own scroll, and a ceiling on the height. A forest with several unread
+                 partitions produces a long list, and without this the card grew until it covered
+                 the tree it sits beneath - seen on screen 2026-09-12. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Gaps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4">
+                                <TextBlock Text="{Binding Kind}" Style="{StaticResource RowTitle}" />
+                                <TextBlock Text="{Binding Subject}"
+                                           Style="{StaticResource Identifier}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
+                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>
