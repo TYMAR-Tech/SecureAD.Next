@@ -1,6 +1,5 @@
 using System.Reflection;
 using SecureAD.Audit.Capture;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -193,7 +192,7 @@ public sealed class LdapEntryReaderDocumentationTests
         Table("<!-- COMPLETENESS:BEGIN -->", "<!-- COMPLETENESS:END -->", "State");
 
     private static string DocumentText() =>
-        File.ReadAllText(Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document));
+        File.ReadAllText(Path.Combine(RepositoryLocation.Root(), "docs", "next", Document));
 
     /// <summary>
     /// A three-column table between two markers, keyed by its first column. Only what lies between
@@ -203,7 +202,7 @@ public sealed class LdapEntryReaderDocumentationTests
     private static Dictionary<string, (string Second, string Third)> Table(
         string begin, string end, string headerCell)
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
         Assert.True(File.Exists(path), $"Expected the document at {path}.");
 
         var lines = File.ReadAllLines(path);

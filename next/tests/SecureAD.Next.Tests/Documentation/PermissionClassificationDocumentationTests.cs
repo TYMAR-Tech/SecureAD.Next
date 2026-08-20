@@ -1,7 +1,6 @@
 using System.Reflection;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -22,7 +21,6 @@ namespace SecureAD.Next.Tests.Documentation;
 /// owner.
 /// </para>
 /// </summary>
-[Collection(nameof(InventoryFileCollection))]
 public sealed class PermissionClassificationDocumentationTests
 {
     private const string Document = "S-4-dangerous-permission-classification.md";
@@ -185,7 +183,6 @@ public sealed class PermissionClassificationDocumentationTests
         var text = Read();
 
         Assert.Contains("K16", text, StringComparison.Ordinal);
-        Assert.Contains("K16", OldAppInventory.RowIdentifiers());
         Assert.Contains("the three do not agree, and there are not three of them but five", text, StringComparison.Ordinal);
     }
 
@@ -213,34 +210,33 @@ public sealed class PermissionClassificationDocumentationTests
     }
 
     /// <summary>
-    /// The DCSync question is not K16's to answer, and an obligation nobody owns is an obligation
-    /// nobody discharges. It is handed to inventory row E18, where the rule is rebuilt, so this
-    /// asserts three things: that the document says which row, that the row exists, and that the
-    /// row itself carries the prerequisite.
-    ///
-    /// <para>
-    /// The last of those is the point. A caveat that lives only in a slice document has already
-    /// been stripped off once in this repository - a finding said it wanted confirming rather than
-    /// believing, and the row that inherited it read it as settled. The inventory row is where the
-    /// caveat is written down against the subject itself, so a session picking that subject up
-    /// meets it; a finding in a document from three sessions ago is not met by anyone.
-    /// </para>
+    /// The DCSync question is not this row's to answer, so the document must say so rather than
+    /// leave a silent gap.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The prerequisite this used to point at, written down here because its old home is
+    /// gone.</b> This test formerly asserted that inventory row <c>E18</c> existed and carried a
+    /// prerequisite. That inventory described the old application and was archived, and the
+    /// caveat would have gone with it. Verbatim:
+    /// </para>
+    /// <para>
+    /// <i>Prerequisite before this row starts: the DCSync lab check. <c>SEC-002</c> and
+    /// <c>SEC-076</c> contradict each other on what DCSync is and both are source of truth for
+    /// their own rule. Do not rebuild the DCSync rule on an assumption; grant a test principal
+    /// exactly <c>Get-Changes</c> + <c>Get-Changes-In-Filtered-Set</c> in a lab forest and
+    /// attempt the read.</i>
+    /// </para>
+    /// <para>
+    /// That is a contradiction between two rule cards that still ship, so it outlives the
+    /// inventory it was recorded in. It belongs against the rules themselves; it is parked here
+    /// because <c>docs/rules/</c> is the owner's to change, not this session's.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void TheDcSyncQuestionIsHandedToARowThatCarriesItAsAPrerequisite()
+    public void TheDcSyncQuestionIsHandedOnRatherThanAnsweredHere()
     {
-        const string Row = "E18";
-
-        Assert.Contains(Row, Read(), StringComparison.Ordinal);
-        Assert.Contains(Row, OldAppInventory.RowIdentifiers());
-
-        var inventoryRow = File.ReadAllLines(OldAppInventory.InventoryPath())
-            .Single(l => l.StartsWith($"| {Row} |", StringComparison.Ordinal));
-
-        Assert.Contains("Prerequisite", inventoryRow, StringComparison.Ordinal);
-        Assert.Contains("lab", inventoryRow, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SEC-002", inventoryRow, StringComparison.Ordinal);
-        Assert.Contains("SEC-076", inventoryRow, StringComparison.Ordinal);
+        Assert.Contains("E18", Read(), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -336,7 +332,7 @@ public sealed class PermissionClassificationDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

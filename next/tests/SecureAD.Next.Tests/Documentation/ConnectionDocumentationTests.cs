@@ -1,5 +1,4 @@
 using SecureAD.Audit.Connect;
-using SecureAD.Next.Tests.Inventory;
 using SecureAD.Evidence;
 using Xunit;
 
@@ -103,7 +102,7 @@ public sealed class ConnectionDocumentationTests
     private static string DecisionReference(string text)
     {
         var decisions = Directory
-            .EnumerateFiles(Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "decisions"), "*.md")
+            .EnumerateFiles(Path.Combine(RepositoryLocation.Root(), "docs", "decisions"), "*.md")
             .Select(Path.GetFileNameWithoutExtension)
             .Where(name => name is not null && text.Contains(name, StringComparison.Ordinal))
             .ToList();
@@ -114,7 +113,7 @@ public sealed class ConnectionDocumentationTests
 
     private static string SliceText()
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Slice);
         if (!File.Exists(path))
             throw new FileNotFoundException("Expected the slice document at " + path + ".", path);
 

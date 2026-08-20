@@ -1,5 +1,4 @@
 using SecureAD.Kernel.Security;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -203,7 +202,7 @@ public sealed class SecurityDocumentationTests
     }
 
     private static string Path() =>
-        System.IO.Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

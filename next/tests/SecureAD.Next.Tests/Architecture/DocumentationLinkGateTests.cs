@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -62,7 +61,7 @@ public sealed class DocumentationLinkGateTests
         Assert.False(File.Exists(absent));
     }
 
-    private static string DocsRoot() => Path.Combine(OldAppInventory.RepositoryRoot(), "docs");
+    private static string DocsRoot() => Path.Combine(RepositoryLocation.Root(), "docs");
 
     private static List<(string Document, int Line, string Target, string Resolved)> Links()
     {
@@ -90,7 +89,7 @@ public sealed class DocumentationLinkGateTests
                         continue;
 
                     found.Add((
-                        Path.GetRelativePath(OldAppInventory.RepositoryRoot(), file),
+                        Path.GetRelativePath(RepositoryLocation.Root(), file),
                         i + 1,
                         relative,
                         Path.GetFullPath(Path.Combine(directory, relative))));

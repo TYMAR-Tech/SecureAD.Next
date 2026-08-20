@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -309,7 +308,7 @@ public sealed class ConceptRegistryTests
     }
 
     private static string RegistryPath() =>
-        Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", RegistryFile);
+        Path.Combine(RepositoryLocation.Root(), "docs", "next", RegistryFile);
 
     /// <summary>
     /// The registry's rows. Only what lies between the markers is parsed, so the prose around the

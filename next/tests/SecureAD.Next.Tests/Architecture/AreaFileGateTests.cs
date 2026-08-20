@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -228,7 +227,7 @@ public sealed class AreaFileGateTests
         Assert.False(TestExists(nameof(RelativeLink), out _));
     }
 
-    private static string AreaDirectory() => Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "areas");
+    private static string AreaDirectory() => Path.Combine(RepositoryLocation.Root(), "docs", "areas");
 
     private static List<string> AreaFiles()
     {

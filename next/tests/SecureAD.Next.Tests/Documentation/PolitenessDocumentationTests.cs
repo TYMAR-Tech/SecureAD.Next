@@ -1,6 +1,5 @@
 using System.Reflection;
 using SecureAD.Audit.Capture;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -276,7 +275,7 @@ public sealed class PolitenessDocumentationTests
     private static Dictionary<string, (string Second, string Third)> Table(
         string begin, string end, string headerCell)
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
         Assert.True(File.Exists(path), $"Expected the document at {path}.");
 
         var lines = File.ReadAllLines(path);

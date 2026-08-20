@@ -1,6 +1,5 @@
 using System.DirectoryServices.Protocols;
 using SecureAD.Audit.Capture;
-using SecureAD.Next.Tests.Inventory;
 using SecureAD.Evidence;
 using Xunit;
 using SecureAD.Kernel.Capture;
@@ -217,7 +216,7 @@ public sealed class CaptureUnitDocumentationTests
 
     private static Dictionary<string, string> RefusedRows()
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
         var lines = File.ReadAllLines(path);
         var rows = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -232,7 +231,7 @@ public sealed class CaptureUnitDocumentationTests
 
     private static Dictionary<string, string> Rows(string begin, string end)
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
         Assert.True(File.Exists(path), $"Expected the document at {path}.");
 
         var rows = new Dictionary<string, string>(StringComparer.Ordinal);

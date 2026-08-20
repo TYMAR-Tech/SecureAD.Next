@@ -1,4 +1,3 @@
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -307,7 +306,7 @@ public sealed class ArchitectureDocumentationTests
     }
 
     private static string DocumentPath() =>
-        Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
     private static string Read()
     {

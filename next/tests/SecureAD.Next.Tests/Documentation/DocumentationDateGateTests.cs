@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -115,7 +114,7 @@ public sealed class DocumentationDateGateTests
     }
 
     private static string Relative(string path) =>
-        Path.GetRelativePath(OldAppInventory.RepositoryRoot(), path);
+        Path.GetRelativePath(RepositoryLocation.Root(), path);
 
     /// <summary>
     /// Every document and every source comment that could carry a date. Source is included
@@ -123,7 +122,7 @@ public sealed class DocumentationDateGateTests
     /// </summary>
     private static IReadOnlyList<string> DatedFiles()
     {
-        var root = OldAppInventory.RepositoryRoot();
+        var root = RepositoryLocation.Root();
 
         var docs = Directory.EnumerateFiles(
             Path.Combine(root, "docs"), "*.md", SearchOption.AllDirectories);

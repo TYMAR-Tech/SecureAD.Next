@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -31,7 +30,7 @@ public sealed class GoverningDocumentTests
     {
         var source = Directory
             .EnumerateFiles(
-                System.IO.Path.Combine(OldAppInventory.RepositoryRoot(), "next", "src"),
+                System.IO.Path.Combine(RepositoryLocation.Root(), "next", "src"),
                 "*.cs",
                 SearchOption.AllDirectories)
             .Where(p => !p.Contains(
@@ -57,5 +56,5 @@ public sealed class GoverningDocumentTests
 
     private static string Read(string document) =>
         File.ReadAllText(System.IO.Path.Combine(
-            OldAppInventory.RepositoryRoot(), "docs", "next", document));
+            RepositoryLocation.Root(), "docs", "next", document));
 }

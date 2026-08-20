@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using SecureAD.Audit.Capture;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 using SecureAD.Kernel.Capture;
 
@@ -62,7 +61,6 @@ namespace SecureAD.Next.Tests.Documentation;
 /// <c>E16</c> and recorded as <c>F-S7-24</c> and <c>F-S44-2</c>.
 /// </para>
 /// </summary>
-[Collection(nameof(InventoryFileCollection))]
 public sealed class CapturedAttributeCatalogDocumentationTests
 {
     private const string Document = "S-8-captured-attribute-catalogue.md";
@@ -134,30 +132,66 @@ public sealed class CapturedAttributeCatalogDocumentationTests
     }
 
     /// <summary>
-    /// A reader is named either as an inventory row or as a rule card, and whichever it is has to
-    /// exist. A promise pointing at nothing can never come due, which is how an exemption becomes
-    /// permanent.
+    /// Every reader a documented attribute names has to be a real rule card, or one of the
+    /// eighteen old-application components listed below. A promise pointing at nothing can never
+    /// come due, which is how an exemption becomes permanent.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This check is weaker than it looks, and the weakness is deliberate and temporary.</b>
+    /// A reader used to be validated against the old application's inventory, which was archived
+    /// along with the component map behind it. Eighteen of the catalogue's readers are not rule
+    /// cards at all: they are components of the predecessor - <c>J34</c> was its object inspector,
+    /// <c>E19</c> its object-attribute rules. So a large part of what this product captures is
+    /// justified by what the old product did with the value, not by any rule this one has.
+    /// </para>
+    /// <para>
+    /// Listing them here keeps the guard doing its real job - a mistyped rule identifier still
+    /// fails - without pretending the eighteen are justified. <c>docs/decisions/0064</c> says an
+    /// attribute is justified by a rule or by the object view, and re-justifying these against
+    /// that record is work this session did not do.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void EveryReaderNamedIsARealInventoryRowOrRuleCard()
+    public void EveryReaderNamedIsARealRuleCardOrANamedLegacyComponent()
     {
-        var components = OldAppInventory.RowIdentifiers();
-        var rules = RuleCardIds();
+        var known = new HashSet<string>(RuleCardIds(), StringComparer.Ordinal);
+        foreach (var legacy in LegacyComponentReaders) known.Add(legacy);
 
         var unknown = DocumentedAttributes()
             .SelectMany(d => Readers(d).Select(r => (d, r)))
-            .Where(x => !components.Contains(x.r) && !rules.Contains(x.r))
+            .Where(x => !known.Contains(x.r))
             .Select(x => $"  {x.d.Name} names '{x.r}' (line {x.d.Line})")
             .ToList();
 
         Assert.True(
             unknown.Count == 0,
-            Document + " names readers that are neither rows in the inventory nor rule cards in "
-            + "docs/rules/. A consumer that does not exist is indistinguishable from no consumer "
-            + "at all, and a typo in a rule identifier would otherwise read as a satisfied "
-            + "promise:"
+            Document + " names readers that are neither rule cards in docs/rules/ nor one of the "
+            + "listed old-application components. A consumer that does not exist is "
+            + "indistinguishable from no consumer at all, and a typo in a rule identifier would "
+            + "otherwise read as a satisfied promise:"
             + Environment.NewLine + string.Join(Environment.NewLine, unknown));
     }
+
+    /// <summary>
+    /// The old application's components the catalogue still cites as readers, with what each one
+    /// was. Closed and explicit so that adding a nineteenth is a deliberate act.
+    /// </summary>
+    private static readonly string[] LegacyComponentReaders =
+    [
+        "B2", "B4", "B6", "B8",
+        "B11",  // Group membership writer and unresolved-member classification
+        "B12",  // Principal resolution writer
+        "B13",
+        "B20",  // Capture run bookkeeping and guards
+        "D3",
+        "E16", "E18",
+        "E19",  // Object-attribute rules
+        "E20", "E21", "E22",
+        "J33",  // ACE decoding and trustee aggregation
+        "J34",  // Object inspector
+        "K16",
+    ];
 
     /// <summary>
     /// Cardinality decides whether a value is range-retrieved and storage decides whether it is
@@ -312,7 +346,7 @@ public sealed class CapturedAttributeCatalogDocumentationTests
     /// </summary>
     private static HashSet<string> RuleCardIds()
     {
-        var directory = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "rules");
+        var directory = Path.Combine(RepositoryLocation.Root(), "docs", "rules");
 
         if (!Directory.Exists(directory))
         {
@@ -407,7 +441,7 @@ public sealed class CapturedAttributeCatalogDocumentationTests
             .Select(t => t.Name);
 
     private static string DocumentPath() =>
-        Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
     /// <summary>
     /// The documents describing the capture component. Named explicitly rather than discovered by
@@ -424,7 +458,7 @@ public sealed class CapturedAttributeCatalogDocumentationTests
 
     private static string ReadSlice(string slice)
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", slice);
 
         Assert.True(
             File.Exists(path),

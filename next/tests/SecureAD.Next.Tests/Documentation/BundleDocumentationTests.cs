@@ -1,6 +1,5 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -161,7 +160,7 @@ public sealed class BundleDocumentationTests : IDisposable
     /// </summary>
     private static Dictionary<string, string> DocumentedRows()
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Slice);
         if (!File.Exists(path))
             throw new FileNotFoundException("Expected the slice document at " + path + ".", path);
 

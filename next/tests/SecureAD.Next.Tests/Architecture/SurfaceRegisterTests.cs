@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -180,7 +179,7 @@ public sealed class SurfaceRegisterTests
     }
 
     private static string RegisterPath() =>
-        Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", RegisterFile);
+        Path.Combine(RepositoryLocation.Root(), "docs", "next", RegisterFile);
 
     /// <summary>
     /// The register's rows: the type, the area that owns it, and the line it sits on. Only what
@@ -239,7 +238,7 @@ public sealed class SurfaceRegisterTests
     /// </summary>
     private static HashSet<string> AreaFileNames() =>
         Directory
-            .GetFiles(Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "areas"), "*.md")
+            .GetFiles(Path.Combine(RepositoryLocation.Root(), "docs", "areas"), "*.md")
             .Select(Path.GetFileNameWithoutExtension)
             .Where(n => n is not null && n != "README")
             .Select(n => n!)

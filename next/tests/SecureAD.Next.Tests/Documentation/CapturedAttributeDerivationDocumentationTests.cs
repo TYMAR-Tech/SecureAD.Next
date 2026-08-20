@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using SecureAD.Audit.Capture;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 using SecureAD.Kernel.Capture;
 
@@ -199,7 +198,7 @@ public sealed class CapturedAttributeDerivationDocumentationTests
     /// </summary>
     private static HashSet<string> RuleCardIds()
     {
-        var directory = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "rules");
+        var directory = Path.Combine(RepositoryLocation.Root(), "docs", "rules");
 
         if (!Directory.Exists(directory))
         {
@@ -262,7 +261,7 @@ public sealed class CapturedAttributeDerivationDocumentationTests
 
     private static string DocumentPath()
     {
-        var path = Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
         Assert.True(
             File.Exists(path),

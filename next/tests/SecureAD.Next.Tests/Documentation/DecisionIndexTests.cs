@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -154,10 +153,10 @@ public sealed class DecisionIndexTests
     private static List<string> RecordFiles() =>
         Directory
             .EnumerateFiles(
-                Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "decisions"), "0*.md")
+                Path.Combine(RepositoryLocation.Root(), "docs", "decisions"), "0*.md")
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
 
     private static string IndexText() =>
-        File.ReadAllText(Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "DECISIONS.md"));
+        File.ReadAllText(Path.Combine(RepositoryLocation.Root(), "docs", "DECISIONS.md"));
 }

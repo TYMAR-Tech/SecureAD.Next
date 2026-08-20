@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -98,7 +97,7 @@ public sealed class HistoricalRecordDocumentationTests
     public void TheTableListMatchesTheSchemaItIsCheckedAgainst()
     {
         var sql = File.ReadAllText(System.IO.Path.Combine(
-            OldAppInventory.RepositoryRoot(), "next", "src", "SecureAD.Evidence", "BundleSchema.cs"));
+            RepositoryLocation.Root(), "next", "src", "SecureAD.Evidence", "BundleSchema.cs"));
 
         var created = Regex
             .Matches(sql, @"CREATE TABLE (?:IF NOT EXISTS )?(?<name>[a-z_]+)")
@@ -122,5 +121,5 @@ public sealed class HistoricalRecordDocumentationTests
 
     private static string Read(string document) =>
         File.ReadAllText(System.IO.Path.Combine(
-            OldAppInventory.RepositoryRoot(), "docs", "next", document));
+            RepositoryLocation.Root(), "docs", "next", document));
 }

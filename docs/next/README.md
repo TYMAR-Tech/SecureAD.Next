@@ -32,7 +32,7 @@ See §`One fact, one home` below for what was measured and why.
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |
 | Why was it decided that way? | [`docs/decisions/`](../decisions/README.md) | The reasoning. **The only place a decision is stated** |
 | What does this component do? | `docs/next/S-*.md`, named for the thing | A description of something that exists, bound to the code by a test |
-| What did the old app have? | [`WHAT-THE-OLD-APP-HAD.md`](WHAT-THE-OLD-APP-HAD.md) | An inventory of the predecessor, read as research. **Nothing in it is owed** — it never says what is left |
+| What did the old app have? | `WHAT-THE-OLD-APP-HAD.md` | An inventory of the predecessor, read as research. **Nothing in it is owed** — it never says what is left |
 | What did somebody find on a Tuesday? | `docs/history/` | Dated narrative. **Never read to find out what is true** |
 
 The split between the third row and the last is the one the tests already implied: **a document
@@ -261,54 +261,6 @@ self-test, so a gate cannot pass by looking at nothing, and — where it needs e
 allowlist-decay test, so an exemption that is no longer needed fails the build rather than becoming
 permanent.
 
-## What the old app had
-
-[`WHAT-THE-OLD-APP-HAD.md`](WHAT-THE-OLD-APP-HAD.md) holds one row per component in
-[`docs/map/`](../map/README.md) — 256 of them, A1 through K27. It is an inventory of the
-predecessor, and **nothing in it is owed by anybody.**
-
-| Column | Content |
-|---|---|
-| **Component** | The map ID |
-| **Map says** | The component name in the map, linked to its branch file |
-| **Addresses** | What is known about the subject: the records governing it, what the predecessor did, what has been built, and any findings raised against it |
-| **Area** | The area file in [`docs/areas/`](../areas/README.md) that owns this subject |
-
-**How it is used.** A subject is chosen — reporting, the capture wizard, whatever is next. The rows
-tagged with that subject's area are the predecessor's answer to it, gathered in one place instead of
-scattered across thirty-three thousand lines. They are read as research. What the new product does
-is then decided in the area file and in the records it cites, never here.
-
-Two tests in [`next/tests/SecureAD.Next.Tests/Inventory/`](../../next/tests/SecureAD.Next.Tests/Inventory)
-hold it to the map in both directions, so a component cannot be silently skipped and a row cannot
-name a component that does not exist. A third holds each row's shape — an identifier, a working link
-into the map, an area tag — and a fourth is the scanner self-test, without which the first two pass
-by comparing two empty sets. The map was produced by sweep and audited against every source file,
-which is what makes "nothing was missed" a claim rather than a hope.
-
-The shape guard says nothing about work being owed. It exists because three documentation tests
-prove a row they cite is real by looking it up in this table, and a row that quietly became
-malformed would drop out of that list and fail nothing.
-
-### What changed on 2026-08-16, and why
-
-Until then this was the **inventory**, and each row carried four more columns: a disposition
-(Port, Rebuild, Delete, Defer), the project the work would land in, a status, and the documentation
-owed before the row could be called done. It read as a plan being worked through, and the orientation
-table above sent anyone asking *"what is left?"* straight to it.
-
-**That plan is not how the work is done.** A subject is picked, the predecessor is read as research,
-and the decision is recorded in the area file. A row cannot be "in progress" against a plan nobody is
-following, and a file that reads as an obligation invites a session to infer an answer from it — the
-habit that produced the preflight wizard. The four columns were dropped and the file renamed for what
-it is.
-
-The test surface moved with it. `EveryLedgerRowDeclaresADisposition` was replaced by the shape guard.
-The captured attribute catalogue's decay guard, which used the `Status` column as its clock, was
-removed rather than re-anchored — see `F-S45-1` in
-`sessions/S-45-demoting-the-ledger.md`, which records what
-that costs and names the larger gap it does not address.
-
 ## How to continue this work
 
 **One inventory row, or one small group of them, per session.** Never "work on the kernel". The map
@@ -325,7 +277,7 @@ product decision.** This is recorded here because it was got wrong: a session wa
 open points, decided them, built to them, and four did not survive review.
 
 **Where a decision rests on what the old implementation did, read the old implementation.**
-[`docs/map/`](../map/README.md) is a summary written by a different session at a different time. It
+`docs/map/` is a summary written by a different session at a different time. It
 names the file to open; it is not the evidence. Three claims taken from it on 2026-08-12 were
 contradicted by the code — see `F-S15-9` in `S-15` — and two of them
 had already been built.

@@ -1,6 +1,5 @@
 using System.Reflection;
 using SecureAD.Kernel.Schema;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -20,7 +19,6 @@ namespace SecureAD.Next.Tests.Documentation;
 /// good. That needs a reader.
 /// </para>
 /// </summary>
-[Collection(nameof(InventoryFileCollection))]
 public sealed class SchemaGuidDocumentationTests
 {
     private const string Document = "S-3-schema-guid-catalogue.md";
@@ -122,14 +120,18 @@ public sealed class SchemaGuidDocumentationTests
     }
 
     /// <summary>
-    /// The finding that hands them on must name the row that takes them, and that row must be a
-    /// real one. A handover addressed to nothing cannot come due.
+    /// The finding that hands them on must name the row that takes them.
     /// </summary>
+    /// <remarks>
+    /// This used to also assert that <c>K16</c> was a real row in the old application's
+    /// inventory. That inventory and the component map behind it were archived: they described
+    /// the predecessor, and the eighteen tests over them only ever compared one document to
+    /// another without touching the product's code.
+    /// </remarks>
     [Fact]
     public void TheHandoverNamesARealInventoryRow()
     {
         Assert.Contains("K16", Read(), StringComparison.Ordinal);
-        Assert.Contains("K16", OldAppInventory.RowIdentifiers());
     }
 
     /// <summary>
@@ -214,7 +216,7 @@ public sealed class SchemaGuidDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

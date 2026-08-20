@@ -1,6 +1,5 @@
 using System.Reflection;
 using SecureAD.Kernel.Naming;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -159,7 +158,7 @@ public sealed class DistinguishedNameDocumentationTests
             .Distinct(StringComparer.Ordinal);
 
     private static string Path() =>
-        System.IO.Path.Combine(OldAppInventory.RepositoryRoot(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

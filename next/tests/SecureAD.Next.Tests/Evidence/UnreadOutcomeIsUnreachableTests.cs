@@ -1,6 +1,5 @@
 using System.IO;
 using System.Linq;
-using SecureAD.Next.Tests.Inventory;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence;
@@ -108,7 +107,7 @@ public class UnreadOutcomeIsUnreachableTests
 
     private static System.Collections.Generic.IEnumerable<string> ProductionSources() =>
         Directory.EnumerateFiles(
-            Path.Combine(OldAppInventory.RepositoryRoot(), "next", "src"),
+            Path.Combine(RepositoryLocation.Root(), "next", "src"),
             "*.cs",
             SearchOption.AllDirectories)
         .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
