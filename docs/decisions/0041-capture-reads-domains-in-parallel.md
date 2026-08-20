@@ -29,7 +29,7 @@ the rule, failing the build on any fan-out shape anywhere in the capture project
 allowlist. `S-10` also recorded what to do when something legitimately wants concurrency: **narrow
 the guard to the code that touches a directory**, never exempt a file.
 
-Decided by the owner on 2026-08-14 during [`S-28`](../next/sessions/S-28-the-entry-point.md), on the
+Decided by the owner on 2026-08-14 during `S-28`, on the
 grounds that a forest's domains live on different controllers and reading them one after another
 spends a customer's night for no reason.
 

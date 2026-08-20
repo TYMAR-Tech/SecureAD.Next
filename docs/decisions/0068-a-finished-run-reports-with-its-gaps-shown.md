@@ -1,4 +1,4 @@
-﻿# 0068 - A finished run reports with its gaps shown; an unfinished one reports not at all
+# 0068 - A finished run reports with its gaps shown; an unfinished one reports not at all
 
 Date: 2026-08-16
 Status: Accepted
@@ -6,7 +6,7 @@ Status: Accepted
 Sits under [0002](0002-absent-view-means-degraded-run.md),
 [0027](0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md) and
 [0029](0029-a-run-that-ends-badly-says-so.md). Answers `C3` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md) and the format half of `B4`.
+S-44 agenda and the format half of `B4`.
 
 ## Context
 

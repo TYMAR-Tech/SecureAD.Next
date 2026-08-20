@@ -10,7 +10,7 @@ conclusion on different grounds; everything else here still binds.
 A run produces a bundle - a directory holding the evidence file, its seal, the customer's
 annotations, and, where the run ended badly, a note saying which ending it was. Where those bundles
 live had not been decided, and
-[`docs/history/DESIGN-the-run-library.md`](../history/DESIGN-the-run-library.md) recorded the three
+`docs/history/DESIGN-the-run-library.md` recorded the three
 options: a managed root the tool owns, no catalogue at all with a destination chosen per run, or
 both.
 
@@ -35,7 +35,7 @@ operator chooses where it is; the tool chooses the layout within it. An operator
 on a particular volume sets the root, not a path per run.
 
 **There is no second tier.** The session and library split goes, as
-[`S-15`](../history/S-15-storage-dispositions.md) already recorded: it was machinery for scoped
+`S-15` already recorded: it was machinery for scoped
 capture, which no longer exists, and two trees means two retention rules - which is what already
 pruned logs to twenty-five runs while keeping forever the bundles they explained.
 

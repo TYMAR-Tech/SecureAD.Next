@@ -6,7 +6,7 @@ Status: Accepted
 ## Context
 
 Ledger rows `A3` (name resolution), `A4` (selection policy) and `A5` (discovery) were all decided in
-[`S-13`](../history/S-13-connect-and-discover-dispositions.md) and none has a record. What the
+`S-13` and none has a record. What the
 rebuild does today is one line in `ForestDiscovery`: each domain's controller is set to the domain's
 own DNS name, so the run reads a domain from whichever machine DNS happens to return. There is no
 selection, no site affinity, no capability check and no candidate list.
@@ -88,7 +88,7 @@ the forest the machine is already in, per
 possible; and `dNSHostName` values are resolved to addresses. Nothing about *which* controllers
 exist comes from DNS.
 
-**— Corrected 2026-08-15. This record assumed a typed hostname while deciding something else.** As
+**â€” Corrected 2026-08-15. This record assumed a typed hostname while deciding something else.** As
 written, the sentence above said the first connection is made to the name an operator gives, which
 read as a requirement and was only ever an assumption carried in from the code of the day.
 Automatic bootstrap is the sanctioned use this record already describes, not an exception to it.
@@ -101,7 +101,7 @@ proceeds**, per [`0054`](0054-a-domain-with-no-candidates-is-an-attested-exclusi
 categorically different from *controllers were named and none answered*, and the predecessor could
 not tell the two apart because an empty SRV result looks identical to an unreachable one.
 
-**— Corrected 2026-08-15. This record originally had the run record it and continue.** That would
+**â€” Corrected 2026-08-15. This record originally had the run record it and continue.** That would
 seal a bundle missing an entire domain with no human statement attached to the gap, which is the one
 thing every other route out of a run avoids. The finding is still recorded; it is no longer the only
 thing recorded.

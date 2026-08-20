@@ -4,7 +4,7 @@ Date: 2026-08-13
 Status: Accepted
 
 Taken by the owner in discussion on 2026-08-13, during `S-32`. The session brief
-([`S-32`](../next/sessions/S-32-the-files-behind-the-policies.md)) named this question explicitly as
+(`S-32`) named this question explicitly as
 one to decide rather than build to a guess, and left it out of scope until the discussion happened.
 This record is that discussion's outcome. It governs ledger rows `B14`, `B15` and `B16`.
 

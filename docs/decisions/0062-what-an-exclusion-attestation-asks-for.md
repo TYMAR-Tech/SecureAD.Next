@@ -6,7 +6,7 @@ Status: Accepted
 Amends [0052](0052-the-domain-is-the-only-unit-of-scope.md), which decided an operator must state a
 posture to exclude a domain but not what he is asked or what becomes of the answer. Sits with
 [0059](0059-an-exclusion-is-attested-once-per-run.md). Answers `A5` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

@@ -1,11 +1,11 @@
-﻿# 0060 - A running capture reports one line per domain, and errors as they happen
+# 0060 - A running capture reports one line per domain, and errors as they happen
 
 Date: 2026-08-16
 Status: Accepted
 
 Sits under [0056](0056-the-visual-language-encodes-three-states.md) and
 [0058](0058-a-run-may-be-stopped-and-stopping-it-keeps-nothing.md). Answers `A2` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

@@ -7,7 +7,7 @@ controllers at once, and a pass an operator cannot stop is not acceptable.
 ## Context
 
 Ledger row `A8` - preflight validation - was disposed **Rebuild** in
-[`S-13`](../history/S-13-connect-and-discover-dispositions.md) and has owed a decision record ever
+`S-13` and has owed a decision record ever
 since. The map recorded preflight as one of the previous product's good decisions: *"Validating DC
 reachability before committing to a multi-hour capture is cheap... and prevents the worst failure
 mode this tool has."*
@@ -17,7 +17,7 @@ confirms every unit against the partition list a controller published, and
 `CaptureUnit.ConfirmServedBy` exists for the live half and has never had a caller. What is left is
 everything that needs a socket, and there is more of it than `S-13` listed.
 
-Two findings from [`S-35`](../history/S-35-a-shell-you-can-click.md) are assigned to this row and are
+Two findings from `S-35` are assigned to this row and are
 answered here:
 
 - **`F-S35-1`** - a host that cannot be resolved descends the security ladder and emerges reporting

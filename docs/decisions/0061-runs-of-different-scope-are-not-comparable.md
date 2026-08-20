@@ -1,4 +1,4 @@
-﻿# 0061 - Runs of different scope are not comparable
+# 0061 - Runs of different scope are not comparable
 
 Date: 2026-08-16
 Status: Accepted
@@ -6,7 +6,7 @@ Status: Accepted
 Adds an outcome to [0026](0026-one-answer-to-whether-runs-may-be-compared.md)'s closed set. Sits
 under [0052](0052-the-domain-is-the-only-unit-of-scope.md) and
 [0059](0059-an-exclusion-is-attested-once-per-run.md). Answers `A4` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

@@ -20,7 +20,7 @@ that was made:
 > which part it could not reach. It is never presented as a decision the customer made.
 
 **`0017` says nothing about whether an operator may exclude a whole domain.** The session document
-[`S-36`](../next/sessions/S-36-how-the-app-chooses-a-domain-controller.md) restated it as though it
+`S-36` restated it as though it
 did, and that restatement was used twice to refuse a feature the record never spoke about. It has
 been corrected there, and this record exists so the question has an answer of its own rather than
 being inferred from a neighbouring one.

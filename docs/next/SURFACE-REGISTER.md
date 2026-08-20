@@ -2,7 +2,7 @@
 
 Every public type in the rebuild, and what is expected to use it.
 
-A **public type** is a piece of the product that other parts are allowed to use — as opposed to
+A **public type** is a piece of the product that other parts are allowed to use â€” as opposed to
 internal workings that only its own component can see. Public surface is the part that outlives its
 author: once something is public, anything may come to depend on it, and it stops being cheap to
 remove.
@@ -14,12 +14,12 @@ Each was built for a reason. Each stopped being connected. Nobody noticed, becau
 watching.
 
 For an audit tool that matters more than it would elsewhere. A screen that looks like it reports on
-something, and reports nothing, is worse than a missing screen — a customer makes a security
+something, and reports nothing, is worse than a missing screen â€” a customer makes a security
 decision on the strength of it.
 
 This register is the watching. Every public type is listed, and every one names the **area** it
 belongs to, so a type serving no part of the product cannot sit here unnoticed. A type belonging to
-no area is either dead surface or a capability nobody wrote down — and the second is what produced
+no area is either dead surface or a capability nobody wrote down â€” and the second is what produced
 the old application's six unreachable grids.
 
 ## What it does not do
@@ -28,9 +28,9 @@ the old application's six unreachable grids.
 public type is accounted for, and that the area it names is a real area file.
 
 Proving a type is actually reached by running code is gate 5b, and it needs something that runs to
-trace from. See [`README.md`](README.md) § Gates for where that stands. *This paragraph previously
+trace from. See [`README.md`](README.md) Â§ Gates for where that stands. *This paragraph previously
 stated that `next/` has no entry point, which stopped being true when the shell shipped. Corrected
-2026-08-16; the claim is recorded in [`S-43`](../history/S-43-the-documentation-transition.md) as one
+2026-08-16; the claim is recorded in `S-43` as one
 of the contradictions that session was called to end.*
 
 The two are recorded separately on purpose. A check that quietly implies more coverage than it has
@@ -39,7 +39,7 @@ at all.
 
 ## The register
 
-`Area` names the area file that owns the type — the page a session reads before working on it. It is
+`Area` names the area file that owns the type â€” the page a session reads before working on it. It is
 a statement about where a type belongs, not a forecast about who will use it, which is what this
 column held until 2026-08-16. Moving the binding off the inventory is what frees the inventory to stop
 being a plan.
@@ -48,7 +48,7 @@ being a plan.
 it and a reader unable to tell which owns it; no area claiming it is surface nobody owns.
 
 **Seven of the nineteen areas own no type here, and that is expected rather than a gap.** Six of them
-have nothing built at all — the judgement and reporting half of the product — and one,
+have nothing built at all â€” the judgement and reporting half of the product â€” and one,
 [how the app looks](../areas/how-the-app-looks.md), owns the shell, which this register does not
 cover. The register reads `SecureAD.Kernel`, `SecureAD.Evidence` and `SecureAD.Audit`; the shell's
 surface is held by `ShellSurfaceGateTests` instead.
@@ -260,16 +260,16 @@ become the type's first production consumer, with a column explaining the basis.
 build depend on the inventory, which is the thing being demoted: an inventory of the predecessor is
 reference material, and nothing should be obliged to keep it current.
 
-The forecasts are not carried forward. They were a genuine device and they did real work — three
+The forecasts are not carried forward. They were a genuine device and they did real work â€” three
 findings came out of them, recorded where they were found: `F-S13-3` in
-[`S-13`](../history/S-13-connect-and-discover-dispositions.md), `F-S7-42` in
-[`S-7`](../history/S-7-capture-dispositions.md), and `F-S4-5` in
+`S-13`, `F-S7-42` in
+`S-7`, and `F-S4-5` in
 [`S-4`](S-4-dangerous-permission-classification.md). Each was the same lesson: a library reading a
 library does not answer the question *what can something that runs reach*, so an entry must not come
 off on the strength of a consumer that is itself unreached.
 
 **That lesson survives the change and is not enforced by this register.** Area ownership says where a
 type belongs; it says nothing about whether anything reaches it. Gate 5b is still the only check
-that would, and it is still outstanding. Recording the two separately is deliberate — a check that
+that would, and it is still outstanding. Recording the two separately is deliberate â€” a check that
 quietly implies more coverage than it has is how the original wording of gate 5 came to pass against
 a tree in which nothing was used at all.

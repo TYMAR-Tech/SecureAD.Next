@@ -1,4 +1,4 @@
-﻿# 0065 - The catalogue recovers what the rebuild dropped
+# 0065 - The catalogue recovers what the rebuild dropped
 
 Date: 2026-08-16
 Status: Accepted
@@ -6,7 +6,7 @@ Status: Accepted
 Rests on [0064](0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md), which admits the
 object view as a justification. Completes
 [0051](0051-trusts-describe-a-boundary-and-never-widen-a-run.md), whose trust attributes were
-decided and never captured. Answers `B1` of the [S-44 agenda](../next/sessions/S-44-agenda.md) and
+decided and never captured. Answers `B1` of the S-44 agenda and
 closes finding `F-S44-1`.
 
 ## Context

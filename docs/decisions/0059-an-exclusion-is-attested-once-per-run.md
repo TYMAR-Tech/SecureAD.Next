@@ -1,11 +1,11 @@
-﻿# 0059 - An exclusion is attested once per run and never carried forward
+# 0059 - An exclusion is attested once per run and never carried forward
 
 Date: 2026-08-16
 Status: Accepted
 
 Amends [0052](0052-the-domain-is-the-only-unit-of-scope.md), which decided an operator may exclude a
 domain under attestation but not how long that attestation lasts. Answers `A3` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

@@ -1,4 +1,4 @@
-﻿# 0066 - A finding is called a finding, and its severity is fixed by its rule
+# 0066 - A finding is called a finding, and its severity is fixed by its rule
 
 Date: 2026-08-16
 Status: Accepted
@@ -6,7 +6,7 @@ Status: Accepted
 Sits under [0010](0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md),
 [0023](0023-a-finding-has-a-stable-identity.md) and
 [0024](0024-a-rule-identifier-is-permanent.md). Answers `B2`'s vocabulary question and `B5` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

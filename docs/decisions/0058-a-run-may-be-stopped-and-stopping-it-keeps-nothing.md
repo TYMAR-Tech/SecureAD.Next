@@ -1,11 +1,11 @@
-﻿# 0058 - A run may be stopped, and stopping it keeps nothing
+# 0058 - A run may be stopped, and stopping it keeps nothing
 
 Date: 2026-08-16
 Status: Accepted
 
 Sits under [0028](0028-one-run-state-vocabulary.md) and
 [0029](0029-a-run-that-ends-badly-says-so.md). Answers `A1` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

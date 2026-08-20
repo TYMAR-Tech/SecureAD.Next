@@ -1,4 +1,4 @@
-﻿# 0063 - A domain left out by choice never looks like one that could not be reached
+# 0063 - A domain left out by choice never looks like one that could not be reached
 
 Date: 2026-08-16
 Status: Accepted
@@ -7,7 +7,7 @@ Draws the seam between [0052](0052-the-domain-is-the-only-unit-of-scope.md) and
 [0054](0054-a-domain-with-no-candidates-is-an-attested-exclusion.md), raised as open by both
 [domains-we-skip](../areas/domains-we-skip.md) and
 [which-controller-we-read](../areas/which-controller-we-read.md). Answers `A6` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

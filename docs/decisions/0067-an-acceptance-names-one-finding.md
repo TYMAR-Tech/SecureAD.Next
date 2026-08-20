@@ -1,4 +1,4 @@
-﻿# 0067 - An acceptance names one finding and lives beside the evidence
+# 0067 - An acceptance names one finding and lives beside the evidence
 
 Date: 2026-08-16
 Status: Accepted
@@ -7,7 +7,7 @@ Sits under [0023](0023-a-finding-has-a-stable-identity.md),
 [0019](0019-the-bundle-carries-a-seal.md) and
 [0066](0066-a-finding-is-called-a-finding.md). Names a door
 [0026](0026-one-answer-to-whether-runs-may-be-compared.md) already anticipated. Answers `B2` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

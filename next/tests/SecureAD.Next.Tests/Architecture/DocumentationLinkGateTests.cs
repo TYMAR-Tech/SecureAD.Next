@@ -54,7 +54,7 @@ public sealed class DocumentationLinkGateTests
 
         Assert.Contains(links, l => l.Document.Replace('\\', '/').Contains("docs/decisions/", StringComparison.Ordinal));
         Assert.Contains(links, l => l.Document.Replace('\\', '/').Contains("docs/areas/", StringComparison.Ordinal));
-        Assert.Contains(links, l => l.Document.Replace('\\', '/').Contains("docs/history/", StringComparison.Ordinal));
+        Assert.Contains(links, l => l.Document.Replace('\\', '/').Contains("docs/next/", StringComparison.Ordinal));
 
         // The negative control: a link to something absent must be recognised as absent, or the
         // check above is measuring nothing.

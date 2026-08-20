@@ -1,12 +1,12 @@
-﻿# 0064 - An attribute is justified by a rule or by the object view
+# 0064 - An attribute is justified by a rule or by the object view
 
 Date: 2026-08-16
 Status: Accepted
 
 Widens the justification rule that
-[`S-23`](../next/sessions/S-23-what-capture-must-read.md) binds by test. Sits under
+`S-23` binds by test. Sits under
 [0010](0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md). Answers the gate question raised
-under `B1` of the [S-44 agenda](../next/sessions/S-44-agenda.md).
+under `B1` of the S-44 agenda.
 
 ## Context
 

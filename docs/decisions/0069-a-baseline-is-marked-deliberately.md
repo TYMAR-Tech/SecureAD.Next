@@ -1,4 +1,4 @@
-﻿# 0069 - A baseline is marked deliberately, and refused when a domain is missing
+# 0069 - A baseline is marked deliberately, and refused when a domain is missing
 
 Date: 2026-08-16
 Status: Accepted
@@ -7,7 +7,7 @@ Sits under [0025](0025-the-run-library-is-a-managed-root.md),
 [0026](0026-one-answer-to-whether-runs-may-be-compared.md),
 [0061](0061-runs-of-different-scope-are-not-comparable.md) and
 [0063](0063-excluded-never-looks-like-unreachable.md). Answers `B6` of the
-[S-44 agenda](../next/sessions/S-44-agenda.md).
+S-44 agenda.
 
 ## Context
 

@@ -6,7 +6,7 @@ Status: Accepted
 ## Context
 
 Ledger row `A6` - routing and failover - was disposed **Delete** in
-[`S-13`](../history/S-13-connect-and-discover-dispositions.md), and the reasoning still holds for
+`S-13`, and the reasoning still holds for
 the thing that row described. It was a session-wide routing table answering *"which controller am I
 using for domain X right now"*, with a negative cache, a per-domain lock and re-discovery rules. Its
 fatal property was that it could change controller **during** a partition, leaving the bundle
@@ -24,7 +24,7 @@ fair argument about priority. It is not an argument that the run should throw aw
 completed work when the event does occur.
 
 The distinction this record turns on was raised by the owner on 2026-08-14, during
-[`S-28`](../next/sessions/S-28-the-entry-point.md): a complete restart of one domain is not the same
+`S-28`: a complete restart of one domain is not the same
 thing as routing around a failure. Nothing is stitched, because nothing of the failed attempt is
 kept.
 
