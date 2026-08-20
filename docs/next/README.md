@@ -198,7 +198,7 @@ stored comparison, so a comparison that *failed* reports "Live ACL matches snaps
 asserting that message passes. Carried over unreviewed it stops being a bug and becomes a
 specification, and the next person to fix it sees a red test and assumes they broke something.
 
-Where a source of truth exists — `docs/rules/`, [`docs/INVARIANTS.md`](../INVARIANTS.md) — the
+Where a source of truth exists — `docs/rules/` — the
 assertion comes from there rather than from whatever the old test happened to check.
 
 ## Gates

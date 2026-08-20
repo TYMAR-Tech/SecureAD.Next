@@ -155,7 +155,7 @@ needing an uncaptured attribute fails the build.
 The second direction cannot be built now. There are no rules in the rebuild. A test that walked an
 empty set of rules and reported that none of them needed a missing attribute would pass, forever,
 while measuring nothing — which is precisely the failure gate 5 fell into and the first thing
-[`README.md`](../README.md) § When to stop and raise it names. So it is split the way gate 5 was:
+`.github/copilot-instructions.md` § When to stop and raise it names. So it is split the way gate 5 was:
 
 - **B2a — built now.** Every attribute the catalogue requests appears in the table below with a
   non-empty `Read by` naming at least one real inventory row; and no named row has reached `Done`
