@@ -11,7 +11,7 @@ $files = Get-ChildItem $root -Recurse -Filter *.cs -File |
 
 $patterns = [ordered]@{
     'GUID'    = '"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"'
-    'Hex'     = '0x[0-9a-fA-F]{2,8}'
+    'Hex'     = '0x[0-9a-fA-F]{1,8}'
     'OID'     = '"1\.[0-9]+(\.[0-9]+)+"'
     'SID'     = '"S-1-[0-9\-]+"'
 }
