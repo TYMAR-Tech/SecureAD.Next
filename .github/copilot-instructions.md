@@ -56,6 +56,37 @@ Sessions have repeatedly re-opened settled questions because each one starts at 
 
 **Session records and session briefs no longer live in this repository.** `docs/history/`, `docs/next/sessions/` and `docs/review/` were archived on 2026-08-20 to `C:\Users\jistrand\Downloads\SecureAD Archive`; every version also remains in git history. They recorded what one session did or intended on one day and never stated current behaviour, and several actively misled — one claimed a specification section had been verified that was never opened. **Nothing outside `docs/decisions/` and `docs/rules/` states the product's position.**
 
+## Say what you opened
+
+**Before stating that something exists, name what you opened to know it.** Not "I checked" - the
+file, the command, the line. If the honest answer is "I saw it earlier", say that instead, because
+it is a different kind of claim and a much weaker one.
+
+Every mistake made on 2026-08-20 had one shape: **a proxy for the thing, treated as the thing.**
+A file name where a path was needed, and `README.md` exists in five folders. A grep hit where a
+declaration was needed, so a comment saying "this test exists in the old tree" counted as the test
+existing. Link text where a resolved target was needed, so `../README.md` written in
+`docs/next/sessions/` was read as the root README and one document's inbound count went from 1 to
+69. `git diff --numstat` where content was needed - it showed equal lines added and removed while
+29 documents were being double-encoded. None of these was carelessness, and none felt uncertain
+from the inside.
+
+Three habits follow, and they are cheap:
+
+- **Distinguish a name from a fact.** `NonDestructiveInvariantTests` is a name. Whether that class
+  is declared in this tree is a fact. Say which one is being offered.
+- **Prefer the artefact to the answer.** A script that lists the enforced documents cannot be
+  wrong about itself; a sentence saying how many there are can. When a question will be asked
+  twice, write the script the first time - `next/tools/` is full of them for this reason.
+- **Give the count and how it was counted.** "51 of 69 records are cited by more than one area"
+  can be checked. "Most are shared" cannot, and hides double-counting - the same fault that
+  reported 20 literals in a file holding 10, each counted once in its assignment and once in its
+  XML comment.
+
+**Re-reading is the only thing that has ever caught this.** There is no internal signal that
+separates a remembered fact from a retrieved one, so scepticism has to be procedural: open the
+file again, or run the script again, and say which was done.
+
 ## General Guidelines
 - Do NOT run genuinely long-running terminal commands (like synthetic database generation). They time out and waste time. Instead, provide the command for the user to run themselves.
 - When running PowerShell commands in the terminal, avoid long single-line commands — they get truncated in the user's terminal and hang, forcing the user to cancel. Write anything substantial to a script file in $env:TEMP and invoke it with a short `powershell -ExecutionPolicy Bypass -File "$env:TEMP\Name.ps1"` command instead. A cancelled command from this user means the terminal hung, not that they rejected the change.
