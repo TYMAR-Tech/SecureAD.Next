@@ -46,28 +46,28 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| be sure a partition larger than one page is read to the end | `PartitionCaptureTests.APartitionLargerThanAPageIsReadToTheEnd` |  |  |
-| be certain the run never wanders to another controller by following a referral | `PartitionCaptureTests.AConnectionThatChasesReferralsIsRefusedBeforeAnyRequestIsSent` |  |  |
-| be certain a connection that cannot say what the controller advertises is refused | `PartitionCaptureTests.AConnectionThatCannotSayWhatTheControllerAdvertisesIsRefused` |  |  |
-| be certain an answer carrying no paging control is not mistaken for the last page | `PartitionCaptureTests.AnAnswerWithNoPagingControlIsNotTheLastPage` |  |  |
-| be certain a controller that hands the same bookmark straight back is refused rather than looped | `PartitionCaptureTests.ABookmarkHandedStraightBackIsRefusedRatherThanResent` |  |  |
-| see the objects a run could not follow reach the coverage record | `PartitionCaptureTests.ContinuationReferencesReachTheCoverageRecord` |  |  |
-| be certain a busy controller is retried a bounded number of times and then the run ends | `PartitionCaptureTests.AControllerSayingItIsBusyIsAskedThreeTimesAndThenTheRunEnds` |  |  |
-| be certain a cancelled capture stops rather than reporting itself finished | `PartitionCaptureTests.ACancelledCaptureStopsRatherThanFinishing` |  |  |
-| get a group's full membership, past the limit a server will return in one response | `LdapEntryReaderTests.AGroupLargerThanTheServersValueLimitIsReadInFull` |  |  |
-| be certain a first, partial response is never mistaken for the whole answer | `LdapEntryReaderTests.TheFirstResponseDoesNotClaimToBeAllOfThem` |  |  |
-| tell an attribute that was absent from one that was present and empty | `LdapEntryReaderTests.AnAbsentAttributeIsNotReportedAsAnEmptyOne` |  |  |
-| be certain a paged read that stalled is reported as a failure rather than an ending | `LdapEntryReaderTests.ABlockThatAdvancedByNothingIsAFailureAndNotAnEnding` |  |  |
-| be certain the capture never asks the directory for a credential | `CredentialAttributeGuardTests.TheCatalogueNeverRequestsACredential` |  |  |
-| be certain that guard is checking a real catalogue against a real list, not two empty ones | `CredentialAttributeGuardTests.TheGuardHasBothACatalogueAndAListToCheckItAgainst` |  |  |
-| have the permissions **on** a credential object captured, while its secret is not | `CredentialAttributeGuardTests.ThePermissionsOnACredentialObjectAreStillCaptured` |  |  |
-| have LAPS reported by when it last rotated, never by the password itself | `CredentialAttributeGuardTests.TheCatalogueTakesTheLapsTimestampAndNotTheLapsPassword` |  |  |
-| be certain no attribute is asked for two different ways | `CapturedAttributeCatalogTests.NoAttributeIsDeclaredTwoDifferentWays` |  |  |
-| be certain DNS is the only thing deliberately left out of the catalogue | `CapturedAttributeCatalogTests.TheDnsClassesAreTheOnlyOnesExcluded` |  |  |
-| read a security descriptor the way the directory meant it | `SecurityDescriptorParserTests` |  |  |
-| trust that permission normalisation has not silently changed | `GoldenAceHashTests` |  |  |
-| have a GPO's files on SYSVOL read, and not only its directory object | `SysvolCaptureTests` |  |  |
+|---|---|---|
+| be sure a partition larger than one page is read to the end | `PartitionCaptureTests.APartitionLargerThanAPageIsReadToTheEnd` |  |
+| be certain the run never wanders to another controller by following a referral | `PartitionCaptureTests.AConnectionThatChasesReferralsIsRefusedBeforeAnyRequestIsSent` |  |
+| be certain a connection that cannot say what the controller advertises is refused | `PartitionCaptureTests.AConnectionThatCannotSayWhatTheControllerAdvertisesIsRefused` |  |
+| be certain an answer carrying no paging control is not mistaken for the last page | `PartitionCaptureTests.AnAnswerWithNoPagingControlIsNotTheLastPage` |  |
+| be certain a controller that hands the same bookmark straight back is refused rather than looped | `PartitionCaptureTests.ABookmarkHandedStraightBackIsRefusedRatherThanResent` |  |
+| see the objects a run could not follow reach the coverage record | `PartitionCaptureTests.ContinuationReferencesReachTheCoverageRecord` |  |
+| be certain a busy controller is retried a bounded number of times and then the run ends | `PartitionCaptureTests.AControllerSayingItIsBusyIsAskedThreeTimesAndThenTheRunEnds` |  |
+| be certain a cancelled capture stops rather than reporting itself finished | `PartitionCaptureTests.ACancelledCaptureStopsRatherThanFinishing` |  |
+| get a group's full membership, past the limit a server will return in one response | `LdapEntryReaderTests.AGroupLargerThanTheServersValueLimitIsReadInFull` |  |
+| be certain a first, partial response is never mistaken for the whole answer | `LdapEntryReaderTests.TheFirstResponseDoesNotClaimToBeAllOfThem` |  |
+| tell an attribute that was absent from one that was present and empty | `LdapEntryReaderTests.AnAbsentAttributeIsNotReportedAsAnEmptyOne` |  |
+| be certain a paged read that stalled is reported as a failure rather than an ending | `LdapEntryReaderTests.ABlockThatAdvancedByNothingIsAFailureAndNotAnEnding` |  |
+| be certain the capture never asks the directory for a credential | `CredentialAttributeGuardTests.TheCatalogueNeverRequestsACredential` |  |
+| be certain that guard is checking a real catalogue against a real list, not two empty ones | `CredentialAttributeGuardTests.TheGuardHasBothACatalogueAndAListToCheckItAgainst` |  |
+| have the permissions **on** a credential object captured, while its secret is not | `CredentialAttributeGuardTests.ThePermissionsOnACredentialObjectAreStillCaptured` |  |
+| have LAPS reported by when it last rotated, never by the password itself | `CredentialAttributeGuardTests.TheCatalogueTakesTheLapsTimestampAndNotTheLapsPassword` |  |
+| be certain no attribute is asked for two different ways | `CapturedAttributeCatalogTests.NoAttributeIsDeclaredTwoDifferentWays` |  |
+| be certain DNS is the only thing deliberately left out of the catalogue | `CapturedAttributeCatalogTests.TheDnsClassesAreTheOnlyOnesExcluded` |  |
+| read a security descriptor the way the directory meant it | `SecurityDescriptorParserTests` |  |
+| trust that permission normalisation has not silently changed | `GoldenAceHashTests` |  |
+| have a GPO's files on SYSVOL read, and not only its directory object | `SysvolCaptureTests` |  |
 
 ---
 

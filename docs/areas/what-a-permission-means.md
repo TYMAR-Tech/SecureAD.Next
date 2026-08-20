@@ -40,35 +40,35 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| be certain a shorthand "full control" right is expanded to what it actually grants | `GenericRightsExpanderTests.WhenGenericAllIsSet_ThenTheFullSpecificMaskReplacesIt` |  |  |
-| be certain a shorthand write right is expanded before it is judged | `GenericRightsExpanderTests.WhenGenericWriteIsSet_ThenWritePropertyReplacesIt` |  |  |
-| be certain shorthand and specific rights on one entry both survive expansion | `GenericRightsExpanderTests.WhenGenericAndSpecificAreMixed_ThenBothSurvive` |  |  |
-| be certain an entry with no shorthand right is left alone | `GenericRightsExpanderTests.WhenNoGenericBitIsSet_ThenTheMaskIsUnchanged` |  |  |
-| be certain a deny entry is ordered ahead of an allow, whatever order it arrived in | `AceNormalizerTests.WhenAllowPrecedesDenyOnTheWire_ThenDenySortsFirst` |  |  |
-| be certain an explicit entry is ordered ahead of an inherited one | `AceNormalizerTests.WhenBothExplicitAndInherited_ThenExplicitSortsFirst` |  |  |
-| be certain the same permissions produce the same fingerprint whatever order they arrived in | `AceNormalizerTests.WhenTheSameAcesArriveInEitherOrder_ThenTheCanonicalFormIsIdentical` |  |  |
-| be certain a changed trustee changes the fingerprint | `AceNormalizerTests.WhenTheTrusteeDiffers_ThenTheHashDiffers` |  |  |
-| be certain a changed right changes the fingerprint | `AceNormalizerTests.WhenTheAccessMaskDiffers_ThenTheHashDiffers` |  |  |
-| be certain an inherited entry is not confused with an identical explicit one | `AceNormalizerTests.WhenTwoAcesDifferOnlyByInheritance_ThenBothSurvive` |  |  |
-| tell an object with no permissions from one whose permissions could not be read | `AceNormalizerTests.WhenComparingANullDaclWithAnEmptyOne_ThenTheyAreDistinguishable` |  |  |
-| be certain an absent DACL says so rather than reporting no entries | `AceNormalizerTests.WhenTheDaclIsNull_ThenNormalizationSaysSoRatherThanReportingNoAces` |  |  |
-| be certain damage found while parsing is carried forward, not dropped | `AceNormalizerTests.WhenParsingReportedDamage_ThenNormalizationCarriesItForward` |  |  |
-| be certain no damage is invented where parsing reported none | `AceNormalizerTests.WhenParsingReportedNoDamage_ThenNormalizationInventsNone` |  |  |
-| be certain every entry records the canonicalization version that produced it | `AceNormalizerTests.WhenNormalized_ThenEachAceRecordsTheCanonicalizationVersionThatProducedIt` |  |  |
-| be certain a permission to read a local administrator password is judged dangerous | `DangerousPermissionClassifierTests.ReadingALocalAdministratorPasswordIsDangerous` |  |  |
-| be certain writing a policy link or a logon script is judged dangerous | `DangerousPermissionClassifierTests.WritingAPolicyLinkOrALogonScriptIsDangerous` |  |  |
-| be certain an ordinary attribute read is not reported as dangerous | `DangerousPermissionClassifierTests.ReadingAnOrdinaryAttributeIsNotDangerous` |  |  |
-| be certain an ordinary extended right is not reported as dangerous | `DangerousPermissionClassifierTests.AnOrdinaryExtendedRightIsNotDangerous` |  |  |
-| be certain every verdict the classifier can give is exercised and named | `DangerousPermissionClassifierTests.TheCheckExercisesEveryVerdictAndTheCatalogueKnowsTheNames` |  |  |
-| see a right named rather than shown as a bare identifier | `SchemaGuidCatalogTests.WhenAGuidHasOneMeaning_ThenTheLookupReturnsExactlyOneEntry` |  |  |
-| be certain an identifier with several meanings returns all of them | `SchemaGuidCatalogTests.WhenOneGuidHasTwoMeanings_ThenTheLookupReturnsBoth` |  |  |
-| be certain an unknown identifier is reported as unknown rather than as nothing | `SchemaGuidCatalogTests.WhenTheGuidIsUnknown_ThenTheLookupIsEmptyRatherThanNull` |  |  |
-| be certain an identifier shipped wrong once is never resolved to again | `SchemaGuidCatalogTests.WhenAGuidWasShippedWrongOnce_ThenTheCatalogueDoesNotResolveToItAgain` |  |  |
-| see which catalogue version named a right | `SchemaGuidCatalogTests.WhenTheCatalogueIsRead_ThenItStatesItsVersion` |  |  |
-| read the same account of classification in the document and the code | `PermissionClassificationDocumentationTests` |  |  |
-| read the same account of descriptor parsing in the document and the code | `SecurityDocumentationTests` |  |  |
-| be certain the schema catalogue has a single source | `SchemaGuidSingleSourceGateTests` |  |  |
+|---|---|---|
+| be certain a shorthand "full control" right is expanded to what it actually grants | `GenericRightsExpanderTests.WhenGenericAllIsSet_ThenTheFullSpecificMaskReplacesIt` |  |
+| be certain a shorthand write right is expanded before it is judged | `GenericRightsExpanderTests.WhenGenericWriteIsSet_ThenWritePropertyReplacesIt` |  |
+| be certain shorthand and specific rights on one entry both survive expansion | `GenericRightsExpanderTests.WhenGenericAndSpecificAreMixed_ThenBothSurvive` |  |
+| be certain an entry with no shorthand right is left alone | `GenericRightsExpanderTests.WhenNoGenericBitIsSet_ThenTheMaskIsUnchanged` |  |
+| be certain a deny entry is ordered ahead of an allow, whatever order it arrived in | `AceNormalizerTests.WhenAllowPrecedesDenyOnTheWire_ThenDenySortsFirst` |  |
+| be certain an explicit entry is ordered ahead of an inherited one | `AceNormalizerTests.WhenBothExplicitAndInherited_ThenExplicitSortsFirst` |  |
+| be certain the same permissions produce the same fingerprint whatever order they arrived in | `AceNormalizerTests.WhenTheSameAcesArriveInEitherOrder_ThenTheCanonicalFormIsIdentical` |  |
+| be certain a changed trustee changes the fingerprint | `AceNormalizerTests.WhenTheTrusteeDiffers_ThenTheHashDiffers` |  |
+| be certain a changed right changes the fingerprint | `AceNormalizerTests.WhenTheAccessMaskDiffers_ThenTheHashDiffers` |  |
+| be certain an inherited entry is not confused with an identical explicit one | `AceNormalizerTests.WhenTwoAcesDifferOnlyByInheritance_ThenBothSurvive` |  |
+| tell an object with no permissions from one whose permissions could not be read | `AceNormalizerTests.WhenComparingANullDaclWithAnEmptyOne_ThenTheyAreDistinguishable` |  |
+| be certain an absent DACL says so rather than reporting no entries | `AceNormalizerTests.WhenTheDaclIsNull_ThenNormalizationSaysSoRatherThanReportingNoAces` |  |
+| be certain damage found while parsing is carried forward, not dropped | `AceNormalizerTests.WhenParsingReportedDamage_ThenNormalizationCarriesItForward` |  |
+| be certain no damage is invented where parsing reported none | `AceNormalizerTests.WhenParsingReportedNoDamage_ThenNormalizationInventsNone` |  |
+| be certain every entry records the canonicalization version that produced it | `AceNormalizerTests.WhenNormalized_ThenEachAceRecordsTheCanonicalizationVersionThatProducedIt` |  |
+| be certain a permission to read a local administrator password is judged dangerous | `DangerousPermissionClassifierTests.ReadingALocalAdministratorPasswordIsDangerous` |  |
+| be certain writing a policy link or a logon script is judged dangerous | `DangerousPermissionClassifierTests.WritingAPolicyLinkOrALogonScriptIsDangerous` |  |
+| be certain an ordinary attribute read is not reported as dangerous | `DangerousPermissionClassifierTests.ReadingAnOrdinaryAttributeIsNotDangerous` |  |
+| be certain an ordinary extended right is not reported as dangerous | `DangerousPermissionClassifierTests.AnOrdinaryExtendedRightIsNotDangerous` |  |
+| be certain every verdict the classifier can give is exercised and named | `DangerousPermissionClassifierTests.TheCheckExercisesEveryVerdictAndTheCatalogueKnowsTheNames` |  |
+| see a right named rather than shown as a bare identifier | `SchemaGuidCatalogTests.WhenAGuidHasOneMeaning_ThenTheLookupReturnsExactlyOneEntry` |  |
+| be certain an identifier with several meanings returns all of them | `SchemaGuidCatalogTests.WhenOneGuidHasTwoMeanings_ThenTheLookupReturnsBoth` |  |
+| be certain an unknown identifier is reported as unknown rather than as nothing | `SchemaGuidCatalogTests.WhenTheGuidIsUnknown_ThenTheLookupIsEmptyRatherThanNull` |  |
+| be certain an identifier shipped wrong once is never resolved to again | `SchemaGuidCatalogTests.WhenAGuidWasShippedWrongOnce_ThenTheCatalogueDoesNotResolveToItAgain` |  |
+| see which catalogue version named a right | `SchemaGuidCatalogTests.WhenTheCatalogueIsRead_ThenItStatesItsVersion` |  |
+| read the same account of classification in the document and the code | `PermissionClassificationDocumentationTests` |  |
+| read the same account of descriptor parsing in the document and the code | `SecurityDocumentationTests` |  |
+| be certain the schema catalogue has a single source | `SchemaGuidSingleSourceGateTests` |  |
 
 ---
 

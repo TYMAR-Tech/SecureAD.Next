@@ -44,20 +44,20 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| be certain a failure carries a code derived from what went wrong and why | `AuditErrorTests.CreateDerivesTheCodeFromTheCategoryAndReason` |  |  |
-| be certain a failure cannot be raised without a reason | `AuditErrorTests.CreateRejectsAnEmptyReason` |  |  |
-| be certain a failure cannot be raised without a description | `AuditErrorTests.CreateRejectsAnEmptyDescription` |  |  |
-| be certain reading the value of a failed result throws and names the code | `ResultTests.ReadingTheValueOfAFailedResultThrowsAndNamesTheCode` |  |  |
-| be certain a failed result is never mistaken for a successful one | `ResultTests.AFailedResultIsNotSuccessful` |  |  |
-| be certain an uninitialised result is not mistaken for success | `ResultTests.ADefaultResultIsNotMistakenForSuccess` |  |  |
-| be certain an uninitialised result reports a self-describing error | `ResultTests.ADefaultResultReportsASelfDescribingError` |  |  |
-| be certain no public member returns a bare count that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsABareCount` |  |  |
-| be certain no public member returns a collection that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsACollectionThatCannotSayWhetherItLooked` |  |  |
-| be certain that gate reads the real public surface rather than a copy | `UnvouchedResultGateTests.TheGateReadsTheRealPublicSurface` |  |  |
-| be certain the exemptions to that gate are still earning their place | `UnvouchedResultGateTests.TheCatalogueExemptionsAreStillEarningTheirPlace` |  |  |
-| be certain nothing quietly defaults to a value that hides a missing answer | `NullDefaultGateTests` |  |  |
-| be certain the product's stated invariants are checked rather than intended | `ProductInvariantTests` |  |  |
+|---|---|---|
+| be certain a failure carries a code derived from what went wrong and why | `AuditErrorTests.CreateDerivesTheCodeFromTheCategoryAndReason` |  |
+| be certain a failure cannot be raised without a reason | `AuditErrorTests.CreateRejectsAnEmptyReason` |  |
+| be certain a failure cannot be raised without a description | `AuditErrorTests.CreateRejectsAnEmptyDescription` |  |
+| be certain reading the value of a failed result throws and names the code | `ResultTests.ReadingTheValueOfAFailedResultThrowsAndNamesTheCode` |  |
+| be certain a failed result is never mistaken for a successful one | `ResultTests.AFailedResultIsNotSuccessful` |  |
+| be certain an uninitialised result is not mistaken for success | `ResultTests.ADefaultResultIsNotMistakenForSuccess` |  |
+| be certain an uninitialised result reports a self-describing error | `ResultTests.ADefaultResultReportsASelfDescribingError` |  |
+| be certain no public member returns a bare count that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsABareCount` |  |
+| be certain no public member returns a collection that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsACollectionThatCannotSayWhetherItLooked` |  |
+| be certain that gate reads the real public surface rather than a copy | `UnvouchedResultGateTests.TheGateReadsTheRealPublicSurface` |  |
+| be certain the exemptions to that gate are still earning their place | `UnvouchedResultGateTests.TheCatalogueExemptionsAreStillEarningTheirPlace` |  |
+| be certain nothing quietly defaults to a value that hides a missing answer | `NullDefaultGateTests` |  |
+| be certain the product's stated invariants are checked rather than intended | `ProductInvariantTests` |  |
 
 ---
 

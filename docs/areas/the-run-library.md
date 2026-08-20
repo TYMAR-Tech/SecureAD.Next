@@ -38,25 +38,25 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| be certain a run is created inside the library root and nowhere else | `RunLibraryTests.ARunIsCreatedInsideTheRoot` |  |  |
-| identify a run by the forest it read and the moment it ran | `RunLibraryTests.TheRunIsNamedForTheForestAndTheMoment` |  |  |
-| be certain two runs of one forest in the same second cannot collide | `RunLibraryTests.ASecondRunOfOneForestInTheSameSecondIsRefused` |  |  |
-| be certain a forest name can never become a path | `RunLibraryTests.AForestNameCannotBecomeAPath` |  |  |
-| be certain a folder beside the root is not mistaken for something inside it | `RunLibraryTests.ASiblingWhoseNameBeginsWithTheRootsIsNotInsideIt` |  |  |
-| see a sealed run listed | `RunLibraryListTests.ASealedRunIsListed` |  |  |
-| tell an empty library from one that could not be read | `RunLibraryListTests.AnEmptyLibraryListsNothing` |  |  |
-| see a run whose seal does not match listed as damaged | `RunLibraryListTests.ARunWhoseSealDoesNotMatchIsListedAsDamaged` |  |  |
-| read the explanation on a damaged run | `RunLibraryListTests.ADamagedRunCarriesTheExplanation` |  |  |
-| be certain a sealed run carries no explanation, so an explanation always means something | `RunLibraryListTests.ASealedRunCarriesNoExplanation` |  |  |
-| be certain a stray folder in the root is left out rather than listed | `RunLibraryListTests.ADirectoryThatIsNotARunIsLeftOut` |  |  |
-| see runs listed in a stable order | `RunLibraryListTests.RunsAreListedInIdentifierOrder` |  |  |
-| be told why nothing is listed when no library has been chosen | `RunLibraryViewModelTests.WithNoLibraryChosenTheOperatorIsToldWhy` |  |  |
-| be certain nothing is claimed about runs when no library has been chosen | `RunLibraryViewModelTests.WithNoLibraryChosenNothingIsClaimedAboutRuns` |  |  |
-| tell a library that is empty from one that is unreadable | `RunLibraryViewModelTests.AnUnreadableLibraryIsNotReportedAsEmpty` |  |  |
-| see the reason an unreadable library could not be read | `RunLibraryViewModelTests.AnUnreadableLibrarySurfacesTheReason` |  |  |
-| be certain a failed refresh clears what was shown before rather than leaving it stale | `RunLibraryViewModelTests.AFailedRefreshClearsWhatWasShownBefore` |  |  |
-| have the state of a run read from what is actually on disk | `RunStateReaderTests` |  |  |
+|---|---|---|
+| be certain a run is created inside the library root and nowhere else | `RunLibraryTests.ARunIsCreatedInsideTheRoot` |  |
+| identify a run by the forest it read and the moment it ran | `RunLibraryTests.TheRunIsNamedForTheForestAndTheMoment` |  |
+| be certain two runs of one forest in the same second cannot collide | `RunLibraryTests.ASecondRunOfOneForestInTheSameSecondIsRefused` |  |
+| be certain a forest name can never become a path | `RunLibraryTests.AForestNameCannotBecomeAPath` |  |
+| be certain a folder beside the root is not mistaken for something inside it | `RunLibraryTests.ASiblingWhoseNameBeginsWithTheRootsIsNotInsideIt` |  |
+| see a sealed run listed | `RunLibraryListTests.ASealedRunIsListed` |  |
+| tell an empty library from one that could not be read | `RunLibraryListTests.AnEmptyLibraryListsNothing` |  |
+| see a run whose seal does not match listed as damaged | `RunLibraryListTests.ARunWhoseSealDoesNotMatchIsListedAsDamaged` |  |
+| read the explanation on a damaged run | `RunLibraryListTests.ADamagedRunCarriesTheExplanation` |  |
+| be certain a sealed run carries no explanation, so an explanation always means something | `RunLibraryListTests.ASealedRunCarriesNoExplanation` |  |
+| be certain a stray folder in the root is left out rather than listed | `RunLibraryListTests.ADirectoryThatIsNotARunIsLeftOut` |  |
+| see runs listed in a stable order | `RunLibraryListTests.RunsAreListedInIdentifierOrder` |  |
+| be told why nothing is listed when no library has been chosen | `RunLibraryViewModelTests.WithNoLibraryChosenTheOperatorIsToldWhy` |  |
+| be certain nothing is claimed about runs when no library has been chosen | `RunLibraryViewModelTests.WithNoLibraryChosenNothingIsClaimedAboutRuns` |  |
+| tell a library that is empty from one that is unreadable | `RunLibraryViewModelTests.AnUnreadableLibraryIsNotReportedAsEmpty` |  |
+| see the reason an unreadable library could not be read | `RunLibraryViewModelTests.AnUnreadableLibrarySurfacesTheReason` |  |
+| be certain a failed refresh clears what was shown before rather than leaving it stale | `RunLibraryViewModelTests.AFailedRefreshClearsWhatWasShownBefore` |  |
+| have the state of a run read from what is actually on disk | `RunStateReaderTests` |  |
 
 ---
 

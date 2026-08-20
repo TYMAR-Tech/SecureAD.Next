@@ -39,20 +39,20 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| be certain two complete runs of an unchanged forest compare fully | `RunComparabilityTests.TwoCompleteRunsOfAnUnchangedForestAreFullyComparable` |  |  |
-| be certain a refused comparison never reports that it may proceed | `RunComparabilityTests.NoRefusedComparisonEverReportsThatItMayProceed` |  |  |
-| be certain only a fully comparable pair is ever measured | `RunComparabilityTests.OnlyAFullyComparablePairIsEverMeasured` |  |  |
-| read an explanation on every outcome, rather than a bare verdict | `RunComparabilityTests.EveryOutcomeExplainsItself` |  |  |
-| be certain every outcome in the set is reachable, so none is decorative | `RunComparabilityTests.EveryOutcomeIsProducible` |  |  |
-| be certain runs from different forests are refused | `RunComparabilityTests.RunsFromDifferentForestsAreRefused` |  |  |
-| see a failed domain reported ahead of a changed forest, so the more serious cause wins | `RunComparabilityTests.AFailedDomainIsReportedAheadOfAChangedForest` |  |  |
-| see an earlier run that never completed reported ahead of this run's coverage | `RunComparabilityTests.AnEarlierRunThatNeverCompletedIsReportedAheadOfThisRunsCoverage` |  |  |
-| be certain a complete sealed run may be a baseline | `RunComparabilityTests.ACompleteSealedRunMayBeABaseline` |  |  |
-| be certain a run that did not read every domain may not be a baseline | `RunComparabilityTests.ARunThatDidNotReadEveryDomainMayNotBeABaseline` |  |  |
-| be certain baseline eligibility agrees with comparing a run against itself | `RunComparabilityTests.EligibilityAgreesWithComparingARunAgainstItself` |  |  |
-| be certain a run cannot claim to be sealed without saying what it read | `RunComparabilityTests.ARunCannotClaimToBeSealedWithoutSayingWhatItRead` |  |  |
-| read the same account of comparability in the document and the code | `RunComparabilityDocumentationTests` |  |  |
+|---|---|---|
+| be certain two complete runs of an unchanged forest compare fully | `RunComparabilityTests.TwoCompleteRunsOfAnUnchangedForestAreFullyComparable` |  |
+| be certain a refused comparison never reports that it may proceed | `RunComparabilityTests.NoRefusedComparisonEverReportsThatItMayProceed` |  |
+| be certain only a fully comparable pair is ever measured | `RunComparabilityTests.OnlyAFullyComparablePairIsEverMeasured` |  |
+| read an explanation on every outcome, rather than a bare verdict | `RunComparabilityTests.EveryOutcomeExplainsItself` |  |
+| be certain every outcome in the set is reachable, so none is decorative | `RunComparabilityTests.EveryOutcomeIsProducible` |  |
+| be certain runs from different forests are refused | `RunComparabilityTests.RunsFromDifferentForestsAreRefused` |  |
+| see a failed domain reported ahead of a changed forest, so the more serious cause wins | `RunComparabilityTests.AFailedDomainIsReportedAheadOfAChangedForest` |  |
+| see an earlier run that never completed reported ahead of this run's coverage | `RunComparabilityTests.AnEarlierRunThatNeverCompletedIsReportedAheadOfThisRunsCoverage` |  |
+| be certain a complete sealed run may be a baseline | `RunComparabilityTests.ACompleteSealedRunMayBeABaseline` |  |
+| be certain a run that did not read every domain may not be a baseline | `RunComparabilityTests.ARunThatDidNotReadEveryDomainMayNotBeABaseline` |  |
+| be certain baseline eligibility agrees with comparing a run against itself | `RunComparabilityTests.EligibilityAgreesWithComparingARunAgainstItself` |  |
+| be certain a run cannot claim to be sealed without saying what it read | `RunComparabilityTests.ARunCannotClaimToBeSealedWithoutSayingWhatItRead` |  |
+| read the same account of comparability in the document and the code | `RunComparabilityDocumentationTests` |  |
 
 ---
 

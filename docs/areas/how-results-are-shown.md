@@ -43,31 +43,31 @@ screen filters by — an offline rebuild of the directory from the names a bundl
 screens themselves live in [`how-the-app-looks`](how-the-app-looks.md).
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| see the tree rooted at the partitions the run read | `DirectoryTreeTests.TheTreeIsRootedAtThePartitionsTheRunRead` |  |  |
-| see a container objects were captured under | `DirectoryTreeTests.AContainerObjectsWereCapturedUnderIsInTheTree` |  |  |
-| reach a branch whose intermediate container holds nothing directly | `DirectoryTreeTests.AContainerWithNothingDirectlyInItStillJoinsItsBranchToTheRoot` |  |  |
-| be certain nothing is invented above a partition the run read | `DirectoryTreeTests.NothingIsInventedAboveARoot` |  |  |
-| reach objects under a container that was never captured | `DirectoryTreeTests.AContainerThatWasNeverCapturedIsStillANodeSoItsBranchIsReachable` |  |  |
-| tell a container that was never captured from one that was | `DirectoryTreeTests.AContainerThatWasNeverCapturedSaysSoRatherThanLookingCaptured` |  |  |
-| be certain a container name carrying a comma is one container | `DirectoryTreeTests.AContainerWhoseNameCarriesACommaIsOneContainer` |  |  |
-| see which domains the run could not read, stated on the tree | `DirectoryTreeTests.ADomainTheRunCouldNotReadIsReportedAsAGap` |  |  |
-| be certain a tree missing a branch does not claim to be complete | `DirectoryTreeTests.ATreeWithAGapDoesNotClaimItsBranchesAreComplete` |  |  |
-| see which partitions this product does not read at all | `DirectoryTreeTests.APartitionThisProductDoesNotReadIsReportedAsAGap` |  |  |
-| open a run's assets and see the tree it captured | `AssetsViewModelTests.ARunOpensRootedAtTheForest` |  |  |
-| tell a bundle that would not open from a run that captured nothing | `AssetsViewModelTests.ARefusedBundleDoesNotLookLikeARunThatCapturedNothing` |  |  |
-| read a refusal in the words the evidence layer used | `AssetsViewModelTests.ARefusalIsShownInTheWordsTheEvidenceLayerUsed` |  |  |
-| be certain evidence is not read while a capture is writing it | `AssetsViewModelTests.WhileACaptureIsRunningTheBundleIsNotRead` |  |  |
-| be told why analysis will not run, and when it will | `AssetsViewModelTests.WhileACaptureIsRunningTheScreenSaysWhyAndWhatToDo` |  |  |
-| see the objects in the container selected in the tree | `AssetsViewModelTests.SelectingAContainerListsThatContainersObjects` |  |  |
-| choose between this object, one level, and everything beneath | `AssetsViewModelTests.ChangingTheLevelListsAgainAtThatLevel` |  |  |
-| page through a container holding more objects than fit on a screen | `AssetsViewModelTests.GoingToTheNextPageAsksForIt` |  |  |
-| see which objects of how many are showing | `AssetsViewModelTests.ThePagerSaysWhichObjectsOfHowManyAreShowing` |  |  |
-| tell a short listing from an empty container | `AssetsViewModelTests.AShortListingIsNotReportedAsAnEmptyContainer` |  |  |
-| be certain an object whose class did not arrive says so | `AssetsViewModelTests.AnObjectWhoseClassDidNotArriveSaysSoRatherThanShowingABlank` |  |  |
-| list only the objects of a container whose name holds a wildcard character | `ObjectListingTests.AContainerWhoseNameHoldsAWildcardCharacterListsOnlyItsOwnObjects` |  |  |
-| be certain the first page is really the first objects by name | `ObjectListingTests.TheFirstPageIsTheFirstObjectsByName` |  |  |
-| see an empty container in the tree | `DirectoryTreeTests.AContainerHoldingNothingIsStillInTheTree` |  |  |
+|---|---|---|
+| see the tree rooted at the partitions the run read | `DirectoryTreeTests.TheTreeIsRootedAtThePartitionsTheRunRead` |  |
+| see a container objects were captured under | `DirectoryTreeTests.AContainerObjectsWereCapturedUnderIsInTheTree` |  |
+| reach a branch whose intermediate container holds nothing directly | `DirectoryTreeTests.AContainerWithNothingDirectlyInItStillJoinsItsBranchToTheRoot` |  |
+| be certain nothing is invented above a partition the run read | `DirectoryTreeTests.NothingIsInventedAboveARoot` |  |
+| reach objects under a container that was never captured | `DirectoryTreeTests.AContainerThatWasNeverCapturedIsStillANodeSoItsBranchIsReachable` |  |
+| tell a container that was never captured from one that was | `DirectoryTreeTests.AContainerThatWasNeverCapturedSaysSoRatherThanLookingCaptured` |  |
+| be certain a container name carrying a comma is one container | `DirectoryTreeTests.AContainerWhoseNameCarriesACommaIsOneContainer` |  |
+| see which domains the run could not read, stated on the tree | `DirectoryTreeTests.ADomainTheRunCouldNotReadIsReportedAsAGap` |  |
+| be certain a tree missing a branch does not claim to be complete | `DirectoryTreeTests.ATreeWithAGapDoesNotClaimItsBranchesAreComplete` |  |
+| see which partitions this product does not read at all | `DirectoryTreeTests.APartitionThisProductDoesNotReadIsReportedAsAGap` |  |
+| open a run's assets and see the tree it captured | `AssetsViewModelTests.ARunOpensRootedAtTheForest` |  |
+| tell a bundle that would not open from a run that captured nothing | `AssetsViewModelTests.ARefusedBundleDoesNotLookLikeARunThatCapturedNothing` |  |
+| read a refusal in the words the evidence layer used | `AssetsViewModelTests.ARefusalIsShownInTheWordsTheEvidenceLayerUsed` |  |
+| be certain evidence is not read while a capture is writing it | `AssetsViewModelTests.WhileACaptureIsRunningTheBundleIsNotRead` |  |
+| be told why analysis will not run, and when it will | `AssetsViewModelTests.WhileACaptureIsRunningTheScreenSaysWhyAndWhatToDo` |  |
+| see the objects in the container selected in the tree | `AssetsViewModelTests.SelectingAContainerListsThatContainersObjects` |  |
+| choose between this object, one level, and everything beneath | `AssetsViewModelTests.ChangingTheLevelListsAgainAtThatLevel` |  |
+| page through a container holding more objects than fit on a screen | `AssetsViewModelTests.GoingToTheNextPageAsksForIt` |  |
+| see which objects of how many are showing | `AssetsViewModelTests.ThePagerSaysWhichObjectsOfHowManyAreShowing` |  |
+| tell a short listing from an empty container | `AssetsViewModelTests.AShortListingIsNotReportedAsAnEmptyContainer` |  |
+| be certain an object whose class did not arrive says so | `AssetsViewModelTests.AnObjectWhoseClassDidNotArriveSaysSoRatherThanShowingABlank` |  |
+| list only the objects of a container whose name holds a wildcard character | `ObjectListingTests.AContainerWhoseNameHoldsAWildcardCharacterListsOnlyItsOwnObjects` |  |
+| be certain the first page is really the first objects by name | `ObjectListingTests.TheFirstPageIsTheFirstObjectsByName` |  |
+| see an empty container in the tree | `DirectoryTreeTests.AContainerHoldingNothingIsStillInTheTree` |  |
 
 ---
 

@@ -49,87 +49,87 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| see the domain table filled before any controller is contacted | `NewAuditViewModelTests.TheTableIsFilledBeforeAnyControllerIsContacted` |  |  |
-| have the window work the whole thing out on opening, without a press | `NewAuditViewModelTests.OpeningTheWindowWorksTheWholeThingOutWithoutAPress` |  |  |
-| be certain opening the window is never one click from a capture | `NewAuditViewModelTests.OpeningTheWindowIsNeverOneClickFromACapture` |  |  |
-| stop the pass the window began | `NewAuditViewModelTests.ThePassTheWindowBeganCanBeStopped` |  |  |
-| be certain a stopped pass calls what it never reached unasked rather than unreachable | `NewAuditViewModelTests.AStoppedPassLeavesWhatItReachedAndAsksNothingOfTheRest` |  |  |
-| check a controller he named without paying for a pass over the forest | `NewAuditViewModelTests.CheckingATypedControllerCostsOneMachineAndNotAForest` |  |  |
-| be told why the window could not work itself out, rather than shown an empty table | `NewAuditViewModelTests.AForestThatCannotBeReachedOnOpeningSaysSoRatherThanShowingAnEmptyTable` |  |  |
-| run the pass again after it failed, without closing the window | `NewAuditViewModelTests.APassThatCouldNotFinishCanBeRunAgain` |  |  |
-| read the connection rung in words rather than as the name the type spells it with | `NewAuditViewModelTests.TheRungIsShownInWordsRatherThanAsAnEnumName` |  |  |
-| see one spelling of a domain per row, being the name the forest declared | `NewAuditViewModelTests.ARowIsHeadedByTheNameTheForestDeclaredForTheDomain` |  |  |
-| see the whole audit before committing to it, and start it from there | `NewAuditViewModelTests.ReachingTheReviewScreenStartsNothing` |  |  |
-| go back from that review and lose nothing | `NewAuditViewModelTests.GoingBackFromTheReviewStartsNothing` |  |  |
-| be certain reviewing asks every domain again rather than trusting the first pass | `NewAuditViewModelTests.ReviewingAsksEveryDomainAgain` |  |  |
-| read what the run will and will not do, and what it cannot say | `NewAuditViewModelTests.TheReviewStatesWhatTheRunWillAndWillNotDo` |  |  |
-| be certain an unanswered exclusion stops the review being reached at all | `NewAuditViewModelTests.AnUnansweredExclusionStopsTheReviewBeingReached` |  |  |
-| see a domain the forest names no controller for in the table rather than beneath it | `NewAuditViewModelTests.ADomainWithNoControllerIsARowOfTheTable` |  |  |
-| be certain such a row offers no choice the product cannot honour | `NewAuditViewModelTests.ADomainWithNoControllerOffersNoChoiceItCannotHonour` |  |  |
-| read that the forest names no controller, rather than an empty cell | `NewAuditViewModelTests.ADomainWithNoControllerSaysSoRatherThanShowingNothing` |  |  |
-| be told where a finished run's evidence is, and that reading it is not built | `NewAuditViewModelTests.AFinishedRunSaysWhereTheEvidenceIsAndThatReadingItIsNotBuilt` |  |  |
-| be certain a finished run is not offered a way back to change it | `NewAuditViewModelTests.AFinishedRunDoesNotOfferTheWayBack` |  |  |
-| see everything the table stopped carrying, for every domain at once | `NewAuditViewModelTests.DetailsShowsEveryDomainAtOnce` |  |  |
-| be told a trimmed column is hiding an unanswered question | `NewAuditViewModelTests.ADomainWithAnUnansweredQuestionIsWorthAttention` |  |  |
-| have the run captured into the library he chose | `NewAuditViewModelTests.ARunIsCapturedIntoTheChosenLibrary` |  |  |
-| see where a sealed run's evidence is | `NewAuditViewModelTests.ASealedRunReportsWhereItsEvidenceIs` |  |  |
-| be told, when a run produced no bundle, that it did not and where to look | `NewAuditViewModelTests.ARunThatProducedNoBundleSaysSoAndSaysWhereToLook` |  |  |
-| see a stopped run reported as stopped rather than as failed | `NewAuditViewModelTests.AStoppedRunIsReportedAsStoppedRatherThanFailed` |  |  |
-| take a domain out of a run and be asked to account for it | `NewAuditViewModelTests.UntickingADomainAsksTheOperatorToAccountForIt` |  |  |
-| be certain walking away from that question leaves the domain in the run | `NewAuditViewModelTests.ADismissedAttestationLeavesTheDomainInTheRun` |  |  |
-| have an exclusion keep the reason, the note and the authorising name | `NewAuditViewModelTests.AnAttestedExclusionKeepsEverythingTheRecordAsksFor` |  |  |
-| be certain the account behind an exclusion is captured rather than typed | `NewAuditViewModelTests.TheAccountBehindAnExclusionIsCapturedRatherThanTyped` |  |  |
-| be certain putting a domain back drops what was stated for it | `NewAuditViewModelTests.PuttingADomainBackDropsWhatWasStatedForIt` |  |  |
-| put a domain back without being asked anything | `NewAuditViewModelTests.PuttingADomainBackAsksTheOperatorNothing` |  |  |
-| be asked about a domain no controller was found for without going looking for it | `NewAuditViewModelTests.ADomainWithNoControllerIsAttestedWhenTheWindowWorksItselfOut` |  |  |
-| be asked about each unreadable domain separately rather than in one lump | `NewAuditViewModelTests.EveryUnreadableDomainIsPutToTheOperatorSeparately` |  |  |
-| be certain one run does not ask him about the same domain twice | `NewAuditViewModelTests.AnAlreadyAttestedDomainIsNotAskedAboutAgainInTheSameRun` |  |  |
-| be certain an exclusion nobody answered for stops the run | `NewAuditViewModelTests.AnUnreadableDomainNobodyAnsweredForStopsTheRun` |  |  |
-| start that same run once he has answered for it | `NewAuditViewModelTests.AnUnreadableDomainThatWasAttestedLetsTheRunStart` |  |  |
-| tell a domain he took out from one the forest named no controller for | `NewAuditViewModelTests.ADomainExcludedByChoiceIsNotDescribedLikeOneWithNoController` |  |  |
-| be certain an exclusion nobody answered for is not shown as authorised | `NewAuditViewModelTests.AnUnansweredExclusionIsNotShownAsAuthorised` |  |  |
-| see who authorised an exclusion once it has been answered for | `NewAuditViewModelTests.AnAnsweredExclusionSaysWhoAuthorisedIt` |  |  |
-| have every attestation carried into the run he started | `NewAuditViewModelTests.EveryAttestationIsCarriedIntoTheRun` |  |  |
-| have a domain he took out carried into the run as an exclusion | `NewAuditViewModelTests.ADomainTakenOutIsCarriedIntoTheRunAsAnExclusion` |  |  |
-| be certain a domain he took out is not read after all | `CapturePlanTests.AnExcludedDomainIsNotRead` |  |  |
-| be certain excluding a domain does not flatter the run's coverage | `CapturePlanTests.AnExcludedDomainStillCountsAgainstCoverage` |  |  |
-| have a run that left a domain out still seal, and say why it was not read | `CaptureRunEndToEndTests.ARunThatExcludedADomainSealsAndSaysWhyItWasNotRead` |  |  |
-| be certain such a run does not claim to have covered the forest | `CaptureRunEndToEndTests.ARunThatExcludedADomainDoesNotClaimFullCoverage` |  |  |
-| tell an excluded domain from an unreachable one in the run's own coverage | `RunCoverageTests.AnExcludedDomainNeverRecordsTheSameOutcomeAsAnUnreachableOne` |  |  |
-| be told when a run fails unexpectedly, rather than losing the window | `NewAuditViewModelTests.ARunThatThrowsIsReportedRatherThanTakingTheWindowDown` |  |  |
-| see what is leaving the run listed, and not just a heading | `NewAuditViewModelTests.TheListOfWhatIsLeavingTheRunKeepsOneIdentity` |  |  |
-| be certain rewording a reason cannot change what past runs appear to say | `NewAuditViewModelTests.AReasonsStoredNameIsNotItsWording` |  |  |
-| be offered every reason in the closed list, once each | `NewAuditViewModelTests.EveryReasonInTheClosedListIsOfferedExactlyOnce` |  |  |
-| see, before committing, how much this run will not establish | `NewAuditViewModelTests.TheCountOfWhatWillNotBeEstablishedComesFromTheStatesTheTableShows` |  |  |
-| be told that total is not yet known rather than shown a zero | `NewAuditViewModelTests.ATotalThatCannotBeComputedSaysSoRatherThanShowingZero` |  |  |
-| see a domain he excluded counted as establishing none of its facts | `NewAuditViewModelTests.AnExcludedDomainCountsAsEstablishingNoneOfItsFacts` |  |  |
-| be certain that count stays tied to what a row actually carries | `NewAuditViewModelTests.TheFactsCountedForAnAbsentDomainMatchTheFactsARowCarries` |  |  |
-| find the whole attestation in the bundle months later | `BundleWriterTests.AnExcludedDomainKeepsTheWholeAttestation` |  |  |
-| tell the two kinds of exclusion apart in the bundle | `BundleWriterTests.TheTwoKindsOfExclusionAreStoredApart` |  |  |
-| be certain a run that excluded nothing says so by carrying no rows | `BundleWriterTests.ARunThatExcludedNothingLeavesNoExclusionRows` |  |  |
-| name a controller himself and have it carried into the run | `NewAuditViewModelTests.AControllerAnOperatorNamesIsCarriedIntoTheRun` |  |  |
-| be certain a controller he named that is ineligible is refused rather than quietly replaced | `NewAuditViewModelTests.AnIneligibleControllerIsNotQuietlyReplacedByTheRankedChoice` |  |  |
-| read that refusal in the library's own words | `NewAuditViewModelTests.AnIneligibleControllerIsRefusedInTheLibrarysOwnWords` |  |  |
-| see the PDC emulator prompt only where the domain has alternatives | `NewAuditViewModelTests.ThePdcEmulatorPromptDoesNotAppearWhereTheDomainHasNoAlternatives` |  |  |
-| be certain a question not yet put is shown as not yet put rather than as a no | `NewAuditViewModelTests.AQuestionNotYetPutIsShownAsNotYetPutRatherThanAsNo` |  |  |
-| be certain the PDC emulator is not reported absent before it is established | `NewAuditViewModelTests.ThePdcEmulatorIsNotReportedAsAbsentBeforeItIsEstablished` |  |  |
-| tell a PDC emulator that could not be established from one holding no role | `NewAuditViewModelTests.APdcEmulatorThatCouldNotBeEstablishedIsNotReportedAsHoldingNoRole` |  |  |
-| be certain a controller nothing answered from is not reported as refusing protection | `NewAuditViewModelTests.AControllerNothingAnsweredFromIsNotReportedAsRefusingProtection` |  |  |
-| be told when his machine has no site, rather than being given one | `NewAuditViewModelTests.AMachineWithNoSiteSaysSoRatherThanNamingOne` |  |  |
-| see a domain with no candidates shown rather than omitted | `DiscoveryWiringTests.ADomainWithNoCandidatesIsShownRatherThanOmitted` |  |  |
-| see the failover list ranked, and shown in that order | `DiscoveryWiringTests.TheFailoverListIsRankedAndShownInThatOrder` |  |  |
-| be certain an override naming an ineligible controller stops the run | `DiscoveryWiringTests.AnOverrideNamingAnIneligibleControllerStopsTheRun` |  |  |
-| be certain an override naming a domain this forest does not have stops the run | `DiscoveryWiringTests.AnOverrideNamingADomainThisForestDoesNotHaveStopsTheRun` |  |  |
-| tell a forest with no subnets from one whose subnets did not match | `DiscoveryWiringTests.AForestWithNoSubnetsIsDistinguishedFromOneWhoseSubnetsDidNotMatch` |  |  |
-| be certain a choice made without every input is not called complete | `DiscoveryWiringTests.ThePreflightFileDoesNotCallAnUninformedChoiceComplete` |  |  |
-| be certain an audit cannot be started until a run library is chosen | `HomeViewModelTests.AnAuditCannotBeStartedUntilARunLibraryIsChosen` |  |  |
-| start an audit once a library is chosen | `HomeViewModelTests.ChoosingALibraryMakesAnAuditStartable` |  |  |
-| be certain nothing starts an audit until he asks for one | `HomeViewModelTests.NothingStartsAnAuditUntilTheOperatorAsksForOne` |  |  |
-| be told an installation is unconfigured rather than shown an empty path | `HomeViewModelTests.AnUnconfiguredInstallationExplainsItselfRatherThanShowingAnEmptyPath` |  |  |
-| be certain unreadable settings are reported rather than treated as unconfigured | `HomeViewModelTests.UnreadableSettingsAreReportedRatherThanTreatedAsUnconfigured` |  |  |
-| have his library choice remembered between sessions | `JsonShellSettingsStoreTests.APathThatWasWrittenIsReadBack` |  |  |
-| be certain settings are kept per machine rather than following a roaming profile | `JsonShellSettingsStoreTests.SettingsAreKeptInTheLocalProfileRatherThanTheRoamingOne` |  |  |
+|---|---|---|
+| see the domain table filled before any controller is contacted | `NewAuditViewModelTests.TheTableIsFilledBeforeAnyControllerIsContacted` |  |
+| have the window work the whole thing out on opening, without a press | `NewAuditViewModelTests.OpeningTheWindowWorksTheWholeThingOutWithoutAPress` |  |
+| be certain opening the window is never one click from a capture | `NewAuditViewModelTests.OpeningTheWindowIsNeverOneClickFromACapture` |  |
+| stop the pass the window began | `NewAuditViewModelTests.ThePassTheWindowBeganCanBeStopped` |  |
+| be certain a stopped pass calls what it never reached unasked rather than unreachable | `NewAuditViewModelTests.AStoppedPassLeavesWhatItReachedAndAsksNothingOfTheRest` |  |
+| check a controller he named without paying for a pass over the forest | `NewAuditViewModelTests.CheckingATypedControllerCostsOneMachineAndNotAForest` |  |
+| be told why the window could not work itself out, rather than shown an empty table | `NewAuditViewModelTests.AForestThatCannotBeReachedOnOpeningSaysSoRatherThanShowingAnEmptyTable` |  |
+| run the pass again after it failed, without closing the window | `NewAuditViewModelTests.APassThatCouldNotFinishCanBeRunAgain` |  |
+| read the connection rung in words rather than as the name the type spells it with | `NewAuditViewModelTests.TheRungIsShownInWordsRatherThanAsAnEnumName` |  |
+| see one spelling of a domain per row, being the name the forest declared | `NewAuditViewModelTests.ARowIsHeadedByTheNameTheForestDeclaredForTheDomain` |  |
+| see the whole audit before committing to it, and start it from there | `NewAuditViewModelTests.ReachingTheReviewScreenStartsNothing` |  |
+| go back from that review and lose nothing | `NewAuditViewModelTests.GoingBackFromTheReviewStartsNothing` |  |
+| be certain reviewing asks every domain again rather than trusting the first pass | `NewAuditViewModelTests.ReviewingAsksEveryDomainAgain` |  |
+| read what the run will and will not do, and what it cannot say | `NewAuditViewModelTests.TheReviewStatesWhatTheRunWillAndWillNotDo` |  |
+| be certain an unanswered exclusion stops the review being reached at all | `NewAuditViewModelTests.AnUnansweredExclusionStopsTheReviewBeingReached` |  |
+| see a domain the forest names no controller for in the table rather than beneath it | `NewAuditViewModelTests.ADomainWithNoControllerIsARowOfTheTable` |  |
+| be certain such a row offers no choice the product cannot honour | `NewAuditViewModelTests.ADomainWithNoControllerOffersNoChoiceItCannotHonour` |  |
+| read that the forest names no controller, rather than an empty cell | `NewAuditViewModelTests.ADomainWithNoControllerSaysSoRatherThanShowingNothing` |  |
+| be told where a finished run's evidence is, and that reading it is not built | `NewAuditViewModelTests.AFinishedRunSaysWhereTheEvidenceIsAndThatReadingItIsNotBuilt` |  |
+| be certain a finished run is not offered a way back to change it | `NewAuditViewModelTests.AFinishedRunDoesNotOfferTheWayBack` |  |
+| see everything the table stopped carrying, for every domain at once | `NewAuditViewModelTests.DetailsShowsEveryDomainAtOnce` |  |
+| be told a trimmed column is hiding an unanswered question | `NewAuditViewModelTests.ADomainWithAnUnansweredQuestionIsWorthAttention` |  |
+| have the run captured into the library he chose | `NewAuditViewModelTests.ARunIsCapturedIntoTheChosenLibrary` |  |
+| see where a sealed run's evidence is | `NewAuditViewModelTests.ASealedRunReportsWhereItsEvidenceIs` |  |
+| be told, when a run produced no bundle, that it did not and where to look | `NewAuditViewModelTests.ARunThatProducedNoBundleSaysSoAndSaysWhereToLook` |  |
+| see a stopped run reported as stopped rather than as failed | `NewAuditViewModelTests.AStoppedRunIsReportedAsStoppedRatherThanFailed` |  |
+| take a domain out of a run and be asked to account for it | `NewAuditViewModelTests.UntickingADomainAsksTheOperatorToAccountForIt` |  |
+| be certain walking away from that question leaves the domain in the run | `NewAuditViewModelTests.ADismissedAttestationLeavesTheDomainInTheRun` |  |
+| have an exclusion keep the reason, the note and the authorising name | `NewAuditViewModelTests.AnAttestedExclusionKeepsEverythingTheRecordAsksFor` |  |
+| be certain the account behind an exclusion is captured rather than typed | `NewAuditViewModelTests.TheAccountBehindAnExclusionIsCapturedRatherThanTyped` |  |
+| be certain putting a domain back drops what was stated for it | `NewAuditViewModelTests.PuttingADomainBackDropsWhatWasStatedForIt` |  |
+| put a domain back without being asked anything | `NewAuditViewModelTests.PuttingADomainBackAsksTheOperatorNothing` |  |
+| be asked about a domain no controller was found for without going looking for it | `NewAuditViewModelTests.ADomainWithNoControllerIsAttestedWhenTheWindowWorksItselfOut` |  |
+| be asked about each unreadable domain separately rather than in one lump | `NewAuditViewModelTests.EveryUnreadableDomainIsPutToTheOperatorSeparately` |  |
+| be certain one run does not ask him about the same domain twice | `NewAuditViewModelTests.AnAlreadyAttestedDomainIsNotAskedAboutAgainInTheSameRun` |  |
+| be certain an exclusion nobody answered for stops the run | `NewAuditViewModelTests.AnUnreadableDomainNobodyAnsweredForStopsTheRun` |  |
+| start that same run once he has answered for it | `NewAuditViewModelTests.AnUnreadableDomainThatWasAttestedLetsTheRunStart` |  |
+| tell a domain he took out from one the forest named no controller for | `NewAuditViewModelTests.ADomainExcludedByChoiceIsNotDescribedLikeOneWithNoController` |  |
+| be certain an exclusion nobody answered for is not shown as authorised | `NewAuditViewModelTests.AnUnansweredExclusionIsNotShownAsAuthorised` |  |
+| see who authorised an exclusion once it has been answered for | `NewAuditViewModelTests.AnAnsweredExclusionSaysWhoAuthorisedIt` |  |
+| have every attestation carried into the run he started | `NewAuditViewModelTests.EveryAttestationIsCarriedIntoTheRun` |  |
+| have a domain he took out carried into the run as an exclusion | `NewAuditViewModelTests.ADomainTakenOutIsCarriedIntoTheRunAsAnExclusion` |  |
+| be certain a domain he took out is not read after all | `CapturePlanTests.AnExcludedDomainIsNotRead` |  |
+| be certain excluding a domain does not flatter the run's coverage | `CapturePlanTests.AnExcludedDomainStillCountsAgainstCoverage` |  |
+| have a run that left a domain out still seal, and say why it was not read | `CaptureRunEndToEndTests.ARunThatExcludedADomainSealsAndSaysWhyItWasNotRead` |  |
+| be certain such a run does not claim to have covered the forest | `CaptureRunEndToEndTests.ARunThatExcludedADomainDoesNotClaimFullCoverage` |  |
+| tell an excluded domain from an unreachable one in the run's own coverage | `RunCoverageTests.AnExcludedDomainNeverRecordsTheSameOutcomeAsAnUnreachableOne` |  |
+| be told when a run fails unexpectedly, rather than losing the window | `NewAuditViewModelTests.ARunThatThrowsIsReportedRatherThanTakingTheWindowDown` |  |
+| see what is leaving the run listed, and not just a heading | `NewAuditViewModelTests.TheListOfWhatIsLeavingTheRunKeepsOneIdentity` |  |
+| be certain rewording a reason cannot change what past runs appear to say | `NewAuditViewModelTests.AReasonsStoredNameIsNotItsWording` |  |
+| be offered every reason in the closed list, once each | `NewAuditViewModelTests.EveryReasonInTheClosedListIsOfferedExactlyOnce` |  |
+| see, before committing, how much this run will not establish | `NewAuditViewModelTests.TheCountOfWhatWillNotBeEstablishedComesFromTheStatesTheTableShows` |  |
+| be told that total is not yet known rather than shown a zero | `NewAuditViewModelTests.ATotalThatCannotBeComputedSaysSoRatherThanShowingZero` |  |
+| see a domain he excluded counted as establishing none of its facts | `NewAuditViewModelTests.AnExcludedDomainCountsAsEstablishingNoneOfItsFacts` |  |
+| be certain that count stays tied to what a row actually carries | `NewAuditViewModelTests.TheFactsCountedForAnAbsentDomainMatchTheFactsARowCarries` |  |
+| find the whole attestation in the bundle months later | `BundleWriterTests.AnExcludedDomainKeepsTheWholeAttestation` |  |
+| tell the two kinds of exclusion apart in the bundle | `BundleWriterTests.TheTwoKindsOfExclusionAreStoredApart` |  |
+| be certain a run that excluded nothing says so by carrying no rows | `BundleWriterTests.ARunThatExcludedNothingLeavesNoExclusionRows` |  |
+| name a controller himself and have it carried into the run | `NewAuditViewModelTests.AControllerAnOperatorNamesIsCarriedIntoTheRun` |  |
+| be certain a controller he named that is ineligible is refused rather than quietly replaced | `NewAuditViewModelTests.AnIneligibleControllerIsNotQuietlyReplacedByTheRankedChoice` |  |
+| read that refusal in the library's own words | `NewAuditViewModelTests.AnIneligibleControllerIsRefusedInTheLibrarysOwnWords` |  |
+| see the PDC emulator prompt only where the domain has alternatives | `NewAuditViewModelTests.ThePdcEmulatorPromptDoesNotAppearWhereTheDomainHasNoAlternatives` |  |
+| be certain a question not yet put is shown as not yet put rather than as a no | `NewAuditViewModelTests.AQuestionNotYetPutIsShownAsNotYetPutRatherThanAsNo` |  |
+| be certain the PDC emulator is not reported absent before it is established | `NewAuditViewModelTests.ThePdcEmulatorIsNotReportedAsAbsentBeforeItIsEstablished` |  |
+| tell a PDC emulator that could not be established from one holding no role | `NewAuditViewModelTests.APdcEmulatorThatCouldNotBeEstablishedIsNotReportedAsHoldingNoRole` |  |
+| be certain a controller nothing answered from is not reported as refusing protection | `NewAuditViewModelTests.AControllerNothingAnsweredFromIsNotReportedAsRefusingProtection` |  |
+| be told when his machine has no site, rather than being given one | `NewAuditViewModelTests.AMachineWithNoSiteSaysSoRatherThanNamingOne` |  |
+| see a domain with no candidates shown rather than omitted | `DiscoveryWiringTests.ADomainWithNoCandidatesIsShownRatherThanOmitted` |  |
+| see the failover list ranked, and shown in that order | `DiscoveryWiringTests.TheFailoverListIsRankedAndShownInThatOrder` |  |
+| be certain an override naming an ineligible controller stops the run | `DiscoveryWiringTests.AnOverrideNamingAnIneligibleControllerStopsTheRun` |  |
+| be certain an override naming a domain this forest does not have stops the run | `DiscoveryWiringTests.AnOverrideNamingADomainThisForestDoesNotHaveStopsTheRun` |  |
+| tell a forest with no subnets from one whose subnets did not match | `DiscoveryWiringTests.AForestWithNoSubnetsIsDistinguishedFromOneWhoseSubnetsDidNotMatch` |  |
+| be certain a choice made without every input is not called complete | `DiscoveryWiringTests.ThePreflightFileDoesNotCallAnUninformedChoiceComplete` |  |
+| be certain an audit cannot be started until a run library is chosen | `HomeViewModelTests.AnAuditCannotBeStartedUntilARunLibraryIsChosen` |  |
+| start an audit once a library is chosen | `HomeViewModelTests.ChoosingALibraryMakesAnAuditStartable` |  |
+| be certain nothing starts an audit until he asks for one | `HomeViewModelTests.NothingStartsAnAuditUntilTheOperatorAsksForOne` |  |
+| be told an installation is unconfigured rather than shown an empty path | `HomeViewModelTests.AnUnconfiguredInstallationExplainsItselfRatherThanShowingAnEmptyPath` |  |
+| be certain unreadable settings are reported rather than treated as unconfigured | `HomeViewModelTests.UnreadableSettingsAreReportedRatherThanTreatedAsUnconfigured` |  |
+| have his library choice remembered between sessions | `JsonShellSettingsStoreTests.APathThatWasWrittenIsReadBack` |  |
+| be certain settings are kept per machine rather than following a roaming profile | `JsonShellSettingsStoreTests.SettingsAreKeptInTheLocalProfileRatherThanTheRoamingOne` |  |
 
 ---
 

@@ -110,16 +110,16 @@ now carries chrome of its own — a navigation rail and a templated table — so
 half in the product's language and half in Windows'.
 
 | An operator can… | Proven by | Confirmed in lab |
-|---|---|---|---|
-| tell a fact the run did not measure from one it measured and found wanting, without relying on colour — four states, four silhouettes | `ViewColourLiteralGateTests` proves colour is not written into views; the shapes themselves are judged by eye against a running window, which no test can do |  |  |
-| read a screen where no colour was chosen in isolation — every colour is named for its meaning in one dictionary | `ViewColourLiteralGateTests.NoViewNamesAColour` |  |  |
-| trust that a colour cannot creep back into a view one screen at a time | `ViewColourLiteralGateTests.TheGateReadsTheRealViewsAndWouldRecogniseAColour` |  |  |
-| read what became of a run in words, rather than in the name the code calls it by | `RunSummaryViewModelTests.EachStateIsShownInWords` |  |  |
-| trust that a run state added later cannot reach a screen with no wording | `RunSummaryViewModelTests.EveryStateHasBeenGivenWordsAndAMeaning` |  |  |
-| trust that guard is measuring something | `RunSummaryViewModelTests.AStateWithNoWordingFallsThroughToUnknown` |  |  |
-| tell an interrupted run from a damaged one, whose remedies differ | `RunSummaryViewModelTests.InterruptedAndDamagedDoNotMeanTheSameThing` |  |  |
-| select a run on Home and read what was observed about it | `RunLibraryViewModelTests.SelectingARunGivesTheCardSomethingToShow` |  |  |
-| trust the details card is never left describing a run the library may no longer hold | `RunLibraryViewModelTests.ARefreshDropsTheSelection` |  |  |
+|---|---|---|
+| tell a fact the run did not measure from one it measured and found wanting, without relying on colour — four states, four silhouettes | `ViewColourLiteralGateTests` proves colour is not written into views; the shapes themselves are judged by eye against a running window, which no test can do |  |
+| read a screen where no colour was chosen in isolation — every colour is named for its meaning in one dictionary | `ViewColourLiteralGateTests.NoViewNamesAColour` |  |
+| trust that a colour cannot creep back into a view one screen at a time | `ViewColourLiteralGateTests.TheGateReadsTheRealViewsAndWouldRecogniseAColour` |  |
+| read what became of a run in words, rather than in the name the code calls it by | `RunSummaryViewModelTests.EachStateIsShownInWords` |  |
+| trust that a run state added later cannot reach a screen with no wording | `RunSummaryViewModelTests.EveryStateHasBeenGivenWordsAndAMeaning` |  |
+| trust that guard is measuring something | `RunSummaryViewModelTests.AStateWithNoWordingFallsThroughToUnknown` |  |
+| tell an interrupted run from a damaged one, whose remedies differ | `RunSummaryViewModelTests.InterruptedAndDamagedDoNotMeanTheSameThing` |  |
+| select a run on Home and read what was observed about it | `RunLibraryViewModelTests.SelectingARunGivesTheCardSomethingToShow` |  |
+| trust the details card is never left describing a run the library may no longer hold | `RunLibraryViewModelTests.ARefreshDropsTheSelection` |  |
 
 **Where things live.** `next/src/SecureAD.Shell/Themes/` — `Palette.xaml` (raw values, the only
 file a second theme replaces), `Brushes.xaml` (meaning), `Type.xaml`, `Spacing.xaml` (both
