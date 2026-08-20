@@ -40,6 +40,48 @@ public sealed class DocumentationDateGateTests
 
     private static readonly Regex Dated = new(@"20\d\d-\d\d-\d\d", RegexOptions.Compiled);
 
+    /// <summary>
+    /// A date with a placeholder where a day or month should be: <c>2026-09-XX</c>.
+    /// </summary>
+    private static readonly Regex Placeholder = new(@"20\d\d-(?:\d\d|XX)-(?:\d\d|XX)(?<!\d)", RegexOptions.Compiled);
+
+    /// <summary>
+    /// A placeholder date is not a date, so <see cref="NoDocumentClaimsADateThatHasNotHappened"/>
+    /// never sees it.
+    /// </summary>
+    /// <remarks>
+    /// Written 2026-08-20, after four documents were found carrying <c>2026-09-XX</c> - two from
+    /// this session and two from earlier ones. The session that wrote them did not know the date
+    /// and would not guess, which was right; what was missing was anything to make the placeholder
+    /// come due. Had it guessed, it would have been three weeks out and in the future.
+    /// <c>next/tools/replace-date-placeholders.ps1</c> fills them in.
+    /// </remarks>
+    [Fact]
+    public void NoDocumentLeavesADatePlaceholderUnfilled()
+    {
+        var offences = new List<string>();
+
+        foreach (var file in DatedFiles())
+        {
+            foreach (var line in File.ReadAllLines(file).Index())
+            {
+                foreach (Match match in Placeholder.Matches(line.Item))
+                {
+                    if (!match.Value.Contains("XX", StringComparison.Ordinal)) continue;
+
+                    offences.Add(
+                        $"  {Path.GetFileName(file)} line {line.Index + 1}: {match.Value}");
+                }
+            }
+        }
+
+        Assert.True(
+            offences.Count == 0,
+            "A date placeholder is not a date, so the future-date gate never sees it. Fill it in "
+            + "with next/tools/replace-date-placeholders.ps1:"
+            + Environment.NewLine + string.Join(Environment.NewLine, offences));
+    }
+
     [Fact]
     public void NoDocumentClaimsADateThatHasNotHappened()
     {

@@ -694,7 +694,7 @@ Stated plainly, because every one of these is a way to be confidently wrong:
 
 ## 10. The requirements, collected
 
-**The `Built` column was added 2026-09-XX and is the only change to this section.** Every
+**The `Built` column was added 2026-08-20 and is the only change to this section.** Every
 requirement must name the type or test that satisfies it, or say `not built`. A requirement whose
 entry is neither fails the build, so this table cannot quietly stop describing the product.
 `next/tools/trace-permission-requirements.ps1` produced the first pass.
