@@ -80,7 +80,7 @@ stay in step would not have.
 rather than guessing. Whether that matters is
 [`0037`](0037-an-unreadable-dacl-says-so.md)'s question, not this one.
 
-## Amendment, 2026-08-19 â€” the decision is right, and the reason given for it is not AD's
+## Amendment, 2026-08-19 — the decision is right, and the reason given for it is not AD's
 
 Recorded by the session that took `S-58` finding `#7`. **The Context above is left standing**, for
 the reason every amendment in this repository gives: a decision record that quietly loses what it
@@ -93,10 +93,10 @@ matches". That is the general early-stop description. **AD does not do this.** M
 *Checking Simple Access* defines the algorithm for an Active Directory object:
 
 > Let G and D denote the access rights that are granted and denied, respectively, on the object. Set
-> both to a value of 0 initially. [â€¦] Evaluate the DACL by examining **each ACE in sequence**,
-> starting with the first ACE. [â€¦] If the ACE type is "Access Denied" and the access rights in M are
+> both to a value of 0 initially. […] Evaluate the DACL by examining **each ACE in sequence**,
+> starting with the first ACE. […] If the ACE type is "Access Denied" and the access rights in M are
 > **not in G**, then add the rights in M to D. If the ACE type is "Access Allowed" and the access
-> rights in M are **not in D**, then add the rights in M to G. [â€¦] When the **end of the DACL** is
+> rights in M are **not in D**, then add the rights in M to G. […] When the **end of the DACL** is
 > reached, the access rights in G is the maximum standard access available.
 > ([Checking Simple Access](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/c55e113e-25a2-45eb-abba-bf5a9e521a8f))
 
@@ -105,36 +105,36 @@ There is no early stop. Every ACE is examined.
 ### The decision survives, and its evasion is real, by a different route
 
 Order still decides the outcome, so **nothing about what this decision requires changes**. An allow
-that precedes a deny for the same trustee still wins â€” not because evaluation halts, but because the
+that precedes a deny for the same trustee still wins — not because evaluation halts, but because the
 rights are already in `G` by the time the deny is read, and a deny only adds to `D` for rights *not
 in* `G`. The tooling failure the Context describes is therefore exactly as real as it says: a tool
 assuming canonical order reports the deny, and the directory grants the access.
 
 This is the same source `S-57` used to uphold `#2`/`#3`, and it is worth stating plainly because the
-early-stop sentence was repeated wherever this decision was implemented â€” twice in
+early-stop sentence was repeated wherever this decision was implemented — twice in
 `AceCanonicalization`, in three test files, and in the notice shown to an operator on the object
 screen. All are corrected. **A wrong reason attached to a right conclusion propagates further than
 a wrong conclusion**, because nothing it produces looks incorrect.
 
 ### What one boolean cannot say, which is `#7`
 
-`S-56` v4 Â§5.2 and R5 ask for four separate claims, and `dacl_was_canonical` is one:
+`S-56` v4 §5.2 and R5 ask for four separate claims, and `dacl_was_canonical` is one:
 
-1. **Stored ordinal preserved and displayed** â€” a claim about evidence, and `#2`/`#3`'s subject.
-2. **AD canonicality by the rules applicable to the forest** â€” MS-ADTS ACE ordering adds regular
+1. **Stored ordinal preserved and displayed** — a claim about evidence, and `#2`/`#3`'s subject.
+2. **AD canonicality by the rules applicable to the forest** — MS-ADTS ACE ordering adds regular
    ACEs before object ACEs, and lexicographic ordering within groups at applicable forest functional
    levels. The flag checks neither.
-3. **Whether the DC was expected to standardise the ACL at all** â€” forest functional level and
+3. **Whether the DC was expected to standardise the ACL at all** — forest functional level and
    `fDontStandardizeSDs`, character 12 of forest-wide `dSHeuristics`. Neither is captured, so this
    cannot be answered today by any means.
-4. **Locally provable defects reported separately from inheritance provenance** â€” an inherited ACE
+4. **Locally provable defects reported separately from inheritance provenance** — an inherited ACE
    carries no depth field, so a single DACL cannot prove that inherited entries are in
    inheritance-generation order. Establishing that needs ancestor descriptors, schema applicability,
    inheritance flags and protection boundaries.
 
 So the flag answers a narrower question than its name: *were the entries I recognised in
 explicit-deny, explicit-allow, inherited-deny, inherited-allow order*. That is a locally provable
-defect check and a useful one â€” it is what catches the evasion â€” but it is not claim 2, and it is
+defect check and a useful one — it is what catches the evasion — but it is not claim 2, and it is
 silent about 3 and 4.
 
 ### What changes now, and what does not

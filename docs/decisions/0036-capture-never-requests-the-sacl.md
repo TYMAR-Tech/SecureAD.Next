@@ -67,14 +67,14 @@ something on its own.
 `SecurityDescriptorParser` never reads header offset 12. That is now a decision rather than an
 omission, and a reader who notices the missing constant has this record to find.
 
-**â€” This record did not sweep what it invalidated, and should have.** Added 2026-08-13, the same
+**— This record did not sweep what it invalidated, and should have.** Added 2026-08-13, the same
 day, on re-reading. `AceType` still names `SystemAudit` (`0x02`) and `SystemAuditObject` (`0x07`),
 and `DangerousPermissionClassifier` still has a branch returning *not dangerous* for them. After
 this record there are no SACLs, so an audit-typed entry can only arrive inside a **DACL**, where it
 is malformed.
 
-**The verdict is right; its reason was not.** `[MS-DTYP]` Â§2.5.3.2 evaluates a DACL over allow, deny
-and their object and callback forms â€” audit types take no part in it â€” and every Microsoft
+**The verdict is right; its reason was not.** `[MS-DTYP]` §2.5.3.2 evaluates a DACL over allow, deny
+and their object and callback forms — audit types take no part in it — and every Microsoft
 description of `SYSTEM_AUDIT_ACE` places it in a SACL. Such an entry grants nothing wherever it
 sits, so *not dangerous* is accurate. What was stale was the sentence beside it, *"an audit entry
 records access; it grants none"*, which justified the answer by appeal to a structure this record

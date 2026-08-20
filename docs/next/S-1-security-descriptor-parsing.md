@@ -1,4 +1,4 @@
-# S-1 â€” Security descriptor parsing and ACE canonicalisation
+# S-1 — Security descriptor parsing and ACE canonicalisation
 
 **Type:** slice
 **Reviewed at commit:** `8bf0090a`
@@ -38,14 +38,14 @@ bytes.
 | `PermissionRight` | One of those words with the mask bits that produced it, so a verdict can attach to a right rather than to the whole entry, and whether this build had a word for it at all |
 | `PermissionScopeWriter` | How far an entry reaches, in the ACL editor's own words: `This object only`, `This object and all descendant objects`, `Descendant user objects`. Verified against Microsoft Learn 2026-08-18, including that the directory service treats every object as a container - so `CONTAINER_INHERIT_ACE` is the flag that carries, and the file system's folder/file split does not divide the directory |
 | `PermissionScope` | Those words, and whether the entry was set on the object or inherited |
-| `Sid` | A security identifier between its two forms - the bytes the directory stores and the `S-1-5-â€¦` text a bundle records. One implementation, because a second would drift and a drifted SID parser puts the wrong name against a permission |
+| `Sid` | A security identifier between its two forms - the bytes the directory stores and the `S-1-5-…` text a bundle records. One implementation, because a second would drift and a drifted SID parser puts the wrong name against a permission |
 
 ## Dependencies
 
 - **Depends on:** nothing. `BinaryPrimitives`, `SHA256` and `Text` are the whole of it, which is why
   it targets plain `net8.0` and needs no directory, no database and no Windows.
 - **Depended on by:** nothing yet. In the previous implementation it had five consumers and they
-  were exactly the five that handle raw security descriptors â€” the stored-ACE writer, the SYSVOL
+  were exactly the five that handle raw security descriptors — the stored-ACE writer, the SYSVOL
   ACE writer, the rule evaluator, and live ACL reads. The rebuild's equivalents are not written.
 - **Layering violations:** none.
 
@@ -55,8 +55,8 @@ Each is a way ACL tooling commonly goes wrong, and each has its own tests.
 
 ### A null DACL is not an empty DACL
 
-Both carry zero ACEs and they mean opposite things. A **null** DACL â€” no DACL at all â€” grants
-everyone full control. An **empty** DACL â€” a DACL that is present and lists nothing â€” grants nobody
+Both carry zero ACEs and they mean opposite things. A **null** DACL — no DACL at all — grants
+everyone full control. An **empty** DACL — a DACL that is present and lists nothing — grants nobody
 anything. Reporting "0 permissions" for both is the difference between "wide open" and "locked
 down".
 
@@ -66,7 +66,7 @@ a caller holding an empty ACE list can still say which of the two it is holding.
 
 > **Corrected 2026-08-13 in `S-21`, as `F-S21-1`.** There
 > are **three** ways to hold an empty ACE list, not two, and `DaclState` distinguishes only two of
-> them. A DACL whose header declares entries that then fail to parse also yields `Empty` â€” the same
+> them. A DACL whose header declares entries that then fail to parse also yields `Empty` — the same
 > value as a DACL that genuinely lists nothing. So the sentence above is true of a well-formed
 > descriptor and false of a damaged one, and it is the damaged one that matters: *locked down* is
 > the answer the product gives for an object it could not read. The parse errors are recorded
@@ -74,7 +74,7 @@ a caller holding an empty ACE list can still say which of the two it is holding.
 > exists to stop. Whether `DaclState` gains an `Unreadable` member is an open owner question.
 >
 > **Answered the same day.** It does, per
-> [`0037`](../decisions/0037-an-unreadable-dacl-says-so.md) â€” and there turned out to be a *fourth*
+> [`0037`](../decisions/0037-an-unreadable-dacl-says-so.md) — and there turned out to be a *fourth*
 > case as well, a DACL that yielded some of what it declared. That one stays `Present`, because it
 > is, and the shortfall is carried by `DaclCompleteness` beside it.
 
@@ -85,7 +85,7 @@ for. The directory treats them identically. Compared unexpanded they differ, so 
 a permission change on an object nobody touched.
 
 `GenericRightsExpander` rewrites the four generic bits into their AD DS equivalents per
-MS-ADTS Â§5.1.3.2 and clears the generic bit. Expansion happens **before** hashing, which is what
+MS-ADTS §5.1.3.2 and clears the generic bit. Expansion happens **before** hashing, which is what
 makes the two spellings hash to the same value and deduplicate to one ACE rather than two.
 
 ### Deny sorts before allow, and disorder is not an error
@@ -111,7 +111,7 @@ different because of the order they were written in.
 > **Answered the same day**, per
 > [`0038`](../decisions/0038-a-descriptor-records-whether-its-dacl-was-canonical.md): the order is
 > judged during the parse and recorded as one boolean per descriptor. `CanonicalAce` still keeps no
-> ordinal, deliberately â€” the bundle already stores the descriptor's raw bytes, so exact order is
+> ordinal, deliberately — the bundle already stores the descriptor's raw bytes, so exact order is
 > recoverable by re-parsing and a per-entry copy would duplicate evidence already held.
 
 ## How a hash is built
@@ -129,7 +129,7 @@ The tenth field, the application data, was added in canonicalisation version 3. 
 omitted it, so two conditional ACEs granting the same rights under *different conditions* hashed
 identically and one was silently discarded, as did a conditional entry beside an otherwise
 identical unconditional one. It is empty for every non-callback ACE type. See `F-S58-11` in
-[`S-58`](S-58-the-fix-brief.md).
+`S-58`.
 
 `AceCanonicalization.Version` records which version of this pipeline produced a given ACE. It is
 now `3`. Changing it invalidates every stored hash, so it changes only as a deliberate decision.
@@ -137,37 +137,37 @@ now `3`. Changing it invalidates every stored hash, so it changes only as a deli
 ## Damage is reported, not thrown
 
 A descriptor read from a live directory can be malformed, and one bad object must not fail a whole
-capture. Every failure path returns a result carrying a message in `Errors` â€” a short descriptor, a
+capture. Every failure path returns a result carrying a message in `Errors` — a short descriptor, a
 DACL offset past the end, a truncated ACE, an unparseable SID, invalid base64. Parse errors are
 carried forward into the normalisation result rather than dropped.
 
 ## Verified-safe
 
-- **The golden hashes are computed from the specification, not from the code** â€” every constant in
+- **The golden hashes are computed from the specification, not from the code** — every constant in
   `GoldenAceHashTests` was produced by a separate implementation of the written recipe, which was
   each time first shown to reproduce all eight known values of the preceding version from that
   version's recipe before being used to produce the new one's. That was done for version 2 and
   again for version 3. The assertions therefore check the implementation against the specification
   rather than against itself.
-- **Ordering is total** â€” `AceNormalizer.CanonicalAceComparer` falls through category, trustee SID,
+- **Ordering is total** — `AceNormalizer.CanonicalAceComparer` falls through category, trustee SID,
   access mask, both GUIDs and finally ACE type, so no two distinct ACEs tie. The canonical form
   does not depend on the order the ACEs arrived in, which
   `WhenTheSameAcesArriveInEitherOrder_ThenTheCanonicalFormIsIdentical` asserts directly.
-- **Generic expansion clears its own bit** â€” asserted directly rather than inferred, since a
+- **Generic expansion clears its own bit** — asserted directly rather than inferred, since a
   generic bit left set would survive into a stored mask.
-- **Nothing here reaches a directory, a disk or a clock** â€” the whole component is a pure function
+- **Nothing here reaches a directory, a disk or a clock** — the whole component is a pure function
   of its input.
 
 **History.** This section claimed *"ordering is total"* earlier on 2026-08-10 when it was not:
 `AceType` was absent from the comparer, so two ACEs differing only by type tied on every key. The
 claim was withdrawn the same day and is restored above only now that it is true and has a test
-behind it. The episode is recorded because the failure mode matters more than the entry â€” the point
+behind it. The episode is recorded because the failure mode matters more than the entry — the point
 of this section is that nobody re-checks what is in it, so a claim reasoned about rather than run
 is more expensive here than anywhere else in the document.
 
 ## Findings
 
-### F-S1-1 â€” The canonicalisation version moved projects
+### F-S1-1 — The canonicalisation version moved projects
 
 - **Severity:** maintainability
 - **Confidence:** verified
@@ -184,14 +184,14 @@ is more expensive here than anywhere else in the document.
   value at `1` and asserts the code and the constant agree. *The test carries the version in its
   name, so it has been renamed twice since \u2014 to `...VersionTwo` for F-S1-2 and to `...VersionThree`
   for `F-S58-11`. The assertion is unchanged.*
-- **Status:** REPAIRED, 2026-08-10 â€” the move is the repair; recorded so the divergence from the
+- **Status:** REPAIRED, 2026-08-10 — the move is the repair; recorded so the divergence from the
   old layout is not read later as an accident.
 
-### F-S1-2 â€” The ACE type is not part of the hash, so canonicalisation is not canonical
+### F-S1-2 — The ACE type is not part of the hash, so canonicalisation is not canonical
 
 - **Severity:** breaks-for-user
 - **Confidence:** verified
-- **Evidence:** `next/src/SecureAD.Kernel/Security/AceNormalizer.cs` â€” `ComputeAceHash` hashes eight
+- **Evidence:** `next/src/SecureAD.Kernel/Security/AceNormalizer.cs` — `ComputeAceHash` hashes eight
   fields and `AceType` is not among them; `CanonicalAceComparer` compares category, trustee SID,
   access mask and the two GUIDs, and `AceType` is not among those either. Both were confirmed by
   probe tests on 2026-08-10, described under *Test cover* below.
@@ -218,7 +218,7 @@ is more expensive here than anywhere else in the document.
   used as an ACE's identity by storage while never covering the whole ACE.
 - **What the format says:** Microsoft's
   [Access control entries](https://learn.microsoft.com/windows/win32/secauthz/access-control-entries)
-  states that every ACE carries four things â€” the trustee SID, the access mask, **a flag that
+  states that every ACE carries four things — the trustee SID, the access mask, **a flag that
   indicates the type of ACE**, and the inheritance flags. This pipeline hashes three of the four.
   [Access control lists](https://learn.microsoft.com/windows/win32/secauthz/access-control-lists)
   describes an ACL as a list of ACEs, with no uniqueness constraint, so nothing prevents a
@@ -235,7 +235,7 @@ is more expensive here than anywhere else in the document.
   3. Leave it and require every consumer to treat the hash as a within-category identity. Rejected:
      the old schema already did not, and gate 2 exists because this codebase has a history of the
      same question being answered differently in different places.
-- **Test cover:** four permanent tests in `AceNormalizerTests` â€” both collisions survive as two
+- **Test cover:** four permanent tests in `AceNormalizerTests` — both collisions survive as two
   ACEs, the canonical form is identical whichever order the ACEs arrive in, and a differing ACE
   type produces a differing hash. Each was mutation-tested in both directions: removing `AceType`
   from the hash fails all three of the first set, and removing the comparer tiebreak flips the
@@ -243,10 +243,10 @@ is more expensive here than anywhere else in the document.
 - **Unverified:** how often real Active Directory emits an object ACE with no GUIDs. The format
   permits it; whether it occurs in the field is an empirical question, settled by scanning existing
   captures for `ace_type IN (5,6)` with both GUID columns null. This bore on urgency, not on
-  whether the fix was right â€” collision 1 stood on its own â€” and it no longer blocks anything.
+  whether the fix was right — collision 1 stood on its own — and it no longer blocks anything.
 
   **Verified 2026-08-19: it occurs. 12 of 12,600 entries**, measured on lab bundle
-  `ad.lab-20260819-232425` â€” object ACEs carrying neither GUID, against 8,585 `AccessAllowedObject`
+  `ad.lab-20260819-232425` — object ACEs carrying neither GUID, against 8,585 `AccessAllowedObject`
   and 1 `AccessDeniedObject` in total. So collision 2 is a case this forest actually contains and
   not only one the format allows. It is a default lab forest, which makes 12 the *floor* rather than
   a typical rate.
@@ -265,8 +265,8 @@ is more expensive here than anywhere else in the document.
 
 ## Open questions for the owner
 
-- **Do object ACEs with no GUIDs occur in the field?** No longer blocking â€” the fix handles them
-  either way â€” but worth knowing, because it determines whether any capture taken with version 1
+- **Do object ACEs with no GUIDs occur in the field?** No longer blocking — the fix handles them
+  either way — but worth knowing, because it determines whether any capture taken with version 1
   of this pipeline lost rows. Answerable by scanning existing captures for `ace_type IN (5,6)` with
   both GUID columns null.
 - **Should the bundle schema key on `ace_hash` alone?** The previous implementation used
@@ -277,17 +277,17 @@ is more expensive here than anywhere else in the document.
 **Settled on 2026-08-10.** Whether to recompute the golden constants. They were inherited from the
 old implementation and proved the port changed nothing, which is recorded in commit `9ce95cf9`.
 Fixing F-S1-2 necessarily moved them. The decision was to recompute rather than abandon them, and
-to recompute from the written recipe rather than from the code's own output â€” so they went on
+to recompute from the written recipe rather than from the code's own output — so they went on
 doing the job that never ends, guarding the pipeline against accidental change, while the job that
 was finished stayed finished.
 
 ## Not reviewed
 
-- **`PermissionClassifier`** â€” it shares the old folder and is a different component, K16, marked
+- **`PermissionClassifier`** — it shares the old folder and is a different component, K16, marked
   Rebuild because five places in the old product answer "is this right dangerous" and disagree.
   Nothing here classifies a right; this component reports what a right *is*.
-- **SACL parsing** â€” `AceType` names the audit ACE types and `ParseAcl` would read a SACL, but only
+- **SACL parsing** — `AceType` names the audit ACE types and `ParseAcl` would read a SACL, but only
   the DACL is parsed and normalised. The product audits access, not auditing policy.
-- **Performance** â€” the parser and hasher were not measured. The old implementation's only
+- **Performance** — the parser and hasher were not measured. The old implementation's only
   performance record covers escalation-path traversal, group expansion and the control-edges query,
   none of which is this.

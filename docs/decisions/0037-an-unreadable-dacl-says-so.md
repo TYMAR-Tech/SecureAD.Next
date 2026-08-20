@@ -55,12 +55,12 @@ actually parsed. Completeness is then a comparison rather than a judgement: a de
 when the declared count equals the number of entries stored against it, and any shortfall is
 visible in one query without re-parsing anything.
 
-**â€” Corrected the same day, before anything shipped.** What is recorded is a **closed set of
-outcomes** â€” `Complete`, `Incomplete`, `Unknown` â€” and not the count. Gate 4 refused the count on
+**— Corrected the same day, before anything shipped.** What is recorded is a **closed set of
+outcomes** — `Complete`, `Incomplete`, `Unknown` — and not the count. Gate 4 refused the count on
 sight, and the refusal was correct: a number on its own cannot say whether it was measured, so a
 header declaring zero entries and a header too truncated to read would both have reached a caller
 as `0`. **That is this record's own defect, one field over**, and the first draft of the change
-really did reintroduce it â€” a truncated ACL header came out as `Empty`, which is the exact reading
+really did reintroduce it — a truncated ACL header came out as `Empty`, which is the exact reading
 this record exists to abolish. The gate caught it in the same session that wrote the rule it
 breaks.
 

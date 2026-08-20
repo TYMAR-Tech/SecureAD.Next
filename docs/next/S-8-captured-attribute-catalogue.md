@@ -1,7 +1,7 @@
-# S-8 â€” The captured attribute catalogue
+# S-8 — The captured attribute catalogue
 
 **Type:** slice
-**Inventory row:** B2 â€” Captured attribute catalogue
+**Inventory row:** B2 — Captured attribute catalogue
 **Lands in:** `SecureAD.Audit`
 **Date:** 2026-08-11
 
@@ -11,7 +11,7 @@
 
 Capture asks a domain controller for a named list of attributes. Whatever is not on that list is
 not in the bundle, is in no report, and cannot be added afterwards without capturing the forest
-again â€” and nobody can go back and re-read last quarter. So this list is the ceiling on everything
+again — and nobody can go back and re-read last quarter. So this list is the ceiling on everything
 the product will ever be able to say about a customer's directory. This document is the list, and
 for each entry, what reads it.
 
@@ -34,7 +34,7 @@ The consumer named is an inventory row, because no rule code exists in the rebui
 device [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md) uses for a type awaiting its first caller, and
 it has the same property: a forecast with an owner and a date, rather than a silence. `Read by`
 cells are checked against the inventory, so a row that does not exist cannot be named, and a promise
-that has come due â€” the named row reaching `Done` while the attribute still has no code consumer â€”
+that has come due — the named row reaching `Done` while the attribute still has no code consumer —
 fails the build.
 
 ## Three decisions this row had to make
@@ -52,7 +52,7 @@ that a failure names one unit unambiguously. Those two statements cannot both st
 **Fail-fast holds. A forest whose schema partition cannot be read produces no bundle.**
 
 The reason is what the alternative would produce. Without the schema, every GUID in every access
-control entry that is not in the shipped catalogue is unnameable â€” and by
+control entry that is not in the shipped catalogue is unnameable — and by
 [`0014`](../decisions/0014-capture-reads-the-schema-partition.md) that is exactly the set that
 matters, because a locally created attribute's GUID is generated at creation and exists in that
 forest and nowhere else. A run that continued would produce a bundle in which an unknown number of
@@ -67,8 +67,8 @@ customer who is *allowed* to run this product and *not* allowed to read their ow
 here is a connectivity or availability fault, and the honest response to one is to say so and stop,
 not to produce evidence and hope.
 
-**What it costs.** A forest where the schema partition is briefly unreachable â€” one controller
-down, one preflight choice unlucky â€” yields nothing rather than yielding most of an audit. The
+**What it costs.** A forest where the schema partition is briefly unreachable — one controller
+down, one preflight choice unlucky — yields nothing rather than yielding most of an audit. The
 mitigation is preflight, which B4 already requires: the controller for the configuration and schema
 partitions is chosen and validated as serving them *before* the run starts, so this fails in the
 first seconds rather than at hour two. This costs a run, and it never costs a customer a wrong
@@ -85,28 +85,28 @@ Security Classes** and **Comprehensive All Objects**.
 **The rebuild has one behaviour and no radio button.**
 
 Neither of the old two survives as written, and it is worth being clear about why the *second* one
-is not simply deleted. Its own setting did not survive the settings panel â€” `CaptureFilterMode` was
+is not simply deleted. Its own setting did not survive the settings panel — `CaptureFilterMode` was
 destroyed by any Apply, silently, while the product reported success (F-S7-21). So as shipped it was
 not a feature. But the *reason* someone built it was sound, and deleting it without replacing that
 reason would leave a real hole:
 under the inclusion list, an object of a class nobody enumerated has **no security descriptor
 captured at all**, because the old code shared one filter between object capture and
 security-descriptor capture. A vendor application's objects, a locally defined class, an
-administrative container from a product nobody remembers installing â€” a dangerous delegation on any
+administrative container from a product nobody remembers installing — a dangerous delegation on any
 of those was invisible, and "Comprehensive All Objects" was the only way to see it.
 
 That hole is also flatly at odds with
 [`0017`](../decisions/0017-capture-reads-the-whole-forest.md), which says capture reads the whole
 forest and scope is applied to reading rather than to evidence.
 
-**What the inclusion list was really keeping out â€” corrected 2026-08-11.** The first version of this
+**What the inclusion list was really keeping out — corrected 2026-08-11.** The first version of this
 section said the second filter mode's only observed effect was DNS record objects. That was wrong,
 and the owner corrected it from memory before the evidence was found. The product's own
 customer-facing readme states the reason: capturing every object *"avoids large volumes of
 smart-card, credential, vendor, and system objects that can **triple capture size** without
 improving the user and group risk picture"*, and promises the advanced mode as future work. The
 objects are named in `DirectoryTreeService`, described there as *"credential/SSO metadata objects
-nested under user accounts"* â€” three classes from one customer's single-sign-on product, and beside
+nested under user accounts"* — three classes from one customer's single-sign-on product, and beside
 them four that are in no way site-specific: `msDS-Device`, `msFVE-RecoveryInformation`,
 `msTPM-InformationObject` and `foreignSecurityPrincipal`. A BitLocker recovery object is a child of
 the computer object and a computer accumulates them, so the volume problem is not one customer's.
@@ -115,7 +115,7 @@ It is every forest that encrypts its disks. See F-S7-26.
 So the single behaviour is:
 
 - **Every object** in every naming context capture reads is captured, whatever its class, with the
-  universal attributes â€” identity, class, security identifier, and the security descriptor.
+  universal attributes — identity, class, security identifier, and the security descriptor.
 - **The enumerated classes** get extra attributes on top. That list is still enumerated and still
   versioned; there is no capture-everything of *attributes*.
 - **Two classes are excluded by name**: `dnsNode` and `dnsZone`, per the DNS scope decision of
@@ -127,17 +127,17 @@ right split: the permissions on an object are what this product assesses, and th
 shape on every object regardless of class. What is lost on an unknown class is the class-specific
 detail, and gaining that later is a matter of adding a row to this catalogue.
 
-**What it costs â€” corrected 2026-08-11.** Every vendor and application object in the forest now
+**What it costs — corrected 2026-08-11.** Every vendor and application object in the forest now
 appears in the bundle with its access control list, and so does every credential child object
 beneath a user or a computer. The one figure anyone has ever put on that is the readme's *triple
 capture size*, which appears exactly once in the whole repository and rests on no measurement
-recorded anywhere â€” so it is a recollection rather than a number, and per
+recorded anywhere — so it is a recollection rather than a number, and per
 [`0016`](../decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) it is
 treated as one. It also means the product will report delegations on objects a customer does not
 recognise, which is a support burden and is the correct behaviour.
 
-**Where this stands.** The owner's decision of 2026-08-11 is to **hold at the behaviour above** â€”
-capture everything but DNS â€” and to settle the volume question with a production capture rather than
+**Where this stands.** The owner's decision of 2026-08-11 is to **hold at the behaviour above** —
+capture everything but DNS — and to settle the volume question with a production capture rather than
 an argument, pulling a sample across with the personal data stripped. If the tripling is real,
 high-volume credential child classes join the named exclusions and are printed in the report the way
 DNS is; that mechanism already exists and needs no redesign. What does **not** depend on the
@@ -154,16 +154,16 @@ needing an uncaptured attribute fails the build.
 
 The second direction cannot be built now. There are no rules in the rebuild. A test that walked an
 empty set of rules and reported that none of them needed a missing attribute would pass, forever,
-while measuring nothing â€” which is precisely the failure gate 5 fell into and the first thing
-`.github/copilot-instructions.md` Â§ When to stop and raise it names. So it is split the way gate 5 was:
+while measuring nothing — which is precisely the failure gate 5 fell into and the first thing
+`.github/copilot-instructions.md` § When to stop and raise it names. So it is split the way gate 5 was:
 
-- **B2a â€” built now.** Every attribute the catalogue requests appears in the table below with a
+- **B2a — built now.** Every attribute the catalogue requests appears in the table below with a
   non-empty `Read by` naming at least one real inventory row; and no named row has reached `Done`
   while the attribute still has no code consumer. The second half is the decay guard, and it is
   what makes the first half more than paperwork: the promise comes due on a date rather than
   standing forever.
-- **B2b â€” owed, and blocked.** A rule that names an attribute the catalogue does not request fails
-  the build. This becomes buildable when there are rules to walk, which is inventory row **E16 â€” Rule
+- **B2b — owed, and blocked.** A rule that names an attribute the catalogue does not request fails
+  the build. This becomes buildable when there are rules to walk, which is inventory row **E16 — Rule
   catalogue**, with E18 to E22 supplying them.
 
 *Recorded as F-S7-24 in `S-7`, named by inventory row E16.*
@@ -172,7 +172,7 @@ while measuring nothing â€” which is precisely the failure gate 5 fell into
 
 ### Range-liable is cardinality, and cardinality is carried
 
-A domain controller returns at most `MaxValRange` values of one attribute on one object â€” 1,500 by
+A domain controller returns at most `MaxValRange` values of one attribute on one object — 1,500 by
 default, and capped at 5,000 on Windows Server 2008 and later whatever the LDAP policy says
 ([LDAP administration limits](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/view-set-ldap-policy-using-ntdsutil),
 [the hard-coded maximums](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/domain-controller-returns-500-values-ldap-response)).
@@ -182,7 +182,7 @@ five thousand, and reports it confidently.
 
 This is a property of **every** multi-valued attribute, not of `member`. The previous product knew
 about `member` and handled it in a separate pass, which is correct for `member` and is exactly the
-shape that breaks when the next large multi-valued attribute is added â€” `msDS-KeyCredentialLink` and
+shape that breaks when the next large multi-valued attribute is added — `msDS-KeyCredentialLink` and
 `sIDHistory` are on this list and both can grow. So `CapturedAttributeCatalog.RangeLiable` is
 **derived** from the cardinality of every entry rather than listed, and B8 reads it instead of
 testing an attribute name. A second hand-maintained list would agree on the day it was written and
@@ -191,7 +191,7 @@ stop agreeing silently, which is the defect gate 2 exists for.
 ### Absence is answered from the forest's own schema, not guessed
 
 An attribute marked confidential in the schema is not returned to a caller who lacks
-`CONTROL_ACCESS` on it, and it is not returned as an error â€” it is simply absent, exactly as though
+`CONTROL_ACCESS` on it, and it is not returned as an error — it is simply absent, exactly as though
 it had never been set
 ([Mark an attribute as confidential](https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential),
 [Search-Flags](https://learn.microsoft.com/windows/win32/adschema/a-searchflags) bit 128). So every
@@ -203,28 +203,28 @@ It is not, however, work that has to be done by hand or by guess. The distinctio
 each forest, recorded in that forest's own schema. Capture already reads the schema partition per
 `0014`, so `searchFlags` and `systemFlags` are added to the schema attribute set below and the
 question is answered from the directory rather than from a list. The catalogue makes no claim about
-which of its entries could be withheld, because such a claim would be a guess dressed as data â€” the
+which of its entries could be withheld, because such a claim would be a guess dressed as data — the
 very mistake
 [`0016`](../decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) records.
 
-**How the two flags combine â€” corrected 2026-08-11, settled 2026-08-13.** The first version of this
+**How the two flags combine — corrected 2026-08-11, settled 2026-08-13.** The first version of this
 section said the answer was simply derivable, because bit 128 is *"ignored for base-schema
 attributes"*, which are the ones carrying `systemFlags` `0x10`. That was then challenged, because
-Microsoft ships `msFVE-RecoveryPassword` â€” the BitLocker recovery key â€” with `systemFlags` `0x10`
+Microsoft ships `msFVE-RecoveryPassword` — the BitLocker recovery key — with `systemFlags` `0x10`
 **and** a `searchFlags` of `0x298`, which has bit 128 set
 ([ms-FVE-RecoveryPassword](https://learn.microsoft.com/windows/win32/adschema/a-msfve-recoverypassword)),
 and a published attribute carrying both at once looked like a counter-example.
 
 **It is not one.** *Ignored* is not *absent*: the bit may be stored on a base-schema attribute and
 simply has no effect, which is precisely what `msFVE-RecoveryPassword` shows. The two articles agree,
-and the rule is one line â€” **an attribute is effectively confidential when `(searchFlags & 128) != 0`
+and the rule is one line — **an attribute is effectively confidential when `(searchFlags & 128) != 0`
 and `(systemFlags & 0x10) == 0`**. `F-S7-27` was opened on the misreading and is now resolved.
 
 What this row commits to is unchanged by that, and deliberately: **capture records both flags, and
 how they are interpreted is decided where absence is interpreted.** The rule above says whether an
-attribute *can* be withheld. Whether it *was* is a second question with a second cause â€” a Windows
+attribute *can* be withheld. Whether it *was* is a second question with a second cause — a Windows
 Server 2025 controller withholds confidential attributes from an unencrypted connection without
-saying so â€” and that belongs to D3 with the flags, as `F-S24-1`.
+saying so — and that belongs to D3 with the flags, as `F-S24-1`.
 
 Inventory row B8 built the part that can be built without an answer: an attribute that did not come
 back is reported as its own state and never as an attribute with no values, so nothing downstream
@@ -237,7 +237,7 @@ The catalogue reads **permissions on** credential material. It never reads the c
 
 This stopped being obvious on 2026-08-11, when the owner decided that who may read a BitLocker
 recovery key is a question the product should answer. That answer comes from the access control list
-on the `msFVE-RecoveryInformation` object â€” which is a child of the computer object â€” and never from
+on the `msFVE-RecoveryInformation` object — which is a child of the computer object — and never from
 `msFVE-RecoveryPassword`, the 48-digit key sitting on the same object one line away. The reasoning
 that puts the object in scope reads, at a glance, like reasoning that puts its attributes in scope.
 
@@ -246,7 +246,7 @@ recovery keys, password hashes or a key distribution root key is not a degraded 
 different and much worse kind of software, and it would be one careless line away. So this is a
 guard rather than a sentence in a document. `CredentialAttributeGuardTests` fails the build if the
 catalogue ever names one of thirteen credential-bearing attributes, and separately asserts that the
-permissions on such an object **are** still captured â€” because a guard that could be satisfied by
+permissions on such an object **are** still captured — because a guard that could be satisfied by
 avoiding the object altogether would quietly undo the decision it exists to protect.
 
 The forbidden list is deliberately wider than anything anyone has proposed capturing. A forbidden
@@ -254,8 +254,8 @@ name nobody wanted costs nothing; a missing one costs everything.
 
 ## The catalogue
 
-`Read by` names inventory rows **and rules**. A rule is named as its card identifier â€” `SEC-091`, from
-`docs/rules/` â€” and `CapturedAttributeCatalogDocumentationTests` requires a named rule to be a card
+`Read by` names inventory rows **and rules**. A rule is named as its card identifier — `SEC-091`, from
+`docs/rules/` — and `CapturedAttributeCatalogDocumentationTests` requires a named rule to be a card
 that exists, exactly as it requires a named row to be a real inventory row. **Changed 2026-08-13, at
 [`S-23`](S-23-what-capture-must-read.md)**, which re-derived this catalogue against all sixty-two
 rule cards; until then only an inventory row counted, which bounded the catalogue by how far the port
@@ -271,14 +271,14 @@ sequence, which had reached 10: per [`0001`](../decisions/0001-no-backward-compa
 is no compatibility to preserve, and a continuing number would imply that a bundle stamped 10 and a
 bundle stamped 11 hold comparable evidence. They do not. Version 2 is S-23's three computer
 attributes. Version 3 is S-51's five: `whenCreated` and `description` on every object, and
-`userPrincipalName`, `accountExpires` and `lastLogonTimestamp` on accounts â€” the difference between
+`userPrincipalName`, `accountExpires` and `lastLogonTimestamp` on accounts — the difference between
 an object view that lists permissions and one that can say who a principal is and whether anybody
 still uses it.
 
 **Two attributes were refused at version 3, on one rule.** `lastLogon` and `whenChanged` are both
 documented by Microsoft as not replicated, so each controller holds its own value. This product
 reads one controller per domain, so either would present one controller's view as a fact about the
-domain â€” and a stale-account finding built on `lastLogon` would be wrong in a way nothing on screen
+domain — and a stale-account finding built on `lastLogon` would be wrong in a way nothing on screen
 could reveal, because the account logging on daily to a different controller looks dormant. The
 refusals are held in `CapturedAttributeCatalog.NotCaptured` with their reasons, because a refusal
 that is not written down is indistinguishable from an oversight and both of these will be proposed
@@ -286,20 +286,20 @@ again.
 
 <!-- CATALOGUE:BEGIN -->
 
-### Universal â€” every object, every class
+### Universal — every object, every class
 
 | Attribute | Cardinality | Storage | Read by | Why |
 |---|---|---|---|---|
 | distinguishedName | SingleValued | Text | B11, B20 | The object's place in the directory. Every report that says where something is, and every member reference that has to be attributed to a domain, resolves through it |
 | objectGUID | SingleValued | Binary | B20 | The only identifier that survives a rename or a move. Access control entries are stored against it, so a comparison between two runs is not confused by an object having been moved |
-| objectClass | MultiValued | Text | B20 | What an object is, as the whole chain of classes it derives from â€” which is why `objectCategory` is carried beside it. It once also forecast B6, on the expectation that the class would choose which extra attributes were requested; B6 requests the whole catalogue on every object instead, so nothing chooses at request time and the reader is the writer |
+| objectClass | MultiValued | Text | B20 | What an object is, as the whole chain of classes it derives from — which is why `objectCategory` is carried beside it. It once also forecast B6, on the expectation that the class would choose which extra attributes were requested; B6 requests the whole catalogue on every object instead, so nothing chooses at request time and the reader is the writer |
 | objectCategory | SingleValued | Text | B20 | The single-valued, indexed answer to what an object *is*. `objectClass` cannot give a straight answer to that because it holds every class the object derives from |
 | objectSid | SingleValued | Binary | B12 | Turns the trustee of a permission into a principal that can be named. Without it a dangerous permission is attributed to a number |
 | nTSecurityDescriptor | SingleValued | Binary | B20, J33, SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-014, SEC-024, SEC-025, SEC-031, SEC-040, SEC-060, SEC-063, SEC-080, SEC-081, SEC-090, SEC-120, SEC-121, SEC-123, SEC-124, SEC-201, SEC-204 | The permissions themselves. This is the product's subject, and the twenty-two rules named are the ones with nothing to say without it. Requested with owner, group and DACL only and no SACL, so capture needs no `SeSecurityPrivilege` and runs as an ordinary authenticated user |
-| whenCreated | SingleValued | Text | J34 | When the object came into existence, which is the first question asked of anything unexpected â€” an account created last Tuesday holding Full Control is a different finding from one that has held it since 2009. Replicated and in the global catalogue, so one controller's answer is the domain's. Its counterpart `whenChanged` is **refused**: Microsoft documents it as not replicated, and this product reads one controller per domain |
+| whenCreated | SingleValued | Text | J34 | When the object came into existence, which is the first question asked of anything unexpected — an account created last Tuesday holding Full Control is a different finding from one that has held it since 2009. Replicated and in the global catalogue, so one controller's answer is the domain's. Its counterpart `whenChanged` is **refused**: Microsoft documents it as not replicated, and this product reads one controller per domain |
 | description | MultiValued | Text | J34 | What an administrator wrote about the object, and the only field in the directory that says *why* something exists. Multi-valued in the schema, which most tooling gets wrong by showing the first value only |
 
-### Accounts â€” `user`, `inetOrgPerson`, `computer`, `msDS-ManagedServiceAccount`, `msDS-GroupManagedServiceAccount`
+### Accounts — `user`, `inetOrgPerson`, `computer`, `msDS-ManagedServiceAccount`, `msDS-GroupManagedServiceAccount`
 
 One set, because these are one kind of thing: something that holds credentials and can act. The
 previous product kept four near-identical lists for them and they had drifted apart.
@@ -311,16 +311,16 @@ previous product kept four near-identical lists for them and they had drifted ap
 | adminCount | SingleValued | Text | E19, SEC-030 | Marks an account that AdminSDHolder protects, or protected once. A set `adminCount` on an account no longer in a privileged group is the residue of past privilege |
 | primaryGroupID | SingleValued | Text | B11 | Primary group membership is not in the group's `member` attribute. A membership graph without it is missing edges, and the missing ones are Domain Users and Domain Computers |
 | memberOf | MultiValued | Text | B11 | The reverse of `member`. Carried because the forward direction can cross into a domain captured later or not at all, and the two together are how that gap is seen rather than inferred |
-| sIDHistory | MultiValued | Binary | B12, E19 | An account carrying another principal's identifier holds that principal's access. It is a documented migration mechanism and a documented escalation route. **No rule among the sixty-two reads it** â€” S-23, `F-S23-4` |
+| sIDHistory | MultiValued | Binary | B12, E19 | An account carrying another principal's identifier holds that principal's access. It is a documented migration mechanism and a documented escalation route. **No rule among the sixty-two reads it** — S-23, `F-S23-4` |
 | servicePrincipalName | MultiValued | Text | E19, SEC-020, SEC-021, SEC-026, SEC-126 | An account with a service principal name can have a service ticket requested for it by anyone, and the ticket is encrypted with the account's key |
 | msDS-AllowedToDelegateTo | MultiValued | Text | E19, SEC-010, SEC-011, SEC-012 | Constrained delegation. Names the services this account may impersonate a user to |
 | msDS-AllowedToActOnBehalfOfOtherIdentity | SingleValued | Binary | B20, E19, SEC-010, SEC-011, SEC-013, SEC-122 | Resource-based constrained delegation, in the other direction: a security descriptor naming who may impersonate users to *this* account. Write access to it is a takeover of the machine |
-| msDS-KeyCredentialLink | MultiValued | Text | E19 | The public keys that can authenticate as this account. Write access to it is authentication as the account without touching its password. **No rule among the sixty-two reads it** â€” S-23, `F-S23-4`, and that is a gap in the rule catalogue rather than in capture |
-| msDS-SupportedEncryptionTypes | SingleValued | Text | E19 | Whether the account still accepts weak Kerberos encryption, which decides whether a requested ticket is worth cracking. **No rule among the sixty-two reads it** â€” S-23, `F-S23-4` |
-| pwdLastSet | SingleValued | Text | E19 | A service account whose password has not changed in years is the account whose key an old captured ticket still opens. **No rule among the sixty-two reads it** â€” S-23, `F-S23-4` |
+| msDS-KeyCredentialLink | MultiValued | Text | E19 | The public keys that can authenticate as this account. Write access to it is authentication as the account without touching its password. **No rule among the sixty-two reads it** — S-23, `F-S23-4`, and that is a gap in the rule catalogue rather than in capture |
+| msDS-SupportedEncryptionTypes | SingleValued | Text | E19 | Whether the account still accepts weak Kerberos encryption, which decides whether a requested ticket is worth cracking. **No rule among the sixty-two reads it** — S-23, `F-S23-4` |
+| pwdLastSet | SingleValued | Text | E19 | A service account whose password has not changed in years is the account whose key an old captured ticket still opens. **No rule among the sixty-two reads it** — S-23, `F-S23-4` |
 | userPrincipalName | SingleValued | Text | J34 | The name an account signs in with, which is frequently not its `sAMAccountName` and is what an administrator will be given when asked to identify a principal |
-| accountExpires | SingleValued | Text | J34 | Whether the account has a lifetime at all. An expired account cannot be used and a never-expiring contractor account is the one nobody revoked. Two stored values mean *never* â€” `0` and `9223372036854775807` â€” and Microsoft's own page explains why: the maximum on an account never configured to expire, zero on one whose expiry was removed |
-| lastLogonTimestamp | SingleValued | Text | J34 | Whether anybody still uses the account. Replicated, unlike `lastLogon`, which is why this is the one captured â€” but **deliberately coarse**: a controller only updates it when its own value is older than `msDS-LogonTimeSyncInterval`, which defaults to between 9 and 14 days. Anything worded from it says so on the row |
+| accountExpires | SingleValued | Text | J34 | Whether the account has a lifetime at all. An expired account cannot be used and a never-expiring contractor account is the one nobody revoked. Two stored values mean *never* — `0` and `9223372036854775807` — and Microsoft's own page explains why: the maximum on an account never configured to expire, zero on one whose expiry was removed |
+| lastLogonTimestamp | SingleValued | Text | J34 | Whether anybody still uses the account. Replicated, unlike `lastLogon`, which is why this is the one captured — but **deliberately coarse**: a controller only updates it when its own value is older than `msDS-LogonTimeSyncInterval`, which defaults to between 9 and 14 days. Anything worded from it says so on the row |
 
 `computer` adds the three that decide whether its local administrator password is managed:
 
@@ -328,7 +328,7 @@ previous product kept four near-identical lists for them and they had drifted ap
 |---|---|---|---|---|
 | operatingSystem | SingleValued | Text | SEC-091 | Which LAPS product a machine *should* have. SEC-091 requires Windows LAPS on Server 2019 and later and legacy LAPS on Server 2016, so without this the rule cannot tell a correctly managed machine from an unmanaged one |
 | ms-Mcs-AdmPwdExpirationTime | SingleValued | Text | SEC-091, SEC-092 | Legacy LAPS. Its presence is how SEC-091 knows LAPS is deployed, and its value is how SEC-092 knows the password has stopped rotating. Never the password itself, which `CredentialAttributeGuardTests` forbids |
-| msLAPS-PasswordExpirationTime | SingleValued | Text | SEC-091, SEC-092 | Windows LAPS, the same two questions. Both are schema extensions rather than base-schema attributes, so either can be marked confidential and withheld â€” which is why `searchFlags` is read per forest rather than the absence being guessed |
+| msLAPS-PasswordExpirationTime | SingleValued | Text | SEC-091, SEC-092 | Windows LAPS, the same two questions. Both are schema extensions rather than base-schema attributes, so either can be marked confidential and withheld — which is why `searchFlags` is read per forest rather than the absence being guessed |
 
 `msDS-GroupManagedServiceAccount` adds one more:
 
@@ -341,7 +341,7 @@ previous product kept four near-identical lists for them and they had drifted ap
 | Attribute | Cardinality | Storage | Read by | Why |
 |---|---|---|---|---|
 | sAMAccountName | SingleValued | Text | B12, E19 | As above |
-| groupType | SingleValued | Text | B11, E20 | Security or distribution, and the scope. A distribution group grants nothing, and reporting one as though it did is a false finding. **No rule among the sixty-two reads it** â€” S-23, `F-S23-4` |
+| groupType | SingleValued | Text | B11, E20 | Security or distribution, and the scope. A distribution group grants nothing, and reporting one as though it did is a false finding. **No rule among the sixty-two reads it** — S-23, `F-S23-4` |
 | adminCount | SingleValued | Text | E19 | As above |
 | member | MultiValued | Text | B11 | Membership. The attribute that motivates range retrieval, and the one where getting it wrong understates a group rather than failing |
 | memberOf | MultiValued | Text | B11 | Nested membership upward |
@@ -364,7 +364,7 @@ previous product kept four near-identical lists for them and they had drifted ap
 | versionNumber | SingleValued | Text | E21 | Whether the directory half and the SYSVOL half of the policy agree. They can disagree, and when they do the policy's effect is not what either half says |
 | gPCMachineExtensionNames | MultiValued | Text | B20, SEC-083 | Which kinds of setting the policy declares it contains, read by `GpoClientSideExtensions.ParseCseGuids`. The SYSVOL read does not narrow by it: what a workstation applies is the files on the share, so `S-33` lists those instead. Kept because a policy whose declared extensions and actual files disagree is worth being able to ask about |
 
-### Schema partition â€” `attributeSchema` and `classSchema` objects
+### Schema partition — `attributeSchema` and `classSchema` objects
 
 Read once per forest, on every capture, per
 [`0014`](../decisions/0014-capture-reads-the-schema-partition.md). A few thousand objects, needing
@@ -375,12 +375,12 @@ no privilege beyond reading the directory.
 | lDAPDisplayName | SingleValued | Text | D3 | The name of the attribute or class, as everything else in the directory spells it |
 | cn | SingleValued | Text | D3 | The other name the same object carries. Kept because the two differ and a reader will meet both |
 | schemaIDGUID | SingleValued | Binary | D3, J33 | What an access control entry actually names. A locally created attribute's value is generated at creation and exists in that forest alone, which is the whole reason this partition is read |
-| attributeSecurityGUID | SingleValued | Binary | D3 | The join that expands a property-set permission into the attributes it really grants. A property set names no attributes; each attribute points back at the set through this. It is an octet string, and `rightsGuid` on the other side of the join is a 36-character string â€” the same GUID in two representations, which never match compared as they arrive |
+| attributeSecurityGUID | SingleValued | Binary | D3 | The join that expands a property-set permission into the attributes it really grants. A property set names no attributes; each attribute points back at the set through this. It is an octet string, and `rightsGuid` on the other side of the join is a 36-character string — the same GUID in two representations, which never match compared as they arrive |
 | isSingleValued | SingleValued | Text | D3 | The forest's own answer to the cardinality this catalogue declares. A disagreement is a finding, on the same terms `0014` sets for a `schemaIDGUID` that disagrees with the shipped value: it is either a defect in the reader or something wrong in the forest, and neither is resolved by picking a winner |
 | searchFlags | SingleValued | Text | D3 | Bit 128 marks the attribute confidential, which is what makes an absent value possibly a withheld value rather than an unset one |
-| systemFlags | SingleValued | Text | D3 | Bit `0x10` marks a base-schema attribute, and bit 128 of `searchFlags` has no effect on one â€” so the pair decides whether an attribute can be marked confidential at all. Captured because any rule about which attributes can be withheld needs both halves; the combining rule was settled at S-24 when `F-S7-27` was resolved, and applying it is owed to the row that materialises these facts rather than assumed here |
+| systemFlags | SingleValued | Text | D3 | Bit `0x10` marks a base-schema attribute, and bit 128 of `searchFlags` has no effect on one — so the pair decides whether an attribute can be marked confidential at all. Captured because any rule about which attributes can be withheld needs both halves; the combining rule was settled at S-24 when `F-S7-27` was resolved, and applying it is owed to the row that materialises these facts rather than assumed here |
 
-### Extended-rights container â€” `controlAccessRight` objects
+### Extended-rights container — `controlAccessRight` objects
 
 Read once per forest, on every capture, per `0014`. One container read resolves three of the five
 things a GUID in an access control entry can mean, so this is not a feature about extended rights:
@@ -389,8 +389,8 @@ property sets and validated writes are stored here too, which Microsoft states o
 
 | Attribute | Cardinality | Storage | Read by | Why |
 |---|---|---|---|---|
-| cn | SingleValued | Text | D3 | One of the entry's two names â€” `User-Force-Change-Password` |
-| displayName | SingleValued | Text | D3 | The other, and the one an administrator recognises â€” `Reset Password`. `0014` asks for the friendly one. Both are display text; matching is on the GUID, which is F-S7-5 |
+| cn | SingleValued | Text | D3 | One of the entry's two names — `User-Force-Change-Password` |
+| displayName | SingleValued | Text | D3 | The other, and the one an administrator recognises — `Reset Password`. `0014` asks for the friendly one. Both are display text; matching is on the GUID, which is F-S7-5 |
 | rightsGuid | SingleValued | Text | D3, J33 | The GUID an access control entry carries. A 36-character string, not an octet string |
 | validAccesses | SingleValued | Text | D3 | Which of the three this entry is: 256 an extended right, 48 a property set, 8 a validated write. Without it the three are indistinguishable and a property-set permission cannot be expanded |
 | appliesTo | MultiValued | Text | D3 | The classes the right is defined for, as schema GUIDs. What stops a right being reported against an object it cannot apply to |
@@ -415,7 +415,7 @@ the same day.
 |---|---|---|
 | `name` | It is the first component of `distinguishedName`, which is already carried, and `DnHelper` extracts it | Nothing. It is derived, not captured |
 | `userPrincipalName` | `sAMAccountName` is the identifier findings print. No decided row reads a second one | A full recapture of every account |
-| `whenCreated`, `whenChanged` | No decided row reads either. The obvious uses â€” how old a delegation is, whether an account is new â€” belong to rules that do not exist. **S-23 confirmed this against all sixty-two cards: none reads either**, and the owner confirmed the drop on 2026-08-13. It is no longer "the drop most likely to be wrong" | A full recapture |
+| `whenCreated`, `whenChanged` | No decided row reads either. The obvious uses — how old a delegation is, whether an account is new — belong to rules that do not exist. **S-23 confirmed this against all sixty-two cards: none reads either**, and the owner confirmed the drop on 2026-08-13. It is no longer "the drop most likely to be wrong" | A full recapture |
 | `isDeleted` | Deleted objects live in a container that needs a control this capture does not send, so the attribute would be present and always false | Nothing changes here; it is a capture-scope question, not a catalogue one |
 | `description` | A free-text field. It is not evidence, and it is where customers put things they should not | A full recapture |
 | `lastLogonTimestamp`, `accountExpires` | Staleness rules, which do not exist | A full recapture |
@@ -423,7 +423,7 @@ the same day.
 | `managedBy` | A pointer to a stated owner. The permission that *actually* lets someone change a group is in the access control list, which is captured. This attribute would be a second, weaker answer to the same question | A recapture of the groups |
 | ~~`ms-Mcs-AdmPwdExpirationTime`, `msLAPS-PasswordExpirationTime`~~ **Overturned 2026-08-13, and this is the entry to read if you read only one.** The reason given was that these say only that LAPS is in use, and that the real risk is who may read the password, which is a permission and is already captured. Both halves are true and the conclusion did not follow: SEC-091 and SEC-092 do not ask who may read the password. They ask whether LAPS is deployed at all, and whether it has stopped rotating. Neither question has any other source, so without these two both rules report a clean forest whatever the forest looks like. Carried since S-23, timestamps only; the password attributes beside them stay forbidden. The confidential-attribute point stands and is now real work, answered per forest from `searchFlags` | Nothing now. It would have been a recapture of every computer |
 | `msDS-ManagedPasswordInterval`, `msDS-ManagedPasswordId`, `msDS-HostServiceAccountBL` | Operational detail of a managed service account. The security question is who may retrieve the password, which is `msDS-GroupMSAMembership`, and that is carried | A recapture of the service accounts |
-| The password-policy sets â€” `minPwdLength`, `maxPwdAge`, `pwdProperties`, `lockout*`, and the eleven `msDS-Password*` and `msDS-Lockout*` attributes on `msDS-PasswordSettings` | No decided row reads them; inventory row B13 is undecided and may not survive. Fine-grained password policy is a different product question from delegation | **Cheap, unusually.** These live on the domain object and on a handful of policy objects â€” tens of objects, not millions â€” so adding them later is a small additional pass rather than a forest recapture. That asymmetry is why they are the safest of these to leave out |
+| The password-policy sets — `minPwdLength`, `maxPwdAge`, `pwdProperties`, `lockout*`, and the eleven `msDS-Password*` and `msDS-Lockout*` attributes on `msDS-PasswordSettings` | No decided row reads them; inventory row B13 is undecided and may not survive. Fine-grained password policy is a different product question from delegation | **Cheap, unusually.** These live on the domain object and on a handful of policy objects — tens of objects, not millions — so adding them later is a small additional pass rather than a forest recapture. That asymmetry is why they are the safest of these to leave out |
 | Display specifiers | `0014` notes that friendly attribute labels come from the display-specifier containers, which is a third container this row does not read. Owed to D3 rather than dropped | A read of one more container in the configuration partition, on a later capture |
 
 ## The binding was mutation-tested in both directions
@@ -446,17 +446,17 @@ when the credential guard was added.
 | 9 | A `LoadFromSchemaPartition` member added to the catalogue | Gate 4's exemption comes due | `TheCatalogueExemptionsHaveNotComeDue` fired |
 | 10 | `msFVE-RecoveryPassword` added to the universal attribute set | The credential guard fires | `TheCatalogueNeverRequestsACredential` fired |
 | 11 | The forbidden list emptied | The guard's self-test fires, rather than reporting a clean surface | `TheGuardHasBothACatalogueAndAListToCheckItAgainst` fired, and all four of `TheGuardStillForbidsTheOnesItWasWrittenFor` fired with it |
-| 12 | `nTSecurityDescriptor` removed from the universal set | The other half of the BitLocker decision fires â€” a guard satisfiable by not capturing the object at all is not a guard | `ThePermissionsOnACredentialObjectAreStillCaptured` and `AnUnknownClassStillGetsItsSecurityDescriptor` both fired |
+| 12 | `nTSecurityDescriptor` removed from the universal set | The other half of the BitLocker decision fires — a guard satisfiable by not capturing the object at all is not a guard | `ThePermissionsOnACredentialObjectAreStillCaptured` and `AnUnknownClassStillGetsItsSecurityDescriptor` both fired |
 
 Mutation 8 is the one that matters most, and it is why the markers exist. The document holds a
-second table â€” the twelve attributes deliberately not carried â€” and a parser that read every table
+second table — the twelve attributes deliberately not carried — and a parser that read every table
 in the file would have treated those twelve as requested attributes. A parser that lost its markers
 and read nothing would have been worse: every check would have passed against an empty set.
 
 **One thing went wrong doing this, and it is worth recording.** The first run of the mutation script
 aborted part-way through, leaving mutation 2 applied and unreverted; the second run then took the
 mutated file as its baseline and left two phantom rows behind. It was caught by the guard itself
-rather than by the person running it â€” which is the argument for the guard, and also the reason
+rather than by the person running it — which is the argument for the guard, and also the reason
 `git diff --numstat` is not sufficient to check a scripted edit: these files were new and untracked,
 so `numstat` reported nothing at all.
 

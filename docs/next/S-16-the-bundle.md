@@ -1,10 +1,10 @@
-# S-16 â€” The bundle
+# S-16 — The bundle
 
 What a bundle is, what is in it, and what stops a half-written one being read as a whole one.
 
 Everything this product ever says, it says from a bundle. Nothing is said from a live directory.
 That is what lets a finding be reproduced a year later on a machine that has never seen the
-forest â€” and it is why this document exists before the screens that will read it.
+forest — and it is why this document exists before the screens that will read it.
 
 Bound by `BundleDocumentationTests`, which compares the table list below against the tables the
 code actually creates in a real database, in both directions. A table named here and absent from
@@ -34,7 +34,7 @@ name has to be remembered nowhere: the partial file is not called the thing read
 that is true whether or not anybody thought about it.
 
 **A crashed run and a running one are told apart, and the file system is what answers.** Both
-present a `.partial` file and no `evidence.db`, so the files alone cannot say â€” but per
+present a `.partial` file and no `evidence.db`, so the files alone cannot say — but per
 [`0029`](../decisions/0029-a-run-that-ends-badly-says-so.md) the question is whether anything still
 holds the partial file open. Nothing does once the writing process ends, whatever ended it, because
 the operating system releases handles when a process dies. `RunStateReader` performs that check. A
@@ -42,17 +42,17 @@ recorded heartbeat or a process identifier would need cleaning up after a crash,
 the moment nothing is running to clean it.
 
 A run that ended badly also leaves `run-outcome.json` saying which ending it was. A missing outcome
-file is not an error â€” it means the run stopped without being able to say why, which is reported as
+file is not an error — it means the run stopped without being able to say why, which is reported as
 *interrupted*.
 
-> This section argued the opposite until 2026-08-13 â€” that the two are indistinguishable and that
+> This section argued the opposite until 2026-08-13 — that the two are indistinguishable and that
 > telling them apart would mean claiming to know something about a process that is not there to be
 > asked. `0029` decided otherwise two days after that was written, and the argument was left
 > standing here while `BundleLayout` recorded the correction.
 
 **A failed run's `.partial` file is left where it is.** Nothing deletes it. Reclaiming disk on a
 failure path destroys the only record of how far the run got, on a judgement made by the code that
-has just failed, and the file has no name any reader asks for â€” so leaving it costs disk and never
+has just failed, and the file has no name any reader asks for — so leaving it costs disk and never
 a wrong answer.
 
 **Why more than one file at all.** Write-ahead logging keeps recent changes in a `-wal` file
@@ -73,7 +73,7 @@ point of use:
 **What it proves.** The bytes of `evidence.db` are the bytes that were there when the run declared
 itself finished.
 
-**What it does not prove.** It is not a signature and is deliberately not called one â€” there is no
+**What it does not prove.** It is not a signature and is deliberately not called one — there is no
 key anywhere in this product, so anyone who can rewrite the evidence file can rewrite the seal
 beside it. It catches corruption, truncation and casual editing, and not a determined party. It
 says nothing about whether the capture was **complete**: that is a claim the bundle makes in its
@@ -85,7 +85,7 @@ edited since it was made. And it says nothing about whether the capture was corr
 | Outcome | What was observed |
 |---|---|
 | `Intact` | The seal is present, readable, and matches |
-| `Absent` | There is no seal file. Unreachable for a bundle this product wrote, because sealing precedes the rename â€” so it means the directory was assembled by hand |
+| `Absent` | There is no seal file. Unreachable for a bundle this product wrote, because sealing precedes the rename — so it means the directory was assembled by hand |
 | `Unreadable` | A seal file exists and cannot be read. **Not** the same as `Absent`: the one thing that certainly happened is that something happened to the seal |
 | `Mismatch` | The seal was read and the file does not match it |
 
@@ -100,7 +100,7 @@ avoid performing an integrity check is a way for the check to silently never run
 
 The rule every table below follows: per [`0002`](../decisions/0002-absent-view-means-degraded-run.md)
 a missing answer is a fact about the capture and never about the forest. That question arrives
-here one level down â€” an object with no permission rows either had no permissions or was never
+here one level down — an object with no permission rows either had no permissions or was never
 read, and those are opposite findings that look identical if the only evidence is an empty result.
 
 So **coverage is recorded positively, as rows, and never inferred from their absence.**
@@ -115,7 +115,7 @@ than written out here, so the schema cannot ask for one set of attributes and st
 deliberately not applied. It cannot be: Active Directory omits an absent attribute without saying
 whether the caller was refused it, so *withheld* and *never set* arrive identically and a column
 claiming to separate them would hold a guess rather than an observation. What a run could not see
-is recorded where it *is* observable â€” per partition in `partition_coverage`, and by reference for
+is recorded where it *is* observable — per partition in `partition_coverage`, and by reference for
 the things something pointed at and that were never seen.
 
 <!-- TABLES:BEGIN -->
@@ -123,35 +123,35 @@ the things something pointed at and that were never seen.
 | Table | What one row is | What its absence means |
 |---|---|---|
 | `bundle` | The run's own account of itself: schema version, forest, when capture started and finished, the evidence identity of what it declared it would cover, and whether it covered it | A file that never reached the end of a run. It cannot be reached through `evidence.db`, because the row is written before the seal and the rename |
-| `domain_coverage` | One domain the forest declared when the run started, and what became of it | Not reachable in a sealed bundle â€” every declared domain has a row. That is the point of the table: before it existed, a run that reached one domain of nine sealed a bundle in which the other eight were simply absent, and absence is what a reader cannot interpret |
-| `forest_partition_coverage` | The configuration or schema partition, and what became of it | Not reachable in a sealed bundle â€” both are always reported. Held apart from `domain_coverage` because a run that could not read the schema partition has failed outright rather than found a domain with a problem |
+| `domain_coverage` | One domain the forest declared when the run started, and what became of it | Not reachable in a sealed bundle — every declared domain has a row. That is the point of the table: before it existed, a run that reached one domain of nine sealed a bundle in which the other eight were simply absent, and absence is what a reader cannot interpret |
+| `forest_partition_coverage` | The configuration or schema partition, and what became of it | Not reachable in a sealed bundle — both are always reported. Held apart from `domain_coverage` because a run that could not read the schema partition has failed outright rather than found a domain with a problem |
 | `partition_coverage` | One naming context, read from one controller, with what the pass consumed, the connection security it was read over, how many of its objects had unreadable descriptors, and whether referrals were suppressed | That naming context was never read. This is the row every other absence is interpreted against |
-| `continuation_reference` | One referral a controller returned | No referrals were returned â€” which means *nothing lies below* only when the coverage row says referrals were not suppressed |
-| `unread_partition` | One partition the forest declares that this product does not read â€” the application directory partitions, which in practice are the DNS zone partitions every forest has | The forest declared no such partition. Safe to read that way only because the rows are written before the first read and an incomplete run never seals, so an empty table cannot mean the run forgot to say |
-| `excluded_domain` | One domain left out of this run, with the reason picked from the closed list, whatever the operator added in his own words, the account the run was made under, the name he gave as authorising it, and when he said so | No domain was excluded. It does **not** mean the attestation was not recorded. The `kind` column keeps a domain the operator took out apart from one the forest named no writable controller for â€” [`0063`](../decisions/0063-excluded-never-looks-like-unreachable.md) â€” and `authorised_by` is a typed string that nothing validated, so no reader may present it as a verified identity |
+| `continuation_reference` | One referral a controller returned | No referrals were returned — which means *nothing lies below* only when the coverage row says referrals were not suppressed |
+| `unread_partition` | One partition the forest declares that this product does not read — the application directory partitions, which in practice are the DNS zone partitions every forest has | The forest declared no such partition. Safe to read that way only because the rows are written before the first read and an incomplete run never seals, so an empty table cannot mean the run forgot to say |
+| `excluded_domain` | One domain left out of this run, with the reason picked from the closed list, whatever the operator added in his own words, the account the run was made under, the name he gave as authorising it, and when he said so | No domain was excluded. It does **not** mean the attestation was not recorded. The `kind` column keeps a domain the operator took out apart from one the forest named no writable controller for — [`0063`](../decisions/0063-excluded-never-looks-like-unreachable.md) — and `authorised_by` is a typed string that nothing validated, so no reader may present it as a verified identity |
 | `captured_object` | One object: the identity that survives a rename, where it sits in the tree, when it was read, and one typed column per single-valued attribute the catalogue asks for | The object was not read. Whether that is a fact about the forest depends on its partition's coverage row |
-| `objectclass_value` | One class name from one object's `objectClass` | Not reachable for an object that was read at all â€” every object has a class, so an empty list here means the object's row should not be trusted |
+| `objectclass_value` | One class name from one object's `objectClass` | Not reachable for an object that was read at all — every object has a class, so an empty list here means the object's row should not be trusted |
 | `description_value` | One line of an object's `description`, in the order the controller sent them | The object was never described, or the value was withheld. Multi-valued in the schema, which most tooling shows the first value of and calls the description |
 | `member_value` | One member of one group, in the order the controller sent them | The group has no members, or membership was withheld. The two are one emptiness and the bundle does not claim to tell them apart |
 | `memberof_value` | One group one object belongs to, as the directory reports it back-linked | The object is in no group other than its primary one, which is a column and not a row here |
 | `sidhistory_value` | One security identifier an object carries from a migrated domain, as bytes | The object was never migrated, or its history was withheld. A row here is the finding; an absence is the ordinary case |
-| `serviceprincipalname_value` | One service principal name registered on an account | The account runs no registered service â€” which is what makes an account with rows here worth looking at |
+| `serviceprincipalname_value` | One service principal name registered on an account | The account runs no registered service — which is what makes an account with rows here worth looking at |
 | `msds_allowedtodelegateto_value` | One service this account may delegate to | Constrained delegation is not configured on this account. Unconstrained delegation is a flag on `useraccountcontrol` and leaves nothing here |
 | `msds_keycredentiallink_value` | One key credential registered against the account | No key credential is registered, or they were withheld. This is where a shadow-credential attack leaves its mark |
 | `gpcmachineextensionnames_value` | One client-side extension a group policy object drives | The policy object drives no machine-side extension, or the value was withheld |
 | `appliesto_value` | One class an extended right applies to | The right is not scoped to any class, which means it applies wherever its GUID appears rather than nowhere |
-| `security_descriptor` | One **distinct** security descriptor, keyed on the SHA-256 of the bytes the controller sent, with those bytes, its owner, group, DACL state and the canonical hash of its whole entry set | No descriptor with those bytes was read anywhere in the forest. It is not a statement about any particular object â€” which objects carry it is `object_security_descriptor`'s question |
+| `security_descriptor` | One **distinct** security descriptor, keyed on the SHA-256 of the bytes the controller sent, with those bytes, its owner, group, DACL state and the canonical hash of its whole entry set | No descriptor with those bytes was read anywhere in the forest. It is not a statement about any particular object — which objects carry it is `object_security_descriptor`'s question |
 | `object_security_descriptor` | One object read together with the descriptor it was read with | Either no descriptor was read for that object, or none was attempted. Which of those it is depends on `unreadable_security_descriptor`: a row there means it was tried and failed, no row there means nothing was asked |
 | `security_descriptor_error` | One reason a descriptor could not be fully parsed | That descriptor parsed cleanly. Without this table a descriptor that failed and an object granting nothing are the same thing: no rows in `ace` |
 | `unreadable_security_descriptor` | One object whose security descriptor could not be read at all | Every object that was asked had its descriptor read. This table is the difference between *nobody knows what this object grants* and *this object grants nothing*, and on a production domain it was 19,927 objects in 100,000 |
-| `unresolved_reference` | One thing an object pointed at â€” a group member, a permission trustee, a parent container, a primary group â€” that nothing in the run ever saw, and which of four reasons it was never seen for | Everything every object pointed at was also captured. An empty table is a strong claim, not a quiet one, and it is only trustworthy because the rows are written positively rather than inferred |
+| `unresolved_reference` | One thing an object pointed at — a group member, a permission trustee, a parent container, a primary group — that nothing in the run ever saw, and which of four reasons it was never seen for | Everything every object pointed at was also captured. An empty table is a strong claim, not a quiet one, and it is only trustworthy because the rows are written positively rather than inferred |
 | `trustee` | One security identifier, once for the whole forest, and why it could not be resolved if it could not | That trustee appears in no entry anywhere |
-| `ace` | One access control entry, already canonicalised, including inherited ones, belonging to a **descriptor** rather than to an object | That descriptor grants nothing â€” but only when it has no rows in `security_descriptor_error`. Which objects that applies to is reached through `object_security_descriptor` |
-| `sysvol_gpo_coverage` | One Group Policy object the directory declared, with its display name and what became of its files: read, read in part, or not read, and why | The forest declares no Group Policy at all. This is the one table in the bundle where a failure is expected rather than fatal â€” per [`0044`](../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) a SYSVOL read that fails does not stop the run, so these rows are the only account of what was missed |
-| `gpo_registry_setting` | One registry value a policy writes, with the raw type and bytes as the file held them, and whether it applies to the machine or the user | The policy configures no registry-backed settings â€” unless its row in `sysvol_gpo_coverage` says its files were not read, in which case nothing is known about what it configures |
+| `ace` | One access control entry, already canonicalised, including inherited ones, belonging to a **descriptor** rather than to an object | That descriptor grants nothing — but only when it has no rows in `security_descriptor_error`. Which objects that applies to is reached through `object_security_descriptor` |
+| `sysvol_gpo_coverage` | One Group Policy object the directory declared, with its display name and what became of its files: read, read in part, or not read, and why | The forest declares no Group Policy at all. This is the one table in the bundle where a failure is expected rather than fatal — per [`0044`](../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) a SYSVOL read that fails does not stop the run, so these rows are the only account of what was missed |
+| `gpo_registry_setting` | One registry value a policy writes, with the raw type and bytes as the file held them, and whether it applies to the machine or the user | The policy configures no registry-backed settings — unless its row in `sysvol_gpo_coverage` says its files were not read, in which case nothing is known about what it configures |
 | `gpo_security_setting` | One setting out of a policy's security template: the privileges it grants, the signing and channel-binding settings it can weaken | Same reading as above. SEC-064 and SEC-066 are answered from here |
 | `gpo_restricted_group` | One principal a policy places into, or takes into, a privileged group on every machine it reaches, with which way round the membership goes | The policy imposes no group memberships. SEC-065 exists because this membership is invisible to every directory group rule |
-| `gpo_stored_credential` | Where a policy stores a credential in its own files â€” the Group Policy Preferences defect of MS14-025 | No stored credential was found in the files that were read. **Presence only: neither the password nor the ciphertext is stored**, because the key protecting it is public and keeping it would rebuild the vulnerability inside the audit |
+| `gpo_stored_credential` | Where a policy stores a credential in its own files — the Group Policy Preferences defect of MS14-025 | No stored credential was found in the files that were read. **Presence only: neither the password nor the ciphertext is stored**, because the key protecting it is public and keeping it would rebuild the vulnerability inside the audit |
 | `gpo_file_error` | One file inside a policy that was opened and could not be understood | Every file that was opened parsed cleanly. The same distinction `security_descriptor_error` draws: without it, a template that failed to parse and a policy that assigns no privileges are the same evidence |
 | `sysvol_path_security_descriptor` | One path inside a policy's folder read together with its permissions, joined to the same descriptor and entry tables the directory's permissions use | Nothing under that policy was permission-read. How deep the read goes is set by [`0043`](../decisions/0043-a-gpos-file-permissions-are-read-below-the-root-folder.md): the policy folder, every folder beneath it, every file whose contents were read, and everything under `Machine\Scripts` and `User\Scripts` |
 | `unreadable_sysvol_descriptor` | One path inside a policy whose permissions could not be read at all | Every path that was reached had its permissions read. The file-share counterpart of `unreadable_security_descriptor`, and it exists for the same reason: no rows in `ace` must not mean both *this path grants nothing* and *nobody could look* |
@@ -163,7 +163,7 @@ the things something pointed at and that were never seen.
 A forest does not hold one security descriptor per object. It holds a few thousand distinct ones
 repeated across millions of objects, mostly because they are inherited. Storing one row per object
 measured **4.81 GB per 100,000 objects against 1.24 GB** for the same evidence stored once, and it
-removed about three quarters of the parsing and inserting as well â€” the same descriptor was being
+removed about three quarters of the parsing and inserting as well — the same descriptor was being
 parsed, hashed and written again for every object that carried it.
 
 So `security_descriptor` is keyed on the SHA-256 of the descriptor's bytes, `ace` hangs off the
@@ -176,7 +176,7 @@ would silently give one object another object's permissions, which is the one fa
 cannot have. The byte length is stored beside the hash so a collision would have to agree on two
 things rather than one.
 
-**The raw bytes are stored too**, at about 13% on top of the parsed entries â€” the raw form is
+**The raw bytes are stored too**, at about 13% on top of the parsed entries — the raw form is
 smaller than what parsing it produces. That is the difference between repairing a defect in the
 parser by re-analysing bundles already captured, and repairing it by asking a customer to re-read
 his entire forest.
@@ -186,31 +186,31 @@ his entire forest.
 An object with no entries can mean three different things, and before this schema they looked
 identical:
 
-- It **grants nothing** â€” a row in `object_security_descriptor`, a descriptor whose DACL state is
+- It **grants nothing** — a row in `object_security_descriptor`, a descriptor whose DACL state is
   `Empty`, and no errors.
-- Its descriptor **could not be parsed** â€” a row in `object_security_descriptor` and rows in
+- Its descriptor **could not be parsed** — a row in `object_security_descriptor` and rows in
   `security_descriptor_error`.
-- Its descriptor **could not be read at all** â€” a row in `unreadable_security_descriptor`, and
+- Its descriptor **could not be read at all** — a row in `unreadable_security_descriptor`, and
   `ace_count` left null rather than zero.
 
 > **Corrected 2026-08-13 in `S-21`, as `F-S21-1`.** The
 > second bullet was true about the error rows and wrong about the state beside them. A descriptor
-> that could not be parsed still recorded `dacl_state = 'Empty'` â€” so the one field a reader
+> that could not be parsed still recorded `dacl_state = 'Empty'` — so the one field a reader
 > consults to learn *what does this object grant* said **grants nothing**, which is the most
 > locked-down answer there is, about an object nobody had managed to read. The error rows were
 > beside it and nothing obliged anyone to look at them.
 >
 > [`0037`](../decisions/0037-an-unreadable-dacl-says-so.md) adds `Unreadable`, and it turns out
 > there is a **fourth** case this section did not have either: a DACL that yielded *some* of what it
-> declared. That one is genuinely `Present` â€” it is present, and saying otherwise would be a
-> different lie â€” so the shortfall is carried by `dacl_completeness` instead, which is
+> declared. That one is genuinely `Present` — it is present, and saying otherwise would be a
+> different lie — so the shortfall is carried by `dacl_completeness` instead, which is
 > `Complete`, `Incomplete` or `Unknown`. A state answers *what is this*; the completeness answers
 > *did we get all of it*, and putting the second into the first would have made the state a
 > judgement rather than a fact.
 
 The third is not a rare case. A production domain returned 19,927 of 100,000 objects with no
 readable descriptor, and the predecessor's writer returned early on exactly that condition with its
-only counter sitting below the return â€” so a fifth of a domain was unknown and no number anywhere
+only counter sitting below the return — so a fifth of a domain was unknown and no number anywhere
 said so. The count is now kept per partition on `partition_coverage.unreadable_descriptors`, so a
 reader can get from *this many were unreadable* to the controller they were unreadable on. The run
 total is the sum of those rows and is not stored separately, because a stored total is a second fact
@@ -221,8 +221,8 @@ that can drift from the first.
 
 Windows evaluates a DACL in stored order and stops at the first entry that matches, so an allow
 placed before a deny grants what the canonical form denies. `AceNormalizer` sorts every DACL into
-canonical order â€” which it must, or `ace_hash` and `ace_set_hash` would change every time the
-directory returned entries in a different order â€” and after that nothing says the directory held it
+canonical order — which it must, or `ace_hash` and `ace_set_hash` would change every time the
+directory returned entries in a different order — and after that nothing says the directory held it
 differently.
 
 Exact order is **not** stored. `raw_bytes` is already here, so re-parsing recovers it precisely, and
@@ -238,19 +238,19 @@ visible, which is the next section.
 
 ### `ace_type` holds a number when the product has no name for the type
 
-`ace.ace_type` is `TEXT` and holds the member name â€” `AccessAllowed`, `AccessDeniedObject` â€” for the
+`ace.ace_type` is `TEXT` and holds the member name — `AccessAllowed`, `AccessDeniedObject` — for the
 ten types [`S-1`](S-1-security-descriptor-parsing.md) names. For any other type byte **it holds the
 number**: `0x12` is stored as `"18"`.
 
 **That is deliberate, and it is the only reason anything else in this schema can afford to ignore an
 unmodelled entry.** It makes *which entries did this product not understand* a query against
-evidence already stored â€”
+evidence already stored —
 
 ```sql
 SELECT * FROM ace WHERE ace_type GLOB '[0-9]*'
 ```
 
-â€” rather than a re-parse of every descriptor in the bundle, and it means such an entry is never
+— rather than a re-parse of every descriptor in the bundle, and it means such an entry is never
 silently dropped, normalised into a neighbouring type, or recorded as damage it is not.
 
 It began as an accident. The column holds `ace.AceType.ToString()`, and .NET renders an undefined
@@ -263,7 +263,7 @@ directions: casting to `(int)` or normalising unknowns to a placeholder each fai
 `object_guid`, and not the distinguished name and not the row identifier.
 A distinguished name changes the moment somebody renames an object or moves it between
 organisational units, and the row identifier is local to one file. Two bundles joined on either
-would report a moved object as one object deleted and a different one created â€” a change the
+would report a moved object as one object deleted and a different one created — a change the
 customer did not make, reported as a change they did.
 
 It is nullable, because an identity that did not arrive is not invented. An object with no
@@ -286,20 +286,20 @@ comparison is the only verification path this product has left since
 object turns that question into an equality test.
 
 The canonicalisation version is inside the hash, so two values produced by different pipelines can
-never compare equal by coincidence â€” a comparison reporting *unchanged* across a pipeline change
+never compare equal by coincidence — a comparison reporting *unchanged* across a pipeline change
 would be the product saying something false. An empty entry set has a hash like any other, so a
 reader never has to decide what a missing value means; whether an empty set means *grants nothing*
 or *grants everyone everything* is what the DACL state beside it answers.
 
 ### Three things stored that a smaller design would leave out
-**The DACL state**, as its own value. A null DACL and an empty DACL mean opposite things â€” one
-grants everyone everything, the other grants nobody anything â€” and both produce no rows in `ace`.
+**The DACL state**, as its own value. A null DACL and an empty DACL mean opposite things — one
+grants everyone everything, the other grants nobody anything — and both produce no rows in `ace`.
 **Parse errors.** A descriptor that could not be read produces no entries in exactly the way an
 object granting nothing does. Reporting the second as the first would tell a customer an object is
 safe when nobody knows whether it is.
 
 **Inherited entries.** Skipping them was a defensible size saving and it forces the read side to
-reconstruct inheritance â€” recomputing what the directory already told us, and being wrong wherever
+reconstruct inheritance — recomputing what the directory already told us, and being wrong wherever
 the reconstruction disagrees.
 
 ### What is not stored, and what replaced it
@@ -307,7 +307,7 @@ the reconstruction disagrees.
 There is no materialised ACL payload column and no binary codec for one. Entries go in their own
 table, and a trustee's security identifier goes in a shared one, so an entry carries an integer
 where it would have carried a forty-character string. That squeezes the repetition **across the
-whole forest** rather than within one object's list â€” a domain's administrators appear in access
+whole forest** rather than within one object's list — a domain's administrators appear in access
 control lists on hundreds of thousands of objects, and a table scoped to one payload could not
 look past the object it was inside. The reasoning, and the fact that it is an argument rather than
 a measurement, is in `S-15` and F-S15-1.
@@ -319,7 +319,7 @@ index maintained during ingest is paid for on every insert and read by nobody un
 over.
 
 Two passes over the whole table run immediately after the indexes are built, and the order is not
-incidental â€” both join on a column those indexes have just created, and either would be a scan per
+incidental — both join on a column those indexes have just created, and either would be a scan per
 row if it ran first. One fills in each object's `parent_guid` by stripping the leading relative name
 and matching what is left against `distinguished_name`; the other fills in each object's
 `ace_count`. The parent pass writes its own failures: an object whose parent DN matches nothing is
@@ -333,7 +333,7 @@ change it, and a sealed bundle will never get one. So it is set before `CREATE T
 database enters write-ahead logging mode, which also locks it.
 
 It is **8192**, against a 4096 default. Descriptors on a production domain averaged 31,742 bytes,
-which no supported page size holds inline, so the only question is how long the overflow chain is â€”
+which no supported page size holds inline, so the only question is how long the overflow chain is —
 and doubling the page halves it. It is not raised further because a bundle is not mostly
 descriptors: `ace`, `trustee` and `captured_object` are small rows and there are millions of them,
 and a 32 KB page would make every one of those reads fetch far more than it needs in order to serve
@@ -344,14 +344,14 @@ the minority that are large.
 Five columns on `captured_object` are not derived from the attribute catalogue, because each answers
 a question about the object's place in the forest rather than about one of its attributes.
 
-`dn_reversed` turns "everything under this organisational unit" from a scan into an indexed range â€”
+`dn_reversed` turns "everything under this organisational unit" from a scan into an indexed range —
 see [`S-2`](S-2-distinguished-name-manipulation.md). `parent_guid` is the containment edge, resolved
 in one pass when writing finishes. `domain_fqdn` is on the row so a forest-wide question does not
 have to parse a distinguished name. `captured_utc` is **per row**, because a capture of a large
 forest is hours rather than an instant and two objects in one bundle can have been read far enough
 apart for one to have changed after the other was seen; a single run-level timestamp would quietly
 claim they were a snapshot. `ace_count` is null until a descriptor is written and stays null for an
-object whose descriptor could not be read â€” which is a different thing from zero, and the
+object whose descriptor could not be read — which is a different thing from zero, and the
 distinction the descriptor tables exist to keep.
 
 **The deleted flag does not come across.** It was instructed until 2026-08-12, and capture never
@@ -379,7 +379,7 @@ the kind the catalogue declares, which SQLite will otherwise store without compl
 column's declared type is an affinity and not a constraint; and an attribute the catalogue does not
 name, which has no column and no table and would otherwise be dropped in silence.
 
-The range-retrieval refusal used to happen twice â€” once in the vocabulary and once as a constraint
+The range-retrieval refusal used to happen twice — once in the vocabulary and once as a constraint
 on a column that no longer exists. It now happens once. The remaining wall is the stronger of the
 two, because a missing enum member cannot be forgotten in the way a check can, but the redundancy
 is genuinely gone and is recorded as `F-S24-6` rather than left to be discovered.
@@ -397,13 +397,13 @@ There is one entry point and it takes the directory the bundle is written into. 
 directory comes from is not the caller's choice**: per
 [`0025`](../decisions/0025-the-run-library-is-a-managed-root.md) the tool owns a configured root and
 creates each run inside it, and capture to an arbitrary path is not offered. The writer sits below
-that decision â€” it is handed a directory and writes there â€” and the component that turns the root
+that decision — it is handed a directory and writes there — and the component that turns the root
 into this run's directory is inventory row `F11`, which is not built.
 
 Re-analysis is a second way in and it **does** come across, per
 [`0021`](../decisions/0021-re-analysis-produces-a-new-bundle.md): it derives into a new bundle from a
 sealed one and never touches the original. This section previously said the opposite, on the grounds
-that re-analysis destroyed the original capture's seal â€” a claim taken from the map and contradicted
+that re-analysis destroyed the original capture's seal — a claim taken from the map and contradicted
 by the code.
 
 The writer knows nothing about a window. There is one way to start a capture and it runs unattended,
