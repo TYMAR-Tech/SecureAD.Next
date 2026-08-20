@@ -1,4 +1,4 @@
-﻿# Reports and export
+# Reports and export
 
 **Area.** What leaves the product as a document: when a report may be produced at all, what formats
 it comes in, and what it must say about its own limits. A report is the only part of this product a
@@ -69,15 +69,3 @@ that builds them. [`0068`](../decisions/0068-a-finished-run-reports-with-its-gap
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor produced a Forest report, an Account Hygiene report and a Delegation report, plus a
-tabular HTML exporter for any grid, in CSV, JSON and HTML. Its `OutputEligibilityEvaluator` blocked
-export from an unfinalized run and warned rather than blocked on incomplete coverage — the rule
-[`0068`](../decisions/0068-a-finished-run-reports-with-its-gaps-shown.md) carries forward. It also
-had export profiles and an export manifest, neither of which is decided here.

@@ -39,27 +39,32 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| be refused a run that would read no domain at all | `CapturePlanTests.APlanThatReadsNoDomainIsRefused` |
-| see one unit of work planned for every domain in the forest | `CapturePlanTests.AForestWithSeveralDomainsPlansAUnitForEach` |
-| see a plan called complete only when it covers every declared domain | `CapturePlanTests.APlanCoveringEveryDeclaredDomainIsComplete` |
-| be told a plan is not complete when it leaves a declared domain out | `CapturePlanTests.APlanThatDoesNotCoverEveryDeclaredDomainIsNotComplete` |
-| be sure the configuration and schema partitions are read before anything is interpreted | `CapturePlanTests.TheConfigurationAndSchemaPartitionsAreReadFirst` |
-| see each domain read from the controller chosen for it, not from whichever answered first | `CapturePlanTests.EachDomainIsReadFromItsOwnController` |
-| learn that a partition the forest declares went unread, instead of it vanishing | `CapturePlanTests.APartitionTheForestDeclaresAndTheRunDoesNotReadIsRecorded` |
-| trust that list even when the controller publishes an incomplete picture of itself | `CapturePlanTests.TheUnreadListDoesNotDependOnWhatTheControllerPublishes` |
-| be stopped before a run starts, rather than part-way through, when a controller cannot serve a partition | `CapturePlanTests.APartitionTheControllerDoesNotServeIsRefusedBeforeTheRunStarts` |
-| tell a controller that answered "none" from one whose question failed | `CapturePlanTests.AControllerThatPublishesNothingIsAFailedQuestionRatherThanAnAnswerOfNo` |
-| tell a run still going from one nothing is holding any more | `RunStateReaderTests.APartialFileSomethingIsHoldingIsInProgress`, `RunStateReaderTests.APartialFileNothingIsHoldingIsInterrupted` |
-| tell a run that was cancelled from one that failed | `RunStateReaderTests.AnOutcomeFileRecordingACancellationIsCancelled` |
-| read what was wrong with a damaged run, not merely that it was damaged | `RunStateReaderTests.ADamagedRunSaysWhatWasWrongWithIt` |
-| be certain a recorded outcome is believed over a guess about whether the run is alive | `RunStateReaderTests.ARecordedOutcomeIsPreferredToTheLivenessTest` |
-| be certain a finished bundle outranks a stale outcome file left behind | `RunStateReaderTests.AFinishedBundleOutranksAStaleOutcomeFile` |
-| be refused a state for a directory that is not a run, rather than given a misleading one | `RunStateReaderTests.ADirectoryThatIsNotARunIsRefusedRatherThanGivenAState` |
-| rely on one set of names for run states everywhere they appear | `RunStateNamesTests` |
-| have a capture run end to end and produce a readable bundle | `CaptureRunEndToEndTests` |
-| start a run from the command line the same way the window does | `CommandLineSurfaceGateTests` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| be refused a run that would read no domain at all | `CapturePlanTests.APlanThatReadsNoDomainIsRefused` |  |  |
+| see one unit of work planned for every domain in the forest | `CapturePlanTests.AForestWithSeveralDomainsPlansAUnitForEach` |  |  |
+| see a plan called complete only when it covers every declared domain | `CapturePlanTests.APlanCoveringEveryDeclaredDomainIsComplete` |  |  |
+| be told a plan is not complete when it leaves a declared domain out | `CapturePlanTests.APlanThatDoesNotCoverEveryDeclaredDomainIsNotComplete` |  |  |
+| be sure the configuration and schema partitions are read before anything is interpreted | `CapturePlanTests.TheConfigurationAndSchemaPartitionsAreReadFirst` |  |  |
+| see each domain read from the controller chosen for it, not from whichever answered first | `CapturePlanTests.EachDomainIsReadFromItsOwnController` |  |  |
+| learn that a partition the forest declares went unread, instead of it vanishing | `CapturePlanTests.APartitionTheForestDeclaresAndTheRunDoesNotReadIsRecorded` |  |  |
+| trust that list even when the controller publishes an incomplete picture of itself | `CapturePlanTests.TheUnreadListDoesNotDependOnWhatTheControllerPublishes` |  |  |
+| be stopped before a run starts, rather than part-way through, when a controller cannot serve a partition | `CapturePlanTests.APartitionTheControllerDoesNotServeIsRefusedBeforeTheRunStarts` |  |  |
+| tell a controller that answered "none" from one whose question failed | `CapturePlanTests.AControllerThatPublishesNothingIsAFailedQuestionRatherThanAnAnswerOfNo` |  |  |
+| tell a run still going from one nothing is holding any more | `RunStateReaderTests.APartialFileSomethingIsHoldingIsInProgress`, `RunStateReaderTests.APartialFileNothingIsHoldingIsInterrupted` |  |  |
+| tell a run that was cancelled from one that failed | `RunStateReaderTests.AnOutcomeFileRecordingACancellationIsCancelled` |  |  |
+| read what was wrong with a damaged run, not merely that it was damaged | `RunStateReaderTests.ADamagedRunSaysWhatWasWrongWithIt` |  |  |
+| be certain a recorded outcome is believed over a guess about whether the run is alive | `RunStateReaderTests.ARecordedOutcomeIsPreferredToTheLivenessTest` |  |  |
+| be certain a finished bundle outranks a stale outcome file left behind | `RunStateReaderTests.AFinishedBundleOutranksAStaleOutcomeFile` |  |  |
+| be refused a state for a directory that is not a run, rather than given a misleading one | `RunStateReaderTests.ADirectoryThatIsNotARunIsRefusedRatherThanGivenAState` |  |  |
+| rely on one set of names for run states everywhere they appear | `RunStateNamesTests` |  |  |
+| have a capture run end to end and produce a readable bundle | `CaptureRunEndToEndTests` |  |  |
+| start a run from the command line the same way the window does | `CommandLineSurfaceGateTests` |  |  |
 
 ---
 
@@ -101,13 +106,3 @@ keeps nothing), and how much of a run is shown while it is going
 | | | |
 |---|---|---|
 | `F-S40-1` | `0040`'s retry is decided but nothing walks it | open |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor connected and began reading with no preflight, so an unreachable domain surfaced as
-a partial run discovered halfway through. It also offered a scoped, OU-level capture; that was
-removed on 2026-08-02 and must not be described as reachable.

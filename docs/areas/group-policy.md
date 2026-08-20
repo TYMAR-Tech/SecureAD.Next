@@ -1,4 +1,4 @@
-﻿# Group Policy
+# Group Policy
 
 **Area.** What the product reads about Group Policy: the objects in the directory, the files behind
 them in SYSVOL, and what those files contain. Group Policy is where a permission on one object turns
@@ -31,24 +31,29 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| see which client-side extensions a policy declares | `GpoClientSideExtensionsTests.WhenSingleRegistryGroup_ThenReturnsRegistryCse` |
-| be certain a malformed extension list is recorded rather than silently skipped | `GpoClientSideExtensionsTests.WhenMalformedTokens_ThenTheyAreRecordedRatherThanSkippedSilently` |
-| be certain an absent extension list reports no errors, so an error always means something | `GpoClientSideExtensionsTests.WhenAttributeIsAbsent_ThenNoErrorsAreReported` |
-| be certain duplicate extension entries are reduced to one | `GpoClientSideExtensionsTests.WhenDuplicateCseGroups_ThenDeduplicated` |
-| have a policy's registry settings read from the file behind it | `RegistryPolicyParserTests.WhenDwordEntry_ThenKeyValueAndTypeParsed` |
-| be certain a corrupt registry policy file reports an error rather than throwing | `RegistryPolicyParserTests.WhenInvalidSignature_ThenReturnsError` |
-| be certain a policy file of an unexpected version is still parsed, and says so | `RegistryPolicyParserTests.WhenUnexpectedVersion_ThenReturnsErrorButStillParses` |
-| have a security template read whatever encoding it was written in | `SecurityTemplateParserTests.WhenUtf16LeWithBom_ThenParsesSections` |
-| see which principals a policy grants a privilege to | `SecurityTemplateParserTests.WhenPrivilegeRights_ThenTrusteesSplitAndStarStripped` |
-| be certain a missing template section is empty rather than an error | `SecurityTemplateParserTests.WhenSectionAbsent_ThenGetSectionReturnsEmpty` |
-| be certain the raw settings of a template are preserved rather than interpreted away | `SecurityTemplateParserTests.WhenSystemAccessSection_ThenRawSettingsPreserved` |
-| find a password stored in a Group Policy preference | `GroupPolicyPreferenceParserTests.WhenCpasswordPresent_ThenValueNeverAppearsInResult` |
-| be certain that finding never carries the password itself | `GroupPolicyPreferenceParserTests.WhenFindingType_ThenHasNoPasswordProperty` |
-| be certain one finding is raised per affected account | `GroupPolicyPreferenceParserTests.WhenMultipleUsersWithCpassword_ThenOneFindingEach` |
-| be certain a hostile preference file cannot make the product fetch anything | `GroupPolicyPreferenceParserTests.WhenDtdExternalEntity_ThenParsesWithoutResolvingEntity` |
-| be certain malformed policy XML returns an error rather than throwing | `GroupPolicyPreferenceParserTests.WhenMalformedXml_ThenReturnsErrorNotThrow` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| see which client-side extensions a policy declares | `GpoClientSideExtensionsTests.WhenSingleRegistryGroup_ThenReturnsRegistryCse` |  |  |
+| be certain a malformed extension list is recorded rather than silently skipped | `GpoClientSideExtensionsTests.WhenMalformedTokens_ThenTheyAreRecordedRatherThanSkippedSilently` |  |  |
+| be certain an absent extension list reports no errors, so an error always means something | `GpoClientSideExtensionsTests.WhenAttributeIsAbsent_ThenNoErrorsAreReported` |  |  |
+| be certain duplicate extension entries are reduced to one | `GpoClientSideExtensionsTests.WhenDuplicateCseGroups_ThenDeduplicated` |  |  |
+| have a policy's registry settings read from the file behind it | `RegistryPolicyParserTests.WhenDwordEntry_ThenKeyValueAndTypeParsed` |  |  |
+| be certain a corrupt registry policy file reports an error rather than throwing | `RegistryPolicyParserTests.WhenInvalidSignature_ThenReturnsError` |  |  |
+| be certain a policy file of an unexpected version is still parsed, and says so | `RegistryPolicyParserTests.WhenUnexpectedVersion_ThenReturnsErrorButStillParses` |  |  |
+| have a security template read whatever encoding it was written in | `SecurityTemplateParserTests.WhenUtf16LeWithBom_ThenParsesSections` |  |  |
+| see which principals a policy grants a privilege to | `SecurityTemplateParserTests.WhenPrivilegeRights_ThenTrusteesSplitAndStarStripped` |  |  |
+| be certain a missing template section is empty rather than an error | `SecurityTemplateParserTests.WhenSectionAbsent_ThenGetSectionReturnsEmpty` |  |  |
+| be certain the raw settings of a template are preserved rather than interpreted away | `SecurityTemplateParserTests.WhenSystemAccessSection_ThenRawSettingsPreserved` |  |  |
+| find a password stored in a Group Policy preference | `GroupPolicyPreferenceParserTests.WhenCpasswordPresent_ThenValueNeverAppearsInResult` |  |  |
+| be certain that finding never carries the password itself | `GroupPolicyPreferenceParserTests.WhenFindingType_ThenHasNoPasswordProperty` |  |  |
+| be certain one finding is raised per affected account | `GroupPolicyPreferenceParserTests.WhenMultipleUsersWithCpassword_ThenOneFindingEach` |  |  |
+| be certain a hostile preference file cannot make the product fetch anything | `GroupPolicyPreferenceParserTests.WhenDtdExternalEntity_ThenParsesWithoutResolvingEntity` |  |  |
+| be certain malformed policy XML returns an error rather than throwing | `GroupPolicyPreferenceParserTests.WhenMalformedXml_ThenReturnsErrorNotThrow` |  |  |
 
 ---
 
@@ -79,12 +84,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor had a `GpoRuleEvaluator` among its eleven rule evaluators. Its rows in the reference
-inventory describe that evaluator, not this product's.

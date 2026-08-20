@@ -35,28 +35,33 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| see every domain of the forest without naming anything | `ForestDiscoveryTests` |
-| see, per domain, which controller would be read | `ControllerSelectionTests.AControllerInTheOperatorSiteIsPinnedOverALexicallyEarlierOne` |
-| see that a controller in his own site is preferred over one holding a role | `ControllerSelectionTests.SiteOutranksHoldingARole` |
-| see the failover order, and not just the winner | `ControllerSelectionTests.TheFailoverListIsTheRestOfTheRankingInOrder` |
-| be told the choice was made without every input, rather than shown a confident answer | `ControllerSelectionTests.ADomainRankedWithoutItsPdcEmulatorIsNotComplete` |
-| name a different controller, and have it obeyed | `ControllerSelectionTests.AnOverrideIsObeyedAndTheRestRemainAsFailover` |
-| be refused, in the audit layer's own words, when that name is not a candidate | `ControllerSelectionTests.AnOverrideThatIsNotACandidateStopsTheRun` |
-| be certain a refused override never silently falls back to the automatic choice | `ControllerSelectionTests.AnOverrideThatIsNotACandidateNeverFallsBack` |
-| learn that a domain has no readable controller, instead of it vanishing from the run | `ControllerSelectionTests.ADomainWithNoCandidatesIsRecordedRatherThanPlannedAgainst` |
-| be told plainly that this machine's site is unknown, when the forest declares no subnets | `OperatorSiteTests.AForestDeclaringNoRangesLeavesTheRunWithNoSite` |
-| have every domain checked, even after the first one fails | `PreflightTests.EveryDomainIsAskedEvenWhenTheFirstOneFails` |
-| tell "was asked and said no" apart from "was never asked" | `PreflightTests.TheQuestionsAnUnreachableControllerWasNeverAskedAreRecordedAsUnasked` |
-| see how protected each domain's connection was | `PreflightTests.TheFileSaysWhichControllerServedEachDomainAndHowProtectedItWas` |
-| continue when a password settings container cannot be read, and know which domain it was | `PreflightTests.AnUnreadablePasswordSettingsContainerDoesNotStopTheRun` |
-| have every domain asked at once, and no controller asked two things at once | `PreflightTests.TwoDomainsOnOneControllerAreNeverAskedAtTheSameTime` |
-| be certain that pass is genuinely concurrent rather than concurrent in shape | `PreflightTests.DomainsOnDifferentControllersAreAskedAtTheSameTime` |
-| be certain a controller nothing answered from is not described as refusing protection | `ConnectionLadderWalkTests.AControllerThatNeverAnsweredIsNotDescribedAsRefusingProtection` |
-| read a rejected password as a password, rather than as a weakness in his forest | `ConnectionLadderWalkTests.RejectedCredentialsAreReportedAsCredentialsAndNotAsAWeakness` |
-| still be told when a controller genuinely refuses every protected rung | `ConnectionLadderWalkTests.AControllerThatAnsweredAndRefusedProtectionIsStillAFindingAboutTheForest` |
-| be certain a failure nobody classified is not promoted into a security finding | `ConnectionLadderWalkTests.AFailureNobodyClassifiedIsNotPromotedIntoAFinding` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| see every domain of the forest without naming anything | `ForestDiscoveryTests` |  |  |
+| see, per domain, which controller would be read | `ControllerSelectionTests.AControllerInTheOperatorSiteIsPinnedOverALexicallyEarlierOne` |  |  |
+| see that a controller in his own site is preferred over one holding a role | `ControllerSelectionTests.SiteOutranksHoldingARole` |  |  |
+| see the failover order, and not just the winner | `ControllerSelectionTests.TheFailoverListIsTheRestOfTheRankingInOrder` |  |  |
+| be told the choice was made without every input, rather than shown a confident answer | `ControllerSelectionTests.ADomainRankedWithoutItsPdcEmulatorIsNotComplete` |  |  |
+| name a different controller, and have it obeyed | `ControllerSelectionTests.AnOverrideIsObeyedAndTheRestRemainAsFailover` |  |  |
+| be refused, in the audit layer's own words, when that name is not a candidate | `ControllerSelectionTests.AnOverrideThatIsNotACandidateStopsTheRun` |  |  |
+| be certain a refused override never silently falls back to the automatic choice | `ControllerSelectionTests.AnOverrideThatIsNotACandidateNeverFallsBack` |  |  |
+| learn that a domain has no readable controller, instead of it vanishing from the run | `ControllerSelectionTests.ADomainWithNoCandidatesIsRecordedRatherThanPlannedAgainst` |  |  |
+| be told plainly that this machine's site is unknown, when the forest declares no subnets | `OperatorSiteTests.AForestDeclaringNoRangesLeavesTheRunWithNoSite` |  |  |
+| have every domain checked, even after the first one fails | `PreflightTests.EveryDomainIsAskedEvenWhenTheFirstOneFails` |  |  |
+| tell "was asked and said no" apart from "was never asked" | `PreflightTests.TheQuestionsAnUnreachableControllerWasNeverAskedAreRecordedAsUnasked` |  |  |
+| see how protected each domain's connection was | `PreflightTests.TheFileSaysWhichControllerServedEachDomainAndHowProtectedItWas` |  |  |
+| continue when a password settings container cannot be read, and know which domain it was | `PreflightTests.AnUnreadablePasswordSettingsContainerDoesNotStopTheRun` |  |  |
+| have every domain asked at once, and no controller asked two things at once | `PreflightTests.TwoDomainsOnOneControllerAreNeverAskedAtTheSameTime` |  |  |
+| be certain that pass is genuinely concurrent rather than concurrent in shape | `PreflightTests.DomainsOnDifferentControllersAreAskedAtTheSameTime` |  |  |
+| be certain a controller nothing answered from is not described as refusing protection | `ConnectionLadderWalkTests.AControllerThatNeverAnsweredIsNotDescribedAsRefusingProtection` |  |  |
+| read a rejected password as a password, rather than as a weakness in his forest | `ConnectionLadderWalkTests.RejectedCredentialsAreReportedAsCredentialsAndNotAsAWeakness` |  |  |
+| still be told when a controller genuinely refuses every protected rung | `ConnectionLadderWalkTests.AControllerThatAnsweredAndRefusedProtectionIsStillAFindingAboutTheForest` |  |  |
+| be certain a failure nobody classified is not promoted into a security finding | `ConnectionLadderWalkTests.AFailureNobodyClassifiedIsNotPromotedIntoAFinding` |  |  |
 
 **Verified in the lab.** 2026-09-xx, against `ad.lab` with `ba.ad.lab` and `ph.ad.lab`, one
 controller per domain, no subnets declared. Two things were checked by eye because no test can
@@ -95,14 +100,3 @@ shape of the code.
 | | | |
 |---|---|---|
 | `F-S40-1` | `0040`'s retry is decided but nothing walks it | open |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor chose a controller in `SecureAD.Core/Discovery`, and had no preflight at all: it
-connected and began reading, so an unreachable domain surfaced as a partial run. Its `A10`
-"Discovery UI" row in the reference inventory describes a screen that this product answers
-differently, with the New Audit wizard.

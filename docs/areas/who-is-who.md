@@ -31,16 +31,21 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
 **Almost nothing in this area is built.** What exists is the naming machinery that a resolver would
 sit on top of; resolution itself has not been written.
 
-| An operator can… | Proven by |
-|---|---|
-| see a readable name taken from a distinguished name | `DnHelperTests.WhenTheDnIsOrdinary_ThenTheFirstRdnValueIsReturnedWithoutItsType` |
-| be certain a name containing an escaped comma is read correctly rather than split | `DnHelperTests.WhenTheValueContainsAnEscapedComma_ThenItIsUnescapedIntoTheName` |
-| be certain the container of an object is derived without being fooled by escaping | `DnHelperTests.WhenTheFirstComponentContainsAnEscapedComma_ThenItIsNotTreatedAsASeparator` |
-| be certain walking up a distinguished name reaches the root and stops | `DnHelperTests.WhenTheParentIsTakenRepeatedly_ThenTheWalkReachesTheRootAndStops` |
-| read the same account of distinguished-name handling in the document and the code | `DistinguishedNameDocumentationTests` |
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| see a readable name taken from a distinguished name | `DnHelperTests.WhenTheDnIsOrdinary_ThenTheFirstRdnValueIsReturnedWithoutItsType` |  |
+| be certain a name containing an escaped comma is read correctly rather than split | `DnHelperTests.WhenTheValueContainsAnEscapedComma_ThenItIsUnescapedIntoTheName` |  |
+| be certain the container of an object is derived without being fooled by escaping | `DnHelperTests.WhenTheFirstComponentContainsAnEscapedComma_ThenItIsNotTreatedAsASeparator` |  |
+| be certain walking up a distinguished name reaches the root and stops | `DnHelperTests.WhenTheParentIsTakenRepeatedly_ThenTheWalkReachesTheRootAndStops` |  |
+| read the same account of distinguished-name handling in the document and the code | `DistinguishedNameDocumentationTests` |  |
 
 ---
 

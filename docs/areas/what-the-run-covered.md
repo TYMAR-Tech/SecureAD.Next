@@ -33,23 +33,28 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| see a run that read every domain called complete, and only then | `RunCoverageTests.ARunThatReadEveryDomainIsComplete` |
-| be certain a domain that was never read makes the whole run incomplete | `RunCoverageTests.ADomainThatWasNotReadAtAllMakesTheRunIncomplete` |
-| be certain a domain read only in part counts as failed, not as read | `RunCoverageTests.ADomainReadOnlyInPartCountsAsFailed` |
-| read the reason a domain was incomplete, beside the fact that it was | `RunCoverageTests.AnIncompleteDomainCarriesTheReasonItWasIncomplete` |
-| be certain a domain read in full carries no reason, so a reason always means something | `RunCoverageTests.ADomainReadInFullCarriesNoReason` |
-| be certain a forest-wide partition that went unread makes the run incomplete | `RunCoverageTests.AForestPartitionThatWasNotReadMakesTheRunIncomplete` |
-| be certain coverage cannot be reported for a domain the forest never declared | `RunCoverageTests.ReportingOnADomainThatWasNeverDeclaredIsRefused` |
-| be certain a declared domain cannot be left with no outcome at all | `RunCoverageTests.ADeclaredDomainWithNoOutcomeIsRefused` |
-| see which Group Policy objects a run missed, named rather than counted | `SysvolCoverageTests.TheRecordNamesThePoliciesThatWereMissed` |
-| see how many policies were read against how many there were | `SysvolCoverageTests.TheCountsAreTheDenominatorAndTheNumerator` |
-| be certain a policy read only in part makes the SYSVOL read partial | `SysvolCoverageTests.APolicyReadOnlyInPartAlsoMakesTheReadPartial` |
-| be certain a policy with no declared path is still counted rather than dropped | `SysvolCoverageTests.APolicyWithNoDeclaredPathIsStillCounted` |
-| be certain no production code can mark a capture unit unread by hand | `UnreadOutcomeIsUnreachableTests.NoProductionCodeRecordsAUnitAsUnread` |
-| be certain that check reads the real production source and would notice | `UnreadOutcomeIsUnreachableTests.TheScanReadsTheRealProductionSource` |
-| tell one run's coverage from another's | `CoverageIdTests` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| see a run that read every domain called complete, and only then | `RunCoverageTests.ARunThatReadEveryDomainIsComplete` |  |  |
+| be certain a domain that was never read makes the whole run incomplete | `RunCoverageTests.ADomainThatWasNotReadAtAllMakesTheRunIncomplete` |  |  |
+| be certain a domain read only in part counts as failed, not as read | `RunCoverageTests.ADomainReadOnlyInPartCountsAsFailed` |  |  |
+| read the reason a domain was incomplete, beside the fact that it was | `RunCoverageTests.AnIncompleteDomainCarriesTheReasonItWasIncomplete` |  |  |
+| be certain a domain read in full carries no reason, so a reason always means something | `RunCoverageTests.ADomainReadInFullCarriesNoReason` |  |  |
+| be certain a forest-wide partition that went unread makes the run incomplete | `RunCoverageTests.AForestPartitionThatWasNotReadMakesTheRunIncomplete` |  |  |
+| be certain coverage cannot be reported for a domain the forest never declared | `RunCoverageTests.ReportingOnADomainThatWasNeverDeclaredIsRefused` |  |  |
+| be certain a declared domain cannot be left with no outcome at all | `RunCoverageTests.ADeclaredDomainWithNoOutcomeIsRefused` |  |  |
+| see which Group Policy objects a run missed, named rather than counted | `SysvolCoverageTests.TheRecordNamesThePoliciesThatWereMissed` |  |  |
+| see how many policies were read against how many there were | `SysvolCoverageTests.TheCountsAreTheDenominatorAndTheNumerator` |  |  |
+| be certain a policy read only in part makes the SYSVOL read partial | `SysvolCoverageTests.APolicyReadOnlyInPartAlsoMakesTheReadPartial` |  |  |
+| be certain a policy with no declared path is still counted rather than dropped | `SysvolCoverageTests.APolicyWithNoDeclaredPathIsStillCounted` |  |  |
+| be certain no production code can mark a capture unit unread by hand | `UnreadOutcomeIsUnreachableTests.NoProductionCodeRecordsAUnitAsUnread` |  |  |
+| be certain that check reads the real production source and would notice | `UnreadOutcomeIsUnreachableTests.TheScanReadsTheRealProductionSource` |  |  |
+| tell one run's coverage from another's | `CoverageIdTests` |  |  |
 
 ---
 
@@ -80,13 +85,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | | | |
 |---|---|---|
 | `F-0056-1` | no pre-capture total of unestablished facts exists | open |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor reported counts without stating what they were counted over, so "0 findings" and
-"could not read this domain" reached the operator looking the same. That is the failure this area
-exists to prevent, and it is why coverage is a first-class part of a run rather than a footnote.

@@ -37,39 +37,44 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| be certain a finished run leaves evidence, a seal and an annotations file | `BundleWriterTests.AFinishedRunLeavesEvidenceASealAndAnAnnotationsFile` |
-| be certain an interrupted run leaves nothing a reader can open | `BundleWriterTests.AnInterruptedRunLeavesNothingAReaderCanOpen` |
-| be certain a bundle is never written over | `BundleWriterTests.ABundleIsNeverWrittenOver` |
-| be certain nothing can be added after a bundle is sealed | `BundleWriterTests.NothingCanBeAddedAfterTheBundleIsSealed` |
-| confirm a finished bundle verifies intact | `BundleWriterTests.AFinishedBundleVerifiesIntact` |
-| be certain editing the evidence is reported as a mismatch | `BundleWriterTests.EditingTheEvidenceIsAMismatch` |
-| tell an unreadable seal from an absent one | `BundleWriterTests.AnUnreadableSealIsNotReportedAsAnAbsentOne` |
-| tell a descriptor that could not be parsed from an object that grants nothing | `BundleWriterTests.ADescriptorThatCouldNotBeParsedIsDistinguishableFromAnObjectThatGrantsNothing` |
-| be certain the DACL state is stored rather than inferred from an empty entry list | `BundleWriterTests.TheDaclStateIsStoredRatherThanInferredFromAnEmptyEntryList` |
-| find non-canonical descriptors without reading every entry | `BundleWriterTests.NonCanonicalDescriptorsCanBeFoundWithoutReadingEveryEntry` |
-| find entries this product does not model, rather than losing them | `BundleWriterTests.EntriesThisProductDoesNotModelCanBeFoundByQueryingAceType` |
-| tell an attribute that did not come back from one that has no values | `BundleWriterTests.AnAttributeWithNoValuesIsStoredTheSameWayAsOneThatDidNotComeBack` |
-| be certain the writer refuses an attribute the catalogue does not name | `BundleWriterTests.TheWriterRefusesAnAttributeTheCatalogueDoesNotName` |
-| be certain a descriptor belonging to a different object is refused | `BundleWriterTests.ADescriptorBelongingToADifferentObjectIsRefused` |
-| see which partitions a run declined to read, stated in the evidence | `BundleWriterTests.APartitionTheRunDeclinedToReadIsStatedInTheEvidence` |
-| find an object by an identity that survives a rename or a move | `BundleWriterTests.AnObjectIsStoredWithTheIdentityThatSurvivesARenameOrMove` |
-| see the connection security a partition was read over | `BundleWriterTests.TheConnectionSecurityAPartitionWasReadOverIsRecorded` |
-| be certain a container nobody captured is recorded as an unresolved reference | `BundleWriterTests.AContainerThatWasNeverCapturedIsRecordedAsAnUnresolvedReference` |
-| be certain every catalogue attribute is stored somewhere | `BundleSchemaTests.EveryCatalogueAttributeIsStoredSomewhere` |
-| be certain no two catalogue attributes collide on a column name | `BundleSchemaTests.NoTwoCatalogueAttributesShareAColumnName` |
-| know an object read over an unencrypted connection may be missing confidential values | `EvidenceObjectTests.AnObjectReadOverAnUnencryptedConnectionMayBeMissingConfidentialValues` |
-| tell one forest's runs from another's by their profile | `ProfileIdTests.TwoForestsProduceDifferentProfiles` |
-| see the forest name kept beside the profile, so what was hashed is visible | `ProfileIdTests.TheForestNameIsKeptSoAReaderCanSeeWhatWasHashed` |
-| open a sealed bundle and read what the run captured | `BundleReaderTests.ASealedBundleOpens` |
-| be certain an interrupted run's bundle cannot be opened | `BundleReaderTests.AnInterruptedRunHasNothingToOpen` |
-| be certain edited evidence is refused rather than read | `BundleReaderTests.EditedEvidenceIsNotOpened` |
-| tell a damaged seal from an absent one when a bundle is refused | `BundleReaderTests.ADamagedSealIsRefusedAsUnreadable` |
-| see which bundle a refusal was about | `BundleReaderTests.ARefusalNamesTheBundleItWasAbout` |
-| learn from a bundle whether the run reached everything it declared | `BundleReaderTests.ASealedBundleThatReachedNoDomainStillOpensAndSaysSo` |
-| be certain reading a bundle leaves it intact | `BundleReaderTests.OpeningABundleLeavesItStillIntact` |
-| be certain reading a bundle writes nothing beside it | `BundleReaderTests.OpeningABundleWritesNoJournalBesideIt` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| be certain a finished run leaves evidence, a seal and an annotations file | `BundleWriterTests.AFinishedRunLeavesEvidenceASealAndAnAnnotationsFile` |  |  |
+| be certain an interrupted run leaves nothing a reader can open | `BundleWriterTests.AnInterruptedRunLeavesNothingAReaderCanOpen` |  |  |
+| be certain a bundle is never written over | `BundleWriterTests.ABundleIsNeverWrittenOver` |  |  |
+| be certain nothing can be added after a bundle is sealed | `BundleWriterTests.NothingCanBeAddedAfterTheBundleIsSealed` |  |  |
+| confirm a finished bundle verifies intact | `BundleWriterTests.AFinishedBundleVerifiesIntact` |  |  |
+| be certain editing the evidence is reported as a mismatch | `BundleWriterTests.EditingTheEvidenceIsAMismatch` |  |  |
+| tell an unreadable seal from an absent one | `BundleWriterTests.AnUnreadableSealIsNotReportedAsAnAbsentOne` |  |  |
+| tell a descriptor that could not be parsed from an object that grants nothing | `BundleWriterTests.ADescriptorThatCouldNotBeParsedIsDistinguishableFromAnObjectThatGrantsNothing` |  |  |
+| be certain the DACL state is stored rather than inferred from an empty entry list | `BundleWriterTests.TheDaclStateIsStoredRatherThanInferredFromAnEmptyEntryList` |  |  |
+| find non-canonical descriptors without reading every entry | `BundleWriterTests.NonCanonicalDescriptorsCanBeFoundWithoutReadingEveryEntry` |  |  |
+| find entries this product does not model, rather than losing them | `BundleWriterTests.EntriesThisProductDoesNotModelCanBeFoundByQueryingAceType` |  |  |
+| tell an attribute that did not come back from one that has no values | `BundleWriterTests.AnAttributeWithNoValuesIsStoredTheSameWayAsOneThatDidNotComeBack` |  |  |
+| be certain the writer refuses an attribute the catalogue does not name | `BundleWriterTests.TheWriterRefusesAnAttributeTheCatalogueDoesNotName` |  |  |
+| be certain a descriptor belonging to a different object is refused | `BundleWriterTests.ADescriptorBelongingToADifferentObjectIsRefused` |  |  |
+| see which partitions a run declined to read, stated in the evidence | `BundleWriterTests.APartitionTheRunDeclinedToReadIsStatedInTheEvidence` |  |  |
+| find an object by an identity that survives a rename or a move | `BundleWriterTests.AnObjectIsStoredWithTheIdentityThatSurvivesARenameOrMove` |  |  |
+| see the connection security a partition was read over | `BundleWriterTests.TheConnectionSecurityAPartitionWasReadOverIsRecorded` |  |  |
+| be certain a container nobody captured is recorded as an unresolved reference | `BundleWriterTests.AContainerThatWasNeverCapturedIsRecordedAsAnUnresolvedReference` |  |  |
+| be certain every catalogue attribute is stored somewhere | `BundleSchemaTests.EveryCatalogueAttributeIsStoredSomewhere` |  |  |
+| be certain no two catalogue attributes collide on a column name | `BundleSchemaTests.NoTwoCatalogueAttributesShareAColumnName` |  |  |
+| know an object read over an unencrypted connection may be missing confidential values | `EvidenceObjectTests.AnObjectReadOverAnUnencryptedConnectionMayBeMissingConfidentialValues` |  |  |
+| tell one forest's runs from another's by their profile | `ProfileIdTests.TwoForestsProduceDifferentProfiles` |  |  |
+| see the forest name kept beside the profile, so what was hashed is visible | `ProfileIdTests.TheForestNameIsKeptSoAReaderCanSeeWhatWasHashed` |  |  |
+| open a sealed bundle and read what the run captured | `BundleReaderTests.ASealedBundleOpens` |  |  |
+| be certain an interrupted run's bundle cannot be opened | `BundleReaderTests.AnInterruptedRunHasNothingToOpen` |  |  |
+| be certain edited evidence is refused rather than read | `BundleReaderTests.EditedEvidenceIsNotOpened` |  |  |
+| tell a damaged seal from an absent one when a bundle is refused | `BundleReaderTests.ADamagedSealIsRefusedAsUnreadable` |  |  |
+| see which bundle a refusal was about | `BundleReaderTests.ARefusalNamesTheBundleItWasAbout` |  |  |
+| learn from a bundle whether the run reached everything it declared | `BundleReaderTests.ASealedBundleThatReachedNoDomainStillOpensAndSaysSo` |  |  |
+| be certain reading a bundle leaves it intact | `BundleReaderTests.OpeningABundleLeavesItStillIntact` |  |  |
+| be certain reading a bundle writes nothing beside it | `BundleReaderTests.OpeningABundleWritesNoJournalBesideIt` |  |  |
 
 ---
 
@@ -97,13 +102,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor wrote an `audit.db` with a companion `suppressions.db` sidecar, opened read-only so
-the read path could not write the evidence. That seam is carried forward by
-[`0067`](../decisions/0067-an-acceptance-names-one-finding.md); the file layout is not.

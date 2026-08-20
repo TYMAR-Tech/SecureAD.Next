@@ -93,13 +93,3 @@ What is still open:
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor had no notion of a deliberate exclusion. A domain it could not read simply did not
-appear, which is the failure this area exists to prevent: a customer cannot tell a forest that is
-clean from one that was only partly looked at.

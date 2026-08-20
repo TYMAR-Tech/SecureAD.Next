@@ -71,16 +71,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor had two acceptance mechanisms and used one. `SuppressionRecord`, keyed on the
-finding's own key and stored in a `suppressions.db` sidecar, is what its Accept Finding dialog
-produced and what [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) carries forward.
-`SuppressionEntry` — a pattern-based allow list with trustee, account, edge and pair scopes — was
-plumbed into the findings service and never constructed anywhere. `0067` deliberately does not carry
-it across.

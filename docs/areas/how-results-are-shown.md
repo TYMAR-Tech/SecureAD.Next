@@ -33,36 +33,41 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
 **No finding is shown, because none is computed.** What is built is the navigation tree the Assets
 screen filters by — an offline rebuild of the directory from the names a bundle already holds. The
 screens themselves live in [`how-the-app-looks`](how-the-app-looks.md).
 
-| An operator can… | Proven by |
-|---|---|
-| see the tree rooted at the partitions the run read | `DirectoryTreeTests.TheTreeIsRootedAtThePartitionsTheRunRead` |
-| see a container objects were captured under | `DirectoryTreeTests.AContainerObjectsWereCapturedUnderIsInTheTree` |
-| reach a branch whose intermediate container holds nothing directly | `DirectoryTreeTests.AContainerWithNothingDirectlyInItStillJoinsItsBranchToTheRoot` |
-| be certain nothing is invented above a partition the run read | `DirectoryTreeTests.NothingIsInventedAboveARoot` |
-| reach objects under a container that was never captured | `DirectoryTreeTests.AContainerThatWasNeverCapturedIsStillANodeSoItsBranchIsReachable` |
-| tell a container that was never captured from one that was | `DirectoryTreeTests.AContainerThatWasNeverCapturedSaysSoRatherThanLookingCaptured` |
-| be certain a container name carrying a comma is one container | `DirectoryTreeTests.AContainerWhoseNameCarriesACommaIsOneContainer` |
-| see which domains the run could not read, stated on the tree | `DirectoryTreeTests.ADomainTheRunCouldNotReadIsReportedAsAGap` |
-| be certain a tree missing a branch does not claim to be complete | `DirectoryTreeTests.ATreeWithAGapDoesNotClaimItsBranchesAreComplete` |
-| see which partitions this product does not read at all | `DirectoryTreeTests.APartitionThisProductDoesNotReadIsReportedAsAGap` |
-| open a run's assets and see the tree it captured | `AssetsViewModelTests.ARunOpensRootedAtTheForest` |
-| tell a bundle that would not open from a run that captured nothing | `AssetsViewModelTests.ARefusedBundleDoesNotLookLikeARunThatCapturedNothing` |
-| read a refusal in the words the evidence layer used | `AssetsViewModelTests.ARefusalIsShownInTheWordsTheEvidenceLayerUsed` |
-| be certain evidence is not read while a capture is writing it | `AssetsViewModelTests.WhileACaptureIsRunningTheBundleIsNotRead` |
-| be told why analysis will not run, and when it will | `AssetsViewModelTests.WhileACaptureIsRunningTheScreenSaysWhyAndWhatToDo` |
-| see the objects in the container selected in the tree | `AssetsViewModelTests.SelectingAContainerListsThatContainersObjects` |
-| choose between this object, one level, and everything beneath | `AssetsViewModelTests.ChangingTheLevelListsAgainAtThatLevel` |
-| page through a container holding more objects than fit on a screen | `AssetsViewModelTests.GoingToTheNextPageAsksForIt` |
-| see which objects of how many are showing | `AssetsViewModelTests.ThePagerSaysWhichObjectsOfHowManyAreShowing` |
-| tell a short listing from an empty container | `AssetsViewModelTests.AShortListingIsNotReportedAsAnEmptyContainer` |
-| be certain an object whose class did not arrive says so | `AssetsViewModelTests.AnObjectWhoseClassDidNotArriveSaysSoRatherThanShowingABlank` |
-| list only the objects of a container whose name holds a wildcard character | `ObjectListingTests.AContainerWhoseNameHoldsAWildcardCharacterListsOnlyItsOwnObjects` |
-| be certain the first page is really the first objects by name | `ObjectListingTests.TheFirstPageIsTheFirstObjectsByName` |
-| see an empty container in the tree | `DirectoryTreeTests.AContainerHoldingNothingIsStillInTheTree` |
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| see the tree rooted at the partitions the run read | `DirectoryTreeTests.TheTreeIsRootedAtThePartitionsTheRunRead` |  |  |
+| see a container objects were captured under | `DirectoryTreeTests.AContainerObjectsWereCapturedUnderIsInTheTree` |  |  |
+| reach a branch whose intermediate container holds nothing directly | `DirectoryTreeTests.AContainerWithNothingDirectlyInItStillJoinsItsBranchToTheRoot` |  |  |
+| be certain nothing is invented above a partition the run read | `DirectoryTreeTests.NothingIsInventedAboveARoot` |  |  |
+| reach objects under a container that was never captured | `DirectoryTreeTests.AContainerThatWasNeverCapturedIsStillANodeSoItsBranchIsReachable` |  |  |
+| tell a container that was never captured from one that was | `DirectoryTreeTests.AContainerThatWasNeverCapturedSaysSoRatherThanLookingCaptured` |  |  |
+| be certain a container name carrying a comma is one container | `DirectoryTreeTests.AContainerWhoseNameCarriesACommaIsOneContainer` |  |  |
+| see which domains the run could not read, stated on the tree | `DirectoryTreeTests.ADomainTheRunCouldNotReadIsReportedAsAGap` |  |  |
+| be certain a tree missing a branch does not claim to be complete | `DirectoryTreeTests.ATreeWithAGapDoesNotClaimItsBranchesAreComplete` |  |  |
+| see which partitions this product does not read at all | `DirectoryTreeTests.APartitionThisProductDoesNotReadIsReportedAsAGap` |  |  |
+| open a run's assets and see the tree it captured | `AssetsViewModelTests.ARunOpensRootedAtTheForest` |  |  |
+| tell a bundle that would not open from a run that captured nothing | `AssetsViewModelTests.ARefusedBundleDoesNotLookLikeARunThatCapturedNothing` |  |  |
+| read a refusal in the words the evidence layer used | `AssetsViewModelTests.ARefusalIsShownInTheWordsTheEvidenceLayerUsed` |  |  |
+| be certain evidence is not read while a capture is writing it | `AssetsViewModelTests.WhileACaptureIsRunningTheBundleIsNotRead` |  |  |
+| be told why analysis will not run, and when it will | `AssetsViewModelTests.WhileACaptureIsRunningTheScreenSaysWhyAndWhatToDo` |  |  |
+| see the objects in the container selected in the tree | `AssetsViewModelTests.SelectingAContainerListsThatContainersObjects` |  |  |
+| choose between this object, one level, and everything beneath | `AssetsViewModelTests.ChangingTheLevelListsAgainAtThatLevel` |  |  |
+| page through a container holding more objects than fit on a screen | `AssetsViewModelTests.GoingToTheNextPageAsksForIt` |  |  |
+| see which objects of how many are showing | `AssetsViewModelTests.ThePagerSaysWhichObjectsOfHowManyAreShowing` |  |  |
+| tell a short listing from an empty container | `AssetsViewModelTests.AShortListingIsNotReportedAsAnEmptyContainer` |  |  |
+| be certain an object whose class did not arrive says so | `AssetsViewModelTests.AnObjectWhoseClassDidNotArriveSaysSoRatherThanShowingABlank` |  |  |
+| list only the objects of a container whose name holds a wildcard character | `ObjectListingTests.AContainerWhoseNameHoldsAWildcardCharacterListsOnlyItsOwnObjects` |  |  |
+| be certain the first page is really the first objects by name | `ObjectListingTests.TheFirstPageIsTheFirstObjectsByName` |  |  |
+| see an empty container in the tree | `DirectoryTreeTests.AContainerHoldingNothingIsStillInTheTree` |  |  |
 
 ---
 
@@ -97,18 +102,3 @@ expensive to answer in advance and cheap to answer in front of one. **Stop and a
 | `F-0056-4` | cells truncate mid-word, so a sentence written to distinguish measured from unmeasured says something else | open |
 | `F-0056-5` | state marks sit at the left of a cell, reading as though they belong to the column before | open |
 | `F-0056-6` | an empty table looked exactly like a table that had loaded and found nothing | open |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor had six rail entries — Home, Dashboard, Assets, Reports, Settings, Help — with the
-directory tree as the spine inside Assets and five tabs over it: Findings, Escalation Paths, Groups,
-LAPS Status, Objects. Its escalation path grid stated an *Evidence Level* and warned that paths were
-*"limited to 5 hops and shown as retained representative evidence paths"* — stating both a limit and
-a selection, which is the character worth keeping. Its *Validation* column and its status bar's
-*"✓ Verified"* cannot be carried across:
-[`0008`](../decisions/0008-live-verification-is-removed.md) removed what they reported, and
-[`0057`](../decisions/0057-starting-an-audit-is-a-modal-act.md) removed the status bar.

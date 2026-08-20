@@ -66,15 +66,3 @@ The agent's questions, offered only so there is something to react to:
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor had an `EscalationPathRuleEvaluator`, a `ControlEdgeRuleEvaluator`, an Escalation
-Paths tab with its own grid, and detail windows for both paths and control edges. It also carried a
-*Validation* column reading *Not Validated*, which cannot survive
-[`0008`](../decisions/0008-live-verification-is-removed.md) — there is nothing in this product to
-validate against.

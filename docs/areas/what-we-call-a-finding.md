@@ -1,4 +1,4 @@
-﻿# What we call a finding
+# What we call a finding
 
 **Area.** What the product produces when a rule matches: what it is called, what identifies it, what
 it carries, and how severe it is said to be. This is the vocabulary every screen and every report
@@ -69,15 +69,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | | | |
 |---|---|---|
 | — | none recorded for this area yet | — |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor's rule card carried an identifier, name, description, default severity, one of ten
-categories, remediation guidance, a MITRE ATT&CK reference, an enabled-by-default flag and tags. Its
-grids headed the severity column *Risk*, which is the vocabulary drift
-[`0066`](../decisions/0066-a-finding-is-called-a-finding.md) exists to end. Its sixty-two rule
-identifiers were ported whole and are the sixty-two cards in `docs/rules/`.

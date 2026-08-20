@@ -40,29 +40,34 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| be sure a partition larger than one page is read to the end | `PartitionCaptureTests.APartitionLargerThanAPageIsReadToTheEnd` |
-| be certain the run never wanders to another controller by following a referral | `PartitionCaptureTests.AConnectionThatChasesReferralsIsRefusedBeforeAnyRequestIsSent` |
-| be certain a connection that cannot say what the controller advertises is refused | `PartitionCaptureTests.AConnectionThatCannotSayWhatTheControllerAdvertisesIsRefused` |
-| be certain an answer carrying no paging control is not mistaken for the last page | `PartitionCaptureTests.AnAnswerWithNoPagingControlIsNotTheLastPage` |
-| be certain a controller that hands the same bookmark straight back is refused rather than looped | `PartitionCaptureTests.ABookmarkHandedStraightBackIsRefusedRatherThanResent` |
-| see the objects a run could not follow reach the coverage record | `PartitionCaptureTests.ContinuationReferencesReachTheCoverageRecord` |
-| be certain a busy controller is retried a bounded number of times and then the run ends | `PartitionCaptureTests.AControllerSayingItIsBusyIsAskedThreeTimesAndThenTheRunEnds` |
-| be certain a cancelled capture stops rather than reporting itself finished | `PartitionCaptureTests.ACancelledCaptureStopsRatherThanFinishing` |
-| get a group's full membership, past the limit a server will return in one response | `LdapEntryReaderTests.AGroupLargerThanTheServersValueLimitIsReadInFull` |
-| be certain a first, partial response is never mistaken for the whole answer | `LdapEntryReaderTests.TheFirstResponseDoesNotClaimToBeAllOfThem` |
-| tell an attribute that was absent from one that was present and empty | `LdapEntryReaderTests.AnAbsentAttributeIsNotReportedAsAnEmptyOne` |
-| be certain a paged read that stalled is reported as a failure rather than an ending | `LdapEntryReaderTests.ABlockThatAdvancedByNothingIsAFailureAndNotAnEnding` |
-| be certain the capture never asks the directory for a credential | `CredentialAttributeGuardTests.TheCatalogueNeverRequestsACredential` |
-| be certain that guard is checking a real catalogue against a real list, not two empty ones | `CredentialAttributeGuardTests.TheGuardHasBothACatalogueAndAListToCheckItAgainst` |
-| have the permissions **on** a credential object captured, while its secret is not | `CredentialAttributeGuardTests.ThePermissionsOnACredentialObjectAreStillCaptured` |
-| have LAPS reported by when it last rotated, never by the password itself | `CredentialAttributeGuardTests.TheCatalogueTakesTheLapsTimestampAndNotTheLapsPassword` |
-| be certain no attribute is asked for two different ways | `CapturedAttributeCatalogTests.NoAttributeIsDeclaredTwoDifferentWays` |
-| be certain DNS is the only thing deliberately left out of the catalogue | `CapturedAttributeCatalogTests.TheDnsClassesAreTheOnlyOnesExcluded` |
-| read a security descriptor the way the directory meant it | `SecurityDescriptorParserTests` |
-| trust that permission normalisation has not silently changed | `GoldenAceHashTests` |
-| have a GPO's files on SYSVOL read, and not only its directory object | `SysvolCaptureTests` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| be sure a partition larger than one page is read to the end | `PartitionCaptureTests.APartitionLargerThanAPageIsReadToTheEnd` |  |  |
+| be certain the run never wanders to another controller by following a referral | `PartitionCaptureTests.AConnectionThatChasesReferralsIsRefusedBeforeAnyRequestIsSent` |  |  |
+| be certain a connection that cannot say what the controller advertises is refused | `PartitionCaptureTests.AConnectionThatCannotSayWhatTheControllerAdvertisesIsRefused` |  |  |
+| be certain an answer carrying no paging control is not mistaken for the last page | `PartitionCaptureTests.AnAnswerWithNoPagingControlIsNotTheLastPage` |  |  |
+| be certain a controller that hands the same bookmark straight back is refused rather than looped | `PartitionCaptureTests.ABookmarkHandedStraightBackIsRefusedRatherThanResent` |  |  |
+| see the objects a run could not follow reach the coverage record | `PartitionCaptureTests.ContinuationReferencesReachTheCoverageRecord` |  |  |
+| be certain a busy controller is retried a bounded number of times and then the run ends | `PartitionCaptureTests.AControllerSayingItIsBusyIsAskedThreeTimesAndThenTheRunEnds` |  |  |
+| be certain a cancelled capture stops rather than reporting itself finished | `PartitionCaptureTests.ACancelledCaptureStopsRatherThanFinishing` |  |  |
+| get a group's full membership, past the limit a server will return in one response | `LdapEntryReaderTests.AGroupLargerThanTheServersValueLimitIsReadInFull` |  |  |
+| be certain a first, partial response is never mistaken for the whole answer | `LdapEntryReaderTests.TheFirstResponseDoesNotClaimToBeAllOfThem` |  |  |
+| tell an attribute that was absent from one that was present and empty | `LdapEntryReaderTests.AnAbsentAttributeIsNotReportedAsAnEmptyOne` |  |  |
+| be certain a paged read that stalled is reported as a failure rather than an ending | `LdapEntryReaderTests.ABlockThatAdvancedByNothingIsAFailureAndNotAnEnding` |  |  |
+| be certain the capture never asks the directory for a credential | `CredentialAttributeGuardTests.TheCatalogueNeverRequestsACredential` |  |  |
+| be certain that guard is checking a real catalogue against a real list, not two empty ones | `CredentialAttributeGuardTests.TheGuardHasBothACatalogueAndAListToCheckItAgainst` |  |  |
+| have the permissions **on** a credential object captured, while its secret is not | `CredentialAttributeGuardTests.ThePermissionsOnACredentialObjectAreStillCaptured` |  |  |
+| have LAPS reported by when it last rotated, never by the password itself | `CredentialAttributeGuardTests.TheCatalogueTakesTheLapsTimestampAndNotTheLapsPassword` |  |  |
+| be certain no attribute is asked for two different ways | `CapturedAttributeCatalogTests.NoAttributeIsDeclaredTwoDifferentWays` |  |  |
+| be certain DNS is the only thing deliberately left out of the catalogue | `CapturedAttributeCatalogTests.TheDnsClassesAreTheOnlyOnesExcluded` |  |  |
+| read a security descriptor the way the directory meant it | `SecurityDescriptorParserTests` |  |  |
+| trust that permission normalisation has not silently changed | `GoldenAceHashTests` |  |  |
+| have a GPO's files on SYSVOL read, and not only its directory object | `SysvolCaptureTests` |  |  |
 
 ---
 
@@ -104,13 +109,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | `F-S44-2` | **A closed loop of tests hid fifteen missing attributes.** The document matches the code, the code matches the rules, the rules match the document — every check passing in both directions, with the whole circle anchored to the set of rules already written. A rule nobody wrote is an attribute nobody misses. Security descriptor parsing and the sixty-two rule cards were *ported* and have external anchors; the catalogue was *reassembled* and had none. Proposed remedy: a reconciliation fixture requiring every predecessor attribute to be present or named in a written list of deliberate omissions. | open |
 | `F-S44-1` | `0051`'s trust attributes were decided and never captured — `trustedDomain` was absent from the class map and `git grep` found `trustAttributes` nowhere in `next/`. | closed as a decision by [`0065`](../decisions/0065-the-catalogue-recovers-what-the-rebuild-dropped.md); implementation still owed |
 | — | `0065` itself is decided and unimplemented, and the delay is not free: every run taken before it lands is permanently silent on those attributes | open |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor captured a narrower attribute set and had no schema read, so a permission on a
-property set was reported as a bare GUID. Its rows in the reference inventory describe that narrower
-read; they are not a specification for this one.

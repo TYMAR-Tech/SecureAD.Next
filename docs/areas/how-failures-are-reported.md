@@ -1,4 +1,4 @@
-﻿# How failures are reported
+# How failures are reported
 
 **Area.** What the product does when something goes wrong: how a failure travels from where it
 happened to where a person reads it, and what stops a failure being reported as a clean answer. This
@@ -38,21 +38,26 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-| An operator can… | Proven by |
-|---|---|
-| be certain a failure carries a code derived from what went wrong and why | `AuditErrorTests.CreateDerivesTheCodeFromTheCategoryAndReason` |
-| be certain a failure cannot be raised without a reason | `AuditErrorTests.CreateRejectsAnEmptyReason` |
-| be certain a failure cannot be raised without a description | `AuditErrorTests.CreateRejectsAnEmptyDescription` |
-| be certain reading the value of a failed result throws and names the code | `ResultTests.ReadingTheValueOfAFailedResultThrowsAndNamesTheCode` |
-| be certain a failed result is never mistaken for a successful one | `ResultTests.AFailedResultIsNotSuccessful` |
-| be certain an uninitialised result is not mistaken for success | `ResultTests.ADefaultResultIsNotMistakenForSuccess` |
-| be certain an uninitialised result reports a self-describing error | `ResultTests.ADefaultResultReportsASelfDescribingError` |
-| be certain no public member returns a bare count that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsABareCount` |
-| be certain no public member returns a collection that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsACollectionThatCannotSayWhetherItLooked` |
-| be certain that gate reads the real public surface rather than a copy | `UnvouchedResultGateTests.TheGateReadsTheRealPublicSurface` |
-| be certain the exemptions to that gate are still earning their place | `UnvouchedResultGateTests.TheCatalogueExemptionsAreStillEarningTheirPlace` |
-| be certain nothing quietly defaults to a value that hides a missing answer | `NullDefaultGateTests` |
-| be certain the product's stated invariants are checked rather than intended | `ProductInvariantTests` |
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
+a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
+controller sends them.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| be certain a failure carries a code derived from what went wrong and why | `AuditErrorTests.CreateDerivesTheCodeFromTheCategoryAndReason` |  |  |
+| be certain a failure cannot be raised without a reason | `AuditErrorTests.CreateRejectsAnEmptyReason` |  |  |
+| be certain a failure cannot be raised without a description | `AuditErrorTests.CreateRejectsAnEmptyDescription` |  |  |
+| be certain reading the value of a failed result throws and names the code | `ResultTests.ReadingTheValueOfAFailedResultThrowsAndNamesTheCode` |  |  |
+| be certain a failed result is never mistaken for a successful one | `ResultTests.AFailedResultIsNotSuccessful` |  |  |
+| be certain an uninitialised result is not mistaken for success | `ResultTests.ADefaultResultIsNotMistakenForSuccess` |  |  |
+| be certain an uninitialised result reports a self-describing error | `ResultTests.ADefaultResultReportsASelfDescribingError` |  |  |
+| be certain no public member returns a bare count that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsABareCount` |  |  |
+| be certain no public member returns a collection that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsACollectionThatCannotSayWhetherItLooked` |  |  |
+| be certain that gate reads the real public surface rather than a copy | `UnvouchedResultGateTests.TheGateReadsTheRealPublicSurface` |  |  |
+| be certain the exemptions to that gate are still earning their place | `UnvouchedResultGateTests.TheCatalogueExemptionsAreStillEarningTheirPlace` |  |  |
+| be certain nothing quietly defaults to a value that hides a missing answer | `NullDefaultGateTests` |  |  |
+| be certain the product's stated invariants are checked rather than intended | `ProductInvariantTests` |  |  |
 
 ---
 
@@ -85,15 +90,3 @@ there is something to react to. It is not authoritative and nothing here has bee
 | | | |
 |---|---|---|
 | `F-S40-1` | `0040`'s retry is decided but nothing walks it | open |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed, and a row existing here does not mean it is being built.**
-
-The predecessor published progress at three levels — run, domain and module — with an error count at
-the module level.
-[`0060`](../decisions/0060-a-running-capture-reports-one-line-per-domain.md) keeps two of the three
-and lifts the error count up to the domain row, because that is the number that changes what an
-operator does.

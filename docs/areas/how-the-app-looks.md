@@ -109,17 +109,17 @@ The design system exists and is applied to **three screens**: New Audit, Home an
 now carries chrome of its own — a navigation rail and a templated table — so a screen is no longer
 half in the product's language and half in Windows'.
 
-| An operator can… | Proven by |
-|---|---|
-| tell a fact the run did not measure from one it measured and found wanting, without relying on colour — four states, four silhouettes | `ViewColourLiteralGateTests` proves colour is not written into views; the shapes themselves are judged by eye against a running window, which no test can do |
-| read a screen where no colour was chosen in isolation — every colour is named for its meaning in one dictionary | `ViewColourLiteralGateTests.NoViewNamesAColour` |
-| trust that a colour cannot creep back into a view one screen at a time | `ViewColourLiteralGateTests.TheGateReadsTheRealViewsAndWouldRecogniseAColour` |
-| read what became of a run in words, rather than in the name the code calls it by | `RunSummaryViewModelTests.EachStateIsShownInWords` |
-| trust that a run state added later cannot reach a screen with no wording | `RunSummaryViewModelTests.EveryStateHasBeenGivenWordsAndAMeaning` |
-| trust that guard is measuring something | `RunSummaryViewModelTests.AStateWithNoWordingFallsThroughToUnknown` |
-| tell an interrupted run from a damaged one, whose remedies differ | `RunSummaryViewModelTests.InterruptedAndDamagedDoNotMeanTheSameThing` |
-| select a run on Home and read what was observed about it | `RunLibraryViewModelTests.SelectingARunGivesTheCardSomethingToShow` |
-| trust the details card is never left describing a run the library may no longer hold | `RunLibraryViewModelTests.ARefreshDropsTheSelection` |
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|---|
+| tell a fact the run did not measure from one it measured and found wanting, without relying on colour — four states, four silhouettes | `ViewColourLiteralGateTests` proves colour is not written into views; the shapes themselves are judged by eye against a running window, which no test can do |  |  |
+| read a screen where no colour was chosen in isolation — every colour is named for its meaning in one dictionary | `ViewColourLiteralGateTests.NoViewNamesAColour` |  |  |
+| trust that a colour cannot creep back into a view one screen at a time | `ViewColourLiteralGateTests.TheGateReadsTheRealViewsAndWouldRecogniseAColour` |  |  |
+| read what became of a run in words, rather than in the name the code calls it by | `RunSummaryViewModelTests.EachStateIsShownInWords` |  |  |
+| trust that a run state added later cannot reach a screen with no wording | `RunSummaryViewModelTests.EveryStateHasBeenGivenWordsAndAMeaning` |  |  |
+| trust that guard is measuring something | `RunSummaryViewModelTests.AStateWithNoWordingFallsThroughToUnknown` |  |  |
+| tell an interrupted run from a damaged one, whose remedies differ | `RunSummaryViewModelTests.InterruptedAndDamagedDoNotMeanTheSameThing` |  |  |
+| select a run on Home and read what was observed about it | `RunLibraryViewModelTests.SelectingARunGivesTheCardSomethingToShow` |  |  |
+| trust the details card is never left describing a run the library may no longer hold | `RunLibraryViewModelTests.ARefreshDropsTheSelection` |  |  |
 
 **Where things live.** `next/src/SecureAD.Shell/Themes/` — `Palette.xaml` (raw values, the only
 file a second theme replaces), `Brushes.xaml` (meaning), `Type.xaml`, `Spacing.xaml` (both
@@ -240,43 +240,3 @@ window say so rather than being closed on reasoning.
 | — | the wizard's step indicator does not indicate | **overtaken.** It was closed by [`0057`](../decisions/0057-starting-an-audit-is-a-modal-act.md) with "Step 2 of 2" above the question; the indicator was then removed altogether on the owner's judgement, because two screens with Next and Back do not need one |
 | — | the Runs table showed `RunState` verbatim, so a stopped run read "Cancelled" and a running one "InProgress" — the names chosen to be unambiguous to a compiler, put in front of an operator | **closed 2026-08-18.** `RunSummaryViewModel` gives each state a form of words and a sentence saying what to do about it. Found while styling the grid, not looked for |
 | — | a run's state was shown with nothing saying what it meant, though `Interrupted` and `Damaged` are separate members *because* their remedies differ | **closed 2026-08-18.** `RunSummaryViewModelTests.InterruptedAndDamagedDoNotMeanTheSameThing` |
-
----
-
-## Reference — the old application
-
-**Reference only. Nothing here is owed.**
-
-`src/SecureAD.UI/Themes/` holds `DarkTheme.xaml`, `LightTheme.xaml`, `Icons.xaml` and
-`InspectorStyles.xaml`. Worth reading for what a palette had to name. Not worth copying: the map
-records six of that application's grids as unreachable by any user.
-
-**The Security Audit wizard, as the owner ran it in production** (screenshot, 2026-08-16). What is
-worth taking from it, and what is not:
-
-*Worth taking.*
-
-- **The step indicator.** "Step 1 of 5" in small type above the step's question as the headline —
-  *"Which domains should this audit include?"*. The current step is unmistakable and the operator
-  is told what he is being asked. The rebuild's "1. Domains  2. Review" in identical bold does
-  neither.
-- **The domains as a table**, one row per domain: Include, Status, Domain, Exclusion, DCs, Selected
-  DC, Override DC.
-- **A per-domain override with its own action on the row**, and explanatory prose beneath the table
-  saying what the mode does rather than leaving it implied.
-- **A count in the header** — `3/3 domains`.
-- **The refusal stated at the point of action**, beside the button it blocks.
-
-*Not worth taking, because a record already decided otherwise.*
-
-- **Five steps.** Two chose an organisational unit and an object class, removed by
-  [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md); a third set a per-controller
-  load limit. The rebuild has two steps as a consequence of that record, not as a preference.
-- **The green "Live — BADC.ba.ad.lab" pill and the "✓ Verified" status bar entry.** Both report a
-  live directory connection, which [`0008`](../decisions/0008-live-verification-is-removed.md)
-  removed. **Most of what that status bar reported does not exist in this product**, which is the
-  substance of the open question about what a status bar can truthfully carry.
-- **The Exclusion column**, which is
-  [`0054`](../decisions/0054-a-domain-with-no-candidates-is-an-attested-exclusion.md) and is decided
-  but not built.
-
