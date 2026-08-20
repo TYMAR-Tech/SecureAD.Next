@@ -822,6 +822,6 @@ record's own defect, one field over — and the first draft really did report a 
 as an empty DACL. The count became a closed set of outcomes, and `0037` is corrected in place to
 record that its own first draft reproduced the failure it exists to remove.
 
-`SESSION-LOG.md` stays in [`docs/review/`](../review/SESSION-LOG.md) and covers both codebases. It
+`SESSION-LOG.md` stays in `docs/review/` and covers both codebases. It
 is the owner's narrative of the product, not of a folder layout, and the interleaving is the honest
 record of a period when both existed.

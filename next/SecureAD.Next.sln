@@ -83,8 +83,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sessions", "sessions", "{D0
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "review", "review", "{D0C50000-0000-0000-0000-000000E71E00}"
 	ProjectSection(SolutionItems) = preProject
-		..\docs\review\SESSION-LOG.md = ..\docs\review\SESSION-LOG.md
-		..\docs\review\TEMPLATE.md = ..\docs\review\TEMPLATE.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "history", "history", "{D0C50000-0000-0000-0000-000000415707}"
