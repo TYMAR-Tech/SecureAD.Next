@@ -73,6 +73,13 @@ controller sends them.
 | be certain an outcome written by a later build is not guessed at | `BundleReaderTests.AnOutcomeThisBuildDoesNotRecogniseIsRefused` |  |
 | be certain two runs leaving out different domains are not treated as alike | `CoverageIdTests.LeavingOutADifferentDomainIsDifferentEvidence` |  |
 | be certain a run with a domain left out is not compared against a whole-forest one | `CoverageIdTests.LeavingADomainOutIsNotTheSameAsReadingTheWholeForest` |  |
+| see runs of one scope grouped together, and a later run of that scope join them | `CoverageIdTests.RunsGroupByWhichDomainsTheyCovered` |  |
+| delete a run, having been asked once and shown which one | `RunLibraryViewModelTests.DeletingAsksOnceAndNamesTheRun` |  |
+| decline that question and still have the run | `RunLibraryViewModelTests.DecliningTheConfirmationKeepsTheRun` |  |
+| be certain confirming removes the run and the list stops showing it | `RunLibraryViewModelTests.ConfirmingDeletesTheRunAndItLeavesTheList` |  |
+| be told when a run could not be deleted, and still see it listed | `RunLibraryViewModelTests.ADeletionThatFailedLeavesTheRunListedAndSaysWhy` |  |
+| be certain nothing is deleted, and nothing asked, when no run is selected | `RunLibraryViewModelTests.WithNothingSelectedNothingIsDeletedAndNothingIsAsked` |  |
+| be certain a run cannot be deleted from outside the library root | `RunLibraryTests.AForestNameCannotBecomeAPath` |  |
 
 ---
 

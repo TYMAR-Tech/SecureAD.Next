@@ -65,6 +65,45 @@ internal sealed class FakeRunCatalog : IRunCatalog
         Annotated = (bundleDirectory, annotation);
         return Result<RunAnnotation>.Success(annotation);
     }
+
+    /// <summary>Which run was deleted, or null if none was.</summary>
+    public string? Deleted { get; private set; }
+
+    public AuditError? DeletionFails { get; set; }
+
+    public Result<string> Delete(string bundleDirectory)
+    {
+        if (DeletionFails is { } error)
+            return Result<string>.Failure(error);
+
+        Deleted = bundleDirectory;
+        Runs.RemoveAll(run =>
+            string.Equals(run.Path, bundleDirectory, StringComparison.OrdinalIgnoreCase));
+
+        return Result<string>.Success(bundleDirectory);
+    }
+}
+
+/// <summary>
+/// An operator who answers a confirmation the same way every time, and remembers being asked.
+/// </summary>
+internal sealed class FakeConfirmation : IConfirmation
+{
+    /// <summary>What the operator answers. Declining is the default, as the real dialog's is.</summary>
+    public bool Answer { get; set; }
+
+    /// <summary>What he was asked, or null if nothing asked him anything.</summary>
+    public (string Title, string Question, string ConfirmLabel)? Asked { get; private set; }
+
+    /// <summary>How many times he was asked, so a second prompt cannot creep in unnoticed.</summary>
+    public int TimesAsked { get; private set; }
+
+    public bool Confirm(string title, string question, string confirmLabel)
+    {
+        Asked = (title, question, confirmLabel);
+        TimesAsked++;
+        return Answer;
+    }
 }
 
 internal sealed class FakeAssetSource : IAssetSource

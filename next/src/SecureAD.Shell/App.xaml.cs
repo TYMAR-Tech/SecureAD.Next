@@ -55,7 +55,7 @@ internal partial class App : Application
             () => shell.Leave());
 
         // One library object, shown by both sections. Two would let them disagree.
-        var library = new RunLibraryViewModel(location, new RunCatalog());
+        var library = new RunLibraryViewModel(location, new RunCatalog(), new Confirmation());
 
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),

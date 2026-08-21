@@ -184,6 +184,7 @@ public sealed class HomeViewModelTests
         location.Load();
 
         return new HomeViewModel(
-            location, _picker, _newAudit, new RunLibraryViewModel(location, _catalog));
+            location, _picker, _newAudit,
+            new RunLibraryViewModel(location, _catalog, new FakeConfirmation()));
     }
 }

@@ -136,6 +136,36 @@
                            Margin="0,14,0,2" />
                 <TextBox Text="{Binding Library.Selected.Path, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}" />
+
+                <!-- The operator's own name and notes, kept in a sidecar beside the evidence and
+                     never inside the seal, so annotating a run cannot disturb the proof that its
+                     evidence is unmodified. These were on the Runs section only, which is not the
+                     screen the owner works on, so a run could be named nowhere he was looking. -->
+                <TextBlock Text="Call it"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,14,0,2" />
+                <TextBox Text="{Binding Library.TypedName, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="Notes"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,10,0,2" />
+                <TextBox Text="{Binding Library.TypedNotes, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="56" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Content="Save"
+                            Command="{Binding Library.SaveAnnotationCommand}" />
+
+                    <!-- Deliberately not beside Save. One confirmation stands between this and an
+                         irreversible act, so the button that starts it does not sit where a hand
+                         going for Save would land. -->
+                    <Button Content="Delete run"
+                            Command="{Binding Library.DeleteRunCommand}"
+                            Style="{StaticResource DangerButton}"
+                            Margin="24,0,0,0" />
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

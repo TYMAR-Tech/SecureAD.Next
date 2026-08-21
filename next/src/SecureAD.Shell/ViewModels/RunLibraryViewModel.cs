@@ -17,15 +17,19 @@ namespace SecureAD.Shell.ViewModels;
 /// list for all three would say "you have no runs" in two cases where that is not known to be true.
 /// </para>
 /// <para>
-/// <b>Nothing here reports coverage or findings.</b> A listing says what became of a run, which is
-/// read from the bundle directory. What a run saw is inside the bundle, and this product cannot yet
-/// open one.
+/// <b>A listing says what became of a run, not what it saw.</b> What became of it is read from the
+/// bundle directory without opening anything. How much of the forest it covered is inside the
+/// bundle, and is read by opening it - which this product does, through
+/// <c>BundleReader.ReadScope</c>. This remark previously said the product could not open a bundle
+/// at all; that stopped being true when the Assets section landed, and it is corrected here rather
+/// than left to mislead the next reader.
 /// </para>
 /// </remarks>
 internal sealed partial class RunLibraryViewModel : ObservableObject
 {
     private readonly IRunCatalog _catalog;
     private readonly RunLibraryLocation _location;
+    private readonly IConfirmation _confirmation;
 
     [ObservableProperty]
     private string? _problem;
@@ -39,13 +43,17 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// <summary>Creates the run library screen's state.</summary>
     /// <param name="location">Where this installation keeps its runs.</param>
     /// <param name="catalog">How the runs are listed.</param>
-    public RunLibraryViewModel(RunLibraryLocation location, IRunCatalog catalog)
+    /// <param name="confirmation">How the operator is asked before something cannot be undone.</param>
+    public RunLibraryViewModel(
+        RunLibraryLocation location, IRunCatalog catalog, IConfirmation confirmation)
     {
         ArgumentNullException.ThrowIfNull(location);
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(confirmation);
 
         _location = location;
         _catalog = catalog;
+        _confirmation = confirmation;
     }
 
     /// <summary>The runs found, in the order the library listed them.</summary>
@@ -148,5 +156,46 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         Selected = Runs.FirstOrDefault(
             run => string.Equals(run.Path, path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Deletes the selected run, after asking once.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One confirmation, naming the run, per
+    /// <c>docs/decisions/0078-a-run-can-be-deleted-after-one-confirmation.md</c>. The operator is
+    /// choosing between runs that differ by a timestamp, so the prompt states which one he picked
+    /// rather than asking whether he is sure.
+    /// </para>
+    /// <para>
+    /// <b>A failure leaves the run listed.</b> Refreshing regardless would drop the row for a run
+    /// still on disk, telling the operator he had recovered space he has not.
+    /// </para>
+    /// </remarks>
+    [RelayCommand]
+    public void DeleteRun()
+    {
+        if (Selected is not { } selected)
+            return;
+
+        var confirmed = _confirmation.Confirm(
+            "Delete this run",
+            $"{selected.Name} and all of its evidence will be deleted from "
+            + $"{selected.Path}. This cannot be undone.",
+            "delete it");
+
+        if (!confirmed)
+            return;
+
+        var deleted = _catalog.Delete(selected.Path);
+
+        if (!deleted.IsSuccess)
+        {
+            Problem = deleted.Error.Description;
+            return;
+        }
+
+        Refresh();
     }
 }

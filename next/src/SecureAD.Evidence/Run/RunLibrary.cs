@@ -149,6 +149,69 @@ public sealed class RunLibrary
     }
 
     /// <summary>
+    /// Removes a run and everything in it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Everything goes, including the annotations sidecar</b>, per
+    /// <c>docs/decisions/0078-a-run-can-be-deleted-after-one-confirmation.md</c>. The name an
+    /// operator gave a run is part of the run rather than a record about it that outlives it, and a
+    /// library holding notes about runs it no longer has would answer questions about evidence
+    /// nobody can produce.
+    /// </para>
+    /// <para>
+    /// <b>Nothing is left behind to mark the deletion.</b> A tombstone in the managed root would be
+    /// a second kind of thing living among runs, and every reader of the library would have to
+    /// learn to skip it - the failure <c>0058</c> already avoided for cancelled runs.
+    /// </para>
+    /// <para>
+    /// <b>A run that is not there is a failure, not a success.</b> Reporting nothing to do would
+    /// tell an operator he has recovered space he never had, and it would hide a library root
+    /// pointing somewhere unexpected. The confirmation he answered named a run he could see.
+    /// </para>
+    /// </remarks>
+    /// <param name="runIdentifier">The run's directory name, not a path.</param>
+    /// <returns>The full path removed, or why it could not be.</returns>
+    public Result<string> DeleteRun(string runIdentifier)
+    {
+        var resolved = Resolve(runIdentifier);
+        if (!resolved.IsSuccess)
+            return resolved;
+
+        var path = resolved.Value;
+
+        if (!Directory.Exists(path))
+        {
+            return Result<string>.Failure(AuditError.Create(
+                ErrorCategory.Evidence,
+                "RunIsNotThere",
+                ErrorSeverity.Failed,
+                $"There is no run at '{path}' to delete. It may have been removed outside this "
+                + "product, or the library root may have changed since the list was read.",
+                path));
+        }
+
+        try
+        {
+            Directory.Delete(path, recursive: true);
+            return Result<string>.Success(path);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            // The run stays listed, because a library that dropped the row anyway would tell the
+            // operator he had recovered space he still has not. A bundle held open by another
+            // window is the ordinary cause and it is one he can act on.
+            return Result<string>.Failure(AuditError.Create(
+                ErrorCategory.Evidence,
+                "RunCouldNotBeDeleted",
+                ErrorSeverity.Failed,
+                $"'{path}' could not be deleted ({error.Message}). Something may still have the "
+                + "run open. It has been left as it was.",
+                path));
+        }
+    }
+
+    /// <summary>
     /// Every run in the library, as observed.
     /// </summary>
     /// <remarks>

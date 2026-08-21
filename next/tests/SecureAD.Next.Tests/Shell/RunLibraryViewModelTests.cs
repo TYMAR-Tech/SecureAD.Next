@@ -20,6 +20,12 @@ public sealed class RunLibraryViewModelTests
     private readonly FakeSettingsStore _settings = new();
     private readonly FakeRunCatalog _catalog = new();
 
+    /// <summary>
+    /// The operator's answer to a confirmation. Declining by default, so a test that means to
+    /// delete something has to say so and one that forgets cannot delete by accident.
+    /// </summary>
+    private readonly FakeConfirmation _confirmation = new();
+
     [Fact]
     public void WithNoLibraryChosenNothingIsClaimedAboutRuns()
     {
@@ -221,6 +227,103 @@ public sealed class RunLibraryViewModelTests
     }
 
     /// <summary>
+    /// Deleting asks once, and the question names the run so the operator can see which of several
+    /// timestamps he picked.
+    /// </summary>
+    [Fact]
+    public void DeletingAsksOnceAndNamesTheRun()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+        var name = screen.Selected.Name;
+
+        _confirmation.Answer = true;
+        screen.DeleteRun();
+
+        Assert.Equal(1, _confirmation.TimesAsked);
+        Assert.Contains(name, _confirmation.Asked!.Value.Question, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// An operator who declines still has his run. The whole point of the prompt is that answering
+    /// no is a real answer.
+    /// </summary>
+    [Fact]
+    public void DecliningTheConfirmationKeepsTheRun()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        _confirmation.Answer = false;
+        screen.DeleteRun();
+
+        Assert.Null(_catalog.Deleted);
+        Assert.NotEmpty(screen.Runs);
+    }
+
+    /// <summary>Confirming removes the run, and the list stops showing it.</summary>
+    [Fact]
+    public void ConfirmingDeletesTheRunAndItLeavesTheList()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+        var path = screen.Selected.Path;
+
+        _confirmation.Answer = true;
+        screen.DeleteRun();
+
+        Assert.Equal(path, _catalog.Deleted);
+        Assert.DoesNotContain(screen.Runs, run => run.Path == path);
+    }
+
+    /// <summary>
+    /// A deletion that failed leaves the run listed and says why.
+    ///
+    /// <para>
+    /// Dropping the row anyway would tell the operator he had recovered space he still has not,
+    /// and the ordinary cause - something else holding the bundle open - is one he can act on.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void ADeletionThatFailedLeavesTheRunListedAndSaysWhy()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+        var path = screen.Selected.Path;
+
+        _catalog.DeletionFails = Failures.Any("Something still has the run open.");
+        _confirmation.Answer = true;
+        screen.DeleteRun();
+
+        Assert.Equal("Something still has the run open.", screen.Problem);
+        Assert.Contains(screen.Runs, run => run.Path == path);
+    }
+
+    /// <summary>
+    /// With nothing selected there is no run to delete, and nothing may ask about one. A prompt
+    /// naming no run is how an operator comes to confirm something he cannot see.
+    /// </summary>
+    [Fact]
+    public void WithNothingSelectedNothingIsDeletedAndNothingIsAsked()
+    {
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        screen.DeleteRun();
+
+        Assert.Equal(0, _confirmation.TimesAsked);
+        Assert.Null(_catalog.Deleted);
+    }
+
+    /// <summary>
     /// With nothing selected there is no run to annotate, and the command must not guess at one.
     /// </summary>
     [Fact]
@@ -242,6 +345,6 @@ public sealed class RunLibraryViewModelTests
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
-        return new RunLibraryViewModel(location, _catalog);
+        return new RunLibraryViewModel(location, _catalog, _confirmation);
     }
 }

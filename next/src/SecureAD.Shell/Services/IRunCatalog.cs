@@ -30,4 +30,16 @@ internal interface IRunCatalog
     /// <param name="bundleDirectory">The run's bundle directory, as listed.</param>
     /// <param name="annotation">The name and notes to record.</param>
     Result<RunAnnotation> Annotate(string bundleDirectory, RunAnnotation annotation);
+
+    /// <summary>
+    /// Removes the run at <paramref name="bundleDirectory"/> and everything in it.
+    /// </summary>
+    /// <remarks>
+    /// Takes the directory as listed rather than a bare identifier, because that is what a screen
+    /// holds. The library resolves it back through its own single door, so a path from outside
+    /// still cannot reach a directory the library does not own.
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's bundle directory, as listed.</param>
+    /// <returns>The path removed, or why it could not be.</returns>
+    Result<string> Delete(string bundleDirectory);
 }

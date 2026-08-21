@@ -41,4 +41,45 @@ internal sealed class RunCatalog : IRunCatalog
     /// <inheritdoc/>
     public Result<RunAnnotation> Annotate(string bundleDirectory, RunAnnotation annotation) =>
         RunAnnotations.Save(bundleDirectory, annotation);
+
+    /// <inheritdoc/>
+    public Result<string> Delete(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        // The library owns the containment rule, so the directory is split back into a root and a
+        // name and handed to it rather than deleted here. A shell that called Directory.Delete on
+        // the path it happens to be holding would be a second door onto the one act 0025 keeps to
+        // one, and the first path arriving from somewhere unexpected would go straight through it.
+        var root = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(bundleDirectory));
+        var identifier = Path.GetFileName(Path.TrimEndingDirectorySeparator(bundleDirectory));
+
+        if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(identifier))
+        {
+            return Result<string>.Failure(AuditError.Create(
+                ErrorCategory.Shell,
+                "RunPathIsNotInALibrary",
+                ErrorSeverity.Failed,
+                $"'{bundleDirectory}' is not a run inside a library, so there is no library to ask "
+                + "to delete it.",
+                bundleDirectory));
+        }
+
+        try
+        {
+            return new RunLibrary(root, TimeProvider.System).DeleteRun(identifier);
+        }
+        catch (Exception ex) when (ex is IOException
+                                      or UnauthorizedAccessException
+                                      or ArgumentException
+                                      or NotSupportedException)
+        {
+            return Result<string>.Failure(AuditError.Create(
+                ErrorCategory.Shell,
+                "RunLibraryCannotBeOpened",
+                ErrorSeverity.Failed,
+                $"'{root}' could not be opened as a run library. {ex.Message}",
+                root));
+        }
+    }
 }
