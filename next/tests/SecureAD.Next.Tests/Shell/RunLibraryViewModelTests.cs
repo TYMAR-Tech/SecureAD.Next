@@ -491,6 +491,53 @@ public sealed class RunLibraryViewModelTests
         Assert.Null(_catalog.Annotated);
     }
 
+    /// <summary>
+    /// A run written after the library was last read can still be selected.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the case a plain selection cannot reach.</b> A capture that has just finished
+    /// wrote a bundle the listed runs know nothing about, so looking for its row without reading the
+    /// library again finds nothing. The wizard sends an operator straight to it, so the row has to
+    /// be there by the time he arrives.
+    /// </remarks>
+    [Fact]
+    public void ARunWrittenSinceTheLastReadCanBeAdopted()
+    {
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        Assert.Empty(screen.Runs);
+
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+
+        screen.Adopt(@"D:\audits\a");
+
+        Assert.Equal(@"D:\audits\a", screen.Selected?.Path);
+        Assert.Null(screen.Problem);
+    }
+
+    /// <summary>
+    /// A run the library does not hold says so rather than selecting nothing in silence.
+    /// </summary>
+    /// <remarks>
+    /// The case where a run was written somewhere other than the library this screen is pointed at.
+    /// Left silent, an operator would arrive at an empty screen with no way to tell that from a run
+    /// that captured nothing - which is the one thing an audit tool must not leave ambiguous.
+    /// </remarks>
+    [Fact]
+    public void ARunTheLibraryDoesNotHoldSaysSo()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        screen.Adopt(@"E:\elsewhere\b");
+
+        Assert.Null(screen.Selected);
+        Assert.NotNull(screen.Problem);
+        Assert.Contains(@"E:\elsewhere\b", screen.Problem, StringComparison.Ordinal);
+    }
+
     private RunLibraryViewModel Screen(string? chosenPath = null)
     {
         _settings.Stored = new ShellSettings(chosenPath);

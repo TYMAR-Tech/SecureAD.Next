@@ -48,14 +48,27 @@ internal partial class App : Application
         // assigned.
         NewAuditDialog newAudit = null!;
         ShellViewModel shell = null!;
+        RunLibraryViewModel library = null!;
 
+        // The wizard opens the run it has just captured, which the library has never listed - it
+        // was written after the last read. So this opener adopts the run (read again, select that
+        // path) before navigating, where the library's own opener below must not: refreshing there
+        // would discard the selection the operator just made.
         newAudit = new NewAuditDialog(
-            () => new NewAuditViewModel(location, new CaptureLauncher(), newAudit),
+            () => new NewAuditViewModel(
+                location,
+                new CaptureLauncher(),
+                newAudit,
+                new RunOpener(path =>
+                {
+                    library.Adopt(path);
+                    shell.Show(ShellSection.Assets);
+                })),
             audit => shell.Begin(audit),
             () => shell.Leave());
 
         // One library object. Home is the only screen that shows it.
-        var library = new RunLibraryViewModel(
+        library = new RunLibraryViewModel(
             location,
             new RunCatalog(),
             new Confirmation(),

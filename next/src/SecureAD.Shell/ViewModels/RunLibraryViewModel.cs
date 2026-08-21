@@ -198,6 +198,42 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Reads the library again and selects the run at <paramref name="bundleDirectory"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>For a run that did not exist when the library was last read.</b> A capture just finished
+    /// writes a bundle the listed runs know nothing about, so selecting it without reading the
+    /// library again would look for a row that is not there.
+    /// </para>
+    /// <para>
+    /// A path the refreshed library does not hold says so rather than leaving nothing selected with
+    /// no reason given. That is the case where a run was written somewhere other than the library
+    /// this screen is pointed at, and an operator sent to an empty Assets screen would have no way
+    /// to tell that from a run that captured nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    public void Adopt(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        Refresh();
+
+        var found = Runs.FirstOrDefault(
+            run => string.Equals(run.Path, bundleDirectory, StringComparison.OrdinalIgnoreCase));
+
+        if (found is null)
+        {
+            Problem = "This run is not in the library at " + _location.Path
+                + ". Its evidence is at " + bundleDirectory + ".";
+            return;
+        }
+
+        Selected = found;
+    }
+
+    /// <summary>
     /// Opens the selected run so its evidence can be read.
     /// </summary>
     /// <remarks>

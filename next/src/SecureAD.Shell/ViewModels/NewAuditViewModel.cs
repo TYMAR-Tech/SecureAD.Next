@@ -629,6 +629,13 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private readonly ICaptureLauncher _capture;
     private readonly INewAuditDialog _dialogs;
 
+    /// <summary>How a captured run gets opened for reading.</summary>
+    /// <remarks>
+    /// The same seam the run library uses, so a run is opened one way rather than two that can
+    /// drift apart. It is only ever asked once a run has sealed evidence.
+    /// </remarks>
+    private readonly IRunOpener _opener;
+
     private CancellationTokenSource? _stopping;
 
     [ObservableProperty]
@@ -688,15 +695,20 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// so a refusal can be proved without a person present to dismiss one.
     /// </param>
     public NewAuditViewModel(
-        RunLibraryLocation location, ICaptureLauncher capture, INewAuditDialog dialogs)
+        RunLibraryLocation location,
+        ICaptureLauncher capture,
+        INewAuditDialog dialogs,
+        IRunOpener opener)
     {
         ArgumentNullException.ThrowIfNull(location);
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(dialogs);
+        ArgumentNullException.ThrowIfNull(opener);
 
         Location = location;
         _capture = capture;
         _dialogs = dialogs;
+        _opener = opener;
     }
 
     /// <summary>Where this installation keeps its runs.</summary>
@@ -890,20 +902,20 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private string? _bundleDirectory;
 
     /// <summary>
-    /// Why results cannot be opened yet.
+    /// Where a finished run's evidence landed.
     /// </summary>
     /// <remarks>
-    /// <b>Said, rather than left to a button that does nothing.</b> There is no screen that reads a
-    /// bundle. An enabled control that quietly failed would be the product claiming a capability it
-    /// does not have, and a disabled one with no reason beside it is a refusal an operator cannot
-    /// act on - so the path is given, because opening the folder is what he can actually do today.
+    /// <b>This used to say reading results was not built.</b> That was true when written and stopped
+    /// being true on 2026-08-21, when the Assets section began reading bundles and the run library
+    /// began opening them. The path is still given: knowing where a run landed is worth having
+    /// whether or not it is being opened from here, and it is the only thing to say about a run
+    /// that sealed nothing.
     /// </remarks>
     public string? ResultsNote => !HasFinished
         ? null
         : BundleDirectory is null
             ? "This run produced no evidence to read."
-            : "Reading results inside this product is not built yet. The evidence is at "
-              + BundleDirectory + ".";
+            : "The evidence is at " + BundleDirectory + ".";
 
     /// <summary>
     /// What this window is asking, as a question.
@@ -1088,9 +1100,30 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// confirmed and not drawn in red: <c>0070</c> spends red on the control that stops something
     /// already running, and this one refuses to appear while anything is.
     /// </para>
+    /// <para>
+    /// <b>Once a run has sealed evidence this control opens it.</b> The wizard has nothing further
+    /// to say at that point, so viewing the results and leaving are one act rather than two
+    /// controls - the shape the owner chose on 2026-08-22. A run that sealed nothing opens nothing,
+    /// because there is no evidence to read and offering some would be a claim the run cannot back.
+    /// </para>
+    /// <para>
+    /// <b>The directory is the whole condition, deliberately.</b> This read
+    /// <c>HasFinished &amp;&amp; BundleDirectory is not null</c> at first, which sounds safer and
+    /// measures nothing: <see cref="BundleDirectory"/> is assigned only where a capture completed,
+    /// in the line before <see cref="HasFinished"/> is set, so a directory that exists already means
+    /// a run that finished. Removing the first half failed no test. A condition that cannot be false
+    /// when the rest is true reads like a guard and is not one, so it is gone rather than kept for
+    /// the look of it.
+    /// </para>
     /// </remarks>
     [RelayCommand(CanExecute = nameof(CanLeave))]
-    public void Leave() => _dialogs.Leave();
+    public void Leave()
+    {
+        if (BundleDirectory is { } directory)
+            _opener.Open(directory);
+
+        _dialogs.Leave();
+    }
 
     /// <summary>Whether the operator may leave the audit.</summary>
     /// <remarks>
@@ -1106,8 +1139,14 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <remarks>
     /// Before a capture, leaving throws away a plan and the word has to admit it. After one, the
     /// evidence is written and on disk, and "Discard" would say the opposite of what happened.
+    /// <para>
+    /// <b>Three labels, not two.</b> A run that sealed evidence offers to view it; a run that
+    /// finished and sealed nothing is still done, and there is nothing for it to show.
+    /// </para>
     /// </remarks>
-    public string LeaveLabel => HasFinished ? "Done" : "Discard";
+    public string LeaveLabel => HasFinished
+        ? BundleDirectory is null ? "Done" : "View results"
+        : "Discard";
 
     /// <summary>What the review screen states about this run.</summary>
     public AuditReview Review => Describe();
@@ -1490,9 +1529,13 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             Report = Describe(outcome);
 
-            // What it produced, so the screen can offer to read it - and say plainly that reading
-            // it is not built yet rather than showing a control that would do nothing.
-            BundleDirectory = outcome.IsSuccess ? outcome.Value.BundleDirectory : null;
+            // What it produced, so the screen can offer to read it. A run can succeed and seal
+            // nothing - CaptureOutcome.ProducedABundle false with a directory means it recorded
+            // what happened and wrote no evidence - and that directory must not be offered as
+            // results, because there are none in it to read.
+            BundleDirectory = outcome.IsSuccess && outcome.Value.ProducedABundle
+                ? outcome.Value.BundleDirectory
+                : null;
             HasFinished = true;
         }
         catch (OperationCanceledException)
@@ -1692,9 +1735,12 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         BackCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Where the evidence is decides what the results note can say.</summary>
-    partial void OnBundleDirectoryChanged(string? value) =>
+    /// <summary>Where the evidence is decides the results note and what the footer offers.</summary>
+    partial void OnBundleDirectoryChanged(string? value)
+    {
         OnPropertyChanged(nameof(ResultsNote));
+        OnPropertyChanged(nameof(LeaveLabel));
+    }
 
     /// <summary>The panel and the scrim over the surface appear and vanish together.</summary>
     partial void OnDetailsChanged(DomainDetailsViewModel? value) =>

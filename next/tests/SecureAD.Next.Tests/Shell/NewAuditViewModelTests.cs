@@ -21,6 +21,7 @@ public sealed class NewAuditViewModelTests
     private readonly FakeSettingsStore _settings = new();
     private readonly FakeCaptureLauncher _capture = new();
     private readonly FakeNewAuditDialog _dialogs = new();
+    private readonly FakeRunOpener _opener = new();
 
     /// <summary>
     /// The refusal that must survive the trip to a window. <c>ControllerSelection</c> refuses a
@@ -1425,16 +1426,17 @@ public sealed class NewAuditViewModelTests
     }
 
     /// <summary>
-    /// A finished run says where the evidence is and that reading it is not built yet.
+    /// A finished run says where the evidence is, and no longer says reading it is unbuilt.
     /// </summary>
     /// <remarks>
-    /// There is no screen that reads a bundle. An enabled control that quietly did nothing would be
-    /// the product claiming a capability it does not have; a disabled one with no reason beside it
-    /// is a refusal an operator cannot act on. So the path is given, because opening that folder is
-    /// what he can actually do today.
+    /// <b>This assertion was reversed on 2026-08-22.</b> It used to require the words "not built
+    /// yet", which were true when written: no screen read a bundle. Assets reads them now and the
+    /// run library opens one, so the sentence had outlived its premise and the screen was telling
+    /// an operator his evidence was unreachable immediately after producing it. The path stays,
+    /// because knowing where a run landed is useful whether or not it can be opened from here.
     /// </remarks>
     [Fact]
-    public async Task AFinishedRunSaysWhereTheEvidenceIsAndThatReadingItIsNotBuilt()
+    public async Task AFinishedRunSaysWhereTheEvidenceIs()
     {
         var screen = await Opened();
 
@@ -1442,8 +1444,95 @@ public sealed class NewAuditViewModelTests
         await screen.StartAsync();
 
         Assert.True(screen.HasFinished);
-        Assert.Contains("not built yet", screen.ResultsNote, StringComparison.Ordinal);
         Assert.Contains(@"D:\audits\run", screen.ResultsNote, StringComparison.Ordinal);
+        Assert.DoesNotContain("not built", screen.ResultsNote, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A run that sealed evidence offers to show it, on the control that ends the wizard.
+    /// </summary>
+    /// <remarks>
+    /// <b>The footer is one control whose label changes</b>, not three buttons. Before a capture it
+    /// discards a plan; after one that sealed evidence it offers to view what was captured. The
+    /// owner chose this shape on 2026-08-22 over adding a second footer button.
+    /// </remarks>
+    [Fact]
+    public async Task AFinishedRunOffersToViewWhatItCaptured()
+    {
+        var screen = await Opened();
+
+        Assert.Equal("Discard", screen.LeaveLabel);
+
+        await screen.ReviewAsync();
+        await screen.StartAsync();
+
+        Assert.Equal("View results", screen.LeaveLabel);
+    }
+
+    /// <summary>
+    /// Viewing the results opens the run that was just captured, and leaves the wizard.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same seam the run library uses</b>, so there is one way a run gets opened rather than
+    /// two that can drift. Leaving as well is the point of the shape: the wizard has nothing left
+    /// to say once the evidence is being read somewhere else.
+    /// </remarks>
+    [Fact]
+    public async Task ViewingResultsOpensTheRunThatWasJustCaptured()
+    {
+        var screen = await Opened();
+
+        await screen.ReviewAsync();
+        await screen.StartAsync();
+
+        screen.Leave();
+
+        Assert.Equal(@"D:\audits\run", _opener.Opened);
+        Assert.Equal(1, _dialogs.TimesLeft);
+    }
+
+    /// <summary>
+    /// Discarding a plan that never ran opens nothing.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the pair above. One control does two jobs, so the guard has to show
+    /// it does not do the second one early - a wizard that opened a run the operator abandoned
+    /// would be showing him evidence from somebody else's capture.
+    /// </remarks>
+    [Fact]
+    public async Task DiscardingAPlanThatNeverRanOpensNothing()
+    {
+        var screen = await Opened();
+
+        screen.Leave();
+
+        Assert.Null(_opener.Opened);
+        Assert.Equal(1, _dialogs.TimesLeft);
+    }
+
+    /// <summary>
+    /// A run that sealed nothing is not offered results to view.
+    /// </summary>
+    /// <remarks>
+    /// <b>A run can finish and seal nothing.</b> <c>CaptureOutcome.ProducedABundle</c> false with a
+    /// directory means the run recorded what happened but wrote no evidence, so there is nothing to
+    /// open. Offering to view results there would be the product claiming a capability it does not
+    /// have on that run - the same fault the disabled button was built to avoid.
+    /// </remarks>
+    [Fact]
+    public async Task ARunThatSealedNothingIsNotOfferedResultsToView()
+    {
+        _capture.Outcome = new CaptureOutcome(ProducedABundle: false, @"D:\audits\run");
+
+        var screen = await Opened();
+        await screen.StartAsync();
+
+        Assert.True(screen.HasFinished);
+        Assert.Equal("Done", screen.LeaveLabel);
+
+        screen.Leave();
+
+        Assert.Null(_opener.Opened);
     }
 
     /// <summary>
@@ -1502,6 +1591,6 @@ public sealed class NewAuditViewModelTests
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
-        return new NewAuditViewModel(location, _capture, _dialogs);
+        return new NewAuditViewModel(location, _capture, _dialogs, _opener);
     }
 }

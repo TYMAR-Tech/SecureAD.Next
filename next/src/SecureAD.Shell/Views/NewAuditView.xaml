@@ -142,7 +142,12 @@
                          is being planned - 0071 - so without it an operator who changed his mind
                          has nowhere to go. It hides while anything is running, because Stop is the
                          way out of those and two controls meaning "get me out of here" is one too
-                         many. -->
+                         many.
+
+                         Once a run has sealed evidence this is also the way TO it: the label
+                         becomes "View results" and pressing it opens the run in Assets. One
+                         control rather than two, because the wizard has nothing further to say
+                         by then. -->
                     <Button Content="{Binding LeaveLabel}"
                             Command="{Binding LeaveCommand}"
                             Margin="0,0,8,0"
@@ -516,16 +521,12 @@
                                Foreground="{StaticResource SecondaryTextBrush}" />
                 </StackPanel>
 
-                <!-- What it produced. The button is disabled and says why: there is no screen that
-                     reads a bundle yet, and an enabled control that quietly did nothing would be
-                     the product claiming a capability it does not have. The path is given, because
-                     opening that folder is what an operator can actually do today. -->
+                <!-- What it produced. There is no button here any more: View results is the
+                     footer control, beside the act that ends the wizard, rather than stranded in
+                     the body. The path stays, because knowing where a run landed is worth having
+                     whether or not it is being opened from here. -->
                 <StackPanel Margin="0,20,0,0"
                             Visibility="{Binding HasFinished, Converter={StaticResource Shown}}">
-                    <Button Content="View results"
-                            IsEnabled="False"
-                            HorizontalAlignment="Left" />
-
                     <TextBlock Text="{Binding ResultsNote}"
                                Style="{StaticResource Caption}"
                                Foreground="{StaticResource SecondaryTextBrush}"
