@@ -165,7 +165,7 @@ while (-not $stop) {
 	# array is marshalled into the params string[] as a SINGLE space-joined name, so the search
 	# asks for one attribute called "nTSecurityDescriptor objectClass", which does not exist. The
 	# controller then returns every entry carrying nothing, and this script reported zeroes that
-	# looked like a fact about the forest. Verified 2026-08-24:
+	# looked like a fact about the forest. Verified 2026-08-20:
 	#   inline @(...)   -> Attributes.Count = 1
 	#   [string[]] $var -> Attributes.Count = 2
 	# SecureAD.Audit's CaptureSearchRequestFactory already does it this way.
@@ -276,7 +276,7 @@ while (-not $stop) {
 	Write-Host ("  page {0,5}: {1,10:N0} objects, {2,8:N0} with a descriptor, {3,8:N0} distinct (+{4,-6:N0} new), {5,8:N1} MB raw" -f `
 		$pages, $objectsRead, $withDescriptor, $distinct.Count, $newThisPage, ($totalRawBytes / 1MB))
 
-	# The second guard, and the one that would have caught the defect of 2026-08-24. Entries came
+	# The second guard, and the one that would have caught the defect of 2026-08-20. Entries came
 	# back in their thousands and not one carried a descriptor, because the request had asked for
 	# an attribute name that does not exist. "Nobody in this forest has a security descriptor" is
 	# not a possible fact, so it is a broken read and must say so rather than total to zero.

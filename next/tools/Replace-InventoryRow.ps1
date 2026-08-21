@@ -1,6 +1,6 @@
 # Replaces one WHAT-THE-OLD-APP-HAD.md row whole, by index, guarded by the component id.
 # Written as a script rather than done with the file editor: a partial-line edit has destroyed a
-# row four times, most recently C10 on 2026-08-23 (F-S17-6). Rows are single lines of two thousand
+# row four times, most recently C10 on 2026-08-20 (F-S17-6). Rows are single lines of two thousand
 # characters or more and the editor does not handle a targeted replacement inside one reliably.
 param(
     [Parameter(Mandatory = $true)][string] $ComponentId,

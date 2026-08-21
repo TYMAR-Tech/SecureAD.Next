@@ -1103,7 +1103,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <para>
     /// <b>Once a run has sealed evidence this control opens it.</b> The wizard has nothing further
     /// to say at that point, so viewing the results and leaving are one act rather than two
-    /// controls - the shape the owner chose on 2026-08-22. A run that sealed nothing opens nothing,
+    /// controls - the shape the owner chose on 2026-08-21. A run that sealed nothing opens nothing,
     /// because there is no evidence to read and offering some would be a claim the run cannot back.
     /// </para>
     /// <para>
@@ -1118,7 +1118,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <para>
     /// <b>The order is load-bearing.</b> Both acts navigate: <c>ShellViewModel.Leave</c> shows Home,
     /// and opening a run shows Assets, so whichever runs last decides where the operator ends up.
-    /// Leaving therefore happens first and opening second. The reverse was shipped on 2026-08-22
+    /// Leaving therefore happens first and opening second. The reverse was shipped on 2026-08-21
     /// and the owner found it in the lab: View results tore down the audit and landed him on Home,
     /// having passed through Assets. <c>TheAuditIsLeftBeforeTheRunIsOpened</c> pins this, by
     /// observing the moment of opening rather than checking afterwards that both things happened.

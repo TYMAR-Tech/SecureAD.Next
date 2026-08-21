@@ -21,7 +21,7 @@
 
             <!-- Its own scroll, and a ceiling on the height. A forest with several unread
                  partitions produces a long list, and without this the card grew until it covered
-                 the tree it sits beneath - seen on screen 2026-09-12. -->
+                 the tree it sits beneath - seen on screen 2026-08-20. -->
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Gaps}">
                     <ItemsControl.ItemTemplate>

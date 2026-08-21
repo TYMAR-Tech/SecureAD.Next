@@ -11,7 +11,7 @@ namespace SecureAD.Next.Tests.Architecture;
 /// <b>Why this is worth a test when nothing else about how the app looks is.</b> Almost every
 /// visual defect in this product can only be judged by a person looking at a running window. This
 /// one cannot: it is a fact about a file, and a file can be read. The product had no
-/// <c>app.manifest</c> at all until 2026-08-22, which made it system DPI aware - Microsoft's
+/// <c>app.manifest</c> at all until 2026-08-21, which made it system DPI aware - Microsoft's
 /// <i>Developing a Per-Monitor DPI-Aware WPF Application</i> states such an app is scaled by the OS
 /// when moved to a monitor of a different DPI, and "may result in WPF applications to appear
 /// blurry, especially when the scaling is non-integral".

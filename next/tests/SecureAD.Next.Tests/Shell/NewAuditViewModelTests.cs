@@ -1429,7 +1429,7 @@ public sealed class NewAuditViewModelTests
     /// A finished run says where the evidence is, and no longer says reading it is unbuilt.
     /// </summary>
     /// <remarks>
-    /// <b>This assertion was reversed on 2026-08-22.</b> It used to require the words "not built
+    /// <b>This assertion was reversed on 2026-08-21.</b> It used to require the words "not built
     /// yet", which were true when written: no screen read a bundle. Assets reads them now and the
     /// run library opens one, so the sentence had outlived its premise and the screen was telling
     /// an operator his evidence was unreachable immediately after producing it. The path stays,
@@ -1454,7 +1454,7 @@ public sealed class NewAuditViewModelTests
     /// <remarks>
     /// <b>The footer is one control whose label changes</b>, not three buttons. Before a capture it
     /// discards a plan; after one that sealed evidence it offers to view what was captured. The
-    /// owner chose this shape on 2026-08-22 over adding a second footer button.
+    /// owner chose this shape on 2026-08-21 over adding a second footer button.
     /// </remarks>
     [Fact]
     public async Task AFinishedRunOffersToViewWhatItCaptured()
@@ -1500,7 +1500,7 @@ public sealed class NewAuditViewModelTests
     /// - and opening a run sends it to Assets. Whichever runs last decides where the operator
     /// actually ends up.
     /// <para>
-    /// <b>Found in the lab on 2026-08-22, by the owner, after the tests passed.</b> The first
+    /// <b>Found in the lab on 2026-08-21, by the owner, after the tests passed.</b> The first
     /// version opened the run and then left, so Home won and View results took him to the wrong
     /// screen. <c>ViewingResultsOpensTheRunThatWasJustCaptured</c> asserted that the opener was
     /// called and that the audit was left exactly once, and both were true - it could not see the

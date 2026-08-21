@@ -5,7 +5,7 @@
 
          WHY THIS EXISTS. The product's only RadioButton style is the one the rail wears: light
          text for a navy background. Worn on a white screen, an unselected option is white on
-         white - invisible until clicked. Seen on screen 2026-09-12 on the Assets level control,
+         white - invisible until clicked. Seen on screen 2026-08-20 on the Assets level control,
          where two of the three options could not be read.
 
          Keyed rather than implicit, and the rail's style is left alone: the rail has been looked

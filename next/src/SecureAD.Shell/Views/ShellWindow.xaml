@@ -7,7 +7,7 @@
         WindowState="Maximized" MinHeight="560" MinWidth="900">
 
     <!-- Navigation is two rows of tabs across the top, replacing the side rail. Changed
-         2026-09-12 on the owner's instruction. The rail cost about 190px of width on the widest
+         2026-08-20 on the owner's instruction. The rail cost about 190px of width on the widest
          screen in the product, and the second question - which view of this section - had nowhere
          to live: the predecessor asked it with a tab strip in exactly this place.
 
@@ -56,7 +56,7 @@
                          would otherwise be silent about WHICH build it shows. A round was lost to
                          that: a rail fix was judged not to work when the copy under test may have
                          predated it. Bumped by hand with every change. -->
-                    <TextBlock Text="build Z"
+                    <TextBlock Text="build AB"
                                FontFamily="{StaticResource UiFontFamily}"
                                FontSize="{StaticResource CaptionFontSize}"
                                Foreground="{StaticResource RailTextBrush}"

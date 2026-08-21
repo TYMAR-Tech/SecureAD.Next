@@ -19,8 +19,21 @@
     -->
     <Grid Margin="{StaticResource ScreenPadding}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="360" />
+            <!-- F-0079-3. The card was a flat 360 pixels, which expresses one monitor: a stamp
+                 beside a wide grid on a large panel, and a crowd on a laptop. Both columns are
+                 now proportional with a floor and a ceiling, so the card SHRINKS IN PLACE
+                 rather than dropping below the grid - the owner's call, 2026-08-21. Nothing
+                 rearranges itself as the window is dragged, and at the narrow end both halves
+                 get tighter together instead of one of them going somewhere else.
+
+                 The ceiling matters as much as the floor: without it the card would keep
+                 growing on a wide monitor and the run list would be squeezed by a card holding
+                 the same seven short fields it holds at any size.
+
+                 ScreenPadding is still one value at every window size. That half of F-0079-3
+                 is untouched and the finding stays open for it. -->
+            <ColumnDefinition Width="2*" MinWidth="320" />
+            <ColumnDefinition Width="*" MinWidth="280" MaxWidth="420" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -122,7 +135,20 @@
                 </GroupStyle>
             </DataGrid.GroupStyle>
             <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Run" Width="*">
+                <!-- Auto with a floor, never *. CORRECTED after testing on a running window:
+                     an earlier version of this comment claimed the star column explained why
+                     no column could be resized. It did not, and it was written before the
+                     screen had been tried. The star column explained the GAP, and only the
+                     gap. Resizing was dead for a separate reason in Controls.xaml - the column
+                     header template had dropped the two Thumb parts a column is resized by -
+                     and it was dead on all four grids, not only this one.
+
+                     What the star column did do: it absorbs whatever width is left over, so
+                     the slack sat INSIDE the table as a gap between Run and When instead of at
+                     the table's right edge, and it could never have been dragged narrower even
+                     with the grippers restored, because it refills the instant it is released.
+                     Guarded by RunLibraryColumnGateTests. -->
+                <DataGridTemplateColumn Header="Run" Width="Auto" MinWidth="160">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">

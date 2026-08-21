@@ -7,7 +7,7 @@
          THIS IS ONE STEP FROM A SCREEN THAT LIES, AND THE WORDING IS THE WHOLE SAFEGUARD.
          docs/decisions/0045 left such screens out entirely, on the grounds that a screen which
          appears to report and reports nothing is worse than no screen at all. The owner reversed
-         that on 2026-09-12 so the navigation can be judged before the screens exist.
+         that on 2026-08-20 so the navigation can be judged before the screens exist.
 
          What survives of the original reasoning: this NEVER SHOWS AN EMPTY RESULT. No empty
          findings table, no zero, no grid with no rows. It names what is missing and says outright

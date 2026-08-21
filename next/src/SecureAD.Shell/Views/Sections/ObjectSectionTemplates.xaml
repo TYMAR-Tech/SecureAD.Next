@@ -18,7 +18,7 @@
 
          Label above rather than beside, because that is what lets fields sit two to a row without
          a label column wide enough for "Protected by AdminSDHolder" wasting half the width of
-         every other row. Seen on screen 2026-09-13 at a fixed 180: that label was cut mid-word.
+         every other row. Seen on screen 2026-08-20 at a fixed 180: that label was cut mid-word.
 
          A worded value is this product's reading of what the directory holds, and a wrong reading
          does not look wrong - it looks like a confident statement about the object. So the field
@@ -67,7 +67,7 @@
 
     <!-- Fields laid out two to a row. A single column down the left of a wide window puts every
          value in the same narrow strip and leaves two thirds of the screen empty, which was the
-         state on 2026-09-13. -->
+         state on 2026-08-20. -->
     <ItemsPanelTemplate x:Key="FieldColumns">
         <UniformGrid Columns="2" />
     </ItemsPanelTemplate>
@@ -427,7 +427,7 @@
 
             <!-- PRINCIPAL ON THE LEFT, THEIR ENTRIES ON THE RIGHT.
 
-                 Reversed from the grouped table of 2026-09-13, on the owner's judgement having
+                 Reversed from the grouped table of 2026-08-20, on the owner's judgement having
                  seen both. That decision rejected two panes because two panes plus the directory
                  tree left no room for an entry table on a laptop. The object view took the tree's
                  place, so the premise is gone: this half is now the full width of the window.

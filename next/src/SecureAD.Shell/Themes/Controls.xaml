@@ -15,7 +15,7 @@
     ===================================================================================
     SET A COLOUR ON THE THING THAT DRAWS, NEVER ON THE THING THAT HOLDS.
 
-    Learned three times in one session, 2026-09-10, each time costing a round trip through a
+    Learned three times in one session, 2026-08-20, each time costing a round trip through a
     person with a screenshot:
 
       1. The table header. Foreground was set on the header and on the Border in its template.
@@ -255,7 +255,7 @@
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <!-- A TextBlock rather than a ContentPresenter, so the colour lands on the
-                             element that DRAWS the text. Seen on screen 2026-09-10: the selected
+                             element that DRAWS the text. Seen on screen 2026-08-20: the selected
                              entry rendered grey where it names white, because a Foreground set on
                              the control never reached whatever the presenter built. Same fault as
                              the table header. TemplateBinding on TextBlock.Foreground is an
@@ -339,6 +339,24 @@
          decides how it scrolls.
          =================================================================================== -->
 
+    <!-- The grab handle on each edge of a column header. Narrow and transparent: it is a hit
+         target, not a decoration, and the navy header has to read as one unbroken band. The
+         background is set to Transparent rather than left unset because an unset background is
+         not hit tested, which would leave the handle invisible to the mouse as well as to the
+         eye - the same defect in a different disguise. -->
+    <Style x:Key="ColumnHeaderGripper" TargetType="Thumb">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="SizeWE" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{StaticResource TableHeaderBackground}" />
         <Setter Property="Foreground" Value="{StaticResource TableHeaderTextBrush}" />
@@ -366,11 +384,36 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridColumnHeader">
-                    <Border Background="{TemplateBinding Background}"
-                            Padding="{TemplateBinding Padding}"
-                            TextElement.Foreground="{StaticResource TableHeaderTextBrush}">
-                        <ContentPresenter VerticalAlignment="Center" />
-                    </Border>
+                    <!-- THE TWO GRIPPERS ARE WHAT A COLUMN IS RESIZED BY, and they are
+                         template PARTS rather than a property. DataGridColumnHeader declares
+                         PART_LeftHeaderGripper and PART_RightHeaderGripper as TemplatePart
+                         attributes and looks them up by name, so a template without them
+                         leaves the control nothing to hook: resizing is absent rather than
+                         disabled, and CanUserResizeColumns has nothing to switch on.
+
+                         This template was written for a COLOUR defect - F-0056-2, dark text on
+                         the navy header - and dropped a part that had nothing to do with
+                         colour. All four grids name this style, so all four lost resizing at
+                         once, the Assets grid included, which declares
+                         CanUserResizeColumns="True" and was read as evidence that resizing
+                         worked. Reordering kept working throughout, because that is header
+                         drag logic and needs no part - which is what made the loss look like
+                         something other than what it was.
+                         Guarded by ColumnHeaderGripperGateTests. -->
+                    <Grid>
+                        <Border Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                TextElement.Foreground="{StaticResource TableHeaderTextBrush}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+
+                        <Thumb x:Name="PART_LeftHeaderGripper"
+                               HorizontalAlignment="Left"
+                               Style="{StaticResource ColumnHeaderGripper}" />
+                        <Thumb x:Name="PART_RightHeaderGripper"
+                               HorizontalAlignment="Right"
+                               Style="{StaticResource ColumnHeaderGripper}" />
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -380,7 +423,7 @@
 
     <!-- The same style, keyed, so a DataGrid can be told to use it BY NAME.
 
-         F-0056-2, found on screen 2026-09-10: the header rendered dark text on the dark navy
+         F-0056-2, found on screen 2026-08-20: the header rendered dark text on the dark navy
          background and could not be read, despite the style above. WPF Fluent theme sets
          ColumnHeaderStyle directly on the DataGrid, and a style set on the control beats an
          implicit one. Every DataGrid names this, which is the only way to win that. -->

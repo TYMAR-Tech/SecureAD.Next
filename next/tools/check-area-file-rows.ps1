@@ -1,7 +1,7 @@
 # Finds findings rows in docs/areas/*.md whose identifier cell has been lost.
 #
 # Why this exists. Editing a markdown table row of a thousand-odd characters with a text-
-# replacement tool silently dropped the leading cells three times on 2026-08-22, turning
+# replacement tool silently dropped the leading cells three times on 2026-08-21, turning
 # "| `F-0079-8` | ... | **closed.** ... |" into "| **closed.** ... |". Nothing caught it:
 # the line count is unchanged, so `git diff --numstat` reconciles, and no gate reads the
 # shape of these tables. The damage is invisible until somebody looks for a finding by its
