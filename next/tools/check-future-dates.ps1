@@ -16,10 +16,12 @@
 # bound. Every session in this repository has committed the same day it worked, so in practice
 # that bound is the real date. That is how the 29 found on 2026-08-21 were corrected.
 #
-# WHAT IS DELIBERATELY IGNORED. Test fixtures. A test that asserts a stored value of "2026-09-09"
-# or the wording of a timestamp is describing invented data, not claiming a day. Correcting those
-# would break the tests and would be correcting fiction. They are listed below by path, so adding
-# one is a visible decision rather than a silent exemption.
+# WHAT IS DELIBERATELY IGNORED. Test fixtures. A test that asserts a stored date value, or the
+# wording of a formatted timestamp, is describing invented data rather than claiming a day.
+# Correcting those would break the tests and would be correcting fiction. They are listed below by
+# path, so adding one is a visible decision rather than a silent exemption. The example dates are
+# not repeated here: this file is scanned like any other, and a literal in this comment would make
+# the checker report itself.
 
 $ErrorActionPreference = 'Stop'
 

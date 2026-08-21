@@ -18,7 +18,7 @@ part-way through a multi-hour capture would have the two compete.
 
 The concern is real and it is **not reachable today**. Nothing in the product can open a bundle.
 `RunLibraryViewModel` says so in as many words - *"What a run saw is inside the bundle, and this
-product cannot yet open one."* The Runs screen lists what became of each run by reading a directory,
+product cannot yet open one."* Home lists what became of each run by reading a directory,
 which costs nothing worth measuring, and the details card shows what that listing already held.
 
 So the choice is between building a lock today around a screen that does not exist, and recording

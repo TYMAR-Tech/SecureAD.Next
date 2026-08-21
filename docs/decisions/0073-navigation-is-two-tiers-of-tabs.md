@@ -31,6 +31,15 @@ first row is Home, Dashboard, Assets, Runs and Settings. The second row appears 
 offering more than one view, so a section with one view carries no second row rather than a single
 tab that switches to where the operator already is.
 
+**Amended 2026-08-21: Runs is not one of the tabs.** This record named five and the product ships
+four. The owner removed Runs deliberately - Home already chooses the run library and lists what it
+holds, so the two overlapped by construction, and he had raised exactly that redundancy on
+2026-08-18 while this record was being written. The first row is now Home, Dashboard, Assets and
+Settings; the run library, the details card and deletion all remain on Home, so nothing was lost
+with the tab. **The sentence above is left standing rather than edited**, because a record that
+quietly rewrites its own decision leaves later work unable to tell what was decided from what was
+revised.
+
 **A tab may exist before the thing behind it does.** This is the clause of `0045` that is
 overruled, on the owner's instruction of 2026-08-18.
 
