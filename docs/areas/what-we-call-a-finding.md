@@ -24,6 +24,7 @@ wins and the disagreement is a finding.
 | holds the rule catalogue as data and the rule logic as code | [`0010`](../decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) |
 | names a pattern in a bundle and never explains one away | [`0015`](../decisions/0015-a-bundle-names-a-pattern-it-never-explains-one-away.md) |
 | never lets a finding appear clean while its coverage carried unknowns | [`0056`](../decisions/0056-the-visual-language-encodes-three-states.md) |
+| rates a privileged variant of a rule above its base, lets both findings stand, and inherits no acceptance between them | [`0079`](../decisions/0079-a-privileged-variant-of-a-rule-escalates.md) |
 
 ---
 

@@ -63,8 +63,7 @@ file, the command, the line. If the honest answer is "I saw it earlier", say tha
 it is a different kind of claim and a much weaker one.
 
 Every mistake made on 2026-08-20 had one shape: **a proxy for the thing, treated as the thing.**
-A file name where a path was needed, and `README.md` exists in five folders. A grep hit where a
-declaration was needed, so a comment saying "this test exists in the old tree" counted as the test
+A file name where a path was needed, and `README.md` exists in five folders. A grep hit where a declaration was needed, so a comment saying "this test exists in the old tree" counted as the test
 existing. Link text where a resolved target was needed, so `../README.md` written in
 `docs/next/sessions/` was read as the root README and one document's inbound count went from 1 to
 69. `git diff --numstat` where content was needed - it showed equal lines added and removed while
@@ -120,6 +119,7 @@ file again, or run the script again, and say which was done.
 
 ## Rule Catalogue Guidelines
 - Every rule must state plainly what it looks for and what the organization running the audit is thereby able to mitigate. A rule that cannot be explained in those terms does not go in.
+- Before writing any rule, verify it against Microsoft's official documentation first, and read the referenced Microsoft docs in full rather than filling in gaps from memory or inference. Research precedes implementation for every rule added.
 
 ## Memory Management
 - The owner is the sole developer on SecureAD and does not value preserved narrative history for its own sake. His words: "maybe history matters in a real development project with multiple people but this is just me. I don't care about how I got here. I care that the end result works." So do not spend effort preserving session-history documents or avoid edits to docs/history/ on the grounds that they are a frozen record — renaming files and updating links inside history documents is acceptable. This does not relax the rules about decision records in docs/decisions/, which state the product's current position rather than its history.

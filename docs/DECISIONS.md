@@ -78,3 +78,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0076](decisions/0076-the-mark-attaches-to-the-right-that-earned-it.md) | 2026-08-18 | Accepted | The mark attaches to the right that earned it, not to the entry |
 | [0077](decisions/0077-a-well-known-sid-is-named-from-microsoft.md) | 2026-08-20 | Accepted | A well-known SID is named from Microsoft, not from the directory |
 | [0078](decisions/0078-a-run-can-be-deleted-after-one-confirmation.md) | 2026-08-21 | Accepted | A run can be deleted, after one confirmation |
+| [0079](decisions/0079-a-privileged-variant-of-a-rule-escalates.md) | 2026-08-21 | Accepted | A privileged variant of a rule escalates, and both findings stand |
