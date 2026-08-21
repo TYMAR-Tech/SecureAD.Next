@@ -1,4 +1,4 @@
-﻿<!--
+<!--
     Controls.xaml - templates for the controls this product uses, and no others.
 
     Deliberately not a complete control library. 0046 forbids a third-party package, and the
@@ -387,9 +387,29 @@
     <Style x:Key="TableColumnHeader" TargetType="DataGridColumnHeader"
            BasedOn="{StaticResource {x:Type DataGridColumnHeader}}" />
 
+    <!-- A selected row is tinted, and its text stays readable.
+
+         Seen on Home 2026-08-21: the selected run's Run and Outcome cells rendered blank while its
+         When cell rendered normally, so the row an operator had just clicked was the one row he
+         could not read. The cause is not this style but the one it does not override. WPF's default
+         DataGridCell template carries a trigger on IsSelected that sets Foreground to
+         SystemColors.HighlightTextBrush - white. The cell style below sets Background, so the
+         matching background half of that trigger loses to it, but nothing set Foreground, so the
+         white won and left white text on a white row.
+
+         When escaped only because it is a DataGridTemplateColumn: the TextBlock inside its
+         CellTemplate takes its Foreground from the implicit TextBlock style rather than inheriting
+         the cell's. Two columns of one grid disagreeing about whether text is visible is the
+         symptom that made this look like missing data rather than a colour. -->
     <Style TargetType="DataGridRow">
         <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
         <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{StaticResource SelectionBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="DataGridCell">
@@ -398,6 +418,14 @@
         <Setter Property="Padding" Value="{StaticResource DenseCellPadding}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
         <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Style.Triggers>
+            <!-- A style trigger beats the template trigger that would otherwise whiten this. The
+                 row behind supplies the tint, so the cell stays transparent. -->
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <BooleanToVisibilityConverter x:Key="Shown" />
