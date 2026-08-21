@@ -10,10 +10,26 @@ namespace SecureAD.Evidence.Run;
 /// The operator's own name for the run, or null where he has given none.
 /// </param>
 /// <param name="Notes">What he wrote about it, or null where he wrote nothing.</param>
-public sealed record RunAnnotation(string? Name, string? Notes)
+/// <param name="IsBaseline">
+/// Whether this run is the baseline of its scope group - the run later runs of the same scope are
+/// compared against, per <c>docs/decisions/0069-a-baseline-is-marked-deliberately.md</c>.
+///
+/// <para>
+/// <b>It lives here, beside the evidence and outside the seal, rather than in settings.</b> A
+/// baseline is a fact about the library, not about the person looking at it: an operator opening
+/// the same library from another account must see the same baseline, and one who copies the
+/// library to another machine must take it with him. Per-user settings would give each account a
+/// private answer to <i>what does changed mean here</i>.
+/// </para>
+/// <para>
+/// False is the honest default: a library nobody has marked has no baseline, and there is no run
+/// the product may nominate on the operator's behalf - which is the whole of <c>0069</c>.
+/// </para>
+/// </param>
+public sealed record RunAnnotation(string? Name, string? Notes, bool IsBaseline = false)
 {
     /// <summary>A run nobody has annotated.</summary>
-    public static RunAnnotation None { get; } = new(null, null);
+    public static RunAnnotation None { get; } = new(null, null, false);
 }
 
 /// <summary>
@@ -47,6 +63,7 @@ public static class RunAnnotations
         CREATE TABLE IF NOT EXISTS run_annotation (
             name         TEXT    NULL,
             notes        TEXT    NULL,
+            is_baseline  INTEGER NOT NULL DEFAULT 0,
             only_one_row INTEGER NOT NULL DEFAULT 1
                          CHECK (only_one_row = 1),
             PRIMARY KEY (only_one_row)
@@ -76,7 +93,14 @@ public static class RunAnnotations
             using var connection = Open(path, SqliteOpenMode.ReadOnly);
 
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT name, notes FROM run_annotation";
+
+            // COALESCE over a column that may not be there yet: a sidecar written before the
+            // baseline mark existed has a two-column table, and naming is_baseline directly would
+            // fail the whole read - losing the name and notes it does have. The read path may not
+            // write, so it cannot add the column; Save does that when the operator marks one.
+            command.CommandText = HasTheBaselineColumn(connection)
+                ? "SELECT name, notes, is_baseline FROM run_annotation"
+                : "SELECT name, notes, 0 FROM run_annotation";
 
             using var reader = command.ExecuteReader();
             if (!reader.Read())
@@ -84,7 +108,8 @@ public static class RunAnnotations
 
             return new RunAnnotation(
                 reader.IsDBNull(0) ? null : reader.GetString(0),
-                reader.IsDBNull(1) ? null : reader.GetString(1));
+                reader.IsDBNull(1) ? null : reader.GetString(1),
+                !reader.IsDBNull(2) && reader.GetInt64(2) != 0);
         }
         catch (Exception ex) when (ex is SqliteException or IOException)
         {
@@ -106,7 +131,8 @@ public static class RunAnnotations
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(annotation);
 
-        var stored = new RunAnnotation(Trimmed(annotation.Name), Trimmed(annotation.Notes));
+        var stored = new RunAnnotation(
+            Trimmed(annotation.Name), Trimmed(annotation.Notes), annotation.IsBaseline);
         var path = BundleLayout.AnnotationsPath(bundleDirectory);
 
         try
@@ -117,14 +143,28 @@ public static class RunAnnotations
             create.CommandText = Schema;
             create.ExecuteNonQuery();
 
+            // CREATE TABLE IF NOT EXISTS does nothing to a table that is already there, so a
+            // sidecar written before the baseline mark existed keeps its two columns and every
+            // write of the third would fail.
+            if (!HasTheBaselineColumn(connection))
+            {
+                using var add = connection.CreateCommand();
+                add.CommandText =
+                    "ALTER TABLE run_annotation ADD COLUMN is_baseline INTEGER NOT NULL DEFAULT 0";
+                add.ExecuteNonQuery();
+            }
+
             using var upsert = connection.CreateCommand();
             upsert.CommandText =
                 """
-                INSERT INTO run_annotation (name, notes, only_one_row) VALUES ($name, $notes, 1)
-                ON CONFLICT (only_one_row) DO UPDATE SET name = $name, notes = $notes
+                INSERT INTO run_annotation (name, notes, is_baseline, only_one_row)
+                VALUES ($name, $notes, $baseline, 1)
+                ON CONFLICT (only_one_row) DO UPDATE SET
+                    name = $name, notes = $notes, is_baseline = $baseline
                 """;
             upsert.Parameters.AddWithValue("$name", (object?)stored.Name ?? DBNull.Value);
             upsert.Parameters.AddWithValue("$notes", (object?)stored.Notes ?? DBNull.Value);
+            upsert.Parameters.AddWithValue("$baseline", stored.IsBaseline ? 1 : 0);
             upsert.ExecuteNonQuery();
 
             return Result<RunAnnotation>.Success(stored);
@@ -139,6 +179,23 @@ public static class RunAnnotations
                 + "untouched - annotations are kept beside the evidence and never inside it.",
                 path));
         }
+    }
+
+    /// <summary>
+    /// Whether this sidecar's table carries the baseline mark yet.
+    /// </summary>
+    /// <remarks>
+    /// Asked rather than inferred from a failed query, because a read that failed for some other
+    /// reason would then be reported as <i>not a baseline</i> - a confident false standing in for
+    /// a broken sidecar.
+    /// </remarks>
+    private static bool HasTheBaselineColumn(SqliteConnection connection)
+    {
+        using var columns = connection.CreateCommand();
+        columns.CommandText =
+            "SELECT COUNT(*) FROM pragma_table_info('run_annotation') WHERE name = 'is_baseline'";
+
+        return Convert.ToInt64(columns.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) > 0;
     }
 
     private static string? Trimmed(string? value) =>

@@ -177,6 +177,77 @@ public sealed class RunLibraryViewModelTests
         Assert.True(screen.HasSelection);
     }
 
+    /// <summary>Marking a run as the baseline records it against that run.</summary>
+    [Fact]
+    public void MarkingABaselineRecordsItAgainstTheRun()
+    {
+        _catalog.Runs.Add(Scoped("a-20260101-000000", @"D:\audits\a", "scope-one"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        screen.MarkAsBaseline();
+
+        Assert.True(_catalog.Annotated!.Value.Annotation.IsBaseline);
+        Assert.Equal(@"D:\audits\a", _catalog.Annotated!.Value.BundleDirectory);
+    }
+
+    /// <summary>
+    /// A run whose scope could not be established has no group to be the baseline of, and is told
+    /// so rather than silently doing nothing.
+    /// </summary>
+    [Fact]
+    public void ARunWithNoKnownScopeCannotBeABaseline()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        screen.MarkAsBaseline();
+
+        Assert.Null(_catalog.Annotated);
+        Assert.NotNull(screen.Problem);
+    }
+
+    /// <summary>
+    /// Saving a name carries the baseline mark through.
+    ///
+    /// <para>
+    /// Both live in one row, so a save built from the typed boxes alone would clear the mark. An
+    /// operator correcting a spelling would have un-baselined his own run with nothing on screen
+    /// suggesting that was what Save did.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void SavingANameDoesNotClearTheBaselineMark()
+    {
+        _catalog.Runs.Add(
+            Scoped("a-20260101-000000", @"D:\audits\a", "scope-one", isBaseline: true));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        screen.TypedName = "Quarterly review";
+        screen.SaveAnnotation();
+
+        Assert.True(_catalog.Annotated!.Value.Annotation.IsBaseline);
+    }
+
+    /// <summary>
+    /// A sealed run with a known scope, so it has a group to be the baseline of.
+    /// </summary>
+    private static RunListing Scoped(
+        string identifier, string path, string identity, bool isBaseline = false) =>
+        new(
+            identifier,
+            path,
+            RunState.Sealed,
+            null,
+            new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
+            new RunAnnotation(null, null, isBaseline),
+            RunScope.Of(identity, [DomainCoverage.Read("contoso.com")]));
+
     /// <summary>
     /// A sealed run as the library would list it. The moment is recorded, because a sealed run
     /// always has one; nothing in this class depends on its value. The scope is absent, which is

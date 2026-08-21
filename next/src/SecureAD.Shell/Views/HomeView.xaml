@@ -122,7 +122,23 @@
                 </GroupStyle>
             </DataGrid.GroupStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Run" Binding="{Binding Name}" Width="*" />
+                <DataGridTemplateColumn Header="Run" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Name}" />
+                                <!-- The baseline of this group. Shown on the row rather than only
+                                     in the card, because which run "changed" is measured against
+                                     is a property of the list an operator reads at a glance. -->
+                                <TextBlock Text="baseline"
+                                           FontSize="11"
+                                           Margin="8,1,0,0"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Visibility="{Binding IsBaseline, Converter={StaticResource Shown}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
 
                 <!-- Newest first. A run that recorded no moment of its own is placed by its
                      folder's date and says so, rather than passing it off as the run's. -->
@@ -203,6 +219,10 @@
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                     <Button Content="Save"
                             Command="{Binding Library.SaveAnnotationCommand}" />
+
+                    <Button Content="Set as baseline"
+                            Command="{Binding Library.MarkAsBaselineCommand}"
+                            Margin="8,0,0,0" />
 
                     <!-- Deliberately not beside Save. One confirmation stands between this and an
                          irreversible act, so the button that starts it does not sit where a hand

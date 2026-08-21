@@ -91,12 +91,12 @@ public sealed record RunScope
     /// Records what a run covered.
     /// </summary>
     /// <remarks>
-    /// <b>Internal, so a scope can only be had from <c>BundleReader.ReadScope</c>.</b> That reader
-    /// hands back a <c>Result</c>, which is what lets the counts below be plain integers: gate 4
-    /// forbids a bare count because a number alone cannot say whether it was measured, and the only
-    /// route to these numbers already carries that answer. A public factory here would be a second
-    /// door producing the same type without one, and the counts would start lying the day somebody
-    /// used it.
+    /// <b>Gate 4 is satisfied by <see cref="AllDeclaredDomainsAreComplete"/>, not by hiding this.</b>
+    /// This factory was internal for a while on the theory that reaching the counts only through a
+    /// <c>Result</c> was what vouched for them. It is not: the gate asks whether the declaring type
+    /// states its own completeness, and this one does, which is why the counts may be plain
+    /// integers. Hiding the factory bought nothing and cost every caller outside the assembly the
+    /// ability to describe a scope.
     /// </remarks>
     /// <param name="identity">The evidence identity the run recorded, from its bundle header.</param>
     /// <param name="domains">One entry per declared domain.</param>
@@ -108,7 +108,7 @@ public sealed record RunScope
     /// domains read</i> - which reads as a measurement and is the shape of claim this product is
     /// being rebuilt to stop making.
     /// </exception>
-    internal static RunScope Of(string identity, IEnumerable<DomainCoverage> domains)
+    public static RunScope Of(string identity, IEnumerable<DomainCoverage> domains)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(domains);

@@ -170,7 +170,13 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
             return;
 
         var path = selected.Path;
-        var saved = _catalog.Annotate(path, new RunAnnotation(TypedName, TypedNotes));
+
+        // The baseline mark is carried through rather than defaulted. Both live in one row, so
+        // saving a name built from the typed boxes alone would clear the mark - an operator who
+        // corrected a spelling would silently un-baseline his own run, and nothing on the screen
+        // would have suggested that was what Save did.
+        var saved = _catalog.Annotate(
+            path, new RunAnnotation(TypedName, TypedNotes, selected.IsBaseline));
 
         if (!saved.IsSuccess)
         {
@@ -182,6 +188,79 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         Selected = Runs.FirstOrDefault(
             run => string.Equals(run.Path, path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Makes the selected run the baseline of its scope group.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One baseline per group, per
+    /// <c>docs/decisions/0069-a-baseline-is-marked-deliberately.md</c>, so marking one clears the
+    /// mark from every other run of the same scope. Runs of a <i>different</i> scope are left
+    /// alone: each group answers <i>what does changed mean here</i> for itself.
+    /// </para>
+    /// <para>
+    /// <b>Marking is never refused for coverage.</b> A baseline speaks only for its own scope, and
+    /// every run it will be compared against left the same domains out, so there is nothing to
+    /// withhold. A run whose scope could not be established is the one exception - it has no group
+    /// to be the baseline of, and marking it would put the mark somewhere nothing can find it.
+    /// </para>
+    /// <para>
+    /// The clearing pass writes to each run in the group. A failure part way leaves the library
+    /// with no baseline in that group rather than two, which is the safer of the two wrong states:
+    /// no baseline is visibly missing, whereas two would make <i>changed since baseline</i> depend
+    /// on which one a later reader happened to find first.
+    /// </para>
+    /// </remarks>
+    [RelayCommand]
+    public void MarkAsBaseline()
+    {
+        if (Selected is not { } selected)
+            return;
+
+        if (!selected.ScopeIsKnown)
+        {
+            Problem = "This run's scope could not be established, so there is no group of like "
+                + "runs for it to be the baseline of. Runs are compared only against runs that "
+                + "covered the same domains.";
+            return;
+        }
+
+        var group = selected.GroupKey;
+        var chosen = selected.Path;
+
+        // Cleared first, so that a failure leaves no baseline rather than two.
+        foreach (var run in Runs.Where(run => run.GroupKey == group && run.Path != chosen))
+        {
+            if (!run.IsBaseline)
+                continue;
+
+            var cleared = _catalog.Annotate(
+                run.Path, new RunAnnotation(run.RawName, run.Notes, IsBaseline: false));
+
+            if (!cleared.IsSuccess)
+            {
+                Problem = cleared.Error.Description;
+                Refresh();
+                return;
+            }
+        }
+
+        var marked = _catalog.Annotate(
+            chosen, new RunAnnotation(selected.RawName, selected.Notes, IsBaseline: true));
+
+        if (!marked.IsSuccess)
+        {
+            Problem = marked.Error.Description;
+            Refresh();
+            return;
+        }
+
+        Refresh();
+
+        Selected = Runs.FirstOrDefault(
+            run => string.Equals(run.Path, chosen, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

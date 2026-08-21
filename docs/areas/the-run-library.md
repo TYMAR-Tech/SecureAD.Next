@@ -76,6 +76,9 @@ controller sends them.
 | see runs of one scope grouped together, and a later run of that scope join them | `CoverageIdTests.RunsGroupByWhichDomainsTheyCovered` |  |
 | see the run list gathered into groups of like scope | `RunLibraryViewModelTests.TheRunsAreGroupedByScope` |  |
 | tell a run whose scope is unknown from one that covered the whole forest | `RunLibraryViewModelTests.ARunWhoseScopeIsUnknownIsGroupedApart` |  |
+| mark a run as the baseline of its scope group | `RunLibraryViewModelTests.MarkingABaselineRecordsItAgainstTheRun` |  |
+| be told why a run with no known scope cannot be a baseline | `RunLibraryViewModelTests.ARunWithNoKnownScopeCannotBeABaseline` |  |
+| correct a run's name without losing its baseline mark | `RunLibraryViewModelTests.SavingANameDoesNotClearTheBaselineMark` |  |
 | delete a run, having been asked once and shown which one | `RunLibraryViewModelTests.DeletingAsksOnceAndNamesTheRun` |  |
 | decline that question and still have the run | `RunLibraryViewModelTests.DecliningTheConfirmationKeepsTheRun` |  |
 | be certain confirming removes the run and the list stops showing it | `RunLibraryViewModelTests.ConfirmingDeletesTheRunAndItLeavesTheList` |  |

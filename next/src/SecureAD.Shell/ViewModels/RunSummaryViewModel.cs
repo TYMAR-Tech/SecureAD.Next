@@ -57,6 +57,29 @@ internal sealed class RunSummaryViewModel
     /// </remarks>
     public bool IsNamed => !string.IsNullOrWhiteSpace(_listing.Annotation.Name);
 
+    /// <summary>
+    /// The operator's own name exactly as stored, or null where he has given none.
+    /// </summary>
+    /// <remarks>
+    /// <b>Distinct from <see cref="Name"/>, which falls back to the identifier.</b> Anything
+    /// rewriting the annotation must carry this through: saving <see cref="Name"/> back would
+    /// silently promote the folder name into a name the operator appears to have typed, and the
+    /// run would then read as named on every screen that asks.
+    /// </remarks>
+    public string? RawName => _listing.Annotation.Name;
+
+    /// <summary>Whether this run is the baseline of its scope group.</summary>
+    public bool IsBaseline => _listing.Annotation.IsBaseline;
+
+    /// <summary>
+    /// Whether the product could establish which domains this run covered.
+    /// </summary>
+    /// <remarks>
+    /// False for a run that never sealed or whose bundle would not open. Such a run has no group,
+    /// so it cannot be a baseline and must not be shown among runs whose scope is known.
+    /// </remarks>
+    public bool ScopeIsKnown => _listing.Scope is not null;
+
     /// <summary>What the operator wrote about this run, or null where he wrote nothing.</summary>
     public string? Notes => _listing.Annotation.Notes;
 
