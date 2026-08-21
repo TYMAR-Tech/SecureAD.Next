@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+
+  <!-- The product is read across monitors of different scaling, and without this it is blurry on
+       every one but the first. Microsoft's "Developing a Per-Monitor DPI-Aware WPF Application"
+       states WPF apps are system DPI aware by default, and that such an app moved to a monitor of
+       a different DPI is scaled by the OS, which "may result in WPF applications to appear blurry,
+       especially when the scaling is non-integral".
+
+       PerMonitorV2 stops Windows bitmap-stretching the window and has it tell the window the DPI
+       changed instead. WPF then re-renders at the new DPI: "WPF in .NET Framework 4.6.2 enables
+       per-monitor awareness", and that support carried into modern .NET. The native helper class
+       described on the Windows 8.1 page predates it and is not needed here.
+
+       Both elements are given deliberately. dpiAwareness is read by Windows 10 1607 and later and
+       is the only one that can say PerMonitorV2; dpiAware is what older Windows reads, and leaving
+       it out would make this DPI-unaware there rather than system-aware, which is worse than what
+       the product does today. Where both are understood, dpiAware is ignored. -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
+    </windowsSettings>
+  </application>
+
+</assembly>
