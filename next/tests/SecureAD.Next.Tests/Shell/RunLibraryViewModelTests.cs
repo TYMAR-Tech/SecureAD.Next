@@ -27,6 +27,9 @@ public sealed class RunLibraryViewModelTests
     /// </summary>
     private readonly FakeConfirmation _confirmation = new();
 
+    /// <summary>Where a run would be opened, without a window existing.</summary>
+    private readonly FakeRunOpener _opener = new();
+
     [Fact]
     public void WithNoLibraryChosenNothingIsClaimedAboutRuns()
     {
@@ -176,6 +179,49 @@ public sealed class RunLibraryViewModelTests
 
         Assert.True(screen.HasSelection);
     }
+
+    /// <summary>Opening a run hands its directory to whatever reads bundles.</summary>
+    [Fact]
+    public void OpeningARunHandsOverItsDirectory()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        screen.OpenRun();
+
+        Assert.Equal(@"D:\audits\a", _opener.Opened);
+    }
+
+    /// <summary>
+    /// A run that ended badly wrote no evidence, so there is nothing to open and the operator is
+    /// told that rather than a reader being handed a directory it will fail on.
+    /// </summary>
+    [Fact]
+    public void ARunThatEndedBadlyHasNothingToOpen()
+    {
+        _catalog.Runs.Add(Failed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        screen.OpenRun();
+
+        Assert.Null(_opener.Opened);
+        Assert.NotNull(screen.Problem);
+    }
+
+    /// <summary>A run that ended in an error, so it has no sealed evidence.</summary>
+    private static RunListing Failed(string identifier, string path) =>
+        new(
+            identifier,
+            path,
+            RunState.Failed,
+            "The drive filled up.",
+            new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
+            RunAnnotation.None,
+            Scope: null);
 
     /// <summary>Marking a run as the baseline records it against that run.</summary>
     [Fact]
@@ -452,6 +498,6 @@ public sealed class RunLibraryViewModelTests
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
-        return new RunLibraryViewModel(location, _catalog, _confirmation);
+        return new RunLibraryViewModel(location, _catalog, _confirmation, _opener);
     }
 }

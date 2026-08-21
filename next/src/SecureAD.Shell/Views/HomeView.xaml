@@ -20,7 +20,7 @@
     <Grid Margin="{StaticResource ScreenPadding}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="360" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -216,22 +216,31 @@
                          TextWrapping="Wrap"
                          MinHeight="56" />
 
+                <!-- Two rows rather than three buttons abreast. At 320 wide the third was clipped
+                     against the card's edge, and the clipped one was Delete run - a destructive
+                     button half off the screen, which is worse than an ugly card. Seen on Home
+                     2026-08-21.
+
+                     The split also does the job the old margin was doing: Delete is nowhere near
+                     where a hand going for Save lands. -->
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Content="Open"
+                            Command="{Binding Library.OpenRunCommand}" />
+
                     <Button Content="Save"
-                            Command="{Binding Library.SaveAnnotationCommand}" />
+                            Command="{Binding Library.SaveAnnotationCommand}"
+                            Margin="8,0,0,0" />
 
                     <Button Content="Set as baseline"
                             Command="{Binding Library.MarkAsBaselineCommand}"
                             Margin="8,0,0,0" />
-
-                    <!-- Deliberately not beside Save. One confirmation stands between this and an
-                         irreversible act, so the button that starts it does not sit where a hand
-                         going for Save would land. -->
-                    <Button Content="Delete run"
-                            Command="{Binding Library.DeleteRunCommand}"
-                            Style="{StaticResource DangerButton}"
-                            Margin="24,0,0,0" />
                 </StackPanel>
+
+                <Button Content="Delete run"
+                        Command="{Binding Library.DeleteRunCommand}"
+                        Style="{StaticResource DangerButton}"
+                        HorizontalAlignment="Left"
+                        Margin="0,16,0,0" />
             </StackPanel>
         </Border>
     </Grid>

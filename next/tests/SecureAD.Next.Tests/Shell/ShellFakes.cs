@@ -85,6 +85,17 @@ internal sealed class FakeRunCatalog : IRunCatalog
 }
 
 /// <summary>
+/// Remembers which run it was asked to open, so a screen can be checked without a window.
+/// </summary>
+internal sealed class FakeRunOpener : IRunOpener
+{
+    /// <summary>The run last opened, or null if nothing was.</summary>
+    public string? Opened { get; private set; }
+
+    public void Open(string bundleDirectory) => Opened = bundleDirectory;
+}
+
+/// <summary>
 /// An operator who answers a confirmation the same way every time, and remembers being asked.
 /// </summary>
 internal sealed class FakeConfirmation : IConfirmation

@@ -169,7 +169,7 @@ public sealed class ShellViewModelTests
         var settings = new FakeSettingsStore();
         var location = new RunLibraryLocation(settings);
         var library = new RunLibraryViewModel(
-            location, new FakeRunCatalog(), new FakeConfirmation());
+            location, new FakeRunCatalog(), new FakeConfirmation(), new FakeRunOpener());
 
         return new ShellViewModel(
             new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),

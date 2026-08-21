@@ -32,6 +32,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     private readonly IRunCatalog _catalog;
     private readonly RunLibraryLocation _location;
     private readonly IConfirmation _confirmation;
+    private readonly IRunOpener _opener;
 
     [ObservableProperty]
     private string? _problem;
@@ -46,16 +47,22 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// <param name="location">Where this installation keeps its runs.</param>
     /// <param name="catalog">How the runs are listed.</param>
     /// <param name="confirmation">How the operator is asked before something cannot be undone.</param>
+    /// <param name="opener">How a run is opened for reading.</param>
     public RunLibraryViewModel(
-        RunLibraryLocation location, IRunCatalog catalog, IConfirmation confirmation)
+        RunLibraryLocation location,
+        IRunCatalog catalog,
+        IConfirmation confirmation,
+        IRunOpener opener)
     {
         ArgumentNullException.ThrowIfNull(location);
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(confirmation);
+        ArgumentNullException.ThrowIfNull(opener);
 
         _location = location;
         _catalog = catalog;
         _confirmation = confirmation;
+        _opener = opener;
 
         // Grouped once, here, rather than rebuilt on every refresh: the view watches the collection
         // and a second view built later would leave the screen bound to the first one, showing runs
@@ -188,6 +195,30 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         Selected = Runs.FirstOrDefault(
             run => string.Equals(run.Path, path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Opens the selected run so its evidence can be read.
+    /// </summary>
+    /// <remarks>
+    /// <b>Only a run that finished can be opened.</b> A run that ended badly wrote no evidence, so
+    /// there is nothing to open; saying so here is better than handing a reader a directory and
+    /// letting it report a missing file, which describes the symptom rather than the cause.
+    /// </remarks>
+    [RelayCommand]
+    public void OpenRun()
+    {
+        if (Selected is not { } selected)
+            return;
+
+        if (!selected.FinishedCleanly)
+        {
+            Problem = "This run has no sealed evidence to open. " + selected.Meaning;
+            return;
+        }
+
+        Problem = null;
+        _opener.Open(selected.Path);
     }
 
     /// <summary>

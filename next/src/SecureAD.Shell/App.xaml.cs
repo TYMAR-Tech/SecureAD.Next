@@ -55,7 +55,18 @@ internal partial class App : Application
             () => shell.Leave());
 
         // One library object, shown by both sections. Two would let them disagree.
-        var library = new RunLibraryViewModel(location, new RunCatalog(), new Confirmation());
+        var library = new RunLibraryViewModel(
+            location,
+            new RunCatalog(),
+            new Confirmation(),
+            new RunOpener(bundle =>
+            {
+                // Opening a run is two acts: the Assets screen reads it, and the shell moves to
+                // that screen. Doing only the first would leave the operator on Home wondering
+                // whether his click had done anything.
+                shell.Assets.Show(bundle, shell.HasAudit);
+                shell.Show(ShellSection.Assets);
+            }));
 
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),

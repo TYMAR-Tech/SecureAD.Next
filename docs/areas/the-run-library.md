@@ -79,6 +79,8 @@ controller sends them.
 | mark a run as the baseline of its scope group | `RunLibraryViewModelTests.MarkingABaselineRecordsItAgainstTheRun` |  |
 | be told why a run with no known scope cannot be a baseline | `RunLibraryViewModelTests.ARunWithNoKnownScopeCannotBeABaseline` |  |
 | correct a run's name without losing its baseline mark | `RunLibraryViewModelTests.SavingANameDoesNotClearTheBaselineMark` |  |
+| open a run from the list and read its evidence | `RunLibraryViewModelTests.OpeningARunHandsOverItsDirectory` |  |
+| be told a run that ended badly has nothing to open | `RunLibraryViewModelTests.ARunThatEndedBadlyHasNothingToOpen` |  |
 | delete a run, having been asked once and shown which one | `RunLibraryViewModelTests.DeletingAsksOnceAndNamesTheRun` |  |
 | decline that question and still have the run | `RunLibraryViewModelTests.DecliningTheConfirmationKeepsTheRun` |  |
 | be certain confirming removes the run and the list stops showing it | `RunLibraryViewModelTests.ConfirmingDeletesTheRunAndItLeavesTheList` |  |
