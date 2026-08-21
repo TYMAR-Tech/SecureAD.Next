@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
@@ -211,6 +212,139 @@ public sealed class BundleReader : IDisposable
     /// obligation to keep it in step with nothing.
     /// </remarks>
     public DirectoryTree ReadTree() => DirectoryTreeReader.Read(Connection);
+
+    /// <summary>
+    /// Reads how much of the forest this run covered, one entry per declared domain.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Recomputed on each call, for the reason <see cref="ReadTree"/> gives. It reads a handful of
+    /// declaration rows rather than walking the captured objects, so it is cheap enough to run when
+    /// a selection changes.
+    /// </para>
+    /// <para>
+    /// <b>A refusal is a value here rather than an exception</b>, because every caller of this has
+    /// something useful to say when coverage cannot be established - that it could not be - and
+    /// none of them can do anything about it. It also keeps the count members below out of gate 4's
+    /// reach honestly: a bare number cannot say whether it was measured, and wrapping the whole
+    /// answer is what lets these be plain integers without <c>0 of 0 domains</c> ever reaching a
+    /// screen as though it were a measurement.
+    /// </para>
+    /// <para>
+    /// <b>An outcome this build does not recognise is refused, not guessed at.</b> Reporting it as
+    /// unread would invent a failure and reporting it as read would invent a success.
+    /// </para>
+    /// </remarks>
+    /// <returns>What became of each declared domain, or why that could not be established.</returns>
+    public Result<RunScope> ReadScope()
+    {
+        using var command = Connection.CreateCommand();
+        command.CommandText =
+            "SELECT domain_fqdn, outcome, reason FROM domain_coverage ORDER BY domain_fqdn";
+
+        var domains = new List<DomainCoverage>();
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var domain = reader.GetString(0);
+            var outcome = reader.GetString(1);
+            var reason = reader.IsDBNull(2) ? null : reader.GetString(2);
+
+            var covered = AsCoverage(domain, outcome, reason);
+            if (!covered.IsSuccess)
+                return Result<RunScope>.Failure(covered.Error);
+
+            domains.Add(covered.Value);
+        }
+
+        if (domains.Count == 0)
+        {
+            return Result<RunScope>.Failure(ScopeError(
+                "CoverageAbsent",
+                "This run records no domain at all. Every bundle carries one row per declared "
+                + "domain, so an empty table means the run's coverage was never written rather "
+                + "than that the forest has no domains."));
+        }
+
+        return Result<RunScope>.Success(RunScope.Of(domains));
+    }
+
+    /// <summary>
+    /// Turns one stored coverage row back into the type the rest of the product reads.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A sealed bundle cannot honestly say a domain was not read</b>, and one that does is
+    /// refused rather than reported. Capture is fail-fast per
+    /// <c>docs/decisions/0003</c>: a unit that could not be read returns before the seal, so the
+    /// row cannot arise from a run this product completed. <c>UnreadOutcomeIsUnreachableTests</c>
+    /// holds that invariant over the whole product, and reconstructing the state here would be the
+    /// first thing to break it.
+    /// </para>
+    /// <para>
+    /// A partially read domain is a different matter and is read back: the run reached it, said so,
+    /// and <see cref="RunScope.ShortfallCount"/> carries it.
+    /// </para>
+    /// </remarks>
+    private Result<DomainCoverage> AsCoverage(string domain, string outcome, string? reason)
+    {
+        switch (outcome)
+        {
+            case "Read":
+                return Result<DomainCoverage>.Success(DomainCoverage.Read(domain));
+
+            case "PartiallyRead":
+                return Stated(domain, outcome, reason, r =>
+                    DomainCoverage.PartiallyRead(domain, r));
+
+            case "ExcludedByChoice":
+                return Stated(domain, outcome, reason, r =>
+                    DomainCoverage.Excluded(domain, ExclusionKind.ByChoice, r));
+
+            case "ExcludedForWantOfCandidates":
+                return Stated(domain, outcome, reason, r =>
+                    DomainCoverage.Excluded(domain, ExclusionKind.ForWantOfCandidates, r));
+
+            case "NotRead":
+                return Result<DomainCoverage>.Failure(ScopeError(
+                    "CoverageImpossible",
+                    $"This run records {domain} as not read, which a sealed bundle cannot honestly "
+                    + "say: a domain that could not be read ends the run before its evidence is "
+                    + "sealed. The bundle was written by something other than this product, or it "
+                    + "has been altered, so what the run covered cannot be established."));
+
+            default:
+                return Result<DomainCoverage>.Failure(ScopeError(
+                    "CoverageUnrecognised",
+                    $"This run records '{outcome}' for {domain}, which this build does not "
+                    + "recognise. The bundle was written by a version that knew an outcome this "
+                    + "one does not, so what the run covered cannot be established here."));
+        }
+    }
+
+    /// <summary>
+    /// Applies <paramref name="build"/> to a stated reason, refusing a row that has none.
+    /// </summary>
+    /// <remarks>
+    /// The writer requires a reason for every outcome that is not <c>Read</c>, so its absence means
+    /// the row was not written by this product. Supplying the missing half here would present a
+    /// reader's guess as the run's own statement.
+    /// </remarks>
+    private Result<DomainCoverage> Stated(
+        string domain, string outcome, string? reason, Func<string, DomainCoverage> build) =>
+        string.IsNullOrWhiteSpace(reason)
+            ? Result<DomainCoverage>.Failure(ScopeError(
+                "CoverageUnexplained",
+                $"This run records '{outcome}' for {domain} without saying why, and the writer "
+                + "requires a reason. Supplying one here would present a guess as the run's own "
+                + "statement."))
+            : Result<DomainCoverage>.Success(build(reason));
+
+    /// <summary>Builds a refusal naming this bundle, so a screen can say which run it means.</summary>
+    private AuditError ScopeError(string reason, string description) =>
+        AuditError.Create(
+            ErrorCategory.Evidence, reason, ErrorSeverity.Failed, description, BundleDirectory);
 
     /// <summary>
     /// Lists one page of the objects captured in <paramref name="containerDn"/>.

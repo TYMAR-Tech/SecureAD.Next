@@ -338,6 +338,156 @@ public sealed class BundleReaderTests : IDisposable
 
     private void WriteABundle() => WriteABundle(OneDomainRead());
 
+    // ---------------------------------------------------------------------------------------
+    // What the run covered
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The ordinary case, and the one a screen shows as <i>3 of 3 domains read</i>.
+    /// </summary>
+    [Fact]
+    public void AWholeForestRunReportsEveryDomainRead()
+    {
+        WriteABundle(ThreeDomains(
+            DomainCoverage.Read("contoso.com"),
+            DomainCoverage.Read("eu.contoso.com"),
+            DomainCoverage.Read("us.contoso.com")));
+
+        using var opening = Open();
+        var scope = opening.Value.ReadScope();
+
+        Assert.True(scope.IsSuccess);
+        Assert.Equal(3, scope.Value.DeclaredCount);
+        Assert.Equal(3, scope.Value.ReadCount);
+        Assert.True(scope.Value.AllDeclaredDomainsAreComplete);
+    }
+
+    /// <summary>
+    /// A sealed bundle cannot honestly say a domain was not read, so one that does is refused
+    /// rather than counted.
+    ///
+    /// <para>
+    /// Capture is fail-fast per <c>0003</c>: a domain that could not be read ends the run before
+    /// anything is sealed, which is the guarantee <c>UnreadOutcomeIsUnreachableTests</c> holds over
+    /// the whole product. Reading the state back here would be the first thing to break it, and a
+    /// screen would then report a shortfall that the product's own rules say cannot exist.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void ASealedBundleClaimingADomainWasNotReadIsRefused()
+    {
+        WriteABundle(ThreeDomains(
+            DomainCoverage.Read("contoso.com"),
+            DomainCoverage.Read("eu.contoso.com"),
+            DomainCoverage.Read("us.contoso.com")));
+
+        WithTheEvidenceOpen(
+            "UPDATE domain_coverage SET outcome = 'NotRead', reason = 'No controller answered.' "
+            + "WHERE domain_fqdn = 'us.contoso.com'");
+        BundleSealing.Seal(
+            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+
+        using var opening = Open();
+        var scope = opening.Value.ReadScope();
+
+        Assert.False(scope.IsSuccess);
+        Assert.Equal("Evidence.CoverageImpossible", scope.Error.Code);
+    }
+
+    /// <summary>
+    /// A domain the operator left out is counted apart from one that could not be read, per
+    /// <c>0063</c>. An operator already knows what he excluded; the shortfall is the part he has
+    /// not been told about, and merging the two would hide it.
+    /// </summary>
+    [Fact]
+    public void AnExcludedDomainIsCountedApartFromAShortfall()
+    {
+        WriteABundle(ThreeDomainsExcluding(
+            "us.contoso.com",
+            DomainCoverage.Read("contoso.com"),
+            DomainCoverage.Read("eu.contoso.com"),
+            DomainCoverage.Excluded(
+                "us.contoso.com", ExclusionKind.ByChoice, "Believed to hold nothing.")));
+
+        using var opening = Open();
+        var scope = opening.Value.ReadScope();
+
+        Assert.True(scope.IsSuccess);
+        Assert.Equal(1, scope.Value.ExcludedCount);
+        Assert.Equal(0, scope.Value.ShortfallCount);
+        Assert.False(scope.Value.AllDeclaredDomainsAreComplete);
+    }
+
+    /// <summary>
+    /// A partially read domain is not counted as read. It is a hole of unknown shape, and counting
+    /// it would let a later comparison report fewer changes than really happened while looking
+    /// exactly like one that found nothing.
+    /// </summary>
+    [Fact]
+    public void APartiallyReadDomainIsNotCountedAsRead()
+    {
+        WriteABundle(ThreeDomains(
+            DomainCoverage.Read("contoso.com"),
+            DomainCoverage.Read("eu.contoso.com"),
+            DomainCoverage.PartiallyRead("us.contoso.com", "The controller stopped answering.")));
+
+        using var opening = Open();
+        var scope = opening.Value.ReadScope();
+
+        Assert.True(scope.IsSuccess);
+        Assert.Equal(2, scope.Value.ReadCount);
+        Assert.Equal(1, scope.Value.ShortfallCount);
+    }
+
+    /// <summary>
+    /// An outcome written by a later build is refused rather than mapped onto the nearest one this
+    /// build knows. Reading it as <c>NotRead</c> would invent a failure and <c>Read</c> would
+    /// invent a success; refusing leaves the caller able to say only that coverage could not be
+    /// established, which is the one true statement available.
+    /// </summary>
+    [Fact]
+    public void AnOutcomeThisBuildDoesNotRecogniseIsRefused()
+    {
+        WriteABundle(OneDomainRead());
+        WithTheEvidenceOpen("UPDATE domain_coverage SET outcome = 'ReadOverATrust'");
+        BundleSealing.Seal(
+            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+
+        using var opening = Open();
+        var scope = opening.Value.ReadScope();
+
+        Assert.False(scope.IsSuccess);
+        Assert.Equal("Evidence.CoverageUnrecognised", scope.Error.Code);
+        Assert.Contains("ReadOverATrust", scope.Error.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>Three declared domains, none excluded.</summary>
+    private static RunCoverage ThreeDomains(params DomainCoverage[] domains) =>
+        RunCoverage.Of(
+            CoverageId.ForDomains(
+                "contoso.com", ["contoso.com", "eu.contoso.com", "us.contoso.com"]),
+            domains,
+            BothForestPartitions(),
+            SysvolCoverage.Of([]));
+
+    /// <summary>Three declared domains, one of them deliberately left out.</summary>
+    private static RunCoverage ThreeDomainsExcluding(
+        string excluded, params DomainCoverage[] domains) =>
+        RunCoverage.Of(
+            CoverageId.ForDomainsExcluding(
+                "contoso.com", ["contoso.com", "eu.contoso.com", "us.contoso.com"], [excluded]),
+            domains,
+            BothForestPartitions(),
+            SysvolCoverage.Of([]));
+
+    private static ForestPartitionCoverage[] BothForestPartitions() =>
+    [
+        ForestPartitionCoverage.Read(
+            "CN=Configuration,DC=contoso,DC=com", NamingContextKind.Configuration),
+        ForestPartitionCoverage.Read(
+            "CN=Schema,CN=Configuration,DC=contoso,DC=com", NamingContextKind.Schema),
+    ];
+
     private void WriteABundle(RunCoverage coverage)
     {
         using var writer = BundleWriter.Create(_directory, Started);

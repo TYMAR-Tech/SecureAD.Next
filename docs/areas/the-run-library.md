@@ -66,6 +66,13 @@ controller sends them.
 | be certain naming a run cannot damage its sealed evidence | `RunAnnotationsTests.AnnotatingLeavesTheSealedEvidenceUntouched` |  |
 | be certain what he typed is saved against the run he selected | `RunLibraryViewModelTests.WhatTheOperatorTypesIsSavedAgainstTheSelectedRun` |  |
 | be told when what he typed could not be saved | `RunLibraryViewModelTests.ASaveThatFailedIsReported` |  |
+| see how much of the forest a finished run actually covered | `BundleReaderTests.AWholeForestRunReportsEveryDomainRead` |  |
+| tell a domain he left out from one the run fell short on | `BundleReaderTests.AnExcludedDomainIsCountedApartFromAShortfall` |  |
+| be certain a half-read domain is never counted as read | `BundleReaderTests.APartiallyReadDomainIsNotCountedAsRead` |  |
+| be certain a bundle claiming the impossible is refused rather than reported | `BundleReaderTests.ASealedBundleClaimingADomainWasNotReadIsRefused` |  |
+| be certain an outcome written by a later build is not guessed at | `BundleReaderTests.AnOutcomeThisBuildDoesNotRecogniseIsRefused` |  |
+| be certain two runs leaving out different domains are not treated as alike | `CoverageIdTests.LeavingOutADifferentDomainIsDifferentEvidence` |  |
+| be certain a run with a domain left out is not compared against a whole-forest one | `CoverageIdTests.LeavingADomainOutIsNotTheSameAsReadingTheWholeForest` |  |
 
 ---
 

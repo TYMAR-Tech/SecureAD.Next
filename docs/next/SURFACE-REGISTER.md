@@ -242,6 +242,7 @@ The table below sits between the two markers around it, so the test parses only 
 | ForestPartitionReadOutcome | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
 | ForestPartitionCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
 | RunCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
+| RunScope | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunSummary | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunListing | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunMoment | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
