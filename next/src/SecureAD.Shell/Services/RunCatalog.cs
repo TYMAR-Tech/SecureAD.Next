@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 
@@ -37,4 +37,8 @@ internal sealed class RunCatalog : IRunCatalog
                 libraryRoot));
         }
     }
+
+    /// <inheritdoc/>
+    public Result<RunAnnotation> Annotate(string bundleDirectory, RunAnnotation annotation) =>
+        RunAnnotations.Save(bundleDirectory, annotation);
 }

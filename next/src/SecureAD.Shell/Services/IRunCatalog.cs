@@ -1,4 +1,4 @@
-﻿using SecureAD.Evidence.Run;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 
 namespace SecureAD.Shell.Services;
@@ -23,4 +23,11 @@ internal interface IRunCatalog
     /// <summary>Lists the runs held in <paramref name="libraryRoot"/>.</summary>
     /// <param name="libraryRoot">The directory the operator chose.</param>
     Result<IReadOnlyList<RunListing>> List(string libraryRoot);
+
+    /// <summary>
+    /// Records what the operator has called the run at <paramref name="bundleDirectory"/>.
+    /// </summary>
+    /// <param name="bundleDirectory">The run's bundle directory, as listed.</param>
+    /// <param name="annotation">The name and notes to record.</param>
+    Result<RunAnnotation> Annotate(string bundleDirectory, RunAnnotation annotation);
 }

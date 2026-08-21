@@ -1,4 +1,5 @@
-﻿using SecureAD.Evidence.Run;
+using System.Globalization;
+using SecureAD.Evidence.Run;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -34,6 +35,58 @@ internal sealed class RunSummaryViewModel
 
     /// <summary>The run's directory name inside the library.</summary>
     public string Identifier => _listing.Identifier;
+
+    /// <summary>
+    /// What to call this run: the operator's own name for it, or its identifier where he has given
+    /// none.
+    /// </summary>
+    /// <remarks>
+    /// The identifier is the fallback rather than a generated sentence, because it is the name of
+    /// the folder on disk and is what an operator matches a screen against when he goes looking for
+    /// the bundle.
+    /// </remarks>
+    public string Name =>
+        string.IsNullOrWhiteSpace(_listing.Annotation.Name)
+            ? _listing.Identifier
+            : _listing.Annotation.Name;
+
+    /// <summary>Whether the operator has given this run a name of his own.</summary>
+    /// <remarks>
+    /// Stated so a screen showing <see cref="Name"/> can also show the identifier without printing
+    /// it twice for a run nobody has named.
+    /// </remarks>
+    public bool IsNamed => !string.IsNullOrWhiteSpace(_listing.Annotation.Name);
+
+    /// <summary>What the operator wrote about this run, or null where he wrote nothing.</summary>
+    public string? Notes => _listing.Annotation.Notes;
+
+    /// <summary>Whether there are notes worth showing.</summary>
+    public bool HasNotes => !string.IsNullOrWhiteSpace(_listing.Annotation.Notes);
+
+    /// <summary>
+    /// When the run happened, in the operator's own time zone.
+    /// </summary>
+    /// <remarks>
+    /// Local rather than UTC because an administrator matching a run against a change window, a
+    /// ticket or his own memory is working in the time his clock shows.
+    /// </remarks>
+    public string When => _listing.Moment.Utc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// Whether <see cref="When"/> is the moment the run recorded for itself.
+    /// </summary>
+    /// <remarks>
+    /// False means the run never recorded one and this is when its folder was created - true on the
+    /// machine that made it, and reset by copying the bundle elsewhere. A screen must say so rather
+    /// than present it as the run's own statement.
+    /// </remarks>
+    public bool WhenWasRecorded => _listing.Moment.Recorded;
+
+    /// <summary>
+    /// The opposite of <see cref="WhenWasRecorded"/>, stated because the only visibility converter
+    /// in the theme turns true into shown, and the caveat is what needs showing.
+    /// </summary>
+    public bool WhenWasNotRecorded => !_listing.Moment.Recorded;
 
     /// <summary>The full path of the run's bundle directory.</summary>
     public string Path => _listing.Path;

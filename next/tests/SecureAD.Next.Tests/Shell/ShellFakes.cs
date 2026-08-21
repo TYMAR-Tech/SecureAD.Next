@@ -51,6 +51,20 @@ internal sealed class FakeRunCatalog : IRunCatalog
             ? Result<IReadOnlyList<RunListing>>.Failure(error)
             : Result<IReadOnlyList<RunListing>>.Success(Runs);
     }
+
+    /// <summary>What was last saved, and against which run.</summary>
+    public (string BundleDirectory, RunAnnotation Annotation)? Annotated { get; private set; }
+
+    public AuditError? AnnotationFails { get; set; }
+
+    public Result<RunAnnotation> Annotate(string bundleDirectory, RunAnnotation annotation)
+    {
+        if (AnnotationFails is { } error)
+            return Result<RunAnnotation>.Failure(error);
+
+        Annotated = (bundleDirectory, annotation);
+        return Result<RunAnnotation>.Success(annotation);
+    }
 }
 
 internal sealed class FakeAssetSource : IAssetSource

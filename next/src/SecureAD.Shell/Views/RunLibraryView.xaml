@@ -26,6 +26,27 @@
                    Margin="0,0,0,8"
                    Visibility="{Binding IsEmpty, Converter={StaticResource Shown}}" />
 
+        <!-- The operator's own name and notes for the selected run. Written beside the evidence
+             and never into it, so nothing here can disturb a seal. -->
+        <StackPanel DockPanel.Dock="Bottom"
+                    Margin="0,8,0,0"
+                    Visibility="{Binding HasSelection, Converter={StaticResource Shown}}">
+            <TextBlock Text="Your name for this run" Margin="0,0,0,4" />
+            <TextBox Text="{Binding TypedName, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,0,0,8" />
+
+            <TextBlock Text="Your notes" Margin="0,0,0,4" />
+            <TextBox Text="{Binding TypedNotes, UpdateSourceTrigger=PropertyChanged}"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     MinHeight="48"
+                     Margin="0,0,0,8" />
+
+            <Button Content="Save"
+                    Command="{Binding SaveAnnotationCommand}"
+                    HorizontalAlignment="Left" />
+        </StackPanel>
+
         <DataGrid ItemsSource="{Binding Runs}"
                   ColumnHeaderStyle="{StaticResource TableColumnHeader}"
                   SelectedItem="{Binding Selected}"
@@ -34,7 +55,25 @@
                   HeadersVisibility="Column"
                   GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Run" Binding="{Binding Identifier}" Width="2*" />
+                <DataGridTextColumn Header="Run" Binding="{Binding Name}" Width="2*" />
+
+                <!-- Newest first, on the moment the run recorded. A run that recorded none is
+                     placed by its folder's date, and says so rather than passing it off as its
+                     own. -->
+                <DataGridTemplateColumn Header="When" Width="Auto">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4,8,4">
+                                <TextBlock Text="{Binding When}" />
+                                <TextBlock Text="folder date - the run recorded none"
+                                           FontSize="11"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           Visibility="{Binding WhenWasNotRecorded, Converter={StaticResource Shown}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
                 <DataGridTextColumn Header="Outcome" Binding="{Binding State}" Width="Auto" />
 
                 <!-- A template column rather than a text column, because a DataGridTextColumn

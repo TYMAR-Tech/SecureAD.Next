@@ -199,8 +199,12 @@ that could not read three folders knows which three, by name and identifier. A r
 
 `RunStateNames.Persist` writes a state down and `RunStateNames.Read` reads it back, returning a
 failure rather than a state for anything it does not recognise. `RunStateReader.Observe` follows
-the procedure above and returns a `RunStateObservation` carrying `RunStateObservation.State` and
-`RunStateObservation.Detail`. `RunOutcomeFile.Write`, `RunOutcomeFile.Read`,
+the procedure above and returns a `RunStateObservation` carrying `RunStateObservation.State`,
+`RunStateObservation.Detail` and `RunStateObservation.RecordedUtc` — the moment the run recorded
+for itself, which is when a sealed run completed and when a run that ended badly stopped, and is
+null for a run that never recorded one. It is null rather than a plausible substitute so that the
+run library can place such a run without presenting the file system's answer as the run's own.
+`RunOutcomeFile.Write`, `RunOutcomeFile.Read`,
 `RunOutcomeFile.PathIn` and `RunOutcomeFile.FileName` are the outcome file, whose contents are
 `RunOutcomeContents.Outcome`, `RunOutcomeContents.Detail` and `RunOutcomeContents.EndedUtc`.
 

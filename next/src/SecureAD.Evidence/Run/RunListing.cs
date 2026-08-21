@@ -25,8 +25,18 @@ namespace SecureAD.Evidence.Run;
 /// Why, where the state does not speak for itself. Null for a sealed run; a sentence an operator
 /// can act on for a failed, damaged or interrupted one.
 /// </param>
+/// <param name="Moment">
+/// When the run happened, and whether the run recorded that itself. Never parsed out of
+/// <paramref name="Identifier"/>, for the reason stated above.
+/// </param>
+/// <param name="Annotation">
+/// What the operator called this run and wrote about it. Typed by a person, kept outside the seal,
+/// and not evidence - see <see cref="RunAnnotations"/>.
+/// </param>
 public sealed record RunListing(
     string Identifier,
     string Path,
     RunState State,
-    string? Detail);
+    string? Detail,
+    RunMoment Moment,
+    RunAnnotation Annotation);

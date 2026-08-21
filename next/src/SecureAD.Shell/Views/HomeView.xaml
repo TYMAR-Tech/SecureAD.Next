@@ -83,7 +83,24 @@
                   GridLinesVisibility="Horizontal"
                   Margin="0,0,20,0">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Run" Binding="{Binding Identifier}" Width="2*" />
+                <DataGridTextColumn Header="Run" Binding="{Binding Name}" Width="2*" />
+
+                <!-- Newest first. A run that recorded no moment of its own is placed by its
+                     folder's date and says so, rather than passing it off as the run's. -->
+                <DataGridTemplateColumn Header="When" Width="Auto">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4,8,4">
+                                <TextBlock Text="{Binding When}" />
+                                <TextBlock Text="folder date - the run recorded none"
+                                           FontSize="11"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           Visibility="{Binding WhenWasNotRecorded, Converter={StaticResource Shown}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
                 <DataGridTextColumn Header="Outcome" Binding="{Binding State}" Width="Auto" />
             </DataGrid.Columns>
         </DataGrid>

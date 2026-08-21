@@ -50,13 +50,22 @@ controller sends them.
 | read the explanation on a damaged run | `RunLibraryListTests.ADamagedRunCarriesTheExplanation` |  |
 | be certain a sealed run carries no explanation, so an explanation always means something | `RunLibraryListTests.ASealedRunCarriesNoExplanation` |  |
 | be certain a stray folder in the root is left out rather than listed | `RunLibraryListTests.ADirectoryThatIsNotARunIsLeftOut` |  |
-| see runs listed in a stable order | `RunLibraryListTests.RunsAreListedInIdentifierOrder` |  |
+| see the newest run first, wherever its name sorts | `RunLibraryListTests.TheNewestRunIsListedFirst` |  |
+| be certain two runs sharing a moment keep a fixed order | `RunLibraryListTests.RunsSharingAMomentAreListedInAStableOrder` |  |
+| have a run placed by the moment it recorded, not by its name | `RunLibraryListTests.ARunThatRecordedWhenItFinishedIsPlacedByThat` |  |
+| be told when a run's time came from its folder rather than from the run | `RunLibraryListTests.ARunThatRecordedNoMomentDoesNotClaimOne` |  |
 | be told why nothing is listed when no library has been chosen | `RunLibraryViewModelTests.WithNoLibraryChosenTheOperatorIsToldWhy` |  |
 | be certain nothing is claimed about runs when no library has been chosen | `RunLibraryViewModelTests.WithNoLibraryChosenNothingIsClaimedAboutRuns` |  |
 | tell a library that is empty from one that is unreadable | `RunLibraryViewModelTests.AnUnreadableLibraryIsNotReportedAsEmpty` |  |
 | see the reason an unreadable library could not be read | `RunLibraryViewModelTests.AnUnreadableLibrarySurfacesTheReason` |  |
 | be certain a failed refresh clears what was shown before rather than leaving it stale | `RunLibraryViewModelTests.AFailedRefreshClearsWhatWasShownBefore` |  |
 | have the state of a run read from what is actually on disk | `RunStateReaderTests` |  |
+| give a run his own name, and see it in the list | `RunAnnotationsTests.TheNameAnOperatorSavesIsReadBack` |  |
+| write notes against a run | `RunAnnotationsTests.TheNotesAnOperatorSavesAreReadBack` |  |
+| correct a name rather than add a second one | `RunAnnotationsTests.SavingAgainReplacesWhatWasThere` |  |
+| be certain naming a run cannot damage its sealed evidence | `RunAnnotationsTests.AnnotatingLeavesTheSealedEvidenceUntouched` |  |
+| be certain what he typed is saved against the run he selected | `RunLibraryViewModelTests.WhatTheOperatorTypesIsSavedAgainstTheSelectedRun` |  |
+| be told when what he typed could not be saved | `RunLibraryViewModelTests.ASaveThatFailedIsReported` |  |
 
 ---
 

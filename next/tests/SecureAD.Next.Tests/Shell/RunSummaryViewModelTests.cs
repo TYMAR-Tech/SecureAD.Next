@@ -90,6 +90,13 @@ public sealed class RunSummaryViewModelTests
     public void ARunWithADetailReportsIt() =>
         Assert.True(Summary(RunState.Failed, "The drive filled up.").HasDetail);
 
-    private static RunSummaryViewModel Summary(RunState state, string? detail = null) =>
-        new(new RunListing("forest-20260101-000000", @"D:\audits\forest", state, detail));
+    private static RunSummaryViewModel Summary(
+        RunState state, string? detail = null, RunAnnotation? annotation = null) =>
+        new(new RunListing(
+            "forest-20260101-000000",
+            @"D:\audits\forest",
+            state,
+            detail,
+            new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
+            annotation ?? RunAnnotation.None));
 }

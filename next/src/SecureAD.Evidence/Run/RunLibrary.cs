@@ -166,10 +166,18 @@ public sealed class RunLibrary
     /// files that were never ours.
     /// </para>
     /// <para>
-    /// <b>The order is the identifier's, and it is not a chronological claim.</b> Run names embed
-    /// the moment they were created, so this usually reads as oldest first - but nothing reads
-    /// meaning back out of a name, and a caller wanting runs in time order must get that from the
-    /// evidence rather than from this sort.
+    /// <b>The newest run is first, and the order is a chronological claim.</b> It is made on the
+    /// moment each run recorded for itself - when a sealed run completed, when a run that ended
+    /// badly stopped - and never on the run's name. Sorting the names looks chronological with one
+    /// forest in the library and stops being chronological with two, because a name sorts by forest
+    /// before it sorts by time; an operator who read the bottom row as the latest run would be
+    /// reading the latest run of whichever forest sorts last. Runs were listed oldest first until
+    /// 2026-08-21, and that cost real lab work auditing the wrong bundle.
+    /// </para>
+    /// <para>
+    /// <b>A run that recorded no moment is placed by when its directory was created</b>, and
+    /// <see cref="RunMoment.Recorded"/> is false so that nothing downstream shows it as the run's
+    /// own statement. Identifier order breaks a tie, so the list is stable.
     /// </para>
     /// </remarks>
     public Result<IReadOnlyList<RunListing>> List()
@@ -192,7 +200,7 @@ public sealed class RunLibrary
 
         var listings = new List<RunListing>();
 
-        foreach (var directory in directories.OrderBy(d => d, StringComparer.Ordinal))
+        foreach (var directory in directories)
         {
             var observation = RunStateReader.Observe(directory);
             if (!observation.IsSuccess)
@@ -202,11 +210,32 @@ public sealed class RunLibrary
                 Path.GetFileName(directory),
                 directory,
                 observation.Value.State,
-                observation.Value.Detail));
+                observation.Value.Detail,
+                MomentOf(directory, observation.Value.RecordedUtc),
+                RunAnnotations.Read(directory)));
         }
 
-        return Result<IReadOnlyList<RunListing>>.Success(listings);
+        return Result<IReadOnlyList<RunListing>>.Success(
+            listings
+                .OrderByDescending(listing => listing.Moment.Utc)
+                .ThenByDescending(listing => listing.Identifier, StringComparer.Ordinal)
+                .ToList());
     }
+
+    /// <summary>
+    /// When a run happened, preferring what the run recorded to what the file system remembers.
+    /// </summary>
+    /// <remarks>
+    /// A directory's creation time is true on the machine that made it and is reset by copying the
+    /// bundle elsewhere, which is why it is only ever the fallback and is never reported as
+    /// recorded.
+    /// </remarks>
+    private static RunMoment MomentOf(string directory, DateTimeOffset? recordedUtc) =>
+        recordedUtc is { } recorded
+            ? new RunMoment(recorded, Recorded: true)
+            : new RunMoment(
+                new DateTimeOffset(Directory.GetCreationTimeUtc(directory), TimeSpan.Zero),
+                Recorded: false);
 
     /// <summary>
     /// Whether <paramref name="candidate"/> is genuinely below the root.

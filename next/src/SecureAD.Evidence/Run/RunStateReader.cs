@@ -10,7 +10,14 @@ namespace SecureAD.Evidence.Run;
 /// Why, in words an operator can act on, or null where the state speaks for itself. A sealed run
 /// needs no explanation; a failed or damaged one does.
 /// </param>
-public sealed record RunStateObservation(RunState State, string? Detail);
+/// <param name="RecordedUtc">
+/// The moment the run recorded for itself, or null where it recorded none. A sealed run says when
+/// it completed and a run that ended badly says when it stopped; a run that was interrupted, or one
+/// still being written, never got to say anything. Null is not a missing value to be filled in with
+/// something plausible - it is the statement that this run did not record when it happened.
+/// </param>
+public sealed record RunStateObservation(
+    RunState State, string? Detail, DateTimeOffset? RecordedUtc);
 
 /// <summary>
 /// Decides a run's state by looking at its bundle directory.
@@ -60,22 +67,28 @@ public static class RunStateReader
         {
             var seal = BundleSealing.Verify(bundleDirectory);
 
+            // The completion time is read only once the seal is intact, and only here. A bundle
+            // whose seal does not match is not asked what it says about itself.
             return seal.MayBeOpened
-                ? Observed(RunState.Sealed, detail: null)
-                : Observed(RunState.Damaged, seal.Detail);
+                ? Observed(
+                    RunState.Sealed,
+                    detail: null,
+                    RunCompletionReader.CompletedUtc(bundleDirectory))
+                : Observed(RunState.Damaged, seal.Detail, recordedUtc: null);
         }
 
         var outcome = RunOutcomeFile.Read(bundleDirectory);
         if (!outcome.IsSuccess)
         {
-            return Observed(RunState.Damaged, outcome.Error.Description);
+            return Observed(RunState.Damaged, outcome.Error.Description, recordedUtc: null);
         }
 
         if (outcome.Value is { } ended)
         {
             return Observed(
                 ended.Outcome == RunOutcome.Failed ? RunState.Failed : RunState.Cancelled,
-                ended.Detail);
+                ended.Detail,
+                ended.EndedUtc);
         }
 
         var partial = BundleLayout.PartialPath(bundleDirectory);
@@ -87,10 +100,11 @@ public static class RunStateReader
         }
 
         return IsBeingWritten(partial)
-            ? Observed(RunState.InProgress, detail: null)
+            ? Observed(RunState.InProgress, detail: null, recordedUtc: null)
             : Observed(
                 RunState.Interrupted,
-                "The run stopped without recording why, and nothing is writing to it.");
+                "The run stopped without recording why, and nothing is writing to it.",
+                recordedUtc: null);
     }
 
     /// <summary>
@@ -122,8 +136,9 @@ public static class RunStateReader
         }
     }
 
-    private static Result<RunStateObservation> Observed(RunState state, string? detail) =>
-        new RunStateObservation(state, detail);
+    private static Result<RunStateObservation> Observed(
+        RunState state, string? detail, DateTimeOffset? recordedUtc) =>
+        new RunStateObservation(state, detail, recordedUtc);
 
     private static Result<RunStateObservation> NotARun(string directory, string why) =>
         AuditError.Create(

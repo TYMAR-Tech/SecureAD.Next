@@ -85,7 +85,7 @@ public sealed class RunLibraryViewModelTests
     [Fact]
     public void TheRunsFoundAreListed()
     {
-        _catalog.Runs.Add(new RunListing("a-20260101-000000", @"D:\audits\a", RunState.Sealed, null));
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
 
         screen.Refresh();
@@ -110,7 +110,7 @@ public sealed class RunLibraryViewModelTests
     [Fact]
     public void AFailedRefreshClearsWhatWasShownBefore()
     {
-        _catalog.Runs.Add(new RunListing("a-20260101-000000", @"D:\audits\a", RunState.Sealed, null));
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
         screen.Refresh();
 
@@ -140,7 +140,7 @@ public sealed class RunLibraryViewModelTests
     [Fact]
     public void ARefreshDropsTheSelection()
     {
-        _catalog.Runs.Add(new RunListing("a-20260101-000000", @"D:\audits\a", RunState.Sealed, null));
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
         screen.Refresh();
         screen.Selected = screen.Runs[0];
@@ -161,13 +161,78 @@ public sealed class RunLibraryViewModelTests
     [Fact]
     public void SelectingARunGivesTheCardSomethingToShow()
     {
-        _catalog.Runs.Add(new RunListing("a-20260101-000000", @"D:\audits\a", RunState.Sealed, null));
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
         screen.Refresh();
 
         screen.Selected = screen.Runs[0];
 
         Assert.True(screen.HasSelection);
+    }
+
+    /// <summary>
+    /// A sealed run as the library would list it. The moment is recorded, because a sealed run
+    /// always has one; nothing in this class depends on its value.
+    /// </summary>
+    private static RunListing Listed(string identifier, string path) =>
+        new(
+            identifier,
+            path,
+            RunState.Sealed,
+            null,
+            new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
+            RunAnnotation.None);
+
+    /// <summary>
+    /// What the operator typed reaches the run he had selected, and not some other run.
+    /// </summary>
+    [Fact]
+    public void WhatTheOperatorTypesIsSavedAgainstTheSelectedRun()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        screen.TypedName = "Quarterly review";
+        screen.SaveAnnotation();
+
+        Assert.Equal(@"D:\audits\a", _catalog.Annotated!.Value.BundleDirectory);
+        Assert.Equal("Quarterly review", _catalog.Annotated!.Value.Annotation.Name);
+    }
+
+    /// <summary>
+    /// A save that failed must say so. Silently discarding what somebody typed is worse than
+    /// refusing it, because he walks away believing it was kept.
+    /// </summary>
+    [Fact]
+    public void ASaveThatFailedIsReported()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        _catalog.AnnotationFails = Failures.Any("The disk is read-only.");
+        screen.TypedName = "Quarterly review";
+        screen.SaveAnnotation();
+
+        Assert.Equal("The disk is read-only.", screen.Problem);
+    }
+
+    /// <summary>
+    /// With nothing selected there is no run to annotate, and the command must not guess at one.
+    /// </summary>
+    [Fact]
+    public void WithNothingSelectedNothingIsSaved()
+    {
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        screen.TypedName = "Quarterly review";
+        screen.SaveAnnotation();
+
+        Assert.Null(_catalog.Annotated);
     }
 
     private RunLibraryViewModel Screen(string? chosenPath = null)

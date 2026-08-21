@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using SecureAD.Evidence.Run;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
-
 namespace SecureAD.Shell.ViewModels;
 
 /// <summary>
@@ -97,6 +96,57 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
         OnPropertyChanged(nameof(IsEmpty));
     }
 
-    partial void OnSelectedChanged(RunSummaryViewModel? value) =>
+    partial void OnSelectedChanged(RunSummaryViewModel? value)
+    {
+        // The boxes follow the selection rather than being cleared, so an operator who selects a
+        // run he has already named sees what he wrote and can correct it rather than retype it.
+        TypedName = value?.IsNamed == true ? value.Name : null;
+        TypedNotes = value?.Notes;
+
         OnPropertyChanged(nameof(HasSelection));
+    }
+
+    /// <summary>The name the operator is typing for the selected run.</summary>
+    [ObservableProperty]
+    private string? _typedName;
+
+    /// <summary>The notes the operator is typing for the selected run.</summary>
+    [ObservableProperty]
+    private string? _typedNotes;
+
+    /// <summary>
+    /// Saves what the operator typed against the selected run.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The library is read again afterwards, because a name is what a run is listed under and the
+    /// list would otherwise go on showing the old one. The selection is restored by path, since the
+    /// refresh discards the object it pointed at.
+    /// </para>
+    /// <para>
+    /// This writes beside the evidence and never into it - see
+    /// <see cref="Evidence.Run.RunAnnotations"/>. A failure to save is reported as a problem and
+    /// leaves the run untouched.
+    /// </para>
+    /// </remarks>
+    [RelayCommand]
+    public void SaveAnnotation()
+    {
+        if (Selected is not { } selected)
+            return;
+
+        var path = selected.Path;
+        var saved = _catalog.Annotate(path, new RunAnnotation(TypedName, TypedNotes));
+
+        if (!saved.IsSuccess)
+        {
+            Problem = saved.Error.Description;
+            return;
+        }
+
+        Refresh();
+
+        Selected = Runs.FirstOrDefault(
+            run => string.Equals(run.Path, path, StringComparison.OrdinalIgnoreCase));
+    }
 }
