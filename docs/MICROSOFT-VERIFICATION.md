@@ -29,9 +29,24 @@ the first place*.
 | `GenericRightsExpander` | 17 | MS-ADTS 5.1.3.2 | 2026-08-20 | `GenericRightsExpanderMicrosoftAnchorTests` |
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
+| `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
 
-**Defects found: 11 of 215.** All eleven were in `SchemaGuidCatalog`, and seven of those were in
-the 74 entries nothing had ever checked. The three components verified since were clean.
+**Defects found: 12 of 237.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
+nothing had ever checked. The twelfth is below, and it was a **missing** value rather than a wrong
+one.
+
+`UserAccountControlWording` is where this register learned that counting sources is not the same as
+having them. It was first checked against adschema and `ADS_USER_FLAG_ENUM`, which agreed on
+twenty-one flags - and that was recorded here as two independent reads. **It was one lineage read
+twice:** both pages descend from `iads.h`. KB 305144 is maintained separately, and it publishes a
+twenty-second bit, `0x04000000`, marking a read-only domain controller. The product had no word for
+it, so an RODC's account rendered a raw hexadecimal number where a sentence belongs.
+
+Nothing internal could have found this. The anchor test as first written listed twenty-one
+published bits and would have rejected the correct flag as invented - a check anchored to the wrong
+reference, passing in both directions, which is `F-S44-2` exactly. The third source was reached only
+because an archived document, `S-57`, cited it. **Ask what a set of checks is anchored to, not only
+whether each one is sound.**
 
 `WellKnownSidCatalog` is new rather than pre-existing, so it could not have carried a defect. It is
 recorded here because the values were harvested rather than written from memory, and because the
@@ -54,7 +69,6 @@ why `AceType` showed 20 hits for 10 values.
 
 | Component | Hits | Microsoft source | What a wrong value would do |
 |---|---|---|---|
-| `UserAccountControlWording` | 27 | `ADS_USER_FLAG_ENUM`, adschema a-useraccountcontrol | Miss every account that does not require Kerberos pre-authentication, or flag clean ones. No symptom either way |
 | `PermissionWording` | 21 | `ADS_RIGHTS_ENUM` | Say "Read Properties" where the directory grants "Write Properties" |
 | `DangerousPermissionClassifier` | 8 | MS-ADTS 5.1.3.2, control access rights | Wrong verdict on what is a takeover |
 | `PermissionScope` | 8 | MS-ADTS 5.1.3.2 | Judge a right at the wrong scope |
@@ -99,3 +113,22 @@ A test pins a **number**. It cannot judge a **sentence**. `UserAccountControlWor
 plain-English description for each flag, and no check can say whether that description is a fair
 one for an administrator reading a report. That judgement is the owner's, and the wording is put
 in front of him rather than assumed.
+
+**That happened on 2026-08-21, and it is what the numeric check missed.** Every bit was right and
+four sentences were still in question. The owner decided each one:
+
+- `0x00000100` now carries Microsoft's full text. The clause it had dropped says the account
+  reaches **this domain only and not domains that trust it** - a clause that *disproves* a
+  cross-domain worry, so omitting it pointed an auditor at a risk the flag prevents.
+- `0x00002000` says *domain controller* where the two ADSI pages say *backup domain controller*,
+  which is Windows NT vocabulary. This was first recorded here as a deliberate divergence from
+  Microsoft. It is not one: KB 305144 words the bit as "a computer account for a domain controller
+  that is a member of this domain". The wording follows Microsoft; the earlier note was wrong
+  because it had only read two thirds of Microsoft.
+- `0x00000040` and `0x00000001` are open findings in
+  [what-we-capture](areas/what-we-capture.md), not corrections. Microsoft says one cannot be set
+  directly and the other does not work over LDAP, which would make both sentences claims the bit
+  cannot support. Neither is reworded until a lab run says what real accounts carry.
+
+No test would have raised any of the four, and the harvest script is deliberately silent on wording
+for the same reason.

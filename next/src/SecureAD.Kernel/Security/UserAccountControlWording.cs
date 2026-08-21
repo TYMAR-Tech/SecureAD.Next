@@ -7,7 +7,11 @@ namespace SecureAD.Kernel.Security;
 /// what it means said plainly.
 /// </summary>
 /// <param name="Bit">The bit, as Learn's table gives it.</param>
-/// <param name="Identifier">The name in <c>iads.h</c>, so a reader can check this against Learn.</param>
+/// <param name="Identifier">
+/// The name Microsoft documents the bit under, so a reader can check this against Learn. That is
+/// the <c>iads.h</c> name where one exists; <c>PARTIAL_SECRETS_ACCOUNT</c> has none, because it is
+/// published only on KB 305144 and never reached the <c>ADS_USER_FLAG_ENUM</c> enumeration.
+/// </param>
 /// <param name="Wording">What the flag says about the account.</param>
 public sealed record UserAccountControlFlag(uint Bit, string Identifier, string Wording);
 
@@ -57,6 +61,15 @@ public sealed record UserAccountControlWording(
     /// one of them arrives with an unworded bit rather than silently as nothing.
     /// </para>
     /// <para>
+    /// <b><c>PARTIAL_SECRETS_ACCOUNT</c> is here because two Microsoft pages were not enough.</b>
+    /// adschema and <c>ADS_USER_FLAG_ENUM</c> agree on twenty-one flags and both descend from
+    /// <c>iads.h</c> - one lineage read twice, which reads like corroboration and is not. KB 305144
+    /// is maintained separately and publishes a twenty-second bit, <c>0x04000000</c>, marking a
+    /// read-only domain controller. Without it an RODC's account rendered a raw hexadecimal number
+    /// where a sentence belongs. Found 2026-08-21; this is the <c>F-S44-2</c> fault, and the only
+    /// thing that caught it was a source outside the family.
+    /// </para>
+    /// <para>
     /// <b><c>ADS_UF_LOCKOUT</c> and <c>ADS_UF_PASSWORD_EXPIRED</c> are not current state, and both
     /// say so.</b> Microsoft names them in one sentence: in a Windows Server 2003 domain the two
     /// "have been replaced with a new attribute called <c>ms-DS-User-Account-Control-Computed</c>".
@@ -71,6 +84,15 @@ public sealed record UserAccountControlWording(
     /// it as an oversight rather than a decision. Corrected per <c>S-57</c> finding <c>#23</c>;
     /// the wording is deliberately the same shape as its pair so the next reader sees them treated
     /// alike.
+    /// </para>
+    /// <para>
+    /// <b><c>ADS_UF_SERVER_TRUST_ACCOUNT</c> says domain controller, and Microsoft supports it.</b>
+    /// The two ADSI pages - adschema and <c>ADS_USER_FLAG_ENUM</c> - describe <c>0x00002000</c> as a
+    /// computer account for a <i>backup</i> domain controller, which is Windows NT vocabulary. KB
+    /// 305144 words the same bit as "a computer account for a domain controller that is a member of
+    /// this domain", which is what a current forest actually holds and what an administrator reading
+    /// the report is looking at. The wording here follows that page deliberately; do not "correct"
+    /// it to the older sentence.
     /// </para>
     /// </remarks>
     public static IReadOnlyList<UserAccountControlFlag> Documented { get; } =
@@ -93,7 +115,9 @@ public sealed record UserAccountControlWording(
         new(
             0x00000100,
             "ADS_UF_TEMP_DUPLICATE_ACCOUNT",
-            "This account is for a user whose primary account is in another domain."),
+            "This account is for a user whose primary account is in another domain. It gives "
+            + "access to this domain, but not to any domain that trusts this domain. Also known "
+            + "as a local user account."),
         new(0x00000200, "ADS_UF_NORMAL_ACCOUNT", "This is a typical user account."),
         new(
             0x00000800,
@@ -141,6 +165,10 @@ public sealed record UserAccountControlWording(
             "ADS_UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION",
             "This account is enabled for delegation, and a service running under it can "
             + "authenticate as a client to other servers."),
+        new(
+            0x04000000,
+            "PARTIAL_SECRETS_ACCOUNT",
+            "This is a read-only domain controller account."),
     ];
 
     /// <summary>
