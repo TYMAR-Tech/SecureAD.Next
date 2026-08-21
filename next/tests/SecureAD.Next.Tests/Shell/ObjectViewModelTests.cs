@@ -485,10 +485,12 @@ public sealed class ObjectViewModelTests
 
     /// <summary>A principal nothing in the bundle holds, with the run's reason for that.</summary>
     private static PermissionTrustee Unnamed(string sid) => new(
-        sid, null, null, null, UnresolvedReferenceReason.OrphanedIdentifier);
+        sid, null, null, null, UnresolvedReferenceReason.OrphanedIdentifier,
+        WellKnownRole: null, Meaning: null);
 
     private static PermissionTrustee Named(string sid, string name) =>
-        new(sid, name, $"CN={name},{DomainDn}", "contoso.com", null);
+        new(sid, name, $"CN={name},{DomainDn}", "contoso.com", null,
+            WellKnownRole: null, Meaning: null);
 
     private static DirectoryTree TreeOfOneDomain() => new(
         [

@@ -408,6 +408,18 @@ public sealed class DangerousPermissionClassifier
     /// an entry carrying one of them alongside a class-scoped child right stays
     /// <see cref="PermissionVerdict.Dangerous"/> on their account and never reaches the class arm.
     /// </para>
+    /// <para>
+    /// <b>The Modify Owner wording was unconditional until finding <c>F-1</c>.</b> It said an
+    /// object's owner <i>has</i> the implicit right to modify its permissions, which MS-DTYP
+    /// 2.4.2.4 contradicts for any object carrying an <c>OWNER RIGHTS</c> (<c>S-1-3-4</c>) entry:
+    /// where one applies, the system ignores the owner's implicit <c>READ_CONTROL</c> and
+    /// <c>WRITE_DAC</c>. An administrator who had hardened an object that way was told in the
+    /// product's own words that his hardening did not hold. This classifier sees one access mask
+    /// and never the object's DACL, so it cannot know whether such an entry is present - which is
+    /// why the wording now says what is ordinarily true and says plainly that this entry alone
+    /// cannot settle it. Per <c>S-56</c> R19, an entry-level reading must not be presented as a
+    /// principal-level conclusion.
+    /// </para>
     /// </remarks>
     private static PermissionAssessment? ClassifyObjectIndependentBits(int mask)
     {
@@ -421,8 +433,10 @@ public sealed class DangerousPermissionClassifier
         if ((mask & WriteOwner) != 0)
         {
             return PermissionAssessment.Dangerous(
-                "Grants Modify Owner. An object's owner has the implicit right to modify its "
-                + "permissions, so this reaches the same place as Modify Permissions.", null);
+                "Grants Modify Owner. An owner ordinarily holds the implicit right to modify "
+                + "permissions, so this usually reaches the same place as Modify Permissions. An "
+                + "OWNER RIGHTS entry on the object removes that implicit right, and this entry "
+                + "alone does not say whether one is present.", null);
         }
 
         return null;

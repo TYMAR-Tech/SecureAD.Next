@@ -101,6 +101,15 @@
                             <TextBlock Text="Owner" Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
                             <TextBlock Text="{Binding Owner}" Margin="0,2,0,0" TextWrapping="Wrap"
                                        Foreground="{StaticResource PrimaryTextBrush}" />
+                            <!-- OWNER RIGHTS states a fact and withholds the conclusion. Microsoft
+                                 documents that this entry suppresses the owner's implicit Read
+                                 Permissions and Modify Permissions, and is silent on Modify Owner,
+                                 so the product does not report the owner as powerless. Collapsed
+                                 when absent rather than showing an empty line, because a blank
+                                 space beside an owner reads as an assurance nobody made. -->
+                            <TextBlock Text="{Binding OwnerQualification}" Margin="0,2,0,0" TextWrapping="Wrap"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Visibility="{Binding HasOwnerQualification, Converter={StaticResource Shown}}" />
                         </StackPanel>
                     </ItemsControl>
 

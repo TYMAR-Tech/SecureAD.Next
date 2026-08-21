@@ -64,6 +64,12 @@ evidence.db.partial
 evidence.db.seal
 run-outcome.json
 preflight.json
+
+# The whole folder, not just the evidence files. A bundle brought over from the lab is a real
+# forest's permissions, and the rules above catch the database but not a query script, a note or
+# an annotations file sitting beside it. Named as a folder so anything added later is covered
+# without anyone having to remember to add a rule.
+LabBundles/
 # annotations.db completes the net. It was missing until 2026-09-14, when a bundle dropped in
 # for analysis showed up as the one untracked file of six - the other five were caught and this
 # one was not, which is the worst way for a net to fail because it looks like it worked.

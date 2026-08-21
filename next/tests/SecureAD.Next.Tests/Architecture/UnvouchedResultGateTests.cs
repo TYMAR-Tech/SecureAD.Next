@@ -141,7 +141,25 @@ public sealed class UnvouchedResultGateTests
         [
             "SchemaGuidCatalog", "CapturedAttributeCatalog", "ConnectionSecurityLadder",
             "BundleSchema", "GpoClientSideExtensionCatalog", "DirectoryTime",
+            "WellKnownSidCatalog",
         ];
+
+    /// <summary>
+    /// <b>The seventh entry, added with the well-known SID catalogue</b>, on the identical reason.
+    /// <c>WellKnownSidCatalog.AllSids</c> and <c>AllRelativeIdentifiers</c> are the values MS-DTYP
+    /// 2.4.2.4 publishes, written out in the source. They read nothing and cannot fail: an empty
+    /// answer would mean this build knows no well-known SIDs at all, which is not a state any query
+    /// produces, and <c>FindBySid</c> returning null means only that the SID is not a well-known
+    /// one and should be looked for among the captured objects.
+    ///
+    /// <para>
+    /// <b>The claim that the table is right is held elsewhere</b>, which matters because an
+    /// exemption from this gate must not become an exemption from being checked at all.
+    /// <c>WellKnownSidCatalogMicrosoftAnchorTests</c> pins every value to Microsoft's published
+    /// table, and <c>next/tools/harvest-ms-dtyp-well-known-sids.ps1</c> is how those values were
+    /// sourced and how they are re-checked.
+    /// </para>
+    /// </summary>
 
     /// <summary>
     /// <b>The sixth entry, added 2026-08-18 with S-51</b>, on the identical reason.

@@ -711,30 +711,105 @@ entry is neither fails the build, so this table cannot quietly stop describing t
 | R8 | Confidential-attribute authorization requires READ_PROP and CONTROL_ACCESS from any applicable entries; operation prerequisites remain separate | §6.1 | `DangerousPermissionClassifier` |
 | R9 | Test `searchFlags` and `systemFlags` bits; capture complete schema values | §6.1 | `CapturedAttributeCatalog` |
 | R10 | Support capabilities accumulated across multiple applicable entries | §6.1 | `ObjectPermissions` |
-| R11 | Model AD's owner-SID grant of READ_CONTROL, WRITE_DAC, and WRITE_OWNER, applying OWNER RIGHTS and owner-blocking qualifications only where documented | §6.2 | `SecurityDescriptorParser` — partial, see F-1 |
+| R11 | Model AD's owner-SID grant of READ_CONTROL, WRITE_DAC, and WRITE_OWNER, applying OWNER RIGHTS and owner-blocking qualifications only where documented | §6.2 | `ObjectPermissions` — partial, see F-1 |
 | R12 | Model LIST_OBJECT using List Object mode and the documented parent/child visibility combination | §6.3 | `GenericRightsExpander` |
 | R13 | INHERIT_ONLY suppresses a local grant claim | §7 | `CanonicalAce` |
 | R14 | Apply `InheritedObjectType` using the most-specific structural and dynamic-auxiliary class rule | §7 | `AceNormalizer` |
 | R15 | Model new-object DACL construction as documented conditional paths | §8.1 | not built |
 | R16 | Compute current protection using transitive directory membership, including distribution groups, plus exclusions | §8.2 | not built |
 | R17 | Treat `adminCount` as history; derive current inheritance protection from `SE_DACL_PROTECTED` | §8.2 | `AceNormalizationResult` |
-| R18 | Classify literal, contextual, token-dependent, and placeholder trustee SID semantics | §7, §9 | not built — see F-2 |
+| R18 | Classify literal, contextual, token-dependent, and placeholder trustee SID semantics | §7, §9 | `WellKnownSidCatalog` |
 | R19 | Never present an entry-level interpretation as principal-level effective access; operation-level claims require every descriptor selected by the AD algorithm | §9 | `EntryReach` |
 | R20 | Select the AD-specific access-check family and its operation-specific parameters/descriptors for the requested right or operation | §5.1 | `DangerousPermissionClassifier` |
 
 ### Findings against this table
 
-**F-1 — the OWNER RIGHTS qualification is missing.** R11 is met in its first half: the code models
-the owner's implicit `READ_CONTROL`, `WRITE_DAC` and `WRITE_OWNER`, and says so plainly. What is
-absent is any handling of `S-1-3-4` (OWNER RIGHTS), the SID that removes those implicit rights when
-it appears in a DACL. An object whose owner is restricted that way would still be reported as
-owner-controlled, so the product over-reports: a finding raised where the directory would not grant
-it.
+**F-1 — the OWNER RIGHTS qualification was missing. Fixed 2026-08-20, and the original wording of
+this finding was wrong.** It said an object protected by `OWNER RIGHTS` was "still reported as
+owner-controlled". Checked against the code, nothing concluded that: the Overview card printed the
+owner's name and stopped, and no finding anywhere was raised on the basis of who owns an object.
+The code won the disagreement and this text was corrected rather than the code.
 
-**F-2 — placeholder trustee SIDs are read as literal principals.** Nothing handles `S-1-3-0`
-(CREATOR OWNER) or `S-1-5-10` (PRINCIPAL SELF). Neither is a principal: PRINCIPAL SELF means the
-object itself, and CREATOR OWNER is a template substituted on inheritance. Reporting either beside
-real trustees tells an operator something untrue about who holds a permission.
+**The real defect was a sentence.** `DangerousPermissionClassifier` said, of any entry granting
+Modify Owner, that "an object's owner has the implicit right to modify its permissions". MS-DTYP
+2.4.2.4 contradicts that for any object carrying an `S-1-3-4` entry: the system ignores the owner's
+implicit `READ_CONTROL` and `WRITE_DAC`. So an administrator who had applied the standard hardening
+was told in the product's own words that it did not hold — the product stating something false,
+which is never deferred.
+
+Two changes. The classifier now says what is ordinarily true and says plainly that one entry cannot
+settle it, because it sees an access mask and never the object's DACL. And
+`ObjectPermissions.OwnerRightsEntryIsPresent` reports that such an entry is present, shown beside
+the owner on the Overview card. **R11 remains partial deliberately.** Microsoft documents the
+suppression for `READ_CONTROL` and `WRITE_DAC` and is silent on `WRITE_OWNER`, so the product
+states the entry is present and withholds the conclusion; §6.2's caution against extending the rule
+stands. `BlockOwnerImplicitRights` is still not modelled.
+
+**An `INHERIT_ONLY` entry does not count, which is not a detail.** The first version of the check
+counted any `S-1-3-4` entry. Adding a permission to an organisational unit and setting *Applies to:
+descendant objects* sets `INHERIT_ONLY_ACE`, and such an entry governs the objects beneath the unit
+while granting nothing on the unit itself — so the check would have reported a container as
+owner-restricted when only its children were. That is the same class of false statement F-1 was
+raised about, pointing the other way, and it was found while writing the lab instructions rather
+than by a test. The check now asks `EntryReachReader`, which R13 already made answerable for the
+question.
+
+**The access mask is deliberately not consulted, and the lab showed why.** MS-DTYP 2.4.2.4 ties the
+suppression to the entry being applied, not to what it grants: *"When an ACE that carries this SID
+is applied to an object, the system ignores the implicit READ_CONTROL and WRITE_DAC permissions for
+the object owner."* On 2026-08-20 an OWNER RIGHTS entry was added to `OU=test01` in the `ba.ad.lab`
+forest with every permission left unticked, and the captured descriptor holds it as
+`ace_type=AccessAllowed`, `access_mask=0`, `propagation_flags=0`. A check requiring particular
+rights would have missed a real entry made the ordinary way.
+
+**Active Directory keeps that entry and the standard tool does not show it.** The same lab run
+found that after clicking OK, the Security tab in Active Directory Users and Computers no longer
+lists the zero-mask entry, while the directory still holds it and still honours it. An
+administrator applying this hardening therefore cannot confirm it with the tool he applied it in,
+and one reading his own directory would conclude it had not taken. Reporting it is a thing this
+product can do that the built-in tool does not.
+
+**F-2 — placeholder trustee SIDs (`S-1-3-0`, `S-1-5-10`) were read as literal principals. Fixed
+2026-08-20, and it was worse than recorded.** The finding assumed these SIDs went unresolved. They
+did not: Active Directory keeps real objects for them under `CN=WellKnown Security Principals`, so
+the ordinary lookup found `CN=Self` and reported *Self* as a named principal in the forest root's
+domain, formatted identically to a group beside it. In one lab bundle that credited **1,394**
+entries to `S-1-5-10` (PRINCIPAL SELF) and **314** to `S-1-3-0` (CREATOR OWNER), among them
+`Write ms-Mcs-AdmPwd` and `Write msDS-AllowedToActOnBehalfOfOtherIdentity` on a computer object.
+
+`WellKnownSidCatalog` is now consulted before the captured objects, so a well-known SID is named
+from MS-DTYP rather than from whichever object happened to match. `PRINCIPAL SELF` resolves to the
+object itself, `CREATOR OWNER` is named as a template and deliberately left unresolved, and neither
+is counted as holding a permission.
+
+**F-3 — a trustee's name and domain could be arbitrary. Found and fixed 2026-08-20.** Trustee
+resolution ran `SELECT … WHERE objectsid = $sid LIMIT 1` with no `ORDER BY`, and `captured_object`
+has no index on `objectsid`. In one lab bundle `S-1-5-11` matched four rows — the well-known
+principal and three `ForeignSecurityPrincipals` objects in different domains — so which name and
+domain a reader saw was decided by table order. It was correct only because the Configuration
+partition happened to be captured first; a different capture order, or an index added for
+performance, would have changed what the product said about who holds a permission. Nothing
+anywhere asserted which of the four was right. Consulting the catalogue first removes the
+ambiguity rather than tie-breaking it.
+
+**F-4 — the stored projection and the re-parse of one descriptor disagree by one entry. Open,
+found 2026-08-20.** For `OU=test01,OU=Servers,OU=BA Lab,DC=ba,DC=ad,DC=lab` in bundle
+`ad.lab-20260821-014720`, descriptor `147` has **57** rows in the `ace` table while the Permissions
+screen reports **56** entries. The screen reads `ObjectPermissions.Entries`, which is re-parsed from
+the descriptor's stored bytes; the `ace` table is the canonical projection written at capture time.
+The bytes cannot have changed, because the seal covers them, so one of two readings of one
+descriptor is wrong.
+
+The OWNER RIGHTS entry is *not* the missing one — it is present in the re-parse, which is why the
+owner qualification appears on screen. The descriptor records `dacl_state=Present`,
+`dacl_completeness=Complete` and `dacl_was_canonical=1`, so nothing in the product currently
+reports that anything is missing.
+
+**Severity: an entry count an operator reads may be short by one, and one permission may not be
+listed at all.** Which representation is correct is not yet established, and guessing at it is what
+this finding exists to prevent. The next step is to walk the DACL header in the stored bytes and
+compare its declared ACE count against both readings. `S-57` anticipated this when it upheld that a
+projection cannot stand in for the stored DACL; here both exist and they do not agree.
 
 ---
 

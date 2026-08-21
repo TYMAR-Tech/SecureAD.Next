@@ -265,6 +265,42 @@ internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
         ? owner.Name ?? owner.Sid
         : "not recorded";
 
+    /// <summary>
+    /// What qualifies the owner's ordinary control, or null when nothing does.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Without this the name alone said the wrong thing.</b> The card named the owner and
+    /// stopped, so an object deliberately hardened with an <c>OWNER RIGHTS</c> entry read exactly
+    /// like one that was not - and the product's Modify Owner wording separately told the reader
+    /// that an owner can rewrite permissions. An administrator who had done the right thing was
+    /// shown no sign of it.
+    /// </para>
+    /// <para>
+    /// <b>It states a fact and withholds the conclusion.</b> Microsoft documents that Read
+    /// Permissions and Modify Permissions are suppressed and says nothing about Modify Owner, so
+    /// this reports that the entry is present rather than that the owner is powerless. Whether the
+    /// product should judge ownership is still an open question in
+    /// <c>docs/areas/what-a-permission-means.md</c>, and this does not settle it.
+    /// </para>
+    /// </remarks>
+    public string? OwnerQualification => _permissions.OwnerRightsEntryIsPresent
+        ? "An OWNER RIGHTS entry on this object removes the owner's implicit Read Permissions "
+          + "and Modify Permissions."
+        : null;
+
+    /// <summary>
+    /// Whether <see cref="OwnerQualification"/> has anything to say.
+    /// </summary>
+    /// <remarks>
+    /// A separate boolean because that is how every other conditional row in this product decides
+    /// whether to appear - <c>Visibility="{Binding Has…, Converter={StaticResource Shown}}"</c>.
+    /// The first attempt used a style trigger comparing the string against <c>x:Null</c>, which is
+    /// a second way of asking one question, and the row did not appear in the lab. Copying the
+    /// established pattern is the fix and the lesson.
+    /// </remarks>
+    public bool HasOwnerQualification => OwnerQualification is not null;
+
     /// <summary>How many entries the object's permission list holds.</summary>
     public int EntryCount => _permissions.Entries.Count;
 

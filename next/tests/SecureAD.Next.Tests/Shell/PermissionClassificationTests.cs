@@ -790,5 +790,6 @@ public sealed class PermissionClassificationTests
         ApplicationData: []);
 
     private static PermissionTrustee Trustee(string sid) =>
-        new(sid, $"Principal {sid}", $"CN=Principal,{DomainDn}", "contoso.com", null);
+        new(sid, $"Principal {sid}", $"CN=Principal,{DomainDn}", "contoso.com", null,
+            WellKnownRole: null, Meaning: null);
 }

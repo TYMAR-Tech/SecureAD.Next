@@ -26,6 +26,23 @@ public sealed class ObjectPermissionsTests : IDisposable
     private const string AdminsSid = "S-1-5-21-1111111111-2222222222-3333333333-512";
     private const string OrphanSid = "S-1-5-21-1111111111-2222222222-3333333333-25601";
 
+    // Well-known SIDs, and the objects Active Directory really keeps for them. The containers are
+    // written out in full because the point of several of these tests is that a captured object
+    // exists and is deliberately not used.
+    private const string PrincipalSelfSid = "S-1-5-10";
+    private const string CreatorOwnerSid = "S-1-3-0";
+    private const string OwnerRightsSid = "S-1-3-4";
+    private const string AuthenticatedUsersSid = "S-1-5-11";
+
+    /// <summary><c>INHERIT_ONLY_ACE</c>, from MS-DTYP 2.4.4.1.</summary>
+    private const byte InheritOnlyAce = 0x08;
+
+    private const string WellKnownDn = "CN=WellKnown Security Principals,CN=Configuration," + DomainDn;
+    private const string WellKnownSelfDn = "CN=Self," + WellKnownDn;
+    private const string WellKnownAuthenticatedUsersDn = "CN=Authenticated Users," + WellKnownDn;
+    private const string ForeignAuthenticatedUsersDn =
+        "CN=S-1-5-11,CN=ForeignSecurityPrincipals," + DomainDn;
+
     // ---------------------------------------------------------------------------------------
     // An object nothing captured
     // ---------------------------------------------------------------------------------------
@@ -233,6 +250,214 @@ public sealed class ObjectPermissionsTests : IDisposable
 
         Assert.Equal(OrphanSid, trustee.Sid);
         Assert.Null(trustee.Name);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Well-known SIDs: named from Microsoft's table, not from whatever object happened to match
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// <c>PRINCIPAL SELF</c> means the object the permission sits on, so on Alice it is Alice.
+    /// </summary>
+    /// <remarks>
+    /// <b>The captured <c>CN=Self</c> object is written deliberately.</b> Active Directory really
+    /// does keep one, under <c>CN=WellKnown Security Principals</c>, and before the catalogue
+    /// existed the ordinary lookup found it and reported <i>Self</i> as though it were a group. A
+    /// test without that object in the bundle would pass whether or not the catalogue is consulted
+    /// first, and would measure nothing.
+    /// </remarks>
+    [Fact]
+    public void WhenAnEntryNamesPrincipalSelf_ThenItIsReportedAsTheObjectItself()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteObject(ObjectWithSid(WellKnownSelfDn, PrincipalSelfSid));
+            var alice = writer.WriteObject(ObjectAt(AliceDn));
+            WriteDescriptor(writer, alice, Descriptor(Allowing(PrincipalSelfSid, 0x00000020)));
+        });
+
+        Assert.Equal("This object (Alice)", Read(AliceDn)!.Entries[0].Trustee.Name);
+    }
+
+    /// <summary>
+    /// A placeholder holds nothing. Counting one as a holder credits a permission to a principal
+    /// that does not exist, which is the whole of finding <c>F-2</c>.
+    /// </summary>
+    [Fact]
+    public void WhenAnEntryNamesPrincipalSelf_ThenItIsNotCountedAsHoldingThePermission()
+    {
+        WriteAliceWith(Descriptor(Allowing(PrincipalSelfSid, 0x00000020)));
+
+        var trustee = Read(AliceDn)!.Entries[0].Trustee;
+
+        Assert.Equal(WellKnownSidRole.Placeholder, trustee.WellKnownRole);
+        Assert.False(trustee.HoldsThePermission);
+    }
+
+    /// <summary>
+    /// A well-known SID belongs to no domain. It appeared to belong to one only because the object
+    /// it was named from lives in some forest's Configuration partition.
+    /// </summary>
+    [Fact]
+    public void WhenAnEntryNamesAWellKnownSid_ThenNoDomainIsClaimedForIt()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteObject(ObjectWithSid(WellKnownSelfDn, PrincipalSelfSid));
+            var alice = writer.WriteObject(ObjectAt(AliceDn));
+            WriteDescriptor(writer, alice, Descriptor(Allowing(PrincipalSelfSid, 0x00000020)));
+        });
+
+        Assert.Null(Read(AliceDn)!.Entries[0].Trustee.DomainFqdn);
+    }
+
+    /// <summary>
+    /// <c>CREATOR OWNER</c> is named but never resolved: it is replaced with whoever creates a
+    /// child object in future, and this bundle cannot know who that will be.
+    /// </summary>
+    [Fact]
+    public void WhenAnEntryNamesCreatorOwner_ThenItIsNamedAsAPlaceholderAndHoldsNothing()
+    {
+        WriteAliceWith(Descriptor(Allowing(CreatorOwnerSid, 0x000F01FF)));
+
+        var trustee = Read(AliceDn)!.Entries[0].Trustee;
+
+        Assert.Equal("Creator Owner", trustee.Name);
+        Assert.Equal(WellKnownSidRole.Placeholder, trustee.WellKnownRole);
+        Assert.False(trustee.HoldsThePermission);
+    }
+
+    /// <summary>
+    /// <c>OWNER RIGHTS</c> is in a DACL to change what ownership grants, not to grant anything to
+    /// anybody, so it is not a holder either.
+    /// </summary>
+    [Fact]
+    public void WhenAnEntryNamesOwnerRights_ThenItIsNotCountedAsHoldingThePermission()
+    {
+        WriteAliceWith(Descriptor(Allowing(OwnerRightsSid, 0x00020000)));
+
+        var trustee = Read(AliceDn)!.Entries[0].Trustee;
+
+        Assert.Equal(WellKnownSidRole.OwnerRightsQualifier, trustee.WellKnownRole);
+        Assert.False(trustee.HoldsThePermission);
+    }
+
+    /// <summary>
+    /// The ambiguity that made the old answer arbitrary: several captured objects carrying one
+    /// well-known SID.
+    /// </summary>
+    /// <remarks>
+    /// In one lab bundle <c>S-1-5-11</c> matched four objects - the well-known principal and three
+    /// <c>ForeignSecurityPrincipals</c> entries in different domains - and the query that chose
+    /// between them had no <c>ORDER BY</c>, so the domain a reader saw beside <i>Authenticated
+    /// Users</i> was decided by row order. The fixture writes the foreign object <b>first</b>, so
+    /// a build that consulted the captured objects would answer with it.
+    /// </remarks>
+    [Fact]
+    public void WhenSeveralCapturedObjectsShareAWellKnownSid_ThenTheAnswerIsNotArbitrary()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteObject(ObjectWithSid(ForeignAuthenticatedUsersDn, AuthenticatedUsersSid));
+            writer.WriteObject(ObjectWithSid(WellKnownAuthenticatedUsersDn, AuthenticatedUsersSid));
+            var alice = writer.WriteObject(ObjectAt(AliceDn));
+            WriteDescriptor(writer, alice, Descriptor(Allowing(AuthenticatedUsersSid, 0x00020094)));
+        });
+
+        var trustee = Read(AliceDn)!.Entries[0].Trustee;
+
+        Assert.Equal("Authenticated Users", trustee.Name);
+        Assert.Null(trustee.DomainFqdn);
+        Assert.True(trustee.HoldsThePermission);
+    }
+
+    /// <summary>
+    /// An ordinary account is still resolved from the objects this run captured, and still holds
+    /// what it is granted. The catalogue is consulted first and must not swallow everything.
+    /// </summary>
+    [Fact]
+    public void WhenATrusteeIsNotWellKnown_ThenItIsStillResolvedFromTheCapturedObjects()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteObject(ObjectWithSid(AdminsDn, AdminsSid));
+            var alice = writer.WriteObject(ObjectAt(AliceDn));
+            WriteDescriptor(writer, alice, Descriptor(Allowing(AdminsSid, 0x000F01FF)));
+        });
+
+        var trustee = Read(AliceDn)!.Entries[0].Trustee;
+
+        Assert.Equal("Domain Admins", trustee.Name);
+        Assert.Equal("contoso.com", trustee.DomainFqdn);
+        Assert.Null(trustee.WellKnownRole);
+        Assert.True(trustee.HoldsThePermission);
+    }
+
+    /// <summary>
+    /// A trustee this run could not name still holds the permission. Not knowing who somebody is
+    /// is not the same as their holding nothing, and reporting otherwise understates access.
+    /// </summary>
+    [Fact]
+    public void WhenATrusteeCouldNotBeNamed_ThenItStillHoldsThePermission()
+    {
+        WriteAliceWith(Descriptor(Allowing(OrphanSid, 0x000F01FF)));
+
+        Assert.True(Read(AliceDn)!.Entries[0].Trustee.HoldsThePermission);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // OWNER RIGHTS: what qualifies the owner's ordinary control
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An <c>OWNER RIGHTS</c> entry is how an administrator stops an object's owner from being
+    /// able to take it over, and the product said nothing about it at all before finding
+    /// <c>F-1</c>.
+    /// </summary>
+    /// <remarks>
+    /// <b>The access mask is zero, because that is what a real one looks like.</b> On 2026-08-20
+    /// an OWNER RIGHTS entry was added to <c>OU=test01</c> in the lab with every permission
+    /// unticked, and the captured descriptor holds it as <c>access_mask=0</c>. An earlier version
+    /// of this test used a non-zero mask and so could not have caught an entry being dropped for
+    /// granting nothing.
+    /// </remarks>
+    [Fact]
+    public void WhenAnOwnerRightsEntryIsPresent_ThenTheObjectSaysOwnershipIsQualified()
+    {
+        WriteAliceWith(Descriptor(Allowing(OwnerRightsSid, 0x00000000)));
+
+        Assert.True(Read(AliceDn)!.OwnerRightsEntryIsPresent);
+    }
+
+    /// <summary>
+    /// The ordinary case. Without this the check above would pass over anything at all.
+    /// </summary>
+    [Fact]
+    public void WhenNoOwnerRightsEntryIsPresent_ThenNothingQualifiesOwnership()
+    {
+        WriteAliceWith(Descriptor(Allowing(OrphanSid, 0x000F01FF)));
+
+        Assert.False(Read(AliceDn)!.OwnerRightsEntryIsPresent);
+    }
+
+    /// <summary>
+    /// An <c>OWNER RIGHTS</c> entry marked <c>INHERIT_ONLY</c> governs the objects beneath this one
+    /// and grants nothing on this one, so it does not qualify this object's ownership.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the shape an administrator will actually create.</b> Adding a permission to an
+    /// organisational unit and setting <i>Applies to: descendant objects</i> sets
+    /// <c>INHERIT_ONLY_ACE</c>. Counting it here would tell a reader the unit itself was hardened
+    /// when only its children were - the product stating something false about the object in front
+    /// of him. <c>S-56</c> R13 is the requirement this satisfies.
+    /// </remarks>
+    [Fact]
+    public void WhenAnOwnerRightsEntryAppliesOnlyToDescendants_ThenThisObjectsOwnershipIsNotQualified()
+    {
+        WriteAliceWith(Descriptor(
+            Allowing(OwnerRightsSid, 0x00020000) with { PropagationFlags = InheritOnlyAce }));
+
+        Assert.False(Read(AliceDn)!.OwnerRightsEntryIsPresent);
     }
 
     [Fact]

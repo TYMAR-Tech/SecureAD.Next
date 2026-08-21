@@ -57,12 +57,45 @@ public enum DescriptorAvailability
 /// Why the SID names nothing in this bundle, when the run recorded a reason. Null both for a
 /// trustee that resolved and for one whose failure to resolve was never classified.
 /// </param>
+/// <param name="WellKnownRole">
+/// What Microsoft says this SID is, when it is one of the SIDs that means the same in every
+/// forest. Null for an ordinary account or group.
+///
+/// <para>
+/// <b>This is the part the directory could not tell us.</b> Active Directory keeps real objects
+/// for these SIDs under <c>CN=WellKnown Security Principals</c>, so the ordinary lookup found
+/// <c>CN=Self</c> and reported <i>Self</i> as a principal in the forest root's domain, formatted
+/// identically to a group beside it. The name was right and the conclusion was wrong: a reader
+/// cannot tell a placeholder from a group, and one lab bundle credited 1,708 entries to two
+/// placeholders. <see cref="WellKnownSidRole"/> is what makes that distinction sayable.
+/// </para>
+/// </param>
+/// <param name="Meaning">
+/// One plain sentence about what the trustee is, for the well-known SIDs where the name alone
+/// misleads. Null for an ordinary account or group, whose name is its own explanation.
+/// </param>
 public sealed record PermissionTrustee(
     string Sid,
     string? Name,
     string? DistinguishedName,
     string? DomainFqdn,
-    UnresolvedReferenceReason? UnresolvedReason);
+    UnresolvedReferenceReason? UnresolvedReason,
+    WellKnownSidRole? WellKnownRole,
+    string? Meaning)
+{
+    /// <summary>
+    /// Whether this trustee holds the permission the entry grants.
+    /// </summary>
+    /// <remarks>
+    /// False only for a well-known SID that is not a principal - a placeholder such as
+    /// <c>CREATOR OWNER</c>, or <c>OWNER RIGHTS</c>, which is in a DACL to change what ownership
+    /// grants rather than to grant anything itself. True for every ordinary account and group,
+    /// including one this run could not resolve: a trustee whose name is unknown still holds the
+    /// permission, and reporting otherwise would understate who has access.
+    /// </remarks>
+    public bool HoldsThePermission =>
+        WellKnownRole is null or WellKnownSidRole.Principal or WellKnownSidRole.LogonContext;
+}
 
 /// <summary>
 /// One access control entry, as the bundle stored it.
@@ -187,7 +220,51 @@ public sealed record ObjectPermissions(
     bool DaclWasCanonical,
     bool IsDaclProtected,
     IReadOnlyList<PermissionEntry> Entries,
-    IReadOnlyList<string> Errors);
+    IReadOnlyList<string> Errors)
+{
+    /// <summary>
+    /// Whether an <c>OWNER RIGHTS</c> entry restricts what owning this object grants.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Ownership is not an entry, and ordinarily outranks every entry.</b> An owner implicitly
+    /// holds Read Permissions, Modify Permissions and Modify Owner, and Modify Permissions is the
+    /// dangerous one: an owner can simply write himself full control. So naming the owner is
+    /// naming who can take the object over.
+    /// </para>
+    /// <para>
+    /// <b><c>OWNER RIGHTS</c> (<c>S-1-3-4</c>) is how an administrator stops that</b>, and it is
+    /// the standard hardening for exactly this risk. MS-DTYP 2.4.2.4: where an entry carrying that
+    /// SID applies, the system ignores the owner's implicit <c>READ_CONTROL</c> and
+    /// <c>WRITE_DAC</c> - Read Permissions and Modify Permissions.
+    /// </para>
+    /// <para>
+    /// <b>What this deliberately does not claim.</b> Microsoft documents the suppression for those
+    /// two rights and is silent on <c>WRITE_OWNER</c>, which the AD-specific access check grants
+    /// separately on an owner-SID match. So this says an OWNER RIGHTS entry is <i>present</i> and
+    /// leaves what remains to the reader; it does not report the owner as powerless. Per
+    /// <c>S-56</c> §6.2 the owner-blocking rule must not be extended to implicit
+    /// <c>WRITE_OWNER</c> merely because the two rules sit beside each other.
+    /// </para>
+    /// <para>
+    /// <b>An <c>INHERIT_ONLY</c> entry does not count.</b> Adding a permission to an organisational
+    /// unit and setting <i>Applies to: descendant objects</i> sets that flag, and such an entry
+    /// governs the objects beneath the unit while granting nothing on the unit itself. Counting one
+    /// here would report a container as owner-restricted when only its children are, which is the
+    /// same shape of error as F-1 pointing the other way. <c>S-56</c> R13 and
+    /// <see cref="EntryReach"/> already own this question.
+    /// </para>
+    /// <para>
+    /// False is also the answer when the DACL could not be read, which is the honest one: nothing
+    /// was seen that restricts ownership. <see cref="DaclState"/> and <see cref="Errors"/> are
+    /// what say whether looking succeeded.
+    /// </para>
+    /// </remarks>
+    public bool OwnerRightsEntryIsPresent =>
+        Entries.Any(e =>
+            e.Trustee.WellKnownRole == WellKnownSidRole.OwnerRightsQualifier
+            && EntryReachReader.FromPropagationFlags(e.PropagationFlags) == EntryReach.ThisObject);
+}
 
 /// <summary>
 /// Reads one object's security descriptor out of a bundle.
@@ -199,10 +276,11 @@ public sealed record ObjectPermissions(
 /// bytes; nothing had yet read them back out of a bundle.
 /// </para>
 /// <para>
-/// <b>Trustees are resolved against the objects this run captured, and nowhere else.</b> There is
-/// no lookup against a live directory: a bundle is read on a machine that may never have seen the
-/// forest, and a name fetched at read time would be the name today rather than the name the
-/// evidence was sealed with. A SID that matches nothing captured stays a SID.
+/// <b>Trustees are resolved against Microsoft's table first, then the objects this run captured,
+/// and nowhere else.</b> There is no lookup against a live directory: a bundle is read on a
+/// machine that may never have seen the forest, and a name fetched at read time would be the name
+/// today rather than the name the evidence was sealed with. A SID that is neither well-known nor
+/// captured stays a SID.
 /// </para>
 /// </remarks>
 internal static class ObjectPermissionsReader
@@ -231,7 +309,7 @@ internal static class ObjectPermissionsReader
 
         var stored = SecurityDescriptorParser.Parse(descriptor.RawBytes);
         var entries = EntriesOf(stored);
-        var trustees = ResolveTrustees(connection, descriptor, entries);
+        var trustees = ResolveTrustees(connection, descriptor, entries, dn);
 
         return new ObjectPermissions(
             dn,
@@ -466,7 +544,8 @@ internal static class ObjectPermissionsReader
     /// same table a hundred times for one screen.
     /// </remarks>
     private static Dictionary<string, PermissionTrustee> ResolveTrustees(
-        SqliteConnection connection, StoredDescriptor descriptor, List<StoredEntry> entries)
+        SqliteConnection connection, StoredDescriptor descriptor, List<StoredEntry> entries,
+        string objectDn)
     {
         var sids = new HashSet<string>(StringComparer.Ordinal);
 
@@ -486,7 +565,7 @@ internal static class ObjectPermissionsReader
         var parameter = command.Parameters.Add("$sid", SqliteType.Blob);
 
         foreach (var sid in sids)
-            resolved[sid] = Lookup(command, parameter, sid, reasons.GetValueOrDefault(sid));
+            resolved[sid] = Lookup(command, parameter, sid, reasons.GetValueOrDefault(sid), objectDn);
 
         return resolved;
     }
@@ -519,25 +598,107 @@ internal static class ObjectPermissionsReader
         return reasons;
     }
 
+    /// <summary>
+    /// Names one SID: from Microsoft's table first, and only then from the objects this run
+    /// captured.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The order is the point.</b> Searching the captured objects first looks like the more
+    /// evidence-based choice and is the wrong one, for two reasons found in a single lab bundle.
+    /// It answers confidently for SIDs that are not principals, because Active Directory keeps
+    /// objects for them - <c>S-1-5-10</c> matched <c>CN=Self,CN=WellKnown Security Principals</c>
+    /// and was reported as a principal in <c>ad.lab</c> holding thirteen entries on a computer,
+    /// among them <c>Write msDS-AllowedToActOnBehalfOfOtherIdentity</c>. And it answers
+    /// <i>arbitrarily</i> where several captured objects share a SID: <c>S-1-5-11</c> matched four,
+    /// one well-known and three <c>ForeignSecurityPrincipals</c> in different domains, and the
+    /// query below has no <c>ORDER BY</c>, so which domain a reader saw was decided by row order.
+    /// Consulting the catalogue first removes the ambiguity rather than tie-breaking it.
+    /// </para>
+    /// <para>
+    /// <b>A well-known SID is given no domain</b>, because it belongs to none. <i>Everyone</i> is
+    /// not a principal of <c>ad.lab</c>; it appeared to be one only because the object it was
+    /// named from lives in that forest's Configuration partition. A relative identifier such as
+    /// <c>Domain Admins</c> is a different case and is left to the captured-object search below,
+    /// which finds the real group and its real domain.
+    /// </para>
+    /// </remarks>
     private static PermissionTrustee Lookup(
-        SqliteCommand command, SqliteParameter parameter, string sid, string? unresolvedReason)
+        SqliteCommand command, SqliteParameter parameter, string sid, string? unresolvedReason,
+        string objectDn)
     {
+        var wellKnown = WellKnownSidCatalog.FindBySid(sid);
+        if (wellKnown is not null)
+            return WellKnownTrustee(sid, wellKnown, objectDn);
+
         var reason = unresolvedReason is null
             ? (UnresolvedReferenceReason?)null
             : Enum.Parse<UnresolvedReferenceReason>(unresolvedReason);
 
         var bytes = Sid.ToBytes(sid);
         if (bytes is null)
-            return new PermissionTrustee(sid, null, null, null, reason);
+            return NotWellKnown(sid, null, null, null, reason);
 
         parameter.Value = bytes;
 
         using var reader = command.ExecuteReader();
         if (!reader.Read())
-            return new PermissionTrustee(sid, null, null, null, reason);
+            return NotWellKnown(sid, null, null, null, reason);
 
         var dn = reader.GetString(0);
-        return new PermissionTrustee(
+        return NotWellKnown(
             sid, DnHelper.ExtractFirstRdn(dn), dn, reader.GetString(1), reason);
     }
+
+    /// <summary>
+    /// An ordinary account or group, whose name is its own explanation.
+    /// </summary>
+    /// <remarks>
+    /// The two well-known fields are stated here once rather than defaulted on the record, because
+    /// a parameter that defaults to null is a caller who forgot to answer, reading as a caller who
+    /// answered <i>nothing</i>. Every trustee this product builds says explicitly whether Microsoft
+    /// defines it.
+    /// </remarks>
+    private static PermissionTrustee NotWellKnown(
+        string sid,
+        string? name,
+        string? distinguishedName,
+        string? domainFqdn,
+        UnresolvedReferenceReason? reason) =>
+        new(sid, name, distinguishedName, domainFqdn, reason, WellKnownRole: null, Meaning: null);
+
+    /// <summary>
+    /// Turns a well-known SID into a trustee, resolving the one placeholder that names something
+    /// this bundle can point at.
+    /// </summary>
+    /// <remarks>
+    /// <c>PRINCIPAL SELF</c> means the object the permission sits on, so on <c>BA2016</c> it is
+    /// <c>BA2016</c>. Naming it that way is the difference between <i>a group called Self may
+    /// write this computer's delegation attribute</i> and <i>this computer may grant delegation to
+    /// itself</i>, which is an escalation path. <c>CREATOR OWNER</c> is deliberately not resolved:
+    /// it is replaced with whoever creates a child object in future, and this bundle cannot know
+    /// who that will be.
+    /// </remarks>
+    private static PermissionTrustee WellKnownTrustee(
+        string sid, WellKnownSid wellKnown, string objectDn)
+    {
+        var name = wellKnown.Sid == PrincipalSelfSid
+            ? $"This object ({DnHelper.ExtractFirstRdn(objectDn)})"
+            : wellKnown.DisplayName;
+
+        return new PermissionTrustee(
+            sid,
+            name,
+            DistinguishedName: null,
+            DomainFqdn: null,
+            UnresolvedReason: null,
+            wellKnown.Role,
+            wellKnown.Meaning);
+    }
+
+    /// <summary>
+    /// <c>PRINCIPAL SELF</c>, the one well-known SID whose meaning depends on the object it is
+    /// read against.
+    /// </summary>
+    private const string PrincipalSelfSid = "S-1-5-10";
 }

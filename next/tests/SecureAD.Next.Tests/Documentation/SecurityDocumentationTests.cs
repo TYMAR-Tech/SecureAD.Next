@@ -76,6 +76,15 @@ public sealed class SecurityDocumentationTests
     /// them is the classifier - an entry's reach changes what a verdict may claim, not how a
     /// descriptor is parsed.
     /// </para>
+    /// <para>
+    /// <c>WellKnownSidCatalog</c>, <c>WellKnownSid</c>, <c>WellKnownSidRole</c>,
+    /// <c>DomainRelativeSid</c> and <c>DomainRelativeScope</c> are the fifth case. They sit in this
+    /// namespace beside <c>Sid</c>, which already owns moving a SID between its two forms, and they
+    /// belong to <c>docs/areas/who-is-who.md</c> because the question they answer is who a trustee
+    /// is rather than how a descriptor is parsed. The catalogue is consulted before the captured
+    /// objects are searched, so it decides whether an entry is credited to a principal at all -
+    /// <c>CREATOR OWNER</c> and <c>PRINCIPAL SELF</c> are placeholders and hold nothing.
+    /// </para>
     /// </summary>
     private static readonly string[] CoveredByAnotherDocument =
     [
@@ -91,6 +100,11 @@ public sealed class SecurityDocumentationTests
         nameof(DirectoryTimeWording),
         nameof(DirectoryTimeFormat),
         nameof(GroupTypeWording),
+        nameof(WellKnownSidCatalog),
+        nameof(WellKnownSid),
+        nameof(WellKnownSidRole),
+        nameof(DomainRelativeSid),
+        nameof(DomainRelativeScope),
     ];
 
     [Fact]

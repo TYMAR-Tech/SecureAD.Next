@@ -393,6 +393,77 @@ public sealed class ObjectValueSectionsTests
             Attributes(attributes),
             "User");
 
+    // ---------------------------------------------------------------------------------------
+    // What qualifies the owner's control
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An object carrying an <c>OWNER RIGHTS</c> entry says so beside its owner.
+    /// </summary>
+    /// <remarks>
+    /// The entry is written with an empty access mask because that is what a real one looks like:
+    /// on 2026-08-20 an administrator added one to <c>OU=test01</c> in the lab with every
+    /// permission unticked, and the directory stored <c>access_mask=0</c>. Active Directory Users
+    /// and Computers then stopped displaying it, while the directory continued to honour it.
+    /// </remarks>
+    [Fact]
+    public void WhenAnOwnerRightsEntryIsPresent_ThenTheOverviewSaysWhatQualifiesTheOwner()
+    {
+        var overview = new OverviewSectionViewModel(
+            Definition(ObjectSectionCatalog.Overview),
+            PermissionsWithOwnerRights(),
+            null,
+            "organizationalUnit");
+
+        Assert.NotNull(overview.OwnerQualification);
+        Assert.Contains("OWNER RIGHTS", overview.OwnerQualification, StringComparison.Ordinal);
+        Assert.True(overview.HasOwnerQualification);
+    }
+
+    /// <summary>
+    /// The ordinary object says nothing, rather than showing an empty line where an assurance
+    /// would go.
+    /// </summary>
+    [Fact]
+    public void WhenNoOwnerRightsEntryIsPresent_ThenTheOverviewSaysNothingAboutIt()
+    {
+        Assert.Null(Overview().OwnerQualification);
+        Assert.False(Overview().HasOwnerQualification);
+    }
+
+    private static ObjectPermissions PermissionsWithOwnerRights() => new(
+        AliceDn,
+        DescriptorAvailability.Read,
+        UnreadableReason: null,
+        Owner: null,
+        DaclState.Present,
+        DaclCompleteness.Complete,
+        DaclWasCanonical: true,
+        IsDaclProtected: false,
+        [OwnerRightsEntry()],
+        []);
+
+    private static PermissionEntry OwnerRightsEntry() => new(
+        Ordinal: 0,
+        AceType: "AccessAllowed",
+        Trustee: new PermissionTrustee(
+            "S-1-3-4",
+            "Owner Rights",
+            DistinguishedName: null,
+            DomainFqdn: null,
+            UnresolvedReason: null,
+            WellKnownSidRole.OwnerRightsQualifier,
+            "Represents the object's current owner."),
+        AccessMask: 0,
+        ObjectTypeGuid: null,
+        InheritedObjectTypeGuid: null,
+        IsInherited: false,
+        InheritanceFlags: 0,
+        PropagationFlags: 0,
+        HasObjectType: false,
+        HasInheritedObjectType: false,
+        ApplicationData: []);
+
     private static AccountSectionViewModel Account(params ObjectAttribute[] attributes) =>
         new(Definition(ObjectSectionCatalog.Account), Attributes(attributes));
 

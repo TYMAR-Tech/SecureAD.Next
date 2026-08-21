@@ -23,6 +23,7 @@ wins and the disagreement is a finding.
 | never requests the audit portion of a descriptor | [`0036`](../decisions/0036-capture-never-requests-the-sacl.md) |
 | withholds a verdict at the widest scope that shares it, rather than repeating it | [`0005`](../decisions/0005-withhold-at-the-widest-scope-that-shares-the-verdict.md) |
 | keeps one source for schema identifiers, so a right is named the same way everywhere | [`0014`](../decisions/0014-capture-reads-the-schema-partition.md) |
+| names a well-known SID from Microsoft rather than from whichever captured object matched | [`0077`](../decisions/0077-a-well-known-sid-is-named-from-microsoft.md) |
 | holds the rule catalogue as data and the rule logic as code | [`0010`](../decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) |
 | keeps Tier 0 and expected-administrator as two separate sets | [`0006`](../decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) |
 
@@ -69,6 +70,13 @@ controller sends them.
 | read the same account of classification in the document and the code | `PermissionClassificationDocumentationTests` |  |
 | read the same account of descriptor parsing in the document and the code | `SecurityDocumentationTests` |  |
 | be certain the schema catalogue has a single source | `SchemaGuidSingleSourceGateTests` |  |
+| be certain a well-known SID is named from Microsoft's table rather than from whichever captured object happened to match | `WellKnownSidCatalogMicrosoftAnchorTests.WhenMicrosoftPublishesAWellKnownSid_ThenTheCatalogueCarriesThatValue` |  |
+| tell a placeholder from a principal, so a permission is not credited to something that holds nothing | `WellKnownSidCatalogMicrosoftAnchorTests.WhetherASidNamesAPrincipalFollowsItsRole` |  |
+| see `PRINCIPAL SELF` as the object the permission sits on, rather than as a group called Self | `ObjectPermissionsTests.WhenAnEntryNamesPrincipalSelf_ThenItIsReportedAsTheObjectItself` | 2026-08-20 |
+| be certain `CREATOR OWNER` is shown as a template and never as a holder | `ObjectPermissionsTests.WhenAnEntryNamesCreatorOwner_ThenItIsNamedAsAPlaceholderAndHoldsNothing` |  |
+| be certain a well-known SID is not attributed to a domain it does not belong to | `ObjectPermissionsTests.WhenSeveralCapturedObjectsShareAWellKnownSid_ThenTheAnswerIsNotArbitrary` |  |
+| see that an `OWNER RIGHTS` entry restricts what owning an object grants | `ObjectPermissionsTests.WhenAnOwnerRightsEntryIsPresent_ThenTheObjectSaysOwnershipIsQualified` | 2026-08-20 |
+| be certain an `OWNER RIGHTS` entry that applies only to descendants is not read against the container | `ObjectPermissionsTests.WhenAnOwnerRightsEntryAppliesOnlyToDescendants_ThenThisObjectsOwnershipIsNotQualified` |  |
 
 ---
 
@@ -95,4 +103,7 @@ there is something to react to. It is not authoritative and nothing here has bee
 
 | | | |
 |---|---|---|
-| — | none recorded for this area yet | — |
+| `F-1` | **Closed 2026-08-20.** The Modify Owner wording asserted that an owner *has* the implicit right to modify permissions, which is false for any object carrying an `OWNER RIGHTS` entry. An administrator who had applied the standard hardening was told in the product's own words that it did not hold. See [`S-56` §10](../next/S-56-what-a-permission-grants.md) | Confirmed in lab 2026-08-20 |
+| `F-2` | **Closed 2026-08-20.** `CREATOR OWNER` and `PRINCIPAL SELF` were reported as named principals with a domain, because Active Directory keeps real objects for them. 1,708 entries in one lab bundle were credited to something that holds nothing | Confirmed in lab 2026-08-20 |
+| `F-3` | **Closed 2026-08-20.** A trustee's name and domain could be arbitrary: `SELECT … LIMIT 1` with no `ORDER BY` over a column with no index, where four captured objects shared one SID | — |
+| `F-4` | **Open.** The `ace` table and the re-parse of the same descriptor disagree by one entry on `OU=test01` in `ad.lab-20260821-014720` — 57 against 56 — while the descriptor reports `dacl_completeness=Complete`. An entry count an operator reads may be short, and a permission may not be listed. Which reading is right is not established | — |

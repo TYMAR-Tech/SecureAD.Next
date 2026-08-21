@@ -186,6 +186,11 @@ The table below sits between the two markers around it, so the test parses only 
 | PermissionScopeWriter | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | PermissionScope | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | Sid | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| WellKnownSidCatalog | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| WellKnownSid | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| WellKnownSidRole | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| DomainRelativeSid | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| DomainRelativeScope | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
 | UserAccountControlWording | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
 | UserAccountControlFlag | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
 | DirectoryTime | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |

@@ -28,9 +28,19 @@ the first place*.
 | `SchemaGuidCatalog` | 100 | AD Schema reference, per-entry pages | 2026-08-19 | `SchemaGuidCatalogMicrosoftAnchorTests` |
 | `GenericRightsExpander` | 17 | MS-ADTS 5.1.3.2 | 2026-08-20 | `GenericRightsExpanderMicrosoftAnchorTests` |
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
+| `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
 
-**Defects found: 11 of 127.** All eleven were in `SchemaGuidCatalog`, and seven of those were in
-the 74 entries nothing had ever checked. The two components verified since were clean.
+**Defects found: 11 of 215.** All eleven were in `SchemaGuidCatalog`, and seven of those were in
+the 74 entries nothing had ever checked. The three components verified since were clean.
+
+`WellKnownSidCatalog` is new rather than pre-existing, so it could not have carried a defect. It is
+recorded here because the values were harvested rather than written from memory, and because the
+catalogue it replaces was not: the predecessor's hand-assembled table had `S-1-5-17` as
+*This Organization* where Microsoft publishes `IUSR`, omitted `S-1-5-15` entirely, and used
+`S-1-5-32-581` for Storage Replica Administrators where Microsoft publishes `S-1-5-32-582` and no
+581 at all. Both errors were internally consistent and would have survived any test written from
+that file. Two of the three checks in `WhenASidWasCarriedWrongBefore_ThenTheCatalogueCarriesMicrosoftsValue`
+exist to stop either coming back.
 
 ## Not yet verified
 
