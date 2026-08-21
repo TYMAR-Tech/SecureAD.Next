@@ -92,7 +92,22 @@ internal sealed class FakeRunOpener : IRunOpener
     /// <summary>The run last opened, or null if nothing was.</summary>
     public string? Opened { get; private set; }
 
-    public void Open(string bundleDirectory) => Opened = bundleDirectory;
+    /// <summary>
+    /// Runs at the moment a run is opened, so a test can see what had already happened by then.
+    /// </summary>
+    /// <remarks>
+    /// <b>Order is the whole point of this hook.</b> Opening a run and leaving the audit both
+    /// navigate, so which happens last decides where the operator ends up. Asserting afterwards
+    /// that both occurred cannot tell them apart, and a test that did exactly that passed while
+    /// the product sent him to the wrong screen.
+    /// </remarks>
+    public Action? WhenOpening { get; set; }
+
+    public void Open(string bundleDirectory)
+    {
+        WhenOpening?.Invoke();
+        Opened = bundleDirectory;
+    }
 }
 
 /// <summary>

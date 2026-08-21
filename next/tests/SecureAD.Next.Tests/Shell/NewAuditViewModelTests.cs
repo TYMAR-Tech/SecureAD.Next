@@ -1492,6 +1492,40 @@ public sealed class NewAuditViewModelTests
     }
 
     /// <summary>
+    /// The audit is left before the run is opened, so the operator lands in Assets.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is an ordering test, and the order is load-bearing.</b> Both acts navigate: leaving
+    /// the audit sends the shell Home - <c>ShellViewModel.Leave</c> does <c>Show(ShellSection.Home)</c>
+    /// - and opening a run sends it to Assets. Whichever runs last decides where the operator
+    /// actually ends up.
+    /// <para>
+    /// <b>Found in the lab on 2026-08-22, by the owner, after the tests passed.</b> The first
+    /// version opened the run and then left, so Home won and View results took him to the wrong
+    /// screen. <c>ViewingResultsOpensTheRunThatWasJustCaptured</c> asserted that the opener was
+    /// called and that the audit was left exactly once, and both were true - it could not see the
+    /// order, because neither fake models the shell's section. Asserting afterwards that two things
+    /// happened cannot distinguish which happened first, which is why this observes the moment.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task TheAuditIsLeftBeforeTheRunIsOpened()
+    {
+        var screen = await Opened();
+
+        await screen.ReviewAsync();
+        await screen.StartAsync();
+
+        var leftWhenOpened = -1;
+        _opener.WhenOpening = () => leftWhenOpened = _dialogs.TimesLeft;
+
+        screen.Leave();
+
+        Assert.Equal(@"D:\audits\run", _opener.Opened);
+        Assert.Equal(1, leftWhenOpened);
+    }
+
+    /// <summary>
     /// Discarding a plan that never ran opens nothing.
     /// </summary>
     /// <remarks>
