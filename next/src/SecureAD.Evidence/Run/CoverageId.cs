@@ -27,30 +27,43 @@ namespace SecureAD.Evidence.Run;
 /// rather than hidden inside a key that no longer matches.
 /// </para>
 /// <para>
-/// <b>Excluded domains are not accounted for here yet, and that is a known gap rather than a
-/// design.</b> The predecessor hashed a list of operator-chosen organisational unit exclusions
-/// alongside the domains. Those are gone for good:
-/// <c>docs/decisions/0052-the-domain-is-the-only-unit-of-scope.md</c> reads everything below a
-/// domain whole, so there is nothing smaller to exclude. But <c>0052</c> does let an operator leave
-/// out a whole domain, and it requires this identity to account for the excluded set - so that a
-/// run carrying an exclusion is never comparable with a whole-forest one and the difference cannot
-/// be read as change in the directory. Nothing here does that, because nothing can yet produce an
-/// exclusion. <b>When the exclusion type exists, this is the guardrail that has to be built with
-/// it</b>; until then the only way coverage varies is a domain that could not be fully read, or a
-/// forest that genuinely changed shape.
+/// <b>The excluded set is part of the identity, alongside the declared one.</b>
+/// <c>docs/decisions/0052-the-domain-is-the-only-unit-of-scope.md</c> lets an operator leave out a
+/// whole domain, and requires this identity to account for it so that a run carrying an exclusion
+/// is never comparable with a whole-forest one and the difference cannot be read as change in the
+/// directory. Until 2026-08-21 nothing here did that: two runs of an eight domain forest, one
+/// leaving out domain three and one leaving out domain five, both declared all eight and therefore
+/// hashed alike - so the product would have offered them as like for like and reported the
+/// difference between two different domains as drift.
 /// </para>
 /// <para>
-/// This paragraph previously stated that there are no exclusions at all and cited <c>0017</c> for
-/// it. That was true when written and stopped being true at <c>0052</c>.
+/// <b>Both sets are hashed, not the difference between them.</b> A forest that genuinely shrank
+/// from eight domains to seven, and a run of an eight domain forest that left one out, have the
+/// same covered set and are not the same evidence: one estate has seven domains and the other has
+/// eight and did not look at one. Hashing only the remainder would merge them.
+/// </para>
+/// <para>
+/// The predecessor also hashed a list of operator-chosen organisational unit exclusions. Those are
+/// gone for good - <c>0052</c> reads everything below a domain whole, so there is nothing smaller
+/// than a domain to exclude.
+/// </para>
+/// <para>
+/// This remark previously stated that there are no exclusions at all and cited <c>0017</c> for it.
+/// That was true when written and stopped being true at <c>0052</c>.
 /// </para>
 /// </remarks>
 public sealed record CoverageId
 {
-    private CoverageId(string value, string forestFqdn, IReadOnlyList<string> declaredDomains)
+    private CoverageId(
+        string value,
+        string forestFqdn,
+        IReadOnlyList<string> declaredDomains,
+        IReadOnlyList<string> excludedDomains)
     {
         Value = value;
         ForestFqdn = forestFqdn;
         DeclaredDomains = declaredDomains;
+        ExcludedDomains = excludedDomains;
     }
 
     /// <summary>Sixteen lowercase hex characters identifying this evidence set.</summary>
@@ -87,6 +100,18 @@ public sealed record CoverageId
     internal IReadOnlyList<string> DeclaredDomains { get; }
 
     /// <summary>
+    /// The declared domains the run left out, lowercased, de-duplicated and sorted. Empty when the
+    /// run took the whole forest.
+    /// </summary>
+    /// <remarks>
+    /// Kept for the same reason as <see cref="DeclaredDomains"/>: a refusal names the domain rather
+    /// than showing two hashes that differ. Internal for the same reason too - gate 4 forbids a
+    /// public collection on a type that cannot say whether it looked, and this one can legitimately
+    /// be empty, so the ambiguity that gate exists for is real here rather than merely arguable.
+    /// </remarks>
+    internal IReadOnlyList<string> ExcludedDomains { get; }
+
+    /// <summary>
     /// Computes the evidence identity of a run over <paramref name="declaredDomains"/>.
     /// </summary>
     /// <param name="forestFqdn">
@@ -106,30 +131,47 @@ public sealed record CoverageId
     /// nothing assessed nothing, and giving it an identity would produce a key that quietly groups
     /// every such run together as mutually comparable.
     /// </exception>
-    public static CoverageId ForDomains(string forestFqdn, IEnumerable<string> declaredDomains)
+    public static CoverageId ForDomains(string forestFqdn, IEnumerable<string> declaredDomains) =>
+        ForDomainsExcluding(forestFqdn, declaredDomains, []);
+
+    /// <summary>
+    /// Computes the evidence identity of a run that declared <paramref name="declaredDomains"/> and
+    /// deliberately left <paramref name="excludedDomains"/> out.
+    /// </summary>
+    /// <param name="forestFqdn">The forest the domains belong to.</param>
+    /// <param name="declaredDomains">
+    /// Every domain the forest reported at the start of the run, including the excluded ones. This
+    /// is the denominator, so a domain does not stop being declared by being left out.
+    /// </param>
+    /// <param name="excludedDomains">
+    /// The domains the run deliberately did not read. Pass the DNS name the forest published -
+    /// <c>AttestedExclusion.DomainFqdn</c> carries it for this purpose. Deriving it from a naming
+    /// context by string surgery invents a name nobody published and is wrong in exactly the forest
+    /// that renamed a domain.
+    /// </param>
+    /// <returns>The evidence identity.</returns>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// The forest name is blank, a domain is blank, no domain was declared, or an excluded domain
+    /// was not among the declared ones. The last is refused rather than ignored: a run cannot leave
+    /// out a domain the forest never reported, so the pairing is a mistake at the call site, and
+    /// silently dropping it would produce an identity that groups runs of different scope.
+    /// </exception>
+    public static CoverageId ForDomainsExcluding(
+        string forestFqdn,
+        IEnumerable<string> declaredDomains,
+        IEnumerable<string> excludedDomains)
     {
         ArgumentNullException.ThrowIfNull(forestFqdn);
         ArgumentNullException.ThrowIfNull(declaredDomains);
+        ArgumentNullException.ThrowIfNull(excludedDomains);
         ArgumentException.ThrowIfNullOrWhiteSpace(forestFqdn);
 
         var forest = forestFqdn.Trim().ToLowerInvariant();
 
-        var domains = new List<string>();
-        foreach (var domain in declaredDomains)
-        {
-            if (string.IsNullOrWhiteSpace(domain))
-            {
-                throw new ArgumentException(
-                    "A declared domain was blank. A coverage identity computed over a blank entry "
-                    + "would differ from one computed without it, so two runs of the same forest "
-                    + "would stop being comparable on nothing.",
-                    nameof(declaredDomains));
-            }
+        var domains = AsSortedDomainSet(declaredDomains, nameof(declaredDomains));
 
-            domains.Add(domain.Trim().ToLowerInvariant());
-        }
-
-        if (domains.Count == 0)
+        if (domains.Length == 0)
         {
             throw new ArgumentException(
                 "No domain was declared. A run that assessed no domain has no evidence to be "
@@ -137,14 +179,58 @@ public sealed record CoverageId
                 nameof(declaredDomains));
         }
 
-        var normalised = domains
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(d => d, StringComparer.Ordinal)
-            .ToArray();
+        var excluded = AsSortedDomainSet(excludedDomains, nameof(excludedDomains));
 
-        var value = RunHash.Of($"forest|{forest}|domains|{string.Join(',', normalised)}");
+        var undeclared = excluded.Except(domains, StringComparer.Ordinal).ToArray();
+        if (undeclared.Length > 0)
+        {
+            throw new ArgumentException(
+                $"Excluded {string.Join(", ", undeclared)}, which the forest did not declare. An "
+                + "exclusion names a domain the run chose not to read, so one the forest never "
+                + "reported is a mistake at the call site rather than a narrower scope.",
+                nameof(excludedDomains));
+        }
 
-        return new CoverageId(value, forest, normalised);
+        var value = RunHash.Of(
+            $"forest|{forest}"
+            + $"|domains|{string.Join(',', domains)}"
+            + $"|excluded|{string.Join(',', excluded)}");
+
+        return new CoverageId(value, forest, domains, excluded);
+    }
+
+    /// <summary>
+    /// Lowercases, trims, de-duplicates and sorts a domain list, refusing a blank entry.
+    /// </summary>
+    /// <remarks>
+    /// Order is discarded because the order discovery happened to return them in is not a fact
+    /// about the forest; case is discarded and repeats collapse, for the same reason.
+    ///
+    /// <para>
+    /// Deliberately not called <c>Normalise</c>: <c>CONCEPT-REGISTRY.md</c> gives that word to
+    /// <c>AceNormalizer</c>, which canonicalises access control entries, and a second member
+    /// carrying it here would read as a second answer to that question.
+    /// </para>
+    /// </remarks>
+    private static string[] AsSortedDomainSet(IEnumerable<string> domains, string parameterName)
+    {
+        var sorted = new List<string>();
+
+        foreach (var domain in domains)
+        {
+            if (string.IsNullOrWhiteSpace(domain))
+            {
+                throw new ArgumentException(
+                    "A domain was blank. A coverage identity computed over a blank entry would "
+                    + "differ from one computed without it, so two runs of the same forest would "
+                    + "stop being comparable on nothing.",
+                    parameterName);
+            }
+
+            sorted.Add(domain.Trim().ToLowerInvariant());
+        }
+
+        return [.. sorted.Distinct(StringComparer.Ordinal).OrderBy(d => d, StringComparer.Ordinal)];
     }
 
     /// <summary>Returns <see cref="Value"/>.</summary>

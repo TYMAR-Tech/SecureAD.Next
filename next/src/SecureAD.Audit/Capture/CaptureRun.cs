@@ -132,7 +132,16 @@ public sealed class CaptureRun
         // The denominator, recorded before anything is read. A run that worked out afterwards how
         // much of the forest it had covered would be measuring against whatever it managed to
         // reach, which is the arithmetic that made F-S28-1 invisible.
-        var declared = CoverageId.ForDomains(plan.ForestFqdn, plan.DeclaredDomains);
+        //
+        // The excluded set goes into the identity beside it, per 0052. Without it two runs of one
+        // forest leaving out DIFFERENT domains hash alike, and the product offers them as like for
+        // like - so the difference between two domains nobody read reads as drift in the directory.
+        // The DNS name is taken from the attestation, which carries it for exactly this reason;
+        // deriving it from the naming context here is the string surgery AttestedExclusion refuses.
+        var declared = CoverageId.ForDomainsExcluding(
+            plan.ForestFqdn,
+            plan.DeclaredDomains,
+            exclusions.Values.Select(e => e.DomainFqdn));
 
         // A plan that leaves a declared domain unread is allowed only where somebody has put a name
         // to every one of them. Before 0062 had a surface this was refused outright; what has

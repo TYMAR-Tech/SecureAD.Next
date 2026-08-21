@@ -17,8 +17,9 @@ namespace SecureAD.Next.Tests.Evidence;
 /// </para>
 /// <para>
 /// The predecessor also hashed a list of operator-chosen OU exclusions. There is no such list:
-/// <c>0017</c> removed operator-configurable exclusion and capture reads the whole forest.
-/// <see cref="NothingCarriesExclusionsAnyMore"/> holds that.
+/// <c>0052</c> reads everything below a domain whole, so there is nothing smaller than a domain to
+/// leave out. A whole domain can be left out, and
+/// <see cref="LeavingOutADifferentDomainIsDifferentEvidence"/> holds that it reaches the identity.
 /// </para>
 /// </summary>
 public sealed class CoverageIdTests
@@ -166,29 +167,116 @@ public sealed class CoverageIdTests
     }
 
     /// <summary>
-    /// The predecessor's coverage identity hashed operator-chosen OU exclusions alongside the
-    /// domains, and decision <c>0025</c> and the first draft of <c>0026</c> were both reasoned on
-    /// the attestation ladder that governed them. <c>0017</c> had already removed all of it.
+    /// Two runs of one forest that left out <i>different</i> domains are not the same evidence.
     ///
     /// <para>
-    /// This is asserted by reflection rather than trusted, in the manner the predecessor's own
-    /// <c>ProfileIdTests</c> used to prove a deleted factory stayed deleted. A member reappearing
-    /// here would mean the exclusion model had come back without a decision behind it.
+    /// This test replaced <c>NothingCarriesExclusionsAnyMore</c> on 2026-08-21, which asserted by
+    /// reflection that <c>CoverageId</c> named nothing to do with exclusion, on the authority of
+    /// <c>0017</c> - capture reads the whole forest, so there is nothing to exclude. <c>0052</c>
+    /// reintroduced whole-domain exclusion and <c>CoverageId</c>'s own remarks recorded the gap,
+    /// but the guard was never re-anchored. It therefore passed for as long as the product could
+    /// not produce an exclusion, and would have failed the build the moment the fix <c>0052</c>
+    /// requires was written - a check holding the product to a premise that had been withdrawn.
+    /// </para>
+    /// <para>
+    /// The case it now covers is the one an operator hits: an eight domain forest audited twice,
+    /// each run leaving out a different domain. Before the fix both declared all eight, hashed
+    /// alike, and were offered as comparable.
     /// </para>
     /// </summary>
     [Fact]
-    public void NothingCarriesExclusionsAnyMore()
+    public void LeavingOutADifferentDomainIsDifferentEvidence()
     {
-        var offenders = typeof(CoverageId)
-            .GetMembers()
-            .Select(m => m.Name)
-            .Where(n => n.Contains("Exclu", StringComparison.OrdinalIgnoreCase)
-                || n.Contains("Attest", StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var withoutEu = CoverageId.ForDomainsExcluding(
+            "contoso.com", ["contoso.com", "eu.contoso.com", "us.contoso.com"], ["eu.contoso.com"]);
 
-        Assert.True(
-            offenders.Count == 0,
-            $"CoverageId names {string.Join(", ", offenders)}. Capture reads the whole forest per "
-            + "0017, so there is nothing to exclude and nothing to attest.");
+        var withoutUs = CoverageId.ForDomainsExcluding(
+            "contoso.com", ["contoso.com", "eu.contoso.com", "us.contoso.com"], ["us.contoso.com"]);
+
+        Assert.NotEqual(withoutEu.Value, withoutUs.Value);
+    }
+
+    /// <summary>
+    /// A run that left a domain out is not the same evidence as one that read the whole forest,
+    /// even though both declared the same domains. This is the pairing <c>0052</c> names.
+    /// </summary>
+    [Fact]
+    public void LeavingADomainOutIsNotTheSameAsReadingTheWholeForest()
+    {
+        Assert.NotEqual(
+            CoverageId.ForDomains("contoso.com", TwoDomains).Value,
+            CoverageId.ForDomainsExcluding("contoso.com", TwoDomains, ["eu.contoso.com"]).Value);
+    }
+
+    /// <summary>
+    /// A forest that genuinely has two domains, and a three domain forest with one left out, cover
+    /// the same ground and are still not the same evidence. Hashing only the remainder would merge
+    /// them, and a comparison across the pair would read a whole domain's absence as no change.
+    /// </summary>
+    [Fact]
+    public void AForestThatShrankIsNotAForestWithADomainLeftOut()
+    {
+        Assert.NotEqual(
+            CoverageId.ForDomains("contoso.com", TwoDomains).Value,
+            CoverageId.ForDomainsExcluding(
+                "contoso.com",
+                ["contoso.com", "eu.contoso.com", "us.contoso.com"],
+                ["us.contoso.com"]).Value);
+    }
+
+    /// <summary>
+    /// The order and case exclusions arrive in are not facts about the forest, for the same reason
+    /// they are not for the declared set.
+    /// </summary>
+    [Fact]
+    public void TheOrderAndCaseOfExclusionsDoesNotMatter()
+    {
+        var domains = new[] { "contoso.com", "eu.contoso.com", "us.contoso.com" };
+
+        Assert.Equal(
+            CoverageId.ForDomainsExcluding(
+                "contoso.com", domains, ["eu.contoso.com", "us.contoso.com"]).Value,
+            CoverageId.ForDomainsExcluding(
+                "contoso.com", domains, ["US.Contoso.com", "EU.CONTOSO.COM"]).Value);
+    }
+
+    /// <summary>
+    /// Excluding nothing is the whole-forest case, so it must not differ from asking for it
+    /// directly. Were these to diverge, every run would carry an identity that depended on which
+    /// factory its caller happened to use.
+    /// </summary>
+    [Fact]
+    public void ExcludingNothingIsTheWholeForest()
+    {
+        Assert.Equal(
+            CoverageId.ForDomains("contoso.com", TwoDomains).Value,
+            CoverageId.ForDomainsExcluding("contoso.com", TwoDomains, []).Value);
+    }
+
+    /// <summary>
+    /// A run cannot leave out a domain the forest never reported. Ignoring it would produce an
+    /// identity that silently matches a run of different scope, which is the one failure this type
+    /// exists to prevent.
+    /// </summary>
+    [Fact]
+    public void ExcludingADomainTheForestDidNotDeclareIsRefused()
+    {
+        Assert.Throws<ArgumentException>(
+            () => CoverageId.ForDomainsExcluding(
+                "contoso.com", TwoDomains, ["us.contoso.com"]));
+    }
+
+    [Fact]
+    public void ABlankExclusionIsRefused()
+    {
+        Assert.Throws<ArgumentException>(
+            () => CoverageId.ForDomainsExcluding("contoso.com", TwoDomains, ["  "]));
+    }
+
+    [Fact]
+    public void ANullExclusionListIsRefused()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => CoverageId.ForDomainsExcluding("contoso.com", TwoDomains, null!));
     }
 }

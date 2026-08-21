@@ -132,13 +132,23 @@ artefact repeating that would be a second answer to one question.
 ## What each piece is called
 
 `ProfileId.ForForest` is the only factory, and `ProfileId.Value` and `ProfileId.ForestFqdn` are
-what it carries. `CoverageId.ForDomains` likewise, carrying `CoverageId.Value` and
-`CoverageId.ForestFqdn`. The normalised domain set behind the hash is kept too, but it is internal:
+what it carries. `CoverageId` has two: `CoverageId.ForDomainsExcluding` is the general one, naming
+the domains the forest declared and the ones the run deliberately left out, and
+`CoverageId.ForDomains` is the whole-forest case that excludes nothing. Both carry
+`CoverageId.Value` and `CoverageId.ForestFqdn`. The declared and excluded domain sets behind the
+hash are kept too, but they are internal:
 gate 4 forbids a public member handing back a collection from a type that cannot say whether it
 looked, and this list can never be empty so the ambiguity cannot arise — but that is a fourth kind
 of exemption, and the allowlist says plainly that a reason which is not *a compiled table that
 cannot fail* does not belong in it. Callers outside the assembly read the same domains from
 `RunCoverage.Domains`, which carries `RunCoverage.AllDeclaredUnitsAreComplete` beside them.
+
+**Both sets reach the hash, per [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md).**
+Two runs of one forest that left out *different* domains would otherwise hash alike, and the
+product would offer them as like for like — so a whole domain nobody read would read as drift.
+Hashing only the covered remainder would not do either: a forest that genuinely shrank to seven
+domains and an eight-domain forest with one left out cover the same ground and are not the same
+evidence.
 
 `DomainCoverage.Read`, `DomainCoverage.PartiallyRead`, `DomainCoverage.NotRead` and
 `DomainCoverage.Excluded` record what
