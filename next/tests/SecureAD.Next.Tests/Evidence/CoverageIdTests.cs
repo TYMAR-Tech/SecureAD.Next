@@ -167,6 +167,36 @@ public sealed class CoverageIdTests
     }
 
     /// <summary>
+    /// The owner's question, as a test: a three domain forest audited with different domains left
+    /// out produces one group per combination, and two runs of the same combination land together.
+    ///
+    /// <para>
+    /// Written from his own example - <c>ad</c>, <c>ba</c> and <c>sf</c>. Group one is all three,
+    /// group two is <c>ad</c> and <c>ba</c>, group three is <c>ad</c> and <c>sf</c>. The second
+    /// assertion is the one that matters most: a later run of group two must join that group rather
+    /// than start a fourth, or every run would sit alone and nothing would ever be comparable.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void RunsGroupByWhichDomainsTheyCovered()
+    {
+        string[] forest = ["ad.lab", "ba.ad.lab", "sf.ad.lab"];
+
+        var allThree = CoverageId.ForDomains("ad.lab", forest).Value;
+        var adAndBa = CoverageId.ForDomainsExcluding("ad.lab", forest, ["sf.ad.lab"]).Value;
+        var adAndSf = CoverageId.ForDomainsExcluding("ad.lab", forest, ["ba.ad.lab"]).Value;
+
+        Assert.Equal(
+            3,
+            new[] { allThree, adAndBa, adAndSf }.Distinct(StringComparer.Ordinal).Count());
+
+        var adAndBaAWeekLater =
+            CoverageId.ForDomainsExcluding("ad.lab", forest, ["sf.ad.lab"]).Value;
+
+        Assert.Equal(adAndBa, adAndBaAWeekLater);
+    }
+
+    /// <summary>
     /// Two runs of one forest that left out <i>different</i> domains are not the same evidence.
     ///
     /// <para>

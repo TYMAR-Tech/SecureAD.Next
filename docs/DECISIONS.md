@@ -68,7 +68,7 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0066](decisions/0066-a-finding-is-called-a-finding.md) | 2026-08-16 | Accepted | A finding is called a finding, and its severity is fixed by its rule |
 | [0067](decisions/0067-an-acceptance-names-one-finding.md) | 2026-08-16 | Accepted | An acceptance names one finding and lives beside the evidence |
 | [0068](decisions/0068-a-finished-run-reports-with-its-gaps-shown.md) | 2026-08-16 | Accepted | A finished run reports with its gaps shown; an unfinished one reports not at all |
-| [0069](decisions/0069-a-baseline-is-marked-deliberately.md) | 2026-08-16 | Accepted | A baseline is marked deliberately, and refused when a domain is missing |
+| [0069](decisions/0069-a-baseline-is-marked-deliberately.md) | 2026-08-16 | Accepted | A baseline is marked deliberately, and belongs to a scope |
 | [0070](decisions/0070-red-also-marks-the-way-out.md) | 2026-08-18 | Accepted | Red also marks the way out of something that is running |
 | [0071](decisions/0071-the-audit-is-modal-in-effect-not-in-its-own-window.md) | 2026-08-18 | Accepted | The audit is modal in effect, not in its own window |
 | [0072](decisions/0072-analysis-and-capture-do-not-run-at-the-same-time.md) | 2026-08-18 | Accepted | Analysis and capture do not run at the same time |

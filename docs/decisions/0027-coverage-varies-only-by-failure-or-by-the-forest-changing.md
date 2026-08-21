@@ -3,6 +3,18 @@
 Date: 2026-08-12
 Status: Accepted
 
+Amended 2026-08-21. This record was written on the premise that operator-configurable exclusion did
+not exist - `0017` had removed it, and the Context below turns on that. `0052` reintroduced
+exclusion at the whole-domain level eight weeks later, and the baseline rule here was never
+revisited. Read literally it now says a run with any excluded domain can never be a baseline, which
+`0069` no longer holds: baselines belong to a scope group. The baseline paragraph is corrected
+below; nothing else changed, and the earlier wording is in git history.
+
+This is the third statement found this session resting on a premise `0052` withdrew - the others
+were `CoverageIdTests.NothingCarriesExclusionsAnyMore` and the remarks on
+`RunCoverage.AllDeclaredUnitsAreComplete`. Each was internally sound and each was anchored to a
+rule nobody had re-read.
+
 Replaces the exclusion-based reasoning in [`0025`](0025-the-run-library-is-a-managed-root.md) and
 the state table in [`0026`](0026-one-answer-to-whether-runs-may-be-compared.md). Both stand as
 written; this states what replaced the parts of them that rested on a mechanism the product no
@@ -45,9 +57,16 @@ with a hole in it silently understates every future change. Refusing rather than
 same judgement one level down: the operator's remedy is to run it again, and saying so is more use
 than a hedge he must interpret.
 
-**A run may be nominated as a baseline only if it sealed and read every domain the forest
-reported** - the same predicate as a fully comparable verdict, which keeps `0026`'s consolidation
-true rather than leaving eligibility as a second opinion beside it.
+**A run may be nominated as a baseline only if it sealed and read every domain it set out to
+read** - which, since `0052`, is not the same as every domain the forest reported. A run that
+stated a narrower scope and read all of it is the baseline of that scope, per
+[`0069`](0069-a-baseline-is-marked-deliberately.md). A run that meant to read a domain and could
+not does not seal at all, so it is not in the library to nominate. The predicate is still the same
+one a fully comparable verdict uses, which keeps `0026`'s consolidation true rather than leaving
+eligibility as a second opinion beside it.
+
+*This paragraph read "every domain the forest reported" until 2026-08-21, when exclusion had not
+existed for eight weeks and the distinction could not arise.*
 
 **The states are evaluated in order and the first match wins.** A run that both failed a domain and
 saw a changed forest reports the failure, because that is the one the operator has to fix. In the

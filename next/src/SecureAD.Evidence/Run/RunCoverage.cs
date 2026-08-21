@@ -110,10 +110,22 @@ public sealed record RunCoverage
     /// <para>
     /// <b>Kept because it is the enforcement of a rule, not because it varies.</b>
     /// <c>docs/decisions/0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md</c> says a
-    /// run that did not read every domain may not be a baseline and may not be compared. Today that
-    /// is guaranteed upstream by refusing to seal; this is what would catch a bundle written by some
-    /// future second path - controller failover, parallel capture, anything re-analysis-shaped -
-    /// that produced a hole. Removing it would leave the rule stated and unenforced.
+    /// run that did not read every domain it set out to read may not be a baseline and may not be
+    /// compared. Today that is guaranteed upstream: capture refuses to seal a bundle in which a
+    /// declared domain was left unread without an attestation. This is what would catch a bundle
+    /// written by some future second path - controller failover, parallel capture, anything
+    /// re-analysis-shaped - that produced a hole.
+    /// Removing it would leave the rule stated and unenforced.
+    /// </para>
+    /// <para>
+    /// <b>An excluded domain makes this false, and that is not a failure.</b> The property is
+    /// literally <i>every declared domain has an outcome saying it was read</i>, and an exclusion is
+    /// not a read - so a run that legitimately left a domain out reports false here while being
+    /// perfectly sound. Read as <i>this run may not be a baseline</i> it would be wrong since
+    /// <c>0052</c> reintroduced exclusion and <c>0069</c> gave each scope its own baseline. The
+    /// remark above previously said incompleteness was guaranteed away by refusing to seal, which
+    /// taken with this definition would have meant a run with any exclusion could never seal at all.
+    /// It can; the bundle has a table for storing exclusions. Corrected 2026-08-21.
     /// </para>
     /// <para>
     /// <b>It is therefore never shown to a reader as coverage.</b> What a run covered is stated by
