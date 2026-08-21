@@ -98,5 +98,6 @@ public sealed class RunSummaryViewModelTests
             state,
             detail,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
-            annotation ?? RunAnnotation.None));
+            annotation ?? RunAnnotation.None,
+            Scope: null));
 }

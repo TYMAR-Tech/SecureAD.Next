@@ -25,10 +25,23 @@ namespace SecureAD.Evidence.Run;
 /// </remarks>
 public sealed record RunScope
 {
-    private RunScope(IReadOnlyList<DomainCoverage> domains)
+    private RunScope(string identity, IReadOnlyList<DomainCoverage> domains)
     {
+        Identity = identity;
         Domains = domains;
     }
+
+    /// <summary>
+    /// Which group of like runs this one belongs to.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is <see cref="CoverageId"/>'s value, read back from the bundle, and not a second
+    /// answer computed here.</b> <i>Same evidence</i> is a question <c>CoverageId</c> owns, and a
+    /// grouping key worked out independently from the domain rows below would be a second answer to
+    /// it - the defect the concept registry exists to prevent. Two runs share a group when this
+    /// matches.
+    /// </remarks>
+    public string Identity { get; }
 
     /// <summary>
     /// Every domain the forest declared, with what became of it, sorted by name.
@@ -85,18 +98,21 @@ public sealed record RunScope
     /// door producing the same type without one, and the counts would start lying the day somebody
     /// used it.
     /// </remarks>
+    /// <param name="identity">The evidence identity the run recorded, from its bundle header.</param>
     /// <param name="domains">One entry per declared domain.</param>
     /// <returns>The scope.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="domains"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">
-    /// No domain was given, or one domain appears twice. A run that declared no domain assessed
-    /// nothing, and a scope built from an empty list would report <i>0 of 0 domains read</i> - which
-    /// reads as a measurement and is the shape of claim this product is being rebuilt to stop
-    /// making.
+    /// The identity is blank, no domain was given, or one domain appears twice. A run that declared
+    /// no domain assessed nothing, and a scope built from an empty list would report <i>0 of 0
+    /// domains read</i> - which reads as a measurement and is the shape of claim this product is
+    /// being rebuilt to stop making.
     /// </exception>
-    internal static RunScope Of(IEnumerable<DomainCoverage> domains)
+    internal static RunScope Of(string identity, IEnumerable<DomainCoverage> domains)
     {
+        ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(domains);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity);
 
         var sorted = domains
             .OrderBy(d => d.DomainFqdn, StringComparer.Ordinal)
@@ -126,7 +142,7 @@ public sealed record RunScope
                 nameof(domains));
         }
 
-        return new RunScope(sorted);
+        return new RunScope(identity, sorted);
     }
 
     /// <summary>Whether this outcome is one of the two exclusions.</summary>

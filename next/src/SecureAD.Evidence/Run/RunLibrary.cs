@@ -275,7 +275,8 @@ public sealed class RunLibrary
                 observation.Value.State,
                 observation.Value.Detail,
                 MomentOf(directory, observation.Value.RecordedUtc),
-                RunAnnotations.Read(directory)));
+                RunAnnotations.Read(directory),
+                ScopeOf(directory, observation.Value.State)));
         }
 
         return Result<IReadOnlyList<RunListing>>.Success(
@@ -283,6 +284,37 @@ public sealed class RunLibrary
                 .OrderByDescending(listing => listing.Moment.Utc)
                 .ThenByDescending(listing => listing.Identifier, StringComparer.Ordinal)
                 .ToList());
+    }
+
+    /// <summary>
+    /// What a run covered, or null where that could not be established.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Only a sealed run is opened.</b> Anything else has no evidence to read, and attempting it
+    /// would turn every damaged run in the library into a failed open on the way past.
+    /// </para>
+    /// <para>
+    /// <b>A failure here is null, not an error for the whole listing.</b> One unopenable bundle
+    /// must not cost the operator the rest of his library - which is the same judgement the loop
+    /// above already makes for a directory that is not a run. The null is visible: the screen shows
+    /// such a run apart rather than among those whose scope is known.
+    /// </para>
+    /// </remarks>
+    private static RunScope? ScopeOf(string directory, RunState state)
+    {
+        if (state != RunState.Sealed)
+            return null;
+
+        using var opened = BundleReader.Open(directory) is { IsSuccess: true } opening
+            ? opening.Value
+            : null;
+
+        if (opened is null)
+            return null;
+
+        var scope = opened.ReadScope();
+        return scope.IsSuccess ? scope.Value : null;
     }
 
     /// <summary>

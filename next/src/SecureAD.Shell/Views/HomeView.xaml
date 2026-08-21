@@ -74,7 +74,7 @@
                    Visibility="{Binding Library.IsEmpty, Converter={StaticResource Shown}}" />
 
         <DataGrid Grid.Row="1" Grid.Column="0"
-                  ItemsSource="{Binding Library.Runs}"
+                  ItemsSource="{Binding Library.RunsView}"
                   ColumnHeaderStyle="{StaticResource TableColumnHeader}"
                   SelectedItem="{Binding Library.Selected}"
                   AutoGenerateColumns="False"
@@ -82,8 +82,47 @@
                   HeadersVisibility="Column"
                   GridLinesVisibility="Horizontal"
                   Margin="0,0,20,0">
+            <!-- Runs of one scope are shown together, per 0069: those are the runs that may be
+                 compared with one another, and each group carries its own baseline. The heading
+                 names the domains rather than counting them, because which domain is missing is
+                 what decides whether this group answers the question the operator has. -->
+            <DataGrid.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.ContainerStyle>
+                        <Style TargetType="GroupItem">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="GroupItem">
+                                        <StackPanel>
+                                            <Border Background="{StaticResource SelectionBrush}"
+                                                    Padding="8,6"
+                                                    Margin="0,10,0,0">
+                                                <StackPanel>
+                                                    <!-- Items[0] rather than Name: the group is
+                                                         keyed on the evidence identity, which is
+                                                         sixteen hex characters and means nothing
+                                                         to a reader. -->
+                                                    <TextBlock
+                                                        Text="{Binding Items[0].GroupHeading}"
+                                                        FontWeight="SemiBold"
+                                                        TextWrapping="Wrap" />
+                                                    <TextBlock
+                                                        Text="{Binding ItemCount, StringFormat={}{0} run(s)}"
+                                                        FontSize="11"
+                                                        Foreground="{StaticResource SecondaryTextBrush}" />
+                                                </StackPanel>
+                                            </Border>
+                                            <ItemsPresenter />
+                                        </StackPanel>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </GroupStyle.ContainerStyle>
+                </GroupStyle>
+            </DataGrid.GroupStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Run" Binding="{Binding Name}" Width="2*" />
+                <DataGridTextColumn Header="Run" Binding="{Binding Name}" Width="*" />
 
                 <!-- Newest first. A run that recorded no moment of its own is placed by its
                      folder's date and says so, rather than passing it off as the run's. -->
@@ -101,7 +140,14 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="Outcome" Binding="{Binding State}" Width="Auto" />
+                <!-- SizeToCells rather than Auto, and a MinWidth: with Auto the header governed the
+                     width and "Outcome" wrapped to three lines while the value below it was clipped
+                     to "Finishe". A truncated outcome is a value the screen has and does not show,
+                     which is worse than an ugly column. Seen on Home 2026-08-21. -->
+                <DataGridTextColumn Header="Outcome"
+                                    Binding="{Binding State}"
+                                    Width="SizeToCells"
+                                    MinWidth="90" />
             </DataGrid.Columns>
         </DataGrid>
 

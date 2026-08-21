@@ -12,10 +12,13 @@ namespace SecureAD.Evidence.Run;
 /// <see cref="RunStateReader.Observe"/> looking at the bundle, not from the name.
 /// </para>
 /// <para>
-/// <b>There is no coverage here, and its absence is deliberate.</b> How much of a forest a run saw
-/// is <see cref="RunCoverage"/>, it lives inside the bundle, and reading it means opening the
-/// bundle. A listing that guessed at coverage in order to fill a column would be stating something
-/// about a customer's directory that nobody measured.
+/// <b>Coverage is read here, and never guessed at.</b> This record carried no coverage at all until
+/// 2026-08-21, on the reasoning that reading it means opening the bundle and that a listing filling
+/// a column by inference would be stating something about a customer's directory nobody measured.
+/// The second half of that still stands and is why <see cref="Scope"/> is null rather than assumed
+/// whenever the bundle could not be opened. What changed is that runs are now grouped by what they
+/// covered, which cannot be done without knowing it - so the bundle is opened, one cheap read of
+/// the declaration rows per run.
 /// </para>
 /// </remarks>
 /// <param name="Identifier">The run's directory name inside the library.</param>
@@ -33,10 +36,16 @@ namespace SecureAD.Evidence.Run;
 /// What the operator called this run and wrote about it. Typed by a person, kept outside the seal,
 /// and not evidence - see <see cref="RunAnnotations"/>.
 /// </param>
+/// <param name="Scope">
+/// Which domains the run covered, and which group of like runs it therefore belongs to.
+/// <b>Null means this was not established</b> - the run never sealed, or its bundle would not open
+/// - and a screen must say so rather than showing it among the whole-forest runs.
+/// </param>
 public sealed record RunListing(
     string Identifier,
     string Path,
     RunState State,
     string? Detail,
     RunMoment Moment,
-    RunAnnotation Annotation);
+    RunAnnotation Annotation,
+    RunScope? Scope);

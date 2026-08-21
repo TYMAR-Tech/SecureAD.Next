@@ -1,3 +1,4 @@
+using System.Windows.Data;
 using SecureAD.Evidence.Run;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -178,7 +179,8 @@ public sealed class RunLibraryViewModelTests
 
     /// <summary>
     /// A sealed run as the library would list it. The moment is recorded, because a sealed run
-    /// always has one; nothing in this class depends on its value.
+    /// always has one; nothing in this class depends on its value. The scope is absent, which is
+    /// what a listing carries for a run whose bundle it could not open.
     /// </summary>
     private static RunListing Listed(string identifier, string path) =>
         new(
@@ -187,7 +189,8 @@ public sealed class RunLibraryViewModelTests
             RunState.Sealed,
             null,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
-            RunAnnotation.None);
+            RunAnnotation.None,
+            Scope: null);
 
     /// <summary>
     /// What the operator typed reaches the run he had selected, and not some other run.
@@ -321,6 +324,39 @@ public sealed class RunLibraryViewModelTests
 
         Assert.Equal(0, _confirmation.TimesAsked);
         Assert.Null(_catalog.Deleted);
+    }
+
+    /// <summary>
+    /// A run whose scope could not be established is not folded in with the runs whose scope is
+    /// known. <i>We could not tell</i> and <i>the whole forest</i> must not look alike.
+    /// </summary>
+    [Fact]
+    public void ARunWhoseScopeIsUnknownIsGroupedApart()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        Assert.Equal(
+            "Scope not established - these runs could not be opened",
+            screen.Runs[0].GroupHeading);
+    }
+
+    /// <summary>
+    /// The grouped view is what the screen binds to, and it groups on the run's own evidence
+    /// identity rather than on anything the shell works out for itself.
+    /// </summary>
+    [Fact]
+    public void TheRunsAreGroupedByScope()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        var grouping = Assert.Single(screen.RunsView.GroupDescriptions);
+        Assert.Equal(
+            nameof(RunSummaryViewModel.GroupKey),
+            ((PropertyGroupDescription)grouping).PropertyName);
     }
 
     /// <summary>

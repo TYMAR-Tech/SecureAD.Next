@@ -292,6 +292,13 @@ public sealed class ViewBindingGateTests
             // of a published property breaks.
             var first = path.Split('.')[0].Trim();
 
+            // "Items[0]" indexes into a collection, and the property being named is still Items.
+            // Stripping the indexer keeps the member checkable rather than skipping the binding:
+            // "Itms[0]" is still an offence.
+            var indexer = first.IndexOf('[', StringComparison.Ordinal);
+            if (indexer > 0)
+                first = first[..indexer];
+
             if (first.Length > 0)
                 found.Add((first, match.Index));
         }
@@ -317,6 +324,20 @@ public sealed class ViewBindingGateTests
             {
                 members.Add(property.Name);
             }
+        }
+
+        // A group header's data context is not a view model. WPF supplies a CollectionViewGroup,
+        // so Name, ItemCount and Items are the members available there and this gate would
+        // otherwise report every one of them as a path nothing publishes.
+        //
+        // Its own members are added rather than the paths being exempted, because the point of the
+        // gate survives either way only if a TYPO still fails: ItmCount is not a member of
+        // CollectionViewGroup and is still caught. An exemption keyed on the file, or on the paths
+        // themselves, would have switched the check off for the one template hardest to eyeball.
+        foreach (var property in typeof(System.Windows.Data.CollectionViewGroup).GetProperties(
+            BindingFlags.Public | BindingFlags.Instance))
+        {
+            members.Add(property.Name);
         }
 
         return members;

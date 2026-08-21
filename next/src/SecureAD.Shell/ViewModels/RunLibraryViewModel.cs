@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Evidence.Run;
@@ -54,7 +56,31 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
         _location = location;
         _catalog = catalog;
         _confirmation = confirmation;
+
+        // Grouped once, here, rather than rebuilt on every refresh: the view watches the collection
+        // and a second view built later would leave the screen bound to the first one, showing runs
+        // that had already been replaced.
+        RunsView = CollectionViewSource.GetDefaultView(Runs);
+        RunsView.GroupDescriptions.Add(
+            new PropertyGroupDescription(nameof(RunSummaryViewModel.GroupKey)));
     }
+
+    /// <summary>
+    /// The runs, gathered into groups of like scope.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Runs are grouped by which domains they covered, per
+    /// <c>docs/decisions/0069-a-baseline-is-marked-deliberately.md</c>, because those are the runs
+    /// that may be compared with one another and each group carries its own baseline.
+    /// </para>
+    /// <para>
+    /// <b>Grouped on the key and headed with the sentence.</b> The key is the run's own evidence
+    /// identity, which already accounts for the forest - two forests whose domains happen to be
+    /// named alike are different groups, and grouping on the heading would have merged them.
+    /// </para>
+    /// </remarks>
+    public ICollectionView RunsView { get; }
 
     /// <summary>The runs found, in the order the library listed them.</summary>
     public ObservableCollection<RunSummaryViewModel> Runs { get; } = [];

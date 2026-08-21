@@ -267,7 +267,7 @@ public sealed class BundleReader : IDisposable
                 + "than that the forest has no domains."));
         }
 
-        return Result<RunScope>.Success(RunScope.Of(domains));
+        return Result<RunScope>.Success(RunScope.Of(Description.CoverageId, domains));
     }
 
     /// <summary>

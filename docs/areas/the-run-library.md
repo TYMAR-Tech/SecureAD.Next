@@ -74,6 +74,8 @@ controller sends them.
 | be certain two runs leaving out different domains are not treated as alike | `CoverageIdTests.LeavingOutADifferentDomainIsDifferentEvidence` |  |
 | be certain a run with a domain left out is not compared against a whole-forest one | `CoverageIdTests.LeavingADomainOutIsNotTheSameAsReadingTheWholeForest` |  |
 | see runs of one scope grouped together, and a later run of that scope join them | `CoverageIdTests.RunsGroupByWhichDomainsTheyCovered` |  |
+| see the run list gathered into groups of like scope | `RunLibraryViewModelTests.TheRunsAreGroupedByScope` |  |
+| tell a run whose scope is unknown from one that covered the whole forest | `RunLibraryViewModelTests.ARunWhoseScopeIsUnknownIsGroupedApart` |  |
 | delete a run, having been asked once and shown which one | `RunLibraryViewModelTests.DeletingAsksOnceAndNamesTheRun` |  |
 | decline that question and still have the run | `RunLibraryViewModelTests.DecliningTheConfirmationKeepsTheRun` |  |
 | be certain confirming removes the run and the list stops showing it | `RunLibraryViewModelTests.ConfirmingDeletesTheRunAndItLeavesTheList` |  |

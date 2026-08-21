@@ -142,4 +142,58 @@ internal sealed class RunSummaryViewModel
     /// lifecycle half alone and the screen must not present it as the whole answer.
     /// </remarks>
     public bool FinishedCleanly => _listing.State == RunState.Sealed;
+
+    /// <summary>
+    /// Which group of like runs this one belongs to.
+    /// </summary>
+    /// <remarks>
+    /// Runs sharing this covered the same domains and may be compared with one another. A run whose
+    /// scope could not be established gets a key of its own rather than being folded in with the
+    /// whole-forest runs, because <i>we do not know</i> and <i>everything</i> must not look alike.
+    /// </remarks>
+    public string GroupKey => _listing.Scope?.Identity ?? UnknownScopeKey;
+
+    /// <summary>
+    /// The group's heading: which domains these runs covered, and what was left out.
+    /// </summary>
+    /// <remarks>
+    /// <b>The scope is spelled out rather than counted.</b> <i>2 of 3 domains</i> tells an operator
+    /// how many and not which, and which is the one that decides whether a comparison in this group
+    /// covers the domain he is worried about. `0069` requires a group that does not cover the whole
+    /// forest to say so wherever it appears, and this is where it appears.
+    /// </remarks>
+    public string GroupHeading
+    {
+        get
+        {
+            if (_listing.Scope is not { } scope)
+                return "Scope not established - these runs could not be opened";
+
+            var read = scope.Domains
+                .Where(d => d.Outcome == DomainReadOutcome.Read)
+                .Select(d => d.DomainFqdn)
+                .ToArray();
+
+            var left = scope.Domains
+                .Where(d => d.Outcome is DomainReadOutcome.ExcludedByChoice
+                    or DomainReadOutcome.ExcludedForWantOfCandidates)
+                .Select(d => d.DomainFqdn)
+                .ToArray();
+
+            var covered = read.Length > 0 ? string.Join(" + ", read) : "no domain";
+
+            return left.Length == 0
+                ? covered
+                : $"{covered} - {string.Join(", ", left)} left out";
+        }
+    }
+
+    /// <summary>
+    /// The key for a run whose scope is unknown.
+    /// </summary>
+    /// <remarks>
+    /// A constant rather than the run's own path, so every such run gathers into one group instead
+    /// of producing a heading each. An operator with four unopenable bundles has one problem.
+    /// </remarks>
+    private const string UnknownScopeKey = "scope-not-established";
 }
