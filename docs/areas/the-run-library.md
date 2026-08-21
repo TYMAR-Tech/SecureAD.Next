@@ -44,13 +44,13 @@ controller sends them.
 | be certain two runs of one forest in the same second cannot collide | `RunLibraryTests.ASecondRunOfOneForestInTheSameSecondIsRefused` |  |
 | be certain a forest name can never become a path | `RunLibraryTests.AForestNameCannotBecomeAPath` |  |
 | be certain a folder beside the root is not mistaken for something inside it | `RunLibraryTests.ASiblingWhoseNameBeginsWithTheRootsIsNotInsideIt` |  |
-| see a sealed run listed | `RunLibraryListTests.ASealedRunIsListed` |  |
+| see a sealed run listed | `RunLibraryListTests.ASealedRunIsListed` | 2026-08-21 |
 | tell an empty library from one that could not be read | `RunLibraryListTests.AnEmptyLibraryListsNothing` |  |
 | see a run whose seal does not match listed as damaged | `RunLibraryListTests.ARunWhoseSealDoesNotMatchIsListedAsDamaged` |  |
 | read the explanation on a damaged run | `RunLibraryListTests.ADamagedRunCarriesTheExplanation` |  |
 | be certain a sealed run carries no explanation, so an explanation always means something | `RunLibraryListTests.ASealedRunCarriesNoExplanation` |  |
 | be certain a stray folder in the root is left out rather than listed | `RunLibraryListTests.ADirectoryThatIsNotARunIsLeftOut` |  |
-| see the newest run first, wherever its name sorts | `RunLibraryListTests.TheNewestRunIsListedFirst` |  |
+| see the newest run first, wherever its name sorts | `RunLibraryListTests.TheNewestRunIsListedFirst` | 2026-08-21 |
 | be certain two runs sharing a moment keep a fixed order | `RunLibraryListTests.RunsSharingAMomentAreListedInAStableOrder` |  |
 | have a run placed by the moment it recorded, not by its name | `RunLibraryListTests.ARunThatRecordedWhenItFinishedIsPlacedByThat` |  |
 | be told when a run's time came from its folder rather than from the run | `RunLibraryListTests.ARunThatRecordedNoMomentDoesNotClaimOne` |  |
@@ -60,11 +60,11 @@ controller sends them.
 | see the reason an unreadable library could not be read | `RunLibraryViewModelTests.AnUnreadableLibrarySurfacesTheReason` |  |
 | be certain a failed refresh clears what was shown before rather than leaving it stale | `RunLibraryViewModelTests.AFailedRefreshClearsWhatWasShownBefore` |  |
 | have the state of a run read from what is actually on disk | `RunStateReaderTests` |  |
-| give a run his own name, and see it in the list | `RunAnnotationsTests.TheNameAnOperatorSavesIsReadBack` |  |
-| write notes against a run | `RunAnnotationsTests.TheNotesAnOperatorSavesAreReadBack` |  |
+| give a run his own name, and see it in the list | `RunAnnotationsTests.TheNameAnOperatorSavesIsReadBack` | 2026-08-21 |
+| write notes against a run | `RunAnnotationsTests.TheNotesAnOperatorSavesAreReadBack` | 2026-08-21 |
 | correct a name rather than add a second one | `RunAnnotationsTests.SavingAgainReplacesWhatWasThere` |  |
 | be certain naming a run cannot damage its sealed evidence | `RunAnnotationsTests.AnnotatingLeavesTheSealedEvidenceUntouched` |  |
-| be certain what he typed is saved against the run he selected | `RunLibraryViewModelTests.WhatTheOperatorTypesIsSavedAgainstTheSelectedRun` |  |
+| be certain what he typed is saved against the run he selected | `RunLibraryViewModelTests.WhatTheOperatorTypesIsSavedAgainstTheSelectedRun` | 2026-08-21 |
 | be told when what he typed could not be saved | `RunLibraryViewModelTests.ASaveThatFailedIsReported` |  |
 | see how much of the forest a finished run actually covered | `BundleReaderTests.AWholeForestRunReportsEveryDomainRead` |  |
 | tell a domain he left out from one the run fell short on | `BundleReaderTests.AnExcludedDomainIsCountedApartFromAShortfall` |  |
@@ -73,17 +73,17 @@ controller sends them.
 | be certain an outcome written by a later build is not guessed at | `BundleReaderTests.AnOutcomeThisBuildDoesNotRecogniseIsRefused` |  |
 | be certain two runs leaving out different domains are not treated as alike | `CoverageIdTests.LeavingOutADifferentDomainIsDifferentEvidence` |  |
 | be certain a run with a domain left out is not compared against a whole-forest one | `CoverageIdTests.LeavingADomainOutIsNotTheSameAsReadingTheWholeForest` |  |
-| see runs of one scope grouped together, and a later run of that scope join them | `CoverageIdTests.RunsGroupByWhichDomainsTheyCovered` |  |
-| see the run list gathered into groups of like scope | `RunLibraryViewModelTests.TheRunsAreGroupedByScope` |  |
-| tell a run whose scope is unknown from one that covered the whole forest | `RunLibraryViewModelTests.ARunWhoseScopeIsUnknownIsGroupedApart` |  |
-| mark a run as the baseline of its scope group | `RunLibraryViewModelTests.MarkingABaselineRecordsItAgainstTheRun` |  |
+| see runs of one scope grouped together, and a later run of that scope join them | `CoverageIdTests.RunsGroupByWhichDomainsTheyCovered` | 2026-08-21 |
+| see the run list gathered into groups of like scope | `RunLibraryViewModelTests.TheRunsAreGroupedByScope` | 2026-08-21 |
+| tell a run whose scope is unknown from one that covered the whole forest | `RunLibraryViewModelTests.ARunWhoseScopeIsUnknownIsGroupedApart` | 2026-08-21 |
+| mark a run as the baseline of its scope group | `RunLibraryViewModelTests.MarkingABaselineRecordsItAgainstTheRun` | 2026-08-21 |
 | be told why a run with no known scope cannot be a baseline | `RunLibraryViewModelTests.ARunWithNoKnownScopeCannotBeABaseline` |  |
 | correct a run's name without losing its baseline mark | `RunLibraryViewModelTests.SavingANameDoesNotClearTheBaselineMark` |  |
-| open a run from the list and read its evidence | `RunLibraryViewModelTests.OpeningARunHandsOverItsDirectory` |  |
+| open a run from the list and read its evidence | `RunLibraryViewModelTests.OpeningARunHandsOverItsDirectory` | 2026-08-21 |
 | be told a run that ended badly has nothing to open | `RunLibraryViewModelTests.ARunThatEndedBadlyHasNothingToOpen` |  |
-| delete a run, having been asked once and shown which one | `RunLibraryViewModelTests.DeletingAsksOnceAndNamesTheRun` |  |
+| delete a run, having been asked once and shown which one | `RunLibraryViewModelTests.DeletingAsksOnceAndNamesTheRun` | 2026-08-21 |
 | decline that question and still have the run | `RunLibraryViewModelTests.DecliningTheConfirmationKeepsTheRun` |  |
-| be certain confirming removes the run and the list stops showing it | `RunLibraryViewModelTests.ConfirmingDeletesTheRunAndItLeavesTheList` |  |
+| be certain confirming removes the run and the list stops showing it | `RunLibraryViewModelTests.ConfirmingDeletesTheRunAndItLeavesTheList` | 2026-08-21 |
 | be told when a run could not be deleted, and still see it listed | `RunLibraryViewModelTests.ADeletionThatFailedLeavesTheRunListedAndSaysWhy` |  |
 | be certain nothing is deleted, and nothing asked, when no run is selected | `RunLibraryViewModelTests.WithNothingSelectedNothingIsDeletedAndNothingIsAsked` |  |
 | be certain a run cannot be deleted from outside the library root | `RunLibraryTests.AForestNameCannotBecomeAPath` |  |
@@ -118,4 +118,5 @@ there is something to react to. It is not authoritative and nothing here has bee
 
 | | | |
 |---|---|---|
-| — | none recorded for this area yet | — |
+| `F-0079-6` | **A change to the scope fingerprint silently splits every existing group.** `CoverageId` is what decides which group a run belongs to and whether two runs may be compared. It is a hash over a formatted string, so changing what goes into that string changes every value - and runs sealed before the change stop grouping with runs sealed after it, while looking identical on screen. This is not hypothetical: on 2026-08-21 the excluded set was added to the hash, and the library then showed **two groups with the same heading**, one holding seven older runs and one holding the run captured after the change. The owner spotted it and asked why. | **open.** Deliberately not repaired by grouping on the domain rows instead: the fingerprint is also what decides comparability, so those runs genuinely cannot be compared, and merging them would show one group whose members refuse to compare across an invisible line inside it. The honest options are a format version stored beside the hash, so the product can say *recorded by an earlier build*, or accepting that a fingerprint change obsoletes old runs and saying so. Nothing records this today, and the next change to `CoverageId` will do it again |
+| — | none other recorded for this area yet | — |
