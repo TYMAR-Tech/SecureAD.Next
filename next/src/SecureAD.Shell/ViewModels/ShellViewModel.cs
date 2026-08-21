@@ -47,22 +47,29 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// window this replaced. There is still no <i>New Audit</i> rail entry: an audit is started
     /// from Home.
     /// </remarks>
-    public ShellViewModel(HomeViewModel home, RunLibraryViewModel runs, AssetsViewModel assets)
+    public ShellViewModel(HomeViewModel home, AssetsViewModel assets)
     {
         ArgumentNullException.ThrowIfNull(home);
-        ArgumentNullException.ThrowIfNull(runs);
         ArgumentNullException.ThrowIfNull(assets);
 
         Home = home;
-        Runs = runs;
         Assets = assets;
     }
 
     /// <summary>Where the run library is chosen, and where a run is started from.</summary>
     public HomeViewModel Home { get; }
 
-    /// <summary>The runs this library holds.</summary>
-    public RunLibraryViewModel Runs { get; }
+    /// <summary>
+    /// The runs this library holds.
+    /// </summary>
+    /// <remarks>
+    /// <b>Reached through Home, which is the only screen that shows it.</b> There was a Runs
+    /// section carrying a second copy of this surface until 2026-08-21; it showed the same object,
+    /// so the two could not disagree, but every capability the library gained had to be built on
+    /// both - and the name and notes editor was built on only one, which is the complaint that
+    /// started this work. Home is where the operator works, so Home is the library.
+    /// </remarks>
+    public RunLibraryViewModel Library => Home.Library;
 
     /// <summary>What the run selected in the library captured.</summary>
     public AssetsViewModel Assets { get; }
@@ -71,8 +78,6 @@ internal sealed partial class ShellViewModel : ObservableObject
     public bool IsHome => Section == ShellSection.Home;
 
     /// <summary>Whether the runs section is the one showing.</summary>
-    public bool IsRuns => Section == ShellSection.Runs;
-
     /// <summary>Whether the assets section is the one showing.</summary>
     public bool IsAssets => Section == ShellSection.Assets;
 
@@ -210,7 +215,6 @@ internal sealed partial class ShellViewModel : ObservableObject
 
             return Section switch
             {
-                ShellSection.Runs => Runs,
                 ShellSection.Assets => Assets,
                 _ => Home,
             };
@@ -329,7 +333,6 @@ internal sealed partial class ShellViewModel : ObservableObject
         RebuildViews(value);
 
         OnPropertyChanged(nameof(IsHome));
-        OnPropertyChanged(nameof(IsRuns));
         OnPropertyChanged(nameof(IsAssets));
         OnPropertyChanged(nameof(IsDashboard));
         OnPropertyChanged(nameof(IsSettings));
@@ -353,9 +356,9 @@ internal sealed partial class ShellViewModel : ObservableObject
         if (value is ShellSection.Dashboard or ShellSection.Settings)
             return;
 
-        // Both other sections show the library, so both read it on arrival. A run started since the
-        // operator was last here would otherwise be missing from a screen that looks current.
-        Runs.Refresh();
+        // Home shows the library, so arriving there reads it. A run started since the operator was
+        // last here would otherwise be missing from a screen that looks current.
+        Library.Refresh();
     }
 
     /// <summary>
@@ -370,7 +373,7 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// </remarks>
     private void ShowAssetsOfTheSelectedRun()
     {
-        var selected = Runs.Selected;
+        var selected = Library.Selected;
 
         if (selected is null)
         {

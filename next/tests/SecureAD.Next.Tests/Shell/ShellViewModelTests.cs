@@ -152,14 +152,22 @@ public sealed class ShellViewModelTests
         Assert.True(shell.IsHome);
     }
 
+    /// <summary>
+    /// The library is reached through Home, which is the only screen showing it.
+    ///
+    /// <para>
+    /// This test read <c>Show(ShellSection.Runs)</c> until 2026-08-21, when the Runs section was
+    /// retired. It showed the same library object Home does, so the two could not disagree - but
+    /// every capability the library gained had to be built twice, and the name and notes editor
+    /// was built on only one of them.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void TheRunsSectionShowsTheLibrary()
+    public void TheLibraryIsReachedThroughHome()
     {
         var shell = AShell();
 
-        shell.Show(ShellSection.Runs);
-
-        Assert.IsType<RunLibraryViewModel>(shell.Current);
+        Assert.Same(shell.Home.Library, shell.Library);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -173,7 +181,6 @@ public sealed class ShellViewModelTests
 
         return new ShellViewModel(
             new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
-            library,
             new AssetsViewModel(new FakeAssetSource()));
     }
 }

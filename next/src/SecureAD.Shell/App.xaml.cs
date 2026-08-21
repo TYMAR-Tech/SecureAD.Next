@@ -54,23 +54,19 @@ internal partial class App : Application
             audit => shell.Begin(audit),
             () => shell.Leave());
 
-        // One library object, shown by both sections. Two would let them disagree.
+        // One library object. Home is the only screen that shows it.
         var library = new RunLibraryViewModel(
             location,
             new RunCatalog(),
             new Confirmation(),
-            new RunOpener(bundle =>
-            {
-                // Opening a run is two acts: the Assets screen reads it, and the shell moves to
-                // that screen. Doing only the first would leave the operator on Home wondering
-                // whether his click had done anything.
-                shell.Assets.Show(bundle, shell.HasAudit);
-                shell.Show(ShellSection.Assets);
-            }));
+            // Moving to Assets already opens whichever run is selected - ShellViewModel does it on
+            // arrival, and it knows whether a capture is running, which this does not. So Open
+            // navigates and lets that one path do the reading, rather than being a second door
+            // onto it that would have to be kept in step.
+            new RunOpener(_ => shell.Show(ShellSection.Assets)));
 
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
-            library,
             new AssetsViewModel(new BundleAssetSource()));
 
         // Home is the section already showing, so nothing navigates to it and nothing would

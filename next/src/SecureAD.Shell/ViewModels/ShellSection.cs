@@ -36,9 +36,6 @@ internal enum ShellSection
     /// <summary>What the selected run captured: the directory as its evidence can rebuild it.</summary>
     Assets,
 
-    /// <summary>The runs this library holds.</summary>
-    Runs,
-
     /// <summary>What this installation has been told - where the runs live, and what else.</summary>
     Settings,
 
