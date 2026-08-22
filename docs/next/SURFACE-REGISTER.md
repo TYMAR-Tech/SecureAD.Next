@@ -259,6 +259,18 @@ The table below sits between the two markers around it, so the test parses only 
 | PartitionCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
 | LdapDirectoryChannel | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
 | LdapDirectoryChannelFactory | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
+| DomainControllerSignals | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| Finding | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| FindingEvidence | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| FindingSubject | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| FindingSubjectKind | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| IRule | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| RuleDefinition | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| RuleVerdict | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| Severity | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| UnconstrainedDelegationEvidence | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| UnconstrainedDelegationOnAccount | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| UnconstrainedDelegationOnNonDomainController | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
 
 <!-- REGISTER:END -->
 

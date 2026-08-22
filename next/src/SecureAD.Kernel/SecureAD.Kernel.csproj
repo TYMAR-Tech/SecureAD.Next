@@ -12,4 +12,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Findings\" />
+  </ItemGroup>
+
 </Project>

@@ -38,11 +38,26 @@ Each capability names the test that proves it. **The test is the evidence; this 
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
 
-**Nothing in this area is built.** Sixty-two rule cards exist in `docs/rules/`, and twenty-five of
-them are referenced by capture code as the reason an attribute is read. No rule is evaluated, no
-finding is produced, and no finding is stored. This is expected rather than a gap:
-[`0045`](../decisions/0045-the-shell-is-built-before-the-judgement-half.md) decided the shell is
-built before the judgement half.
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
+honest answer for every row here: the rules are proven against values taken from a real capture,
+but nothing has yet been run end to end against a live directory.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| be certain a rule cannot ship without saying what data it reads | `RuleDeclarationTests.EveryRuleDeclaresTheDataItReads` |  |
+| be certain that check is looking at real rules rather than an empty set | `RuleDeclarationTests.ThereAreRulesToCheck` |  |
+| be certain no two rules claim the same identifier | `RuleDeclarationTests.EveryRuleIdIsUnique` |  |
+| see a user account trusted for unconstrained delegation | `UnconstrainedDelegationRuleTests.ThePlantedUserAccountIsFoundBySec010` |  |
+| see a member server trusted for unconstrained delegation | `UnconstrainedDelegationRuleTests.AMemberServerWithTheFlagIsFoundBySec011` |  |
+| be certain a domain controller is not reported for a setting it requires | `UnconstrainedDelegationRuleTests.ADomainControllerIsExcluded` |  |
+| be certain a read-only domain controller is excluded on the same terms | `UnconstrainedDelegationRuleTests.AReadOnlyDomainControllerIsExcluded` |  |
+| be told when the three ways of asking "is this a domain controller" disagree | `UnconstrainedDelegationRuleTests.SignalsThatDisagreeAreRecorded` |  |
+| tell an account that is clean from one the run could not read | `UnconstrainedDelegationRuleTests.AnObjectMissingADeclaredInputGetsNoVerdictRatherThanACleanOne` |  |
+| be certain that distinction is not made by a rule that never reaches a verdict | `UnconstrainedDelegationRuleTests.AnObjectCarryingEveryDeclaredInputReachesAVerdict` |  |
+
+**Findings are not stored or shown yet.** This is the evaluation core only: a rule reads one
+captured object and reaches a verdict. Nothing writes a finding into a bundle and nothing puts one
+on a screen, so nothing here proves that a finding's identity survives a second run.
 
 ---
 
