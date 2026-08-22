@@ -79,3 +79,7 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0077](decisions/0077-a-well-known-sid-is-named-from-microsoft.md) | 2026-08-20 | Accepted | A well-known SID is named from Microsoft, not from the directory |
 | [0078](decisions/0078-a-run-can-be-deleted-after-one-confirmation.md) | 2026-08-21 | Accepted | A run can be deleted, after one confirmation |
 | [0079](decisions/0079-a-privileged-variant-of-a-rule-escalates.md) | 2026-08-21 | Accepted | A privileged variant of a rule escalates, and both findings stand |
+| [0080](decisions/0080-a-finding-carries-typed-evidence.md) | 2026-08-21 | Accepted | A finding carries typed evidence, not a free-form blob |
+| [0081](decisions/0081-severity-has-four-levels.md) | 2026-08-21 | Accepted | Severity has four levels |
+| [0082](decisions/0082-the-rule-catalogue-is-not-customer-tunable.md) | 2026-08-21 | Accepted | The rule catalogue is not tunable by a customer |
+| [0083](decisions/0083-a-rule-declares-its-data-dependencies.md) | 2026-08-21 | Accepted | A rule declares the data it depends on, and an undeclared rule fails the build |

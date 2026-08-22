@@ -25,6 +25,10 @@ wins and the disagreement is a finding.
 | names a pattern in a bundle and never explains one away | [`0015`](../decisions/0015-a-bundle-names-a-pattern-it-never-explains-one-away.md) |
 | never lets a finding appear clean while its coverage carried unknowns | [`0056`](../decisions/0056-the-visual-language-encodes-three-states.md) |
 | rates a privileged variant of a rule above its base, lets both findings stand, and inherits no acceptance between them | [`0079`](../decisions/0079-a-privileged-variant-of-a-rule-escalates.md) |
+| carries typed evidence on a finding rather than a free-form blob | [`0080`](../decisions/0080-a-finding-carries-typed-evidence.md) |
+| rates every finding at one of four severities, and carries no informational level | [`0081`](../decisions/0081-severity-has-four-levels.md) |
+| lets no customer disable a rule, add one, or change a severity | [`0082`](../decisions/0082-the-rule-catalogue-is-not-customer-tunable.md) |
+| makes a rule declare the data it depends on, and fails the build when one does not | [`0083`](../decisions/0083-a-rule-declares-its-data-dependencies.md) |
 
 ---
 
@@ -51,17 +55,15 @@ shape of the code.
 **This section is the owner's to write.** What follows is a draft list of candidates, offered so
 there is something to react to. It is not authoritative and nothing here has been decided.
 
-- **What a finding carries.** The predecessor's had a subject, a target, a severity, a rule, a
-  human-readable detail, per-finding coverage completeness, and a context blob. Which of those this
-  product keeps is undecided.
-- **What the severity scale is.** [`0066`](../decisions/0066-a-finding-is-called-a-finding.md) fixes
-  severity to the rule card without saying what values exist or what they mean.
-- **Whether a finding records how well it was established**, the way the predecessor's escalation
-  paths carried an evidence level.
-- **Whether a customer may tune the rule catalogue at all** — disable a rule, or add one. Raised in
-  `0066` and explicitly left open.
 - **How a finding whose coverage was incomplete is presented**, as distinct from one whose coverage
-  was whole.
+  was whole. [`0083`](../decisions/0083-a-rule-declares-its-data-dependencies.md) decides how the
+  product *knows* coverage was incomplete; how it *says so* on a screen or in a report is still open.
+- **Whether a finding records how well it was established.** Deferred rather than declined: the
+  question is really about how the product states how well it knows a chain, so it belongs to
+  [how-privilege-escalates](how-privilege-escalates.md) where the second value would come from. It
+  is safe to leave open, because `0023` keeps such a field out of a finding's identity, so adding
+  one later orphans no acceptance. A *confidence* scale is ruled out - a rule expressing doubt about
+  itself is the hedge `0015` forbids.
 
 ---
 
