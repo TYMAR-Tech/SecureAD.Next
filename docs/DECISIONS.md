@@ -12,7 +12,7 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0003](decisions/0003-refuse-to-reanalyse-an-incomplete-capture.md) | 2026-08-07 | Accepted *(see record)* | Re-analysis refuses any source that does not demonstrate a complete capture |
 | [0004](decisions/0004-unknown-counts-name-the-failed-phase.md) | 2026-08-07 | Accepted *(see record)* | A count the run cannot vouch for renders as unknown, naming the phase |
 | [0005](decisions/0005-withhold-at-the-widest-scope-that-shares-the-verdict.md) | 2026-08-07 | Accepted | A withheld count is withheld at the widest scope that shares its verdict |
-| [0006](decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) | 2026-08-07 | Accepted | Tier-0 membership and expected-admin suppression are separate sets |
+| [0006](decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) | 2026-08-07 | Accepted *(see record)* | Tier-0 membership and expected-admin suppression are separate sets |
 | [0008](decisions/0008-live-verification-is-removed.md) | 2026-08-09 | Accepted *(see record)* | Live directory verification is removed from the product |
 | [0010](decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) | 2026-08-09 | Accepted | The rule catalogue is data; the rule logic is code |
 | [0011](decisions/0011-rebuild-documentation-is-written-fresh-and-bound-by-tests.md) | 2026-08-09 | Accepted | The rebuild's documentation is written fresh and bound by tests |

@@ -65,4 +65,4 @@ The agent's questions, offered only so there is something to react to:
 
 | | | |
 |---|---|---|
-| — | none recorded for this area yet | — |
+| `F-0006-1` | `0006` excluded Account, Server, Print and Backup Operators from Tier 0, reasoning that escalation paths *from* them are worth reporting. Microsoft names Backup Operators and Server Operators among its Tier 0 built-in groups, and a path leaving a group was never a reason to refuse a path arriving at it. The exclusion was inherited from the predecessor, where `HighValueTargets.cs` carries the same reasoning in a comment, and it passed owner review unread. Corrected 2026-08-22, with Cert Publishers (517) added at the same time. | **closed** |

@@ -66,9 +66,13 @@ the right move on reaching this area is to ask rather than to read the list as e
   enumerating one. The identifier is all there is.
 - **What SID history means for identity** — whether a principal carrying another's former identifier
   is treated as one principal or two.
-- **What "Tier 0" is, concretely, and who decides membership of it.**
-  [`0006`](../decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) separates it from
-  expected-administrator without saying how either set is arrived at.
+- **Whether a Tier-0 target can be something other than a principal.**
+  [`0006`](../decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) names both sets by RID
+  and, since 2026-08-22, gives the criterion Microsoft uses — control over the directory, direct or
+  indirect. Every member of both sets is a principal. Whether the domain head, a domain
+  controller's computer object, `AdminSDHolder` or a policy object linked to the Domain Controllers
+  OU can also be a target is undecided, and it decides whether a chain has one kind of endpoint or
+  two.
 - **Whether well-known identifiers are named from a shipped table**, and what happens when one is
   not in it.
 
