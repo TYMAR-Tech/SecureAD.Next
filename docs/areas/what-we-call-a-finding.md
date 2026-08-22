@@ -86,4 +86,5 @@ there is something to react to. It is not authoritative and nothing here has bee
 
 | | | |
 |---|---|---|
-| — | none recorded for this area yet | — |
+| `F-SEC131-1` | `SEC-131` excludes computers and non-privileged users by saying SEC-014 covers them. SEC-014 is a permission rule about RBCD. The real homes are SEC-010 and SEC-011, so the exclusions rest on nothing. | **open** |
+| `F-SEC010-1` | `SEC-010.md` and `SEC-011.md` carry no `#` title line. Every other rule card has one. | **open** |

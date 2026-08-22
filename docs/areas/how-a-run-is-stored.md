@@ -87,9 +87,13 @@ shape of the code.
 **This section is the owner's to write.** What follows is a draft list of candidates, offered so
 there is something to react to. It is not authoritative and nothing here has been decided.
 
-- **Where the acceptances live relative to the bundle.**
-  [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) decides they sit beside the
-  evidence and never inside it; the file, its name and its own integrity are undrawn.
+- **Whether the acceptances sidecar carries an integrity check of its own.**
+  [`0067`](../decisions/0067-an-acceptance-names-one-finding.md) decides acceptances sit beside the
+  evidence and never inside it; the file and its name are drawn in code as
+  `BundleLayout.AnnotationsFileName` and held by
+  `BundleWriterTests.AFinishedRunLeavesEvidenceASealAndAnAnnotationsFile`. What is undrawn is its
+  integrity: `evidence.db` carries a seal that detects corruption and the sidecar carries nothing,
+  so damage to an acceptance history nobody can re-derive would be silent.
 - **How large a bundle is allowed to get**, and what the product does when a forest does not fit.
 - **Whether a bundle is ever pruned or aged out**, or kept for ever.
 - **What a customer may do with a bundle** — whether it is meant to be opened by anything but this
