@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
+using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
@@ -83,6 +84,7 @@ public sealed class BundleWriter : IDisposable
 
     private SqliteTransaction? _transaction;
     private long _nextObjectId = 1;
+    private long _nextFindingId = 1;
     private long _nextCoverageId = 1;
     private long _nextDescriptorId = 1;
     private long _nextTrusteeId = 1;
@@ -1008,6 +1010,119 @@ public sealed class BundleWriter : IDisposable
     /// by another.
     /// </summary>
     private static string Text(Guid gpoGuid) => gpoGuid.ToString("D");
+
+    /// <summary>
+    /// Records one finding, with the evidence it rests on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A finding is written before the seal or not at all.</b> <see cref="Complete"/> is the last
+    /// act, and <c>ThrowIfFinished</c> refuses everything after it. That is not a limitation to work
+    /// around: per <c>docs/decisions/0021</c> a capture judged again produces a <i>new</i> bundle
+    /// rather than an edited one, so there is never a reason to add a finding to a sealed bundle.
+    /// </para>
+    /// <para>
+    /// <b>An evidence kind with no table is refused, loudly.</b> The predecessor's schemaless
+    /// context blob accepted anything and lost the parts nothing knew how to read;
+    /// <c>docs/decisions/0080</c> chose a type per kind so the gap shows up here, at the write, as
+    /// an exception naming the type - rather than at the third reader of a key nobody declared.
+    /// </para>
+    /// </remarks>
+    /// <param name="finding">The finding to record.</param>
+    /// <returns>The identifier of the stored finding.</returns>
+    /// <exception cref="ArgumentException">
+    /// The finding carries an evidence kind this schema has no table for.
+    /// </exception>
+    public long WriteFinding(Finding finding)
+    {
+        ArgumentNullException.ThrowIfNull(finding);
+        ThrowIfFinished();
+
+        var findingId = _nextFindingId++;
+
+        Execute(
+            "INSERT INTO finding (finding_id, rule_id, rule_version, subject_kind, subject_key, "
+            + "object_guid, severity, distinguished_name, detail, coverage) "
+            + "VALUES ($id, $rule, $version, $kind, $key, $guid, $severity, $dn, $detail, $coverage)",
+            command =>
+            {
+                command.Parameters.AddWithValue("$id", findingId);
+                command.Parameters.AddWithValue("$rule", finding.RuleId);
+                command.Parameters.AddWithValue("$version", finding.RuleVersion);
+                command.Parameters.AddWithValue("$kind", finding.Subject.Kind.ToString());
+                command.Parameters.AddWithValue("$key", finding.Subject.Key);
+                command.Parameters.AddWithValue("$guid", Text(finding.ObjectGuid));
+                command.Parameters.AddWithValue("$severity", finding.Severity.ToString());
+                command.Parameters.AddWithValue("$dn", finding.DistinguishedName);
+                command.Parameters.AddWithValue("$detail", finding.Detail);
+                command.Parameters.AddWithValue("$coverage", finding.Coverage.ToString());
+            });
+
+        WriteFindingEvidence(findingId, finding.Evidence);
+        return findingId;
+    }
+
+    /// <summary>
+    /// Records that a rule was run over this bundle, at a stated version.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is what makes an empty findings list readable.</b> A bundle with no findings and no
+    /// rules recorded has not been judged; a bundle with no findings and rules recorded is one
+    /// where nothing matched. Those are opposite answers, and without this row they arrive at a
+    /// screen identically - which is the failure <c>docs/decisions/0002</c> exists to prevent.
+    /// </remarks>
+    /// <param name="ruleId">The rule that was run, such as <c>SEC-011</c>.</param>
+    /// <param name="ruleVersion">The version of its logic that ran.</param>
+    public void WriteEvaluatedRule(string ruleId, int ruleVersion)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ruleId);
+        ThrowIfFinished();
+
+        Execute(
+            "INSERT INTO evaluated_rule (rule_id, rule_version) VALUES ($rule, $version)",
+            command =>
+            {
+                command.Parameters.AddWithValue("$rule", ruleId);
+                command.Parameters.AddWithValue("$version", ruleVersion);
+            });
+    }
+
+    /// <summary>
+    /// Writes the evidence for one finding into the table its kind declares.
+    /// </summary>
+    private void WriteFindingEvidence(long findingId, FindingEvidence evidence)
+    {
+        switch (evidence)
+        {
+            case UnconstrainedDelegationEvidence delegation:
+                Execute(
+                    "INSERT INTO finding_unconstrained_delegation (finding_id, "
+                    + "user_account_control, is_computer, server_trust_account_bit, "
+                    + "primary_group_is_domain_controller, under_domain_controllers_ou) "
+                    + "VALUES ($id, $uac, $computer, $trust, $group, $ou)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue("$uac", (long)delegation.UserAccountControl);
+                        command.Parameters.AddWithValue("$computer", delegation.IsComputer ? 1 : 0);
+                        command.Parameters.AddWithValue(
+                            "$trust", delegation.DomainController.ServerTrustAccountBit ? 1 : 0);
+                        command.Parameters.AddWithValue(
+                            "$group",
+                            delegation.DomainController.PrimaryGroupIsDomainController ? 1 : 0);
+                        command.Parameters.AddWithValue(
+                            "$ou", delegation.DomainController.UnderDomainControllersOu ? 1 : 0);
+                    });
+                return;
+
+            default:
+                throw new ArgumentException(
+                    $"There is no table for evidence of type {evidence.GetType().Name}, so this "
+                    + "finding cannot be stored without losing what it rests on. Add a table for "
+                    + "the kind and a case here, per docs/decisions/0080.",
+                    nameof(evidence));
+        }
+    }
 
     /// <summary>
     /// Finishes the bundle: folds the write-ahead log back in, seals the file, and only then gives

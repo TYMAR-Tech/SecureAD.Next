@@ -271,6 +271,9 @@ The table below sits between the two markers around it, so the test parses only 
 | UnconstrainedDelegationEvidence | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
 | UnconstrainedDelegationOnAccount | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
 | UnconstrainedDelegationOnNonDomainController | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| FindingReader | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| StoredFindings | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| EvaluatedRule | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
 
 <!-- REGISTER:END -->
 

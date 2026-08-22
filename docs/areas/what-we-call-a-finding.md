@@ -54,10 +54,23 @@ but nothing has yet been run end to end against a live directory.
 | be told when the three ways of asking "is this a domain controller" disagree | `UnconstrainedDelegationRuleTests.SignalsThatDisagreeAreRecorded` |  |
 | tell an account that is clean from one the run could not read | `UnconstrainedDelegationRuleTests.AnObjectMissingADeclaredInputGetsNoVerdictRatherThanACleanOne` |  |
 | be certain that distinction is not made by a rule that never reaches a verdict | `UnconstrainedDelegationRuleTests.AnObjectCarryingEveryDeclaredInputReachesAVerdict` |  |
+| have a finding survive into a sealed bundle and come back out | `FindingStorageTests.AFindingComesBackFromASealedBundle` |  |
+| see the evidence a finding rests on come back with it | `FindingStorageTests.TheEvidenceAFindingRestsOnComesBackWithIt` |  |
+| be certain the same finding from two separate runs keeps one identity | `FindingStorageTests.TheSameFindingFromTwoRunsKeepsOneIdentity` |  |
+| keep a finding attached to an object that was renamed and moved | `FindingStorageTests.AnObjectThatWasRenamedAndMovedIsStillTheSameFinding` |  |
+| be certain tightening a rule does not orphan the findings made under it | `FindingStorageTests.TighteningARuleDoesNotChangeTheIdentityOfItsFindings` |  |
+| tell a bundle nobody judged from one where every rule ran and nothing matched | `FindingStorageTests.ABundleNoRuleWasRunOverSaysSoRatherThanLookingClean` |  |
+| be certain that distinction is not made by a reader that says it of everything | `FindingStorageTests.ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing` |  |
+| be certain evidence that may be missing confidential values does not come back complete | `FindingStorageTests.AFindingWhoseEvidenceMayBeIncompleteDoesNotComeBackComplete` |  |
+| be certain one finding cannot be stored twice and shown twice | `FindingStorageTests.TheSameFindingCannotBeStoredTwiceInOneBundle` |  |
+| be certain evidence with no table is refused rather than quietly dropped | `FindingStorageTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped` |  |
+| be certain nothing can add a finding to a bundle that is already sealed | `FindingStorageTests.AFindingCannotBeAddedAfterTheBundleIsSealed` |  |
 
-**Findings are not stored or shown yet.** This is the evaluation core only: a rule reads one
-captured object and reaches a verdict. Nothing writes a finding into a bundle and nothing puts one
-on a screen, so nothing here proves that a finding's identity survives a second run.
+**Findings are stored but not shown.** A rule reaches a verdict, the finding is written into the
+bundle before it is sealed, and it comes back with one identity across runs. Nothing puts one on a
+screen yet, and no acceptance has been written or matched — so the five reasons
+[`0023`](../decisions/0023-a-finding-has-a-stable-identity.md) fixes for an unmatched acceptance are
+still unbuilt, and belong with comparison.
 
 ---
 

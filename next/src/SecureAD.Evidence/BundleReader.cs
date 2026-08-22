@@ -214,6 +214,16 @@ public sealed class BundleReader : IDisposable
     public DirectoryTree ReadTree() => DirectoryTreeReader.Read(Connection);
 
     /// <summary>
+    /// Reads the findings this bundle carries, beside the rules that were run to produce them.
+    /// </summary>
+    /// <remarks>
+    /// <b>Check <see cref="Findings.StoredFindings.DidNotRun"/> before reporting that nothing was
+    /// found.</b> An empty findings list from a bundle no rule has been run over is not a clean
+    /// forest, and per <c>docs/decisions/0002</c> must never be presented as one.
+    /// </remarks>
+    public Findings.StoredFindings ReadFindings() => Findings.FindingReader.Read(Connection);
+
+    /// <summary>
     /// Reads how much of the forest this run covered, one entry per declared domain.
     /// </summary>
     /// <remarks>
