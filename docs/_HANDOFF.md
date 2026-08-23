@@ -122,7 +122,10 @@ One subsystem per pass. Do not start the next until the current one is committed
    dates. Verify every test name exists.
 5. **Retarget the gates** that bind the old document. Retarget, do not retire.
 6. **Repoint inbound references** — search for the old filename across `*.cs` and `*.md` first.
-7. **Delete the old documents**, and prune the solution's document items.
+7. **Delete the old documents, and correct the solution's document items in both directions** —
+   remove what was deleted *and add what was written*. Every rewritten layer document is a solution
+   folder item; the Evidence pass added none, so its new document was invisible in the IDE while the
+   stub it replaced was still listed. The word *prune* stood here and was read as delete-only.
 8. **Run the whole suite. Commit only when green.**
 
 ---
