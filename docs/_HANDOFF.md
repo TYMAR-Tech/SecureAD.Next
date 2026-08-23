@@ -100,13 +100,42 @@ S-18 does **not** carry a `STATES` table, so a second copy cannot come back. `Ru
 `whether-two-runs-compare.md` is written.
 
 *Owed, in this order.* `how-a-bundle-is-read.md`, then `run-identity-and-coverage.md` and
-`whether-two-runs-compare.md` (which together finish consuming `S-18`, now 332 lines). Reading state
+`whether-two-runs-compare.md` (which together finish consuming `S-18`, now 340 lines). Reading state
 is in `_COVERAGE.md` under `evidence-bundle`.
 
-**Three punch-list adjudications came out of the pass and are recorded in full.** `P-2` verified
-correct against the code. `P-3` decided — the mechanism is real, no bundle today carries a wrong
-value, and what it costs is the column's independence rather than the number. `P-7`/`F-4` demoted,
-which is the one worth reading first.
+**Six punch-list items were closed in the second sitting, and three of them were code.** The branch
+is no longer documentation-only: the owner's ruling is that the documentation-only rule is a
+convention for keeping rewrite diffs reviewable, not a prohibition, and it had been used twice to
+decline work he wanted done. Commits are split so the one behavioural change is not buried in a
+documentation diff.
+
+- `P-2` — the schema-version refusal had no test while its sibling had one. Four added.
+- `P-3` — **fixed.** `BundleWriter` now records the canonicalization version its entries carry,
+  refuses a set spanning two, and keeps the build's constant for the empty set. Closing the loop
+  turned the suite red immediately: `ObjectPermissionsTests` had hardcoded version 1 while the build
+  produced 3, and the defect had hidden it for months by overwriting the entries' claim on the way
+  in. **A self-certifying column cannot refuse anything, including data that is already wrong.**
+- `P-17` — ten zero-byte files deleted. The eleventh was not a tidy-up: `.github/copilot-instructions.md`
+  cited `check-instruction-claims.ps1` twice as the evidence for two claims about what does not
+  exist, and the file was empty. Every claim checked out; only the proof was vapour. The script is
+  written and passes, and is the only check here that tests an **absence**.
+- `P-27` — S-18's *What is owed* had three claims and two were false. Corrected at source.
+- `P-28` — `PunchListIdentifierTests` holds the punch list's identifiers to the tree. Found three
+  orphans on its first run.
+- `F-0079-6` — closed by [`0084`](decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md).
+
+**`0084` is the one to read.** A stored fingerprint's recipe is pinned to `BundleSchema.Version`, so
+changing what goes into a `CoverageId` raises the schema version and old-recipe bundles are refused
+at open rather than silently forming a second group. The first adjudication proposed a version
+*inside* the value and was wrong for the requirement — it lets stale bundles open and group
+separately, which is the failure. **Checking the whole list rather than the one entry is what
+corrected it**: `AceSetHash` already puts its version inside the hash, for the opposite reason
+(preventing false *equality*), and without looking the record would have contradicted the codebase
+instead of distinguishing from it.
+
+**Three punch-list adjudications came out of the first sitting and are recorded in full.** `P-2`
+verified correct against the code. `P-3` decided, and since fixed. `P-7`/`F-4` demoted, which is the
+one worth reading first.
 
 **Two open findings were live in area files and absent from the punch list**, and are now carried:
 `F-0079-6` and `F-0056-1`.
@@ -219,6 +248,21 @@ and the session has to be killed. It looks exactly like a slow command. **Write 
 with the file-editing tools and keep the terminal to commands that return** — and if a terminal call
 has to be cancelled, ask whether it hung before assuming the cancellation was a judgement on the
 content. One was misread that way.
+
+**When a rule is applied to a list, check every entry before believing the list is done.** This is
+`P-19`'s shape and it has now appeared four times, twice in gates that were *narrower than their own
+names*. `NoDocumentClaimsADateThatHasNotHappened` matched full dates only, so a bare `2026-09`
+written in August passed. `NoDocumentLeavesADatePlaceholderUnfilled` matched `XX` under
+`StringComparison.Ordinal`, so a lowercase `2026-09-xx` passed. Both were widened; between them they
+found seven wrong claims, including three lab verification dates that had never been filled in.
+**Two checks can each be narrower than their names in ways that overlap, leaving a gap neither name
+admits to.**
+
+**A convention is not a constraint — check which one you are enforcing.** The documentation-only rule
+exists to keep rewrite diffs reviewable. It was twice used to decline work the owner wanted done, on
+his own branch, until he said so. That is a rule carried forward without re-asking what it was for,
+which is the same failure as every stale record this pass found, committed by the session cataloguing
+them.
 
 **Traps of the same family, one layer down.** `Measure-Object -Line` undercounts, and the
 Audit/Connect pass trusted it. It reported the
