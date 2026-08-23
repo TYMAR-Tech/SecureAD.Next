@@ -12,7 +12,7 @@ namespace SecureAD.Evidence.Run;
 /// </para>
 /// <para>
 /// The situations and their card shapes are decision <c>0027</c>, and the document
-/// <c>docs/evidence/whether-two-runs-compare.md</c> is bound to this enum in both
+/// <c>docs/layers/evidence/whether-two-runs-compare.md</c> is bound to this enum in both
 /// directions.
 /// </para>
 /// </remarks>

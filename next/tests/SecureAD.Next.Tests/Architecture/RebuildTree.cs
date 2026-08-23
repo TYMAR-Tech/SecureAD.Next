@@ -7,8 +7,8 @@ namespace SecureAD.Next.Tests.Architecture;
 ///
 /// The rebuild lives outside <c>src/</c> so that the old tree's architecture tests, which resolve
 /// <c>src/</c> and recurse it, do not govern code written to a different design. The cost of that
-/// separation is that the invariants in <c>docs/INVARIANTS.md</c> are no longer inherited here by
-/// accident of folder placement, so they are asserted explicitly by
+/// separation is that the invariants once stated in docs/INVARIANTS.md are no longer inherited here
+/// by accident of folder placement, so they are asserted explicitly by
 /// <see cref="ProductInvariantTests"/>.
 ///
 /// Scanning source text rather than using reflection is deliberate and follows the old tree's

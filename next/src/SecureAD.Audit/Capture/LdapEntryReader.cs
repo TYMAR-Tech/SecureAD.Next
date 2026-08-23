@@ -12,7 +12,7 @@ namespace SecureAD.Audit.Capture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B8, and <c>docs/audit/how-a-controller-is-read.md</c> is the
+/// This is inventory row B8, and <c>docs/layers/audit/how-a-controller-is-read.md</c> is the
 /// document bound to it. It is one reader on purpose. The question <i>what does this attribute
 /// actually say</i> is asked once, in one place, because the two things it decides - whether a
 /// value is text or bytes, and whether the values are all of them - are the two things a second
@@ -180,7 +180,7 @@ public sealed class LdapEntryReader
     /// </para>
     /// <para>
     /// A failure here is a failure of the request under
-    /// <c>docs/audit/limits-and-failures.md</c>: capture is fail-fast, and a partition it cannot read
+    /// <c>docs/layers/audit/limits-and-failures.md</c>: capture is fail-fast, and a partition it cannot read
     /// fully ends the run rather than yielding a bundle whose silences mean nothing.
     /// </para>
     /// </remarks>

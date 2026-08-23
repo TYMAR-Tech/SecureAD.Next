@@ -22,7 +22,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// has changed it.
 /// </para>
 /// <para>
-/// Retargeted from <c>docs/next/S-18-run-identity-and-comparability.md</c>, which was deleted when
+/// Retargeted from docs/next/S-18-run-identity-and-comparability.md, which was deleted when
 /// the last of its content moved. Identity and coverage went to
 /// <c>run-identity-and-coverage.md</c> and are bound by <c>RunIdentityDocumentationTests</c>; the
 /// run states had already gone to <c>the-bundle-on-disk.md</c>.

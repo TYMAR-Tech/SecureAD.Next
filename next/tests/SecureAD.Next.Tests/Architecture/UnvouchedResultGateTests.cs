@@ -50,8 +50,8 @@ namespace SecureAD.Next.Tests.Architecture;
 /// separates "the predicate ran and said no" from "the predicate did not run" - both are
 /// <c>Is*</c> and <c>Has*</c> - so a rule over <c>bool</c> would fire on
 /// <c>Result&lt;T&gt;.IsSuccess</c> and <c>GenericRightsExpander.HasGenericRights</c> and be
-/// switched off within a week. That limit is recorded as a finding in
-/// <c>docs/next/S-6-vouched-returns.md</c> rather than pretended away.
+/// switched off within a week. That limit was recorded as a finding in docs/next/S-6-vouched-returns.md,
+/// since deleted, rather than pretended away.
 /// </para>
 /// </summary>
 public sealed class UnvouchedResultGateTests

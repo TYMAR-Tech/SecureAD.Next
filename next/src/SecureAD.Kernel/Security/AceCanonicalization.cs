@@ -18,15 +18,15 @@ namespace SecureAD.Kernel.Security;
 /// <b>Version 2</b> added <c>ace_type</c> to the hash inputs and to the ordering tiebreak. Version
 /// 1 hashed three of the four fields that define an ACE, so two ACEs differing only by type
 /// collided and one was silently dropped, and their relative order depended on the order they
-/// arrived in. See <c>docs/kernel/security-descriptors.md</c>.
+/// arrived in. See <c>docs/layers/kernel/security-descriptors.md</c>.
 /// </para>
 /// <para>
 /// <b>Version 3</b> added the callback ACE's <c>ApplicationData</c> - the condition bytes. Version
 /// 2 hashed every field that distinguishes an unconditional ACE and none that distinguishes a
 /// conditional one, so <i>allow X when Department = IT</i> and <i>allow X when Department = HR</i>
 /// collided, and <see cref="AceNormalizer"/> discarded one of them before it was written. A
-/// conditional entry and an otherwise identical unconditional one collided the same way. See
-/// <c>docs/next/S-58-the-fix-brief.md</c>, F-S58-11.
+/// conditional entry and an otherwise identical unconditional one collided the same way. Recorded
+/// as F-S58-11, in the fix brief that carried it, since deleted.
 /// </para>
 /// </remarks>
 public static class AceCanonicalization

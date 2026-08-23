@@ -52,7 +52,7 @@ public enum PageCompleteness
 /// deliberate.</b> A request carries the referral policy and the paging control, so it must be a
 /// real <c>SearchRequest</c> built by the one factory permitted to build one - that is what
 /// <c>DirectorySearchGateTests</c> polices. An answer carries no policy; it carries facts. Keeping
-/// it as this type means the rules in <c>docs/audit/how-a-controller-is-read.md</c> can be exercised
+/// it as this type means the rules in <c>docs/layers/audit/how-a-controller-is-read.md</c> can be exercised
 /// against a controller model, which the platform's own sealed response type does not allow, and
 /// the alternative was a test that inspected nothing and reported it correct.
 /// </para>

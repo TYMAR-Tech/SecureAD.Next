@@ -40,7 +40,7 @@ namespace SecureAD.Audit.Connect;
 /// </para>
 /// <para>
 /// <b>The connections are closed again immediately.</b> A capture opens its own, per the failure
-/// policy in <c>docs/audit/limits-and-failures.md</c>: a naming context that has to be read again needs
+/// policy in <c>docs/layers/audit/limits-and-failures.md</c>: a naming context that has to be read again needs
 /// a fresh connection, so holding these open would save nothing and would keep a session on every
 /// controller in the forest for the length of the run.
 /// </para>

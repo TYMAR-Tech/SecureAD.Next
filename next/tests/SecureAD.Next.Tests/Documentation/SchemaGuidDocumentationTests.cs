@@ -9,7 +9,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Retargeted from <c>docs/next/S-3-schema-guid-catalogue.md</c>, which this document consumed and
+/// Retargeted from docs/next/S-3-schema-guid-catalogue.md, which this document consumed and
 /// which is deleted. The retarget was proven rather than assumed: the gate was pointed at the
 /// document the tables had left and produced failures naming the tables it could not find, rather
 /// than passing against an empty scan.

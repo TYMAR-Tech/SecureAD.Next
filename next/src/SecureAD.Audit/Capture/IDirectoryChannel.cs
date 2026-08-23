@@ -13,11 +13,11 @@ namespace SecureAD.Audit.Capture;
 /// reason an interface is worth having - what is on the other side is not this product's code, and
 /// there is no forest in a build agent. Everything above it can therefore be exercised against a
 /// controller model that behaves the way Microsoft's documentation says a controller behaves, which
-/// is the only way the rules in <c>docs/audit/how-a-controller-is-read.md</c> can be checked at all.
+/// is the only way the rules in <c>docs/layers/audit/how-a-controller-is-read.md</c> can be checked at all.
 /// </para>
 /// <para>
 /// <b>One request at a time.</b> A capture places one request on a controller and waits for the
-/// answer before placing another - see <c>docs/audit/limits-and-failures.md</c>, where that is the whole
+/// answer before placing another - see <c>docs/layers/audit/limits-and-failures.md</c>, where that is the whole
 /// of the product's politeness and also a correctness rule, because the state a controller keeps
 /// between the pages of a paged search comes out of one per-controller budget which it relieves by
 /// discarding the oldest. Nothing here enforces that; what enforces it is
@@ -131,7 +131,7 @@ public interface IDirectoryChannel : IDisposable
 /// This exists because of one line of the failure policy. When a failure ends the conversation with
 /// a controller the paging bookmark dies with it, and the answer is to read the naming context
 /// again from its first page on a <i>fresh connection</i> - see
-/// <c>docs/audit/limits-and-failures.md</c>. A component handed a connection cannot do that, so it could
+/// <c>docs/layers/audit/limits-and-failures.md</c>. A component handed a connection cannot do that, so it could
 /// not implement the policy it is supposed to be applying: it would have to hand the decision
 /// upwards, and the budget of one restart per naming context would then live nowhere.
 /// </para>

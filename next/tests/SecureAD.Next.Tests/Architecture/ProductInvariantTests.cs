@@ -3,7 +3,8 @@ using Xunit;
 namespace SecureAD.Next.Tests.Architecture;
 
 /// <summary>
-/// Enforces the product invariants from <c>docs/INVARIANTS.md</c> against the rebuild tree.
+/// Enforces the product invariants against the rebuild tree. They were stated in the old product's
+/// docs/INVARIANTS.md, which is no longer in the repository, so this class is now where they live.
 ///
 /// <para>
 /// These duplicate <c>NonDestructiveInvariantTests</c> in the old tree, and the duplication is

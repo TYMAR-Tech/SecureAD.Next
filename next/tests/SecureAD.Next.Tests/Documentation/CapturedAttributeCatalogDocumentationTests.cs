@@ -54,8 +54,8 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </para>
 /// <para>
 /// <b>What that costs, recorded plainly.</b> Thirty-four entries forecast a reader and nothing now
-/// makes anybody revisit them - see <c>F-S45-1</c> in
-/// <c>docs/next/sessions/S-45-demoting-the-ledger.md</c>, which lists them. The larger gap is not
+/// makes anybody revisit them - see <c>F-S45-1</c>, raised in the session document
+/// docs/next/sessions/S-45-demoting-the-ledger.md, since deleted, which listed them. The larger gap is not
 /// this one: it is that nothing checks the opposite direction, whether something that needs an
 /// attribute finds it captured. That is the direction with the one-way door in it, owed by row
 /// <c>E16</c> and recorded as <c>F-S7-24</c> and <c>F-S44-2</c>.
