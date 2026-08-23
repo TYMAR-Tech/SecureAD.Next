@@ -567,6 +567,17 @@ his own branch, until he said so. That is a rule carried forward without re-aski
 which is the same failure as every stale record this pass found, committed by the session cataloguing
 them.
 
+**A truncated tool result read as a complete one.** The Kernel/Naming pass searched for the old
+filename across `*.cs` and `*.md` exactly as step 6 requires, and the search **did** return the hit
+in `DnHelper.cs`. The output was truncated, the visible portion was read as the whole answer, and the
+source file was left citing a document that had been deleted. The owner caught it, not the session.
+`LayerDocumentGateTests` could never have found this one: it checks links out of *layer documents*,
+and this was an XML doc comment in production code. **When a search backs a completeness claim, make
+it return something countable** — pipe to a count, or write the hits to a file and read that — because
+a partial result and a complete one look identical when both end in a match you recognise. Same
+family as the `Measure-Object` trap below: the tool was asked, and its answer was wrong in a way that
+reads as authoritative.
+
 **Traps of the same family, one layer down.** `Measure-Object -Line` undercounts, and the
 Audit/Connect pass trusted it. It reported the
 `_COVERAGE.md` as a coverage claim, and it named the deleted `S-14` at 175 lines when git says 225.

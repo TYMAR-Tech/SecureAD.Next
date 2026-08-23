@@ -12,7 +12,7 @@ namespace SecureAD.Kernel.Naming;
 /// </para>
 /// <para>
 /// It handles the escaped form of RFC 2253 &#167;2.4 and not the quoted form. See
-/// <c>docs/next/S-2-distinguished-name-manipulation.md</c>.
+/// <c>docs/kernel/distinguished-names.md</c>.
 /// </para>
 /// </summary>
 public static class DnHelper

@@ -282,7 +282,7 @@ public sealed class DnHelperTests
     // --- Documented limits, not requirements ---
 
     /// <summary>
-    /// <b>This test pins a defect, not a specification.</b> See finding F-S2-1.
+    /// <b>This test pins a defect, not a specification.</b> See <c>P-40</c> on the punch list.
     ///
     /// <para>
     /// RFC 2253 &#167;2.4 permits a value containing a comma to be written either escaped
@@ -306,7 +306,7 @@ public sealed class DnHelperTests
     }
 
     /// <summary>
-    /// <b>This test pins a defect, not a specification.</b> See finding F-S2-2.
+    /// <b>This test pins a defect, not a specification.</b> See <c>P-41</c> on the punch list.
     ///
     /// <para>
     /// An escaped backslash at the end of a value &#8212; <c>CN=corp\\</c> &#8212; ends with a

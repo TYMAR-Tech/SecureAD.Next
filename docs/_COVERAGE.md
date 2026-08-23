@@ -305,4 +305,26 @@ citations now repeated in `docs/kernel/naming.md` were originally verified; and
 > `docs/next/S-3-schema-guid-catalogue.md` (412/412, now deleted) and
 > `docs/areas/what-a-permission-means.md` (109/109).
 
+---
+
+## kernel-naming  (no archive files assigned)
+
+**The mechanical assignment gave this subsystem no rows.** That is not the same as *no archive
+material about distinguished names*; it means no archive file scored `kernel-naming` as its primary
+or runner-up subsystem, which is a property of the keyword scoring and not evidence of absence. The
+later archive pass should search the archive for the subject rather than trust this empty section.
+
+> **The Kernel/Naming pass read the code, the tests and the governing area file** — the same
+> disposition as Kernel/Schema, Audit/Capture and Evidence. What it read, in full:
+>
+> | Source file | Lines | Read |
+> |---|---:|---:|
+> | `Naming/DnHelper.cs` | 207 | 207 |
+>
+> Documents read whole alongside it: `docs/next/S-2-distinguished-name-manipulation.md` (245/245,
+> now deleted), `docs/areas/who-is-who.md` (95/95), `docs/kernel/naming.md` (294/294, read to
+> establish that it is a different subject and must not be merged), and the binding test
+> `DistinguishedNameDocumentationTests.cs` (164/164).
+
+
 
