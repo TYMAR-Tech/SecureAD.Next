@@ -237,6 +237,29 @@ ten existing tables settle nothing on their own, because unbound is how they all
   gates walk the same three-column table under two possible headings — so the fix is to widen
   `LabConfirmationColumnTests` to the layer documents rather than to write a third scanner.
 
+- `P-34` — **CLOSED. Step 7 of the cycle had no gate, and now has two.** Deleting the consumed
+  documents and correcting the solution items was the only step of the rewrite cycle nothing
+  enforced: a pass that skipped it committed green, and did, twice.
+
+  **The obvious remedy was rejected.** Asserting that each consumed document is *absent* needs a
+  hand-written list of what should be gone. Nothing generates that list, nothing else consumes it,
+  and forgetting an entry makes the check **pass** — it rots toward silence, which is the worst
+  direction. `check-instruction-claims.ps1` is the only absence check here that works, and it works
+  because the instructions themselves name the symbols; a deletion list has no such anchor.
+
+  So the **consequence** is checked rather than the act. `LayerDocumentGateTests` holds that every
+  link out of a layer document resolves — a document deleted without its inbound references
+  repointed leaves a link to nothing — and that every layer document is listed in the solution.
+  Neither needs a list, and the first catches a broken link arriving from any other cause for free.
+  `AreaFileGateTests` has done the same for `docs/areas` since the beginning; the pages the rewrite
+  actually produces had nothing. Both proven red before being accepted.
+
+  **`SolutionDocumentItemTests` said the opposite and has been amended.** Its remarks argued the
+  reverse direction was deliberately unchecked because an unlisted document *harms nobody*. True of
+  `docs/decisions` and its scores of records; false of the seventeen layer documents, where the
+  omission is a recorded defect. The general rule stands and the narrow exception is now written in
+  both files rather than left as a disagreement between a gate and the cycle text.
+
 **Where S-18's findings went.** `S-18` was deleted when
 [`run-identity-and-coverage.md`](evidence/run-identity-and-coverage.md) and
 [`whether-two-runs-compare.md`](evidence/whether-two-runs-compare.md) consumed it. All five of its

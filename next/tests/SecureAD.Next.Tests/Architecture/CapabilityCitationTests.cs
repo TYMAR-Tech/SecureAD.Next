@@ -36,12 +36,6 @@ namespace SecureAD.Next.Tests.Architecture;
 public sealed class CapabilityCitationTests
 {
     /// <summary>
-    /// The subsystems whose documents carry capability tables. Named rather than discovered, so
-    /// that a directory going missing is a failure instead of a smaller scan.
-    /// </summary>
-    private static readonly string[] Subsystems = ["kernel", "audit", "connect", "evidence"];
-
-    /// <summary>
     /// The two openers a capability table is written under. <c>StartsWith</c> rather than equality,
     /// because a heading may carry trailing words.
     /// </summary>
@@ -89,7 +83,7 @@ public sealed class CapabilityCitationTests
 
         Assert.True(capabilities.Count > 0, "Read no capabilities from any layer document.");
 
-        foreach (var subsystem in Subsystems)
+        foreach (var subsystem in LayerDocuments.Subsystems)
         {
             var read = capabilities.Count(c => Subsystem(c.File) == subsystem);
             Assert.True(read > 0, $"Read no capabilities from docs/{subsystem}, so nothing there is checked.");
@@ -111,7 +105,7 @@ public sealed class CapabilityCitationTests
     [Fact]
     public void ACapabilityHeadingIsNeverLeftWithoutRows()
     {
-        var empty = LayerDocuments()
+        var empty = LayerDocumentFiles()
             .Where(f => CarriesACapabilityHeading(f) && !CapabilitiesIn(f).Any())
             .Select(f => $"  {Subsystem(f)}/{Path.GetFileName(f)}")
             .OrderBy(f => f, StringComparer.Ordinal)
@@ -124,26 +118,9 @@ public sealed class CapabilityCitationTests
             + Environment.NewLine + string.Join(Environment.NewLine, empty));
     }
 
-    private static string DocumentationRoot() => Path.Combine(RepositoryLocation.Root(), "docs");
+    private static string Subsystem(string file) => LayerDocuments.SubsystemOf(file);
 
-    private static string Subsystem(string file) =>
-        Path.GetFileName(Path.GetDirectoryName(file)!);
-
-    private static List<string> LayerDocuments()
-    {
-        var found = new List<string>();
-
-        foreach (var subsystem in Subsystems)
-        {
-            var directory = Path.Combine(DocumentationRoot(), subsystem);
-            Assert.True(Directory.Exists(directory), $"Expected the layer documents at {directory}.");
-
-            found.AddRange(Directory.EnumerateFiles(directory, "*.md")
-                .OrderBy(f => f, StringComparer.Ordinal));
-        }
-
-        return found;
-    }
+    private static List<string> LayerDocumentFiles() => LayerDocuments.All();
 
     private static bool CarriesACapabilityHeading(string file) =>
         File.ReadAllLines(file).Any(IsCapabilityHeading);
@@ -152,7 +129,7 @@ public sealed class CapabilityCitationTests
         CapabilityHeadings.Any(h => line.TrimEnd().StartsWith(h, StringComparison.Ordinal));
 
     private static List<(string File, int Line, string Citation)> Capabilities() =>
-        [.. LayerDocuments().SelectMany(CapabilitiesIn)];
+        [.. LayerDocumentFiles().SelectMany(CapabilitiesIn)];
 
     /// <summary>
     /// The citations in the second column of a document's capability table. Only the rows between

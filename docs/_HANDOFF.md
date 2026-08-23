@@ -254,6 +254,10 @@ One subsystem per pass. Do not start the next until the current one is committed
    remove what was deleted *and add what was written*. Every rewritten layer document is a solution
    folder item; the Evidence pass added none, so its new document was invisible in the IDE while the
    stub it replaced was still listed. The word *prune* stood here and was read as delete-only.
+   **`LayerDocumentGateTests` now enforces both halves** — every link out of a layer document
+   resolves, so a deletion that left its inbound references behind goes red, and every layer document
+   is listed in the solution. This was the only step of the cycle no gate covered, which is why it
+   was skipped twice without anything noticing.
 8. **Run the whole suite. Commit only when green.**
 
 ---

@@ -14,9 +14,19 @@ namespace SecureAD.Next.Tests.Architecture;
 /// no build warning, no failing test, nothing in git that read as wrong.
 /// </para>
 /// <para>
-/// The reverse direction is deliberately not checked. A document that exists but is not listed
-/// in the solution is merely not browsable from the IDE, which harms nobody; requiring every
-/// document to be listed would make adding one a two-step act for no gain.
+/// The reverse direction is deliberately not checked <i>here</i>. A document that exists but is
+/// not listed in the solution is merely not browsable from the IDE, which harms nobody across the
+/// scores of records in <c>docs/decisions</c>; requiring every document to be listed would make
+/// adding one a two-step act for no gain.
+/// </para>
+/// <para>
+/// <b>That argument does not reach the layer documents, and
+/// <see cref="LayerDocumentGateTests.EveryLayerDocumentIsListedInTheSolution"/> checks those.</b>
+/// There are seventeen of them, each the product of a whole rewrite pass, and the omission has been
+/// observed twice: the Evidence pass added no solution items, leaving a new document invisible in
+/// the IDE while the stub it replaced was still listed, and the same defect had passed unnoticed one
+/// subsystem earlier in Kernel. The general rule stands; the exception is narrow and is written down
+/// rather than left as a disagreement between this file and the rewrite cycle.
 /// </para>
 /// </remarks>
 public sealed class SolutionDocumentItemTests
