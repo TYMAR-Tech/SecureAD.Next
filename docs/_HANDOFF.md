@@ -20,9 +20,10 @@ gates, with the old documents deleted as they are consumed.
 **Done — Kernel/Security.** Commit `f1d49f6`. Four documents in `docs/kernel/`, three slice documents
 deleted (1,632 lines), all gates retargeted, 2,159 tests green.
 
-**Done — Audit/Capture.** Four documents in `docs/audit/` — the attribute catalogue, the search
-capture issues, how a controller's answer is read, and what a controller's limits oblige. Six slice
-documents deleted (2,056 lines), six gate suites retargeted, one unsound gate widened and fixed.
+**Done — Audit/Capture.** Commit `ee63b7f`. Four documents in `docs/audit/` — the attribute
+catalogue, the search capture issues, how a controller's answer is read, and what a controller's
+limits oblige. Six slice documents deleted (1,856 lines), six gate suites retargeted, one unsound
+gate widened and fixed, 2,160 tests green.
 
 **Two things about that pass are worth carrying forward.**
 
@@ -109,6 +110,18 @@ DACL states where the enum has four. Verify against the definition.
 **Sampling a file and calling it read.** Large files were read at 12–20% and the drafts inherited
 whatever the summaries claimed. `_COVERAGE.md` records lines read against total for this reason;
 state the fraction when claiming a file is read.
+
+**Summarising from memory at the end of a long pass.** The Audit/Capture session finished green and
+then reported four document filenames that do not exist, and a deletion count 200 lines out. Both
+were wrong only in the summary — the gates and the commit were correct throughout — but a reader
+would have gone looking for files by those names. **At the end of a pass, read the directory and ask
+`git` for the numbers rather than recalling them.** The wrongness was confident and fluent, which is
+what makes it worth a line here: it is the same failure as a well-argued paragraph mistaken for a
+conclusion, arriving from the other direction.
+
+**This is also the signal to end a session.** Fabricated detail late in a pass means the useful
+context is spent. Commit, update this file, and start fresh rather than pushing into the next
+subsystem.
 
 **Capture gaps cannot be worked around later, but are not urgent.** There are no bundles in the field
 — the owner is the only user. A missing capture input is ordinary backlog, found naturally when a
