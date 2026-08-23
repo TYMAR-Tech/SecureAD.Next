@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using SecureAD.Audit.Capture;
 using Xunit;
 using SecureAD.Kernel.Capture;
@@ -6,7 +6,7 @@ using SecureAD.Kernel.Capture;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/audit/the-attribute-catalogue.md</c> to <see cref="CapturedAttributeCatalog"/>.
+/// Binds <c>docs/layers/audit/the-attribute-catalogue.md</c> to <see cref="CapturedAttributeCatalog"/>.
 ///
 /// <para>
 /// S-23 is the derivation of the catalogue from the sixty-two rule cards, and its central table
@@ -261,7 +261,7 @@ public sealed class CapturedAttributeDerivationDocumentationTests
 
     private static string DocumentPath()
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "layers", "audit", Document);
 
         Assert.True(
             File.Exists(path),

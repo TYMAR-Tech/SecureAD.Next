@@ -278,7 +278,7 @@ The archived design review sets out five questions in order, and this product an
 | 4 | What can a particular principal effectively do? | **not built** |
 | 5 | Is that result dangerous? | this subsystem |
 
-Layers 3 and 4 are [planned effective access](../planned/effective-access.md). Until they exist,
+Layers 3 and 4 are [planned effective access](../../planned/effective-access.md). Until they exist,
 **this component must not be asked questions that need them** — most importantly, whether a principal
 can read a confidential attribute, which requires two rights that may arrive from different entries.
 
@@ -306,9 +306,9 @@ rests on it here.
 
 | Record | What it settles |
 |---|---|
-| [`0002`](../decisions/0002-absent-view-means-degraded-run.md) | *found nothing* and *could not compute* are never rendered alike |
-| [`0004`](../decisions/0004-unknown-counts-name-the-failed-phase.md) | an unknown answer names the phase that failed rather than showing a zero |
-| [`0016`](../decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) | the filtered-set replication route is a product judgement, so a replication right is recorded rather than answered |
+| [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) | *found nothing* and *could not compute* are never rendered alike |
+| [`0004`](../../decisions/0004-unknown-counts-name-the-failed-phase.md) | an unknown answer names the phase that failed rather than showing a zero |
+| [`0016`](../../decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) | the filtered-set replication route is a product judgement, so a replication right is recorded rather than answered |
 
 `0002` and `0004` are why `PermissionVerdict` is an enumeration and not a `bool`.
 

@@ -3,10 +3,10 @@
 **Layer.** The one place in this product that opens a socket to a domain controller, what identity
 it presents, and what the resulting channel will and will not do.
 
-The code is [`LdapDirectoryChannelFactory`](../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannelFactory.cs),
-[`LdapDirectoryChannel`](../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannel.cs),
-[`DirectoryConnectionSettings`](../../next/src/SecureAD.Audit/Connect/DirectoryConnectionSettings.cs)
-and [`DirectoryCredential`](../../next/src/SecureAD.Audit/Connect/DirectoryCredential.cs).
+The code is [`LdapDirectoryChannelFactory`](../../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannelFactory.cs),
+[`LdapDirectoryChannel`](../../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannel.cs),
+[`DirectoryConnectionSettings`](../../../next/src/SecureAD.Audit/Connect/DirectoryConnectionSettings.cs)
+and [`DirectoryCredential`](../../../next/src/SecureAD.Audit/Connect/DirectoryCredential.cs).
 
 Which rung it lands on is [`the connection ladder`](the-connection-ladder.md). What the channel is
 used for afterwards is [`how a controller is read`](../audit/how-a-controller-is-read.md).
@@ -54,7 +54,7 @@ naming context again from its first page **on a fresh connection**. Something ha
 could not do that.
 
 Both collaborators are required rather than defaulted. A factory that could be built without a
-[`ConnectionSecurityLog`](../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs) would be a
+[`ConnectionSecurityLog`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs) would be a
 product that sometimes did not know what its own evidence crossed.
 
 ## What opening one rung actually does

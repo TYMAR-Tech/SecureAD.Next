@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/evidence/how-a-bundle-is-read.md</c> to <see cref="RunLibrary"/>,
+/// Binds <c>docs/layers/evidence/how-a-bundle-is-read.md</c> to <see cref="RunLibrary"/>,
 /// <see cref="RunListing"/> and the refusals the library actually constructs.
 /// </summary>
 /// <remarks>
@@ -24,7 +24,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </remarks>
 public sealed class RunLibraryDocumentationTests
 {
-    private const string Document = "docs/evidence/how-a-bundle-is-read.md";
+    private const string Document = "docs/layers/evidence/how-a-bundle-is-read.md";
 
     /// <summary>
     /// The refusals the library builds. Read off the source rather than reflected, because an

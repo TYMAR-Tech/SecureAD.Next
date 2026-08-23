@@ -88,7 +88,7 @@ property of the type rather than a rule callers are asked to remember.
 
 ## The order of the checks is the decision
 
-Decision [`0027`](../decisions/0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md).
+Decision [`0027`](../../decisions/0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md).
 `RunComparability.Evaluate` takes this run and the earlier one, **the first match wins**, and the
 sequence runs from the least recoverable situation to the most: no partner at all, then a partner
 that never finished, then evidence with a hole in it, then differences that qualify rather than

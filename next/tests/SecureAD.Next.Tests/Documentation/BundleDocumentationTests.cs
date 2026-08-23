@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/evidence/what-a-bundle-holds.md</c> to the schema the code actually creates, per
+/// Binds <c>docs/layers/evidence/what-a-bundle-holds.md</c> to the schema the code actually creates, per
 /// <c>docs/next/README.md</c> §When a document counts as documentation.
 ///
 /// <para>
@@ -160,7 +160,7 @@ public sealed class BundleDocumentationTests : IDisposable
     /// </summary>
     private static Dictionary<string, string> DocumentedRows()
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "evidence", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "layers", "evidence", Document);
         if (!File.Exists(path))
             throw new FileNotFoundException("Expected the layer document at " + path + ".", path);
 

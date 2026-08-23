@@ -3,23 +3,23 @@
 **Layer.** How a run finds the forest it is in, learns what that forest contains, and decides which
 domain controller each domain will be read from — all before anything is captured.
 
-The code is [`ForestBootstrap`](../../next/src/SecureAD.Audit/Connect/ForestBootstrap.cs),
-[`MachineDomain`](../../next/src/SecureAD.Audit/Connect/MachineDomain.cs),
-[`MachineAddresses`](../../next/src/SecureAD.Audit/Connect/MachineAddresses.cs),
-[`ForestDiscovery`](../../next/src/SecureAD.Audit/Connect/ForestDiscovery.cs),
-[`ForestPartitions`](../../next/src/SecureAD.Audit/Connect/ForestPartitions.cs),
-[`ForestTopology`](../../next/src/SecureAD.Audit/Connect/ForestTopology.cs),
-[`ForestRoles`](../../next/src/SecureAD.Audit/Connect/ForestRoles.cs),
-[`OperatorSite`](../../next/src/SecureAD.Audit/Connect/OperatorSite.cs),
-[`ControllerSelection`](../../next/src/SecureAD.Audit/Connect/ControllerSelection.cs),
-[`ForestPlan`](../../next/src/SecureAD.Audit/Connect/ForestPlan.cs) and
-[`PlanPreview`](../../next/src/SecureAD.Audit/Connect/PlanPreview.cs).
+The code is [`ForestBootstrap`](../../../next/src/SecureAD.Audit/Connect/ForestBootstrap.cs),
+[`MachineDomain`](../../../next/src/SecureAD.Audit/Connect/MachineDomain.cs),
+[`MachineAddresses`](../../../next/src/SecureAD.Audit/Connect/MachineAddresses.cs),
+[`ForestDiscovery`](../../../next/src/SecureAD.Audit/Connect/ForestDiscovery.cs),
+[`ForestPartitions`](../../../next/src/SecureAD.Audit/Connect/ForestPartitions.cs),
+[`ForestTopology`](../../../next/src/SecureAD.Audit/Connect/ForestTopology.cs),
+[`ForestRoles`](../../../next/src/SecureAD.Audit/Connect/ForestRoles.cs),
+[`OperatorSite`](../../../next/src/SecureAD.Audit/Connect/OperatorSite.cs),
+[`ControllerSelection`](../../../next/src/SecureAD.Audit/Connect/ControllerSelection.cs),
+[`ForestPlan`](../../../next/src/SecureAD.Audit/Connect/ForestPlan.cs) and
+[`PlanPreview`](../../../next/src/SecureAD.Audit/Connect/PlanPreview.cs).
 
-Governed by [`0053`](../decisions/0053-the-tool-finds-its-own-forest.md),
-[`0050`](../decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md),
-[`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md),
-[`0054`](../decisions/0054-a-domain-with-no-candidates-is-an-attested-exclusion.md) and
-[`0055`](../decisions/0055-the-pdc-emulator-is-established-at-preflight.md).
+Governed by [`0053`](../../decisions/0053-the-tool-finds-its-own-forest.md),
+[`0050`](../../decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md),
+[`0052`](../../decisions/0052-the-domain-is-the-only-unit-of-scope.md),
+[`0054`](../../decisions/0054-a-domain-with-no-candidates-is-an-attested-exclusion.md) and
+[`0055`](../../decisions/0055-the-pdc-emulator-is-established-at-preflight.md).
 
 ---
 
@@ -137,7 +137,7 @@ only an `nTDSDSA` declares `msDS-hasMasterNCs`, and only a `server` declares `dN
 **A controller that cannot be named is recorded, never dropped.** An `nTDSDSA` whose `server` parent
 carries no `dNSHostName` is one this product cannot connect to. Silently omitting it would shorten a
 candidate list with nothing saying so, and per
-[`0002`](../decisions/0002-absent-view-means-degraded-run.md) an absence the product created may not
+[`0002`](../../decisions/0002-absent-view-means-degraded-run.md) an absence the product created may not
 be presented as a fact about the forest.
 
 **`DirectoryServiceDn` is carried because a role is recorded under it and nothing else.** An
@@ -277,14 +277,14 @@ site.
 **Whether a name that does not resolve is told apart from a host that is switched off.** Both arrive
 as the same protocol error, and separating them means resolving the name deliberately — a further act
 against DNS that would need weighing against `0050`. Raised by the amendment to
-[`0018`](../decisions/0018-connection-security-is-an-ordered-ladder.md), not decided there.
+[`0018`](../../decisions/0018-connection-security-is-an-ordered-ladder.md), not decided there.
 
 **What an operator does when he wants to pin controllers permanently.** Referred to as *the
 configuration file* in `A2` of the reference inventory, never designed. Hand-typing a list of
 controllers now would put typos into the first real run.
 
 **What a run does when the chosen controller fails part-way through.**
-[`0040`](../decisions/0040-a-failed-domain-is-read-again-from-another-controller.md) decided a failed
+[`0040`](../../decisions/0040-a-failed-domain-is-read-again-from-another-controller.md) decided a failed
 domain is read again from another controller, and the ranked failover list exists for it — but
 **nothing walks that path today** (`F-S40-1`, on the punch list). Whether the operator is told, and
 when, is undecided.

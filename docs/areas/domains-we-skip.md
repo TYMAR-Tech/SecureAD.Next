@@ -43,8 +43,8 @@ page look furnished.
 What exists today is the *absence* of a domain, handled where the absence arises — a domain with no
 candidate controllers is recorded rather than planned against, in
 [which-controller-we-read](which-controller-we-read.md), and a domain that went unread makes the run
-incomplete, in [what-the-run-covered](what-the-run-covered.md). **Neither is a deliberate
-exclusion.** Both are the product coping with a domain it could not reach.
+incomplete, in [run identity and coverage](../layers/evidence/run-identity-and-coverage.md). **Neither is a
+deliberate exclusion.** Both are the product coping with a domain it could not reach.
 
 The attestation that [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md) requires —
 an operator choosing to leave a reachable domain out, and putting his name to it — has no code, no

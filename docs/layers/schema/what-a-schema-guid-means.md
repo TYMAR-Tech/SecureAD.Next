@@ -17,7 +17,7 @@ This folder is that table.
 
 Each capability names the test that proves it. **The test is the evidence; this table is only the
 index.** These rows are also carried in the governing area file
-[what-a-permission-means](../areas/what-a-permission-means.md); they are copied rather than moved,
+[what-a-permission-means](../../areas/what-a-permission-means.md); they are copied rather than moved,
 because `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` requires that file to keep its
 *What is built* table permanently.
 
@@ -61,7 +61,7 @@ folder replaced did carry are deliberately absent, and a reader who does not fin
 one back.** `IsDangerous` is gone because whether a right is dangerous is a judgement rather than a
 fact — the reasoning is under *Do not change* below, and it is stronger than a layering argument.
 `DisplayName` is gone because the directory holds the authoritative label and capture reads it, per
-[`0014`](../decisions/0014-capture-reads-the-schema-partition.md); nobody has to author those
+[`0014`](../../decisions/0014-capture-reads-the-schema-partition.md); nobody has to author those
 strings, and inventing presentation copy with no stated provenance is how a catalogue starts
 drifting. Until a screen shows a captured label, a report renders `User-Force-Change-Password`. That
 is a temporary coarseness, not a design position.
@@ -126,7 +126,7 @@ extensions — vendor products, and locally created attributes whose GUIDs are g
 and unique to that forest — which no shipped table can contain.
 
 Those come from the **captured** layer, read from the schema partition during capture per
-[`0014`](../decisions/0014-capture-reads-the-schema-partition.md). `CapturedOver` is that two-layer
+[`0014`](../../decisions/0014-capture-reads-the-schema-partition.md). `CapturedOver` is that two-layer
 lookup. Callers ask one lookup, not two: if a caller had to choose which catalogue to consult, some
 caller would choose wrong and another would consult neither and write a GUID literal, which is
 exactly the history this folder replaces.
@@ -207,8 +207,8 @@ Names are the CN Microsoft's AD schema reference gives, so an entry can be check
 `learn.microsoft.com/windows/win32/adschema` one line at a time — and it has been. All 101 rows are
 pinned in `SchemaGuidCatalogMicrosoftAnchorTests` in both directions: every shipped entry must have
 a pinned row and every pinned row must be shipped, so neither an unchecked addition nor a silent
-removal survives. See [MICROSOFT-VERIFICATION](../MICROSOFT-VERIFICATION.md) and
-[`0077`](../decisions/0077-a-well-known-sid-is-named-from-microsoft.md).
+removal survives. See [MICROSOFT-VERIFICATION](../../MICROSOFT-VERIFICATION.md) and
+[`0077`](../../decisions/0077-a-well-known-sid-is-named-from-microsoft.md).
 
 **That harvest is why `Version` is 2.** Eleven of a hundred entries were wrong and every test over
 the table had passed for months. Three of the corrections are worth naming, because each is a shape
@@ -234,7 +234,7 @@ Directory: true whether or not this product exists, checkable against Microsoft'
 and the same for every customer. Whether a permission is dangerous is a judgement this product
 makes, it depends on the mask and the entry type as well as the GUID, and it belongs to the
 classifier — see [permission classification](../kernel/permission-classification.md) and
-[`0010`](../decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md).
+[`0010`](../../decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md).
 
 **The reason is stronger than the layering argument, and it is the one to keep.** Danger is a
 property of the *set* of rights a principal holds, and a per-GUID boolean cannot express a pair:
@@ -243,7 +243,7 @@ property of the *set* of rights a principal holds, and a per-GUID boolean cannot
 |---|---|
 | `DS-Replication-Get-Changes` alone | ordinary replication; not secrets |
 | `Get-Changes` + `Get-Changes-All` | full DCSync — every password hash in the domain |
-| `Get-Changes` + `Get-Changes-In-Filtered-Set` | the filtered set, which is a product judgement rather than a documented fact — see [`0016`](../decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) |
+| `Get-Changes` + `Get-Changes-In-Filtered-Set` | the filtered set, which is a product judgement rather than a documented fact — see [`0016`](../../decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md) |
 | `Get-Changes-All` alone | not usable on its own |
 
 The old table flagged two of that family and left the third alone. **No setting of a per-GUID
@@ -283,7 +283,7 @@ never been checked against Microsoft entry by entry (it has, and eleven defects 
   older one cannot be known to be the wrong ones. That is a gap in evidence provenance rather than
   in this folder, and it is `P-35`.
 - **A shipped and a captured name disagreeing about a base-schema GUID is a finding, and nothing
-  computes it.** [`0014`](../decisions/0014-capture-reads-the-schema-partition.md) says so;
+  computes it.** [`0014`](../../decisions/0014-capture-reads-the-schema-partition.md) says so;
   `CapturedOver` resolves the display question and does not report the disagreement, though it is
   where the evidence would come from. `P-36`.
 - **`CapturedSchemaGuidReader` is documented in no layer**, for the reason given above. `P-37`.

@@ -94,7 +94,7 @@ public sealed class LayerDocumentGateTests
         var listed = SolutionDocumentItems();
 
         var missing = LayerDocuments.All()
-            .Select(f => $"docs/{LayerDocuments.SubsystemOf(f)}/{Path.GetFileName(f)}")
+            .Select(f => $"docs/layers/{LayerDocuments.SubsystemOf(f)}/{Path.GetFileName(f)}")
             .Where(rel => !listed.Contains(rel))
             .OrderBy(rel => rel, StringComparer.Ordinal)
             .ToList();

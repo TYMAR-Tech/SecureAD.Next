@@ -92,20 +92,20 @@ public sealed class SurfaceRegisterTests
     /// session nowhere, which is worse than sending it nowhere in particular.
     /// </summary>
     [Fact]
-    public void EveryAreaNamedIsARealAreaFile()
+    public void EveryGoverningDocumentExists()
     {
-        var areas = AreaFileNames();
+        var documents = GoverningDocumentNames();
 
         var unknown = RegisterEntries()
-            .Where(e => !areas.Contains(e.Area))
-            .Select(e => $"  {e.Type} claims '{e.Area}' (line {e.Line})")
+            .Where(e => !documents.Contains(e.Document))
+            .Select(e => $"  {e.Type} claims '{e.Document}' (line {e.Line})")
             .ToList();
 
         Assert.True(
             unknown.Count == 0,
-            RegisterFile + " names areas that have no file in docs/areas/. The register is how a "
-            + "session finds the page to read before touching a type, so an area that is not there "
-            + "leaves the type unowned while looking owned:"
+            RegisterFile + " names governing documents that do not exist. The register is how a "
+            + "session finds the page to read before touching a type, so a document that is not "
+            + "there leaves the type unowned while looking owned:"
             + Environment.NewLine + string.Join(Environment.NewLine, unknown));
     }
 
@@ -120,12 +120,12 @@ public sealed class SurfaceRegisterTests
         var shared = RegisterEntries()
             .GroupBy(e => e.Type, StringComparer.Ordinal)
             .Where(g => g.Count() > 1)
-            .Select(g => $"  {g.Key} is claimed by {string.Join(" and ", g.Select(e => e.Area).Distinct())}")
+            .Select(g => $"  {g.Key} is claimed by {string.Join(" and ", g.Select(e => e.Document).Distinct())}")
             .ToList();
 
         Assert.True(
             shared.Count == 0,
-            RegisterFile + " claims a type from more than one area:"
+            RegisterFile + " claims a type from more than one document:"
             + Environment.NewLine + string.Join(Environment.NewLine, shared));
     }
 
@@ -139,21 +139,25 @@ public sealed class SurfaceRegisterTests
     {
         var types = PublicTypes().ToList();
         var entries = RegisterEntries();
-        var areas = AreaFileNames();
+        var documents = GoverningDocumentNames();
 
         Assert.True(types.Count > 0, "Found no public types in the rebuild's production assemblies.");
         Assert.True(entries.Count > 0, $"Read no entries from {RegisterFile}.");
-        Assert.True(areas.Count > 0, "Read no area files from docs/areas/.");
+        Assert.True(documents.Count > 0, "Read no governing documents from docs/.");
         Assert.Contains(types, t => ReadableName(t) == nameof(SecureAD.Kernel.Security.AceNormalizer));
         Assert.Contains(entries, e => e.Type == nameof(SecureAD.Kernel.Security.AceNormalizer));
 
-        // The area column is genuinely parsed out of the link, not left as the raw cell.
-        Assert.All(entries, e => Assert.DoesNotContain("(", e.Area, StringComparison.Ordinal));
-        Assert.Contains(entries, e => e.Area == "what-a-permission-means");
+        // The column is genuinely parsed out of the link, not left as the raw cell.
+        Assert.All(entries, e => Assert.DoesNotContain("(", e.Document, StringComparison.Ordinal));
 
-        // A cell naming an area that does not exist is caught rather than shrugged off.
-        Assert.DoesNotContain("no-such-area", areas);
-        Assert.Equal("no-such-area", AreaName("[no-such-area](../areas/no-such-area.md)"));
+        // Both kinds of governing document are recognised, which is the point of the widening.
+        Assert.Contains("areas/what-a-permission-means", documents);
+        Assert.Contains("layers/kernel/naming", documents);
+
+        // A cell naming a document that does not exist is caught rather than shrugged off.
+        Assert.DoesNotContain("areas/no-such-area", documents);
+        Assert.Equal("areas/no-such-area", GoverningDocument("[no-such-area](../areas/no-such-area.md)"));
+        Assert.Equal("layers/kernel/naming", GoverningDocument("[naming](../layers/kernel/naming.md)"));
     }
 
     /// <summary>
@@ -186,7 +190,7 @@ public sealed class SurfaceRegisterTests
     /// lies between the markers is parsed, so the prose around the table does not have to pretend
     /// to be data.
     /// </summary>
-    private static List<(string Type, string Area, int Line)> RegisterEntries()
+    private static List<(string Type, string Document, int Line)> RegisterEntries()
     {
         var path = RegisterPath();
         Assert.True(File.Exists(path), $"Expected the surface register at {path}.");
@@ -213,34 +217,61 @@ public sealed class SurfaceRegisterTests
             if (type is "Type" || type.Length == 0 || type.All(c => c is '-' or ':'))
                 continue;
 
-            entries.Add((type, AreaName(cells[3]), i + 1));
+            entries.Add((type, GoverningDocument(cells[3]), i + 1));
         }
 
         return entries;
     }
 
     /// <summary>
-    /// The area out of a cell written as <c>[name](../areas/name.md)</c>. The link target is read
-    /// rather than the label, because the label is prose and the target is what has to resolve.
+    /// The governing document out of a cell written as <c>[label](../folder/name.md)</c>, returned as
+    /// <c>folder/name</c>. The link target is read rather than the label, because the label is prose
+    /// and the target is what has to resolve.
     /// </summary>
-    private static string AreaName(string cell)
+    /// <remarks>
+    /// <b>A governing document may be a layer document, not only an area file.</b> This check used to
+    /// resolve <c>../areas/</c> and nothing else, which meant every public type had to point at a live
+    /// area file and <b>no area file could ever be deleted</b> — twenty of them survived six completed
+    /// passes of a rewrite whose stated goal is to empty <c>docs/areas</c>. The register is a map from
+    /// a type to the page describing it; which folder that page lives in is not the register's
+    /// business.
+    /// </remarks>
+    private static string GoverningDocument(string cell)
     {
-        var match = AreaLink.Match(cell);
-        return match.Success ? match.Groups["name"].Value : cell;
+        var match = DocumentLink.Match(cell);
+        return match.Success ? match.Groups["path"].Value : cell;
     }
 
-    private static readonly Regex AreaLink =
-        new(@"\(\.\./areas/(?<name>[A-Za-z0-9-]+)\.md\)", RegexOptions.Compiled);
+    private static readonly Regex DocumentLink =
+        new(@"\(\.\./(?<path>[A-Za-z0-9\-/]+)\.md\)", RegexOptions.Compiled);
 
     /// <summary>
-    /// The areas that actually exist, read off disk rather than listed here, so a renamed area file
-    /// fails the register rather than being quietly accepted by a copy of the list.
+    /// The documents that actually exist, read off disk rather than listed here, so a renamed or
+    /// deleted page fails the register rather than being quietly accepted by a copy of the list.
+    /// Area files and layer documents both count.
     /// </summary>
-    private static HashSet<string> AreaFileNames() =>
-        Directory
-            .GetFiles(Path.Combine(RepositoryLocation.Root(), "docs", "areas"), "*.md")
-            .Select(Path.GetFileNameWithoutExtension)
-            .Where(n => n is not null && n != "README")
-            .Select(n => n!)
-            .ToHashSet(StringComparer.Ordinal);
+    private static HashSet<string> GoverningDocumentNames()
+    {
+        var found = new HashSet<string>(StringComparer.Ordinal);
+
+        Add(Path.Combine(RepositoryLocation.Root(), "docs", "areas"), "areas");
+
+        foreach (var subsystem in LayerDocuments.Subsystems)
+            Add(Path.Combine(LayerDocuments.Root(), subsystem), "layers/" + subsystem);
+
+        return found;
+
+        void Add(string directory, string prefix)
+        {
+            if (!Directory.Exists(directory))
+                return;
+
+            foreach (var file in Directory.GetFiles(directory, "*.md"))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                if (name is not null and not "README")
+                    found.Add(prefix + "/" + name);
+            }
+        }
+    }
 }

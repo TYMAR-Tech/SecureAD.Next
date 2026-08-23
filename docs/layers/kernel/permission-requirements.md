@@ -5,7 +5,7 @@ each. Every row names a type that exists, or says plainly that it is **not built
 
 **A named type is not a claim that the requirement is met well.** The check that guards this table
 confirms the name is real; it cannot confirm the behaviour. Where the two are known to differ, the
-row says so and points at [the punch list](../PUNCH-LIST.md).
+row says so and points at [the punch list](../../PUNCH-LIST.md).
 
 Requirements are numbered as the original specification numbered them, so references to `R13` or
 `R19` elsewhere in the code and documentation still resolve.
@@ -69,7 +69,7 @@ Both are the same shape: a lookup that succeeded and returned an answer nobody c
 Six of the seven — R7, R10, R12, R14, R16 and R20 — are the same missing capability seen from
 different angles: the product judges **one entry at a time** and has no layer that accumulates a
 capability across several. That work is specified in
-[planned effective access](../planned/effective-access.md).
+[planned effective access](../../planned/effective-access.md).
 
 R15 is the exception. It asks the product to model how a *new* object's DACL would be constructed,
 which is a prediction rather than a reading of stored evidence, and it may simply be out of scope.

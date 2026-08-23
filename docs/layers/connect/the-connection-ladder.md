@@ -3,16 +3,16 @@
 **Layer.** How this product connects to a domain controller, how well protected that connection is,
 and what it may and may not conclude when a connection fails.
 
-The code is [`ConnectionSecurityLadder`](../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs),
-[`ConnectionLadderWalk`](../../next/src/SecureAD.Audit/Connect/ConnectionLadderWalk.cs),
-[`ConnectionSecurityLog`](../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs),
-[`ConnectionFailureReason`](../../next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs) and
-[`UnprotectedConnectionAllowance`](../../next/src/SecureAD.Audit/Connect/UnprotectedConnectionAllowance.cs).
+The code is [`ConnectionSecurityLadder`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs),
+[`ConnectionLadderWalk`](../../../next/src/SecureAD.Audit/Connect/ConnectionLadderWalk.cs),
+[`ConnectionSecurityLog`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs),
+[`ConnectionFailureReason`](../../../next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs) and
+[`UnprotectedConnectionAllowance`](../../../next/src/SecureAD.Audit/Connect/UnprotectedConnectionAllowance.cs).
 
 What actually opens the socket at a chosen rung is
 [`how-a-connection-is-opened.md`](how-a-connection-is-opened.md).
 
-Governed by [`0018`](../decisions/0018-connection-security-is-an-ordered-ladder.md), including its
+Governed by [`0018`](../../decisions/0018-connection-security-is-an-ordered-ladder.md), including its
 2026-08-16 amendment. Where this page and that record disagree, the record wins and the
 disagreement is a finding.
 
@@ -42,7 +42,7 @@ says nothing is wrong.
 ## The ladder
 
 Each row is a rung the code names. The table is held to
-[`ConnectionSecurityLadder.Rungs`](../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs)
+[`ConnectionSecurityLadder.Rungs`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs)
 in both directions and in order: a rung with no row fails the build, a row naming no rung fails it
 too, and a row that disagrees with the rung about a port or an option fails it as well.
 
@@ -87,12 +87,12 @@ and the platform's client rejects a connection that asks for both.
 
 ### How the descent works
 
-[`ConnectionLadderWalk.Descend`](../../next/src/SecureAD.Audit/Connect/ConnectionLadderWalk.cs)
+[`ConnectionLadderWalk.Descend`](../../../next/src/SecureAD.Audit/Connect/ConnectionLadderWalk.cs)
 tries each permitted rung from the top and stops at the first that answers. It will not re-order the
 rungs and it will not carry on past a success.
 
 The filtering of what a run may attempt is
-[`ConnectionSecurityLadder.PermittedBy`](../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs)'s,
+[`ConnectionSecurityLadder.PermittedBy`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs)'s,
 not a condition inside the loop — **one statement of what a run may do rather than two that could
 disagree.** The walk is separated from the thing that opens a socket precisely so the descent can be
 tested, because there is no forest in a build agent and the alternative was this rule stated in
@@ -105,7 +105,7 @@ prose beside code nothing exercised.
 > **A run descends to an unprotected connection only where somebody said, before it started, that
 > this run may use one.**
 
-[`UnprotectedConnectionAllowance`](../../next/src/SecureAD.Audit/Connect/UnprotectedConnectionAllowance.cs)
+[`UnprotectedConnectionAllowance`](../../../next/src/SecureAD.Audit/Connect/UnprotectedConnectionAllowance.cs)
 is that statement. It is a required argument rather than a defaulted one, so a run that permits
 nothing has said so at the call site, and it carries the auditor's own words about why — which
 travel into the finding it produces. `Refused` is a named value, not omission.
@@ -139,9 +139,9 @@ Every rung failure used to be caught as one kind of event, so a walk that failed
 ended with *"a controller accepting nothing signed leaves its LDAP traffic open to alteration in
 transit."* A run whose password had expired therefore accused a customer's forest of a weakness on
 the strength of a stale credential. That is `F-S35-1` reached from a new direction, and
-[`0002`](../decisions/0002-absent-view-means-degraded-run.md) forbids it.
+[`0002`](../../decisions/0002-absent-view-means-degraded-run.md) forbids it.
 
-[`ConnectionFailureReason`](../../next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs)
+[`ConnectionFailureReason`](../../../next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs)
 classifies by what the directory said:
 
 | The directory said | Reason | Does it prove the controller answered? |
@@ -205,8 +205,8 @@ unclassified code. The fourth entry in the same list was carried over without be
 is `P-19` from the other direction: *ask what the check's subject is, not only whether it passes.*
 
 **Not fixed here.** This pass is a documentation rewrite and
-[`_DRIFT.md`](../_DRIFT.md) keeps the branch documentation-only. The remedy is recorded in
-[`PUNCH-LIST.md`](../PUNCH-LIST.md) so the fix pass need not re-derive it: drop
+[`_DRIFT.md`](../../_DRIFT.md) keeps the branch documentation-only. The remedy is recorded in
+[`PUNCH-LIST.md`](../../PUNCH-LIST.md) so the fix pass need not re-derive it: drop
 `ProtectedChannelFailed` from `ProvesTheControllerAnswered`, give the no-answer branch a third
 message variant naming the certificate rather than the network, and add the missing test.
 
@@ -214,7 +214,7 @@ message variant naming the certificate rather than the network, and add the miss
 
 ## What comes back out, and why it is a level rather than a flag
 
-[`ConnectionSecurityLog`](../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs) records,
+[`ConnectionSecurityLog`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs) records,
 per domain controller, which rung answered and how many better ones it turned down first.
 
 A boolean has nowhere to put a third state and this ladder has four. Worse, the two questions a
@@ -234,7 +234,7 @@ Server 2025 default are both about.
 **The log also carries its failures**, and that is not bookkeeping. Without them, a run in which
 nothing was unprotected and a run in which nothing was reached both leave the list empty, and a
 reader cannot tell *"we looked and found nothing wrong"* from *"we never got to look"* — the
-distinction [`0002`](../decisions/0002-absent-view-means-degraded-run.md) forbids collapsing.
+distinction [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) forbids collapsing.
 
 ---
 
@@ -275,5 +275,5 @@ met a controller that required it.
 **Whether a name that does not resolve is told apart from a host that is switched off.** Both arrive
 as the same protocol error. Separating them means resolving the name deliberately, which is a
 further act against DNS and would need weighing against
-[`0050`](../decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md). Not
+[`0050`](../../decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md). Not
 decided; the message says the cases look alike rather than guessing between them.

@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/schema/what-a-schema-guid-means.md</c> to the code it describes.
+/// Binds <c>docs/layers/schema/what-a-schema-guid-means.md</c> to the code it describes.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,7 +20,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// <c>TheHandoverNamesARealInventoryRow</c> existed because the danger flag was deliberately left
 /// behind and no component had yet taken it, so the document was the only place the nine names were
 /// written down. That row has since shipped as <c>DangerousPermissionClassifier</c>, documented at
-/// <c>docs/kernel/permission-classification.md</c> and bound by its own gate. Keeping a check whose
+/// <c>docs/layers/kernel/permission-classification.md</c> and bound by its own gate. Keeping a check whose
 /// stated purpose has been served elsewhere is how a suite comes to measure something other than
 /// its name.
 /// </para>
@@ -350,7 +350,7 @@ public sealed class SchemaGuidDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "schema", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "layers", "schema", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

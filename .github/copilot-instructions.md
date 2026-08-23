@@ -41,18 +41,63 @@ This matters most for the documents that read best. A well-argued paragraph is t
 
 **Where the two disagree, the code wins and the disagreement is a finding.** Do not repair a document to match a belief; verify against the definition — the enum, the writer, the query actually sent — and record what was found.
 
+## The documentation rewrite, and what "done" means
+
+**The goal is fewer files, not better files.** The documentation is being consolidated into **one
+layer document per code folder, written from the code**, and the sprawl is **deleted as it is
+consumed**. A pass that adds documents without removing any has not consolidated anything.
+
+**Route every fact to exactly one destination:**
+
+| Kind of fact | Goes to |
+|---|---|
+| What the code does | the layer document for that folder |
+| Work that may need doing | [`PUNCH-LIST.md`](../docs/PUNCH-LIST.md) |
+| A product position | a record in `docs/decisions/` |
+| What blocks the rewrite itself | [`PUNCH-LIST.md`](../docs/PUNCH-LIST.md), *Documentation rewrite* |
+| Anything else | deleted |
+
+**`docs/areas/` is being emptied.** An area file is an input, not a fixture. **Delete the content
+you move, in the same turn you move it**, so each pass leaves the file shorter; the file itself goes
+when the last content leaves. Do not copy content across and leave the original in place \u2014 that
+doubles what the next session must read, which is the problem this work exists to solve.
+
+**Findings and rules are out of scope for the documentation rewrite.** The rules engine is scaffolding, not a shipped feature. **`docs/rules/` — 67 files, 15,590 lines — is out of scope too**, and is the largest single body of documentation in the repository; it is consolidated into the layer-document format **when the rules are implemented**, not before. The same applies to `SecureAD.Evidence/Findings/`, the 15 types under `what-we-call-a-finding`, and the area files `what-we-call-a-finding.md` and `accepting-a-finding.md`. Do not count any of it as coverage debt and do not plan a pass for it. This was lost once already: the gap was measured correctly and its cause was not recorded beside it, so a later session read *zero of seventeen* as work owed.
+
+**Before writing any gate, read
+counts as documentation*.** It is the founding rule and it is not optional:
+
+> A test binds a document to the code only if it **derives what it expects from the code**.
+> The deciding question is *what change to the product would make this fail?* If the answer is
+> *nothing \u2014 only editing the document*, the check is **pinning** and does not belong.
+
+**Do not test the shape of prose** \u2014 heading formats, identifiers, status lines, whether a section
+exists. Twelve such test files were deleted on 2026-08-14 and the suite went from 960 tests to 793.
+**They keep coming back**, and a live example is recorded as `P-51` in `PUNCH-LIST.md`.
+A prose gate is worse than useless: it later reads as a structural constraint and blocks the
+consolidation it was meant to protect.
+
+**A gate that has never been observed failing is not evidence.** Point a new or retargeted gate at a
+document that does not carry its subject, confirm it fails **naming what it cannot find**, and record
+which checks failed and what they said \u2014 including any that passed, because those are the ones that
+are decoration.
+
+---
+
 ## Orient before proposing anything
 
-Sessions have repeatedly re-opened settled questions because each one starts at a leaf and works outward. **Start from the area file for the work, in `docs/areas/`, and read it whole.** It is short by design and it is the only document that needs reading before we talk.
+Sessions have repeatedly re-opened settled questions because each one starts at a leaf and works outward. **Start from the document that governs the code you are touching, and read it whole.**
 
-1. **Read the one area file.** Its *What is decided* table links the records that govern the area; its *What is built* table names the test that proves each capability.
-2. **Stop at its "What has not been discussed" section.** Those are questions nobody has answered. If the work touches one, stop and ask the owner. Do not infer an answer from the old application, from a row in the reference inventory, or from the shape of the code — that inference is what produced the preflight wizard.
+**Find it in [`docs/next/SURFACE-REGISTER.md`](../docs/next/SURFACE-REGISTER.md), which maps every public type to its governing document.** Do not guess from folder names, and do not assume the folder you are working in is the whole of what that document governs — `group-policy.md` governs 23 types across three assemblies while the folder holds 16.
+
+1. **Read the governing document whole.** For code already rewritten this is a layer document under `docs/layers/kernel/`, `docs/layers/audit/`, `docs/layers/connect/`, `docs/layers/evidence/` or `docs/layers/schema/`; it describes what the code does and is bound to it by a test. For code not yet reached it is still an area file in `docs/areas/`. **Area files are inputs being consumed and deleted, not fixtures** — see the documentation rewrite section below.
+2. **Open questions live in [`PUNCH-LIST.md`](../docs/PUNCH-LIST.md).** Those are questions nobody has answered. If the work touches one, stop and ask the owner. Do not infer an answer from the old application, from a row in the reference inventory, or from the shape of the code — that inference is what produced the preflight wizard.
 3. **Search `docs/decisions/` for the question being raised.** Cite the record that governs it, or state plainly that none does. Titles do not index by topic — `0017-capture-reads-the-whole-forest` is the decision about what capture reads, and searching for "object class" will not find it.
 4. **Check who calls it before proposing to remove or change it.** Four findings in one session were wrong because a type's shape was read as its purpose. A per-class lookup that nothing calls, a completeness field that is always the same value, and an exemption list with stated terms all looked like what they were named.
 
 **The old application's inventory and component map are gone.** The inventory document under `docs/next/` and the whole of `docs/map/` were archived on 2026-08-20 along with the sixteen tests over them, which only ever checked that one document agreed with another and never touched the product's code. Nothing in this repository now describes what the predecessor had. The owner keeps the old repository and consults it himself; do not ask for it and do not treat its absence as work owed.
 
-**`docs/next/S-*.md` are component documents, and each is held true by a test.** They describe something that exists — the connection ladder, the captured attribute catalogue, the bundle schema — and the test fails the build when the document and the code disagree. Believe their tables; treat the prose around them as discussion, because a test checks structure and is silent on paragraphs.
+**`docs/next/S-*.md` no longer exist.** They were component documents, each held true by a test, and the documentation rewrite has consumed all of them; `S-2` was the last. If a document or a handoff paragraph refers to one, it is describing history. **Layer documents replaced them** — one per code folder, under the subsystem directories listed above, each bound to the code by a test that derives what it expects from the code.
 
 **Session records and session briefs no longer live in this repository.** `docs/history/`, `docs/next/sessions/` and `docs/review/` were archived on 2026-08-20 to `C:\Users\jistrand\Downloads\SecureAD Archive`; every version also remains in git history. They recorded what one session did or intended on one day and never stated current behaviour, and several actively misled — one claimed a specification section had been verified that was never opened. **Nothing outside `docs/decisions/` and `docs/rules/` states the product's position.**
 

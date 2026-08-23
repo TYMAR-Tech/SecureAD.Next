@@ -3,18 +3,18 @@
 **Layer.** The pass that asks every domain whether it can actually be read, before a run commits
 hours to a controller that was never going to work — and the file it leaves behind.
 
-The code is [`Preflight`](../../next/src/SecureAD.Audit/Connect/Preflight.cs),
-[`PreflightDispatch`](../../next/src/SecureAD.Audit/Connect/PreflightDispatch.cs),
-[`DomainPreflightRead`](../../next/src/SecureAD.Audit/Connect/DomainPreflightRead.cs),
-[`PreflightReport`](../../next/src/SecureAD.Audit/Connect/PreflightReport.cs),
-[`PreflightFile`](../../next/src/SecureAD.Audit/Connect/PreflightFile.cs),
-[`NamedControllerCheck`](../../next/src/SecureAD.Audit/Connect/NamedControllerCheck.cs) and
-[`CaptureSession`](../../next/src/SecureAD.Audit/Connect/CaptureSession.cs).
+The code is [`Preflight`](../../../next/src/SecureAD.Audit/Connect/Preflight.cs),
+[`PreflightDispatch`](../../../next/src/SecureAD.Audit/Connect/PreflightDispatch.cs),
+[`DomainPreflightRead`](../../../next/src/SecureAD.Audit/Connect/DomainPreflightRead.cs),
+[`PreflightReport`](../../../next/src/SecureAD.Audit/Connect/PreflightReport.cs),
+[`PreflightFile`](../../../next/src/SecureAD.Audit/Connect/PreflightFile.cs),
+[`NamedControllerCheck`](../../../next/src/SecureAD.Audit/Connect/NamedControllerCheck.cs) and
+[`CaptureSession`](../../../next/src/SecureAD.Audit/Connect/CaptureSession.cs).
 
-Governed by [`0048`](../decisions/0048-preflight-proves-a-controller-before-a-run-commits.md),
-[`0039`](../decisions/0039-one-way-to-start-a-capture.md),
-[`0055`](../decisions/0055-the-pdc-emulator-is-established-at-preflight.md) and
-[`0063`](../decisions/0063-excluded-never-looks-like-unreachable.md).
+Governed by [`0048`](../../decisions/0048-preflight-proves-a-controller-before-a-run-commits.md),
+[`0039`](../../decisions/0039-one-way-to-start-a-capture.md),
+[`0055`](../../decisions/0055-the-pdc-emulator-is-established-at-preflight.md) and
+[`0063`](../../decisions/0063-excluded-never-looks-like-unreachable.md).
 
 ---
 

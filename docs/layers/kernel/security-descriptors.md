@@ -118,7 +118,7 @@ count equals the declared count. The ACE walk is bounded by the declared count a
 end rather than by the ACL's own `AclSize`, so on a malformed descriptor the shortfall can be made
 up from bytes past the DACL's declared extent — and the result is reported as completely read when it
 was not. Not reachable from a healthy domain controller; it matters for hand-crafted or corrupt
-descriptors. Recorded as `P-7` in [the punch list](../PUNCH-LIST.md).
+descriptors. Recorded as `P-7` in [the punch list](../../PUNCH-LIST.md).
 
 ---
 

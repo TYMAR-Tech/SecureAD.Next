@@ -6,7 +6,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/evidence/run-identity-and-coverage.md</c> to the two identities a run carries and
+/// Binds <c>docs/layers/evidence/run-identity-and-coverage.md</c> to the two identities a run carries and
 /// to what it recorded about how much of the forest it read.
 /// </summary>
 /// <remarks>
@@ -341,7 +341,7 @@ public sealed class RunIdentityDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "evidence", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "layers", "evidence", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

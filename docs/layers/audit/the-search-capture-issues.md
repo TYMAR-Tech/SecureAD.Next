@@ -117,7 +117,7 @@ customer.
 **The configuration and schema partitions are read first, and the ordering is a decision.** They are
 a few thousand objects once per forest and they are what everything else is interpreted against — a
 permission naming a schema identifier means nothing until the schema partition has been read, per
-[`0014`](../decisions/0014-capture-reads-the-schema-partition.md). Capture is fail-fast, so a run
+[`0014`](../../decisions/0014-capture-reads-the-schema-partition.md). Capture is fail-fast, so a run
 that is going to fail on them should fail in its first minute rather than after three hours of a
 customer's largest domain.
 
@@ -284,7 +284,7 @@ continuation referrals *at all*. Where it was sent and honoured, that unit contr
 "nothing left over" from it means *we asked not to be told*, not *there is nothing*. Reported as a
 finding of no unplanned partitions, that would be the product telling a customer something false. So
 the result carries `IsComplete`, false whenever any unit suppressed its referrals or a reference
-could not be read, and per [`0002`](../decisions/0002-absent-view-means-degraded-run.md) an
+could not be read, and per [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) an
 incomplete result is never rendered as an empty one.
 
 ---

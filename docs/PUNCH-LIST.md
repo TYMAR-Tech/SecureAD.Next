@@ -191,7 +191,7 @@ should cite the area file instead of restating it, and correct the cycle text in
 ten existing tables settle nothing on their own, because unbound is how they all got there.
 
 > **RULED, fourth Evidence sitting: bind them.** `CapabilityCitationTests` now resolves every
-> capability citation in `docs/kernel`, `docs/audit`, `docs/connect` and `docs/evidence` against the
+> capability citation in `docs/layers/kernel`, `docs/layers/audit`, `docs/layers/connect` and `docs/layers/evidence` against the
 > test assembly, reusing the resolver `AreaFileGateTests` already had — which is now shared as
 > `TestCitation` so the two cannot drift apart. Citing the area file was rejected: it would send a
 > reader back to the split the rewrite exists to remove, and move evidence out of the page he is
@@ -225,7 +225,7 @@ ten existing tables settle nothing on their own, because unbound is how they all
   `RunLibraryViewModelTests` against a fake catalogue, so the library method's own behaviour — the
   `RunIsNotThere` refusal, the `RunCouldNotBeDeleted` path that leaves the run listed, and the fact
   that everything including `annotations.db` goes — is asserted nowhere. Found while writing
-  [`how-a-bundle-is-read.md`](evidence/how-a-bundle-is-read.md) and recorded there. Documentation
+  [`how-a-bundle-is-read.md`](layers/evidence/how-a-bundle-is-read.md) and recorded there. Documentation
   pass, so recorded rather than fixed.
 
 - `P-33` — **Nothing validates the lab column in a layer document.**
@@ -261,8 +261,8 @@ ten existing tables settle nothing on their own, because unbound is how they all
   both files rather than left as a disagreement between a gate and the cycle text.
 
 **Where S-18's findings went.** `S-18` was deleted when
-[`run-identity-and-coverage.md`](evidence/run-identity-and-coverage.md) and
-[`whether-two-runs-compare.md`](evidence/whether-two-runs-compare.md) consumed it. All five of its
+[`run-identity-and-coverage.md`](layers/evidence/run-identity-and-coverage.md) and
+[`whether-two-runs-compare.md`](layers/evidence/whether-two-runs-compare.md) consumed it. All five of its
 findings read REPAIRED and were checked: four are held by git and are not repeated here, and
 `F-S18-5`'s substance — *do not remove the factory guard on the strength of the redundant one* — is a
 do-not-change rule and moved into the layer document. **`F-S18-4`'s residual claim that a test
@@ -334,6 +334,42 @@ evidence to directory objects.
 | P-40 | The quoted form of an RDN value is not understood — only the escaped form. A quoted value is cut at the comma inside the quotes. Pinned by `WhenAValueIsQuotedRatherThanEscaped_ThenTheQuotingIsNotUnderstood`, which asserts the wrong answer on purpose and is to be rewritten rather than deleted | open | — |
 Pinned by `WhenAValueEndsInAnEscapedBackslash_ThenTheFollowingSeparatorIsMissed` | open | — |
 | P-42 | `ExtractFirstRdn`, `ExtractFirstRdnOrNull` and `ExtractNameFromDn` differ only in what absent input returns. The distinction between `null` and empty is real, so this is not duplication, but the third could be a caller-supplied fallback. Cheaper to settle now than once more call sites exist | decision | owner ruling |
+
+---
+
+## Documentation rewrite
+
+Blockers to the consolidation itself. `D-1` — the register forbidding any area file to be deleted —
+was fixed and discharged; the first four area files went with it.
+
+| ID | Item | Status | Blocked on |
+|---|---|---|---|
+| P-51 | `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` is a prose-shape test: no change to the product can make it fail. It forces three headings into every area file, so a file cannot be shrunk to nothing before deletion. Banned by `docs/next/README.md` §*When a document counts as documentation*. **Delete it** | open | — |
+| P-52 | Nothing fails when an area file becomes redundant. A generative check — every area file still governs at least one type no layer document names — would say when a file is ready to delete, instead of a session choosing to count | open | — |
+| P-53 | `how-the-app-looks.md` is 266 lines with 21 capability citations, so it describes built UI code, yet the surface register has no rows for it. Either the register is missing the UI types or the area file describes something outside the register's assemblies. **Measure before acting** | open | — |
+| P-54 | Only the Capture project has an assembly-wide "every public type is named by some document" gate. Every other documentation gate is scoped to the component a document already claims, so it can only check types somebody chose to describe. `GroupPolicyDocumentationTests` has the stronger shape; widen the rest, highest in-scope debt first (`Evidence/` root, 14 of 44) | open | — |
+| P-55 | `_COVERAGE.md` is stale. The Kernel/GroupPolicy pass read 1,273 source lines, 1,259 test lines and an 86-line area file and recorded none of it | open | — |
+
+**Out of scope, not debt:** findings and rules — `docs/rules/` (67 files, 15,590 lines),
+`SecureAD.Evidence/Findings/`, and the area files `what-we-call-a-finding.md` and
+`accepting-a-finding.md`. Documented when the feature is implemented. Also `domains-we-skip.md`,
+`how-privilege-escalates.md` and `reports-and-export.md`, which are **specifications for unbuilt
+features**, not documentation debt — they govern no types because there is no code yet.
+
+---
+
+## Kernel / GroupPolicy
+
+| ID | Item | Status | Blocked on |
+|---|---|---|---|
+| P-43 | `docs/areas/group-policy.md` is consumed for its 16 Kernel types but still governs 7 more — `ISysvolFileReader`, `SmbSysvolFileReader`, `GpoTarget`, `GpoInventory`, `SysvolCapture` in Audit and `GpoSettingScope`, `RestrictedGroupRelationship` in Evidence. The area file is deleted, and its 23 `SURFACE-REGISTER` rows repointed, once those are documented. Until then the rewrite has added two documents without removing a file | open | an Audit/SYSVOL pass and two Evidence types |
+| P-44 | `EachDocumentCarriesACapabilityTable` in `GroupPolicyDocumentationTests` asserts only that a heading exists, so it passed when pointed at a document that carries none of the subject. Every other check in that gate failed as it should. A check that cannot fail for the reason it was written is decoration | open | — |
+| P-45 | The solution lists four kernel documents twice, once under the `next` folder and once under `decisions`, and the second copy is missing `distinguished-names.md`. `LayerDocumentGateTests` reads the union of all items so it cannot see either fault | open | — |
+| P-46 | What the product judges about a policy, as opposed to what it reads. The parsers exist; the rules that read them are largely unwritten and which questions matter is unsettled | decision | owner ruling |
+| P-47 | Whether a policy's effect is worked out — which objects it reaches through links, blocked inheritance, enforcement and security filtering — or whether the product reports the link and stops | decision | owner ruling |
+| P-48 | How a policy that is linked but disabled is treated. The link option bits are carried as stored and deliberately not worded, so nothing currently reads *disabled* | decision | owner ruling |
+| P-49 | Whether SYSVOL file permissions are judged as permissions, on the same footing as directory permissions, or reported separately | decision | owner ruling |
+| P-50 | What happens when the directory and SYSVOL disagree — a policy container with no folder, or a folder with no container | decision | owner ruling |
 
 ---
 

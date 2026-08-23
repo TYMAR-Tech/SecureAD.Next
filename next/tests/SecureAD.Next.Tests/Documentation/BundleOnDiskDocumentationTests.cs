@@ -6,7 +6,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/evidence/the-bundle-on-disk.md</c> to the files a bundle is made of, the seal
+/// Binds <c>docs/layers/evidence/the-bundle-on-disk.md</c> to the files a bundle is made of, the seal
 /// that covers one of them, and the states a run is read back in.
 /// </summary>
 /// <remarks>
@@ -417,7 +417,7 @@ public sealed class BundleOnDiskDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "evidence", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "layers", "evidence", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

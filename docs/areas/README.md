@@ -20,8 +20,6 @@ ledger row, or from the shape of the code.
 |---|---|---|
 | Which controller we read, and whether we can | [which-controller-we-read.md](which-controller-we-read.md) | written |
 | What we capture | [what-we-capture.md](what-we-capture.md) | written |
-| Running a capture | [running-a-capture.md](running-a-capture.md) | written |
-| What the run did and did not cover | [what-the-run-covered.md](what-the-run-covered.md) | written |
 | Domains we deliberately skip | [domains-we-skip.md](domains-we-skip.md) | written |
 
 ## Keeping it
@@ -30,13 +28,11 @@ ledger row, or from the shape of the code.
 |---|---|---|
 | How a run is stored | [how-a-run-is-stored.md](how-a-run-is-stored.md) | written |
 | How the run library stores and lists runs | [the-run-library.md](the-run-library.md) | written |
-| How compare works | [how-compare-works.md](how-compare-works.md) | written |
 
 ## Making sense of it
 
 | Area | File | State |
 |---|---|---|
-| Who is who | [who-is-who.md](who-is-who.md) | written |
 | What a permission means | [what-a-permission-means.md](what-a-permission-means.md) | written |
 | How privilege escalates | [how-privilege-escalates.md](how-privilege-escalates.md) | written |
 | Group Policy | [group-policy.md](group-policy.md) | written |

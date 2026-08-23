@@ -1,11 +1,11 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using SecureAD.Next.Tests.Architecture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/audit/how-a-controller-is-read.md</c> to the ways a capture pass can actually end.
+/// Binds <c>docs/layers/audit/how-a-controller-is-read.md</c> to the ways a capture pass can actually end.
 ///
 /// <para>
 /// This is inventory row B6's deliverable. Every ending is a message a customer or an operator will
@@ -143,7 +143,7 @@ public sealed class CapturePassesDocumentationTests
 
     private static HashSet<string> DocumentedEndings()
     {
-        var path = Path.Combine(RebuildTree.Root(), "..", "docs", "audit", Document);
+        var path = Path.Combine(RebuildTree.Root(), "..", "docs", "layers", "audit", Document);
         var lines = File.ReadAllLines(path);
 
         var begin = Array.FindIndex(lines, l => l.Contains(TableBegin, StringComparison.Ordinal));

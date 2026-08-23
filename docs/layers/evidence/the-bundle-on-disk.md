@@ -51,8 +51,8 @@ present it as proof of anything.
 **`annotations.db` is separate for the opposite reason.** An acceptance written into the evidence
 would invalidate the seal that proves the evidence is unmodified, so a customer could not annotate a
 bundle without destroying its own proof. Keeping annotations outside is what makes
-[`0067`](../decisions/0067-an-acceptance-names-one-finding.md) and
-[`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md) enforceable rather than
+[`0067`](../../decisions/0067-an-acceptance-names-one-finding.md) and
+[`0052`](../../decisions/0052-the-domain-is-the-only-unit-of-scope.md) enforceable rather than
 promised. It is created when the bundle is sealed, so that opening a bundle never writes to it.
 
 > `BundleLayout`'s own remarks cite `0015` here. `0015` is *a bundle names a pattern it never
@@ -87,8 +87,8 @@ mislead every caller about what it costs.
 
 ## The seal
 
-The reasoning is [`0020`](../decisions/0020-the-seal-detects-corruption-not-tampering.md) and
-[`0030`](../decisions/0030-the-product-produces-sealed-evidence-never-signed.md). What matters at
+The reasoning is [`0020`](../../decisions/0020-the-seal-detects-corruption-not-tampering.md) and
+[`0030`](../../decisions/0030-the-product-produces-sealed-evidence-never-signed.md). What matters at
 the point of use:
 
 > `S-16` cited `0019` for this. `0019` was superseded on the day it was written and is archived; its
@@ -142,7 +142,7 @@ avoid performing an integrity check is a way for the check to silently never run
 ## What became of the run
 
 `RunState` is the one vocabulary for what became of a run, decided in
-[`0028`](../decisions/0028-one-run-state-vocabulary.md), and every one of its six words is arrived
+[`0028`](../../decisions/0028-one-run-state-vocabulary.md), and every one of its six words is arrived
 at from something observed on disk rather than assumed. `RunStateReader.Observe` follows the
 procedure and returns a `RunStateObservation` carrying `RunStateObservation.State`,
 `RunStateObservation.Detail` and `RunStateObservation.RecordedUtc`.
@@ -168,7 +168,7 @@ because a run that said why it stopped has told us more than the file system can
 
 **A crashed run and a running one are told apart, and the file system is what answers.** Both
 present a `.partial` file and no `evidence.db`, so the files alone cannot say — but per
-[`0029`](../decisions/0029-a-run-that-ends-badly-says-so.md) the question is whether anything still
+[`0029`](../../decisions/0029-a-run-that-ends-badly-says-so.md) the question is whether anything still
 holds the partial file open. Nothing does once the writing process ends, whatever ended it, because
 the operating system releases handles when a process dies. A recorded heartbeat or a process
 identifier would need cleaning up after a crash, which is precisely the moment nothing is running to

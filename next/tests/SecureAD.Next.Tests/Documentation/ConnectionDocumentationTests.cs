@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/connect/the-connection-ladder.md</c> to the ladder the code actually climbs, per
+/// Binds <c>docs/layers/connect/the-connection-ladder.md</c> to the ladder the code actually climbs, per
 /// <c>docs/next/README.md</c> §When a document counts as documentation.
 ///
 /// <para>
@@ -113,7 +113,7 @@ public sealed class ConnectionDocumentationTests
 
     private static string DocumentText()
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "connect", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "layers", "connect", Document);
         if (!File.Exists(path))
             throw new FileNotFoundException("Expected the layer document at " + path + ".", path);
 

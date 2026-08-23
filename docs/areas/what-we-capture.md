@@ -107,7 +107,7 @@ there is something to react to. It is not authoritative and nothing here has bee
 
 **The catalogue findings moved to [`PUNCH-LIST.md`](../PUNCH-LIST.md) § Audit / Capture during the
 documentation rewrite**, and the reasoning behind them now lives in
-[the attribute catalogue](../audit/the-attribute-catalogue.md). `F-S44-2` is `P-20`, `0065`'s
+[the attribute catalogue](../layers/audit/the-attribute-catalogue.md). `F-S44-2` is `P-20`, `0065`'s
 unimplemented half is `P-21`, `F-S23-4` is `P-24` and `F-S23-5` is `P-25`. What remains here is the
 account-state wording, which belongs to the Kernel and not to capture.
 

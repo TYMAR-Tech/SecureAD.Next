@@ -186,5 +186,5 @@ public sealed class SecurityDocumentationTests
         string.Join("\n", Documents.Select(d => File.ReadAllText(PathTo(d))));
 
     private static string PathTo(string document) =>
-        Path.Combine(RepositoryLocation.Root(), "docs", "kernel", document);
+        Path.Combine(RepositoryLocation.Root(), "docs", "layers", "kernel", document);
 }

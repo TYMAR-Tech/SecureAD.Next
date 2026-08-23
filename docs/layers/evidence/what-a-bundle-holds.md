@@ -17,7 +17,7 @@ nobody has interpreted is the defect this schema is arranged to prevent.
 
 ## The rule the whole shape follows
 
-Per [`0002`](../decisions/0002-absent-view-means-degraded-run.md) a missing answer is a fact about
+Per [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) a missing answer is a fact about
 the capture and never about the forest. That question arrives here one level down: an object with no
 permission rows either had no permissions or was never read, and those are opposite findings that
 look identical if the only evidence is an empty result.
@@ -31,7 +31,7 @@ with errors means *nobody knows what this object grants*.
 place and a writer cannot quietly invent a column that nothing else knows to read.
 
 **An object is one row with typed columns**, per
-[`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md). Single-valued attributes are
+[`0022`](../../decisions/0022-objects-are-stored-as-typed-columns.md). Single-valued attributes are
 columns on `captured_object`; each multi-valued attribute has a table to itself, holding its values
 in the order the controller sent them. Both sets are derived from `CapturedAttributeCatalog` rather
 than written out, so the schema cannot ask for one set of attributes and store another. A
@@ -59,7 +59,7 @@ things something pointed at and never saw.
 | `partition_coverage` | One naming context, read from one controller, with what the pass consumed, the connection security it was read over, how many of its objects had unreadable descriptors, and whether referrals were suppressed | That naming context was never read. This is the row every other absence is interpreted against |
 | `continuation_reference` | One referral a controller returned | No referrals were returned — which means *nothing lies below* only when the coverage row says referrals were not suppressed |
 | `unread_partition` | One partition the forest declares that this product does not read — the application directory partitions, which in practice are the DNS zone partitions every forest has | The forest declared no such partition. Safe to read that way only because the rows are written before the first read and an incomplete run never seals, so an empty table cannot mean the run forgot to say |
-| `excluded_domain` | One domain left out of this run, with the reason picked from the closed list, whatever the operator added in his own words, the account the run was made under, the name he gave as authorising it, and when he said so | No domain was excluded. It does **not** mean the attestation was not recorded. The `kind` column keeps a domain the operator took out apart from one the forest named no writable controller for — [`0063`](../decisions/0063-excluded-never-looks-like-unreachable.md) — and `authorised_by` is a typed string that nothing validated, so no reader may present it as a verified identity |
+| `excluded_domain` | One domain left out of this run, with the reason picked from the closed list, whatever the operator added in his own words, the account the run was made under, the name he gave as authorising it, and when he said so | No domain was excluded. It does **not** mean the attestation was not recorded. The `kind` column keeps a domain the operator took out apart from one the forest named no writable controller for — [`0063`](../../decisions/0063-excluded-never-looks-like-unreachable.md) — and `authorised_by` is a typed string that nothing validated, so no reader may present it as a verified identity |
 | `captured_object` | One object: the identity that survives a rename, where it sits in the tree, when it was read, and one typed column per single-valued attribute the catalogue asks for | The object was not read. Whether that is a fact about the forest depends on its partition's coverage row |
 | `objectclass_value` | One class name from one object's `objectClass` | Not reachable for an object that was read at all — every object has a class, so an empty list here means the object's row should not be trusted |
 | `description_value` | One line of an object's `description`, in the order the controller sent them | The object was never described, or the value was withheld. Multi-valued in the schema, which most tooling shows the first value of and calls the description |
@@ -78,17 +78,17 @@ things something pointed at and never saw.
 | `unresolved_reference` | One thing an object pointed at — a group member, a permission trustee, a parent container, a primary group — that nothing in the run ever saw, and which of four reasons it was never seen for | Everything every object pointed at was also captured. An empty table is a strong claim, not a quiet one, and it is only trustworthy because the rows are written positively rather than inferred |
 | `trustee` | One security identifier, once for the whole forest, and why it could not be resolved if it could not | That trustee appears in no entry anywhere |
 | `ace` | One access control entry, already canonicalised, including inherited ones, belonging to a **descriptor** rather than to an object | That descriptor grants nothing — but only when it has no rows in `security_descriptor_error`. Which objects that applies to is reached through `object_security_descriptor` |
-| `sysvol_gpo_coverage` | One Group Policy object the directory declared, with its display name and what became of its files: read, read in part, or not read, and why | The forest declares no Group Policy at all. This is the one table in the bundle where a failure is expected rather than fatal — per [`0044`](../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) a SYSVOL read that fails does not stop the run, so these rows are the only account of what was missed |
+| `sysvol_gpo_coverage` | One Group Policy object the directory declared, with its display name and what became of its files: read, read in part, or not read, and why | The forest declares no Group Policy at all. This is the one table in the bundle where a failure is expected rather than fatal — per [`0044`](../../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) a SYSVOL read that fails does not stop the run, so these rows are the only account of what was missed |
 | `gpo_registry_setting` | One registry value a policy writes, with the raw type and bytes as the file held them, and whether it applies to the machine or the user | The policy configures no registry-backed settings — unless its row in `sysvol_gpo_coverage` says its files were not read, in which case nothing is known about what it configures |
 | `gpo_security_setting` | One setting out of a policy's security template: the privileges it grants, the signing and channel-binding settings it can weaken | Same reading as above. SEC-064 and SEC-066 are answered from here |
 | `gpo_restricted_group` | One principal a policy places into, or takes into, a privileged group on every machine it reaches, with which way round the membership goes | The policy imposes no group memberships. SEC-065 exists because this membership is invisible to every directory group rule |
 | `gpo_stored_credential` | Where a policy stores a credential in its own files — the Group Policy Preferences defect of MS14-025 | No stored credential was found in the files that were read. **Presence only: neither the password nor the ciphertext is stored**, because the key protecting it is public and keeping it would rebuild the vulnerability inside the audit |
 | `gpo_file_error` | One file inside a policy that was opened and could not be understood | Every file that was opened parsed cleanly. The same distinction `security_descriptor_error` draws: without it, a template that failed to parse and a policy that assigns no privileges are the same evidence |
-| `sysvol_path_security_descriptor` | One path inside a policy's folder read together with its permissions, joined to the same descriptor and entry tables the directory's permissions use | Nothing under that policy was permission-read. How deep the read goes is set by [`0043`](../decisions/0043-a-gpos-file-permissions-are-read-below-the-root-folder.md): the policy folder, every folder beneath it, every file whose contents were read, and everything under `Machine\Scripts` and `User\Scripts` |
+| `sysvol_path_security_descriptor` | One path inside a policy's folder read together with its permissions, joined to the same descriptor and entry tables the directory's permissions use | Nothing under that policy was permission-read. How deep the read goes is set by [`0043`](../../decisions/0043-a-gpos-file-permissions-are-read-below-the-root-folder.md): the policy folder, every folder beneath it, every file whose contents were read, and everything under `Machine\Scripts` and `User\Scripts` |
 | `unreadable_sysvol_descriptor` | One path inside a policy whose permissions could not be read at all | Every path that was reached had its permissions read. The file-share counterpart of `unreadable_security_descriptor`, and it exists for the same reason: no rows in `ace` must not mean both *this path grants nothing* and *nobody could look* |
-| `finding` | One thing a rule found, about one object: its rule, its subject, the object by `objectGUID`, the severity the rule fixed, and whether the evidence behind it was complete | No rule matched anything. It does not mean the rules were not run and it does not mean the forest is clean: a rule that could not read a declared input reaches no verdict under [`0083`](../decisions/0083-a-rule-declares-its-data-dependencies.md) and writes no row here, so a reader must consult the coverage tables before presenting an empty table as a clean forest |
+| `finding` | One thing a rule found, about one object: its rule, its subject, the object by `objectGUID`, the severity the rule fixed, and whether the evidence behind it was complete | No rule matched anything. It does not mean the rules were not run and it does not mean the forest is clean: a rule that could not read a declared input reaches no verdict under [`0083`](../../decisions/0083-a-rule-declares-its-data-dependencies.md) and writes no row here, so a reader must consult the coverage tables before presenting an empty table as a clean forest |
 | `finding_unconstrained_delegation` | What an unconstrained delegation finding rests on: the `userAccountControl` value, whether the object declared the computer class, and the three raw domain-controller signals | A defect rather than an absence with a meaning. Every finding SEC-010 or SEC-011 produces has exactly one row here, so a finding of that kind without one is a write that half happened |
-| `evaluated_rule` | Which rules were run over this bundle, and at what version of their logic | The bundle was captured and never judged. This is what makes an empty `finding` table readable: no findings beside no rules means nobody looked, and no findings beside rules that ran means nothing matched. Presenting the first as a clean forest is the failure [`0002`](../decisions/0002-absent-view-means-degraded-run.md) forbids |
+| `evaluated_rule` | Which rules were run over this bundle, and at what version of their logic | The bundle was captured and never judged. This is what makes an empty `finding` table readable: no findings beside no rules means nobody looked, and no findings beside rules that ran means nothing matched. Presenting the first as a clean forest is the failure [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) forbids |
 
 <!-- TABLES:END -->
 
@@ -166,7 +166,7 @@ Exact order is **not** stored. `raw_bytes` is already here, so re-parsing recove
 a per-entry ordinal would be a second copy of a fact the bundle already holds. What was missing was
 a way to ask the question over a whole forest without re-parsing several million descriptors, and a
 boolean with a partial index on the `0` rows answers it for nothing on a forest where the answer is
-zero. Required by [`0038`](../decisions/0038-a-descriptor-records-whether-its-dacl-was-canonical.md).
+zero. Required by [`0038`](../../decisions/0038-a-descriptor-records-whether-its-dacl-was-canonical.md).
 
 **The flag describes the entries the product understood.** An entry whose type is not one of the ten
 `AceType` names is skipped when the order is judged, because the alternative is to guess where it
@@ -198,12 +198,12 @@ casting to `(int)` or normalising unknowns to a placeholder each fail the build.
 ### The hash of a whole entry set
 
 Every descriptor carries `ace_set_hash`, computed by `AceSetHash` in the kernel and required by
-[`0015`](../decisions/0015-a-bundle-names-a-pattern-it-never-explains-one-away.md).
+[`0015`](../../decisions/0015-a-bundle-names-a-pattern-it-never-explains-one-away.md).
 
 It exists for comparison. Asking whether an object's permissions changed between two runs by reading
 every entry of every object is the query that makes comparison too slow to use, and comparison is
 the only verification path this product has left since
-[`0008`](../decisions/0008-live-verification-is-removed.md) removed live checking. One value per
+[`0008`](../../decisions/0008-live-verification-is-removed.md) removed live checking. One value per
 object turns that question into an equality test.
 
 The canonicalisation version is inside the hash, so two values produced by different pipelines can
@@ -322,8 +322,8 @@ the checkpoint in step 6.
 ### No migrations
 
 There is no schema migration path and no column added conditionally on open. Per
-[`0001`](../decisions/0001-no-backward-compatibility.md) nothing is kept backward compatible and per
-[`0013`](../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) the bundle is not a
+[`0001`](../../decisions/0001-no-backward-compatibility.md) nothing is kept backward compatible and per
+[`0013`](../../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) the bundle is not a
 contract with anything, so a schema mismatch is a broken build rather than an old file. The schema
 version is recorded so a reader can refuse a bundle it does not understand, not so it can adapt to
 one. It stands at **6**, raised when `finding` was added: a version 5 bundle has no findings table,
@@ -366,7 +366,7 @@ reader.
 
 There is one entry point and it takes the directory the bundle is written into. **Where that
 directory comes from is not the caller's choice**: per
-[`0025`](../decisions/0025-the-run-library-is-a-managed-root.md) the tool owns a configured root and
+[`0025`](../../decisions/0025-the-run-library-is-a-managed-root.md) the tool owns a configured root and
 creates each run inside it, and capture to an arbitrary path is not offered. The writer sits below
 that decision — it is handed a directory and writes there.
 
@@ -375,10 +375,10 @@ a bundle is sealed evidence of one forest at one moment, so a second capture goe
 directory.
 
 Re-analysis is a second way in and it derives into a new bundle from a sealed one, never touching
-the original, per [`0021`](../decisions/0021-re-analysis-produces-a-new-bundle.md).
+the original, per [`0021`](../../decisions/0021-re-analysis-produces-a-new-bundle.md).
 
 The writer knows nothing about a window. There is one way to start a capture and it runs unattended,
-per [`0039`](../decisions/0039-one-way-to-start-a-capture.md); a window drives that same entry point
+per [`0039`](../../decisions/0039-one-way-to-start-a-capture.md); a window drives that same entry point
 rather than being a second one.
 
 ---

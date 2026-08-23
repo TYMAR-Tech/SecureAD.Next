@@ -6,7 +6,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/evidence/whether-two-runs-compare.md</c> to the code it describes.
+/// Binds <c>docs/layers/evidence/whether-two-runs-compare.md</c> to the code it describes.
 ///
 /// <para>
 /// Both tables are bound <b>in both directions</b>, which decision <c>0026</c> asked for by
@@ -203,7 +203,7 @@ public sealed class RunComparabilityDocumentationTests
 
     /// <summary>
     /// The run states are observed from files in the bundle directory, so they are described by
-    /// <c>docs/evidence/the-bundle-on-disk.md</c> and bound by <c>BundleOnDiskDocumentationTests</c>.
+    /// <c>docs/layers/evidence/the-bundle-on-disk.md</c> and bound by <c>BundleOnDiskDocumentationTests</c>.
     /// What a run read is <c>run-identity-and-coverage.md</c>'s. Either table reappearing here
     /// would be a second description of one vocabulary, which is the state the repository was left
     /// in when a document was drafted and the old one was not cut in the same turn.
@@ -418,7 +418,7 @@ public sealed class RunComparabilityDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "evidence", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "layers", "evidence", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

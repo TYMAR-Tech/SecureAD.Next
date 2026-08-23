@@ -103,7 +103,7 @@ there is something to react to. It is not authoritative and nothing here has bee
 
 | | | |
 |---|---|---|
-| `F-1` | **Closed 2026-08-20.** The Modify Owner wording asserted that an owner *has* the implicit right to modify permissions, which is false for any object carrying an `OWNER RIGHTS` entry. An administrator who had applied the standard hardening was told in the product's own words that it did not hold. See [the requirements](../kernel/permission-requirements.md) | Confirmed in lab 2026-08-20 |
+| `F-1` | **Closed 2026-08-20.** The Modify Owner wording asserted that an owner *has* the implicit right to modify permissions, which is false for any object carrying an `OWNER RIGHTS` entry. An administrator who had applied the standard hardening was told in the product's own words that it did not hold. See [the requirements](../layers/kernel/permission-requirements.md) | Confirmed in lab 2026-08-20 |
 | `F-2` | **Closed 2026-08-20.** `CREATOR OWNER` and `PRINCIPAL SELF` were reported as named principals with a domain, because Active Directory keeps real objects for them. 1,708 entries in one lab bundle were credited to something that holds nothing | Confirmed in lab 2026-08-20 |
 | `F-3` | **Closed 2026-08-20.** A trustee's name and domain could be arbitrary: `SELECT … LIMIT 1` with no `ORDER BY` over a column with no index, where four captured objects shared one SID | — |
 | `F-4` | **Open.** The `ace` table and the re-parse of the same descriptor disagree by one entry on `OU=test01` in `ad.lab-20260821-014720` — 57 against 56 — while the descriptor reports `dacl_completeness=Complete`. An entry count an operator reads may be short, and a permission may not be listed. Which reading is right is not established | — |

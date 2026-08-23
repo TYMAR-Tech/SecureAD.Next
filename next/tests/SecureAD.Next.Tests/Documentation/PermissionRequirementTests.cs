@@ -31,7 +31,7 @@ public sealed class PermissionRequirementTests
     private const string NotBuilt = "not built";
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "kernel", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "layers", "kernel", Document);
 
     /// <summary>
     /// Every requirement names a type that is in the product, or says it is not built. A third

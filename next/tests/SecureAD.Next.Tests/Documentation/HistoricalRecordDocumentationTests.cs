@@ -4,7 +4,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/evidence/what-a-bundle-holds.md</c>, the live description of what a bundle holds,
+/// Binds <c>docs/layers/evidence/what-a-bundle-holds.md</c>, the live description of what a bundle holds,
 /// to the schema the code actually creates.
 ///
 /// <para>
@@ -124,5 +124,5 @@ public sealed class HistoricalRecordDocumentationTests
 
     private static string Read(string document) =>
         File.ReadAllText(System.IO.Path.Combine(
-            RepositoryLocation.Root(), "docs", "evidence", document));
+            RepositoryLocation.Root(), "docs", "layers", "evidence", document));
 }

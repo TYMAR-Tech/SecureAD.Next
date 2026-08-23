@@ -88,7 +88,7 @@ suite covering the product.
 If the answer names a change — adding a table, renaming a member, removing an enum value — the check
 is **generative** and belongs in the test suite. `HistoricalRecordDocumentationTests` reads the
 `CREATE TABLE` statements out of `BundleSchema.cs` and holds
-[`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md) to them, so a twelfth table fails
+[`what-a-bundle-holds.md`](../layers/evidence/what-a-bundle-holds.md) to them, so a twelfth table fails
 the build until it is described. `GoverningDocumentTests` globs `next/src` and holds
 `READING-ORDER.md` to what is there. `DecisionIndexTests` holds `docs/DECISIONS.md` to the records it
 is generated from.
@@ -344,9 +344,9 @@ that runs to trace from, and gate 6 is not mechanically testable and is caught b
 all. Five components are done, all of them the kernel: K13, K14, K15, K16 and K17 —
 the security descriptor parser and ACE canonicaliser, the schema GUID catalogue that replaces the
 two tables K13 and K14 were, the dangerous-permission classifier, and the distinguished-name
-helpers. They are documented at [security descriptors](../kernel/security-descriptors.md),
-[reading a distinguished name](../kernel/distinguished-names.md), [what a schema GUID means](../schema/what-a-schema-guid-means.md) and
-[permission classification](../kernel/permission-classification.md), each bound by a test. The gates themselves are
+helpers. They are documented at [security descriptors](../layers/kernel/security-descriptors.md),
+[reading a distinguished name](../layers/kernel/distinguished-names.md), [what a schema GUID means](../layers/schema/what-a-schema-guid-means.md) and
+[permission classification](../layers/kernel/permission-classification.md), each bound by a test. The gates themselves are
 documented at `S-5` and `S-6`. Gate 5b
 stays blocked, though no longer for the reason first recorded: the shell ships and a run can be
 started from it, so the root exists. Nothing traces reachability from it.
@@ -355,17 +355,17 @@ The first twelve capture rows — B1 through B12 — now carry dispositions, dec
 `S-7` and bound to the inventory by a test. Eleven are Rebuild and one,
 the concurrent shard fan-out, is deferred against a measured baseline. Five of them are built.
 B2 — the catalogue of attributes capture asks a domain controller for — is documented at
-[`S-8`](../audit/the-attribute-catalogue.md) and bound by a test that fails when an attribute cannot
+[`S-8`](../layers/audit/the-attribute-catalogue.md) and bound by a test that fails when an attribute cannot
 name something that reads it. It was the first code in the rebuild outside the kernel. B4 and B7
-followed: the **capture unit**, documented at [`S-9`](../audit/the-search-capture-issues.md), which is one naming
+followed: the **capture unit**, documented at [`S-9`](../layers/audit/the-search-capture-issues.md), which is one naming
 context on one domain controller and the reason a paged search based at a domain root cannot be
 allowed to follow anything; and the **politeness rules**, documented at
-[`S-10`](../audit/limits-and-failures.md), which name the limits a domain controller sets rather than guessing
+[`S-10`](../layers/audit/limits-and-failures.md), which name the limits a domain controller sets rather than guessing
 at them and replace the deleted rate limiter with a build failure. Both documents are bound by
 tests, and both say plainly which half of their obligation cannot be bound yet.
 
 B8 followed on 2026-08-11: **the reader**, documented at
-[`S-11`](../audit/how-a-controller-is-read.md), which turns what a controller sends back into
+[`S-11`](../layers/audit/how-a-controller-is-read.md), which turns what a controller sends back into
 typed values and carries the range-retrieval rule. A domain controller will not return more than a
 fixed number of values for one attribute of one object, and an administrator cannot lift that
 limit out of the way, so a reader that does not ask for the rest reports a ten-thousand-member
@@ -376,7 +376,7 @@ The document is bound by a test, and it says which half of its obligation a repo
 forest cannot reach.
 
 B6 followed on 2026-08-12: **the capture passes**, documented at
-[`S-12`](../audit/how-a-controller-is-read.md). This is the loop that issues a search, takes a page, asks for
+[`S-12`](../layers/audit/how-a-controller-is-read.md). This is the loop that issues a search, takes a page, asks for
 the next and knows when a partition is finished, plus the rule for which partitions a run reads at
 all. Its one job is to never report a partition as read whole when it was not, and the way it does
 that is worth reading: the paging defect cannot be detected from any answer, because the controller
@@ -418,8 +418,8 @@ the ladder at all — Microsoft's own account of one on port 389 is that there i
 these sessions… because credentials are transmitted in clear text."*
 
 A2 — **the connection** — is built and documented at
-[`the connection ladder`](../connect/the-connection-ladder.md) and
-[`how a connection is opened`](../connect/how-a-connection-is-opened.md), with the
+[`the connection ladder`](../layers/connect/the-connection-ladder.md) and
+[`how a connection is opened`](../layers/connect/how-a-connection-is-opened.md), with the
 ladder as a table bound to the rungs the code names. It implements the seam B6 wrote and left open,
 and the seam held unchanged, which is recorded as a table rather than asserted. The rung each
 controller answered on is kept by name rather than as a flag, because a flag has nowhere to put a
@@ -439,7 +439,7 @@ nothing to write to. **Nine rows now carry dispositions** — C1, C3, C5, C10, C
 capture's two writers B9 and B10 — decided together at
 `S-15` and bound to the inventory by a test: eight Rebuild and one
 Delete. What a bundle holds is documented at
-[`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md), bound by a test that
+[`what-a-bundle-holds.md`](../layers/evidence/what-a-bundle-holds.md), bound by a test that
 compares the document against the tables SQLite reports in a real database rather than against a
 list in the code, so the two cannot be wrong together.
 
@@ -509,12 +509,12 @@ refused. `0026`'s structure survived entire and only its table changed, which is
 said the closed set was buying, tested for the first time.
 
 F1, F2, F3, F6, F9, F10 and F17 are **built**, and documented at
-[`run-identity-and-coverage.md`](../evidence/run-identity-and-coverage.md) and
-[`whether-two-runs-compare.md`](../evidence/whether-two-runs-compare.md): the run's two identities,
+[`run-identity-and-coverage.md`](../layers/evidence/run-identity-and-coverage.md) and
+[`whether-two-runs-compare.md`](../layers/evidence/whether-two-runs-compare.md): the run's two identities,
 what a run actually read, and the single verdict on whether it may be used. The one lifecycle
-vocabulary is at [`the-bundle-on-disk.md`](../evidence/the-bundle-on-disk.md), beside the files it
+vocabulary is at [`the-bundle-on-disk.md`](../layers/evidence/the-bundle-on-disk.md), beside the files it
 is observed from, and how the library those bundles live in is enumerated is at
-[`how-a-bundle-is-read.md`](../evidence/how-a-bundle-is-read.md). The states and outcomes are bound to the code in both directions, and each card
+[`how-a-bundle-is-read.md`](../layers/evidence/how-a-bundle-is-read.md). The states and outcomes are bound to the code in both directions, and each card
 shape is checked against the
 shape the code produces, so the document cannot go on calling a refusal qualified after someone has
 changed it. Two more records came out of it. [`0028`](../decisions/0028-one-run-state-vocabulary.md)
@@ -678,7 +678,7 @@ changed Tier 0 definition should be refused or qualified — a door `0026` and `
 unwatched, which is the second time that sequencing error has arisen.
 
 **What capture must read has now been derived from the rules rather than from the port** —
-[`S-23-what-capture-must-read.md`](../audit/the-attribute-catalogue.md). The catalogue's consumer gate
+[`S-23-what-capture-must-read.md`](../layers/audit/the-attribute-catalogue.md). The catalogue's consumer gate
 accepted only an inventory row, and almost no inventory row is built, so the catalogue was bounded by how
 far the port had got rather than by what the product needs. A `Read by` cell may now name a **rule
 card**, and derived against all sixty-two, the catalogue was three attributes short. Those three
@@ -693,8 +693,8 @@ in the directory can answer.
 
 **The bundle schema was rebuilt at C1** — `S-24-the-audit-database-schema.md`,
 in progress. Two governing documents described different schemas: `S-16` — the retired slice, since
-consumed into [`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md) and
-[`the-bundle-on-disk.md`](../evidence/the-bundle-on-disk.md) — listed a row per object per
+consumed into [`what-a-bundle-holds.md`](../layers/evidence/what-a-bundle-holds.md) and
+[`the-bundle-on-disk.md`](../layers/evidence/the-bundle-on-disk.md) — listed a row per object per
 attribute and [`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md) replaced that with
 typed columns the following day, and the committed code implemented the shape that was replaced.
 `0022` governs — not because it is newer, but because `S-16`'s table pair rested on a distinction its

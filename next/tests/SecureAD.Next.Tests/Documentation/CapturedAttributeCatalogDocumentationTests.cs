@@ -6,7 +6,7 @@ using SecureAD.Kernel.Capture;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/audit/the-attribute-catalogue.md</c> to
+/// Binds <c>docs/layers/audit/the-attribute-catalogue.md</c> to
 /// <see cref="CapturedAttributeCatalog"/>.
 ///
 /// <para>
@@ -484,7 +484,7 @@ public sealed class CapturedAttributeCatalogDocumentationTests
             .Select(t => t.Name);
 
     private static string DocumentPath() =>
-        Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
+        Path.Combine(RepositoryLocation.Root(), "docs", "layers", "audit", Document);
 
     /// <summary>
     /// The documents describing the capture subsystem. Named explicitly rather than discovered by
@@ -500,7 +500,7 @@ public sealed class CapturedAttributeCatalogDocumentationTests
 
     private static string ReadSlice(string slice)
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "layers", "audit", slice);
 
         Assert.True(
             File.Exists(path),

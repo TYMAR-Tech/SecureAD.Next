@@ -87,7 +87,7 @@ it never interprets, and the comparison it feeds is exact.
 
 It is **not a normalisation**. It is stored beside the distinguished name the controller gave, never
 instead of it; objects are stored under an identity that survives a rename or a move per
-[`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md), and the reversed form is an index
+[`0022`](../../decisions/0022-objects-are-stored-as-typed-columns.md), and the reversed form is an index
 key derived from a column, not a second claim about the object.
 
 ---
@@ -170,7 +170,6 @@ The assembly targets `net10.0` with the rest of the tree.
 
 Each capability names the test that proves it. **The test is the evidence; this table is only the
 index.** Blank in **Confirmed in lab** means unit-tested but not yet exercised against a real forest.
-The same rows stand in [who is who](../areas/who-is-who.md), which keeps its own copy permanently.
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|

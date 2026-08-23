@@ -26,8 +26,8 @@ internal static class LayerDocuments
     /// <summary>The subsystems whose folders hold layer documents.</summary>
     internal static readonly string[] Subsystems = ["kernel", "audit", "connect", "evidence", "schema"];
 
-    /// <summary>The documentation root.</summary>
-    internal static string Root() => Path.Combine(RepositoryLocation.Root(), "docs");
+    /// <summary>The documentation root for the layer documents.</summary>
+    internal static string Root() => Path.Combine(RepositoryLocation.Root(), "docs", "layers");
 
     /// <summary>The subsystem a document belongs to, taken from its directory.</summary>
     internal static string SubsystemOf(string file) =>

@@ -22,7 +22,7 @@ the code.
 
 The operator chooses **where** the root is; the tool chooses the layout inside it. Capture to an
 arbitrary path is not offered, and that is
-[`0025`](../decisions/0025-the-run-library-is-a-managed-root.md) rather than a convenience: without a
+[`0025`](../../decisions/0025-the-run-library-is-a-managed-root.md) rather than a convenience: without a
 catalogue there is nothing to list, nowhere for a baseline to live, and comparison cannot offer
 *runs comparable with this one*.
 
@@ -199,13 +199,13 @@ invites a reader of one column to match a constant belonging to another.
 ## Deleting a run takes everything
 
 Everything in the directory goes, including the annotations sidecar, per
-[`0078`](../decisions/0078-a-run-can-be-deleted-after-one-confirmation.md). The name an operator gave
+[`0078`](../../decisions/0078-a-run-can-be-deleted-after-one-confirmation.md). The name an operator gave
 a run is part of the run rather than a record about it that outlives it; a library holding notes
 about runs it no longer has would answer questions about evidence nobody can produce.
 
 **Nothing is left behind to mark the deletion.** A tombstone in the managed root would be a second
 kind of thing living among runs, and every reader of the library would have to learn to skip it —
-the failure [`0058`](../decisions/0058-a-run-may-be-stopped-and-stopping-it-keeps-nothing.md) already
+the failure [`0058`](../../decisions/0058-a-run-may-be-stopped-and-stopping-it-keeps-nothing.md) already
 avoided for cancelled runs.
 
 **A run that is not there is a failure, not a success.** Reporting nothing to do would tell an

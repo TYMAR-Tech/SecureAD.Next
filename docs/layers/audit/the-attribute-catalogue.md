@@ -43,7 +43,7 @@ directory. It is the one decision in the subsystem that cannot be corrected late
 "The previous product had it" is not a consumer. The previous catalogue was hand-enumerated and had
 reached version 10, and carrying it across wholesale would have imported every unexamined choice in
 it under cover of a rebuild. This is
-[`0064`](../decisions/0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md): an attribute
+[`0064`](../../decisions/0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md): an attribute
 is justified by a rule that reads it, or by a field of the object view it fills, and never
 speculatively.
 
@@ -87,7 +87,7 @@ also flatly at odds with `0017`, which says capture reads the whole forest.
 
 So the single behaviour is: **every object** in every naming context capture reads, whatever its
 class, with identity and its access control list — and **two classes excluded by name**, `dnsNode`
-and `dnsZone`, per [`0042`](../decisions/0042-dns-zones-and-records-are-out-of-scope.md).
+and `dnsZone`, per [`0042`](../../decisions/0042-dns-zones-and-records-are-out-of-scope.md).
 
 **An exclusion stated by name is something a report can print. An inclusion list that happens not to
 mention DNS is a silence.**
@@ -112,12 +112,12 @@ hand-maintained list would agree on the day it was written and stop agreeing sil
 
 Every attribute added here adds a case where absent means either *not set in this forest* or *we
 were not permitted to read it*, and
-[`0002`](../decisions/0002-absent-view-means-degraded-run.md) requires those to be told apart. That
+[`0002`](../../decisions/0002-absent-view-means-degraded-run.md) requires those to be told apart. That
 is real work per attribute rather than a free addition.
 
 It is not work that has to be done by guess. The distinction is a fact about each forest, recorded
 in that forest's own schema, and capture already reads the schema partition per
-[`0014`](../decisions/0014-capture-reads-the-schema-partition.md) — so `searchFlags` and
+[`0014`](../../decisions/0014-capture-reads-the-schema-partition.md) — so `searchFlags` and
 `systemFlags` are in the schema set below and the question is answered from the directory.
 
 **The catalogue itself makes no claim about which of its entries could be withheld**, because such a
@@ -149,7 +149,7 @@ forbidden name nobody wanted costs nothing; a missing one costs everything.
 ## The catalogue
 
 `Read by` names inventory rows **and rules**. A rule is named as its card identifier — `SEC-091`,
-from [`docs/rules/`](../rules/) — and a named rule must be a card that exists.
+from [`docs/rules/`](../../rules/) — and a named rule must be a card that exists.
 
 `Cardinality` is `SingleValued` or `MultiValued`, and `MultiValued` means range-liable. `Storage` is
 `Text` or `Binary`, and `Binary` means the value is an octet string that must never be round-tripped
@@ -157,7 +157,7 @@ through a string.
 
 This catalogue is **version 3**, and every bundle records it, so a bundle read years later can still
 say what it was allowed to see. It started at 1 rather than continuing the previous product's
-sequence, which had reached 10: per [`0001`](../decisions/0001-no-backward-compatibility.md) there
+sequence, which had reached 10: per [`0001`](../../decisions/0001-no-backward-compatibility.md) there
 is no compatibility to preserve, and a continuing number would imply that a bundle stamped 10 and
 one stamped 11 hold comparable evidence.
 
@@ -245,7 +245,7 @@ previous product kept four near-identical lists for them and they had drifted ap
 | Attribute | Cardinality | Storage | Read by | Why |
 |---|---|---|---|---|
 | displayName | SingleValued | Text | E21 | The name an administrator knows the policy by. Its distinguished name is a GUID and is unusable in a report |
-| gPCFileSysPath | SingleValued | Text | B20, SEC-064, SEC-065, SEC-066, SEC-082, SEC-083, SEC-093 | Where the policy's files live. `GpoInventory` turns it into the target the SYSVOL read starts from, and the six rules named have nothing to say without those files. A policy returned without one cannot be read at all, and is recorded as unlocatable rather than dropped from the count of what should have been read ([`0044`](../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md)) |
+| gPCFileSysPath | SingleValued | Text | B20, SEC-064, SEC-065, SEC-066, SEC-082, SEC-083, SEC-093 | Where the policy's files live. `GpoInventory` turns it into the target the SYSVOL read starts from, and the six rules named have nothing to say without those files. A policy returned without one cannot be read at all, and is recorded as unlocatable rather than dropped from the count of what should have been read ([`0044`](../../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md)) |
 | flags | SingleValued | Text | E21 | Whether the computer or user half of the policy is disabled, so a setting that is present but never applied is not reported as applied |
 | versionNumber | SingleValued | Text | E21 | Whether the directory half and the SYSVOL half of the policy agree. They can disagree, and when they do the policy's effect is not what either half says |
 | gPCMachineExtensionNames | MultiValued | Text | B20, SEC-083 | Which kinds of setting the policy declares it contains, read by `GpoClientSideExtensions.ParseCseGuids`. The SYSVOL read does not narrow by it: what a workstation applies is the files on the share, so `S-33` lists those instead. Kept because a policy whose declared extensions and actual files disagree is worth being able to ask about |
@@ -253,7 +253,7 @@ previous product kept four near-identical lists for them and they had drifted ap
 ### Schema partition — `attributeSchema` and `classSchema` objects
 
 Read once per forest, on every capture, per
-[`0014`](../decisions/0014-capture-reads-the-schema-partition.md). A few thousand objects, needing
+[`0014`](../../decisions/0014-capture-reads-the-schema-partition.md). A few thousand objects, needing
 no privilege beyond reading the directory.
 
 | Attribute | Cardinality | Storage | Read by | Why |

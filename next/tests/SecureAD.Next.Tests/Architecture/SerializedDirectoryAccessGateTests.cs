@@ -95,7 +95,7 @@ public sealed class SerializedDirectoryAccessGateTests
             + "oldest, so a concurrent read can silently truncate another one. Running several "
             + "naming contexts at once is fine and is expected; running two requests at one "
             + "controller is not. Split the dispatching from the reading. See "
-            + "docs/audit/limits-and-failures.md:"
+            + "docs/layers/audit/limits-and-failures.md:"
             + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
 

@@ -74,7 +74,7 @@ The table below sits between the two markers around it, so the test parses only 
 | AceNormalizationResult | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | CanonicalAce | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | AceCanonicalization | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
-| DnHelper | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| DnHelper | SecureAD.Kernel | [distinguished-names](../layers/kernel/distinguished-names.md) |
 | SchemaGuidCatalog | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | SchemaGuidEntry | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | SchemaGuidKind | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
@@ -105,10 +105,10 @@ The table below sits between the two markers around it, so the test parses only 
 | GpoTarget | SecureAD.Audit | [group-policy](../areas/group-policy.md) |
 | GpoInventory | SecureAD.Audit | [group-policy](../areas/group-policy.md) |
 | SysvolCapture | SecureAD.Audit | [group-policy](../areas/group-policy.md) |
-| SysvolCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| SysvolReadOutcome | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| GpoCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| GpoReadOutcome | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
+| SysvolCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| SysvolReadOutcome | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| GpoCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| GpoReadOutcome | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | GpoSettingScope | SecureAD.Evidence | [group-policy](../areas/group-policy.md) |
 | RestrictedGroupRelationship | SecureAD.Evidence | [group-policy](../areas/group-policy.md) |
 | CapturedAttributeCatalog | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
@@ -137,11 +137,11 @@ The table below sits between the two markers around it, so the test parses only 
 | NamingContextKind | SecureAD.Evidence | [what-we-capture](../areas/what-we-capture.md) |
 | CaptureSearchRequestFactory | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
 | ContinuationReferenceReconciliation | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
-| ServerLimits | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| ServerLimit | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| RetryPolicy | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| DirectoryFailure | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| FailureResponse | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
+| ServerLimits | SecureAD.Audit | [limits-and-failures](../layers/audit/limits-and-failures.md) |
+| ServerLimit | SecureAD.Audit | [limits-and-failures](../layers/audit/limits-and-failures.md) |
+| RetryPolicy | SecureAD.Audit | [limits-and-failures](../layers/audit/limits-and-failures.md) |
+| DirectoryFailure | SecureAD.Audit | [limits-and-failures](../layers/audit/limits-and-failures.md) |
+| FailureResponse | SecureAD.Audit | [limits-and-failures](../layers/audit/limits-and-failures.md) |
 | LdapEntryReader | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
 | AttributeValues | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
 | AttributeCompleteness | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
@@ -150,13 +150,13 @@ The table below sits between the two markers around it, so the test parses only 
 | IDirectoryChannelFactory | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
 | DirectoryPage | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
 | PageCompleteness | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
-| CapturePlan | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| PartitionCapture | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| BundleCaptureSink | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| CaptureRun | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| CaptureSession | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| CaptureRunResult | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
-| RunCompletion | SecureAD.Audit | [running-a-capture](../areas/running-a-capture.md) |
+| CapturePlan | SecureAD.Audit | [the-search-capture-issues](../layers/audit/the-search-capture-issues.md) |
+| PartitionCapture | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
+| BundleCaptureSink | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
+| CaptureRun | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
+| CaptureSession | SecureAD.Audit | [what-preflight-proves](../layers/connect/what-preflight-proves.md) |
+| CaptureRunResult | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
+| RunCompletion | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | ForestDiscovery | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
 | CapturedObject | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
 | ObjectCompleteness | SecureAD.Audit | [what-we-capture](../areas/what-we-capture.md) |
@@ -185,18 +185,18 @@ The table below sits between the two markers around it, so the test parses only 
 | PermissionRight | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | PermissionScopeWriter | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
 | PermissionScope | SecureAD.Kernel | [what-a-permission-means](../areas/what-a-permission-means.md) |
-| Sid | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
-| WellKnownSidCatalog | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
-| WellKnownSid | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
-| WellKnownSidRole | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
-| DomainRelativeSid | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
-| DomainRelativeScope | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| Sid | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
+| WellKnownSidCatalog | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
+| WellKnownSid | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
+| WellKnownSidRole | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
+| DomainRelativeSid | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
+| DomainRelativeScope | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | UserAccountControlWording | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
 | UserAccountControlFlag | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
 | DirectoryTime | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
 | DirectoryTimeWording | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
 | DirectoryTimeFormat | SecureAD.Kernel | [what-we-capture](../areas/what-we-capture.md) |
-| GroupTypeWording | SecureAD.Kernel | [who-is-who](../areas/who-is-who.md) |
+| GroupTypeWording | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | BundleLayout | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleSchema | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleWriter | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
@@ -228,7 +228,7 @@ The table below sits between the two markers around it, so the test parses only 
 | EvidenceAttribute | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | EvidenceValue | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | ProfileId | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
-| CoverageId | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
+| CoverageId | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | RunState | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunStateNames | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunStateObservation | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
@@ -237,26 +237,26 @@ The table below sits between the two markers around it, so the test parses only 
 | RunOutcome | SecureAD.Evidence | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
 | RunOutcomeContents | SecureAD.Evidence | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
 | RunOutcomeFile | SecureAD.Evidence | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
-| DomainReadOutcome | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| DomainCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| ForestPartitionReadOutcome | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| ForestPartitionCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
-| RunCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
+| DomainReadOutcome | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| DomainCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| ForestPartitionReadOutcome | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| ForestPartitionCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
+| RunCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | RunScope | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunSummary | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunListing | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunMoment | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunAnnotation | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunAnnotations | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
-| ComparabilityOutcome | SecureAD.Evidence | [how-compare-works](../areas/how-compare-works.md) |
-| DriftCardShape | SecureAD.Evidence | [how-compare-works](../areas/how-compare-works.md) |
-| ComparabilityVerdict | SecureAD.Evidence | [how-compare-works](../areas/how-compare-works.md) |
-| BaselineVerdict | SecureAD.Evidence | [how-compare-works](../areas/how-compare-works.md) |
-| RunComparability | SecureAD.Evidence | [how-compare-works](../areas/how-compare-works.md) |
+| ComparabilityOutcome | SecureAD.Evidence | [whether-two-runs-compare](../layers/evidence/whether-two-runs-compare.md) |
+| DriftCardShape | SecureAD.Evidence | [whether-two-runs-compare](../layers/evidence/whether-two-runs-compare.md) |
+| ComparabilityVerdict | SecureAD.Evidence | [whether-two-runs-compare](../layers/evidence/whether-two-runs-compare.md) |
+| BaselineVerdict | SecureAD.Evidence | [whether-two-runs-compare](../layers/evidence/whether-two-runs-compare.md) |
+| RunComparability | SecureAD.Evidence | [whether-two-runs-compare](../layers/evidence/whether-two-runs-compare.md) |
 | StoredAttributeCompleteness | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | UnresolvedReferenceKind | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | UnresolvedReferenceReason | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
-| PartitionCoverage | SecureAD.Evidence | [what-the-run-covered](../areas/what-the-run-covered.md) |
+| PartitionCoverage | SecureAD.Evidence | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | LdapDirectoryChannel | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
 | LdapDirectoryChannelFactory | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
 | DomainControllerSignals | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
@@ -288,7 +288,7 @@ The forecasts are not carried forward. They were a genuine device and they did r
 findings came out of them, recorded where they were found: `F-S13-3` in
 `S-13`, `F-S7-42` in
 `S-7`, and `F-S4-5` in
-[permission classification](../kernel/permission-classification.md). Each was the same lesson: a library reading a
+[permission classification](../layers/kernel/permission-classification.md). Each was the same lesson: a library reading a
 library does not answer the question *what can something that runs reach*, so an entry must not come
 off on the strength of a consumer that is itself unreached.
 

@@ -119,7 +119,7 @@ The record carries two things that are caveats rather than counts. `Continuation
 controller's own statement of what else exists below what was searched. And `ReferralsSuppressed`
 says whether this unit was asked to produce none at all, because *nothing was mentioned* and *we
 asked not to be told* are different facts and rendering the second as the first is what
-[`0002`](../decisions/0002-absent-view-means-degraded-run.md) forbids.
+[`0002`](../../decisions/0002-absent-view-means-degraded-run.md) forbids.
 
 It also carries the `ConnectionSecurityLevel` the connection reached, and that is not decoration. A
 Windows Server 2025 controller strips confidential attributes from an unencrypted search and returns
@@ -258,7 +258,7 @@ it was never set. It is equally missing when the reader was not permitted to see
 marked confidential in the schema is withheld from a caller without `CONTROL_ACCESS` on it, and it
 is withheld *silently* — the value simply is not there, exactly as though it had never been set
 ([Mark an attribute as confidential](https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential)).
-[`0002`](../decisions/0002-absent-view-means-degraded-run.md) forbids rendering the second as the
+[`0002`](../../decisions/0002-absent-view-means-degraded-run.md) forbids rendering the second as the
 first.
 
 **Telling the two apart is not this layer's job.** What the schema's `searchFlags` and `systemFlags`
@@ -365,7 +365,7 @@ three objects in, against the writer's own guard. That guard was right; this was
 
 `CaptureRun` walks the plan's units in order and is fail-fast. On any failure the partial evidence
 file is left where it is and `run-outcome.json` is written beside it, per
-[`0029`](../decisions/0029-a-run-that-ends-badly-says-so.md). The evidence is never given the name a
+[`0029`](../../decisions/0029-a-run-that-ends-badly-says-so.md). The evidence is never given the name a
 reader asks for until the seal, so there is nothing a later run can mistake for a finished bundle.
 
 ---

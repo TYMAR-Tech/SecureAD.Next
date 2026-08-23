@@ -6,7 +6,7 @@ Status: Accepted
 ## Context
 
 Finding `F-S3-6`, recorded in the schema-GUID catalogue's slice document and since carried into
-[`what-a-schema-guid-means.md`](../schema/what-a-schema-guid-means.md), states that
+[`what-a-schema-guid-means.md`](../layers/schema/what-a-schema-guid-means.md), states that
 `DS-Replication-Get-Changes` held together with `DS-Replication-Get-Changes-In-Filtered-Set` at the
 domain head is "a documented route to replicating that set, LAPS passwords among them, **without a
 single ACE on any computer object.**"
@@ -17,7 +17,7 @@ rather than believed. One word in it is nevertheless wrong, and it is the load-b
 **Microsoft does not document this.**
 
 Verification against Microsoft Learn, recorded in full in
-[`permission-classification.md`](../kernel/permission-classification.md):
+[`permission-classification.md`](../layers/kernel/permission-classification.md):
 
 - The Learn page for
   [`DS-Replication-Get-Changes-In-Filtered-Set`](https://learn.microsoft.com/en-us/windows/win32/adschema/r-ds-replication-get-changes-in-filtered-set)

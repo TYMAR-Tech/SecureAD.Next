@@ -57,7 +57,7 @@ identity as well as of the profile, so a bundle copied in by hand from another m
 offered as a partner for a forest it does not belong to.
 
 **Both sets reach the hash, per
-[`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md).** Two runs of an eight-domain
+[`0052`](../../decisions/0052-the-domain-is-the-only-unit-of-scope.md).** Two runs of an eight-domain
 forest, one leaving out domain three and one leaving out domain five, would otherwise both declare
 all eight and hash alike — so the product would offer them as like for like and report the
 difference between two entirely different domains as drift. Until 2026-08-21 nothing here did that.
@@ -75,7 +75,7 @@ comparable. An exclusion naming a domain the forest never declared is refused ra
 because the pairing is a mistake at the call site.
 
 **Changing what goes into this hash is a schema change**, and
-[`0084`](../decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md) is why.
+[`0084`](../../decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md) is why.
 The value is stored as `bundle.coverage_id` and read back as the identity the run library groups on.
 Change the recipe and every value computed afterwards differs from every value computed before,
 while a sixteen-character hex string looks identical either way — so old and new runs draw as two
@@ -133,7 +133,7 @@ Nothing downstream can see its edges, so a later comparison against it reports f
 really happened while looking exactly like a comparison that found nothing.
 
 **A domain left out is not a domain that failed, and neither is a domain nothing could reach.**
-[`0063`](../decisions/0063-excluded-never-looks-like-unreachable.md) holds the three apart wherever
+[`0063`](../../decisions/0063-excluded-never-looks-like-unreachable.md) holds the three apart wherever
 any of them appears. *We did not look*, *the forest named nothing to look at*, and *we tried and
 could not* have three different remedies, and the last may be the most important thing the run
 found. A domain the forest cannot serve is a network, trust or decommissioning problem worth an
@@ -147,13 +147,13 @@ coverage to tell a choice from an unreachable domain without opening another tab
 
 The configuration partition and the schema partition belong to the forest rather than to any domain,
 so `RunCoverage.Of` takes their outcomes as a separate argument. Per
-[`0035`](../decisions/0035-coverage-is-recorded-once-per-capture-unit.md) a run that cannot read one
+[`0035`](../../decisions/0035-coverage-is-recorded-once-per-capture-unit.md) a run that cannot read one
 of them has *failed*, rather than having found a domain with a problem — expressed as domain
 coverage it would make a forest-wide failure look local, and expressed nowhere, which is where it
 was until this existed, a failed schema read left every domain still reporting as read.
 
 **That is not hypothetical.** Per
-[`0014`](../decisions/0014-capture-reads-the-schema-partition.md) an unread schema partition is the
+[`0014`](../../decisions/0014-capture-reads-the-schema-partition.md) an unread schema partition is the
 failure that stops any permission being resolved at all, so it is precisely the one that must not
 pass quietly.
 
@@ -189,9 +189,9 @@ at the schema partition pass as complete.
 
 `RunCoverage.Sysvol` is the third thing held beside the domains, and it is unlike the other two.
 Group Policy settings live in files on a share rather than in the directory, and per
-[`0044`](../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) **a failure to
+[`0044`](../../decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) **a failure to
 read them does not fail the run.** It is the first and only exception to fail-fast capture
-([`0003`](../decisions/0003-refuse-to-reanalyse-an-incomplete-capture.md)), taken because permission
+([`0003`](../../decisions/0003-refuse-to-reanalyse-an-incomplete-capture.md)), taken because permission
 problems on a file share are ordinary and a run that died over one policy folder out of four hundred
 would be unusable in the field.
 
@@ -313,7 +313,7 @@ gave each scope its own baseline.
 > at all. It can; the bundle has a table for storing exclusions. Corrected 2026-08-21.
 
 **It is kept because it is the enforcement of a rule, not because it varies.**
-[`0027`](../decisions/0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md) says a run
+[`0027`](../../decisions/0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md) says a run
 that did not read every domain it set out to read may not be a baseline and may not be compared.
 Today that is guaranteed upstream. This is what would catch a bundle written by some future second
 path — controller failover, parallel capture, anything re-analysis-shaped — that produced a hole.
