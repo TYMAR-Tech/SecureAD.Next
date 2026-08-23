@@ -165,6 +165,32 @@ reason the self-test asserts per subsystem rather than a global total.
 
 *Owed.* Nothing in Evidence.
 
+**Two gates were added after the pass closed, and they change how the cycle is checked.**
+
+*`CapabilityCitationTests`* resolves every capability citation in `docs/kernel`, `docs/audit`,
+`docs/connect` and `docs/evidence` against the test assembly. It matches **both** table openers —
+kernel writes the capability table under `## What an operator can do`, the rest under
+`## What is built` — because a gate keyed on one would have gone green while scanning nothing in
+three kernel documents. Its self-test asserts each subsystem was reached rather than a global count
+above zero. `TestCitation` is shared with `AreaFileGateTests` so one resolver serves both.
+
+*`LayerDocumentGateTests`* closes step 7, which was the only step of the cycle no gate covered and
+was skipped twice without anything going red. **The obvious remedy was rejected and the reasoning is
+the reusable part:** asserting each consumed document is *absent* needs a hand-written list of what
+should be gone, nothing generates it, and forgetting an entry makes the check pass — it rots toward
+silence. `check-instruction-claims.ps1` works as an absence check only because the instructions
+themselves name the symbols; a deletion list has no such anchor. So the **consequence** is checked
+instead: every link out of a layer document resolves, and every layer document is listed in the
+solution. `SolutionDocumentItemTests` argued the second of those was deliberately unchecked; its
+remarks are amended, because that argument holds for `docs/decisions` and not for seventeen layer
+documents.
+
+**The weakness that remains is named in the code.** `LayerDocuments.Subsystems` is a hand-written
+list of four directories. **Add Kernel/Schema to it when the pass starts**, or the new document is
+silently unchecked by the link gate, the solution gate and the capability gate at once. That is the
+same rot-toward-silence shape rejected above, surviving in a smaller place, and it is written into
+the type's remarks as a deliberate trade.
+
 **The deletions are complete. `P-31` is what is not, and the first version of `P-31` was itself
 wrong.** `S-16` and `S-18` are gone and every surviving mention of either is a deliberate historical
 citation in a block quote. `P-31` was then recorded as *the area files cannot be trimmed until the
@@ -226,7 +252,42 @@ caught it, not the session. Deferring deletion to a tidy-up step at the end is t
 failure as deferring progress updates, and it is worse here because the half-done state looks
 finished.
 
-**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Cli, Shell.**
+**Next — Kernel/Schema. Scoped but not started.** The scoping below was measured, not recalled.
+
+*The code.* `next/src/SecureAD.Kernel/Schema/` is four files and **532 lines** — `SchemaGuidCatalog.cs`
+(425), `SchemaGuidKind.cs` (54), `SchemaGuidSource.cs` (31), `SchemaGuidEntry.cs` (22). None has a row
+in `_COVERAGE.md`, so all four are unread and the whole folder fits comfortably in one sitting.
+
+*The slice document to consume.* `docs/next/S-3-schema-guid-catalogue.md` (412 lines), bound by
+`SchemaGuidDocumentationTests`. That gate is the one to retarget, and the retarget must be **proven**
+— point it at S-3 after the move and confirm it goes red naming tables it cannot find.
+
+*The governing area file.* [`what-a-permission-means.md`](areas/what-a-permission-means.md)
+(109 lines). Read it whole first. Its *What is built* table already carries six schema capabilities
+citing `SchemaGuidCatalogTests` and `SchemaGuidSingleSourceGateTests`; those are **copied** into the
+layer document, not moved, and the copy is now checked by `CapabilityCitationTests`. Note that
+`NoCapabilityIsClaimedByTwoAreas` governs area files only, so a capability may legitimately appear in
+both the area file and the layer document.
+
+*The other gates in the blast radius.* `SchemaGuidSingleSourceGateTests`, `SchemaGuidCatalogTests`,
+`SchemaGuidCatalogMicrosoftAnchorTests`, `ConceptRegistryTests`, `UnvouchedResultGateTests`. The
+Microsoft anchor tests matter: `docs/MICROSOFT-VERIFICATION.md` and
+`docs/rules/FIRST-PARTY-VERIFICATION.md` both name the catalogue, and
+[`0077`](decisions/0077-a-well-known-sid-is-named-from-microsoft.md) is the governing rule.
+
+*One scoping question to settle before drafting, not during.* `CapturedSchemaGuidReader.cs` (267) is
+schema work but lives in `SecureAD.Evidence`, not `Kernel/Schema`, and it is on the unread list. The
+rewrite is **one document per code folder**, so on the letter of the rule it is Evidence's and not
+this pass's. Decide it explicitly and write down which way and why, rather than letting the drafting
+discover it — a type documented in two layers is the `S-18` failure, and a type documented in neither
+is worse.
+
+*Decision records that govern the area:*
+[`0014`](decisions/0014-capture-reads-the-schema-partition.md),
+[`0016`](decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md),
+[`0077`](decisions/0077-a-well-known-sid-is-named-from-microsoft.md).
+
+**Not started — Kernel/GroupPolicy, Kernel/Naming, Cli, Shell.**
 
 ---
 
