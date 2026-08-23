@@ -155,10 +155,35 @@ Recorded so they are not lost. Each belongs to its own pass.
 | `#22` | `SecurityTemplateParser` accepts nonconformant encodings without labelling them | group policy | open |
 | `#21` | `DnHelper` decides escaping from the preceding character rather than from the escape sequence | kernel/naming | open |
 | P-27 | The surface register misstates F6 and F17 against the code — S-18's *What is owed* was checked and two of its three claims are false | evidence/run library | open |
+| P-29 | `RunComparability` is written and nothing calls it — the run library, drift summary, compare window, acceptance import and baseline marking are the five doors owed | evidence/run library | open |
+| P-30 | A point-in-time review is owed: what the product does today, each accepted decision in one line, and where earlier decisions have been overtaken | documentation | decision |
+| P-31 | Three of the four Evidence layer documents carry no capability table, so their area files cannot be trimmed and cycle step 4 is unfinished for the subsystem | evidence | open |
 | F-0056-1 | No pre-capture total of unestablished facts exists | evidence/coverage | open |
 | P-18 | `CaptureRunEndToEndTests` fails intermittently on a disposed SQLite handle | tests | open |
 
-**P-18 detail.** `EveryObjectTheControllerServedIsStored` failed once with
+**P-31 detail, because it is the one gap that makes the Evidence pass look finished when it is not.**
+The deletions are complete — `S-16` and `S-18` are gone and every surviving mention of either is a
+deliberate historical citation inside a block quote. The unfinished half is the other direction.
+Cycle step 4 requires the area file's capability table to be carried across into the layer document,
+verbatim, with its test names and lab dates; only then can the area file be trimmed. Ten of the
+twelve layer documents outside Evidence carry one. **Three of the four Evidence documents do not** —
+`the-bundle-on-disk.md`, `run-identity-and-coverage.md` and `whether-two-runs-compare.md`; only
+`what-a-bundle-holds.md` does. Nothing is lost, because `docs/areas/what-the-run-covered.md` still
+holds fifteen rows and the other area files hold theirs, but until the tables move, no Evidence area
+file may be trimmed. `permission-requirements.md` and `how-a-connection-is-opened.md` are missing one
+too, and should be checked at the same time rather than found separately later.
+
+**Where S-18's findings went.** `S-18` was deleted when
+[`run-identity-and-coverage.md`](evidence/run-identity-and-coverage.md) and
+[`whether-two-runs-compare.md`](evidence/whether-two-runs-compare.md) consumed it. All five of its
+findings read REPAIRED and were checked: four are held by git and are not repeated here, and
+`F-S18-5`'s substance — *do not remove the factory guard on the strength of the redundant one* — is a
+do-not-change rule and moved into the layer document. **`F-S18-4`'s residual claim that a test
+binding the decisions index was owed is false**; `EveryDecisionRecordAppearsInTheIndex` exists and
+was written after that section. That is the second time in two sittings that an unbuilt-work claim
+in `S-18` did not survive being read against the code. Only `P-29` and `P-30` came out of it live.
+
+**P-18 detail.**
 `System.ObjectDisposedException: SQLitePCL.sqlite3`, then passed in isolation and on two subsequent
 runs. Low severity but it corrodes the oracle: *"A test that fails at random trains a reader to
 re-run rather than to look, and the day it fails for a real reason it will be re-run too."*

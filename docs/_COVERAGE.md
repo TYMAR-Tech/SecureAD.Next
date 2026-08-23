@@ -163,27 +163,42 @@ found by searching for decision-shaped language rather than by reading whole fil
 > | `ObjectPermissions.cs` | 560 | 704 |
 > | `Run/RunStateReader.cs` | 150 | 150 |
 > | `Run/RunOutcomeFile.cs` | 129 | 129 |
-> | `Run/CoverageId.cs` | 238 | 238 |
+> | `Run/CoverageId.cs` | 259 | 259 |
 > | `Run/RunHash.cs` | 36 | 36 |
 > | `Run/RunScope.cs` | 60 | 152 |
+> | `Run/RunComparability.cs` | 217 | 217 |
+> | `Run/RunCoverage.cs` | 235 | 235 |
+> | `Run/SysvolCoverage.cs` | 201 | 201 |
+> | `Run/DomainCoverage.cs` | 145 | 145 |
+> | `Run/GpoCoverage.cs` | 143 | 143 |
+> | `Run/ComparabilityOutcome.cs` | 122 | 122 |
+> | `Run/ForestPartitionCoverage.cs` | 118 | 118 |
+> | `Run/RunSummary.cs` | 93 | 93 |
+> | `Run/ProfileId.cs` | 76 | 76 |
 > | `Run/RunStateNames.cs` | 0 | 92 |
 > | `Run/RunCompletionReader.cs` | 0 | 73 |
 > | `Run/RunLibrary.cs` | 0 | 378 |
-> | `Run/RunComparability.cs` | 0 | 217 |
 >
 > The 60 unread lines of `BundleWriter.cs` are `Execute`, `Pragma`, `ThrowIfFinished` and
 > `WriteGpoFileError` — parameter binding with no reasoning in it.
 >
-> **The four zero rows were named in `the-bundle-on-disk.md` without being read in full**, and that is
-> recorded rather than quietly left. `RunStateNames`, `RunCompletionReader` and `RunComparability`
-> were confirmed by signature and by call site, which is enough to say a member exists and not enough
-> to describe why it is shaped as it is. `run-identity-and-coverage.md` and
-> `whether-two-runs-compare.md` cannot be written until they are read whole — `RunComparability` in
-> particular, since its ordering *is* the decision `0027` records.
+> **`Run/CoverageId.cs` was recorded as 238 of 238 and is 259 lines.** Counted with
+> `@(Get-Content).Count` on 2026-08-24. Either the file grew after the row was written or the total
+> was wrong when it was; the row said *fully read* either way, which is the one value that cannot be
+> checked against itself. It has now been read whole.
+>
+> **`RunComparability.cs` is read**, and with it the reasoning `whether-two-runs-compare.md` needed:
+> the check order that *is* decision `0027`, and the five disagreeing predecessor predicates that
+> explain why one verdict exists. Three zero rows remain. `RunStateNames` and `RunCompletionReader`
+> were named in `the-bundle-on-disk.md` on signature and call site alone — enough to say a member
+> exists, not enough to say why it is shaped as it is — and `RunLibrary` has never been opened. All
+> three belong to `how-a-bundle-is-read.md` and must be read whole before it is drafted.
 >
 > **Not yet read:** `DirectoryTree.cs` (508), `ObjectListing.cs` (290), `CapturedSchemaGuidReader.cs`
-> (267), `ObjectAttributes.cs` (239), the rest of `Run/` (~1,700 across the remaining files),
-> `Findings/` (726 across 7 files), and the seven small root files. Roughly 4,000 lines outstanding.
+> (267), `ObjectAttributes.cs` (239), the rest of `Run/` — `RunLibrary` (378), `RunAnnotations` (217),
+> `RunScope` (92 outstanding), `RunStateNames` (92), `RunCompletionReader` (73), `RunState` (57),
+> `RunListing` (51), `RunMoment` (26) — `Findings/` (726 across 7 files), and the seven small root
+> files. Roughly 3,000 lines outstanding.
 
 | Status | Lines | File | Also |
 |---|---:|---|---|

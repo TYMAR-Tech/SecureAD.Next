@@ -6,33 +6,40 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-18-run-identity-and-comparability.md</c> to the code it describes.
+/// Binds <c>docs/evidence/whether-two-runs-compare.md</c> to the code it describes.
 ///
 /// <para>
-/// Two of the tables are bound <b>in both directions</b>, which decision <c>0026</c> asked for by
+/// Both tables are bound <b>in both directions</b>, which decision <c>0026</c> asked for by
 /// name: a situation in the code and not in the document fails the build, and so does a situation
-/// in the document and not in the code. The second direction is the one that matters here. This
-/// session began by finding four states in a decision record that nothing could produce, and the
-/// document that named them would have passed a one-directional check while describing situations
-/// that cannot arise.
+/// in the document and not in the code. The second direction is the one that matters here. The
+/// session that wrote the outcome table began by finding four states in a decision record that
+/// nothing could produce, and the document that named them would have passed a one-directional
+/// check while describing situations that cannot arise.
 /// </para>
 /// <para>
 /// The outcome table also binds the <i>shape</i> of each situation against the shape the code
 /// actually produces, so the document cannot go on claiming a refusal is qualified after someone
 /// has changed it.
 /// </para>
+/// <para>
+/// Retargeted from <c>docs/next/S-18-run-identity-and-comparability.md</c>, which was deleted when
+/// the last of its content moved. Identity and coverage went to
+/// <c>run-identity-and-coverage.md</c> and are bound by <c>RunIdentityDocumentationTests</c>; the
+/// run states had already gone to <c>the-bundle-on-disk.md</c>.
+/// </para>
 /// </summary>
 public sealed class RunComparabilityDocumentationTests
 {
-    private const string Document = "S-18-run-identity-and-comparability.md";
+    private const string Document = "whether-two-runs-compare.md";
 
+    /// <summary>
+    /// The types this page is the description of. <c>ProfileId</c>, <c>CoverageId</c> and the
+    /// coverage records are deliberately absent: what a run <i>is</i> and what it <i>read</i>
+    /// belong to <c>run-identity-and-coverage.md</c>, and a component listed in two documents is
+    /// one question answered twice.
+    /// </summary>
     private static readonly Type[] TheComponent =
     [
-        typeof(ProfileId),
-        typeof(CoverageId),
-        typeof(DomainReadOutcome),
-        typeof(DomainCoverage),
-        typeof(RunCoverage),
         typeof(RunSummary),
         typeof(ComparabilityOutcome),
         typeof(DriftCardShape),
@@ -63,7 +70,8 @@ public sealed class RunComparabilityDocumentationTests
         var mentioned = Mentioned();
 
         var missing = PublicMemberNames()
-            .Where(name => !mentioned.Contains(name))
+            .Where(pair => !mentioned.Contains(pair.Member))
+            .Select(pair => $"{pair.Type}.{pair.Member}")
             .ToList();
 
         Assert.True(
@@ -71,6 +79,33 @@ public sealed class RunComparabilityDocumentationTests
             $"{Document} does not describe: {string.Join(", ", missing)}. Every member a caller "
             + "can reach is a way to ask one of this component's questions, and one that is not "
             + "written down is one a caller has to guess the meaning of.");
+    }
+
+    /// <summary>
+    /// The direction the gate on <c>S-18</c> never had. Every <c>Type.Member</c> the document
+    /// writes in backticks must resolve, so a member that was renamed or never existed fails here
+    /// rather than sitting in a bound document reading like fact. <c>S-18</c> carried two invented
+    /// members of <c>RunOutcomeFile</c> for a month under a gate that only looked the other way.
+    /// </summary>
+    [Fact]
+    public void EveryQualifiedMentionResolvesToARealMember()
+    {
+        var byName = TheComponent.ToDictionary(t => t.Name, StringComparer.Ordinal);
+
+        var real = PublicMemberNames()
+            .Select(pair => pair.Type + "." + pair.Member)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var invented = Mentioned()
+            .Where(token => token.Contains('.', StringComparison.Ordinal))
+            .Where(token => !token.EndsWith(".cs", StringComparison.Ordinal))
+            .Where(token => byName.ContainsKey(token.Split('.')[0]))
+            .Where(token => !real.Contains(token))
+            .ToList();
+
+        Assert.True(
+            invented.Count == 0,
+            $"{Document} names members that do not exist: {string.Join(", ", invented)}.");
     }
 
     // --- the outcome table, both directions ----------------------------------------------------
@@ -133,20 +168,52 @@ public sealed class RunComparabilityDocumentationTests
         }
     }
 
-    // --- the state table has moved, and must not come back -------------------------------------
+    // --- the shape table, both directions -------------------------------------------------------
+
+    [Fact]
+    public void EveryCardShapeInTheCodeIsInTheDocument()
+    {
+        var documented = ShapeTable();
+
+        var missing = Enum.GetNames<DriftCardShape>()
+            .Where(name => !documented.Contains(name, StringComparer.Ordinal))
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            $"{Document} does not list: {string.Join(", ", missing)}. The shape is what decides "
+            + "whether a card may say nothing changed.");
+    }
+
+    [Fact]
+    public void EveryCardShapeInTheDocumentIsInTheCode()
+    {
+        var real = Enum.GetNames<DriftCardShape>();
+
+        var invented = ShapeTable()
+            .Where(name => !real.Contains(name, StringComparer.Ordinal))
+            .ToList();
+
+        Assert.True(
+            invented.Count == 0,
+            $"{Document} describes card shapes that cannot arise: {string.Join(", ", invented)}.");
+    }
+
+    // --- the tables that live elsewhere, and must not come back here -----------------------------
 
     /// <summary>
     /// The run states are observed from files in the bundle directory, so they are described by
-    /// <c>docs/evidence/the-bundle-on-disk.md</c> and bound by
-    /// <c>BundleOnDiskDocumentationTests</c>. This check is the other half of that move: a
-    /// <c>STATES</c> table reappearing here would be a second description of one vocabulary, which
-    /// is the state the repository was left in when a document was drafted and the old one was not
-    /// cut in the same turn.
+    /// <c>docs/evidence/the-bundle-on-disk.md</c> and bound by <c>BundleOnDiskDocumentationTests</c>.
+    /// What a run read is <c>run-identity-and-coverage.md</c>'s. Either table reappearing here
+    /// would be a second description of one vocabulary, which is the state the repository was left
+    /// in when a document was drafted and the old one was not cut in the same turn.
     /// </summary>
-    [Fact]
-    public void TheRunStateTableIsNotDescribedHereAsWell()
+    [Theory]
+    [InlineData("STATES")]
+    [InlineData("DOMAIN-OUTCOMES")]
+    public void TheTablesThatBelongElsewhereAreNotDescribedHereAsWell(string marker)
     {
-        Assert.DoesNotContain("STATES:BEGIN", Read(), StringComparison.Ordinal);
+        Assert.DoesNotContain($"<!-- {marker}:BEGIN -->", Read(), StringComparison.Ordinal);
     }
 
     // --- scanner self-tests --------------------------------------------------------------------
@@ -158,13 +225,13 @@ public sealed class RunComparabilityDocumentationTests
     [Fact]
     public void TheCheckFindsBothTheDocumentAndTheComponent()
     {
-        Assert.True(File.Exists(Path()), $"Expected the slice document at {Path()}.");
+        Assert.True(File.Exists(Path()), $"Expected the document at {Path()}.");
         Assert.True(Read().Length > 1000, $"{Document} is too short to be the document it claims.");
         Assert.NotEmpty(TheComponent);
         Assert.Contains(nameof(RunComparability.Evaluate), Mentioned());
         Assert.True(Mentioned().Count > 40, "The mention scan found almost nothing to check against.");
         Assert.Equal(Enum.GetValues<ComparabilityOutcome>().Length, OutcomeTable().Count);
-        Assert.Equal(5, FindingHeadings().Count);
+        Assert.Equal(Enum.GetValues<DriftCardShape>().Length, ShapeTable().Count);
     }
 
     /// <summary>
@@ -293,14 +360,8 @@ public sealed class RunComparabilityDocumentationTests
     private static string[] Cells(string row) =>
         row.Trim('|').Split('|').Select(c => c.Trim()).ToArray();
 
-    private static List<string> FindingHeadings() =>
-        Read()
-            .Split('\n')
-            .Select(l => l.Trim())
-            .Where(l => l.StartsWith("### F-S18-", StringComparison.Ordinal))
-            .ToList();
-
-    private static string Quoted(string name) => "`" + name + "`";
+    private static List<string> ShapeTable() =>
+        TableRows("SHAPES").Select(r => Cells(r)[0].Trim('`')).ToList();
 
     /// <summary>
     /// Every identifier the document mentions inside backticks, with a qualified name counting as
@@ -335,17 +396,20 @@ public sealed class RunComparabilityDocumentationTests
         return mentioned;
     }
 
-    private static IEnumerable<string> PublicMemberNames() =>
+    private static List<(string Type, string Member)> PublicMemberNames() =>
         TheComponent
             .Where(t => !t.IsEnum)
-            .SelectMany(t => t.GetMembers(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
-            .Where(m => m.DeclaringType != typeof(object))
-            .Where(m => m.MemberType is MemberTypes.Method or MemberTypes.Property or MemberTypes.Field)
-            .Where(m => m is not MethodInfo method || !method.IsSpecialName)
-            .Select(m => m.Name)
-            .Where(name => !name.Contains('<', StringComparison.Ordinal))
-            .Where(name => !Compiler.Contains(name))
-            .Distinct(StringComparer.Ordinal);
+            .SelectMany(t => t
+                .GetMembers(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance)
+                .Where(m => m.DeclaringType != typeof(object))
+                .Where(m => m.MemberType is MemberTypes.Method or MemberTypes.Property
+                    or MemberTypes.Field)
+                .Where(m => m is not MethodInfo method || !method.IsSpecialName)
+                .Select(m => (t.Name, m.Name)))
+            .Where(pair => !pair.Item2.Contains('<', StringComparison.Ordinal))
+            .Where(pair => !Compiler.Contains(pair.Item2))
+            .Distinct()
+            .ToList();
 
     private static readonly HashSet<string> Compiler = new(StringComparer.Ordinal)
     {
@@ -354,7 +418,7 @@ public sealed class RunComparabilityDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "evidence", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

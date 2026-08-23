@@ -509,9 +509,12 @@ refused. `0026`'s structure survived entire and only its table changed, which is
 said the closed set was buying, tested for the first time.
 
 F1, F2, F3, F6, F9, F10 and F17 are **built**, and documented at
-[`S-18`](S-18-run-identity-and-comparability.md): the run's two identities, the one lifecycle
-vocabulary, what a run actually read, and the single verdict on whether it may be used. The states
-and outcomes are bound to the code in both directions, and each card shape is checked against the
+[`run-identity-and-coverage.md`](../evidence/run-identity-and-coverage.md) and
+[`whether-two-runs-compare.md`](../evidence/whether-two-runs-compare.md): the run's two identities,
+what a run actually read, and the single verdict on whether it may be used. The one lifecycle
+vocabulary is at [`the-bundle-on-disk.md`](../evidence/the-bundle-on-disk.md), beside the files it
+is observed from. The states and outcomes are bound to the code in both directions, and each card
+shape is checked against the
 shape the code produces, so the document cannot go on calling a refusal qualified after someone has
 changed it. Two more records came out of it. [`0028`](../decisions/0028-one-run-state-vocabulary.md)
 replaces four disagreeing vocabularies with six words, **each arrived at from something observed** —

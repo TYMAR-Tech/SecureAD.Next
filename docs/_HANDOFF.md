@@ -99,9 +99,61 @@ S-18 does **not** carry a `STATES` table, so a second copy cannot come back. `Ru
 `RunOutcomeFile` left its component list. **The `OUTCOMES` half is still in S-18** and moves when
 `whether-two-runs-compare.md` is written.
 
-*Owed, in this order.* `how-a-bundle-is-read.md`, then `run-identity-and-coverage.md` and
-`whether-two-runs-compare.md` (which together finish consuming `S-18`, now 340 lines). Reading state
-is in `_COVERAGE.md` under `evidence-bundle`.
+*Done — third sitting.* `docs/evidence/run-identity-and-coverage.md` (347 lines) and
+`docs/evidence/whether-two-runs-compare.md` (187 lines). Between them they take the two identities,
+the four coverage records, the comparability verdict and baseline eligibility. **`S-18` is deleted**
+(340 lines), `RunComparabilityDocumentationTests` retargeted onto the verdict document and narrowed
+to six types, and a new `RunIdentityDocumentationTests` (347 lines) binds the coverage document with
+four outcome tables. Inbound references repointed in `docs/next/README.md` and in
+`ComparabilityOutcome.cs`'s own remarks. Solution items corrected in both directions. 2,215 tests
+green; `check-instruction-claims.ps1` still passes.
+
+**The retarget was proven the way this file requires.** Both new gates were pointed at the deleted
+document before it went, and produced **seventeen** failures naming tables they could not find —
+never an empty scan.
+
+**`S-18`'s gate was narrower than the document it was named for, which is `P-19` for the fifth
+time.** Its component list held eleven types while the prose described seventeen:
+`ForestPartitionCoverage`, `SysvolCoverage`, `GpoCoverage` and their three enums were named in a
+bound document and checked by nothing. Three of the four tables on the coverage page are therefore
+new binding rather than moved binding.
+
+**A gate can also be wider than its name, and that shape is new here.** `DOMAIN-OUTCOMES:BEGIN`
+contains `OUTCOMES:BEGIN`, so the check asserting the coverage page carries no comparability table
+failed against the page's own domain table. Both gates now match the whole comment opener. Every
+previous instance of this family was a check too narrow; this one was a check too broad, and it
+found itself.
+
+**Routing S-18's findings cost nothing and confirmed the rule.** All five read REPAIRED. Four are
+held by git. `F-S18-5`'s substance — *do not remove the factory guard on the strength of the
+redundant one* — is a do-not-change rule and moved into the layer document. **`F-S18-4`'s residual
+claim that a test binding the decisions index was owed is false**; `EveryDecisionRecordAppearsInTheIndex`
+exists and postdates the section. That is the third stale unbuilt-work claim found in `S-18` across
+two sittings. Only two items came out live: `P-29`, nothing calls `RunComparability`, verified
+against `next/src`; and `P-30`, the point-in-time review the owner asked for.
+
+**The session summary was wrong, and the error is worth more than the pass.** At the end of the
+previous turn this session reported that `whether-two-runs-compare.md` had not been drafted when it
+had, and that the solution items had been corrected when that edit had silently failed. Both claims
+were fluent and confident. **The repository was left in exactly the half-done state that looks
+finished** — `S-18` deleted, the solution still listing it, two new documents invisible to the IDE.
+The rule already in this file caught it on the next turn only because the directory was read instead
+of recalled. `replace_string_in_file` cannot reach `next/SecureAD.Next.sln`; use
+`[System.IO.File]::ReadAllLines` with an **absolute** path, because the .NET APIs do not follow
+PowerShell's location.
+
+*Owed.* `how-a-bundle-is-read.md` is the last Evidence document. `RunLibrary` (378 lines),
+`RunStateNames` (92) and `RunCompletionReader` (73) are its inputs and **none has been read**;
+`_COVERAGE.md` records all three at zero.
+
+**The deletions are complete and the carry-across is not, which is `P-31`.** `S-16` and `S-18` are
+gone and every surviving mention of either is a deliberate historical citation in a block quote. But
+cycle step 4 — carry the area file's capability table across verbatim, then trim the area file — was
+skipped for three of the four Evidence documents. Ten of the twelve layer documents outside Evidence
+carry a capability table; inside Evidence only `what-a-bundle-holds.md` does. **No Evidence area file
+has been trimmed, and none may be until the tables move.** This was found by asking whether the
+deletions were complete and checking the opposite direction as well, which is the only reason it did
+not become the fourth pass to leave the subsystem looking finished.
 
 **Six punch-list items were closed in the second sitting, and three of them were code.** The branch
 is no longer documentation-only: the owner's ruling is that the documentation-only rule is a
@@ -224,6 +276,26 @@ conclusion, arriving from the other direction.
 **This is also the signal to end a session.** Fabricated detail late in a pass means the useful
 context is spent. Commit, update this file, and start fresh rather than pushing into the next
 subsystem.
+
+**The rule above assumes the reading is possible, and the third Evidence sitting proved it is not
+always.** That session ran out of tool budget and then wrote the summary anyway, reporting one
+document as undrafted when it existed and one edit as applied when it had failed loudly. The errors
+pointed in **opposite directions**, which is the diagnostic: a lossy memory forgets what it did, it
+does not also invent what it did not. Both directions come from one cause — **the summary was
+written from the plan rather than from the transcript**, so intentions were rendered as outcomes.
+Two mechanical rules follow, and neither is *be more careful*:
+
+- **Reserve the last two tool calls of a pass for `git status --short` and `git diff --stat`.** The
+  summary is written from their output or it is not written. The check that catches this failure is
+  itself a tool call, so it is unavailable at exactly the moment it is needed unless it is budgeted
+  for in advance.
+- **No completion claim without a tool result in the same turn.** Anything unverified is named as
+  unverified. *I cannot verify this* is a finished sentence.
+
+The structural reading is worth carrying: **every claim in this repository is bound by a gate except
+the session summary**, and it is the document a new session reads first. That is the same shape as
+`check-instruction-claims.ps1`'s origin, arriving from the other side — there the claims were true
+and the proof was vapour; here the proof was absent and the claims were false.
 
 **A retarget is only real if the old target now fails.** When a table moves between documents,
 repoint the gate and then *prove the repoint*: point it at the document the table left and confirm it
