@@ -38,7 +38,7 @@ the same thing — which is what makes it evidence rather than an opinion.
 Stage 2 is the one that cannot be redone. A forest is only readable as it is today, so anything
 capture does not collect is not a defect to fix in the next release — it is a forest that has to be
 captured again. That is why capture's decisions get the scrutiny they do, and why
-[`S-8`](S-8-captured-attribute-catalogue.md) exists.
+[`S-8`](../audit/the-attribute-catalogue.md) exists.
 
 ## The projects, and which may use which
 
@@ -135,14 +135,14 @@ replaceable.
   way past, and a paged search that follows them ends after one page reporting success. And **only
   one request is ever in flight against a controller**, which since the removal of the per-controller
   rate limiter is the only thing bounding the load a capture places on a customer's production
-  server. Both are documented at [`S-9`](S-9-the-capture-unit.md) and
-  [`S-10`](S-10-politeness.md).
+  server. Both are documented at [`S-9`](../audit/the-search-capture-issues.md) and
+  [`S-10`](../audit/limits-and-failures.md).
 
   The seam has a second half, and it now exists.
   [`IDirectoryChannel`](../../next/src/SecureAD.Audit/Capture/IDirectoryChannel.cs) is the one way
   the product speaks to a controller — send a request, get an answer —
   [`PartitionCapture`](../../next/src/SecureAD.Audit/Capture/PartitionCapture.cs) is the loop that
-  reads one partition through it, documented at [`S-12`](S-12-the-capture-passes.md), and
+  reads one partition through it, documented at [`S-12`](../audit/how-a-controller-is-read.md), and
   [`LdapDirectoryChannelFactory`](../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannelFactory.cs)
   is what puts a real domain controller on the other end, documented at
   [`S-14`](S-14-the-connection.md). The seam was written from the loop's side against a controller

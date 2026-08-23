@@ -43,7 +43,7 @@ public enum AttributeCompleteness
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B8's answer, and <c>docs/next/S-11-reading-what-a-controller-returns.md</c>
+/// This is inventory row B8's answer, and <c>docs/audit/how-a-controller-is-read.md</c>
 /// is the document bound to it. The values and the statement of completeness are one type on
 /// purpose: a caller cannot reach the values without the answer to "is this all of them" being in
 /// its hand, which is gate 4's shape - a collection that cannot be read as an empty fact when it

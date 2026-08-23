@@ -21,7 +21,7 @@ public sealed record ServerLimit(
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B7, and <c>docs/next/S-10-politeness.md</c> is the document bound to it.
+/// This is inventory row B7, and <c>docs/audit/limits-and-failures.md</c> is the document bound to it.
 /// Every value here is the documented default from
 /// <see href="https://learn.microsoft.com/troubleshoot/windows-server/active-directory/view-set-ldap-policy-using-ntdsutil">View
 /// and set LDAP policy in Active Directory by using Ntdsutil.exe</see>. They are <i>defaults</i>:

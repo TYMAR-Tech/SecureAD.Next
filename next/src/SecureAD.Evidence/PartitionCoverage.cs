@@ -40,7 +40,7 @@ namespace SecureAD.Evidence;
 /// throwing" is not a statement that a partition was read: a capture that reads the first page of a
 /// nine-million-object forest and stops also runs without throwing, and the caller cannot tell it
 /// from a partition that genuinely fitted in one page - see
-/// <c>docs/next/S-12-the-capture-passes.md</c>. So the claim is made by a type that only the loop
+/// <c>docs/audit/how-a-controller-is-read.md</c>. So the claim is made by a type that only the loop
 /// can construct, at the only moment it is true.
 /// </para>
 /// <para>

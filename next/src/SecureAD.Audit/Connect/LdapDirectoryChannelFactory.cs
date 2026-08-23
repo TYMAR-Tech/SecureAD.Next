@@ -24,7 +24,7 @@ namespace SecureAD.Audit.Connect;
 /// </para>
 /// <para>
 /// <b>Why the factory rather than a connection is what capture is handed.</b> One line of the
-/// failure policy at <c>docs/next/S-10-politeness.md</c>: a failure that ends the conversation with
+/// failure policy at <c>docs/audit/limits-and-failures.md</c>: a failure that ends the conversation with
 /// a controller takes the paging bookmark with it, and the answer is to read the naming context
 /// again from its first page on a <i>fresh connection</i>. Something handed a connection could not
 /// do that.

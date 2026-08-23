@@ -14,7 +14,7 @@ This is the first thing in the rebuilt product that would reach a customer's dom
 other component either reads a file or was written against a model of one. This opens a socket,
 decides how well protected the conversation is going to be, presents an identity, asks the controller
 what it can do, and hands back the channel everything above it was built to use. It is the other
-half of a seam [`S-12`](S-12-the-capture-passes.md) wrote and deliberately left open.
+half of a seam [`S-12`](../audit/how-a-controller-is-read.md) wrote and deliberately left open.
 
 The code is [`LdapDirectoryChannelFactory`](../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannelFactory.cs)
 and [`LdapDirectoryChannel`](../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannel.cs), with
@@ -109,7 +109,7 @@ that permits nothing has said so at the call site, and it carries the auditor's 
 **There is no dialog at the moment of failure.** An audit tool gets scheduled. A run that blocks at
 03:00 on a prompt nobody sees has done nothing by morning, and the operator arrives to a machine
 waiting politely instead of a bundle. That is the same reasoning that made the failure policy in
-[`S-10`](S-10-politeness.md) report rather than ask.
+[`S-10`](../audit/limits-and-failures.md) report rather than ask.
 
 **It is never persisted.** Not a registry value, not a settings file, not a remembered checkbox. A
 persisted allowance is one somebody turned on once, for a reason that was probably good, and nobody
@@ -141,7 +141,7 @@ was right.
 
 ## The seam survived contact, and that is worth saying
 
-[`S-12`](S-12-the-capture-passes.md) wrote `IDirectoryChannel` from the loop's side, against a
+[`S-12`](../audit/how-a-controller-is-read.md) wrote `IDirectoryChannel` from the loop's side, against a
 controller model, with nothing real on the other end. This row is the first thing to meet it from the
 other direction, and the question of whether it would hold is the cheapest it will ever be to answer:
 one consumer, one implementer.
@@ -160,7 +160,7 @@ what confirms a controller actually serves the partition a unit names, so the ch
 arrives in the same round trip and costs nothing extra; what asks the question is inventory row A8.
 
 **The request for it is built by the search-request factory**, not here. That is the one-place rule
-from [`S-9`](S-9-the-capture-unit.md) applying to a request nobody had needed yet, and it is the
+from [`S-9`](../audit/the-search-capture-issues.md) applying to a request nobody had needed yet, and it is the
 right answer rather than a formality: the RootDSE read happens on the same connection as everything
 else, and a second builder would be a second referral policy.
 
@@ -189,7 +189,7 @@ believed, and each reverted.
 
 **What no test here reaches is the connection itself.** There is no domain controller in a build
 agent, so nothing exercises the bind, the TLS handshake, or a real controller's refusal. That is
-stated rather than glossed, and it is the same split [`S-9`](S-9-the-capture-unit.md) records about
+stated rather than glossed, and it is the same split [`S-9`](../audit/the-search-capture-issues.md) records about
 the referral policy: what is checked is that the ladder is descended in order and stops where it
 should, and that nothing else in the tree does any of this. The rest is a lab obligation on inventory
 row B20, alongside the three that row already carries.

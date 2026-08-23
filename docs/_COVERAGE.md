@@ -15,6 +15,22 @@ Status: `unread` | `part` (some sections consumed) | `done` (fully consumed, del
 
 ## audit-capture  (27 files, 12660 lines)
 
+> **The Audit/Capture pass was drafted before this backlog was read, and that breaks the rule
+> above.** The four documents in `docs/audit/` were written from the fifteen source files under
+> `next/src/SecureAD.Audit/Capture/` — 3,757 lines, read whole — from the six slice documents in
+> `docs/next/` that were bound to them, and from the two governing area files. The 27 archive files
+> below are still `unread`.
+>
+> **What that costs, stated rather than glossed.** The new documents are anchored to the code, which
+> is the strongest anchor available and the one the cycle asks for. What they may be missing is
+> *reasoning that was recorded and then dropped* — a refusal argued in `S-7-capture-dispositions.md`
+> and never restated, a measurement in `RUN-MODEL-DESIGN.md` nothing in the repository cites. That
+> is the same fault as `F-S44-2`: reassembled rather than ported, with no external anchor. It is
+> exactly why the rule exists.
+>
+> **This backlog is not closed by the pass and must be read before Audit/Capture is called done.**
+> The likeliest carriers are the four largest files, which together are two-thirds of the lines.
+
 | Status | Lines | File | Also |
 |---|---:|---|---|
 | unread | 2442 | `review\SESSION-LOG.md` | audit-connect |
@@ -35,7 +51,7 @@ Status: `unread` | `part` (some sections consumed) | `done` (fully consumed, del
 | unread | 175 | `README.md` | evidence-findings |
 | unread | 163 | `history\POINT-IN-TIME-REVIEW.md` | evidence-bundle |
 | unread | 162 | `CAPTURE-PIPELINE.md` | evidence-run |
-| unread | 150 | `next\sessions\S-23-what-capture-must-read.md` | evidence-findings |
+| done | 150 | `next\sessions\S-23-what-capture-must-read.md` | evidence-findings |
 | unread | 150 | `next\sessions\S-30-coverage-that-measures.md` | audit-connect |
 | unread | 140 | `next\sessions\S-27-the-capture-to-bundle-seam.md` | evidence-bundle |
 | unread | 126 | `decisions\0017-capture-reads-the-whole-forest.md` | evidence-bundle |

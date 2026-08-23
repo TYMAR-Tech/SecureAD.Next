@@ -6,7 +6,7 @@ using SecureAD.Kernel.Capture;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-8-captured-attribute-catalogue.md</c> to
+/// Binds <c>docs/audit/the-attribute-catalogue.md</c> to
 /// <see cref="CapturedAttributeCatalog"/>.
 ///
 /// <para>
@@ -63,7 +63,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class CapturedAttributeCatalogDocumentationTests
 {
-    private const string Document = "S-8-captured-attribute-catalogue.md";
+    private const string Document = "the-attribute-catalogue.md";
     private const string TableBegin = "<!-- CATALOGUE:BEGIN -->";
     private const string TableEnd = "<!-- CATALOGUE:END -->";
 
@@ -221,25 +221,36 @@ public sealed class CapturedAttributeCatalogDocumentationTests
     }
 
     /// <summary>
-    /// Every public type in the capture project is named by one of the capture slice documents.
+    /// Every public type in the capture subsystem is named by one of the capture documents.
     ///
     /// <para>
-    /// Widened on 2026-08-11, from "named by S-8" to "named by S-8, S-9 or S-10". When it was
-    /// written, B2's types were the only ones in the project and the two statements were the same;
-    /// with B4 and B7 built they are not, and the narrow form would have obliged the attribute
-    /// catalogue's document to describe a search request. The rule being enforced is unchanged and
-    /// is not weakened - every public type in the component still has to be described somewhere a
-    /// reader will find it - only the set of places that count has grown with the component.
+    /// Widened on 2026-08-11, from "named by S-8" to "named by S-8, S-9 or S-10", and again the
+    /// same day for S-11. The rule being enforced never changed - every public type in the
+    /// component has to be described somewhere a reader will find it - only the set of places that
+    /// count grew with the component.
     /// </para>
     /// <para>
-    /// Widened again on 2026-08-11 for S-11, when B8 added the reader that turns what a controller
-    /// returns into typed values. Same rule, same reason.
+    /// <b>Corrected during the documentation rewrite, and the correction is the point.</b> This
+    /// scanned <c>typeof(CapturedAttributeCatalog).Assembly</c> filtered to
+    /// <see cref="CatalogueNamespace"/>, which is <c>SecureAD.Kernel</c> and four types. Its name
+    /// and its failure message both said <i>the capture project</i>. The fifteen public types in
+    /// <c>SecureAD.Audit.Capture</c> - the capture project - were never looked at, so the check was
+    /// green while covering four types out of nineteen.
+    /// </para>
+    /// <para>
+    /// The fault arrived by repair. S-24 moved the catalogue into the kernel, this check failed
+    /// loudly, and the fix pointed the scan at the catalogue's <i>new neighbours</i> rather than at
+    /// the component the test is named for - a different set, checked against the same document,
+    /// passing. That is the shape <c>.github/copilot-instructions.md</c> names first: a check that
+    /// passes while measuring nothing. Both namespaces are now scanned, and
+    /// <see cref="TheScanReadsBothNamespacesAndNotOnlyTheCatalogue"/> is the self-test that would
+    /// notice either half going quiet.
     /// </para>
     /// </summary>
     [Fact]
-    public void EveryPublicTypeInTheCaptureProjectIsNamedByACaptureSliceDocument()
+    public void EveryPublicTypeInTheCaptureProjectIsNamedByACaptureDocument()
     {
-        var text = string.Join(Environment.NewLine, CaptureSlices.Select(ReadSlice));
+        var text = string.Join(Environment.NewLine, CaptureDocuments.Select(ReadSlice));
 
         var missing = PublicTypeNames()
             .Where(name => !text.Contains($"`{name}`", StringComparison.Ordinal))
@@ -247,9 +258,31 @@ public sealed class CapturedAttributeCatalogDocumentationTests
 
         Assert.True(
             missing.Count == 0,
-            $"No capture slice document names: {string.Join(", ", missing)}. A type the "
+            $"No capture document names: {string.Join(", ", missing)}. A type the "
             + "documentation does not mention is a piece of the component nobody reading it knows "
-            + $"exists. The slices are {string.Join(", ", CaptureSlices)}.");
+            + $"exists. The documents are {string.Join(", ", CaptureDocuments)}.");
+    }
+
+    /// <summary>
+    /// The self-test for the check above. Without it, a scan that had quietly stopped seeing one of
+    /// the two namespaces would report every type accounted for - which is exactly what happened
+    /// between S-24 and the documentation rewrite.
+    /// </summary>
+    [Fact]
+    public void TheScanReadsBothNamespacesAndNotOnlyTheCatalogue()
+    {
+        var names = PublicTypeNames().ToList();
+
+        Assert.True(
+            names.Count >= 15,
+            $"Reflected over {names.Count} public types across {CatalogueNamespace} and "
+            + $"{CaptureNamespace}, expected at least fifteen. A shrinking scan is how this check "
+            + "came to cover four types while claiming the capture project.");
+
+        Assert.Contains("CapturedAttributeCatalog", names);
+        Assert.Contains("PartitionCapture", names);
+        Assert.Contains("CaptureSearchRequestFactory", names);
+        Assert.Contains("RetryPolicy", names);
     }
 
     /// <summary>
@@ -433,32 +466,41 @@ public sealed class CapturedAttributeCatalogDocumentationTests
     /// </remarks>
     private const string CatalogueNamespace = "SecureAD.Kernel.Capture";
 
+    /// <summary>
+    /// The other half of the capture subsystem, and the half this scan used to miss entirely. It is
+    /// a different assembly from <see cref="CatalogueNamespace"/>, which is why omitting it was
+    /// invisible: a single-assembly scan cannot report that it looked in one place.
+    /// </summary>
+    private const string CaptureNamespace = "SecureAD.Audit.Capture";
+
     private static IEnumerable<string> PublicTypeNames() =>
         typeof(CapturedAttributeCatalog).Assembly
             .GetExportedTypes()
-            .Where(t => !t.IsNested)
             .Where(t => t.Namespace == CatalogueNamespace)
+            .Concat(typeof(PartitionCapture).Assembly
+                .GetExportedTypes()
+                .Where(t => t.Namespace == CaptureNamespace))
+            .Where(t => !t.IsNested)
             .Select(t => t.Name);
 
     private static string DocumentPath() =>
-        Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
 
     /// <summary>
-    /// The documents describing the capture component. Named explicitly rather than discovered by
-    /// pattern, so that a new slice is added here deliberately and a deleted one fails.
+    /// The documents describing the capture subsystem. Named explicitly rather than discovered by
+    /// pattern, so that a new one is added here deliberately and a deleted one fails.
     /// </summary>
-    private static readonly string[] CaptureSlices =
+    private static readonly string[] CaptureDocuments =
     [
         Document,
-        "S-9-the-capture-unit.md",
-        "S-10-politeness.md",
-        "S-11-reading-what-a-controller-returns.md",
-        "S-12-the-capture-passes.md",
+        "the-search-capture-issues.md",
+        "limits-and-failures.md",
+        "how-a-controller-is-read.md",
     ];
 
     private static string ReadSlice(string slice)
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", slice);
 
         Assert.True(
             File.Exists(path),

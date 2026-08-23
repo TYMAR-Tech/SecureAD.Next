@@ -354,17 +354,17 @@ The first twelve capture rows — B1 through B12 — now carry dispositions, dec
 `S-7` and bound to the inventory by a test. Eleven are Rebuild and one,
 the concurrent shard fan-out, is deferred against a measured baseline. Five of them are built.
 B2 — the catalogue of attributes capture asks a domain controller for — is documented at
-[`S-8`](S-8-captured-attribute-catalogue.md) and bound by a test that fails when an attribute cannot
+[`S-8`](../audit/the-attribute-catalogue.md) and bound by a test that fails when an attribute cannot
 name something that reads it. It was the first code in the rebuild outside the kernel. B4 and B7
-followed: the **capture unit**, documented at [`S-9`](S-9-the-capture-unit.md), which is one naming
+followed: the **capture unit**, documented at [`S-9`](../audit/the-search-capture-issues.md), which is one naming
 context on one domain controller and the reason a paged search based at a domain root cannot be
 allowed to follow anything; and the **politeness rules**, documented at
-[`S-10`](S-10-politeness.md), which name the limits a domain controller sets rather than guessing
+[`S-10`](../audit/limits-and-failures.md), which name the limits a domain controller sets rather than guessing
 at them and replace the deleted rate limiter with a build failure. Both documents are bound by
 tests, and both say plainly which half of their obligation cannot be bound yet.
 
 B8 followed on 2026-08-11: **the reader**, documented at
-[`S-11`](S-11-reading-what-a-controller-returns.md), which turns what a controller sends back into
+[`S-11`](../audit/how-a-controller-is-read.md), which turns what a controller sends back into
 typed values and carries the range-retrieval rule. A domain controller will not return more than a
 fixed number of values for one attribute of one object, and an administrator cannot lift that
 limit out of the way, so a reader that does not ask for the rest reports a ten-thousand-member
@@ -375,7 +375,7 @@ The document is bound by a test, and it says which half of its obligation a repo
 forest cannot reach.
 
 B6 followed on 2026-08-12: **the capture passes**, documented at
-[`S-12`](S-12-the-capture-passes.md). This is the loop that issues a search, takes a page, asks for
+[`S-12`](../audit/how-a-controller-is-read.md). This is the loop that issues a search, takes a page, asks for
 the next and knows when a partition is finished, plus the rule for which partitions a run reads at
 all. Its one job is to never report a partition as read whole when it was not, and the way it does
 that is worth reading: the paging defect cannot be detected from any answer, because the controller
@@ -667,7 +667,7 @@ changed Tier 0 definition should be refused or qualified — a door `0026` and `
 unwatched, which is the second time that sequencing error has arisen.
 
 **What capture must read has now been derived from the rules rather than from the port** —
-[`S-23-what-capture-must-read.md`](S-23-what-capture-must-read.md). The catalogue's consumer gate
+[`S-23-what-capture-must-read.md`](../audit/the-attribute-catalogue.md). The catalogue's consumer gate
 accepted only an inventory row, and almost no inventory row is built, so the catalogue was bounded by how
 far the port had got rather than by what the product needs. A `Read by` cell may now name a **rule
 card**, and derived against all sixty-two, the catalogue was three attributes short. Those three

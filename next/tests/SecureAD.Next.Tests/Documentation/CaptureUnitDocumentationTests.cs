@@ -1,4 +1,4 @@
-using System.DirectoryServices.Protocols;
+﻿using System.DirectoryServices.Protocols;
 using SecureAD.Audit.Capture;
 using SecureAD.Evidence;
 using Xunit;
@@ -7,7 +7,7 @@ using SecureAD.Kernel.Capture;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-9-the-capture-unit.md</c> to the search request
+/// Binds <c>docs/audit/the-search-capture-issues.md</c> to the search request
 /// <see cref="CaptureSearchRequestFactory"/> builds.
 ///
 /// <para>
@@ -31,7 +31,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class CaptureUnitDocumentationTests
 {
-    private const string Document = "S-9-the-capture-unit.md";
+    private const string Document = "the-search-capture-issues.md";
     private const string RequestBegin = "<!-- REQUEST:BEGIN -->";
     private const string RequestEnd = "<!-- REQUEST:END -->";
     private const string RefusedBegin = "<!-- REFUSED:BEGIN -->";
@@ -216,7 +216,7 @@ public sealed class CaptureUnitDocumentationTests
 
     private static Dictionary<string, string> RefusedRows()
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
         var lines = File.ReadAllLines(path);
         var rows = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -231,7 +231,7 @@ public sealed class CaptureUnitDocumentationTests
 
     private static Dictionary<string, string> Rows(string begin, string end)
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
         Assert.True(File.Exists(path), $"Expected the document at {path}.");
 
         var rows = new Dictionary<string, string>(StringComparer.Ordinal);

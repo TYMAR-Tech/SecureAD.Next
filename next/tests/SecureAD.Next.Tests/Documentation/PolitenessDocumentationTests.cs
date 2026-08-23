@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-10-politeness.md</c> to <see cref="ServerLimits"/>.
+/// Binds <c>docs/audit/limits-and-failures.md</c> to <see cref="ServerLimits"/>.
 ///
 /// <para>
 /// This is inventory row B7's deliverable. The row owes "every server-side limit the client respects
@@ -23,7 +23,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class PolitenessDocumentationTests
 {
-    private const string Document = "S-10-politeness.md";
+    private const string Document = "limits-and-failures.md";
     private const string TableBegin = "<!-- LIMITS:BEGIN -->";
     private const string TableEnd = "<!-- LIMITS:END -->";
 
@@ -275,7 +275,7 @@ public sealed class PolitenessDocumentationTests
     private static Dictionary<string, (string Second, string Third)> Table(
         string begin, string end, string headerCell)
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
         Assert.True(File.Exists(path), $"Expected the document at {path}.");
 
         var lines = File.ReadAllLines(path);

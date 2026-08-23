@@ -69,7 +69,31 @@ Not yet established which of the two readings is correct.
 
 ---
 
-## Other subsystems
+## Audit / Capture
+
+| ID | Item | Status | Blocked on |
+|---|---|---|---|
+| P-19 | `EveryPublicTypeInTheCaptureProjectIsNamedByACaptureSliceDocument` scanned four types while claiming nineteen — green for months | open | — *(gate widened during the rewrite; the finding is kept because the shape recurs)* |
+| P-20 | `F-S44-2` — the catalogue's three test suites are a closed loop anchored to the rules already written, and it has no external anchor | open | a reconciliation fixture naming every predecessor attribute or a written omission |
+| P-21 | `0065` is decided and unimplemented; every run taken before it lands is permanently silent on the trust attributes | open | — |
+| P-22 | `F-S40-1` — `0040` decided a failed domain is read again from another controller, and nothing walks that path | open | — |
+| P-23 | Gate 5b is recorded as blocked on an entry point that now exists (`CaptureRun`) | decision | whether to turn it on |
+| P-24 | `F-S23-4` — six captured attributes have no consumer among the sixty-two rules; three are named attack surfaces the product holds data for and says nothing about | open | rules at branch E |
+| P-25 | `F-S23-5` — six rules need SYSVOL and nothing in the directory answers them; ten per cent of the catalogue is inert and nothing says so | open | B14/B15 |
+| P-26 | `F-S7-37`, `F-S7-39`, `F-S7-40` — three claims about how a real controller behaves that no test in this repository can settle | blocked | lab session |
+
+**P-19 detail.** The check read `typeof(CapturedAttributeCatalog).Assembly` filtered to
+`SecureAD.Kernel.Capture`, which is four types. Its name and its failure message both said *the
+capture project*. The fifteen public types in `SecureAD.Audit.Capture` were never scanned.
+
+The fault arrived **by repair**: S-24 moved the catalogue into the kernel, this check failed loudly,
+and the fix pointed the scan at the catalogue's new neighbours rather than at the component the test
+is named for — a different set, checked against the same document, passing. Widened during this
+pass, and it immediately named twelve types no document mentioned. Recorded rather than closed
+because this is the third time a check in this repository has passed while measuring nothing, and
+the second time the cause was a repair that preserved the assertion and moved the subject.
+
+---
 
 Recorded so they are not lost. Each belongs to its own pass.
 

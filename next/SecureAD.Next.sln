@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.8.12023.21
@@ -66,17 +66,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\next\ARCHITECTURE.md = ..\docs\next\ARCHITECTURE.md
 		..\docs\next\CONCEPT-REGISTRY.md = ..\docs\next\CONCEPT-REGISTRY.md
 		..\docs\next\README.md = ..\docs\next\README.md
-		..\docs\next\S-10-politeness.md = ..\docs\next\S-10-politeness.md
-		..\docs\next\S-11-reading-what-a-controller-returns.md = ..\docs\next\S-11-reading-what-a-controller-returns.md
-		..\docs\next\S-12-the-capture-passes.md = ..\docs\next\S-12-the-capture-passes.md
+		..\docs\audit\limits-and-failures.md = ..\docs\audit\limits-and-failures.md
+		..\docs\audit\how-a-controller-is-read.md = ..\docs\audit\how-a-controller-is-read.md
 		..\docs\next\S-14-the-connection.md = ..\docs\next\S-14-the-connection.md
 		..\docs\next\S-16-the-bundle.md = ..\docs\next\S-16-the-bundle.md
 		..\docs\next\S-18-run-identity-and-comparability.md = ..\docs\next\S-18-run-identity-and-comparability.md
 		..\docs\next\S-2-distinguished-name-manipulation.md = ..\docs\next\S-2-distinguished-name-manipulation.md
-		..\docs\next\S-23-what-capture-must-read.md = ..\docs\next\S-23-what-capture-must-read.md
+		..\docs\audit\the-attribute-catalogue.md = ..\docs\audit\the-attribute-catalogue.md
 		..\docs\next\S-3-schema-guid-catalogue.md = ..\docs\next\S-3-schema-guid-catalogue.md
-		..\docs\next\S-8-captured-attribute-catalogue.md = ..\docs\next\S-8-captured-attribute-catalogue.md
-		..\docs\next\S-9-the-capture-unit.md = ..\docs\next\S-9-the-capture-unit.md
+		..\docs\audit\the-search-capture-issues.md = ..\docs\audit\the-search-capture-issues.md
 		..\docs\next\SURFACE-REGISTER.md = ..\docs\next\SURFACE-REGISTER.md
 	EndProjectSection
 EndProject

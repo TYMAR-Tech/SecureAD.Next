@@ -31,7 +31,7 @@ kept.
 ## Decision
 
 **A domain that fails is read again from the beginning, on the next controller listed for it.** The
-retries already decided in [`S-10`](../next/S-10-politeness.md) run first - three attempts at the
+retries already decided in [`S-10`](../audit/limits-and-failures.md) run first - three attempts at the
 request, then one restart of the domain on a fresh connection to the same controller. When those are
 exhausted, the domain is attempted on the next controller in its candidate list rather than ending
 the run.
@@ -50,7 +50,7 @@ and the obvious single-threaded mechanism does not survive that.
 controller for the whole of that attempt, and the check in `PartitionCapture` that refuses a
 connection pointing anywhere else stays exactly as it is. A second attempt is a **new** pairing of
 domain and controller rather than the same one mutated, so a failure still names one domain on one
-machine unambiguously - which is what [`S-9`](../next/S-9-the-capture-unit.md) required and what row
+machine unambiguously - which is what [`S-9`](../audit/the-search-capture-issues.md) required and what row
 `A6` would have broken.
 
 **The bundle says what happened.** Which controller read each domain, and that an earlier controller

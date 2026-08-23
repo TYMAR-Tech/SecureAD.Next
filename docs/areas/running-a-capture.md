@@ -103,6 +103,11 @@ keeps nothing), and how much of a run is shown while it is going
 
 ## Open findings
 
+**`F-S40-1` moved to [`PUNCH-LIST.md`](../PUNCH-LIST.md) § Audit / Capture as `P-22`** during the
+documentation rewrite. How a run reads a forest is now
+[the search capture issues](../audit/the-search-capture-issues.md) and
+[how a controller's answer is read](../audit/how-a-controller-is-read.md).
+
 | | | |
 |---|---|---|
-| `F-S40-1` | `0040`'s retry is decided but nothing walks it | open |
+| — | none recorded for this area now | — |

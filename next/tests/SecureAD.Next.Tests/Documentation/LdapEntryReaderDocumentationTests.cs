@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-11-reading-what-a-controller-returns.md</c> to
+/// Binds <c>docs/audit/how-a-controller-is-read.md</c> to
 /// <see cref="LdapEntryReader"/>, <see cref="AttributeValues"/> and <see cref="AttributeRange"/>.
 ///
 /// <para>
@@ -29,7 +29,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class LdapEntryReaderDocumentationTests
 {
-    private const string Document = "S-11-reading-what-a-controller-returns.md";
+    private const string Document = "how-a-controller-is-read.md";
 
     [Fact]
     public void TheDocumentDescribesEveryCompletenessStateTheCodeHas()
@@ -192,7 +192,7 @@ public sealed class LdapEntryReaderDocumentationTests
         Table("<!-- COMPLETENESS:BEGIN -->", "<!-- COMPLETENESS:END -->", "State");
 
     private static string DocumentText() =>
-        File.ReadAllText(Path.Combine(RepositoryLocation.Root(), "docs", "next", Document));
+        File.ReadAllText(Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document));
 
     /// <summary>
     /// A three-column table between two markers, keyed by its first column. Only what lies between
@@ -202,7 +202,7 @@ public sealed class LdapEntryReaderDocumentationTests
     private static Dictionary<string, (string Second, string Third)> Table(
         string begin, string end, string headerCell)
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "audit", Document);
         Assert.True(File.Exists(path), $"Expected the document at {path}.");
 
         var lines = File.ReadAllLines(path);

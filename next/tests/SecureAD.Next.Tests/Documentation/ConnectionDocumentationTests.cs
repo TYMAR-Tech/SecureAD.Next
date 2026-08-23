@@ -91,7 +91,7 @@ public sealed class ConnectionDocumentationTests
         // carrying a correct table and nothing else.
         var text = SliceText();
         Assert.True(text.Length > 6000, $"Read only {text.Length} characters of {Slice}.");
-        Assert.Contains("S-12-the-capture-passes.md", text, StringComparison.Ordinal);
+        Assert.Contains("how-a-controller-is-read.md", text, StringComparison.Ordinal);
         Assert.Contains("0018-connection-security", DecisionReference(text), StringComparison.Ordinal);
     }
 

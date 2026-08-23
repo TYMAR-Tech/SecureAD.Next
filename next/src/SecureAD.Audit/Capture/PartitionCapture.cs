@@ -11,7 +11,7 @@ namespace SecureAD.Audit.Capture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B6, and <c>docs/next/S-12-the-capture-passes.md</c> is the document bound to
+/// This is inventory row B6, and <c>docs/audit/how-a-controller-is-read.md</c> is the document bound to
 /// it. It is the first component in the rebuild that does anything to a customer's directory rather
 /// than describing what would be done.
 /// </para>

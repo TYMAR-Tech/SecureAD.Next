@@ -20,11 +20,33 @@ gates, with the old documents deleted as they are consumed.
 **Done — Kernel/Security.** Commit `f1d49f6`. Four documents in `docs/kernel/`, three slice documents
 deleted (1,632 lines), all gates retargeted, 2,159 tests green.
 
-**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Evidence, Audit, Cli, Shell.**
+**Done — Audit/Capture.** Four documents in `docs/audit/` — the attribute catalogue, the search
+capture issues, how a controller's answer is read, and what a controller's limits oblige. Six slice
+documents deleted (2,056 lines), six gate suites retargeted, one unsound gate widened and fixed.
 
-**Suggested order: Audit/Capture and Audit/Connect before Evidence.** Three open punch-list items are
-capture-side, and writing the Evidence docs first means writing them without knowing what capture has
-to grow into.
+**Two things about that pass are worth carrying forward.**
+
+*The gate that widened.* `EveryPublicTypeInTheCaptureProjectIsNamedByACaptureSliceDocument` scanned
+four types while its name and failure message claimed nineteen, and had been green for months. The
+fault arrived **by repair**: S-24 moved the catalogue into another assembly, the check failed loudly,
+and the fix pointed the scan at the catalogue's new neighbours rather than at the component the test
+is named for. Widened during the pass; it immediately named twelve types no document mentioned. It
+is `P-19`. **When a check fails after a move, ask what its new subject is — not only whether it
+passes again.**
+
+*The archive backlog was not read.* The documents were written from the code and the slice documents,
+and the 27 archive files under `audit-capture` — 12,660 lines — are still `unread`. That breaks the
+rule stated at the top of `_COVERAGE.md`, it is recorded in that file's `audit-capture` section
+rather than glossed, and **Audit/Capture is not closed until the backlog is read.** The exposure is
+reasoning that was recorded once and dropped, which is `F-S44-2` in a different costume.
+
+**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Evidence, Audit/Connect, Cli,
+Shell.**
+
+**Audit/Connect is the natural next pass.** `S-14-the-connection.md` is its slice document and is
+untouched; `S-10-politeness.md` turned out to belong to Capture and has already gone. One open
+punch-list item, `#17`, is connect-side and was deliberately not re-adjudicated during the capture
+pass even though the retry path reaches it.
 
 ---
 

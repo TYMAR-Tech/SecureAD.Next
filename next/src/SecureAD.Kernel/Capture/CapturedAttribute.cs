@@ -9,7 +9,7 @@ namespace SecureAD.Kernel.Capture;
 /// not requested is not in the bundle, is in no report, and cannot be added afterwards without
 /// capturing the forest again - and nobody can go back and re-read last quarter. So the entry
 /// carries only what a reader of the values needs, and <b>who reads it</b> lives in
-/// <c>docs/next/S-8-captured-attribute-catalogue.md</c> beside the reason, bound by
+/// <c>docs/audit/the-attribute-catalogue.md</c> beside the reason, bound by
 /// <c>CapturedAttributeCatalogDocumentationTests</c>.
 /// </para>
 /// <para>
