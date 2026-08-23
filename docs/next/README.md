@@ -416,7 +416,9 @@ gets scheduled and a run that blocks at 03:00 has done nothing by morning. Simpl
 the ladder at all — Microsoft's own account of one on port 389 is that there is *"no security for
 these sessions… because credentials are transmitted in clear text."*
 
-A2 — **the connection** — is built and documented at [`S-14`](S-14-the-connection.md), with the
+A2 — **the connection** — is built and documented at
+[`the connection ladder`](../connect/the-connection-ladder.md) and
+[`how a connection is opened`](../connect/how-a-connection-is-opened.md), with the
 ladder as a table bound to the rungs the code names. It implements the seam B6 wrote and left open,
 and the seam held unchanged, which is recorded as a table rather than asserted. The rung each
 controller answered on is kept by name rather than as a flag, because a flag has nowhere to put a

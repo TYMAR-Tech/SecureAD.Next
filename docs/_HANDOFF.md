@@ -56,13 +56,30 @@ future session could reverse without knowing. Those are found by searching the a
 decision-shaped language — *decided, refused, must not, rejected, instead of* — not by reading whole
 files.
 
-**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Evidence, Audit/Connect, Cli,
-Shell.**
+**Done — Audit/Connect.** Four documents in `docs/connect/` — the connection ladder, how a connection
+is opened, how the forest is found, and what preflight proves. `S-14-the-connection.md` deleted
+(225 lines), `ConnectionDocumentationTests` retargeted, `which-controller-we-read.md` trimmed to its
+decision index, `F-S40-1` carried to the punch list.
 
-**Audit/Connect is the natural next pass.** `S-14-the-connection.md` is its slice document and is
-untouched; `S-10-politeness.md` turned out to belong to Capture and has already gone. One open
-punch-list item, `#17`, is connect-side and was deliberately not re-adjudicated during the capture
-pass even though the retry path reaches it.
+**Punch-list `#17` was adjudicated during that pass, and the line recording it was wrong.** It said
+the ladder treats LDAP 91 as proof of *refused protection*; it does not — 91 maps to
+`ProtectedChannelFailed`, which is correct. The fault is that `ProvesTheControllerAnswered` counts
+`ProtectedChannelFailed` as an answer, and that list is the gate `0018`'s amendment put in front of
+the forest finding. A broken LDAPS certificate on 636 plus a firewall on 389 therefore reaches
+*"a controller accepting nothing signed…"*. Microsoft defines 0x5b as *"Cannot establish the
+connection"* — the client's own failure, not a response. **Recorded, not fixed**, with the remedy
+written out; the branch stays documentation-only.
+
+**How it survived is the transferable part.** `0018`'s amendment has three cases and there is a test
+for each — 81, 49, unclassified. The fourth entry in the same list was carried over without being
+re-asked. That is `P-19` from the other side: **when a rule is applied to a list, ask whether it was
+applied to every entry, not whether the list still compiles.**
+
+**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Evidence, Cli, Shell.**
+
+**Evidence is the natural next pass.** `S-16-the-bundle.md` and `S-18-run-identity-and-comparability.md`
+are its slice documents and both are untouched. Two punch-list items are evidence-side, `P-2` and
+`P-3`.
 
 ---
 
@@ -137,6 +154,14 @@ conclusion, arriving from the other direction.
 **This is also the signal to end a session.** Fabricated detail late in a pass means the useful
 context is spent. Commit, update this file, and start fresh rather than pushing into the next
 subsystem.
+
+**`Measure-Object -Line` undercounts, and the Audit/Connect pass trusted it.** It reported the
+Connect folder as 4,113 lines when it is 4,943 — a 17% understatement that went straight into
+`_COVERAGE.md` as a coverage claim, and it named the deleted `S-14` at 175 lines when git says 225.
+It appears to drop blank lines. **Use `@(Get-Content $f).Count`, or `git diff --numstat` for anything
+git already knows.** Worth its own line because the previous trap says *ask `git` for the numbers
+rather than recalling them* and this pass did ask a tool — the tool was wrong, and a wrong number
+from a command reads as more trustworthy than a wrong number from memory.
 
 **Capture gaps cannot be worked around later, but are not urgent.** There are no bundles in the field
 — the owner is the only user. A missing capture input is ordinary backlog, found naturally when a

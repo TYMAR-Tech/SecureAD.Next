@@ -7,7 +7,8 @@ namespace SecureAD.Audit.Connect;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is half of inventory row A1, and <c>docs/next/S-14-the-connection.md</c> is the document bound
+/// This is half of inventory row A1, and <c>docs/connect/how-a-connection-is-opened.md</c> is the
+/// document bound
 /// to it. There are two answers and no third: the account the product is already running under, or
 /// an account an operator typed in for this run.
 /// </para>

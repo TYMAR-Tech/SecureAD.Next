@@ -6,6 +6,13 @@ from, and proves it can read it before a run commits.
 This file is the starting point for any work in this area. It is meant to be read whole, in a few
 minutes, and it is the only file that needs reading before we talk.
 
+**How this area works is written up in [`docs/connect/`](../connect/)** —
+[`the connection ladder`](../connect/the-connection-ladder.md),
+[`how a connection is opened`](../connect/how-a-connection-is-opened.md),
+[`how the forest is found`](../connect/how-the-forest-is-found.md) and
+[`what preflight proves`](../connect/what-preflight-proves.md). This page stays the index; those
+carry the reasoning.
+
 ---
 
 ## What is decided
@@ -97,6 +104,5 @@ shape of the code.
 
 ## Open findings
 
-| | | |
-|---|---|---|
-| `F-S40-1` | `0040`'s retry is decided but nothing walks it | open |
+Carried to [`PUNCH-LIST.md`](../PUNCH-LIST.md) by the Audit/Connect pass — `F-S40-1` (`0040`'s retry
+is decided and nothing walks it), alongside `#17`.

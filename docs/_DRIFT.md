@@ -98,3 +98,107 @@ drifted from its own rule, when the rule is intact.
 makes them safe."*
 
 ---
+
+## D-4 — `ConnectionFailureReason` reads a TLS failure into a code that does not carry one
+
+| | |
+|---|---|
+| **Status** | open |
+| **Found** | Audit/Connect pass, while adjudicating `#17` |
+| **Where** | `next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs` |
+| **Kind** | XML comment asserting more than the citation supports |
+
+The constant is documented as:
+
+```
+/// <summary>The transport could not be established - in practice, TLS.</summary>
+private const int ConnectError = 91;
+```
+
+Microsoft defines `LDAP_CONNECT_ERROR` (0x5b) as *"Cannot establish the connection"*
+([Return Values](https://learn.microsoft.com/previous-versions/windows/desktop/ldap/return-values)),
+and says nothing narrowing it to TLS.
+
+**Why it matters.** This is not a cosmetic overstatement — it is load-bearing, and it is the reason
+`#17` exists. *In practice, TLS* invites the reader to picture a controller that answered and
+negotiated badly, and on that picture it is reasonable to list `ProtectedChannelFailed` among the
+reasons that prove the controller answered. On Microsoft's actual wording it is not: a connection
+that could not be established is the client reporting its own failure, which is precisely the case
+`0018`'s amendment says may not carry a finding. The comment is where the wrong inference is
+recorded, and the code below it is where the wrong inference is acted on.
+
+It is also the trap `_HANDOFF.md` names first — XML comments are argument, not data — with the
+unusual feature that here the argument was believed and shipped.
+
+**Proposed fix.** Take the citation's own words and stop there, in the same edit as the `#17` fix:
+
+```
+/// <summary>The connection could not be established. Says nothing about the server.</summary>
+private const int ConnectError = 91;
+```
+
+---
+
+## D-5 — `ConnectionSecurityLog.Controllers` promises an order the type does not keep
+
+| | |
+|---|---|
+| **Status** | open |
+| **Found** | Audit/Connect pass |
+| **Where** | `next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs` |
+| **Kind** | XML comment asserting a guarantee the implementation does not give |
+
+The member is documented as *"Every controller this run connected to, in the order it first
+connected"* and returns `Dictionary<TKey, TValue>.Values`, which has no documented enumeration
+order. It happens to enumerate in insertion order while no entry is removed, and nothing here
+removes one — so the comment is true today by implementation accident rather than by contract.
+
+**Why it matters, mildly.** Nothing currently depends on it: `RefusedIntegrity` sorts by host name
+explicitly, and that is the member a finding is made from. The exposure is a future reader taking
+the comment at its word and rendering this collection directly, at which point a report could order
+the same forest differently between runs — the stability `PreflightDispatch` is careful to preserve
+for exactly this reason, in the same subsystem.
+
+**Proposed fix.** Either drop the claim, or make it true with an insertion-ordered list beside the
+dictionary. Given `PreflightDispatch`'s reasoning about stable ordering, the second is the more
+consistent answer.
+
+---
+
+## D-6 — A gate's self-test says four and asserts three
+
+| | |
+|---|---|
+| **Status** | open |
+| **Found** | Audit/Connect pass, while checking each gate's subject after the move |
+| **Where** | `next/tests/SecureAD.Next.Tests/Architecture/ConnectionSecurityGateTests.cs` |
+| **Kind** | Comment contradicting the assertion directly beneath it |
+
+```
+// Four transport assignments, because the ladder sets all three options plus the protocol
+// version on every attempt; a factory containing fewer has stopped setting one of them.
+Assert.Single(RebuildTree.ScanPattern(factories, ConnectionConstruction));
+Assert.Equal(3, RebuildTree.ScanPattern(factories, TransportSecurityAssignment).Count);
+```
+
+`TransportSecurityAssignment` matches `SecureSocketLayer|Signing|Sealing` — three forms.
+`ProtocolVersion` is not in the pattern, so it is not counted and never was. **The assertion is
+correct and the comment is wrong.**
+
+**Why it matters more than it looks.** That `3` is a floor in a scanner self-test, and the whole
+point of the self-test is that a number nobody can re-derive is a number that rots. A future reader
+reconciling the comment with the assertion has two plausible repairs — raise the count to 4, or add
+`ProtocolVersion` to the regex — and **the first one turns the gate red for no reason while the
+second silently changes what the gate polices.** This is the same shape as `P-19`: a repair made to
+restore agreement, without asking what the check's subject is.
+
+**Proposed fix.** Correct the comment to three, and say which three, so the number is re-derivable
+from the line above it:
+
+```
+// Three transport assignments - SecureSocketLayer, Signing and Sealing, which the ladder sets
+// on every attempt. ProtocolVersion is set too and is deliberately not policed: it is not a
+// security level. A factory containing fewer than three has stopped setting one of them.
+```
+
+---

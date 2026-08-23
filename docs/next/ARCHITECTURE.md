@@ -145,9 +145,9 @@ replaceable.
   reads one partition through it, documented at [`S-12`](../audit/how-a-controller-is-read.md), and
   [`LdapDirectoryChannelFactory`](../../next/src/SecureAD.Audit/Connect/LdapDirectoryChannelFactory.cs)
   is what puts a real domain controller on the other end, documented at
-  [`S-14`](S-14-the-connection.md). The seam was written from the loop's side against a controller
-  model and held unchanged when something real met it, which S-14 records member by member rather
-  than asserting.
+  [`how a connection is opened`](../connect/how-a-connection-is-opened.md). The seam was written
+  from the loop's side against a controller model and held unchanged when something real met it,
+  which that document records member by member rather than asserting.
 
   A third thing about the seam was settled on 2026-08-12, and it is a decision about a customer's
   network rather than about this product's code. **Connection security is an ordered ladder of named

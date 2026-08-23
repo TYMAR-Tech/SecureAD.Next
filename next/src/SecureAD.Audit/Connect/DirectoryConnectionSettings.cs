@@ -5,7 +5,8 @@ namespace SecureAD.Audit.Connect;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row A1, and <c>docs/next/S-14-the-connection.md</c> is the document bound to it.
+/// This is inventory row A1, and <c>docs/connect/how-a-connection-is-opened.md</c> is the document
+/// bound to it.
 /// It is short on purpose. Every field here is one something reads: a setting nothing consumes is
 /// dead weight that looks like a lever, which is the failure inventory row B1 refuses to carry
 /// forward on the capture side.

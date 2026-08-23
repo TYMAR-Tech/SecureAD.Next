@@ -100,7 +100,8 @@ Recorded so they are not lost. Each belongs to its own pass.
 | ID | Item | Subsystem | Status |
 |---|---|---|---|
 | `#20` | GPO link precedence — the deep review and S-58 flatly contradict each other | group policy | **conflict** |
-| `#17` | The connection ladder treats LDAP error 91 as proof of refused protection; it is not | audit/connect | open |
+| `#17` | `ProvesTheControllerAnswered` counts LDAP 91 as an answer, so a certificate fault can produce a forest finding | audit/connect | open |
+| `F-S40-1` | `0040`'s retry from another controller is decided, and nothing walks it | audit/connect | open |
 | `#19` | `gPLink` option bits are documented in the archive but never verified first-party | group policy | blocked |
 | `#22` | `SecurityTemplateParser` accepts nonconformant encodings without labelling them | group policy | open |
 | `#21` | `DnHelper` decides escaping from the preceding character rather than from the escape sequence | kernel/naming | open |
@@ -137,6 +138,35 @@ relevant to this rewrite.
 `System.ObjectDisposedException: SQLitePCL.sqlite3`, then passed in isolation and on two subsequent
 runs. Low severity but it corrodes the oracle: *"A test that fails at random trains a reader to
 re-run rather than to look, and the day it fails for a real reason it will be re-run too."*
+
+**`#17` detail — adjudicated 2026-09, and the original line was wrong.** It said the ladder treats
+91 as proof of *refused protection*. It does not: `ConnectionFailureReason.Of` maps 91 to
+`ProtectedChannelFailed`, which is a distinct reason and a correct one. The fault is one entry
+further on. `ProvesTheControllerAnswered` lists `ProtectedChannelFailed` alongside
+`CredentialsWereRejected` and `ProtectionWasRefused`, and that list is the gate `0018`'s amendment
+put in front of the forest finding. So a 91 on rung 1 plus any failure on rungs 2 and 3 satisfies
+the gate, and an undeclared run ends at *"a controller accepting nothing signed leaves its LDAP
+traffic open to alteration in transit."* A broken LDAPS certificate on 636 plus a firewall on 389
+reaches it — a certificate fault accusing a customer's forest.
+
+**Microsoft settles it.** 0x5b is *"Cannot establish the connection"*
+([Return Values](https://learn.microsoft.com/previous-versions/windows/desktop/ldap/return-values)).
+That is the client failing to connect, with nothing in it about the server having responded. 49 and
+8/13 are result codes a controller sent; 91 is not.
+
+**How it survived the amendment.** The amendment has three cases and `ConnectionSecurityTests` has a
+test for each — 81, 49, and unclassified. The fourth entry in the same list was carried over without
+being re-asked. The `P-19` lesson again, from the other direction: *ask what the check's subject is,
+not only whether it passes.*
+
+**The remedy, so the fix pass need not re-derive it.** Drop `ProtectedChannelFailed` from
+`ProvesTheControllerAnswered`. That routes an all-91 walk to the no-answer branch, whose message
+currently offers name, host and firewall — true but understated for a TLS failure, so that branch
+wants a third variant beside the existing `timedOut` one, saying the transport could not be
+established and naming the certificate. Add the missing test.
+`ConnectionFailureReason`'s comment calls 91 *"the transport could not be established - in practice,
+TLS"*; the *in practice, TLS* half is inference rather than the citation, and it is what makes 91
+look like an answer. Recorded in [`_DRIFT.md`](_DRIFT.md).
 
 **`#20` detail.** The deep review says link order 1 is highest precedence and warns against
 `Count - Order + 1`. S-58 lists that same expression under *what must not change*, saying the last

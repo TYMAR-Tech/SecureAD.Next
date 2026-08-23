@@ -10,7 +10,8 @@ namespace SecureAD.Audit.Connect;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row A2, and <c>docs/next/S-14-the-connection.md</c> is the document bound to it.
+/// This is inventory row A2, and <c>docs/connect/how-a-connection-is-opened.md</c> is the document
+/// bound to it.
 /// It is the other half of the seam inventory row B6 wrote and left open. Everything above it -
 /// <see cref="PartitionCapture"/>, the paging loop, the range retrievals - was written against
 /// <see cref="IDirectoryChannel"/> and exercised against a controller model. This is what puts a

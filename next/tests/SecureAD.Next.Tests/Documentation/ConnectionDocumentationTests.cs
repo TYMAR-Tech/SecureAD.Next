@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-14-the-connection.md</c> to the ladder the code actually climbs, per
+/// Binds <c>docs/connect/the-connection-ladder.md</c> to the ladder the code actually climbs, per
 /// <c>docs/next/README.md</c> §When a document counts as documentation.
 ///
 /// <para>
@@ -18,7 +18,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class ConnectionDocumentationTests
 {
-    private const string Slice = "S-14-the-connection.md";
+    private const string Document = "the-connection-ladder.md";
     private const string TableBegin = "<!-- LADDER:BEGIN -->";
     private const string TableEnd = "<!-- LADDER:END -->";
 
@@ -89,9 +89,9 @@ public sealed class ConnectionDocumentationTests
 
         // The document must also still be the one that explains the ladder, rather than a stub
         // carrying a correct table and nothing else.
-        var text = SliceText();
-        Assert.True(text.Length > 6000, $"Read only {text.Length} characters of {Slice}.");
-        Assert.Contains("how-a-controller-is-read.md", text, StringComparison.Ordinal);
+        var text = DocumentText();
+        Assert.True(text.Length > 6000, $"Read only {text.Length} characters of {Document}.");
+        Assert.Contains("how-a-connection-is-opened.md", text, StringComparison.Ordinal);
         Assert.Contains("0018-connection-security", DecisionReference(text), StringComparison.Ordinal);
     }
 
@@ -111,11 +111,11 @@ public sealed class ConnectionDocumentationTests
         return string.Join(";", decisions);
     }
 
-    private static string SliceText()
+    private static string DocumentText()
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "connect", Document);
         if (!File.Exists(path))
-            throw new FileNotFoundException("Expected the slice document at " + path + ".", path);
+            throw new FileNotFoundException("Expected the layer document at " + path + ".", path);
 
         return File.ReadAllText(path);
     }
@@ -126,7 +126,7 @@ public sealed class ConnectionDocumentationTests
     /// </summary>
     private static List<DocumentedRung> DocumentedLadder()
     {
-        var lines = SliceText().Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var lines = DocumentText().Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
 
         var begin = Array.FindIndex(lines, l => l.Trim() == TableBegin);
         var end = Array.FindIndex(lines, l => l.Trim() == TableEnd);
@@ -134,7 +134,7 @@ public sealed class ConnectionDocumentationTests
         if (begin < 0 || end < 0 || end < begin)
         {
             throw new InvalidOperationException(
-                "Could not find the " + TableBegin + " / " + TableEnd + " markers in " + Slice
+                "Could not find the " + TableBegin + " / " + TableEnd + " markers in " + Document
                 + ". A missing marker must fail rather than silently empty the scan.");
         }
 
@@ -172,6 +172,6 @@ public sealed class ConnectionDocumentationTests
         "yes" => true,
         "no" => false,
         _ => throw new InvalidOperationException(
-            $"'{cell}' is neither yes nor no in {Slice}'s ladder table."),
+            $"'{cell}' is neither yes nor no in {Document}'s ladder table."),
     };
 }
