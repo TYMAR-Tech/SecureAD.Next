@@ -30,6 +30,11 @@ namespace SecureAD.Next.Tests.Documentation;
 /// a type that fell out of both. Both are asserted.
 /// </para>
 /// <para>
+/// <b>The capability-table check was deleted on 2026-08-21 (<c>P-51</c>).</b> It asserted that each
+/// page carried a <c>## What an operator can do</c> heading, which is the shape of the prose and not
+/// the state of the product: no change to <c>Kernel/GroupPolicy</c> could make it fail.
+/// </para>
+/// <para>
 /// What it cannot check is whether the account of order-versus-precedence is any good, or whether
 /// the cpassword page describes the refusal the parser actually implements. That needs a reader.
 /// </para>
@@ -122,21 +127,7 @@ public sealed class GroupPolicyDocumentationTests
     }
 
     /// <summary>
-    /// Both pages carry a capability table under the opener the kernel documents use.
-    /// <c>CapabilityCitationTests</c> resolves the citations inside it, but only for a table it can
-    /// find, so a page that lost the heading would be checked by nothing and say so nowhere.
-    /// </summary>
-    [Fact]
-    public void EachDocumentCarriesACapabilityTable()
-    {
-        foreach (var document in new[] { Declares, Contains })
-        {
-            Assert.Contains("## What an operator can do", Read(document), StringComparison.Ordinal);
-        }
-    }
-
-    /// <summary>
-    /// The scanner self-test. Without it every check above passes by reading no types from an
+    /// The scanner self-test.
     /// assembly it failed to reach, and reports that nothing is wrong with any of them. The two
     /// owned sets are also asserted to account for the whole folder, so a type added to the
     /// namespace without being assigned to a page fails here rather than being quietly unowned.

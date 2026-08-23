@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text.RegularExpressions;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -40,9 +39,7 @@ namespace SecureAD.Next.Tests.Architecture;
 /// </summary>
 public sealed class SurfaceRegisterTests
 {
-    private const string RegisterFile = "SURFACE-REGISTER.md";
-    private const string TableBegin = "<!-- REGISTER:BEGIN -->";
-    private const string TableEnd = "<!-- REGISTER:END -->";
+    private const string RegisterFile = SurfaceRegister.FileName;
 
     /// <summary>
     /// Assemblies making up the rebuild's production surface. Held once in
@@ -182,96 +179,18 @@ public sealed class SurfaceRegisterTests
         return tick < 0 ? name : name[..tick];
     }
 
-    private static string RegisterPath() =>
-        Path.Combine(RepositoryLocation.Root(), "docs", "next", RegisterFile);
+    private static string RegisterPath() => SurfaceRegister.Path();
 
     /// <summary>
-    /// The register's rows: the type, the area that owns it, and the line it sits on. Only what
-    /// lies between the markers is parsed, so the prose around the table does not have to pretend
-    /// to be data.
+    /// The register's rows, parsed by <see cref="SurfaceRegister"/> so this gate and the area gate
+    /// read one table through one parser.
     /// </summary>
-    private static List<(string Type, string Document, int Line)> RegisterEntries()
-    {
-        var path = RegisterPath();
-        Assert.True(File.Exists(path), $"Expected the surface register at {path}.");
+    private static List<(string Type, string Document, int Line)> RegisterEntries() =>
+        SurfaceRegister.Entries();
 
-        var lines = File.ReadAllLines(path);
-        var begin = Array.FindIndex(lines, l => l.Trim() == TableBegin);
-        var end = Array.FindIndex(lines, l => l.Trim() == TableEnd);
+    private static string GoverningDocument(string cell) =>
+        SurfaceRegister.GoverningDocument(cell);
 
-        Assert.True(
-            begin >= 0 && end > begin,
-            $"Could not find the {TableBegin} / {TableEnd} markers around the table in {path}. "
-            + "The test parses only what lies between them, so a missing marker must fail rather "
-            + "than silently empty the scan.");
-
-        var entries = new List<(string, string, int)>();
-
-        for (var i = begin + 1; i < end; i++)
-        {
-            var cells = lines[i].Split('|', StringSplitOptions.TrimEntries);
-            if (cells.Length < 5)
-                continue;
-
-            var type = cells[1];
-            if (type is "Type" || type.Length == 0 || type.All(c => c is '-' or ':'))
-                continue;
-
-            entries.Add((type, GoverningDocument(cells[3]), i + 1));
-        }
-
-        return entries;
-    }
-
-    /// <summary>
-    /// The governing document out of a cell written as <c>[label](../folder/name.md)</c>, returned as
-    /// <c>folder/name</c>. The link target is read rather than the label, because the label is prose
-    /// and the target is what has to resolve.
-    /// </summary>
-    /// <remarks>
-    /// <b>A governing document may be a layer document, not only an area file.</b> This check used to
-    /// resolve <c>../areas/</c> and nothing else, which meant every public type had to point at a live
-    /// area file and <b>no area file could ever be deleted</b> — twenty of them survived six completed
-    /// passes of a rewrite whose stated goal is to empty <c>docs/areas</c>. The register is a map from
-    /// a type to the page describing it; which folder that page lives in is not the register's
-    /// business.
-    /// </remarks>
-    private static string GoverningDocument(string cell)
-    {
-        var match = DocumentLink.Match(cell);
-        return match.Success ? match.Groups["path"].Value : cell;
-    }
-
-    private static readonly Regex DocumentLink =
-        new(@"\(\.\./(?<path>[A-Za-z0-9\-/]+)\.md\)", RegexOptions.Compiled);
-
-    /// <summary>
-    /// The documents that actually exist, read off disk rather than listed here, so a renamed or
-    /// deleted page fails the register rather than being quietly accepted by a copy of the list.
-    /// Area files and layer documents both count.
-    /// </summary>
-    private static HashSet<string> GoverningDocumentNames()
-    {
-        var found = new HashSet<string>(StringComparer.Ordinal);
-
-        Add(Path.Combine(RepositoryLocation.Root(), "docs", "areas"), "areas");
-
-        foreach (var subsystem in LayerDocuments.Subsystems)
-            Add(Path.Combine(LayerDocuments.Root(), subsystem), "layers/" + subsystem);
-
-        return found;
-
-        void Add(string directory, string prefix)
-        {
-            if (!Directory.Exists(directory))
-                return;
-
-            foreach (var file in Directory.GetFiles(directory, "*.md"))
-            {
-                var name = Path.GetFileNameWithoutExtension(file);
-                if (name is not null and not "README")
-                    found.Add(prefix + "/" + name);
-            }
-        }
-    }
+    private static HashSet<string> GoverningDocumentNames() =>
+        SurfaceRegister.GoverningDocumentNames();
 }

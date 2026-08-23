@@ -163,11 +163,12 @@ Recorded so they are not lost. Each belongs to its own pass.
 
 **P-31 detail. The first version of this entry was wrong and was corrected before the next sitting
 read it.** It said the Evidence area files could not be trimmed until the capability tables moved.
-They are not trimmed at all: `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` requires every
+They are not trimmed at all: AreaFileGateTests.EveryAreaFileCarriesTheThreeSections required every
 area file to keep *What is decided*, *What is built* and *What has not been discussed*, and
 `LabConfirmationColumnTests.EveryBuiltTableCarriesTheLabColumn` enforces the lab column on the same
 table. **The cycle's *carry the capability table across* is a copy, not a move.** The claim was
-written from the cycle text without reading the gate that governs it.
+written from the cycle text without reading the gate that governs it. *The first of those two gates
+was deleted on 2026-08-21 (`P-51`), which is what unblocks the trimming — see `P-57`.*
 
 The deletions are complete — `S-16` and `S-18` are gone, and every surviving mention of either is a
 deliberate historical citation inside a block quote.
@@ -213,7 +214,7 @@ ten existing tables settle nothing on their own, because unbound is how they all
 > for the sixth time and was nearly committed. `CapabilityCitationTests` matches both openers and its
 > self-test asserts each subsystem was reached rather than that some global count was above zero.
 >
-> **And `P-31`'s own correction is still not quite right.** `EveryAreaFileCarriesTheThreeSections`
+> **And `P-31`'s own correction is still not quite right.** EveryAreaFileCarriesTheThreeSections
 > requires the *heading*, not the rows beneath it. The rows are held only in aggregate — by
 > `LabConfirmationColumnTests.TheCheckReadsTheBuiltTables` at ten files or more, and by
 > `AreaFileGateTests` requiring some capability somewhere — so any *single* area file could still be
@@ -342,11 +343,31 @@ Pinned by `WhenAValueEndsInAnEscapedBackslash_ThenTheFollowingSeparatorIsMissed`
 Blockers to the consolidation itself. `D-1` — the register forbidding any area file to be deleted —
 was fixed and discharged; the first four area files went with it.
 
+**How close each area file is to deletion, measured 2026-08-21** — types it governs in
+`SURFACE-REGISTER.md`, and how many of those no layer document names yet. `P-52` fails the build
+when a right-hand column reaches zero. Six of the sixteen area files have no register rows and are
+absent here; see `P-56`.
+
+| Area file | Governs | Still undocumented |
+|---|---|---|
+| `what-a-permission-means` | 24 | 3 |
+| `the-new-audit-wizard` | 7 | 3 |
+| `how-failures-are-reported` | 7 | 3 |
+| `what-we-capture` | 31 | 3 |
+| `the-run-library` | 11 | 5 |
+| `group-policy` | 23 | 6 |
+| `how-results-are-shown` | 8 | 8 |
+| `how-a-run-is-stored` | 17 | 12 |
+| `which-controller-we-read` | 36 | 13 |
+| `what-we-call-a-finding` | 15 | 15 |
+
 | ID | Item | Status | Blocked on |
 |---|---|---|---|
-| P-51 | `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` is a prose-shape test: no change to the product can make it fail. It forces three headings into every area file, so a file cannot be shrunk to nothing before deletion. Banned by `docs/next/README.md` §*When a document counts as documentation*. **Delete it** | open | — |
-| P-52 | Nothing fails when an area file becomes redundant. A generative check — every area file still governs at least one type no layer document names — would say when a file is ready to delete, instead of a session choosing to count | open | — |
-| P-53 | `how-the-app-looks.md` is 266 lines with 21 capability citations, so it describes built UI code, yet the surface register has no rows for it. Either the register is missing the UI types or the area file describes something outside the register's assemblies. **Measure before acting** | open | — |
+| P-51 | AreaFileGateTests.EveryAreaFileCarriesTheThreeSections and GroupPolicyDocumentationTests.EachDocumentCarriesACapabilityTable were prose-shape tests: no change to the product could make either fail. The first forced three headings into every area file, so a file could not be shrunk toward nothing, only deleted whole. **Both deleted 2026-08-21**; the generative checks and scanner self-tests in both classes stayed | done | — |
+| P-52 | `AreaFileGateTests.EveryAreaFileStillGovernsAtLeastOneUndocumentedType` **added 2026-08-21**. An area file's types are its rows in `SURFACE-REGISTER.md`, which is already held to the exported types of the three production assemblies in both directions; a file whose every type is named by a layer document fails. Proved failing by documenting the last three types of `how-failures-are-reported` in a layer document: it failed naming that file and all seven types it governs. Register parsing moved into a shared `SurfaceRegister` so one table has one parser | done | — |
+| P-53 | Measured 2026-08-21, and **neither hypothesis was right**. `how-the-app-looks.md` has no register rows because the shell exports **zero public types** — `ShellSurfaceGateTests.TheShellProjectExportsNothing` holds it to that, and `SURFACE-REGISTER.md` §*The register* already records the shell as out of its scope. The register is not missing UI types; there are none to miss. The file is 266 lines with 75 backticked citations, describing internal view models and screens | done | — |
+| P-56 | `P-52` cannot reach the six area files with no register rows, `how-the-app-looks.md` among them. A public-type register cannot cover a shell that exports nothing by design, so nothing will ever say when that file is fully consumed. It needs a device anchored to the shell's internal types or its XAML views, not to the register | open | — |
+| P-57 | Capability tables duplicated between an area file and a layer document were copies because a gate forbade emptying the area file's *What is built* section. `P-51` removed that gate, so each duplicate can now be **moved**: delete the rows from the area file in the same turn. Known instance: `what-a-schema-guid-means.md` and `what-a-permission-means.md`. Check `LabConfirmationColumnTests` before trimming — it counts built tables in aggregate | open | — |
 | P-54 | Only the Capture project has an assembly-wide "every public type is named by some document" gate. Every other documentation gate is scoped to the component a document already claims, so it can only check types somebody chose to describe. `GroupPolicyDocumentationTests` has the stronger shape; widen the rest, highest in-scope debt first (`Evidence/` root, 14 of 44) | open | — |
 | P-55 | `_COVERAGE.md` is stale. The Kernel/GroupPolicy pass read 1,273 source lines, 1,259 test lines and an 86-line area file and recorded none of it | open | — |
 
@@ -363,7 +384,7 @@ features**, not documentation debt — they govern no types because there is no 
 | ID | Item | Status | Blocked on |
 |---|---|---|---|
 | P-43 | `docs/areas/group-policy.md` is consumed for its 16 Kernel types but still governs 7 more — `ISysvolFileReader`, `SmbSysvolFileReader`, `GpoTarget`, `GpoInventory`, `SysvolCapture` in Audit and `GpoSettingScope`, `RestrictedGroupRelationship` in Evidence. The area file is deleted, and its 23 `SURFACE-REGISTER` rows repointed, once those are documented. Until then the rewrite has added two documents without removing a file | open | an Audit/SYSVOL pass and two Evidence types |
-| P-44 | `EachDocumentCarriesACapabilityTable` in `GroupPolicyDocumentationTests` asserts only that a heading exists, so it passed when pointed at a document that carries none of the subject. Every other check in that gate failed as it should. A check that cannot fail for the reason it was written is decoration | open | — |
+| P-44 | EachDocumentCarriesACapabilityTable in `GroupPolicyDocumentationTests` asserts only that a heading exists, so it passed when pointed at a document that carries none of the subject. Every other check in that gate failed as it should. A check that cannot fail for the reason it was written is decoration. **Discharged by `P-51`, which deleted it 2026-08-21** | done | — |
 | P-45 | The solution lists four kernel documents twice, once under the `next` folder and once under `decisions`, and the second copy is missing `distinguished-names.md`. `LayerDocumentGateTests` reads the union of all items so it cannot see either fault | open | — |
 | P-46 | What the product judges about a policy, as opposed to what it reads. The parsers exist; the rules that read them are largely unwritten and which questions matter is unsettled | decision | owner ruling |
 | P-47 | Whether a policy's effect is worked out — which objects it reaches through links, blocked inheritance, enforcement and security filtering — or whether the product reports the link and stops | decision | owner ruling |

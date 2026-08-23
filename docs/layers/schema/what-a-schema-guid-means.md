@@ -17,9 +17,9 @@ This folder is that table.
 
 Each capability names the test that proves it. **The test is the evidence; this table is only the
 index.** These rows are also carried in the governing area file
-[what-a-permission-means](../../areas/what-a-permission-means.md); they are copied rather than moved,
-because `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` requires that file to keep its
-*What is built* table permanently.
+[what-a-permission-means](../../areas/what-a-permission-means.md). *They were copied rather than moved
+because a gate required that file to keep its* What is built *table permanently. That gate was
+deleted on 2026-08-21 (`P-51`), so the duplicate is now a copy nothing requires — see `P-57`.*
 
 **Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
 unit-tested but not yet exercised against Active Directory.
