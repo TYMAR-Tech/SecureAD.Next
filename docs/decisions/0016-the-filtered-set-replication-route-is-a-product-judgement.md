@@ -5,7 +5,8 @@ Status: Accepted
 
 ## Context
 
-Finding `F-S3-6` in [`S-3-schema-guid-catalogue.md`](../next/S-3-schema-guid-catalogue.md) states that
+Finding `F-S3-6`, recorded in the schema-GUID catalogue's slice document and since carried into
+[`what-a-schema-guid-means.md`](../schema/what-a-schema-guid-means.md), states that
 `DS-Replication-Get-Changes` held together with `DS-Replication-Get-Changes-In-Filtered-Set` at the
 domain head is "a documented route to replicating that set, LAPS passwords among them, **without a
 single ACE on any computer object.**"

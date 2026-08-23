@@ -5,23 +5,38 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-3-schema-guid-catalogue.md</c> to the code it describes.
-///
-/// <para>
-/// Per <c>docs/next/README.md</c>, a document is not the new product's documentation until a test
-/// holds it to the code. The drift that matters here is a member or a type changing while the
-/// document goes on describing the old set, and - because this component's whole subject is where
-/// the line between data and classification falls - a finding losing the identifier a later
-/// session must cite it by.
-/// </para>
-/// <para>
-/// What it cannot check is whether the explanation of why the danger flag was left behind is any
-/// good. That needs a reader.
-/// </para>
+/// Binds <c>docs/schema/what-a-schema-guid-means.md</c> to the code it describes.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Retargeted from <c>docs/next/S-3-schema-guid-catalogue.md</c>, which this document consumed and
+/// which is deleted. The retarget was proven rather than assumed: the gate was pointed at the
+/// document the tables had left and produced failures naming the tables it could not find, rather
+/// than passing against an empty scan.
+/// </para>
+/// <para>
+/// <b>Two checks from the slice document were dropped, and the reason matters more than the
+/// deletion.</b> <c>TheDocumentHandsEveryPreviouslyDangerousNameOnToTheNextRow</c> and
+/// <c>TheHandoverNamesARealInventoryRow</c> existed because the danger flag was deliberately left
+/// behind and no component had yet taken it, so the document was the only place the nine names were
+/// written down. That row has since shipped as <c>DangerousPermissionClassifier</c>, documented at
+/// <c>docs/kernel/permission-classification.md</c> and bound by its own gate. Keeping a check whose
+/// stated purpose has been served elsewhere is how a suite comes to measure something other than
+/// its name.
+/// </para>
+/// <para>
+/// <b>What replaced them is stronger.</b> The kind table's counts are compared against the shipped
+/// catalogue rather than read as prose, so a row added to the code without the document being
+/// updated fails here — which is the drift a hand-counted table cannot catch.
+/// </para>
+/// <para>
+/// What it cannot check is whether the explanation of where the line between data and
+/// classification falls is any good. That needs a reader.
+/// </para>
+/// </remarks>
 public sealed class SchemaGuidDocumentationTests
 {
-    private const string Document = "S-3-schema-guid-catalogue.md";
+    private const string Document = "what-a-schema-guid-means.md";
 
     [Fact]
     public void TheDocumentNamesEveryPublicTypeInTheComponent()
@@ -60,78 +75,150 @@ public sealed class SchemaGuidDocumentationTests
     }
 
     /// <summary>
+    /// The types table lists the component and nothing else, in both directions.
+    /// </summary>
+    [Fact]
+    public void TheTypesTableAndTheComponentAgree()
+    {
+        var documented = FirstColumn("TYPES").ToHashSet(StringComparer.Ordinal);
+        var actual = PublicTypeNames().ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(
+            actual.OrderBy(n => n, StringComparer.Ordinal),
+            documented.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The member table lists every reachable member and invents none, in both directions. The
+    /// slice document's guard asked only whether a name appeared <i>anywhere</i> on the page, and
+    /// its own mutation record noted that a member could therefore be dropped from the shape table
+    /// and stay "described" by a passing mention elsewhere. Reading the marked table closes that.
+    /// </summary>
+    [Fact]
+    public void TheMemberTableAndTheComponentAgree()
+    {
+        var documented = FirstColumn("MEMBERS").ToHashSet(StringComparer.Ordinal);
+        var actual = PublicMemberNames().ToHashSet(StringComparer.Ordinal);
+
+        var undocumented = actual.Except(documented).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var invented = documented.Except(actual).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+        Assert.True(
+            undocumented.Count == 0 && invented.Count == 0,
+            $"The MEMBERS table in {Document} disagrees with the component. Missing from the "
+            + $"table: {Describe(undocumented)}. Named by the table but not on the type: "
+            + $"{Describe(invented)}.");
+    }
+
+    /// <summary>
+    /// Every kind the enum declares has a row, and the row's count is the number of shipped
+    /// entries of that kind.
+    /// </summary>
+    /// <remarks>
+    /// The counts are the part worth checking. A document that states how many extended rights the
+    /// product ships is making a claim nobody re-reads, and the shipped table is edited by hand -
+    /// which is exactly how eleven of its entries came to be wrong while every test passed.
+    /// </remarks>
+    [Fact]
+    public void TheKindTableCountsWhatTheCatalogueActuallyShips()
+    {
+        var documented = TableRows("KINDS")
+            .Select(Cells)
+            .ToDictionary(c => c[0].Trim('`'), c => int.Parse(c[1]), StringComparer.Ordinal);
+
+        var actual = Enum.GetValues<SchemaGuidKind>()
+            .ToDictionary(
+                k => k.ToString(),
+                k => SchemaGuidCatalog.Embedded.Entries.Count(e => e.Kind == k),
+                StringComparer.Ordinal);
+
+        var wrong = actual
+            .Where(a => !documented.TryGetValue(a.Key, out var claimed) || claimed != a.Value)
+            .Select(a => $"{a.Key}: document says "
+                + (documented.TryGetValue(a.Key, out var c) ? c.ToString() : "nothing")
+                + $", the catalogue ships {a.Value}")
+            .ToList();
+
+        Assert.True(
+            wrong.Count == 0,
+            $"The KINDS table in {Document} does not match the shipped catalogue:"
+            + Environment.NewLine + string.Join(Environment.NewLine, wrong));
+
+        Assert.Equal(
+            actual.Keys.OrderBy(k => k, StringComparer.Ordinal),
+            documented.Keys.OrderBy(k => k, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The total the prose states is the total the catalogue holds. Written out because a reader
+    /// takes a headline number on trust in a way they do not take a table.
+    /// </summary>
+    [Fact]
+    public void TheDocumentStatesTheRowCountTheCatalogueActuallyHas()
+    {
+        var rows = SchemaGuidCatalog.Embedded.Entries.Count;
+        var distinct = SchemaGuidCatalog.Embedded.Entries
+            .Select(e => e.Guid)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+        Assert.Contains($"**{rows} rows over {distinct} distinct GUIDs.**", Read(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The other direction. The two fields deliberately left behind are discussed by name, so the
-    /// document must not present them as though the code still has them.
+    /// document must name them as absent rather than list them among the members.
     /// </summary>
     [Fact]
     public void TheDocumentDoesNotPresentTheLeftBehindFieldsAsMembers()
     {
         var text = Read();
         var actual = PublicMemberNames().ToHashSet(StringComparer.Ordinal);
+        var documented = FirstColumn("MEMBERS").ToHashSet(StringComparer.Ordinal);
 
         string[] leftBehind = ["IsDangerous", "DisplayName"];
 
-        var claimed = leftBehind
-            .Where(name => !actual.Contains(name))
-            .Where(name => text.Contains(Quoted(name), StringComparison.Ordinal))
-            .Where(name => !text.Contains(Quoted(name) + " does not come across", StringComparison.Ordinal))
-            .ToList();
+        foreach (var name in leftBehind)
+        {
+            Assert.False(actual.Contains(name), $"{name} is on the type; this check is stale.");
 
-        Assert.True(
-            claimed.Count == 0,
-            $"{Document} presents members the component does not have: {string.Join(", ", claimed)}. "
-            + "Names it discusses as absent must be written as absent.");
+            Assert.True(
+                text.Contains(Quoted(name), StringComparison.Ordinal),
+                $"{Document} does not mention {name}. Both fields were dropped on purpose, and a "
+                + "reader who does not find out why will put one back.");
+
+            Assert.False(
+                documented.Contains(name),
+                $"{Document} lists {name} in the MEMBERS table, which the component does not have.");
+        }
     }
 
-    // EveryFindingCarriesAnIdentifier stood here and was deleted on 2026-08-14. It asserted that
-    // every third-level heading contained 'F-S3-'. That is the shape of prose, and no change to
-    // SchemaGuidCatalog could break it.
+    /// <summary>
+    /// The boundary ruling, held open. <c>CapturedSchemaGuidReader</c> is the only producer of
+    /// captured entries and this document names it, but it lives in <c>SecureAD.Evidence</c> and
+    /// belongs to that layer's documents. It must stay out of the component tables here: a type
+    /// bound by two layer documents is the failure that split <c>S-18</c>, and once a name is in a
+    /// component table a later Evidence pass has no way to see that it was already taken.
+    /// </summary>
+    [Fact]
+    public void TheEvidenceReaderIsNamedButNotClaimedByThisLayer()
+    {
+        const string reader = "CapturedSchemaGuidReader";
+
+        Assert.Contains(Quoted(reader), Read(), StringComparison.Ordinal);
+        Assert.DoesNotContain(reader, FirstColumn("TYPES"));
+        Assert.DoesNotContain(reader, FirstColumn("MEMBERS"));
+    }
 
     /// <summary>
-    /// The document states where the component lands, and the code is there. Both previous tables
-    /// were filed under folders named for a shape rather than a subject, which is a large part of
-    /// why neither author found the other's.
+    /// The document states where the component lands, and the code is there. Both tables this
+    /// folder replaced were filed under folders named for a shape rather than a subject, which is a
+    /// large part of why neither author found the other's.
     /// </summary>
     [Fact]
     public void TheDocumentStatesTheNamespaceTheCodeDeclares()
     {
         Assert.Contains($"`{typeof(SchemaGuidCatalog).Namespace}`", Read(), StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The nine GUIDs the previous catalogue flagged dangerous are the one piece of knowledge that
-    /// could be lost between this row and K16, because the flag is deliberately not carried. The
-    /// document is where they are written down, so this asserts they are all still written down.
-    /// </summary>
-    [Theory]
-    [InlineData("User-Force-Change-Password")]
-    [InlineData("DS-Replication-Get-Changes")]
-    [InlineData("DS-Replication-Get-Changes-All")]
-    [InlineData("Self-Membership")]
-    [InlineData("Validated-SPN")]
-    [InlineData("msDS-AllowedToActOnBehalfOfOtherIdentity")]
-    [InlineData("msDS-KeyCredentialLink")]
-    [InlineData("userAccountControl")]
-    [InlineData("unicodePwd")]
-    public void TheDocumentHandsEveryPreviouslyDangerousNameOnToTheNextRow(string ldapName)
-    {
-        Assert.Contains(Quoted(ldapName), Read(), StringComparison.Ordinal);
-        Assert.NotNull(SchemaGuidCatalog.Embedded.FindByLdapName(ldapName));
-    }
-
-    /// <summary>
-    /// The finding that hands them on must name the row that takes them.
-    /// </summary>
-    /// <remarks>
-    /// This used to also assert that <c>K16</c> was a real row in the old application's
-    /// inventory. That inventory and the component map behind it were archived: they described
-    /// the predecessor, and the eighteen tests over them only ever compared one document to
-    /// another without touching the product's code.
-    /// </remarks>
-    [Fact]
-    public void TheHandoverNamesARealInventoryRow()
-    {
-        Assert.Contains("K16", Read(), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -141,10 +228,26 @@ public sealed class SchemaGuidDocumentationTests
     [Fact]
     public void TheCheckFindsBothTheDocumentAndTheComponent()
     {
-        Assert.True(File.Exists(Path()), $"Expected the slice document at {Path()}.");
+        Assert.True(File.Exists(Path()), $"Expected the layer document at {Path()}.");
         Assert.True(Read().Length > 1000, $"{Document} is too short to be the document it claims.");
         Assert.Contains(nameof(SchemaGuidCatalog), PublicTypeNames());
         Assert.Contains(nameof(SchemaGuidCatalog.GuidFor), PublicMemberNames());
+        Assert.NotEmpty(TableRows("TYPES"));
+        Assert.NotEmpty(TableRows("MEMBERS"));
+        Assert.NotEmpty(TableRows("KINDS"));
+    }
+
+    /// <summary>
+    /// A marker block that is not there is a failure and never an empty result. A gate left
+    /// pointing at a document whose table has moved elsewhere must say so. Two gates in this
+    /// repository have already passed for months while measuring nothing.
+    /// </summary>
+    [Fact]
+    public void AMissingTableIsAFailureRatherThanAnEmptyScan()
+    {
+        var thrown = Record.Exception(() => TableRows("SHAPE"));
+
+        Assert.NotNull(thrown);
     }
 
     /// <summary>
@@ -173,7 +276,38 @@ public sealed class SchemaGuidDocumentationTests
         Assert.Contains(Quoted(nameof(SchemaGuidCatalog.GuidFor)), text, StringComparison.Ordinal);
     }
 
+    // --- helpers -----------------------------------------------------------------------------------
+
+    private static string Describe(List<string> names) =>
+        names.Count == 0 ? "none" : string.Join(", ", names);
+
     private static string Quoted(string name) => "`" + name + "`";
+
+    private static List<string> FirstColumn(string marker) =>
+        TableRows(marker).Select(r => Cells(r)[0].Trim('`')).ToList();
+
+    /// <summary>
+    /// The rows between a pair of markers, excluding the header and the separator, so the test
+    /// parses the table rather than the prose around it.
+    /// </summary>
+    private static List<string> TableRows(string marker)
+    {
+        var text = Read();
+        var begin = text.IndexOf($"<!-- {marker}:BEGIN -->", StringComparison.Ordinal);
+        var end = text.IndexOf($"<!-- {marker}:END -->", StringComparison.Ordinal);
+
+        Assert.True(begin >= 0 && end > begin, $"{Document} has no {marker} table.");
+
+        return text[begin..end]
+            .Split('\n')
+            .Select(l => l.Trim())
+            .Where(l => l.StartsWith('|') && !l.Contains("---", StringComparison.Ordinal))
+            .Skip(1)
+            .ToList();
+    }
+
+    private static string[] Cells(string row) =>
+        row.Trim('|').Split('|').Select(c => c.Trim()).ToArray();
 
     private static IEnumerable<string> PublicTypeNames() =>
         typeof(SchemaGuidCatalog).Assembly
@@ -216,7 +350,7 @@ public sealed class SchemaGuidDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "schema", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

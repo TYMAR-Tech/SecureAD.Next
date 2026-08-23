@@ -245,3 +245,30 @@ stop matching.
 
 
 ---
+
+## D-8 — The register says the catalogue holds 100 values; it holds 101
+
+| | |
+|---|---|
+| **Status** | open |
+| **Found** | Kernel/Schema pass |
+| **Where** | `docs/MICROSOFT-VERIFICATION.md` |
+| **Kind** | Stale count in a document |
+
+The *Verified* table records `SchemaGuidCatalog` at **100** values, harvested 2026-08-19, and the
+defect arithmetic below it reads *12 of 237*. Counted from the source, the shipped table declares
+**101** rows over **97** distinct GUIDs, and `SchemaGuidCatalogMicrosoftAnchorTests` carries 101
+pinned rows held to the catalogue in both directions. So the anchor test and the code agree with
+each other, and the register's prose agrees with neither.
+
+**This is most likely a harvest count read as a component count.**
+`DS-Replication-Monitor-Topology` was *added* under its real GUID when the eleven corrections were
+made, so a hundred may well be what was harvested on the day. That is a guess, which is why this is
+recorded rather than corrected: whether the column means *values checked then* or *values the
+component holds now* is the harvester's to say, and the two readings give different totals for
+every row in the table.
+
+**Nothing is wrong in the code.** The count that governs is the anchor test's, it is
+two-directional, and it passes.
+
+---

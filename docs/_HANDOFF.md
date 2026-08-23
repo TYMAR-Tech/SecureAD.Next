@@ -75,7 +75,42 @@ for each — 81, 49, unclassified. The fourth entry in the same list was carried
 re-asked. That is `P-19` from the other side: **when a rule is applied to a list, ask whether it was
 applied to every entry, not whether the list still compiles.**
 
-**Done — Evidence.** Five documents of five are written and bound. The pass is finished.
+**Done — Evidence's bundle-and-run subject. Five documents, and the earlier claim that this closed
+`SecureAD.Evidence` was wrong.** The five documents are written and bound and the *bundle* work is
+finished. What the sentence *"Evidence is closed"* was then read to mean — the assembly is
+documented — is false, and it was corrected during the Kernel/Schema pass by counting rather than by
+recall:
+
+| Folder | Types | Named by any layer or area document | Not named |
+|---|---:|---:|---:|
+| `SecureAD.Evidence/Run/` | 32 | 28 | 4 |
+| `SecureAD.Evidence/` (root) | 44 | 14 | 30 |
+| `SecureAD.Evidence/Findings/` | 17 | **0** | 17 |
+
+`Run/` is genuinely closed, which is what the five documents are about. **`Findings/` is at zero of
+seventeen** — `IRule`, `RuleDefinition`, `RuleVerdict`, `StoredFindings`, `EvaluatedRule`,
+`FindingReader`, `Severity` and the unconstrained-delegation rules are described nowhere. The root
+holds the readers — `ObjectAttributes`, `ObjectListing`, `ObjectPermissions`, `DirectoryTree`,
+`EvidenceObject`, `UnresolvedReference` — and is at fourteen of forty-four.
+
+**This is not a defect in the Evidence pass; it is a scope claim that outgrew what was measured.**
+The work is unstarted, which is ordinary backlog, exactly as the archive backlog is. What was
+harmful was the wording, because *closed* plus *Owed: nothing in Evidence* is precisely the
+instruction a later session needs to skip the folder entirely.
+
+**Why nothing caught it, which is the transferable part.** The Capture project has an assembly-wide
+gate — `EveryPublicTypeInTheCaptureProjectIsNamedByACaptureDocument` — and it is the check that
+found twelve unmentioned types when it was widened as `P-19`. **Evidence has no equivalent.** Every
+other documentation gate is `TheDocumentNamesEveryPublicTypeInTheComponent`, which is scoped to the
+component a document already claims, so it can only ever check types somebody already decided to
+write about. A type no document claims is checked by nothing, and the gap is invisible by
+construction rather than by oversight. That is `P-38`.
+
+**One methodological note, because it nearly produced a false finding.** The first count matched
+type names as ``​`Name`​`` exactly, which reads a qualified mention like ``​`BundleReader.Open`​`` as
+*undocumented* and would have reported `BundleReader`, `BundleWriter` and `BundleSchema` as missing
+from documents that are entirely about them. Match the identifier as a whole word inside any
+backticked span. A measurement can be narrower than its own question in the same way a gate can.
 
 *Done.* `docs/evidence/what-a-bundle-holds.md` (408 lines) — the schema, the table list, descriptor
 deduplication, the three ways to produce no entries, the writing order, and what is refused against
@@ -163,7 +198,9 @@ table under `## What an operator can do`; audit, connect and evidence write it u
 kernel documents. Found by listing the headings instead of trusting the count, which is the only
 reason the self-test asserts per subsystem rather than a global total.
 
-*Owed.* Nothing in Evidence.
+*Owed.* Nothing in the bundle-and-run subject. `SecureAD.Evidence/Findings/` (17 types, none
+documented) and most of the assembly root are unstarted, per the table above — not owed by the
+Evidence pass, but not to be mistaken for finished either.
 
 **Two gates were added after the pass closed, and they change how the cycle is checked.**
 
@@ -252,42 +289,107 @@ caught it, not the session. Deferring deletion to a tidy-up step at the end is t
 failure as deferring progress updates, and it is worse here because the half-done state looks
 finished.
 
-**Next — Kernel/Schema. Scoped but not started.** The scoping below was measured, not recalled.
+**Done — Kernel/Schema.** One document, [`docs/schema/what-a-schema-guid-means.md`](schema/what-a-schema-guid-means.md).
+`S-3-schema-guid-catalogue.md` deleted (412 lines), `SchemaGuidDocumentationTests` retargeted and the
+retarget proven, `schema` added to `LayerDocuments.Subsystems`, solution items corrected in both
+directions.
 
-*The code.* `next/src/SecureAD.Kernel/Schema/` is four files and **532 lines** — `SchemaGuidCatalog.cs`
-(425), `SchemaGuidKind.cs` (54), `SchemaGuidSource.cs` (31), `SchemaGuidEntry.cs` (22). None has a row
-in `_COVERAGE.md`, so all four are unread and the whole folder fits comfortably in one sitting.
+*The code was read whole* — 532 of 532 lines across four files, plus `CapturedSchemaGuidReader.cs`
+at 267 of 267. Recorded in `_COVERAGE.md` against the archive rows, which stay unread and belong to
+the later archive pass, as in Audit/Capture and Evidence.
 
-*The slice document to consume.* `docs/next/S-3-schema-guid-catalogue.md` (412 lines), bound by
-`SchemaGuidDocumentationTests`. That gate is the one to retarget, and the retarget must be **proven**
-— point it at S-3 after the move and confirm it goes red naming tables it cannot find.
+**The boundary question was settled before drafting, and the answer is *Evidence's*.**
+`CapturedSchemaGuidReader` is `internal` to `SecureAD.Evidence`; its whole body reads a bundle —
+`SqliteConnection`, `BundleSchema.ColumnNameFor`, `captured_object`, an octet-string GUID whose byte
+order is the trap; and the dependency runs one way, since it has `using SecureAD.Kernel.Schema` while
+nothing in `Kernel/Schema` references it or could. One document per code folder puts it in its own
+assembly's folder. **The cost is stated rather than hidden**: Evidence closed at five documents and
+none covers it, so it is documented in *neither* layer today. That is `P-37`, and it was left as a
+punch-list row rather than absorbed here — a type bound by two layer documents is the `S-18` failure,
+and a pass that quietly widens its own scope to avoid an awkward remainder is choosing the larger
+error. The layer document names it as the sole producer of captured entries, describes none of its
+mechanics, and `TheEvidenceReaderIsNamedButNotClaimedByThisLayer` holds it out of the component
+tables so a later Evidence sitting can take it without a collision.
 
-*The governing area file.* [`what-a-permission-means.md`](areas/what-a-permission-means.md)
-(109 lines). Read it whole first. Its *What is built* table already carries six schema capabilities
-citing `SchemaGuidCatalogTests` and `SchemaGuidSingleSourceGateTests`; those are **copied** into the
-layer document, not moved, and the copy is now checked by `CapabilityCitationTests`. Note that
-`NoCapabilityIsClaimedByTwoAreas` governs area files only, so a capability may legitimately appear in
-both the area file and the layer document.
+**The retarget was proven the way this file requires, and then the proven gate found two defects in
+its own document.** Pointed at `S-3` first, it failed **seven of thirteen**, each naming the table it
+could not find — *has no TYPES table*, *has no KINDS table*, *has no MEMBERS table* — never an empty
+scan. Repointed, it immediately caught that `SchemaGuidEntry`'s four record properties were missing
+from the member table and that `IsDangerous` and `DisplayName` were named nowhere. **Both were fixed
+in the document, not accommodated in the gate.** The member table is now read from a marker block
+rather than by searching the whole page, which closes the weakness `F-S3-5` recorded against the old
+guard and never repaired: a member could be dropped from the shape table and stay "described" by a
+passing mention elsewhere.
 
-*The other gates in the blast radius.* `SchemaGuidSingleSourceGateTests`, `SchemaGuidCatalogTests`,
-`SchemaGuidCatalogMicrosoftAnchorTests`, `ConceptRegistryTests`, `UnvouchedResultGateTests`. The
-Microsoft anchor tests matter: `docs/MICROSOFT-VERIFICATION.md` and
-`docs/rules/FIRST-PARTY-VERIFICATION.md` both name the catalogue, and
-[`0077`](decisions/0077-a-well-known-sid-is-named-from-microsoft.md) is the governing rule.
+**Two checks were deleted and the reasoning is the reusable part.**
+`TheDocumentHandsEveryPreviouslyDangerousNameOnToTheNextRow` and `TheHandoverNamesARealInventoryRow`
+existed *because* the danger flag had no owner — the document was the only place the nine names were
+written down until K16 landed. K16 has landed, as `DangerousPermissionClassifier` with its own
+document and its own gate. A check kept past the condition that justified it measures something other
+than its name. What replaced them is stronger: the kind table's counts are compared against
+`SchemaGuidCatalog.Embedded` rather than read as prose, so a row added to the code without the
+document changing fails the build.
 
-*One scoping question to settle before drafting, not during.* `CapturedSchemaGuidReader.cs` (267) is
-schema work but lives in `SecureAD.Evidence`, not `Kernel/Schema`, and it is on the unread list. The
-rewrite is **one document per code folder**, so on the letter of the rule it is Evidence's and not
-this pass's. Decide it explicitly and write down which way and why, rather than letting the drafting
-discover it — a type documented in two layers is the `S-18` failure, and a type documented in neither
-is worse.
+**Three inherited unbuilt-work claims were false, which is `P-27` holding at roughly half.** `S-3`
+said the dangerous set had no owner until K16 (it ships), that nothing depended on the folder (two
+callers do), and that the table had never been checked against Microsoft entry by entry (it has —
+eleven of a hundred entries were wrong, and `SchemaGuidCatalogMicrosoftAnchorTests` now pins all 101
+rows two-directionally). None was carried across. **Read the code for every *not built* sentence
+before repeating it.**
 
-*Decision records that govern the area:*
-[`0014`](decisions/0014-capture-reads-the-schema-partition.md),
-[`0016`](decisions/0016-the-filtered-set-replication-route-is-a-product-judgement.md),
-[`0077`](decisions/0077-a-well-known-sid-is-named-from-microsoft.md).
+**One number in this pass was wrong in the draft and caught by measuring rather than by review.**
+101 rows over 97 distinct GUIDs was written up as *four GUIDs carry more than one row*; the
+arithmetic is right and the conclusion is wrong, because `72e39547` carries three rows and not two.
+It is **three** GUIDs. Inferring a count from a subtraction is the same move as summarising from
+memory, one layer down.
 
-**Not started — Kernel/GroupPolicy, Kernel/Naming, Cli, Shell.**
+**`D-8` is new and is deliberately not fixed.** `docs/MICROSOFT-VERIFICATION.md` records the
+catalogue at 100 values; the source declares 101 and the anchor test pins 101. The likely cause is a
+harvest count read as a component count, but whether that column means *values checked then* or
+*values held now* changes every row in the register, so it is the harvester's to say.
+
+**Two inbound references had to be repointed, and only one of them was reachable by a gate.**
+`docs/next/README.md` links `S-3` from its status paragraph; `0016` cites `F-S3-6` in it.
+`LayerDocumentGateTests` checks links *out of layer documents*, so the decision record's link would
+have rotted silently. **Search for the filename across `*.cs` and `*.md` — do not rely on the gate to
+find the ones it was built to find.**
+
+**`LayerDocuments.Subsystems` now has five entries**, and adding the fifth turned on the link gate,
+the solution gate and the capability gate at once, exactly as its remarks warned. The hardcoded list
+of four directory names in `CapabilityCitationTests`' own summary was replaced with a reference to
+`Subsystems`, so the prose cannot drift from the list again.
+
+**Where every code folder stands.** The previous version of this line named four unstarted
+subsystems and omitted `Kernel/Capture` from every list — neither done nor started, which is how a
+folder gets skipped by both a reader and a successor. The whole tree, measured:
+
+| Folder | Files | Lines | State |
+|---|---:|---:|---|
+| `Kernel/Security` | 23 | 3,970 | done — `docs/kernel/security-descriptors.md`, `permission-classification.md` |
+| `Kernel/Schema` | 4 | 532 | done — `docs/schema/what-a-schema-guid-means.md` |
+| `Kernel/Capture` | 4 | 494 | **done, and documented outside its own layer** — `docs/audit/the-attribute-catalogue.md`, because `CapturedAttributeCatalog` is kernel code on an audit subject. All four types are named, and `EveryPublicTypeInTheCaptureProjectIsNamedByACaptureDocument` holds it |
+| `Audit/Capture`, `Audit/Connect` | 42 | 8,700 | done — `docs/audit/`, `docs/connect/` |
+| `Evidence/Run` | 21 | 2,970 | done — `docs/evidence/`, 28 of 32 types named |
+| `Kernel/Naming` | 1 | 207 | **not started** — `DnHelper.cs`; consumes `S-2-distinguished-name-manipulation.md` |
+| `Kernel/GroupPolicy` | 15 | 1,273 | not started |
+| `Evidence/` root | 18 | 6,205 | not started — 30 of 44 types named nowhere |
+| `Evidence/Findings` | 7 | 726 | not started — 0 of 17 types named anywhere |
+| `Audit/Sysvol` | 5 | 1,122 | not started |
+| `Cli` | 2 | 534 | not started |
+| `Shell` | 50 | 8,518 | not started |
+
+**`Kernel/Capture` is the rule this table exists to make visible: a code folder may be documented by
+another layer's document, and that is fine — but it must be *said*, or the folder is invisible to
+both the not-started list and the done list.** It is the same shape as the
+`CapturedSchemaGuidReader` boundary question, one level up, and it was found the same way: by
+listing the folders instead of trusting the sentence.
+
+**Take `Kernel/Naming` next.** One file, 207 lines, one slice document to consume, and it closes the
+kernel. `docs/kernel/naming.md` already exists and is a different subject — it opens *"Naming what
+the directory stored"* and is about principals, not distinguished names — so this is a real pass and
+not a duplicate. Confirm that before drafting.
+
+`P-32` and `P-33` remain open and are code rather than documentation.
 
 ---
 

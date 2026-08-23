@@ -315,6 +315,17 @@ evidence to directory objects.
 
 ---
 
+## Kernel / Schema
+
+| ID | Item | Status | Blocked on |
+|---|---|---|---|
+| P-35 | `SchemaGuidCatalog.Version` is recorded in no bundle, so a bundle written before the eleven Microsoft corrections and one written after are indistinguishable and the older one's names cannot be known to be wrong. `BundleReader.Open` already refuses a `canonicalization_version` mismatch; this has no equivalent | open | — |
+| P-36 | A shipped and a captured name disagreeing about a base-schema GUID is a finding per `0014`, and nothing computes it. `SchemaGuidCatalog.CapturedOver` resolves the display question and is where the evidence would come from | open | — |
+| P-37 | `CapturedSchemaGuidReader` is documented in no layer. It is Evidence's by the one-document-per-code-folder rule, and Evidence closed at five documents without covering it | open | a further Evidence sitting |
+| P-38 | Only the Capture project has an assembly-wide *is every public type documented* gate. `CapturedAttributeCatalogDocumentationTests` carries it; nothing equivalent covers `SecureAD.Evidence`, `SecureAD.Kernel` or the rest. Every other check is `TheDocumentNamesEveryPublicTypeInTheComponent`, scoped to a component a document already claims, so a type no document claims is checked by nothing. This is why `SecureAD.Evidence/Findings/` reached 0 of 17 types documented with the suite green | open | — |
+
+---
+
 ## Deferred features
 
 | Item | Where |

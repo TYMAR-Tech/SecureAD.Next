@@ -5,8 +5,7 @@ namespace SecureAD.Next.Tests.Architecture;
 
 /// <summary>
 /// The capability gate for the layer documents — the pages the documentation rewrite is producing,
-/// one per code folder, under <c>docs/kernel</c>, <c>docs/audit</c>, <c>docs/connect</c> and
-/// <c>docs/evidence</c>.
+/// one per code folder, under the directories <see cref="LayerDocuments.Subsystems"/> names.
 /// </summary>
 /// <remarks>
 /// <para>

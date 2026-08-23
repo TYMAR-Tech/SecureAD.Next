@@ -287,3 +287,22 @@ citations now repeated in `docs/kernel/naming.md` were originally verified; and
 | unread | 165 | `next\sessions\S-53-the-schema-the-run-already-read.md` | audit-capture |
 | unread | 160 | `next\sessions\S-54-a-property-set-is-what-it-contains.md` | kernel-security |
 
+> **The Kernel/Schema pass read the code, not this backlog, and that is the same disposition
+> Audit/Capture and Evidence took.** The three files above are archive and belong to the separate
+> later archive pass described at the top of this file. What the pass did read, in full:
+>
+> | Source file | Lines | Read |
+> |---|---:|---:|
+> | `Schema/SchemaGuidCatalog.cs` | 425 | 425 |
+> | `Schema/SchemaGuidKind.cs` | 54 | 54 |
+> | `Schema/SchemaGuidSource.cs` | 31 | 31 |
+> | `Schema/SchemaGuidEntry.cs` | 22 | 22 |
+> | `SecureAD.Evidence/CapturedSchemaGuidReader.cs` | 267 | 267 |
+>
+> 799 of 799 lines, 100%. The reader was read in full to settle the layer boundary on evidence
+> rather than during drafting; it was then ruled **Evidence's** and is documented in no layer today,
+> which is `P-37`. Documents read whole alongside them:
+> `docs/next/S-3-schema-guid-catalogue.md` (412/412, now deleted) and
+> `docs/areas/what-a-permission-means.md` (109/109).
+
+
