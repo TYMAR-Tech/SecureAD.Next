@@ -840,7 +840,8 @@ public sealed class BundleWriterTests : IDisposable
     /// A run that excluded nothing leaves the table empty, which is what its absence means.
     /// </summary>
     /// <remarks>
-    /// Every table says what its absence means, per the rule <c>S-16</c> binds. For this one: no
+    /// Every table says what its absence means, per the rule <c>what-a-bundle-holds.md</c> binds.
+    /// For this one: no
     /// rows means no domain was excluded - it does not mean the attestation was not recorded.
     /// </remarks>
     [Fact]
@@ -914,6 +915,94 @@ public sealed class BundleWriterTests : IDisposable
 
         Assert.Contains(
             "attribute one object's permissions to another", error.Message, StringComparison.Ordinal);
+    }
+
+    // --- The canonicalization version is a fact about the entries, not about this build ---
+    //
+    // P-3. The column exists so a later build can refuse hashes it cannot reproduce, and
+    // BundleReader reads this column and nothing else to decide. It was bound to the static
+    // AceCanonicalization.Version while every entry carried its own, which made it a restatement
+    // of the reader's own constant rather than a fact about the stored bytes.
+    //
+    // Nothing could observe the difference while AceNormalizer was the only producer of an
+    // AceNormalizationResult - which it still is. 0021 puts a second one on the roadmap:
+    // re-analysis derives a new bundle from a sealed one, and that is the path that hands this
+    // writer entries it did not normalise.
+
+    /// <summary>
+    /// The stored version comes from the entries. Indistinguishable from the old behaviour today,
+    /// and the point of the change: it is now a property of what was written.
+    /// </summary>
+    [Fact]
+    public void TheStoredCanonicalizationVersionIsTheOneTheEntriesCarry()
+    {
+        var version = AceCanonicalization.Version - 1;
+
+        WriteBundle(writer =>
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var objectId = writer.WriteObject(ObjectWith(TextAttribute("cn", "Alice")));
+
+            WriteDescriptor(
+                writer,
+                objectId,
+                Descriptor(
+                    DaclState.Present,
+                    [AceCanonicalisedBy("S-1-5-21-500", 0x20000, version)],
+                    []));
+        });
+
+        Assert.Equal(
+            version,
+            ScalarLong("SELECT canonicalization_version FROM security_descriptor"));
+    }
+
+    /// <summary>
+    /// A descriptor whose entries were canonicalised by two recipes has no version that describes
+    /// it: <c>ace_set_hash</c> covers the set as a whole. Recording either number would certify a
+    /// hash no build can reproduce, and the reader would open it and compare it against nothing.
+    /// </summary>
+    [Fact]
+    public void ADescriptorWhoseEntriesCarryTwoVersionsIsRefused()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => WriteBundle(writer =>
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var objectId = writer.WriteObject(ObjectWith(TextAttribute("cn", "Alice")));
+
+            WriteDescriptor(
+                writer,
+                objectId,
+                Descriptor(
+                    DaclState.Present,
+                    [
+                        AceCanonicalisedBy("S-1-5-21-500", 0x20000, AceCanonicalization.Version),
+                        AceCanonicalisedBy("S-1-5-21-501", 0x20000, AceCanonicalization.Version - 1),
+                    ],
+                    []));
+        }));
+
+        Assert.Contains("canonicalization versions", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// An empty entry set keeps this build's constant, and that is correct rather than a fallback:
+    /// there is no entry to ask, and the set hash over nothing was produced by this build.
+    /// </summary>
+    [Fact]
+    public void ADescriptorWithNoEntriesRecordsThisBuildsVersion()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var objectId = writer.WriteObject(ObjectWith(TextAttribute("cn", "Alice")));
+
+            WriteDescriptor(writer, objectId, Descriptor(DaclState.Empty, [], []));
+        });
+
+        Assert.Equal(
+            AceCanonicalization.Version,
+            ScalarLong("SELECT canonicalization_version FROM security_descriptor"));
     }
 
     public void Dispose()
@@ -1401,6 +1490,15 @@ public sealed class BundleWriterTests : IDisposable
         AliceGuid,
         AceType.AccessAllowed, trustee, mask, null, null, inherited, 0, 0,
         $"hash-{trustee}-{mask}-{inherited}", AceCanonicalization.Version);
+
+    /// <summary>
+    /// An entry stamped with a canonicalization version of the caller's choosing, so a descriptor
+    /// carrying a recipe this build did not produce can be put through the writer.
+    /// </summary>
+    private static CanonicalAce AceCanonicalisedBy(string trustee, int mask, int version) => new(
+        AliceGuid,
+        AceType.AccessAllowed, trustee, mask, null, null, false, 0, 0,
+        $"hash-{trustee}-{mask}-{version}", version);
 
     /// <summary>
     /// The same, with the ACE type chosen by the caller, so a type this product does not name can

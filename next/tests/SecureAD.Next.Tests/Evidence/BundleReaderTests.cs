@@ -228,6 +228,73 @@ public sealed class BundleReaderTests : IDisposable
             StringComparison.Ordinal);
     }
 
+    // --- A bundle whose tables this build does not know ---
+    //
+    // The sibling of the three checks above, and until 2026-09 it had none. The two version
+    // refusals are written as a pair in one paragraph of BundleReader's remarks and only one of
+    // them was ever reached by a test - P-19's shape again, a rule applied to a list of two with
+    // the second entry never re-asked. The seam was already built and working; nothing was hard
+    // about this except noticing it was missing.
+    //
+    // schema_version is edited rather than a bundle being written by an older build, for the same
+    // reason the canonicalization tests do it, and the bundle is re-sealed afterwards: an earlier
+    // build sealed its own output correctly, so a stale bundle arrives intact.
+
+    [Fact]
+    public void ABundleWrittenAgainstAnEarlierSchemaIsRefusedUnderItsOwnCode()
+    {
+        WriteABundleWrittenAgainstSchema(BundleSchema.Version - 1);
+
+        using var opening = Open();
+
+        Assert.Equal("Evidence.SchemaVersionUnsupported", opening.Error.Code);
+    }
+
+    [Fact]
+    public void ABundleWrittenAgainstAnEarlierSchemaIsNotOpened()
+    {
+        WriteABundleWrittenAgainstSchema(BundleSchema.Version - 1);
+
+        using var opening = Open();
+
+        Assert.False(opening.IsSuccess);
+    }
+
+    /// <summary>
+    /// A later schema is refused as firmly as an earlier one. Nothing here is kept backward
+    /// compatible, and a build reading a bundle from a newer one is the case where guessing would
+    /// be most tempting and least safe.
+    /// </summary>
+    [Fact]
+    public void ABundleWrittenAgainstALaterSchemaIsAlsoRefused()
+    {
+        WriteABundleWrittenAgainstSchema(BundleSchema.Version + 1);
+
+        using var opening = Open();
+
+        Assert.Equal("Evidence.SchemaVersionUnsupported", opening.Error.Code);
+    }
+
+    /// <summary>
+    /// The refusal names both numbers, for the reason its canonicalization sibling does.
+    /// </summary>
+    [Fact]
+    public void TheSchemaRefusalNamesTheVersionStoredAndTheVersionThisBuildReads()
+    {
+        WriteABundleWrittenAgainstSchema(BundleSchema.Version - 1);
+
+        using var opening = Open();
+
+        Assert.Contains(
+            (BundleSchema.Version - 1).ToString(),
+            opening.Error.Description,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            BundleSchema.Version.ToString(),
+            opening.Error.Description,
+            StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// A bundle holding no descriptor holds no hash that could be stale. Refusing it would report
     /// a version problem to an operator whose problem is that nothing was captured.
@@ -511,6 +578,20 @@ public sealed class BundleReaderTests : IDisposable
 
         WithTheEvidenceOpen(
             $"UPDATE security_descriptor SET canonicalization_version = {version}");
+
+        BundleSealing.Seal(
+            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+    }
+
+    /// <summary>
+    /// Writes a bundle recorded as having been written against schema <paramref name="version"/>,
+    /// sealed as the build that wrote it would have sealed its own output.
+    /// </summary>
+    private void WriteABundleWrittenAgainstSchema(int version)
+    {
+        WriteABundle();
+
+        WithTheEvidenceOpen($"UPDATE bundle SET schema_version = {version}");
 
         BundleSealing.Seal(
             BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));

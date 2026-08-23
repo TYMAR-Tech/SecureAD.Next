@@ -777,7 +777,12 @@ public sealed class ObjectPermissionsTests : IDisposable
         InheritanceFlags: 0,
         PropagationFlags: 0,
         AceHash: $"{type}-{sid}-{mask:X8}",
-        CanonicalizationVersion: 1);
+        // The version this build actually produces, not a literal. It said 1 until 2026-09, while
+        // AceCanonicalization.Version was 3, and nothing noticed because BundleWriter overwrote the
+        // entry's claim with the build's constant on the way in - the P-3 defect. With the writer
+        // recording what the entries carry, a literal 1 here writes a bundle this build cannot
+        // reproduce and BundleReader correctly refuses to open it.
+        CanonicalizationVersion: AceCanonicalization.Version);
 
     private static RunCoverage OneDomainRead() =>
         RunCoverage.Of(

@@ -658,7 +658,7 @@ public sealed class BundleWriter : IDisposable
                 command.Parameters.AddWithValue("$canonical", normalization.DaclWasCanonical ? 1 : 0);
                 command.Parameters.AddWithValue("$protected", normalization.IsDaclProtected ? 1 : 0);
                 command.Parameters.AddWithValue("$setHash", AceSetHash.Compute(normalization.Aces));
-                command.Parameters.AddWithValue("$version", AceCanonicalization.Version);
+                command.Parameters.AddWithValue("$version", CanonicalizationVersionOf(normalization));
             });
 
         for (var ordinal = 0; ordinal < normalization.Errors.Count; ordinal++)
@@ -677,6 +677,66 @@ public sealed class BundleWriter : IDisposable
 
         for (var ordinal = 0; ordinal < normalization.Aces.Count; ordinal++)
             WriteAce(descriptorId, ordinal, normalization.Aces[ordinal]);
+    }
+
+    /// <summary>
+    /// The canonicalization version to record against a descriptor, taken from the entries
+    /// themselves rather than from this build.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The column exists so a later build can refuse hashes it cannot reproduce</b>, and
+    /// <see cref="BundleReader"/> reads this column and nothing else to decide. Binding it to
+    /// <see cref="AceCanonicalization.Version"/> made it a restatement of the reader's own constant
+    /// rather than a fact about the stored bytes - a self-certifying loop, closed only by the call
+    /// graph happening to contain one producer of an <see cref="AceNormalizationResult"/>. That is a
+    /// property of today's callers and not something this writer asserts, and
+    /// <c>docs/decisions/0021-re-analysis-produces-a-new-bundle.md</c> puts a second producer on the
+    /// roadmap: re-analysis derives a new bundle from a sealed one, which is exactly the path that
+    /// would hand this writer entries it did not normalise.
+    /// </para>
+    /// <para>
+    /// <b>A set carrying more than one version is refused rather than reduced.</b> A descriptor
+    /// whose entries were canonicalised by two recipes is not a descriptor this product can hash:
+    /// <c>ace_set_hash</c> covers the set as a whole, so there is no single version that describes
+    /// it and picking one would certify a value no build can reproduce. This is a refusal for the
+    /// same reason the reader's is - the alternative is a bundle that opens and compares equal to
+    /// nothing.
+    /// </para>
+    /// <para>
+    /// <b>An empty set keeps this build's constant</b>, and that is correct rather than a fallback.
+    /// There is no entry to ask, and the set hash over nothing was produced by this build.
+    /// </para>
+    /// </remarks>
+    /// <param name="normalization">The normalized descriptor being written.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The entries carry more than one canonicalization version.
+    /// </exception>
+    private static int CanonicalizationVersionOf(AceNormalizationResult normalization)
+    {
+        if (normalization.Aces.Count == 0)
+            return AceCanonicalization.Version;
+
+        var version = normalization.Aces[0].CanonicalizationVersion;
+
+        foreach (var ace in normalization.Aces)
+        {
+            if (ace.CanonicalizationVersion != version)
+            {
+                var found = normalization.Aces
+                    .Select(a => a.CanonicalizationVersion)
+                    .Distinct()
+                    .Order();
+
+                throw new InvalidOperationException(
+                    $"A descriptor's entries carry canonicalization versions "
+                    + $"{string.Join(", ", found)}. One descriptor is hashed as one set, so a set "
+                    + "produced by two recipes has no version that describes it, and recording "
+                    + "either would certify a hash no build can reproduce.");
+            }
+        }
+
+        return version;
     }
 
     /// <summary>
