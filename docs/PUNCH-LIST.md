@@ -157,21 +157,38 @@ Recorded so they are not lost. Each belongs to its own pass.
 | P-27 | The surface register misstates F6 and F17 against the code — S-18's *What is owed* was checked and two of its three claims are false | evidence/run library | open |
 | P-29 | `RunComparability` is written and nothing calls it — the run library, drift summary, compare window, acceptance import and baseline marking are the five doors owed | evidence/run library | open |
 | P-30 | A point-in-time review is owed: what the product does today, each accepted decision in one line, and where earlier decisions have been overtaken | documentation | decision |
-| P-31 | Three of the four Evidence layer documents carry no capability table, so their area files cannot be trimmed and cycle step 4 is unfinished for the subsystem | evidence | open |
+| P-31 | Three Evidence layer documents carry no capability table, and the ten that exist elsewhere are bound by nothing | evidence · documentation | decision |
 | F-0056-1 | No pre-capture total of unestablished facts exists | evidence/coverage | open |
 | P-18 | `CaptureRunEndToEndTests` fails intermittently on a disposed SQLite handle | tests | open |
 
-**P-31 detail, because it is the one gap that makes the Evidence pass look finished when it is not.**
-The deletions are complete — `S-16` and `S-18` are gone and every surviving mention of either is a
-deliberate historical citation inside a block quote. The unfinished half is the other direction.
-Cycle step 4 requires the area file's capability table to be carried across into the layer document,
-verbatim, with its test names and lab dates; only then can the area file be trimmed. Ten of the
-twelve layer documents outside Evidence carry one. **Three of the four Evidence documents do not** —
-`the-bundle-on-disk.md`, `run-identity-and-coverage.md` and `whether-two-runs-compare.md`; only
-`what-a-bundle-holds.md` does. Nothing is lost, because `docs/areas/what-the-run-covered.md` still
-holds fifteen rows and the other area files hold theirs, but until the tables move, no Evidence area
-file may be trimmed. `permission-requirements.md` and `how-a-connection-is-opened.md` are missing one
-too, and should be checked at the same time rather than found separately later.
+**P-31 detail. The first version of this entry was wrong and was corrected before the next sitting
+read it.** It said the Evidence area files could not be trimmed until the capability tables moved.
+They are not trimmed at all: `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` requires every
+area file to keep *What is decided*, *What is built* and *What has not been discussed*, and
+`LabConfirmationColumnTests.EveryBuiltTableCarriesTheLabColumn` enforces the lab column on the same
+table. **The cycle's *carry the capability table across* is a copy, not a move.** The claim was
+written from the cycle text without reading the gate that governs it.
+
+The deletions are complete — `S-16` and `S-18` are gone, and every surviving mention of either is a
+deliberate historical citation inside a block quote.
+
+What is actually open is two questions, and the second is larger than the first.
+
+- **Three Evidence layer documents carry no capability table**: `the-bundle-on-disk.md`,
+  `run-identity-and-coverage.md`, `whether-two-runs-compare.md`. Only `what-a-bundle-holds.md` does.
+  Ten of the twelve layer documents in `kernel`, `audit` and `connect` do; `permission-requirements.md`
+  and `how-a-connection-is-opened.md` are the other two that do not.
+- **Nothing binds a layer document's capability table.** `AreaFileGateTests` and
+  `LabConfirmationColumnTests` both scan `docs/areas` only, and the per-document gates bind types,
+  members and marker tables — not capability rows. So the ten tables that do exist name test methods
+  that no check resolves. A test renamed out from under one of them fails nothing, which is `P-19`'s
+  shape and the precise failure `PunchListIdentifierTests` was written for one file over.
+
+**Adding three more unbound tables would make the problem bigger, so this is a decision and not a
+chore.** Either bind them — one gate resolving every capability citation in the layer documents
+against the test assembly, which `AreaFileGateTests` already has the code for — or decide the layer
+should cite the area file instead of restating it, and correct the cycle text in `_HANDOFF.md`. The
+ten existing tables settle nothing on their own, because unbound is how they all got there.
 
 **Where S-18's findings went.** `S-18` was deleted when
 [`run-identity-and-coverage.md`](evidence/run-identity-and-coverage.md) and

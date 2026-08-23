@@ -146,14 +146,23 @@ PowerShell's location.
 `RunStateNames` (92) and `RunCompletionReader` (73) are its inputs and **none has been read**;
 `_COVERAGE.md` records all three at zero.
 
-**The deletions are complete and the carry-across is not, which is `P-31`.** `S-16` and `S-18` are
-gone and every surviving mention of either is a deliberate historical citation in a block quote. But
-cycle step 4 — carry the area file's capability table across verbatim, then trim the area file — was
-skipped for three of the four Evidence documents. Ten of the twelve layer documents outside Evidence
-carry a capability table; inside Evidence only `what-a-bundle-holds.md` does. **No Evidence area file
-has been trimmed, and none may be until the tables move.** This was found by asking whether the
-deletions were complete and checking the opposite direction as well, which is the only reason it did
-not become the fourth pass to leave the subsystem looking finished.
+**The deletions are complete. `P-31` is what is not, and the first version of `P-31` was itself
+wrong.** `S-16` and `S-18` are gone and every surviving mention of either is a deliberate historical
+citation in a block quote. `P-31` was then recorded as *the area files cannot be trimmed until the
+capability tables move* — false, and written from the cycle text without reading the gate that
+governs it. `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` requires every area file to keep
+its *What is built* table permanently, so **carry the capability table across is a copy, not a move.**
+
+What is genuinely open is larger and is a decision. Three Evidence layer documents carry no
+capability table, and **nothing binds the ten that do exist** — `AreaFileGateTests` and
+`LabConfirmationColumnTests` scan `docs/areas` only, and the per-document gates bind types, members
+and marker tables rather than capability rows. So ten layer documents name test methods that no check
+resolves. Adding three more would enlarge that, which is why the next sitting decides between binding
+them all with one gate and having layer documents cite the area file instead of restating it.
+
+**Both false claims in this pass have the same shape**, and it is worth stating once: a rule was read,
+the code that enforces it was not, and the consequence was written as though it followed. The
+correction each time came from reading the gate rather than the guidance.
 
 **Six punch-list items were closed in the second sitting, and three of them were code.** The branch
 is no longer documentation-only: the owner's ruling is that the documentation-only rule is a
