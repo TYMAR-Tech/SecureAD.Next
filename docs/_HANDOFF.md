@@ -251,12 +251,17 @@ content. One was misread that way.
 
 **When a rule is applied to a list, check every entry before believing the list is done.** This is
 `P-19`'s shape and it has now appeared four times, twice in gates that were *narrower than their own
-names*. `NoDocumentClaimsADateThatHasNotHappened` matched full dates only, so a bare `2026-09`
-written in August passed. `NoDocumentLeavesADatePlaceholderUnfilled` matched `XX` under
-`StringComparison.Ordinal`, so a lowercase `2026-09-xx` passed. Both were widened; between them they
-found seven wrong claims, including three lab verification dates that had never been filled in.
-**Two checks can each be narrower than their names in ways that overlap, leaving a gap neither name
-admits to.**
+names*. `NoDocumentClaimsADateThatHasNotHappened` matched full dates only, so a bare year-and-month
+written a month early passed it. `NoDocumentLeavesADatePlaceholderUnfilled` matched an uppercase
+placeholder under `StringComparison.Ordinal`, so a lowercase one passed. Both were widened; between
+them they found seven wrong claims, including three lab verification dates that had never been filled
+in. **Two checks can each be narrower than their names in ways that overlap, leaving a gap neither
+name admits to.**
+
+*Neither example is written out here, and that is the gate working.* Quoting the offending forms in
+this file made it fail — and the first draft of this section did exactly that and was committed red.
+The right repair was to describe the shapes rather than to add an exception, because an allowlist is
+how a gate dies.
 
 **A convention is not a constraint — check which one you are enforcing.** The documentation-only rule
 exists to keep rewrite diffs reviewable. It was twice used to decline work the owner wanted done, on
