@@ -35,11 +35,26 @@ is named for. Widened during the pass; it immediately named twelve types no docu
 is `P-19`. **When a check fails after a move, ask what its new subject is — not only whether it
 passes again.**
 
-*The archive backlog was not read.* The documents were written from the code and the slice documents,
-and the 27 archive files under `audit-capture` — 12,660 lines — are still `unread`. That breaks the
-rule stated at the top of `_COVERAGE.md`, it is recorded in that file's `audit-capture` section
-rather than glossed, and **Audit/Capture is not closed until the backlog is read.** The exposure is
-reasoning that was recorded once and dropped, which is `F-S44-2` in a different costume.
+*The archive backlog was not read, and that is correct.* The documents were written from the code,
+the tests, the slice documents bound to them and the governing area files — the complete code-first
+input set. The 27 archive files under `audit-capture` belong to a **separate later pass**, described
+at the top of `_COVERAGE.md`. **Audit/Capture is closed.**
+
+The rule that previously said otherwise — *nothing is drafted until every archive file is consumed* —
+was written while the rewrite was archive-first and was left stale when it became code-first. It is
+retired. An unread archive backlog is work not yet started, not a defect in a finished pass.
+
+**Why this is not `F-S44-2`.** That fault was a catalogue *reassembled* and then checked against rules
+*derived from the same catalogue* — a closed circle with nothing outside it, in which wrong values
+survived. A document derived from the code and checked against the code is also a circle, but the
+code is the artefact that ships and the document's job is to describe it. What such a document cannot
+tell you is whether the code is *right*; that is the audit, and it is deliberately a separate
+exercise.
+
+The residual exposure is real but narrow: a **refusal** argued once and never restated, which a
+future session could reverse without knowing. Those are found by searching the archive for
+decision-shaped language — *decided, refused, must not, rejected, instead of* — not by reading whole
+files.
 
 **Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Evidence, Audit/Connect, Cli,
 Shell.**

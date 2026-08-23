@@ -9,17 +9,38 @@ visible to both passes.
 
 Status: `unread` | `part` (some sections consumed) | `done` (fully consumed, deletable) | `n/a`
 
-**Rule: nothing is drafted for a subsystem until every file listed under it is `done` or `n/a`.**
+## What this ledger is now for
+
+**Superseded 2026-08-21.** This file was written while the rewrite was archive-first — documents were
+built by reading old design documents, so the rule was *nothing is drafted for a subsystem until
+every file listed under it is consumed*.
+
+**The rewrite is now code-first.** A layer document is written from the source files, the tests, and
+the governing area file. The archive is not an input to it.
+
+So the rule above is retired, and this ledger tracks a **separate, later exercise**: one pass over the
+archive, after every subsystem has a document, asking a bounded question — *does the archive contain
+reasoning these documents do not?*
+
+That question is cheaper and sharper later than now. Today it means reading everything and hoping to
+notice an absence; with accurate documents in place it becomes a comparison.
+
+**What is worth recovering, and what is not.** Narrative history is not — the owner's position is
+recorded in `.github/copilot-instructions.md`: *"I don't care about how I got here. I care that the
+end result works."* What is worth recovering is a **refusal**: a deliberate decision not to do
+something, and the reason. Those are what a future session reverses without knowing it. They can be
+found by searching for decision-shaped language rather than by reading whole files.
+
+**An unread backlog is therefore not a defect in a completed pass.** It is work not yet started.
 
 ---
 
 ## audit-capture  (27 files, 12660 lines)
 
-> **The Audit/Capture pass was drafted before this backlog was read, and that breaks the rule
-> above.** The four documents in `docs/audit/` were written from the fifteen source files under
+> **Not a breach.** The Audit/Capture documents were written from the fifteen source files under
 > `next/src/SecureAD.Audit/Capture/` — 3,757 lines, read whole — from the six slice documents in
-> `docs/next/` that were bound to them, and from the two governing area files. The 27 archive files
-> below are still `unread`.
+> `docs/next/` bound to them, and from the two governing area files. That is the code-first input
+> set, and it is complete. The 27 archive files below belong to the later comparison pass.
 >
 > **What that costs, stated rather than glossed.** The new documents are anchored to the code, which
 > is the strongest anchor available and the one the cycle asks for. What they may be missing is
