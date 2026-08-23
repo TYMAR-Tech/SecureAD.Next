@@ -104,30 +104,16 @@ mismatch.
 
 ## The run states
 
-Decision [`0028`](../decisions/0028-one-run-state-vocabulary.md). Each is reached by the procedure
-in the third column, in that order, and the mechanism the procedure leans on is decided in
-[`0029`](../decisions/0029-a-run-that-ends-badly-says-so.md).
-
-<!-- STATES:BEGIN -->
-
-| State | Meaning | How it is observed |
-|---|---|---|
-| Sealed | The audit finished and its evidence is intact | The evidence file is present and its seal verifies |
-| Damaged | The evidence is there and cannot be trusted | The evidence file is present and the seal is absent, unreadable or does not match |
-| Failed | The audit ended in an error it recorded | No evidence file, and the run outcome file records a failure |
-| Cancelled | The operator stopped the audit | No evidence file, and the run outcome file records a cancellation |
-| InProgress | The audit is running now | No evidence file, no outcome file, and something holds the partial file open |
-| Interrupted | The audit stopped without recording why | No evidence file, no outcome file, and nothing holds the partial file |
-
-<!-- STATES:END -->
+**Moved.** The six words of `RunState`, the procedure that observes each one, the outcome file
+and the seal are all read off the bundle directory, so they are described in
+[`the-bundle-on-disk.md`](../evidence/the-bundle-on-disk.md) with the file names they depend on.
+The `STATES` table moved with them, and `BundleOnDiskDocumentationTests` binds it there. Nothing
+here may carry a second copy: two descriptions of one vocabulary is what this rewrite exists to
+end.
 
 **Only a finished run has coverage.** `RunSummary.OfCompletedRun` and `RunSummary.OfUnfinishedRun`
 make *sealed with no coverage* and *unfinished with coverage* unbuildable, which is what actually
 prevents the predecessor's baseline defect rather than the runtime check that also exists.
-
-**The outcome file records only a bad ending**, so `RunOutcome` has two members and no member for
-success. A finished run is already saying it succeeded by having sealed evidence, and a second
-artefact repeating that would be a second answer to one question.
 
 ## What each piece is called
 
@@ -207,16 +193,8 @@ SYSVOL qualifies because the policy list comes from LDAP before a single file is
 that could not read three folders knows which three, by name and identifier. A record that said
 *partial* without naming them would fail the test it was admitted under.
 
-`RunStateNames.Persist` writes a state down and `RunStateNames.Read` reads it back, returning a
-failure rather than a state for anything it does not recognise. `RunStateReader.Observe` follows
-the procedure above and returns a `RunStateObservation` carrying `RunStateObservation.State`,
-`RunStateObservation.Detail` and `RunStateObservation.RecordedUtc` — the moment the run recorded
-for itself, which is when a sealed run completed and when a run that ended badly stopped, and is
-null for a run that never recorded one. It is null rather than a plausible substitute so that the
-run library can place such a run without presenting the file system's answer as the run's own.
-`RunOutcomeFile.Write`, `RunOutcomeFile.Read`,
-`RunOutcomeFile.PathIn` and `RunOutcomeFile.FileName` are the outcome file, whose contents are
-`RunOutcomeContents.Outcome`, `RunOutcomeContents.Detail` and `RunOutcomeContents.EndedUtc`.
+`RunSummary` is the only run-lifecycle type still described here, because it is what the verdict
+reads rather than something observed on disk.
 
 `RunSummary.OfCompletedRun` and `RunSummary.OfUnfinishedRun` build what the verdict reads:
 `RunSummary.Profile`, `RunSummary.State`, `RunSummary.Coverage`, `RunSummary.MajorVersion` and
@@ -238,18 +216,26 @@ a `BaselineVerdict` carrying `BaselineVerdict.IsEligible` and `BaselineVerdict.E
 
 ## What is owed
 
-**F6 is half of a row.** Deciding a run's state from its directory is built. Reading a run's
-recorded identity and coverage *out of the evidence database* is not, because the bundle's schema
-is being rebuilt after review and this session was told to leave it alone. `RunStateNames.Read`
-and `RunCoverage.Of` are the interpretation half and are ready for the row that queries.
+**Checked against the code 2026-09, and two of the three claims this section made were false.** They
+were written on 2026-08-12 and describe seams built afterwards and never re-read. The corrections are
+below; the reasoning is `P-27`.
 
-**Nothing writes an outcome file yet.** `RunOutcomeFile.Write` exists and has no caller. The
-obligation lands on whatever drives a run, at inventory row B20, and until it is met every badly
-ended run reports as `Interrupted` — which is true, and less useful than it will be.
+**Nothing calls `RunComparability`.** *Still true.* The rule is written once and the five doors that
+must adopt it do not exist yet. That is the honest statement of where the rebuild is, and it is what
+the surface register records against F17 — the one entry of the three that stands.
 
-**Nothing calls `RunComparability`.** The rule is written once and the five doors that must adopt
-it do not exist yet. That is the honest statement of where the rebuild is, and it is what the
-surface register records against F17.
+**~~Nothing writes an outcome file yet.~~ It does.** `CaptureRun.End` calls `RunOutcomeFile.Write` at
+`CaptureRun.cs:293`, on every path that ends a capture badly. The consequence this section drew —
+that until then every badly ended run reports as `Interrupted` — went with it: a failed run reports
+`Failed` and a cancelled one `Cancelled`.
+
+**~~F6 is half of a row.~~ The read half is built.** `BundleReader` reads one `domain_coverage` row
+per declared domain, rebuilds each as a `DomainCoverage`, and returns `RunScope.Of`. The one piece
+absent is a reconstructed `CoverageId`, and it is **refused deliberately** rather than unbuilt: the
+domains behind the hash are not in the `bundle` row, so building one there would hand back a coverage
+identity with an empty declaration — the half-populated value `CoverageId` exists to prevent. The
+reason given here for the gap, that the schema was mid-rebuild, is stale; the schema is built and
+described by [`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md).
 
 ## Verified-safe
 

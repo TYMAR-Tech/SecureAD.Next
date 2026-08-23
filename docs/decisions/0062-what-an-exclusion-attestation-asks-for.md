@@ -51,7 +51,7 @@ later, with the operator unavailable and the screen long gone.
 [`0001`](0001-no-backward-compatibility.md) there are no bundles in the field to migrate, so the
 table costs nothing today and cannot be added retroactively to evidence already taken.
 
-**Every table says what its absence means**, per the rule `S-16` binds. For this one: no rows means
+**Every table says what its absence means**, per the rule `what-a-bundle-holds.md` binds. For this one: no rows means
 no domain was excluded - it does not mean the attestation was not recorded.
 
 **A report handed to an auditor can carry the exclusions**, and whether it must is `B4` of the

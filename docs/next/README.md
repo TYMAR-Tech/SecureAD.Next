@@ -87,7 +87,8 @@ suite covering the product.
 
 If the answer names a change — adding a table, renaming a member, removing an enum value — the check
 is **generative** and belongs in the test suite. `HistoricalRecordDocumentationTests` reads the
-`CREATE TABLE` statements out of `BundleSchema.cs` and holds `S-16` to them, so a twelfth table fails
+`CREATE TABLE` statements out of `BundleSchema.cs` and holds
+[`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md) to them, so a twelfth table fails
 the build until it is described. `GoverningDocumentTests` globs `next/src` and holds
 `READING-ORDER.md` to what is there. `DecisionIndexTests` holds `docs/DECISIONS.md` to the records it
 is generated from.
@@ -300,8 +301,8 @@ written down yet, so it is the owner's risk to take rather than a silent one.
 > half was rebuilt at **S-25** on 2026-08-13: descriptors are deduplicated on a cryptographic hash
 > of their bytes with entry sets held once each, a measured 4.81 GB down to 1.24 GB per 100,000
 > objects; the raw bytes are stored; and an object whose descriptor could not be read at all now has
-> a row saying so. `BundleSchema.cs` no longer holds pre-review work. `S-16` describes what the code
-> creates, in both directions.
+> a row saying so. `BundleSchema.cs` no longer holds pre-review work. `what-a-bundle-holds.md`
+> describes what the code creates, in both directions.
 >
 > **Read the decision records, not that code.** The inventory rows carry `rebuilding after review` for
 > the same reason. It has not been deleted because it still holds work that survives — the bundle
@@ -521,13 +522,16 @@ whether anything still holds the partial file open — a question the operating 
 free, and one that needs no cleaning up after a crash. `0029` also restates the partial-file rename
 rule, which had been stranded in `0019` under a supersession marker that `0020` never made good.
 
-**Nothing still runs, and this did not change that either.** `RunComparability` has no caller,
-because the library, the drift card, compare, acceptance import and baseline marking do not exist.
-`RunOutcomeFile.Write` has no caller either, and until a run driver at B20 calls it every badly
-ended run reports as interrupted — true, and less useful than it will be. F6 is half a row: deciding
-a state from a directory is built, and reading a run's recorded identity out of the evidence
-database waits on the bundle. All three are recorded against their rows rather than left to look
-finished.
+**One of these three is still true, and the other two were checked in September and are not.**
+`RunComparability` has no caller, because the library, the drift card, compare, acceptance import and
+baseline marking do not exist — that stands. `RunOutcomeFile.Write` **does** have a caller:
+`CaptureRun.End` writes the file on every path that ends a capture badly, so a failed run reports
+`Failed` and a cancelled one `Cancelled` rather than interrupted. And F6's read half is **built** —
+`BundleReader` rebuilds a `DomainCoverage` per declared domain and returns a `RunScope`, whose own
+summary is *"read back out of its bundle."* The one absent piece, a reconstructed `CoverageId`, is
+refused deliberately rather than unbuilt, because the domains behind the hash are not in the `bundle`
+row. Both stale claims described seams built after they were written and never re-read; the reasoning
+is `P-27`.
 
 **The decision records were read against each other for the first time on 2026-08-12**, and the
 snapshot is at `POINT-IN-TIME-REVIEW.md`, with what the cross-reading
@@ -684,14 +688,16 @@ among them — a gap in the rule catalogue, not in capture — and six rules nee
 in the directory can answer.
 
 **The bundle schema was rebuilt at C1** — `S-24-the-audit-database-schema.md`,
-in progress. Two governing documents described different schemas: `S-16` listed a row per object per
+in progress. Two governing documents described different schemas: `S-16` — the retired slice, since
+consumed into [`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md) and
+[`the-bundle-on-disk.md`](../evidence/the-bundle-on-disk.md) — listed a row per object per
 attribute and [`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md) replaced that with
 typed columns the following day, and the committed code implemented the shape that was replaced.
 `0022` governs — not because it is newer, but because `S-16`'s table pair rested on a distinction its
 own mechanism does not record: `completeness = NotReturned` is provably identical to *has no values*.
 `0022`'s **stated reason** was nonetheless wrong, and the real one is stronger — Active Directory
 omits an absent attribute without saying why, so which it was is not observable at capture at all.
-`S-16`, `0022` and the schema now agree: an object is one row of typed columns derived from
+`what-a-bundle-holds.md`, `0022` and the schema now agree: an object is one row of typed columns derived from
 `CapturedAttributeCatalog`, each multi-valued attribute has a table to itself, and **nothing anywhere
 records why a value is missing.**
 

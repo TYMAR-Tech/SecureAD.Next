@@ -127,7 +127,9 @@ so an interrupted run has no file by that name to offer.
 > **The contradiction this walkthrough found.** `BundleLayout` records that a running run and a
 > crashed one *can* be told apart — `0029` decided the question is asked of the file system, not of a
 > record, by testing whether anything still holds the partial file open. `S-16` carried the opposite
-> claim for five days and has been corrected. The code was right and the document was stale, which is
+> claim for five days; it has been corrected and the section now lives in
+> [`the-bundle-on-disk.md`](../evidence/the-bundle-on-disk.md). The code was right and the document
+> was stale, which is
 > the direction this repository says to expect.
 
 ---

@@ -30,13 +30,6 @@ public sealed class RunComparabilityDocumentationTests
     [
         typeof(ProfileId),
         typeof(CoverageId),
-        typeof(RunState),
-        typeof(RunStateNames),
-        typeof(RunStateObservation),
-        typeof(RunStateReader),
-        typeof(RunOutcome),
-        typeof(RunOutcomeContents),
-        typeof(RunOutcomeFile),
         typeof(DomainReadOutcome),
         typeof(DomainCoverage),
         typeof(RunCoverage),
@@ -140,56 +133,20 @@ public sealed class RunComparabilityDocumentationTests
         }
     }
 
-    // --- the state table, both directions ------------------------------------------------------
-
-    [Fact]
-    public void EveryRunStateInTheCodeIsInTheDocument()
-    {
-        var documented = StateTable();
-
-        var missing = Enum.GetNames<RunState>()
-            .Where(name => !documented.Contains(name, StringComparer.Ordinal))
-            .ToList();
-
-        Assert.True(
-            missing.Count == 0,
-            $"{Document} does not explain: {string.Join(", ", missing)}.");
-    }
+    // --- the state table has moved, and must not come back -------------------------------------
 
     /// <summary>
-    /// A state in the document and not in the code would be a word an operator is told to expect
-    /// and never sees - which is how this session's second finding nearly reached the tree.
+    /// The run states are observed from files in the bundle directory, so they are described by
+    /// <c>docs/evidence/the-bundle-on-disk.md</c> and bound by
+    /// <c>BundleOnDiskDocumentationTests</c>. This check is the other half of that move: a
+    /// <c>STATES</c> table reappearing here would be a second description of one vocabulary, which
+    /// is the state the repository was left in when a document was drafted and the old one was not
+    /// cut in the same turn.
     /// </summary>
     [Fact]
-    public void EveryRunStateInTheDocumentIsInTheCode()
+    public void TheRunStateTableIsNotDescribedHereAsWell()
     {
-        var real = Enum.GetNames<RunState>();
-
-        var invented = StateTable()
-            .Where(name => !real.Contains(name, StringComparer.Ordinal))
-            .ToList();
-
-        Assert.True(
-            invented.Count == 0,
-            $"{Document} names states that do not exist: {string.Join(", ", invented)}.");
-    }
-
-    /// <summary>
-    /// Every state must say how it is told apart from the others. A state with no observation
-    /// behind it is one the product cannot actually reach, and the document is where that becomes
-    /// visible.
-    /// </summary>
-    [Fact]
-    public void EveryRunStateSaysHowItIsObserved()
-    {
-        foreach (var row in TableRows("STATES"))
-        {
-            var cells = Cells(row);
-
-            Assert.True(
-                cells.Length >= 3 && !string.IsNullOrWhiteSpace(cells[2]),
-                $"{cells[0]} does not say how it is observed.");
-        }
+        Assert.DoesNotContain("STATES:BEGIN", Read(), StringComparison.Ordinal);
     }
 
     // --- scanner self-tests --------------------------------------------------------------------
@@ -207,8 +164,20 @@ public sealed class RunComparabilityDocumentationTests
         Assert.Contains(nameof(RunComparability.Evaluate), Mentioned());
         Assert.True(Mentioned().Count > 40, "The mention scan found almost nothing to check against.");
         Assert.Equal(Enum.GetValues<ComparabilityOutcome>().Length, OutcomeTable().Count);
-        Assert.Equal(Enum.GetValues<RunState>().Length, StateTable().Count);
         Assert.Equal(5, FindingHeadings().Count);
+    }
+
+    /// <summary>
+    /// A marker block that is not there is a failure and never an empty result. Without this the
+    /// outcome checks could all pass against a table that had been moved to another document,
+    /// finding nothing wrong because they found nothing at all.
+    /// </summary>
+    [Fact]
+    public void AMissingTableIsAFailureRatherThanAnEmptyScan()
+    {
+        var thrown = Record.Exception(() => TableRows("STATES"));
+
+        Assert.NotNull(thrown);
     }
 
     [Fact]
@@ -300,10 +269,6 @@ public sealed class RunComparabilityDocumentationTests
             .Select(Cells)
             .Where(c => c.Length >= 3)
             .ToDictionary(c => c[1], c => c[2], StringComparer.Ordinal);
-
-    /// <summary>The state names the document lists.</summary>
-    private static List<string> StateTable() =>
-        TableRows("STATES").Select(r => Cells(r)[0]).ToList();
 
     /// <summary>
     /// The rows between a pair of markers, excluding the header and the separator, so the test

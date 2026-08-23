@@ -161,13 +161,29 @@ found by searching for decision-shaped language rather than by reading whole fil
 > | `BundleSealing.cs` | 197 | 197 |
 > | `BundleLayout.cs` | 132 | 132 |
 > | `ObjectPermissions.cs` | 560 | 704 |
+> | `Run/RunStateReader.cs` | 150 | 150 |
+> | `Run/RunOutcomeFile.cs` | 129 | 129 |
+> | `Run/CoverageId.cs` | 238 | 238 |
+> | `Run/RunHash.cs` | 36 | 36 |
+> | `Run/RunScope.cs` | 60 | 152 |
+> | `Run/RunStateNames.cs` | 0 | 92 |
+> | `Run/RunCompletionReader.cs` | 0 | 73 |
+> | `Run/RunLibrary.cs` | 0 | 378 |
+> | `Run/RunComparability.cs` | 0 | 217 |
 >
 > The 60 unread lines of `BundleWriter.cs` are `Execute`, `Pragma`, `ThrowIfFinished` and
 > `WriteGpoFileError` — parameter binding with no reasoning in it.
 >
+> **The four zero rows were named in `the-bundle-on-disk.md` without being read in full**, and that is
+> recorded rather than quietly left. `RunStateNames`, `RunCompletionReader` and `RunComparability`
+> were confirmed by signature and by call site, which is enough to say a member exists and not enough
+> to describe why it is shaped as it is. `run-identity-and-coverage.md` and
+> `whether-two-runs-compare.md` cannot be written until they are read whole — `RunComparability` in
+> particular, since its ordering *is* the decision `0027` records.
+>
 > **Not yet read:** `DirectoryTree.cs` (508), `ObjectListing.cs` (290), `CapturedSchemaGuidReader.cs`
-> (267), `ObjectAttributes.cs` (239), the whole of `Run/` (3,318 across 28 files), `Findings/` (726
-> across 7 files), and the seven small root files. Roughly 5,700 lines outstanding.
+> (267), `ObjectAttributes.cs` (239), the rest of `Run/` (~1,700 across the remaining files),
+> `Findings/` (726 across 7 files), and the seven small root files. Roughly 4,000 lines outstanding.
 
 | Status | Lines | File | Also |
 |---|---:|---|---|

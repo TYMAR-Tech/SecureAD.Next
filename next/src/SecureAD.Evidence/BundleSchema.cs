@@ -246,7 +246,7 @@ public static class BundleSchema
         // months later with the operator unavailable and the screen long gone.
         //
         // NO ROWS MEANS NO DOMAIN WAS EXCLUDED. It does not mean the attestation was not recorded.
-        // Every table says what its absence means, per the rule S-16 binds.
+        // Every table says what its absence means, per the rule what-a-bundle-holds.md binds.
         //
         // kind separates a domain the operator took out from one the forest named no writable
         // controller for. Both are exclusions under 0054, and

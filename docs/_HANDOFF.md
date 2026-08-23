@@ -81,13 +81,27 @@ and the branch is deliberately left mid-pass rather than pushed to a fluent-look
 *Done.* `docs/evidence/what-a-bundle-holds.md` (408 lines) — the schema, the table list, descriptor
 deduplication, the three ways to produce no entries, the writing order, and what is refused against
 what is recorded. `BundleDocumentationTests` and `HistoricalRecordDocumentationTests` retargeted onto
-it; `docs/next/README.md` repointed; `S-16` cut from 415 lines to 111, keeping only the two sections
-still owed a home and carrying a header note saying what moved and where. 2,160 tests green.
+it; `docs/next/README.md` repointed; `S-16` cut from 415 lines to 111.
 
-*Owed, in this order.* `the-bundle-on-disk.md` (takes what remains of `S-16`), then
-`how-a-bundle-is-read.md`, then `run-identity-and-coverage.md` and `whether-two-runs-compare.md`
-(which together consume `S-18`, still untouched at 354 lines). Reading state is in `_COVERAGE.md`
-under `evidence-bundle`; about 5,700 lines of source are outstanding, most of it `Run/`.
+*Done — second sitting.* `docs/evidence/the-bundle-on-disk.md` (223 lines) — the six files a bundle
+directory holds, the rename that stops a half-written one being read, the seal and its four
+outcomes, and the six run states with the procedure that observes each. Bound by
+`BundleOnDiskDocumentationTests`, fifteen checks, every table two-directional. **`S-16` is deleted**
+(111 lines), inbound references repointed, and the solution's document items corrected in both
+directions — including four `docs/kernel` documents the Kernel pass never added, which is the same
+defect recorded against Evidence one subsystem later. 2,174 tests green.
+
+**The `STATES` table moved with it, so the S-18 gate is already half split.** Run states are observed
+from files on disk, so they belong beside the file names rather than beside the comparability
+verdict; `RunComparabilityDocumentationTests` lost its three state checks and gained one asserting
+S-18 does **not** carry a `STATES` table, so a second copy cannot come back. `RunState`,
+`RunStateNames`, `RunStateObservation`, `RunStateReader`, `RunOutcome`, `RunOutcomeContents` and
+`RunOutcomeFile` left its component list. **The `OUTCOMES` half is still in S-18** and moves when
+`whether-two-runs-compare.md` is written.
+
+*Owed, in this order.* `how-a-bundle-is-read.md`, then `run-identity-and-coverage.md` and
+`whether-two-runs-compare.md` (which together finish consuming `S-18`, now 332 lines). Reading state
+is in `_COVERAGE.md` under `evidence-bundle`.
 
 **Three punch-list adjudications came out of the pass and are recorded in full.** `P-2` verified
 correct against the code. `P-3` decided — the mechanism is real, no bundle today carries a wrong
@@ -182,7 +196,32 @@ conclusion, arriving from the other direction.
 context is spent. Commit, update this file, and start fresh rather than pushing into the next
 subsystem.
 
-**`Measure-Object -Line` undercounts, and the Audit/Connect pass trusted it.** It reported theConnect folder as 4,113 lines when it is 4,943 — a 17% understatement that went straight into
+**A retarget is only real if the old target now fails.** When a table moves between documents,
+repoint the gate and then *prove the repoint*: point it at the document the table left and confirm it
+goes red. Done for the on-disk split — the misdirected gate failed ten checks naming *has no FILES
+table*, *has no SEAL table*, *has no STATES table*, rather than passing against an empty scan. A gate
+that parses a marker block it cannot find must throw, never return nothing; `TableRows` asserts on
+the marker for that reason, and both Evidence gates carry an `AMissingTableIsAFailureRatherThanAnEmptyScan`
+self-test. Two gates in this repository have already passed for months while measuring nothing.
+
+**A claim that something is *not built* is the least-verified sentence in this repository.** The
+gates check that every name in a document exists in the code. Nothing checks the reverse claim — that
+a capability is absent — because there is no name to look up. So *What is owed* sections rot
+invisibly while the paragraphs around them stay bound and true. S-18's was checked during the second
+Evidence sitting: **two of its three claims were false**, and one of them was what the surface
+register recorded against F6. Both described seams built after the section was written and never
+re-read. **Read the code for every unbuilt-work claim before carrying it into a successor document**,
+and expect roughly half of them to be stale. This is `P-27`.
+
+**PowerShell here-strings hang the terminal.** `@' ... '@` sent as a single line never terminates:
+the closing `'@` only counts at the start of a line, so the shell waits for input that is not coming
+and the session has to be killed. It looks exactly like a slow command. **Write document content
+with the file-editing tools and keep the terminal to commands that return** — and if a terminal call
+has to be cancelled, ask whether it hung before assuming the cancellation was a judgement on the
+content. One was misread that way.
+
+**Traps of the same family, one layer down.** `Measure-Object -Line` undercounts, and the
+Audit/Connect pass trusted it. It reported the
 `_COVERAGE.md` as a coverage claim, and it named the deleted `S-14` at 175 lines when git says 225.
 It appears to drop blank lines. **Use `@(Get-Content $f).Count`, or `git diff --numstat` for anything
 git already knows.** Worth its own line because the previous trap says *ask `git` for the numbers

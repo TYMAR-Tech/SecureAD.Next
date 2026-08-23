@@ -202,3 +202,46 @@ from the line above it:
 ```
 
 ---
+
+## D-7 — `RunHash` says the identities appear in folder names; they do not
+
+| | |
+|---|---|
+| **Status** | open |
+| **Found** | Evidence pass, second sitting |
+| **Where** | `next/src/SecureAD.Evidence/Run/RunHash.cs`, type remarks |
+| **Kind** | Stale XML comment in code |
+
+`RunHash`'s remarks justify sharing one hash routine between `ProfileId` and `CoverageId` like this:
+
+```
+They appear side by side in folder names and in the run library, and two identities of
+different shapes would look like a defect to an operator long before anyone noticed it was one.
+```
+
+**Neither identity appears in a folder name.** `RunLibrary.CreateRun` composes
+`{Sanitise(forestFqdn)}-{timestamp:yyyyMMdd-HHmmss}` — `ad.lab-20260819-232425` — and its own remarks
+say the opposite of what `RunHash` assumes: *"nothing reads meaning back out of it: what a bundle is
+evidence of is recorded inside the bundle, and a name is not evidence."*
+
+**Why it matters more than a wrong sentence.** The stated reason for sharing `RunHash` is that the
+two values are seen *side by side by an operator*. That reason is false, and the real one is better:
+they are compared as opaque strings by code, so a width or alphabet difference between them would be
+a defect nobody could see at all. The comment argues from a screen that does not exist, and it argues
+for the right conclusion — which is why it survived.
+
+**It was believed and used.** The `F-0079-6` adjudication rested partly on this comment, claiming a
+format change would rename directories. It would not. The claim was corrected in the punch list, and
+the conclusion held on its other leg, but the reasoning had to be rewritten after the fact.
+
+**Proposed fix.** Replace the folder-name justification with the real one:
+
+```
+Internal, and shared by ProfileId and CoverageId so that the width and alphabet of an identity
+cannot drift between the two. They are compared as opaque strings - RunScope.Identity groups on
+one of them - so a difference in shape would not look like a defect to anybody. It would simply
+stop matching.
+```
+
+
+---
