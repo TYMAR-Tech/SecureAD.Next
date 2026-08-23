@@ -10,7 +10,7 @@ closed set of outcomes instead. The decision itself is unchanged.
 `DaclState` had three members. `Present` means there are entries. `Null` means there is no DACL at
 all, which in Windows grants **everyone full control**. `Empty` means there is a DACL and it lists
 nothing, which grants **nobody anything**. Keeping those two apart is the whole reason the type
-exists - [`S-1`](../next/S-1-security-descriptor-parsing.md) says so, and `AceSetHash`'s own remarks
+exists - [security descriptors](../kernel/security-descriptors.md) says so, and `AceSetHash`'s own remarks
 lean on it: whether an empty set means *this object grants nothing* or *this object grants everyone
 everything* "is not this value's question - that is what the DACL state beside it answers."
 

@@ -242,7 +242,7 @@ visible, which is the next section.
 ### `ace_type` holds a number when the product has no name for the type
 
 `ace.ace_type` is `TEXT` and holds the member name — `AccessAllowed`, `AccessDeniedObject` — for the
-ten types [`S-1`](S-1-security-descriptor-parsing.md) names. For any other type byte **it holds the
+ten types [security descriptors](../kernel/security-descriptors.md) names. For any other type byte **it holds the
 number**: `0x12` is stored as `"18"`.
 
 **That is deliberate, and it is the only reason anything else in this schema can afford to ignore an

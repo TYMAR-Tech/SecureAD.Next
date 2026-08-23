@@ -18,7 +18,7 @@ namespace SecureAD.Kernel.Security;
 /// <b>Version 2</b> added <c>ace_type</c> to the hash inputs and to the ordering tiebreak. Version
 /// 1 hashed three of the four fields that define an ACE, so two ACEs differing only by type
 /// collided and one was silently dropped, and their relative order depended on the order they
-/// arrived in. See <c>docs/next/S-1-security-descriptor-parsing.md</c>, F-S1-2.
+/// arrived in. See <c>docs/kernel/security-descriptors.md</c>.
 /// </para>
 /// <para>
 /// <b>Version 3</b> added the callback ACE's <c>ApplicationData</c> - the condition bytes. Version

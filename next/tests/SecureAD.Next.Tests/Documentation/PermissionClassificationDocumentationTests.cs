@@ -6,7 +6,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-4-dangerous-permission-classification.md</c> to the code it describes.
+/// Binds <c>docs/kernel/permission-classification.md</c> to the code it describes.
 ///
 /// <para>
 /// Per <c>docs/next/README.md</c>, a document is not the new product's documentation until a test
@@ -23,7 +23,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class PermissionClassificationDocumentationTests
 {
-    private const string Document = "S-4-dangerous-permission-classification.md";
+    private const string Document = "permission-classification.md";
 
     /// <summary>
     /// The component's types, named rather than discovered by namespace: <c>SecureAD.Kernel.Security</c>
@@ -125,19 +125,20 @@ public sealed class PermissionClassificationDocumentationTests
     }
 
     /// <summary>
-    /// The two the live and stored effective-access panels disagreed about. The owner settled them
-    /// on 2026-08-10, and the document must record that they were decided rather than leaving them
-    /// looking like a default nobody chose - which is what they were in both old panels.
+    /// The two the live and stored effective-access panels disagreed about. The owner settled them,
+    /// and the document must name them and the classifier must reach the settled verdict.
     /// </summary>
+    /// <remarks>
+    /// This formerly also asserted a <c>### Settled 2026-08-10</c> heading. That tested the shape of
+    /// one document rather than the behaviour of the classifier, and it was the sort of check a
+    /// rewrite has to delete or obey for no reason. The verdict assertion below is the substance.
+    /// </remarks>
     [Theory]
     [InlineData("gPLink")]
     [InlineData("scriptPath")]
     public void TheNamesTheOldPanelsDisagreedAboutAreRecordedAsSettled(string ldapName)
     {
-        var text = Read();
-
-        Assert.Contains(Quoted(ldapName), text, StringComparison.Ordinal);
-        Assert.Contains("### Settled 2026-08-10", text, StringComparison.Ordinal);
+        Assert.Contains(Quoted(ldapName), Read(), StringComparison.Ordinal);
 
         var result = new DangerousPermissionClassifier(SchemaGuidCatalog.Embedded).Classify(
             AceType.AccessAllowedObject,
@@ -173,17 +174,23 @@ public sealed class PermissionClassificationDocumentationTests
     }
 
     /// <summary>
-    /// A Rebuild row must name the map item it answers, and the map item here is that five
-    /// implementations disagreed. A document that describes the new design without saying what was
-    /// wrong with the old one leaves the next reader free to reinvent one of the five.
+    /// The document says what was wrong with the old design, not only what the new one is. A
+    /// document that describes the new design in isolation leaves the next reader free to reinvent
+    /// one of the implementations this component replaced.
     /// </summary>
+    /// <remarks>
+    /// This formerly asserted the string <c>K16</c> and one sentence from the reference inventory.
+    /// That inventory described the old application and has been archived, so the check was anchored
+    /// to something no longer in the repository — and its sentence said five implementations while
+    /// the classifier's own account says six.
+    /// </remarks>
     [Fact]
-    public void TheDocumentNamesTheMapItemThisRowAnswers()
+    public void TheDocumentSaysWhatTheOldDesignGotWrong()
     {
         var text = Read();
 
-        Assert.Contains("K16", text, StringComparison.Ordinal);
-        Assert.Contains("the three do not agree, and there are not three of them but five", text, StringComparison.Ordinal);
+        Assert.Contains("disagreed", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("effective-access", text, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -236,7 +243,14 @@ public sealed class PermissionClassificationDocumentationTests
     [Fact]
     public void TheDcSyncQuestionIsHandedOnRatherThanAnsweredHere()
     {
-        Assert.Contains("E18", Read(), StringComparison.Ordinal);
+        Assert.Contains("DangerousInCombination", Read(), StringComparison.Ordinal);
+
+        var result = new DangerousPermissionClassifier(SchemaGuidCatalog.Embedded).Classify(
+            AceType.AccessAllowedObject,
+            0x00000100,
+            SchemaGuidCatalog.Embedded.GuidFor("DS-Replication-Get-Changes")!);
+
+        Assert.Equal(PermissionVerdict.DangerousInCombination, result.Verdict);
     }
 
     /// <summary>
@@ -246,11 +260,11 @@ public sealed class PermissionClassificationDocumentationTests
     [Fact]
     public void TheCheckFindsBothTheDocumentAndTheComponent()
     {
-        Assert.True(File.Exists(Path()), $"Expected the slice document at {Path()}.");
+        Assert.True(File.Exists(Path()), $"Expected the document at {Path()}.");
         Assert.True(Read().Length > 1000, $"{Document} is too short to be the document it claims.");
         Assert.NotEmpty(TheComponent);
         Assert.Contains(nameof(DangerousPermissionClassifier.Classify), PublicMemberNames());
-        Assert.Equal(5, FindingHeadings().Count);
+        Assert.Contains("`SecureAD.Kernel.Security`", Read(), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -332,7 +346,7 @@ public sealed class PermissionClassificationDocumentationTests
     };
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "kernel", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

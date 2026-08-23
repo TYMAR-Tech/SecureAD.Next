@@ -343,9 +343,9 @@ that runs to trace from, and gate 6 is not mechanically testable and is caught b
 all. Five components are done, all of them the kernel: K13, K14, K15, K16 and K17 —
 the security descriptor parser and ACE canonicaliser, the schema GUID catalogue that replaces the
 two tables K13 and K14 were, the dangerous-permission classifier, and the distinguished-name
-helpers. They are documented at [`S-1`](S-1-security-descriptor-parsing.md),
+helpers. They are documented at [security descriptors](../kernel/security-descriptors.md),
 [`S-2`](S-2-distinguished-name-manipulation.md), [`S-3`](S-3-schema-guid-catalogue.md) and
-[`S-4`](S-4-dangerous-permission-classification.md), each bound by a test. The gates themselves are
+[permission classification](../kernel/permission-classification.md), each bound by a test. The gates themselves are
 documented at `S-5` and `S-6`. Gate 5b
 stays blocked, though no longer for the reason first recorded: the shell ships and a run can be
 started from it, so the root exists. Nothing traces reachability from it.

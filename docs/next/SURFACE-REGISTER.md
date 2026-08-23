@@ -288,7 +288,7 @@ The forecasts are not carried forward. They were a genuine device and they did r
 findings came out of them, recorded where they were found: `F-S13-3` in
 `S-13`, `F-S7-42` in
 `S-7`, and `F-S4-5` in
-[`S-4`](S-4-dangerous-permission-classification.md). Each was the same lesson: a library reading a
+[permission classification](../kernel/permission-classification.md). Each was the same lesson: a library reading a
 library does not answer the question *what can something that runs reach*, so an entry must not come
 off on the strength of a consumer that is itself unreached.
 

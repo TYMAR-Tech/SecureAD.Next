@@ -16,7 +16,7 @@ rather than believed. One word in it is nevertheless wrong, and it is the load-b
 **Microsoft does not document this.**
 
 Verification against Microsoft Learn, recorded in full in
-[`S-4-dangerous-permission-classification.md`](../next/S-4-dangerous-permission-classification.md):
+[`permission-classification.md`](../kernel/permission-classification.md):
 
 - The Learn page for
   [`DS-Replication-Get-Changes-In-Filtered-Set`](https://learn.microsoft.com/en-us/windows/win32/adschema/r-ds-replication-get-changes-in-filtered-set)
