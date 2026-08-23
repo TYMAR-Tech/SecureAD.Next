@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.RegularExpressions;
 using Xunit;
 
@@ -322,52 +321,10 @@ public sealed class AreaFileGateTests
     }
 
     /// <summary>
-    /// Whether a citation names a test. Reflection over this assembly rather than a text scan,
-    /// because the question is whether the test is really there — a text scan would be satisfied by
-    /// the name appearing in a comment, which is how gate 5 came to pass while measuring nothing.
+    /// Whether a citation names a test. Shared with <see cref="CapabilityCitationTests"/>, which
+    /// asks the same question of the layer documents: two resolvers written separately drift apart,
+    /// and this repository has already been bitten by checks each narrower than their own names.
     /// </summary>
-    private static bool TestExists(string citation, out string reason)
-    {
-        var parts = citation.Split('.');
-        var typeName = parts[0];
-
-        var type = Assembly.GetExecutingAssembly()
-            .GetTypes()
-            .FirstOrDefault(t => t.Name == typeName && !t.IsNested);
-
-        if (type is null)
-        {
-            reason = "no such type in the test assembly";
-            return false;
-        }
-
-        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Where(IsTestMethod)
-            .ToList();
-
-        if (methods.Count == 0)
-        {
-            reason = "that type declares no tests, so it proves nothing";
-            return false;
-        }
-
-        if (parts.Length == 1)
-        {
-            reason = string.Empty;
-            return true;
-        }
-
-        if (methods.All(m => m.Name != parts[1]))
-        {
-            reason = $"'{typeName}' declares no test named '{parts[1]}'";
-            return false;
-        }
-
-        reason = string.Empty;
-        return true;
-    }
-
-    private static bool IsTestMethod(MethodInfo method) =>
-        method.GetCustomAttributes()
-            .Any(a => a.GetType().Name is "FactAttribute" or "TheoryAttribute");
+    private static bool TestExists(string citation, out string reason) =>
+        TestCitation.Resolve(citation, out reason);
 }
