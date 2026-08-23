@@ -175,9 +175,10 @@ found by searching for decision-shaped language rather than by reading whole fil
 > | `Run/ForestPartitionCoverage.cs` | 118 | 118 |
 > | `Run/RunSummary.cs` | 93 | 93 |
 > | `Run/ProfileId.cs` | 76 | 76 |
-> | `Run/RunStateNames.cs` | 0 | 92 |
-> | `Run/RunCompletionReader.cs` | 0 | 73 |
-> | `Run/RunLibrary.cs` | 0 | 378 |
+> | `Run/RunStateNames.cs` | 92 | 92 |
+> | `Run/RunCompletionReader.cs` | 73 | 73 |
+> | `Run/RunLibrary.cs` | 378 | 378 |
+> | `Run/RunListing.cs` | 51 | 51 |
 >
 > The 60 unread lines of `BundleWriter.cs` are `Execute`, `Pragma`, `ThrowIfFinished` and
 > `WriteGpoFileError` — parameter binding with no reasoning in it.
@@ -189,16 +190,21 @@ found by searching for decision-shaped language rather than by reading whole fil
 >
 > **`RunComparability.cs` is read**, and with it the reasoning `whether-two-runs-compare.md` needed:
 > the check order that *is* decision `0027`, and the five disagreeing predecessor predicates that
-> explain why one verdict exists. Three zero rows remain. `RunStateNames` and `RunCompletionReader`
-> were named in `the-bundle-on-disk.md` on signature and call site alone — enough to say a member
-> exists, not enough to say why it is shaped as it is — and `RunLibrary` has never been opened. All
-> three belong to `how-a-bundle-is-read.md` and must be read whole before it is drafted.
+> explain why one verdict exists. **The three zero rows are now closed.** `RunStateNames` and
+> `RunCompletionReader` had been named in `the-bundle-on-disk.md` on signature and call site alone —
+> enough to say a member exists, not enough to say why it is shaped as it is — and `RunLibrary` had
+> never been opened. All three were read whole for
+> [`how-a-bundle-is-read.md`](evidence/how-a-bundle-is-read.md), with `RunListing` (51) alongside
+> them. What the reading bought that a signature could not: the one-door rule on `Resolve`, the
+> same-second refusal, the containment guard documented as unreachable-by-design rather than
+> untested, the newest-first ordering recorded as a chronological claim that cost lab work when it
+> was the other way round, and the predecessor's silent degrade to in-progress that put the state
+> names in one place.
 >
 > **Not yet read:** `DirectoryTree.cs` (508), `ObjectListing.cs` (290), `CapturedSchemaGuidReader.cs`
-> (267), `ObjectAttributes.cs` (239), the rest of `Run/` — `RunLibrary` (378), `RunAnnotations` (217),
-> `RunScope` (92 outstanding), `RunStateNames` (92), `RunCompletionReader` (73), `RunState` (57),
-> `RunListing` (51), `RunMoment` (26) — `Findings/` (726 across 7 files), and the seven small root
-> files. Roughly 3,000 lines outstanding.
+> (267), `ObjectAttributes.cs` (239), the rest of `Run/` — `RunAnnotations` (217),
+> `RunScope` (92 outstanding), `RunState` (57), `RunMoment` (26) — `Findings/` (726 across 7 files),
+> and the seven small root files. Roughly 2,400 lines outstanding.
 
 | Status | Lines | File | Also |
 |---|---:|---|---|

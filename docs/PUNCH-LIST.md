@@ -190,6 +190,53 @@ against the test assembly, which `AreaFileGateTests` already has the code for �
 should cite the area file instead of restating it, and correct the cycle text in `_HANDOFF.md`. The
 ten existing tables settle nothing on their own, because unbound is how they all got there.
 
+> **RULED, fourth Evidence sitting: bind them.** `CapabilityCitationTests` now resolves every
+> capability citation in `docs/kernel`, `docs/audit`, `docs/connect` and `docs/evidence` against the
+> test assembly, reusing the resolver `AreaFileGateTests` already had — which is now shared as
+> `TestCitation` so the two cannot drift apart. Citing the area file was rejected: it would send a
+> reader back to the split the rewrite exists to remove, and move evidence out of the page he is
+> actually on.
+>
+> **The decision was settled by evidence, not by argument.** Scanning the ten tables before ruling
+> found the rot had already happened: `the-attribute-catalogue.md` cited two methods under the names
+> EveryAttributeTheCodeRequestsIsInTheDocument and TheDocumentNamesNoAttributeTheCodeDoesNotRequest —
+> written here without backticks, because they are history and no longer resolve — after both had been
+> renamed to `TheDocumentDescribesEveryAttributeTheCatalogueRequests` and
+> `TheDocumentDescribesNoAttributeTheCatalogueDoesNotRequest`. Two of 170 citations, dead, for as long
+> as the rename is old. Corrected at source, and the gate was proven by reintroducing one and watching
+> it go red naming the file and line.
+>
+> **Two corrections to the count above, both found by reading rather than by counting the prose.**
+> The ten are not *ten of twelve in kernel, audit and connect carrying `## What is built`* — the three
+> kernel documents write the same three-column table under **`## What an operator can do`**. A gate
+> keyed on one heading would have passed while silently scanning nothing in kernel, which is `P-19`
+> for the sixth time and was nearly committed. `CapabilityCitationTests` matches both openers and its
+> self-test asserts each subsystem was reached rather than that some global count was above zero.
+>
+> **And `P-31`'s own correction is still not quite right.** `EveryAreaFileCarriesTheThreeSections`
+> requires the *heading*, not the rows beneath it. The rows are held only in aggregate — by
+> `LabConfirmationColumnTests.TheCheckReadsTheBuiltTables` at ten files or more, and by
+> `AreaFileGateTests` requiring some capability somewhere — so any *single* area file could still be
+> emptied without anything going red. The conclusion *carrying the table across is a copy, not a move*
+> survives; the reason given for it was one gate too shallow. Third instance of **read the rule, then
+> read the code that enforces it**, and the first where the mis-read sentence was itself a correction.
+
+- `P-32` — **`RunLibrary.DeleteRun` has no direct test.** Deletion is exercised through
+  `RunLibraryViewModelTests` against a fake catalogue, so the library method's own behaviour — the
+  `RunIsNotThere` refusal, the `RunCouldNotBeDeleted` path that leaves the run listed, and the fact
+  that everything including `annotations.db` goes — is asserted nowhere. Found while writing
+  [`how-a-bundle-is-read.md`](evidence/how-a-bundle-is-read.md) and recorded there. Documentation
+  pass, so recorded rather than fixed.
+
+- `P-33` — **Nothing validates the lab column in a layer document.**
+  `LabConfirmationColumnTests` scans `docs/areas` only, so the *Confirmed in lab* column on the
+  eleven layer-document capability tables is unchecked in both directions: a table could lose the
+  column and stop asking the question, or carry a word instead of a date, and nothing would go red.
+  `CapabilityCitationTests` was deliberately kept to citations because that is what its name says,
+  and this was left rather than folded into it. The scanning is already shared in shape — both
+  gates walk the same three-column table under two possible headings — so the fix is to widen
+  `LabConfirmationColumnTests` to the layer documents rather than to write a third scanner.
+
 **Where S-18's findings went.** `S-18` was deleted when
 [`run-identity-and-coverage.md`](evidence/run-identity-and-coverage.md) and
 [`whether-two-runs-compare.md`](evidence/whether-two-runs-compare.md) consumed it. All five of its

@@ -75,8 +75,7 @@ for each — 81, 49, unclassified. The fourth entry in the same list was carried
 re-asked. That is `P-19` from the other side: **when a rule is applied to a list, ask whether it was
 applied to every entry, not whether the list still compiles.**
 
-**In progress — Evidence.** One document of five is written and bound; the pass is **not** finished
-and the branch is deliberately left mid-pass rather than pushed to a fluent-looking end.
+**Done — Evidence.** Five documents of five are written and bound. The pass is finished.
 
 *Done.* `docs/evidence/what-a-bundle-holds.md` (408 lines) — the schema, the table list, descriptor
 deduplication, the three ways to produce no entries, the writing order, and what is refused against
@@ -142,9 +141,29 @@ of recalled. `replace_string_in_file` cannot reach `next/SecureAD.Next.sln`; use
 `[System.IO.File]::ReadAllLines` with an **absolute** path, because the .NET APIs do not follow
 PowerShell's location.
 
-*Owed.* `how-a-bundle-is-read.md` is the last Evidence document. `RunLibrary` (378 lines),
-`RunStateNames` (92) and `RunCompletionReader` (73) are its inputs and **none has been read**;
-`_COVERAGE.md` records all three at zero.
+*Done — fourth sitting.* `docs/evidence/how-a-bundle-is-read.md` — the managed root, the single door
+every caller-supplied identifier passes through, how a listing is assembled and why its order is a
+chronological claim, why completion is read outside `BundleReader`, and why an unrecognised state
+name is never a default. `RunLibrary` (378), `RunStateNames` (92) and `RunCompletionReader` (73) were
+read whole, as were `RunStateReader` (150) and `RunListing` (51). Bound by
+`RunLibraryDocumentationTests` — ten checks, three tables two-directional, plus a check that this
+test's own hand-written refusal list still matches `RunLibrary.cs`, because a sound check pointed at
+a stale list measures nothing. It carries no `STATES` table and a gate holds that open.
+**Evidence is closed at five documents.**
+
+**`P-31` is ruled: bind them.** `CapabilityCitationTests` resolves every capability citation in the
+layer documents against the test assembly, and `TestCitation` is now shared with `AreaFileGateTests`
+so one resolver serves both. The ruling was settled by evidence rather than by argument — scanning
+the ten tables first found two citations already dead from a rename, which is the do-nothing branch
+refuting itself. Full reasoning, and two corrections to `P-31`'s own wording, are in the punch list.
+
+**The heading is not uniform, and that nearly shipped as `P-19` again.** Kernel writes the capability
+table under `## What an operator can do`; audit, connect and evidence write it under
+`## What is built`. A gate keyed on one opener would have passed while scanning nothing in three
+kernel documents. Found by listing the headings instead of trusting the count, which is the only
+reason the self-test asserts per subsystem rather than a global total.
+
+*Owed.* Nothing in Evidence.
 
 **The deletions are complete. `P-31` is what is not, and the first version of `P-31` was itself
 wrong.** `S-16` and `S-18` are gone and every surviving mention of either is a deliberate historical
@@ -223,7 +242,12 @@ One subsystem per pass. Do not start the next until the current one is committed
 2. **Read every source file in the code folder, in full.** Not the summaries. See the traps below.
 3. **Write the document from definitions** — the enum, the writer, the query actually sent.
 4. **Carry the capability table across verbatim**, in operator voice, with its test names and lab
-   dates. Verify every test name exists.
+   dates. It is a **copy, not a move** — `AreaFileGateTests.EveryAreaFileCarriesTheThreeSections`
+   requires the area file to keep its *What is built* heading permanently. Do not verify the test
+   names by hand: `CapabilityCitationTests` resolves every citation in `docs/kernel`, `docs/audit`,
+   `docs/connect` and `docs/evidence` against the test assembly. **Write the table under
+   `## What is built`, or under `## What an operator can do` if the subsystem already uses that** —
+   kernel does, the rest do not, and the gate matches both openers.
 5. **Retarget the gates** that bind the old document. Retarget, do not retire.
 6. **Repoint inbound references** — search for the old filename across `*.cs` and `*.md` first.
 7. **Delete the old documents, and correct the solution's document items in both directions** —
