@@ -4,8 +4,8 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>S-16-the-bundle.md</c>, the live description of what a bundle holds, to the schema the
-/// code actually creates.
+/// Binds <c>docs/evidence/what-a-bundle-holds.md</c>, the live description of what a bundle holds,
+/// to the schema the code actually creates.
 ///
 /// <para>
 /// <b>A historical record is cross-referenced, never corrected.</b> Its account of what was found
@@ -16,16 +16,16 @@ namespace SecureAD.Next.Tests.Documentation;
 /// <para>
 /// <b>What is checked derives from the code.</b> The table list comes out of
 /// <c>BundleSchema.cs</c> by reading its <c>CREATE TABLE</c> statements, so adding a table fails
-/// this until <c>S-16</c> describes it. That is the only kind of documentation check worth a build
-/// failure: one a change to the product can break.
+/// this until <c>what-a-bundle-holds.md</c> describes it. That is the only kind of documentation
+/// check worth a build failure: one a change to the product can break.
 /// </para>
 /// </summary>
 public sealed class HistoricalRecordDocumentationTests
 {
     /// <summary>
-    /// Every table <c>BundleSchema</c> creates. <c>S-16-the-bundle.md</c> is the live description
-    /// of what a bundle holds, so a table it does not name is a table nobody reading the bundle
-    /// documentation knows exists.
+    /// Every table <c>BundleSchema</c> creates. <c>what-a-bundle-holds.md</c> is the live
+    /// description of what a bundle holds, so a table it does not name is a table nobody reading
+    /// the bundle documentation knows exists.
     ///
     /// <para>
     /// <b>This is not asked of <c>S-24</c> or <c>S-25</c>.</b> Those record two build sessions, not
@@ -73,10 +73,10 @@ public sealed class HistoricalRecordDocumentationTests
     public void TheBundleDocumentNamesEveryTableABundleHolds(string table)
     {
         Assert.True(
-            Read("S-16-the-bundle.md").Contains(table, StringComparison.Ordinal),
-            $"S-16-the-bundle.md does not name the table `{table}`, which BundleSchema creates. "
-            + "S-16 is the live description of what a bundle holds; a table missing from it has "
-            + "no description anywhere but the SQL that creates it.");
+            Read("what-a-bundle-holds.md").Contains(table, StringComparison.Ordinal),
+            $"what-a-bundle-holds.md does not name the table `{table}`, which BundleSchema "
+            + "creates. It is the live description of what a bundle holds; a table missing from it "
+            + "has no description anywhere but the SQL that creates it.");
     }
 
     public static TheoryData<string> TableNames()
@@ -124,5 +124,5 @@ public sealed class HistoricalRecordDocumentationTests
 
     private static string Read(string document) =>
         File.ReadAllText(System.IO.Path.Combine(
-            RepositoryLocation.Root(), "docs", "next", document));
+            RepositoryLocation.Root(), "docs", "evidence", document));
 }

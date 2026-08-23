@@ -75,11 +75,35 @@ for each — 81, 49, unclassified. The fourth entry in the same list was carried
 re-asked. That is `P-19` from the other side: **when a rule is applied to a list, ask whether it was
 applied to every entry, not whether the list still compiles.**
 
-**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Evidence, Cli, Shell.**
+**In progress — Evidence.** One document of five is written and bound; the pass is **not** finished
+and the branch is deliberately left mid-pass rather than pushed to a fluent-looking end.
 
-**Evidence is the natural next pass.** `S-16-the-bundle.md` and `S-18-run-identity-and-comparability.md`
-are its slice documents and both are untouched. Two punch-list items are evidence-side, `P-2` and
-`P-3`.
+*Done.* `docs/evidence/what-a-bundle-holds.md` (408 lines) — the schema, the table list, descriptor
+deduplication, the three ways to produce no entries, the writing order, and what is refused against
+what is recorded. `BundleDocumentationTests` and `HistoricalRecordDocumentationTests` retargeted onto
+it; `docs/next/README.md` repointed; `S-16` cut from 415 lines to 111, keeping only the two sections
+still owed a home and carrying a header note saying what moved and where. 2,160 tests green.
+
+*Owed, in this order.* `the-bundle-on-disk.md` (takes what remains of `S-16`), then
+`how-a-bundle-is-read.md`, then `run-identity-and-coverage.md` and `whether-two-runs-compare.md`
+(which together consume `S-18`, still untouched at 354 lines). Reading state is in `_COVERAGE.md`
+under `evidence-bundle`; about 5,700 lines of source are outstanding, most of it `Run/`.
+
+**Three punch-list adjudications came out of the pass and are recorded in full.** `P-2` verified
+correct against the code. `P-3` decided — the mechanism is real, no bundle today carries a wrong
+value, and what it costs is the column's independence rather than the number. `P-7`/`F-4` demoted,
+which is the one worth reading first.
+
+**Two open findings were live in area files and absent from the punch list**, and are now carried:
+`F-0079-6` and `F-0056-1`.
+
+**Retarget and cut in the same turn as the draft.** This pass did not, for one document, and left
+the repository holding two descriptions of one schema with a gate pointing at the older. The owner
+caught it, not the session. Deferring deletion to a tidy-up step at the end is the same batching
+failure as deferring progress updates, and it is worse here because the half-done state looks
+finished.
+
+**Not started — Kernel/Schema, Kernel/GroupPolicy, Kernel/Naming, Cli, Shell.**
 
 ---
 
@@ -155,21 +179,28 @@ conclusion, arriving from the other direction.
 context is spent. Commit, update this file, and start fresh rather than pushing into the next
 subsystem.
 
-**`Measure-Object -Line` undercounts, and the Audit/Connect pass trusted it.** It reported the
-Connect folder as 4,113 lines when it is 4,943 — a 17% understatement that went straight into
+**`Measure-Object -Line` undercounts, and the Audit/Connect pass trusted it.** It reported theConnect folder as 4,113 lines when it is 4,943 — a 17% understatement that went straight into
 `_COVERAGE.md` as a coverage claim, and it named the deleted `S-14` at 175 lines when git says 225.
 It appears to drop blank lines. **Use `@(Get-Content $f).Count`, or `git diff --numstat` for anything
 git already knows.** Worth its own line because the previous trap says *ask `git` for the numbers
 rather than recalling them* and this pass did ask a tool — the tool was wrong, and a wrong number
 from a command reads as more trustworthy than a wrong number from memory.
 
-**Capture gaps cannot be worked around later, but are not urgent.** There are no bundles in the field
+**Capture gaps cannot be worked around later, but are not urgent.**
 — the owner is the only user. A missing capture input is ordinary backlog, found naturally when a
 rule needs it. Do not argue for urgency on the grounds of re-capturing a customer forest.
 
 **The archive is outside the repository** at `C:\Users\jistrand\Downloads\SecureAD Archive\docs`.
 Delete consumed sections from it as well; a second backup exists. Nothing in the repository may cite
 it — a citation nobody can follow is worse than none.
+
+**PowerShell's text cmdlets rewrite what they touch.** `Set-Content -Encoding utf8` was used to trim
+`S-16` and round-tripped every em-dash through ANSI, corrupting the file it was cutting. Caught,
+restored from git, redone with `[System.IO.File]::WriteAllLines` and an explicit no-BOM
+`UTF8Encoding`. Same family as the `Measure-Object` trap above and worth its own line for the same
+reason: a cmdlet that reads as *write these lines back* quietly did something else, and the damage
+was invisible in the diff summary. **Use the .NET file APIs for any edit to a document with
+non-ASCII characters in it**, which is all of them.
 
 ---
 
@@ -188,10 +219,44 @@ These are the memory. A new session reads them and continues; it does not need t
 
 ## The single highest-priority open item
 
-**P-7 / `F-4`.** A lab bundle shows the `ace` table and a re-parse of the same descriptor disagreeing
-by one entry — 57 against 56 — while the descriptor reports `dacl_completeness=Complete`. The
-mechanism is almost certainly that the DACL walk is bounded by the declared entry count rather than
-by the ACL's own `AclSize`.
+**There is not one, and the item that used to be named here has been demoted.** Read this before
+picking work off the punch list, because the demotion is more useful than the item was.
 
-By the owner's own instructions this is the category that is never deferred: an operator would read
-an entry count that is short, and a permission may not be listed.
+`P-7` / `F-4` stood here: a lab bundle shows the `ace` table and a re-parse of the same descriptor
+disagreeing by one entry — 57 against 56 — while the descriptor reports `dacl_completeness=Complete`,
+with the mechanism given as a DACL walk bounded by the declared entry count rather than by the ACL's
+own `AclSize`. It was never deferred on the grounds that *an operator would read an entry count that
+is short, and a permission may not be listed.*
+
+**The Evidence pass read the descriptor half of the schema back out of a bundle for the first time,
+and neither half of that consequence survives.**
+
+- The entry list an operator sees is `ObjectPermissions.Entries`, a fresh parse of `raw_bytes` with
+  nothing deduplicated and nothing reordered. No permission is withheld from a screen.
+- `captured_object.ace_count` is written by `BundleWriter.CountEntriesPerObject` and **read by no
+  production code in the repository**. There is no reader for a short count to mislead.
+
+**And the disagreement itself is probably designed behaviour.** The `ace` table is not a second walk
+of the same DACL; it is the canonical projection, and `AceNormalizer.Normalize` deduplicates it. The
+read side deliberately does not — *"a DACL carrying the same grant twice is what the directory holds
+and a reader deciding it meant once is editing evidence."* `ObjectPermissions` carries the
+measurement: lab bundle `ad.lab-20260819-232425`, 12,603 stored against 12,600 projected. A
+one-entry disagreement on one organisational unit is one duplicated entry, and `Complete` is correct
+beside it.
+
+**One query decides it**, and it is left for a cleanup pass. Deduplication guarantees `ace` ≤
+re-parse, so if the re-parse saw 57 there is no defect; if the `ace` table really saw 57 there is a
+projection larger than the bytes it came from, which nothing here explains and which would be worse
+than what was recorded. The punch list does not say which way round the numbers were.
+
+**`P-7` itself stands and is ordinary backlog.** The walk really does read `AceCount` and never
+`AclSize` or `AclRevision`. What it lost is its corroboration and its priority.
+
+**The transferable part is the third instance of one shape.** An adjudication was written into the
+punch list, promoted to the top of this file, and carried through three passes, and the code
+contradicts it. The rule was already here — *a finding is not open because a document says so, and
+that adjudication may itself be wrong* — and it applies to this file as much as to the archive.
+Nothing had read the code the claim was about until the pass that owned it came round.
+
+---
+

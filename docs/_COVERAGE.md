@@ -145,6 +145,30 @@ found by searching for decision-shaped language rather than by reading whole fil
 
 ## evidence-bundle  (11 files, 2380 lines)
 
+> **The Evidence pass is in progress and this backlog is not its input.** Same standing as
+> `audit-capture` above: the documents are written from the source, the tests, the two slice
+> documents and the five governing area files. These archive files belong to the later comparison
+> pass.
+>
+> **Source read so far, stated as lines read against total** — counted with `@(Get-Content).Count`,
+> not `Measure-Object -Line`:
+>
+> | File | Read | Total |
+> |---|---:|---:|
+> | `BundleSchema.cs` | 1017 | 1017 |
+> | `BundleWriter.cs` | 1516 | 1576 |
+> | `BundleReader.cs` | 561 | 561 |
+> | `BundleSealing.cs` | 197 | 197 |
+> | `BundleLayout.cs` | 132 | 132 |
+> | `ObjectPermissions.cs` | 560 | 704 |
+>
+> The 60 unread lines of `BundleWriter.cs` are `Execute`, `Pragma`, `ThrowIfFinished` and
+> `WriteGpoFileError` — parameter binding with no reasoning in it.
+>
+> **Not yet read:** `DirectoryTree.cs` (508), `ObjectListing.cs` (290), `CapturedSchemaGuidReader.cs`
+> (267), `ObjectAttributes.cs` (239), the whole of `Run/` (3,318 across 28 files), `Findings/` (726
+> across 7 files), and the seven small root files. Roughly 5,700 lines outstanding.
+
 | Status | Lines | File | Also |
 |---|---:|---|---|
 | unread | 638 | `history\S-15-storage-dispositions.md` | audit-capture |

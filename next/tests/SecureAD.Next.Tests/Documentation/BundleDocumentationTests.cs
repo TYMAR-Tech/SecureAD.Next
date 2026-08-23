@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-16-the-bundle.md</c> to the schema the code actually creates, per
+/// Binds <c>docs/evidence/what-a-bundle-holds.md</c> to the schema the code actually creates, per
 /// <c>docs/next/README.md</c> §When a document counts as documentation.
 ///
 /// <para>
@@ -23,7 +23,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class BundleDocumentationTests : IDisposable
 {
-    private const string Slice = "S-16-the-bundle.md";
+    private const string Document = "what-a-bundle-holds.md";
     private const string TableBegin = "<!-- TABLES:BEGIN -->";
     private const string TableEnd = "<!-- TABLES:END -->";
 
@@ -41,7 +41,7 @@ public sealed class BundleDocumentationTests : IDisposable
 
         Assert.True(
             undocumented.Count == 0,
-            $"The schema creates tables that {Slice} does not name: "
+            $"The schema creates tables that {Document} does not name: "
             + string.Join(", ", undocumented)
             + ". An undocumented table is a piece of the only thing this product reads from that "
             + "nobody has explained.");
@@ -59,7 +59,7 @@ public sealed class BundleDocumentationTests : IDisposable
 
         Assert.True(
             invented.Count == 0,
-            $"{Slice} names tables the schema does not create: " + string.Join(", ", invented));
+            $"{Document} names tables the schema does not create: " + string.Join(", ", invented));
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public sealed class BundleDocumentationTests : IDisposable
 
         Assert.True(
             silent.Count == 0,
-            $"{Slice} lists tables without saying what a missing row means:"
+            $"{Document} lists tables without saying what a missing row means:"
             + Environment.NewLine + string.Join(Environment.NewLine, silent));
     }
 
@@ -155,14 +155,14 @@ public sealed class BundleDocumentationTests : IDisposable
         DocumentedRows().Keys.ToHashSet(StringComparer.Ordinal);
 
     /// <summary>
-    /// The table list in S-16, read only between its markers so that a table named in the prose
-    /// does not count as documented, keyed to what the document says its absence means.
+    /// The table list in the layer document, read only between its markers so that a table named in
+    /// the prose does not count as documented, keyed to what the document says its absence means.
     /// </summary>
     private static Dictionary<string, string> DocumentedRows()
     {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", Slice);
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "evidence", Document);
         if (!File.Exists(path))
-            throw new FileNotFoundException("Expected the slice document at " + path + ".", path);
+            throw new FileNotFoundException("Expected the layer document at " + path + ".", path);
 
         var lines = File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var begin = Array.FindIndex(lines, l => l.Trim() == TableBegin);
@@ -171,7 +171,7 @@ public sealed class BundleDocumentationTests : IDisposable
         if (begin < 0 || end < 0 || end < begin)
         {
             throw new InvalidOperationException(
-                "Could not find the " + TableBegin + " / " + TableEnd + " markers in " + Slice
+                "Could not find the " + TableBegin + " / " + TableEnd + " markers in " + Document
                 + ". A missing marker must fail rather than silently empty the scan.");
         }
 

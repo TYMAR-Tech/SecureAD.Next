@@ -437,7 +437,8 @@ Branch C's write half followed on 2026-08-12, and it is the one that ends the ru
 nothing to write to. **Nine rows now carry dispositions** — C1, C3, C5, C10, C11, C12, C15, and
 capture's two writers B9 and B10 — decided together at
 `S-15` and bound to the inventory by a test: eight Rebuild and one
-Delete. The bundle itself is documented at [`S-16`](S-16-the-bundle.md), bound by a test that
+Delete. What a bundle holds is documented at
+[`what-a-bundle-holds.md`](../evidence/what-a-bundle-holds.md), bound by a test that
 compares the document against the tables SQLite reports in a real database rather than against a
 list in the code, so the two cannot be wrong together.
 
