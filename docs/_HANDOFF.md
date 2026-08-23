@@ -384,7 +384,7 @@ both the not-started list and the done list.** It is the same shape as the
 `CapturedSchemaGuidReader` boundary question, one level up, and it was found the same way: by
 listing the folders instead of trusting the sentence.
 
-**Take `Kernel/GroupPolicy` next.** The kernel is closed: `Kernel/Naming` is done, and
+**Take `Kernel/GroupPolicy` next.** The kernel is otherwise closed: `Kernel/Naming` is done, and
 `docs/kernel/naming.md` is a **different subject** from `docs/kernel/distinguished-names.md` — the
 first is about turning stored values into words and documents `Kernel/Security`, the second is about
 the distinguished name and documents `Kernel/Naming`. Both say so at the top. **They must not be
@@ -403,6 +403,39 @@ by *nothing yet* — three assemblies call it, `SecureAD.Audit`, `SecureAD.Evide
 `SecureAD.Shell`; that it targets plain `net8.0` — the project declares `net10.0`; and that it was 1
 file of 168 lines — it is 207. None was carried across. **The consumer claim is the dangerous one**,
 because it is the sentence that makes a folder look safe to change.
+
+**The deletion left three citations behind and the owner caught them, not the session.** `DnHelper.cs`
+still named the deleted document in its XML summary, and two `DnHelperTests` limits cited `F-S2-1`
+and `F-S2-2`, which resolved to nothing once the document went. Repointed in a second commit, and the
+two punch-list rows that replaced those findings now name the tests that pin them — which immediately
+caught a test name written from memory that did not exist. **The cause is a trap, recorded below: the
+required search was run and its output was truncated.** `LayerDocumentGateTests` could not have found
+it; the citation was in production code, not in a layer document.
+
+The archive was not swept for this subject. **14 of its 112 files mention `DnHelper` or the S-2
+filename**, and they belong to the later archive pass, as in every pass since Audit/Capture.
+
+**`docs/next` now holds no `S-*.md` at all.** `S-2` was the last one. Every pass from here is
+code-first with **no document to consume**, so steps 5, 6 and 7 of the cycle change shape: there is
+no gate to retarget onto a new document and no slice document to delete. **A new gate is written
+instead**, and the proof obligation moves with it — point the new gate at a document that does not
+carry the subject and confirm it fails naming what it cannot find, exactly as a retarget is proven.
+A gate that has never been observed failing is not evidence.
+
+**`Kernel/GroupPolicy`, measured before the pass rather than during it.** 15 files, 1,273 lines,
+**16 public types**: `GpoClientSideExtensionCatalog`, `GpoClientSideExtensions`, `GppPasswordFinding`,
+`GroupPolicyPreferenceParser`, `ParsedCseList`, `ParsedGppFile`, `ParsedRegistryPolicy`,
+`ParsedSecurityTemplate`, `PolicyLink`, `PolicyLinkList`, `RegistryPolicyEntry`,
+`RegistryPolicyParser`, `RegistryValueType`, `RestrictedGroup`, `SecurityTemplateParser`,
+`SecurityTemplateSetting`. The governing area file is `docs/areas/group-policy.md` (86 lines). Five
+test files under `next/tests/SecureAD.Next.Tests/Kernel/GroupPolicy/` carry 1,259 lines and **none is
+a documentation gate** — there is no `GroupPolicyDocumentationTests` to retarget.
+
+**Six of the sixteen types are named by a document, and not one of those is a layer document.** The
+six appear only in `docs/MICROSOFT-VERIFICATION.md` and `docs/rules/FIRST-PARTY-VERIFICATION.md`,
+which are verification registers. Against the layer documents the folder stands at **zero of
+sixteen**. That is `P-38`'s gap on a folder nobody has claimed yet, and the count is recorded here so
+the pass can be checked against it afterwards rather than declared complete.
 
 `P-32` and `P-33` remain open and are code rather than documentation.
 
