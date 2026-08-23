@@ -155,7 +155,6 @@ Recorded so they are not lost. Each belongs to its own pass.
 | `#22` | `SecurityTemplateParser` accepts nonconformant encodings without labelling them | group policy | open |
 | `#21` | `DnHelper` decides escaping from the preceding character rather than from the escape sequence | kernel/naming | open |
 | P-27 | The surface register misstates F6 and F17 against the code — S-18's *What is owed* was checked and two of its three claims are false | evidence/run library | open |
-| F-0079-6 | A change to `CoverageId`'s hash format silently splits every existing group, and nothing records which format produced a value | evidence/run library | open — *remedy adjudicated with P-3* |
 | F-0056-1 | No pre-capture total of unestablished facts exists | evidence/coverage | open |
 | P-18 | `CaptureRunEndToEndTests` fails intermittently on a disposed SQLite handle | tests | open |
 
@@ -164,79 +163,7 @@ Recorded so they are not lost. Each belongs to its own pass.
 runs. Low severity but it corrodes the oracle: *"A test that fails at random trains a reader to
 re-run rather than to look, and the day it fails for a real reason it will be re-run too."*
 
-**F-0079-6 is the same shape, and it has already cost something.** Carried from
-`the-run-library.md`. `CoverageId` is a hash over a formatted string with no format version recorded
-beside it, so changing what goes into the string obsoletes every existing value while looking
-identical on screen — and on 2026-08-21 it did, showing the owner two groups under one heading.
-Deliberately not repaired by grouping on the domain rows instead: the fingerprint also decides
-comparability, so those runs genuinely cannot be compared, and merging them would show one group
-whose members refuse to compare across an invisible line inside it. The honest options are a format
-version stored beside the hash, or accepting that a fingerprint change obsoletes old runs and saying
-so. **This and `P-3` were one question asked twice**: a hash whose recipe is identified by the
-build that read it rather than by a value stored with it. `P-3` was fixed in September; this is the
-half that remains.
-
-**Adjudicated together 2026-09. One principle, and it settles both.**
-
-> **A hash must carry the identity of the recipe that produced it — in the value, or in the row
-> beside it. Never in the build that reads it.**
-
-**They were the same question at different maturity, and that decided the two remedies.** `P-3` had
-the mechanism and filled it wrongly: `canonicalization_version` exists, `BundleReader` reads it back
-and refuses a version it cannot reproduce by name. The refusal worked; the defect was on the write
-side, where the column was bound to the build's static instead of to the entries it describes.
-**F-0079-6 has no mechanism at all** — no version is stored, nothing reads one, nothing refuses.
-
-**The failure modes are opposite, which is why they were settled together.** `P-3` failed *loudly and
-wrongly* — a bundle whose entries disagreed with its column passed a refusal it should not.
-F-0079-6 fails *silently and correctly* — the runs really are incomparable, and the product says
-nothing at all, it just draws two groups. The second is worse by this product's own standard: a
-failure rendered as a benign difference is the one shape an audit tool cannot have, and it is the
-rule `SealState.Unreadable` exists to honour one layer down.
-
-**What fixing `P-3` proved, and it is the argument for doing this one.** Closing that loop turned the
-suite red immediately: a test fixture had been claiming canonicalization version 1 while the build
-produced 3, and the defect itself had hidden the wrong value for months by overwriting the entries'
-claim on the way in. A self-certifying column cannot refuse anything, including data that is already
-wrong. F-0079-6 is that same loop at the identity layer, and unlike `P-3` it has **already fired in
-the field** — the two groups under one heading on 2026-08-21.
-
-**F-0079-6's remedy is to make the value self-describing** — the version goes *into* the hash string,
-not beside it: `1-3f2a9c8e1b4d5a67`. Chosen over a sidecar column because `RunScope.Identity` is a
-**bare string**, read from `BundleDescription.CoverageId` and compared for grouping, with nowhere to
-hang an accompanying column. A version stored beside the hash would be correct in the `bundle` table
-and absent at the one site where the value is actually compared.
-
-> **Corrected 2026-09.** This argument originally also claimed the value travels into run folder
-> names. It does not — `RunLibrary.CreateRun` builds `{forest}-{timestamp}` and its remarks state
-> that a name is not evidence. The claim came from `RunHash.cs`'s own remarks, which say the two
-> identities *"appear side by side in folder names and in the run library"* — wrong about the code in
-> its own assembly, and taken on trust. See `D-7`. The conclusion stands on `RunScope.Identity`
-> alone, and the blast radius is smaller than first written: **nothing on disk is renamed.**
-
-**What this buys, and it is the answer to the two "honest options" above rather than a choice between
-them.** Comparison stays plain string equality, so runs of different recipes still fail to match —
-that behaviour does not change and should not. What changes is that **the mismatch becomes legible**.
-A bare sixteen-character value is, by its shape, a pre-versioned one, so a reader can say *this run
-predates the current scope recipe* instead of islanding it in silence. The format change obsoletes
-old runs **and says so**, which is both options at once and is why neither had to be chosen.
-
-**It belongs in `RunHash`, not in `CoverageId`.** `RunHash` is shared by `ProfileId` and `CoverageId`
-precisely so the width and alphabet of an identity cannot drift between them; a version applied to
-one and not the other would reintroduce exactly the drift that type exists to prevent.
-
-**What it costs, stated plainly.** The value widens by two characters and run folder names change.
-Adopting it is *itself* a format change, so it obsoletes every existing coverage identity one final
-time — the last time it can happen invisibly, which is the argument for doing it before there is a
-customer history rather than after. `ProfileId` is recomputable from the forest name and re-derives
-itself; `CoverageId` cannot, and those values are lost as grouping keys. Given the owner is the only
-user today, that cost is a lab inconvenience now and an unpayable one later.
-
-**Recorded rather than fixed, and the branch stays documentation-only.** Both remain `open` as work.
-What has been decided is the shape of the fix, so a fix pass does not re-derive it or settle the two
-inconsistently — which is the specific risk of leaving one question recorded in two places.
-
-**`#17` detail — adjudicated 2026-09, and the original line was wrong.** It said the ladder treats
+**`#17` detail — adjudicated 2026-08, and the original line was wrong.** It said the ladder treats
 91 as proof of *refused protection*. It does not: `ConnectionFailureReason.Of` maps 91 to
 `ProtectedChannelFailed`, which is a distinct reason and a correct one. The fault is one entry
 further on. `ProvesTheControllerAnswered` lists `ProtectedChannelFailed` alongside

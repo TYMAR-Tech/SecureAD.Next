@@ -58,6 +58,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "decisions", "decisions", "{
 		..\docs\decisions\0037-an-unreadable-dacl-says-so.md = ..\docs\decisions\0037-an-unreadable-dacl-says-so.md
 		..\docs\decisions\0038-a-descriptor-records-whether-its-dacl-was-canonical.md = ..\docs\decisions\0038-a-descriptor-records-whether-its-dacl-was-canonical.md
 		..\docs\decisions\0039-one-way-to-start-a-capture.md = ..\docs\decisions\0039-one-way-to-start-a-capture.md
+		..\docs\decisions\0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md = ..\docs\decisions\0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md
 		..\docs\decisions\README.md = ..\docs\decisions\README.md
 	EndProjectSection
 EndProject

@@ -83,3 +83,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0081](decisions/0081-severity-has-four-levels.md) | 2026-08-21 | Accepted | Severity has four levels |
 | [0082](decisions/0082-the-rule-catalogue-is-not-customer-tunable.md) | 2026-08-21 | Accepted | The rule catalogue is not tunable by a customer |
 | [0083](decisions/0083-a-rule-declares-its-data-dependencies.md) | 2026-08-21 | Accepted | A rule declares the data it depends on, and an undeclared rule fails the build |
+| [0084](decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md) | 2026-08-23 | Accepted | A stored fingerprint's recipe is pinned to the schema version |

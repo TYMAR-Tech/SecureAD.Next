@@ -48,6 +48,27 @@ namespace SecureAD.Evidence.Run;
 /// than a domain to exclude.
 /// </para>
 /// <para>
+/// <b>Changing what goes into this hash is a schema change.</b> The value is stored as
+/// <c>bundle.coverage_id</c> and read back as <see cref="RunScope.Identity"/>, which is what the run
+/// library groups on. Change the recipe and every value computed afterwards differs from every value
+/// computed before, while a sixteen-character hex string looks identical either way - so old and new
+/// runs draw as two groups under one identical heading, the heading being built from the domain rows
+/// rather than from this. That happened on 2026-08-21, when the excluded set was added here and
+/// nothing else moved.
+/// </para>
+/// <para>
+/// So <b>raise <c>BundleSchema.Version</c> in the same change</b>, per
+/// <c>docs/decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md</c>. A
+/// bundle written under the old recipe is then refused at open under
+/// <c>SchemaVersionUnsupported</c> instead of reaching the
+/// library, which is what <c>docs/decisions/0001</c> and <c>docs/decisions/0013</c> already require:
+/// a schema mismatch is a broken build rather than an old file. <c>CoverageIdRecipeTests</c> pins
+/// this and will fail with the same instruction. Note that the sibling hashes solve this a different
+/// way - <c>AceSetHash</c> puts the pipeline version inside the value, and every descriptor hash has
+/// <c>security_descriptor.canonicalization_version</c> beside it - because there the question is
+/// whether two values may compare equal, and here it is whether a stale value may reach a screen.
+/// </para>
+/// <para>
 /// This remark previously stated that there are no exclusions at all and cited <c>0017</c> for it.
 /// That was true when written and stopped being true at <c>0052</c>.
 /// </para>
