@@ -314,7 +314,18 @@ that parses a marker block it cannot find must throw, never return nothing; `Tab
 the marker for that reason, and both Evidence gates carry an `AMissingTableIsAFailureRatherThanAnEmptyScan`
 self-test. Two gates in this repository have already passed for months while measuring nothing.
 
-**A claim that something is *not built* is the least-verified sentence in this repository.** The
+**Read the rule, then read the code that enforces it.** Every false claim this repository has
+produced sits in the *consequence* position: the rule was read correctly, the gate or the source
+enforcing it was not opened, and the conclusion was written as though it followed. `P-7`/`F-4`
+asserted a reader that does not exist. `0018`'s amendment was applied to three list entries and the
+fourth was carried over unasked. The third Evidence sitting read *carry the capability table across,
+then trim the area file* and recorded that the area files could not be trimmed — while
+`AreaFileGateTests.EveryAreaFileCarriesTheThreeSections` requires them to keep that table forever, so
+nothing was ever going to be trimmed. **A rule tells you what should happen; only the gate tells you
+what does.** When a document states a consequence, open the thing that enforces it before believing
+the sentence — including when the document is this one.
+
+**A claim that something is *not built* is the least-verified sentence in this repository.**
 gates check that every name in a document exists in the code. Nothing checks the reverse claim — that
 a capability is absent — because there is no name to look up. So *What is owed* sections rot
 invisibly while the paragraphs around them stay bound and true. S-18's was checked during the second
