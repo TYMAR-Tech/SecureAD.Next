@@ -5,7 +5,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// Binds <c>docs/next/S-2-distinguished-name-manipulation.md</c> to the code it describes.
+/// Binds <c>docs/kernel/distinguished-names.md</c> to the code it describes.
 ///
 /// <para>
 /// Per <c>docs/next/README.md</c>, a document is not the new product's documentation until a test
@@ -20,7 +20,7 @@ namespace SecureAD.Next.Tests.Documentation;
 /// </summary>
 public sealed class DistinguishedNameDocumentationTests
 {
-    private const string Document = "S-2-distinguished-name-manipulation.md";
+    private const string Document = "distinguished-names.md";
 
     [Fact]
     public void TheDocumentNamesEveryPublicTypeInTheComponent()
@@ -101,7 +101,7 @@ public sealed class DistinguishedNameDocumentationTests
     [Fact]
     public void TheCheckFindsBothTheDocumentAndTheComponent()
     {
-        Assert.True(File.Exists(Path()), $"Expected the slice document at {Path()}.");
+        Assert.True(File.Exists(Path()), $"Expected the layer document at {Path()}.");
         Assert.True(Read().Length > 1000, $"{Document} is too short to be the document it claims.");
         Assert.Contains(nameof(DnHelper), PublicTypeNames());
         Assert.Contains(nameof(DnHelper.DnToFqdn), PublicMemberNames());
@@ -158,7 +158,7 @@ public sealed class DistinguishedNameDocumentationTests
             .Distinct(StringComparer.Ordinal);
 
     private static string Path() =>
-        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
+        System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "kernel", Document);
 
     private static string Read() => File.ReadAllText(Path());
 }

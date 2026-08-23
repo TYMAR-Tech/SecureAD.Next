@@ -370,7 +370,7 @@ folder gets skipped by both a reader and a successor. The whole tree, measured:
 | `Kernel/Capture` | 4 | 494 | **done, and documented outside its own layer** — `docs/audit/the-attribute-catalogue.md`, because `CapturedAttributeCatalog` is kernel code on an audit subject. All four types are named, and `EveryPublicTypeInTheCaptureProjectIsNamedByACaptureDocument` holds it |
 | `Audit/Capture`, `Audit/Connect` | 42 | 8,700 | done — `docs/audit/`, `docs/connect/` |
 | `Evidence/Run` | 21 | 2,970 | done — `docs/evidence/`, 28 of 32 types named |
-| `Kernel/Naming` | 1 | 207 | **not started** — `DnHelper.cs`; consumes `S-2-distinguished-name-manipulation.md` |
+| `Kernel/Naming` | 1 | 207 | done — `docs/kernel/distinguished-names.md` |
 | `Kernel/GroupPolicy` | 15 | 1,273 | not started |
 | `Evidence/` root | 18 | 6,205 | not started — 30 of 44 types named nowhere |
 | `Evidence/Findings` | 7 | 726 | not started — 0 of 17 types named anywhere |
@@ -384,10 +384,25 @@ both the not-started list and the done list.** It is the same shape as the
 `CapturedSchemaGuidReader` boundary question, one level up, and it was found the same way: by
 listing the folders instead of trusting the sentence.
 
-**Take `Kernel/Naming` next.** One file, 207 lines, one slice document to consume, and it closes the
-kernel. `docs/kernel/naming.md` already exists and is a different subject — it opens *"Naming what
-the directory stored"* and is about principals, not distinguished names — so this is a real pass and
-not a duplicate. Confirm that before drafting.
+**Take `Kernel/GroupPolicy` next.** The kernel is closed: `Kernel/Naming` is done, and
+`docs/kernel/naming.md` is a **different subject** from `docs/kernel/distinguished-names.md` — the
+first is about turning stored values into words and documents `Kernel/Security`, the second is about
+the distinguished name and documents `Kernel/Naming`. Both say so at the top. **They must not be
+merged**, and a session that reads only the folder name will merge them.
+
+**`Kernel/Naming` closed as follows.** `S-2-distinguished-name-manipulation.md` deleted (245 lines),
+`DistinguishedNameDocumentationTests` retargeted onto `docs/kernel/distinguished-names.md` and the
+retarget proven — pointed at `naming.md` first it failed **four of seven**, naming *does not name:
+DnHelper*, *does not describe: ReverseDn, GetParentDn, …* and the two absent literals, never an empty
+scan. Nothing was added to `LayerDocuments.Subsystems`; `kernel` was already there, so the link, the
+solution and the capability gates covered the new document the moment it landed. The capability table
+was **copied** from `docs/areas/who-is-who.md`, which governs the subject and keeps its own rows.
+
+**`P-27` held again, at three of three claims this time.** `S-2` said the component was depended on
+by *nothing yet* — three assemblies call it, `SecureAD.Audit`, `SecureAD.Evidence` and
+`SecureAD.Shell`; that it targets plain `net8.0` — the project declares `net10.0`; and that it was 1
+file of 168 lines — it is 207. None was carried across. **The consumer claim is the dangerous one**,
+because it is the sentence that makes a folder look safe to change.
 
 `P-32` and `P-33` remain open and are code rather than documentation.
 

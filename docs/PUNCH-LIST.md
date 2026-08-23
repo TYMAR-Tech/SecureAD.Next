@@ -326,6 +326,17 @@ evidence to directory objects.
 
 ---
 
+## Kernel / Naming
+
+| ID | Item | Status | Blocked on |
+|---|---|---|---|
+| P-39 | DN comparison has no owner. There is no member deciding whether two DNs are the same or whether one contains another, so callers write it out. A containment test written as *the child ends with the parent* answers yes for a suffix that is not a DN, which attributes an object to a container that does not exist | decision | which comparison: ordinal over the whole string, or component-wise with a parse |
+| P-40 | The quoted form of an RDN value is not understood — only the escaped form. A quoted value is cut at the comma inside the quotes. Pinned by a test that asserts the wrong answer on purpose | open | — |
+| P-41 | An escaped backslash at the end of a value hides the next separator: `DC=corp\\,DC=com` swallows the remainder of the DN. Correctly answered by asking whether the run of backslashes is odd. Same missing piece as `P-40` — a real reader of RFC 2253 escaping rather than a comma scanner | open | — |
+| P-42 | `ExtractFirstRdn`, `ExtractFirstRdnOrNull` and `ExtractNameFromDn` differ only in what absent input returns. The distinction between `null` and empty is real, so this is not duplication, but the third could be a caller-supplied fallback. Cheaper to settle now than once more call sites exist | decision | owner ruling |
+
+---
+
 ## Deferred features
 
 | Item | Where |

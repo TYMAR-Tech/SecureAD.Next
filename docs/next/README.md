@@ -345,7 +345,7 @@ all. Five components are done, all of them the kernel: K13, K14, K15, K16 and K1
 the security descriptor parser and ACE canonicaliser, the schema GUID catalogue that replaces the
 two tables K13 and K14 were, the dangerous-permission classifier, and the distinguished-name
 helpers. They are documented at [security descriptors](../kernel/security-descriptors.md),
-[`S-2`](S-2-distinguished-name-manipulation.md), [what a schema GUID means](../schema/what-a-schema-guid-means.md) and
+[reading a distinguished name](../kernel/distinguished-names.md), [what a schema GUID means](../schema/what-a-schema-guid-means.md) and
 [permission classification](../kernel/permission-classification.md), each bound by a test. The gates themselves are
 documented at `S-5` and `S-6`. Gate 5b
 stays blocked, though no longer for the reason first recorded: the shell ships and a run can be
