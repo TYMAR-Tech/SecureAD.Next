@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.8.12023.21
@@ -72,6 +72,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\connect\how-a-connection-is-opened.md = ..\docs\connect\how-a-connection-is-opened.md
 		..\docs\connect\how-the-forest-is-found.md = ..\docs\connect\how-the-forest-is-found.md
 		..\docs\connect\what-preflight-proves.md = ..\docs\connect\what-preflight-proves.md
+		..\docs\evidence\what-a-bundle-holds.md = ..\docs\evidence\what-a-bundle-holds.md
 		..\docs\next\S-16-the-bundle.md = ..\docs\next\S-16-the-bundle.md
 		..\docs\next\S-18-run-identity-and-comparability.md = ..\docs\next\S-18-run-identity-and-comparability.md
 		..\docs\next\S-2-distinguished-name-manipulation.md = ..\docs\next\S-2-distinguished-name-manipulation.md
