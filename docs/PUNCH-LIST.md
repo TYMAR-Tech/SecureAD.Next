@@ -134,7 +134,6 @@ evidence.
 
 | ID | Item | Status | Blocked on |
 |---|---|---|---|
-| P-19 | `EveryPublicTypeInTheCaptureProjectIsNamedByACaptureSliceDocument` scanned four types while claiming nineteen — green for months | open | — *(gate widened during the rewrite; the finding is kept because the shape recurs)* |
 | P-20 | `F-S44-2` — the catalogue's three test suites are a closed loop anchored to the rules already written, and it has no external anchor | open | a reconciliation fixture naming every predecessor attribute or a written omission |
 | P-21 | `0065` is decided and unimplemented; every run taken before it lands is permanently silent on the trust attributes | open | — |
 | P-22 | `F-S40-1` — `0040` decided a failed domain is read again from another controller, and nothing walks that path | open | — |
@@ -142,17 +141,6 @@ evidence.
 | P-24 | `F-S23-4` — six captured attributes have no consumer among the sixty-two rules; three are named attack surfaces the product holds data for and says nothing about | open | rules at branch E |
 | P-25 | `F-S23-5` — six rules need SYSVOL and nothing in the directory answers them; ten per cent of the catalogue is inert and nothing says so | open | B14/B15 |
 | P-26 | `F-S7-37`, `F-S7-39`, `F-S7-40` — three claims about how a real controller behaves that no test in this repository can settle | blocked | lab session |
-
-**P-19 detail.** The check read `typeof(CapturedAttributeCatalog).Assembly` filtered to
-`SecureAD.Kernel.Capture`, which is four types. Its name and its failure message both said *the
-capture project*. The fifteen public types in `SecureAD.Audit.Capture` were never scanned.
-
-The fault arrived **by repair**: S-24 moved the catalogue into the kernel, this check failed loudly,
-and the fix pointed the scan at the catalogue's new neighbours rather than at the component the test
-is named for — a different set, checked against the same document, passing. Widened during this
-pass, and it immediately named twelve types no document mentioned. Recorded rather than closed
-because this is the third time a check in this repository has passed while measuring nothing, and
-the second time the cause was a repair that preserved the assertion and moved the subject.
 
 ---
 
@@ -166,97 +154,15 @@ Recorded so they are not lost. Each belongs to its own pass.
 | `#19` | `gPLink` option bits are documented in the archive but never verified first-party | group policy | blocked |
 | `#22` | `SecurityTemplateParser` accepts nonconformant encodings without labelling them | group policy | open |
 | `#21` | `DnHelper` decides escaping from the preceding character rather than from the escape sequence | kernel/naming | open |
-| P-2 | `SchemaVersionUnsupported` has no test — zero references in the test project, while its sibling refusal has one | evidence/bundle | open |
-| P-3 | `security_descriptor.canonicalization_version` is sourced from the build rather than from the entries it describes, so the reader's only defence against unreproducible hashes is a restatement of its own constant | evidence/bundle | open |
-| F-0079-6 | A change to `CoverageId`'s hash format silently splits every existing group, and nothing records which format produced a value | evidence/run library | open |
+| P-27 | The surface register misstates F6 and F17 against the code — S-18's *What is owed* was checked and two of its three claims are false | evidence/run library | open |
+| F-0079-6 | A change to `CoverageId`'s hash format silently splits every existing group, and nothing records which format produced a value | evidence/run library | open — *remedy adjudicated with P-3* |
 | F-0056-1 | No pre-capture total of unestablished facts exists | evidence/coverage | open |
-| P-17 | Eleven tracked files are zero bytes, including three `.cs` files and a `.csproj` | repository | open |
 | P-18 | `CaptureRunEndToEndTests` fails intermittently on a disposed SQLite handle | tests | open |
-
-**P-17 detail.** A predecessor finding cleared the *untracked* empty files and left the tracked ones,
-on the grounds that deleting tracked files is a repository change rather than a tidy-up. Those
-specific files are now gone, but eleven remain:
-
-```
-next/src/SecureAD.Shell/Services/BundleTreeSource.cs
-next/src/SecureAD.Shell/Services/ITreeSource.cs
-next/src/SecureAD.Shell/ViewModels/SectionView.cs
-next/tools/SchemaProbe/SchemaProbe.csproj
-next/tools/_repoint-repository-root.ps1
-next/tools/_run-inbound-next.ps1
-next/tools/check-instruction-claims.ps1
-next/tools/delink-archived-documents.ps1
-next/tools/restore-documents-to-baseline.ps1
-next/tools/tmp-probe.ps1
-next/tests/.c8-row.tmp
-```
-
-`SchemaProbe.csproj` being empty means that tool cannot build, which is consistent with it not
-appearing in the solution. The reasoning from the original finding still applies: **a name that
-claims a task and a file that does nothing is worse than no file, because a later reader assumes it
-works** — and `check-instruction-claims.ps1` and `delink-archived-documents.ps1` name tasks directly
-relevant to this rewrite.
 
 **P-18 detail.** `EveryObjectTheControllerServedIsStored` failed once with
 `System.ObjectDisposedException: SQLitePCL.sqlite3`, then passed in isolation and on two subsequent
 runs. Low severity but it corrodes the oracle: *"A test that fails at random trains a reader to
 re-run rather than to look, and the day it fails for a real reason it will be re-run too."*
-
-**P-2 detail — verified against the code 2026-09, and the line was right about its own subject.**
-`SchemaVersionUnsupported` appears exactly twice in the repository, both in `BundleReader.cs`: the
-remarks at line 66 and the failure code at line 162. Zero occurrences under `next/tests`. Checked
-because the previous pass found `#17` wrong about what it named, and this one is not.
-
-**What the check sharpens rather than changes.** The two version refusals are written as a pair in
-one paragraph of the same remarks block, and only one of them was tested.
-`BundleReaderTests.ABundleCanonicalisedByAnEarlierVersionIsRefusedUnderItsOwnCode` writes a bundle,
-rewrites `canonicalization_version` and re-seals — so the seam for testing a version refusal exists,
-is already built, and works. `UPDATE bundle SET schema_version` through the same seam is the missing
-test. So this is not a refusal that is hard to reach; it is the `P-19` shape a third time — a rule
-applied to a list of two, and the second entry never re-asked. The area file understates it further:
-`how-a-run-is-stored.md` has a capability row for neither refusal, including the one that is tested.
-
-**P-3 detail — adjudicated 2026-09. The mechanism is real, no bundle today carries a wrong value,
-and what it costs is not the number.**
-
-`BundleWriter.WriteDistinctDescriptor` binds `canonicalization_version` to the static
-`AceCanonicalization.Version` while `normalization.Aces[n].CanonicalizationVersion` sits unread in
-the same method. The two cannot disagree today: `AceNormalizer.Normalize` is the only producer of an
-`AceNormalizationResult`, it stamps every entry with that same static, and its only two callers —
-`BundleCaptureSink` and `SysvolCapture` — call it in process. The `ace` table has no version column
-at all, so the per-entry value is dropped on the way in.
-
-**The writer's own remarks already state the rule the insert does not follow.**
-`WriteSecurityDescriptor` says the entries *"arrive already canonicalised, each carrying its own
-hash and the version of the pipeline that produced it"* — and the insert twelve lines below reads
-the static instead. So this is not a coupling nobody thought about; it is a stated intent and an
-implementation that diverged from it, in one method, which is why it reads correct to anyone
-checking the comment rather than the parameter list.
-
-**What it breaks is the column's independence, and that is a comparability claim.** The column
-exists so a later build can refuse hashes it cannot reproduce, and `BundleReader.Open` reads that
-column and nothing else to decide. Sourcing it from the build makes it a restatement of the reader's
-own constant rather than a fact about the stored bytes — a self-certifying loop of the shape
-`F-S44-2` names, closed today only by there being one producer, which is a property of the current
-call graph and not something the writer asserts. The failure it cannot catch is precise: a bundle
-whose entries are version 2 and whose column says 3 passes the refusal, then compares equal to
-nothing and unequal to everything, silently. `BundleSchema.cs` records that this exact thing already
-happened once — the column *"was written here from the start and read by nothing until 2026-08-19,
-which is how a version 2 bundle could open silently under a version 3 build."*
-
-**The remedy, so a fix pass need not re-derive it.** Take the version from the entries, and refuse a
-set carrying more than one — a descriptor whose entries were canonicalised by two recipes is not a
-descriptor this product can hash, and that is a refusal rather than a warning for the same reason
-the reader's is. The empty entry set keeps the build's constant and that is correct: there is no
-entry to ask, and the set hash was produced by this build. One line in the writer, one guard, one
-test.
-
-**Recorded rather than fixed, and the branch stays documentation-only.** It is not urgent by the
-owner's own test — no operator reads a wrong number today, because no such bundle can exist. It is
-recorded at all because the thing standing between the claim and the defect is the call graph
-happening to have one producer in it, and `0021` puts a second one on the roadmap: re-analysis
-derives a new bundle from a sealed one, and that is exactly the path that would hand the writer
-entries it did not normalise.
 
 **F-0079-6 is the same shape, and it has already cost something.** Carried from
 `the-run-library.md`. `CoverageId` is a hash over a formatted string with no format version recorded
@@ -266,8 +172,69 @@ Deliberately not repaired by grouping on the domain rows instead: the fingerprin
 comparability, so those runs genuinely cannot be compared, and merging them would show one group
 whose members refuse to compare across an invisible line inside it. The honest options are a format
 version stored beside the hash, or accepting that a fingerprint change obsoletes old runs and saying
-so. **Both this and P-3 are one question asked twice**: a hash whose recipe is identified by the
-build that read it rather than by a value stored with it. Worth settling once.
+so. **This and `P-3` were one question asked twice**: a hash whose recipe is identified by the
+build that read it rather than by a value stored with it. `P-3` was fixed in September; this is the
+half that remains.
+
+**Adjudicated together 2026-09. One principle, and it settles both.**
+
+> **A hash must carry the identity of the recipe that produced it — in the value, or in the row
+> beside it. Never in the build that reads it.**
+
+**They were the same question at different maturity, and that decided the two remedies.** `P-3` had
+the mechanism and filled it wrongly: `canonicalization_version` exists, `BundleReader` reads it back
+and refuses a version it cannot reproduce by name. The refusal worked; the defect was on the write
+side, where the column was bound to the build's static instead of to the entries it describes.
+**F-0079-6 has no mechanism at all** — no version is stored, nothing reads one, nothing refuses.
+
+**The failure modes are opposite, which is why they were settled together.** `P-3` failed *loudly and
+wrongly* — a bundle whose entries disagreed with its column passed a refusal it should not.
+F-0079-6 fails *silently and correctly* — the runs really are incomparable, and the product says
+nothing at all, it just draws two groups. The second is worse by this product's own standard: a
+failure rendered as a benign difference is the one shape an audit tool cannot have, and it is the
+rule `SealState.Unreadable` exists to honour one layer down.
+
+**What fixing `P-3` proved, and it is the argument for doing this one.** Closing that loop turned the
+suite red immediately: a test fixture had been claiming canonicalization version 1 while the build
+produced 3, and the defect itself had hidden the wrong value for months by overwriting the entries'
+claim on the way in. A self-certifying column cannot refuse anything, including data that is already
+wrong. F-0079-6 is that same loop at the identity layer, and unlike `P-3` it has **already fired in
+the field** — the two groups under one heading on 2026-08-21.
+
+**F-0079-6's remedy is to make the value self-describing** — the version goes *into* the hash string,
+not beside it: `1-3f2a9c8e1b4d5a67`. Chosen over a sidecar column because `RunScope.Identity` is a
+**bare string**, read from `BundleDescription.CoverageId` and compared for grouping, with nowhere to
+hang an accompanying column. A version stored beside the hash would be correct in the `bundle` table
+and absent at the one site where the value is actually compared.
+
+> **Corrected 2026-09.** This argument originally also claimed the value travels into run folder
+> names. It does not — `RunLibrary.CreateRun` builds `{forest}-{timestamp}` and its remarks state
+> that a name is not evidence. The claim came from `RunHash.cs`'s own remarks, which say the two
+> identities *"appear side by side in folder names and in the run library"* — wrong about the code in
+> its own assembly, and taken on trust. See `D-7`. The conclusion stands on `RunScope.Identity`
+> alone, and the blast radius is smaller than first written: **nothing on disk is renamed.**
+
+**What this buys, and it is the answer to the two "honest options" above rather than a choice between
+them.** Comparison stays plain string equality, so runs of different recipes still fail to match —
+that behaviour does not change and should not. What changes is that **the mismatch becomes legible**.
+A bare sixteen-character value is, by its shape, a pre-versioned one, so a reader can say *this run
+predates the current scope recipe* instead of islanding it in silence. The format change obsoletes
+old runs **and says so**, which is both options at once and is why neither had to be chosen.
+
+**It belongs in `RunHash`, not in `CoverageId`.** `RunHash` is shared by `ProfileId` and `CoverageId`
+precisely so the width and alphabet of an identity cannot drift between them; a version applied to
+one and not the other would reintroduce exactly the drift that type exists to prevent.
+
+**What it costs, stated plainly.** The value widens by two characters and run folder names change.
+Adopting it is *itself* a format change, so it obsoletes every existing coverage identity one final
+time — the last time it can happen invisibly, which is the argument for doing it before there is a
+customer history rather than after. `ProfileId` is recomputable from the forest name and re-derives
+itself; `CoverageId` cannot, and those values are lost as grouping keys. Given the owner is the only
+user today, that cost is a lab inconvenience now and an unpayable one later.
+
+**Recorded rather than fixed, and the branch stays documentation-only.** Both remain `open` as work.
+What has been decided is the shape of the fix, so a fix pass does not re-derive it or settle the two
+inconsistently — which is the specific risk of leaving one question recorded in two places.
 
 **`#17` detail — adjudicated 2026-09, and the original line was wrong.** It said the ladder treats
 91 as proof of *refused protection*. It does not: `ConnectionFailureReason.Of` maps 91 to
