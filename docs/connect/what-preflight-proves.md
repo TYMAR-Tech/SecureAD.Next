@@ -264,7 +264,7 @@ the controller model, and leaves the session's own surface unchanged.
 | have every domain asked at once, and no controller asked two things at once | `PreflightTests.TwoDomainsOnOneControllerAreNeverAskedAtTheSameTime` | |
 | be certain that pass is genuinely concurrent rather than concurrent in shape | `PreflightTests.DomainsOnDifferentControllersAreAskedAtTheSameTime` | |
 
-**Verified in the lab.** 2026-09-xx, against `ad.lab` with `ba.ad.lab` and `ph.ad.lab`, one
+**Verified in the lab.** 2026-08-21, against `ad.lab` with `ba.ad.lab` and `ph.ad.lab`, one
 controller per domain, no subnets declared.
 
 ---

@@ -216,7 +216,7 @@ a `BaselineVerdict` carrying `BaselineVerdict.IsEligible` and `BaselineVerdict.E
 
 ## What is owed
 
-**Checked against the code 2026-09, and two of the three claims this section made were false.** They
+**Checked against the code 2026-08-23, and two of the three claims this section made were false.** They
 were written on 2026-08-12 and describe seams built afterwards and never re-read. The corrections are
 below; the reasoning is `P-27`.
 

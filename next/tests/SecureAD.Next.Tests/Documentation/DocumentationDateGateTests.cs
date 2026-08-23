@@ -41,9 +41,39 @@ public sealed class DocumentationDateGateTests
     private static readonly Regex Dated = new(@"20\d\d-\d\d-\d\d", RegexOptions.Compiled);
 
     /// <summary>
+    /// A year and month with no day: <c>2026-09</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The lookarounds keep this off the front of a full date. <c>2026-08-18</c> contains
+    /// <c>2026-08</c>, and matching that would make every dated line an offence the moment the
+    /// month turned.
+    /// </para>
+    /// <para>
+    /// <b>Added 2026-08-23, and it was already wrong here.</b> The punch list carried three
+    /// adjudications dated <c>2026-09</c>, written in August by a session that reached for a month
+    /// rather than a date. <see cref="NoDocumentClaimsADateThatHasNotHappened"/> never saw them,
+    /// because its name says <i>a date</i> and its pattern says <i>a full date</i>. That gap then
+    /// propagated: the session that found it copied the surrounding convention into its own
+    /// entries before checking the convention.
+    /// </para>
+    /// </remarks>
+    private static readonly Regex DatedByMonth =
+        new(@"(?<!\d)20\d\d-\d\d(?!-?\d)", RegexOptions.Compiled);
+
+    /// <summary>
     /// A date with a placeholder where a day or month should be: <c>2026-09-XX</c>.
     /// </summary>
-    private static readonly Regex Placeholder = new(@"20\d\d-(?:\d\d|XX)-(?:\d\d|XX)(?<!\d)", RegexOptions.Compiled);
+    /// <remarks>
+    /// <b>Case-insensitive since 2026-08-23.</b> It matched <c>XX</c> only, under
+    /// <see cref="StringComparison.Ordinal"/>, and three lab-verification dates had been sitting as
+    /// <c>2026-09-xx</c> in lowercase - invisible to this gate for the case and to the future-date
+    /// gate for not being a full date. Two checks, blind to the same three lines, each for its own
+    /// reason.
+    /// </remarks>
+    private static readonly Regex Placeholder = new(
+        @"20\d\d-(?:\d\d|XX)-(?:\d\d|XX)(?<!\d)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
     /// A placeholder date is not a date, so <see cref="NoDocumentClaimsADateThatHasNotHappened"/>
@@ -67,7 +97,7 @@ public sealed class DocumentationDateGateTests
             {
                 foreach (Match match in Placeholder.Matches(line.Item))
                 {
-                    if (!match.Value.Contains("XX", StringComparison.Ordinal)) continue;
+                    if (!match.Value.Contains("XX", StringComparison.OrdinalIgnoreCase)) continue;
 
                     offences.Add(
                         $"  {Path.GetFileName(file)} line {line.Index + 1}: {match.Value}");
@@ -117,10 +147,47 @@ public sealed class DocumentationDateGateTests
             + Environment.NewLine + string.Join(Environment.NewLine, offences));
     }
 
+    /// <summary>
+    /// The same rule for a claim that names only a month. A wrong month is as fabricated as a
+    /// wrong day and is easier to write, because a month feels like an approximation rather than
+    /// an assertion.
+    /// </summary>
+    [Fact]
+    public void NoDocumentClaimsAMonthThatHasNotHappened()
+    {
+        var latest = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        var offences = new List<string>();
+
+        foreach (var file in DatedFiles())
+        {
+            foreach (var line in File.ReadAllLines(file).Index())
+            {
+                foreach (Match match in DatedByMonth.Matches(line.Item))
+                {
+                    if (!DateOnly.TryParse(match.Value + "-01", out var stated))
+                        continue;
+
+                    if (stated.Year > latest.Year
+                        || (stated.Year == latest.Year && stated.Month > latest.Month))
+                    {
+                        offences.Add($"{Relative(file)}:{line.Index + 1} states {match.Value}");
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            offences.Count == 0,
+            "A document states a month that has not happened. Reaching for a month rather than a "
+            + "date does not make a claim approximate - it makes it unverifiable, which is worse. "
+            + "Use the date the work is actually being done:"
+            + Environment.NewLine + string.Join(Environment.NewLine, offences));
+    }
+
     // -------------------------------------------------------------------------------------------
     // The scanner self-test. A gate that scans nothing passes.
     // -------------------------------------------------------------------------------------------
-
     [Fact]
     public void TheGateReadsTheRealDocumentsAndFindsRealDates()
     {
@@ -144,6 +211,38 @@ public sealed class DocumentationDateGateTests
 
         Assert.True(match.Success);
         Assert.True(DateOnly.Parse(match.Value) > latest);
+    }
+
+    /// <summary>
+    /// The month pattern must not fire on the front of a full date. Without this the widening
+    /// would report every dated line in the repository the moment the month turned, and the
+    /// obvious repair would be to delete it again.
+    /// </summary>
+    [Fact]
+    public void TheMonthGateDoesNotMatchThePrefixOfAFullDate()
+    {
+        Assert.False(DatedByMonth.IsMatch("Written 2026-08-18."));
+        Assert.False(DatedByMonth.IsMatch("Between 2026-08-02 and 2026-08-18"));
+        Assert.False(DatedByMonth.IsMatch("bundle ad.lab-20260819-232425"));
+    }
+
+    /// <summary>
+    /// And it does fire on a bare month, which is what it exists for.
+    /// </summary>
+    [Fact]
+    public void TheMonthGateMatchesABareMonthAndWouldFailOnAFutureOne()
+    {
+        Assert.True(DatedByMonth.IsMatch("adjudicated 2026-09, and the line was right"));
+
+        var future = DateTime.UtcNow.AddYears(1).ToString("yyyy-MM");
+        var latest = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var match = DatedByMonth.Match($"adjudicated {future}.");
+
+        Assert.True(match.Success);
+
+        var stated = DateOnly.Parse(match.Value + "-01");
+        Assert.True(stated.Year > latest.Year
+            || (stated.Year == latest.Year && stated.Month > latest.Month));
     }
 
     [Fact]

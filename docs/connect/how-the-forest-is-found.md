@@ -265,7 +265,7 @@ none of the subnets it does declare are different faults with different remedies
 | learn that a domain has no readable controller, instead of it vanishing from the run | `ControllerSelectionTests.ADomainWithNoCandidatesIsRecordedRatherThanPlannedAgainst` | |
 | be told plainly that this machine's site is unknown, when the forest declares no subnets | `OperatorSiteTests.AForestDeclaringNoRangesLeavesTheRunWithNoSite` | |
 
-**Verified in the lab.** 2026-09-xx, against `ad.lab` with `ba.ad.lab` and `ph.ad.lab`, one
+**Verified in the lab.** 2026-08-21, against `ad.lab` with `ba.ad.lab` and `ph.ad.lab`, one
 controller per domain, no subnets declared. Two things were checked by eye because no test can check
 them: the PDC emulator prompt appeared on no row, and no domain was described as being in another
 site.
