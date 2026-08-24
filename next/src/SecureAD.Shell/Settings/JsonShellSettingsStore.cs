@@ -1,13 +1,22 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 using SecureAD.Kernel;
 
 namespace SecureAD.Shell.Settings;
 
 /// <summary>
-/// Settings kept in a small JSON file in the operator's roaming profile.
+/// Settings kept in a small JSON file in the operator's local profile, per machine.
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>The local profile, deliberately, and not the roaming one.</b> A run library is a path on a
+/// particular machine, so a setting that followed an operator to another machine would point at a
+/// directory that is not there - or, worse, at a different directory that is. This said
+/// <i>roaming profile</i> until 2026-08-24, which was never what the code did:
+/// <see cref="Environment.SpecialFolder.LocalApplicationData"/> is what it has always asked for, and
+/// <c>JsonShellSettingsStoreTests.SettingsAreKeptInTheLocalProfileRatherThanTheRoamingOne</c> holds
+/// it there.
+/// </para>
 /// <para>
 /// <b>An absent file and an unreadable one are answered differently.</b> No file is a new
 /// installation and reads as <see cref="ShellSettings.Unconfigured"/>. A file that exists and

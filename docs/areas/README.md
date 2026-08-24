@@ -33,7 +33,6 @@ ledger row, or from the shape of the code.
 
 | Area | File | State |
 |---|---|---|
-| What goes into the new audit wizard | [the-new-audit-wizard.md](the-new-audit-wizard.md) | written |
 | How results are shown | [how-results-are-shown.md](how-results-are-shown.md) | written |
 | Reports and export | [reports-and-export.md](reports-and-export.md) | written |
 | How the app looks | [how-the-app-looks.md](how-the-app-looks.md) | written |

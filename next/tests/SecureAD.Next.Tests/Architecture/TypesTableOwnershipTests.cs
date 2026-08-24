@@ -64,6 +64,13 @@ public sealed class TypesTableOwnershipTests
 
         foreach (var (page, types) in Claims())
         {
+            // The shell exports nothing, so the register cannot hold its types and this check
+            // cannot apply to it. ShellLayerTypesTests binds those pages to the internal types
+            // their files declare instead, and TheShellExemptionCoversOnlyTypesTheRegisterCannotHold
+            // below fails if this exemption ever covers a type the register really does hold.
+            if (IsShell(page))
+                continue;
+
             foreach (var type in types)
             {
                 if (!registered.TryGetValue(type, out var owner))
@@ -84,6 +91,67 @@ public sealed class TypesTableOwnershipTests
             + "cannot disagree without one of them being wrong about who describes the code:"
             + Environment.NewLine + string.Join(Environment.NewLine, wrong));
     }
+
+    /// <summary>
+    /// The shell is exempt from the register check above, and this is what stops that exemption
+    /// hiding anything.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why the exemption exists.</b> <see cref="SurfaceRegister"/> is keyed to the exported
+    /// types of the production assemblies, and the shell exports nothing by design -
+    /// <see cref="ShellSurfaceGateTests"/> fails the build the day it does. So a shell page can
+    /// never satisfy the register check, and holding it to one would mean either registering types
+    /// nobody can consume or leaving the shell undocumented. That was <c>P-56</c>, and it blocked
+    /// the deletion of an area file carrying 84 capability claims.
+    /// </para>
+    /// <para>
+    /// <b>What replaces it.</b> <c>ShellLayerTypesTests</c> binds each shell page to the internal
+    /// types its own files declare, in both directions. The exemption removes a check that cannot
+    /// apply; it does not remove the obligation.
+    /// </para>
+    /// <para>
+    /// <b>And this holds the exemption to its terms.</b> If a shell-claimed type ever appeared in
+    /// the register, one of two things happened: the shell grew a public surface, or the register
+    /// gained a row for something it should not describe. Either way the exemption would be
+    /// covering a real disagreement, and this fails rather than letting it pass quietly.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheShellExemptionCoversOnlyTypesTheRegisterCannotHold()
+    {
+        var registered = SurfaceRegister.Entries()
+            .Select(e => e.Type)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var shellPages = Claims().Where(c => IsShell(c.Page)).ToList();
+
+        Assert.True(
+            shellPages.Count > 0,
+            "No shell page carries a TYPES table, so the exemption it exists for is exempting "
+            + "nothing and this check reads an empty set.");
+
+        var wrong = shellPages
+            .SelectMany(c => c.Types
+                .Where(registered.Contains)
+                .Select(t => $"  {c.Page} claims '{t}', which the register also holds"))
+            .OrderBy(m => m, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            wrong.Count == 0,
+            "A shell page claims a type the surface register also holds. The shell is exempt from "
+            + "the register check because it exports nothing, so this means either the shell has "
+            + "grown a public surface or the register describes something it should not:"
+            + Environment.NewLine + string.Join(Environment.NewLine, wrong));
+    }
+
+    /// <summary>
+    /// A page under <c>docs/layers/shell/</c>, keyed the way the register writes a governing
+    /// document.
+    /// </summary>
+    private static bool IsShell(string page) =>
+        page.StartsWith("layers/shell/", StringComparison.Ordinal);
 
     /// <summary>
     /// No type is claimed by two pages. This is implied by the check above whenever the register is

@@ -1,22 +1,65 @@
-# What goes into the new audit wizard
+# The New Audit screen
 
-**Area.** The screen an operator uses to start an audit: what it discovers, what it asks, what it
-refuses, and what it commits to.
+**Code:** `next/src/SecureAD.Shell/ViewModels/NewAuditViewModel.cs`, `AuditRowViewModel.cs`,
+`ExcludedDomainViewModel.cs`, `ExclusionAttestationViewModel.cs`, `DomainDetailsViewModel.cs`,
+`next/src/SecureAD.Shell/Services/AuditPlan.cs`, `AuditReview.cs`, `ExclusionAttestation.cs`,
+`INewAuditDialog.cs`, `NewAuditDialog.cs`
+**Layer:** Shell — the screen an operator starts an audit from: what it discovers, what it asks,
+what it refuses, and what it commits to.
 
-> **This file has been consumed down to its screen.** On 2026-08-24 the seven types it governed were
-> rehomed and it now owns nothing in
-> [`SURFACE-REGISTER.md`](../next/SURFACE-REGISTER.md). What a run reads and how a controller is
-> chosen went to [`how-the-forest-is-found.md`](../layers/connect/how-the-forest-is-found.md); what
-> preflight proves went to [`what-preflight-proves.md`](../layers/connect/what-preflight-proves.md);
-> the exclusion attestation went to
-> [`a-domain-left-out-on-purpose.md`](../layers/evidence/a-domain-left-out-on-purpose.md). Eleven of
-> the thirteen decisions this file listed are cited on those pages and are not repeated here.
->
-> **What remains is the shell**, and it stays because there is nowhere for it to go. The capability
-> table below is 84 rows proving the wizard screen, almost all of them
-> `NewAuditViewModelTests`, and no layer document describes the shell — that is `P-56`. This file is
-> deleted by the pass that writes one, not before. Deleting it now would drop 84 claims that
-> nothing else records, which is the defect `P-78` was raised for.
+This is the first layer document for the shell, and the shell is described differently from every
+other subsystem for one reason: **it exports nothing.** `ShellSurfaceGateTests` holds it to that —
+the window's surface is its screens, and a view model is not something anything outside the project
+can legitimately consume. So the types below are `internal`, and the gate that binds this table
+reads visibility from the source rather than from the assembly's exported set, which would be empty.
+
+Which screens exist at all is [`ShellSection`](../../../next/src/SecureAD.Shell/ViewModels/ShellSection.cs),
+and a member is added there only when the screen behind it can answer for itself. This page
+describes `Audit`. Where the run library is chosen is [`the home screen`](the-home-screen.md).
+
+---
+
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `NewAuditViewModel` | The New Audit window: what would be read, from where, and the one place a run is started |
+| `AuditScreen` | The screens of the New Audit window, in the order they are reached |
+| `AuditRowViewModel` | One row of the New Audit table, whatever kind of domain it is about |
+| `DomainRowViewModel` | One domain's row of the New Audit table |
+| `ExcludedDomainViewModel` | A row for a domain the forest declares and names no writable controller for |
+| `ExclusionView` | One domain leaving a run, as the review screen lists it before the run commits |
+| `DomainDetailsViewModel` | The state behind the domain details panel |
+| `ExclusionAttestationViewModel` | The state behind the exclusion attestation dialog |
+| `ExclusionReasonChoice` | One reason on the attestation dialog: the wording an operator reads, and the value behind it |
+| `AuditPlanView` | What a run would read and from where, as discovery established it and before anything was contacted |
+| `DomainPlanRow` | One domain's row of the plan: what would be read, from where, and once preflight has run what the forest answered |
+| `DomainAnswers` | What preflight established about one domain, and nothing it did not |
+| `AuditCheck` | Everything preflight learned, for every domain, from one pass |
+| `Established` | What a run established about one fact: nothing, yes, or no |
+| `SiteKnowledge` | Why this machine's own site is not known, which is not the same fact as it having none |
+| `AuditReview` | The whole audit, as it is put to the operator before he commits to it |
+| `ReviewedDomain` | One domain this run will read, and the controller it will read it from |
+| `ExclusionAttestation` | What an operator stated when he left a domain out of a run |
+| `ExclusionStatement` | What the operator supplied in the attestation dialog, before the run stamps the rest |
+| `ExclusionReason` | Why a domain was left out of a run, from the closed list an operator picks from |
+| `ExclusionReasons` | The closed reason list, in the words an operator reads and the words a bundle stores |
+| `DomainInclusion` | Whether a domain is in this run, and if it is not, which kind of exclusion it is |
+| `INewAuditDialog` | Starting an audit, and putting the one question that still needs a dialog in front of the operator |
+| `NewAuditDialog` | Puts a freshly planned audit on the shell's audit surface, and takes it off again |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, and it is bound in both directions against the
+**internal** types the files above declare: one they declare and this table omits fails the build,
+and so does a row naming something they do not.
+
+**Two types the screen uses constantly are not claimed here.** `FactState` and `Notice` are shell
+vocabulary — the Assets and Object screens use them too — so a page claiming them would be claiming
+the shell's language on behalf of one screen. They belong wherever that vocabulary is described, and
+that page is not written yet.
 
 ---
 
@@ -26,29 +69,75 @@ Each line links the record that decided it. A record with `Status: Accepted` is 
 position; nothing on this page overrides one, and where this page and a record disagree the record
 wins and the disagreement is a finding.
 
-**Only the decisions about the screen are listed here.** The rest moved with the types they govern
-and are cited on the three pages named above.
-
 | The product… | Decided by |
 |---|---|
-| starts an audit in a modal window rather than a page in the shell | [`0057`](../decisions/0057-starting-an-audit-is-a-modal-act.md) |
-| shows every fact in three states, never as a bare yes or no | [`0056`](../decisions/0056-the-visual-language-encodes-three-states.md) |
+| starts an audit in a modal window rather than a page in the shell | [`0057`](../../decisions/0057-starting-an-audit-is-a-modal-act.md) |
+| shows every fact in three states, never as a bare yes or no | [`0056`](../../decisions/0056-the-visual-language-encodes-three-states.md) |
 | asks for that attestation from a tick box on the domain row, and raises it as a dialog | S-46, on the owner's answer |
 | refuses to start a run carrying an exclusion nobody has answered for | S-46, on the owner's answer |
 | tells an operator, before he commits, how many facts the run will not establish | S-46, closing `F-0056-1` |
 
+**Only the decisions about the screen are here.** What a run reads and how a controller is chosen is
+governed on [`how the forest is found`](../connect/how-the-forest-is-found.md); what preflight proves
+on [`what preflight proves`](../connect/what-preflight-proves.md); what an exclusion attestation must
+carry on [`a domain left out on purpose`](../evidence/a-domain-left-out-on-purpose.md).
+
+---
+
+## The three states, and why a bare yes or no is refused
+
+`Established` is the reason this screen can be trusted with a security question. A fact the run has
+not established is not `false` — it is *not established*, and the difference is the whole of
+[`0056`](../../decisions/0056-the-visual-language-encodes-three-states.md). A screen with two states
+has to render "we could not ask" as one of them, and whichever it picks is a lie an operator acts on.
+
+`SiteKnowledge` is the same shape one level down: *this machine's site is unknown* and *this forest
+declares no sites* are different facts, and a screen that merged them would tell an administrator his
+forest was misconfigured when the truth is that the product could not tell.
+
+---
+
+## An exclusion is answered for before the run starts
+
+A domain leaves a run only where somebody said so and put a name to it. `ExclusionAttestation` is
+that statement, `ExclusionReasons` is the closed list it comes from, and `ExclusionStatement` is the
+part the operator supplied before the run stamps the rest.
+
+**The account is captured, not typed.** An operator does not name himself; the signed-in account is
+recorded. A typed name is an assertion, and an attestation whose author is an assertion is worth
+nothing to the auditor reading it later.
+
+**A run carrying an unanswered exclusion does not start.** That is the refusal the screen exists to
+make, and it is why the review screen lists every departing domain before anything is committed.
+
+---
+
+## Four columns, and a Details button that cannot hide anything
+
+The table showed nine columns and now shows four: Include, Domain, Read from, and the override. The
+principle is one already used on this screen — **a column that says the same thing on every row is a
+column nobody reads**, and nine of them turned the one column that mattered into noise.
+
+Site, Connection, Serves it, Password settings and PDC emulator moved behind a single **Details**
+button covering every domain at once. That button **carries a warning mark whenever any domain has
+something worth attention**, which is the part that matters: without it, trimming a column would have
+become a way of hiding something, and the screen would be quieter and less true.
+
+---
+
+## Start lives only in the review dialog
+
+The second wizard step used to show the same table under a different heading and reviewed nothing. It
+is now a review dialog that states what the run will read, what it will not and why, who authorised
+each exclusion, and how much the run will not establish.
+
+**Start exists only inside that dialog.** That is what keeps opening the window from being one click
+away from a capture — an audit reads a customer's entire directory, and a screen that can begin one
+by accident is a screen that will.
+
 ---
 
 ## What is built
-
-Each capability names the test that proves it. **The test is the evidence; this table is only the
-index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
-here can claim something the product does not do.
-
-**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
-honest answer for most rows and means unit-tested but not yet exercised against Active Directory -
-a test with a synthetic descriptor proves the parser handles those bytes, not that a domain
-controller sends them.
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|
@@ -76,8 +165,6 @@ controller sends them.
 | be certain he lands in Assets rather than back on Home | `NewAuditViewModelTests.TheAuditIsLeftBeforeTheRunIsOpened` | 2026-08-21 |
 | be certain abandoning a plan that never ran opens nothing | `NewAuditViewModelTests.DiscardingAPlanThatNeverRanOpensNothing` |  |
 | be certain a run that sealed nothing is not offered results to view | `NewAuditViewModelTests.ARunThatSealedNothingIsNotOfferedResultsToView` |  |
-| reach a run written since the library was last read | `RunLibraryViewModelTests.ARunWrittenSinceTheLastReadCanBeAdopted` |  |
-| be told when a captured run is not in the library he is pointed at | `RunLibraryViewModelTests.ARunTheLibraryDoesNotHoldSaysSo` |  |
 | be certain a finished run is not offered a way back to change it | `NewAuditViewModelTests.AFinishedRunDoesNotOfferTheWayBack` |  |
 | see everything the table stopped carrying, for every domain at once | `NewAuditViewModelTests.DetailsShowsEveryDomainAtOnce` |  |
 | be told a trimmed column is hiding an unanswered question | `NewAuditViewModelTests.ADomainWithAnUnansweredQuestionIsWorthAttention` |  |
@@ -118,55 +205,3 @@ controller sends them.
 | tell a PDC emulator that could not be established from one holding no role | `NewAuditViewModelTests.APdcEmulatorThatCouldNotBeEstablishedIsNotReportedAsHoldingNoRole` |  |
 | be certain a controller nothing answered from is not reported as refusing protection | `NewAuditViewModelTests.AControllerNothingAnsweredFromIsNotReportedAsRefusingProtection` |  |
 | be told when his machine has no site, rather than being given one | `NewAuditViewModelTests.AMachineWithNoSiteSaysSoRatherThanNamingOne` |  |
-| be certain an audit cannot be started until a run library is chosen | `HomeViewModelTests.AnAuditCannotBeStartedUntilARunLibraryIsChosen` |  |
-| start an audit once a library is chosen | `HomeViewModelTests.ChoosingALibraryMakesAnAuditStartable` |  |
-| be certain nothing starts an audit until he asks for one | `HomeViewModelTests.NothingStartsAnAuditUntilTheOperatorAsksForOne` |  |
-| be told an installation is unconfigured rather than shown an empty path | `HomeViewModelTests.AnUnconfiguredInstallationExplainsItselfRatherThanShowingAnEmptyPath` |  |
-| be certain unreadable settings are reported rather than treated as unconfigured | `HomeViewModelTests.UnreadableSettingsAreReportedRatherThanTreatedAsUnconfigured` |  |
-| have his library choice remembered between sessions | `JsonShellSettingsStoreTests.APathThatWasWrittenIsReadBack` |  |
-| be certain settings are kept per machine rather than following a roaming profile | `JsonShellSettingsStoreTests.SettingsAreKeptInTheLocalProfileRatherThanTheRoamingOne` |  |
-
----
-
-## What has not been discussed
-
-**Nothing here is a plan.** These are questions nobody has answered. If work touches one of them,
-stop and ask — do not infer an answer from the old application, from a ledger row, or from the
-shape of the code.
-
-**This section is the owner's to write.** What follows is a draft list of candidates, offered so
-there is something to react to. It is not authoritative and nothing here has been decided.
-
-- **What the window shows when the forest cannot be reached on open.** **Answered**: the window says
-  which stage failed, in the audit layer's own words, and offers the pass again. The stages are told
-  apart by the amendment to
-  [`0018`](../decisions/0018-connection-security-is-an-ordered-ladder.md) — no domain to start from,
-  nothing answered, answered and rejected the account, answered and refused protection, or let the
-  run in and would not answer. What remains undecided is whether a name that does not resolve is
-  told apart from a host that is switched off; that question lives in
-  [`the connection ladder`](../layers/connect/the-connection-ladder.md).
-- **What the wizard shows while a run is in progress**, given
-  [`0060`](../decisions/0060-a-running-capture-reports-one-line-per-domain.md) decides the content
-  but not where it lives.
-- **Whether the modal can be closed while a run is going**, and what that means.
-- **Which columns the table carries.** **Answered.** Nine columns became four — Include, Domain,
-  Read from, and the override — on the principle already used on this screen: a column that says
-  the same thing on every row is a column nobody reads. Site, Connection, Serves it, Password
-  settings and PDC emulator moved behind a single **Details** button covering every domain at once,
-  and that button carries a warning mark whenever any domain has something worth attention, so
-  trimming a column cannot become a way of hiding something.
-- **Where the run is reviewed and started.** **Answered.** The second wizard step showed the same
-  table under a different heading and reviewed nothing. It was replaced by a review dialog that
-  states what the run will read, what it will not and why, who authorised each exclusion, and how
-  much the run will not establish. **Start lives only in that dialog**, which is what now keeps
-  opening the window from being one click from a capture.
-
----
-
-## Open findings
-
-| | | |
-|---|---|---|
-| `F-0056-1` | no pre-capture total of unestablished facts exists | **closed** — the last screen before a run commits carries one forest-wide number, counted from the same three-state marks the table renders, and says the total is not yet known rather than showing zero. `NewAuditViewModelTests.TheCountOfWhatWillNotBeEstablishedComesFromTheStatesTheTableShows` |
-| `F-0079-8` | **A finished audit offers no way to see what it captured.** `NewAuditView.xaml` line 525 carries a *View results* button with `IsEnabled="False"`, and the comment beside it explains why: *"there is no screen that reads a bundle yet, and an enabled control that quietly did nothing would be the product claiming a capability it does not have."* **That reasoning was right when written and is now false** - the Assets section reads bundles, and the run library opens one into it as of 2026-08-21. So the wizard ends by telling an operator his evidence is unreachable, immediately after spending hours producing it, and hands him a folder path instead. Raised by the owner, 2026-08-21. | **closed 2026-08-21.** The owner chose the shape: the one footer control's label becomes *View results* once a run has sealed evidence, and pressing it opens that run in Assets and leaves. Not a second button - `LeaveLabel` now has three values, because a run that finished and sealed nothing still says **Done** and has nothing to show. The body button is gone. **Three further statements rested on the same retired premise and moved with it**: `ResultsNote`, its XML doc, and the assertion that it said "not built yet". A fourth defect was found doing it and fixed here: `BundleDirectory` was set from any successful outcome, ignoring `CaptureOutcome.ProducedABundle`, so a run that sealed nothing was told its evidence was at a path holding none. **Shipped with a defect, found in the lab by the owner the same day: View results landed him on Home.** Both acts navigate - leaving the audit shows Home, opening a run shows Assets - and the first version opened and then left, so Home won. `ViewingResultsOpensTheRunThatWasJustCaptured` passed throughout: it asserted the opener was called and the audit was left once, both true, and could not see the order because neither fake models the shell's section. Corrected by leaving first and opening second, and pinned by `TheAuditIsLeftBeforeTheRunIsOpened`, which observes the moment of opening rather than checking afterwards that two things happened |
-| `F-0079-10` | **Nothing tests the composition root, and that is where half the View results defect lived.** `App.xaml.cs` wires the shell, the run library, the audit surface and the opener together in `OnStartup`, and no test constructs any of it. The ordering half is now covered, but the other half - that the wizard's opener navigates to Assets at all - is a lambda in `App.xaml.cs` that nothing exercises. A test that rebuilt the same wiring by hand would prove the copy rather than the product, which is the anchoring fault this repository has been bitten by before. | **open.** What would actually anchor it is lifting the wiring out of `OnStartup` into a named internal composer that both the application and a test call, with the catalogue and the capture launcher taken as seams rather than constructed inline. That is a real refactor of the startup path, deliberately not done in the session that found the defect, on the same reasoning that left `F-0049-1` half closed |
