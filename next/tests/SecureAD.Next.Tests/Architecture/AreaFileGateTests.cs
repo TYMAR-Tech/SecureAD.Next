@@ -196,8 +196,10 @@ public sealed class AreaFileGateTests
         Assert.True(links > 0, "Read no links out of any area file.");
         Assert.True(IndexEntries().Count > 0, $"Read no areas from {IndexFile}.");
 
-        Assert.Contains(files, f => Path.GetFileName(f) == "which-controller-we-read.md");
-        Assert.Contains(capabilities, c => c.Citation == nameof(Connect.ForestDiscoveryTests));
+        Assert.Contains(files, f => Path.GetFileName(f) == "how-a-run-is-stored.md");
+        Assert.Contains(
+            capabilities,
+            c => c.Citation.StartsWith(nameof(Evidence.BundleWriterTests), StringComparison.Ordinal));
 
         // The citation check can tell a test from something that is not one, in both directions.
         Assert.True(TestExists(nameof(AreaFileGateTests), out _));

@@ -6,8 +6,16 @@ and what it may and may not conclude when a connection fails.
 The code is [`ConnectionSecurityLadder`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLadder.cs),
 [`ConnectionLadderWalk`](../../../next/src/SecureAD.Audit/Connect/ConnectionLadderWalk.cs),
 [`ConnectionSecurityLog`](../../../next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs),
-[`ConnectionFailureReason`](../../../next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs) and
-[`UnprotectedConnectionAllowance`](../../../next/src/SecureAD.Audit/Connect/UnprotectedConnectionAllowance.cs).
+[`ConnectionFailureReason`](../../../next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs),
+[`UnprotectedConnectionAllowance`](../../../next/src/SecureAD.Audit/Connect/UnprotectedConnectionAllowance.cs)
+and [`ConnectionSecurityLevel`](../../../next/src/SecureAD.Evidence/ConnectionSecurityLevel.cs).
+
+**One of those files is in a different library, and that is deliberate.**
+`ConnectionSecurityLevel` compiles into `SecureAD.Evidence` because the level is not only a fact
+about how a connection was made, it is a fact the bundle has to record. It is described here anyway,
+because the four names it declares are the four rows of the ladder table below. A reader who learned
+the rung names on this page and had to go elsewhere for what they mean would be reading one design
+as two.
 
 What actually opens the socket at a chosen rung is
 [`how-a-connection-is-opened.md`](how-a-connection-is-opened.md).
@@ -15,6 +23,30 @@ What actually opens the socket at a chosen rung is
 Governed by [`0018`](../../decisions/0018-connection-security-is-an-ordered-ladder.md), including its
 2026-08-16 amendment. Where this page and that record disagree, the record wins and the
 disagreement is a finding.
+
+---
+
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `ConnectionSecurityLevel` | How well protected a connection turned out to be. The four names, and the vocabulary the bundle records |
+| `ConnectionSecurityRung` | One rung: a named level, the port it uses, and what it asks the transport for |
+| `ConnectionSecurityLadder` | The ordered list of ways this product will connect, most protected first, and which of them a run is permitted to attempt |
+| `ConnectionLadderWalk` | The descent: try each permitted rung from the top, stop at the first that answers, never re-order and never carry on past a success |
+| `ConnectionSecurityLog` | What each controller a run spoke to would accept. Append-only, and it never forgets a worse answer |
+| `ControllerConnectionSecurity` | One controller's answer: the rung that served it, and how many better ones it declined first |
+| `UnprotectedConnectionAllowance` | The statement, made before a run starts, that this run may descend to an unprotected connection, and the auditor's reason for it |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, and it is bound in both directions against the public
+types the files above declare: one they declare and this table omits fails the build, and so does a
+row naming something they do not. `ConnectionFailureReason.cs` is named in the header and
+contributes no row, because the class it declares is internal. It stays in the list anyway —
+dropping it would let a public type appear there with nothing noticing.
 
 ---
 

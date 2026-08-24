@@ -13,6 +13,29 @@ used for afterwards is [`how a controller is read`](../audit/how-a-controller-is
 
 ---
 
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `LdapDirectoryChannelFactory` | The one place in this product that opens a connection to a domain controller |
+| `LdapDirectoryChannel` | A live connection to one controller: the implementation of the product's one seam onto a customer's forest |
+| `DirectoryConnectionSettings` | Everything a run decides about how it connects, decided once before anything is read |
+| `DirectoryCredential` | Who a capture binds to a controller as. Two answers and no third |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, and it is bound in both directions against the public
+types the four files above declare: one they declare and this table omits fails the build, and so
+does a row naming something they do not.
+
+`ConnectionSecurityLog` is named further down this page and is **not** owned here — it is claimed by
+[`the connection ladder`](the-connection-ladder.md), beside the walk that fills it. This page writes
+into it; that is a mention, not a claim.
+
+---
+
 ## One owner, held by a build failure
 
 `ConnectionSecurityGateTests` fails the build if an `LdapConnection` is constructed, or a

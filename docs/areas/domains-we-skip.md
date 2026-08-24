@@ -42,7 +42,7 @@ page look furnished.
 
 What exists today is the *absence* of a domain, handled where the absence arises — a domain with no
 candidate controllers is recorded rather than planned against, in
-[which-controller-we-read](which-controller-we-read.md), and a domain that went unread makes the run
+[how the forest is found](../layers/connect/how-the-forest-is-found.md), and a domain that went unread makes the run
 incomplete, in [run identity and coverage](../layers/evidence/run-identity-and-coverage.md). **Neither is a
 deliberate exclusion.** Both are the product coping with a domain it could not reach.
 

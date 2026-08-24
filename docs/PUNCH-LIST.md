@@ -371,11 +371,15 @@ evidence to directory objects.
 
 Blockers to the consolidation itself. `D-1` — the register forbidding any area file to be deleted —
 was fixed and discharged; the first four area files went with it, what-a-permission-means.md
-followed on 2026-08-24, and how-failures-are-reported.md and the-run-library.md the same day.
+followed on 2026-08-24, and how-failures-are-reported.md, the-run-library.md and
+which-controller-we-read.md the same day. The last of those went once its final eleven types were
+rehomed onto `the-connection-ladder.md` and `how-a-connection-is-opened.md`; all 20 of the capability
+citations it carried already survived elsewhere, which is why it could be deleted rather than
+drained further.
 
 **How close each area file is to deletion, regenerated 2026-08-24 by `next/tools/measure-rewrite-progress.ps1`** — types it governs in
 `SURFACE-REGISTER.md`, and how many of those no layer document names yet. `P-52` fails the build
-when a right-hand column reaches zero. Six of the eleven remaining area files have no register
+when a right-hand column reaches zero. Six of the ten remaining area files have no register
 rows and are absent here; see `P-56`. `what-we-call-a-finding` is also absent by the owner's
 ruling of 2026-08-24 that it is parked until the findings feature is built, not rewrite debt.
 
@@ -384,7 +388,6 @@ ruling of 2026-08-24 that it is parked until the findings feature is built, not 
 | `group-policy` | 23 | 6 |
 | `how-results-are-shown` | 8 | 8 |
 | `how-a-run-is-stored` | 12 | 9 |
-| `which-controller-we-read` | 11 | 2 |
 
 | ID | Item | Status | Blocked on |
 |---|---|---|---|

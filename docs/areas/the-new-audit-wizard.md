@@ -158,7 +158,7 @@ there is something to react to. It is not authoritative and nothing here has bee
   nothing answered, answered and rejected the account, answered and refused protection, or let the
   run in and would not answer. What remains undecided is whether a name that does not resolve is
   told apart from a host that is switched off; that question lives in
-  [`which-controller-we-read`](which-controller-we-read.md).
+  [`the connection ladder`](../layers/connect/the-connection-ladder.md).
 - **What the wizard shows while a run is in progress**, given
   [`0060`](../decisions/0060-a-running-capture-reports-one-line-per-domain.md) decides the content
   but not where it lives.

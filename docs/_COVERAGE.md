@@ -86,7 +86,8 @@ found by searching for decision-shaped language rather than by reading whole fil
 
 > **Not a breach.** The Audit/Connect documents were written from the twenty-seven source files
 > under `next/src/SecureAD.Audit/Connect` (4,943 lines, all read), the tests that bind them, and
-> `docs/areas/which-controller-we-read.md` (102/102) — the complete code-first input set. The
+> `docs/areas/which-controller-we-read.md` (102/102) — the complete code-first input set. That area
+> file has since been consumed into `docs/layers/connect/` and deleted. The
 > twenty-five archive files below belong to the separate later exercise described at the top of this
 > file. **Audit/Connect is closed.**
 
