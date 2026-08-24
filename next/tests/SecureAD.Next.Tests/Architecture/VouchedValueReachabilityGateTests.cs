@@ -1,0 +1,892 @@
+using System.Collections;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
+using Xunit;
+
+namespace SecureAD.Next.Tests.Architecture;
+
+/// <summary>
+/// Gate 4b: a member that vouches for an answer must be able to say both things.
+///
+/// <para>
+/// <b>What went wrong before.</b> Gate 4 - <see cref="UnvouchedResultGateTests"/> - accepts a type
+/// as vouched when it declares a member whose <i>name</i> matches one of eleven shapes. That is a
+/// rule about shapes and it says so in its own summary. A member with the right name and a value
+/// that cannot vary satisfies it completely. <c>ObjectAttributes.AttributesAreComplete</c> was
+/// exactly that: computed as <c>attributes.Count == CapturedAttributeCatalog.All.Count</c> where
+/// both sides derived from the same catalogue by a partition, so it read <c>true</c> on every
+/// object the product ever built. Gate 4 counted the type as vouched, every count and collection
+/// hanging off it was excused on the strength of that vouching, and nothing had been measured.
+/// The defect is recorded as <c>P-62</c> and the flag was removed on 2026-08-22.
+/// </para>
+/// <para>
+/// A constant completeness flag is the first category in <c>.github/copilot-instructions.md</c> -
+/// a check that passes while measuring nothing - and it is worse than an absent one, because
+/// everything downstream of it looks verified. A customer reads <i>"complete"</i> beside a list of
+/// permissions and concludes the list is the whole list.
+/// </para>
+/// <para>
+/// <b>Why this drives the product rather than reading the tests.</b> The obvious gate is to scan
+/// the test sources for an assertion of each value. It was refused. Ask the question
+/// <c>.github/copilot-instructions.md</c> requires - <i>what change to the product would make this
+/// gate fail?</i> - and the answer for a source scan is <i>none</i>: it fails when somebody edits a
+/// test, and it passes when somebody adds one, whatever the product does. That is a prose-shape
+/// gate. This gate reads nothing under <c>next/tests</c>. It calls the type's own public
+/// constructors and factories, and asks whether any inputs it can supply produce <c>true</c> and
+/// any produce <c>false</c>. No test can satisfy it and no test can break it; only the product can.
+/// </para>
+/// <para>
+/// <b>Why it would have caught P-62 and a literal check would not.</b> A cheaper gate reads the
+/// getter's IL and fails a body that is <c>ldc.i4.1; ret</c>. That is real and it is kept below as
+/// <see cref="NoVouchingMemberIsALiteral"/>, because it fires on types this driver cannot build.
+/// But it would have passed <c>AttributesAreComplete</c> without a murmur: that getter was a
+/// genuine comparison between two expressions, and nothing local to it was constant. What made it
+/// constant was the relationship between its two sides, and the only way to see that from outside
+/// is to try to make it false and fail.
+/// </para>
+/// <para>
+/// <b>It polices booleans only, and that is not a narrowing.</b> The non-boolean vouchers are
+/// <c>Errors</c> lists and <c>Completeness</c> enums. An enum with one member would be the same
+/// defect, but the compiler and gate 4's own reading of these types already make that visible,
+/// whereas a <c>bool</c> is exactly where a constant hides in plain sight: it has the right type,
+/// the right name, and reads as an answer.
+/// </para>
+/// </summary>
+public sealed class VouchedValueReachabilityGateTests
+{
+    /// <summary>
+    /// The vouching name shapes, held identically to <see cref="UnvouchedResultGateTests"/>.
+    ///
+    /// <para>
+    /// <b>Copied rather than shared, deliberately.</b> The alternative was to widen gate 4's
+    /// private table to <c>internal</c> so this file could read it, and that would couple the two
+    /// gates such that a change made for one silently changes the other. They are held together by
+    /// <see cref="TheTwoGatesAgreeOnWhatVouchingLooksLike"/> instead, which fails if either list
+    /// moves without the other - a check that is visible, rather than a coupling that is not.
+    /// </para>
+    /// </summary>
+    private static readonly string[] VouchShapes =
+    [
+        "Errors", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
+        "*AreComplete", "*WereAsked", "FailedPhase", "FailedPhases", "DidNotRun",
+    ];
+
+    /// <summary>
+    /// The headline fire. A boolean voucher that only ever said one thing.
+    ///
+    /// <para>
+    /// The gate builds the declaring type every way its own public surface allows and reads the
+    /// member on each result. Witnessing both values passes. Witnessing one value only is this
+    /// failure: the member has the shape of a statement and the behaviour of a constant, and every
+    /// count and collection gate 4 excused on its account was excused for nothing.
+    /// </para>
+    /// <para>
+    /// <b>A false failure here is not fixed with an exemption.</b> If a member is genuinely
+    /// variable and the driver could not find the input that flips it, the driver is short a
+    /// candidate value for that parameter type, and that is what to change. An entry excusing the
+    /// member would put back exactly the blind spot this gate exists to close.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EveryBooleanVoucherIsReachableAsBothValues()
+    {
+        var offenders = BooleanVouchers()
+            .Where(v => !BeyondTheDriver.Contains($"{ReadableName(v.Type)}.{v.Name}",
+                                                  StringComparer.Ordinal))
+            .Select(v => (Voucher: v, Witnessed: WitnessedValuesOf(v.Type, v.Read)))
+            .Where(x => x.Witnessed.Count == 1)
+            .Select(x =>
+                $"  {ReadableName(x.Voucher.Type)}.{x.Voucher.Name} was only ever "
+                + $"{x.Witnessed.Single().ToString().ToLowerInvariant()}")
+            .OrderBy(t => t, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            "Vouching members that cannot say both things (docs/next/README.md, gate 4b). Each of "
+            + "these carries a name gate 4 accepts as a statement of whether an answer was "
+            + "reached, but the product was built every way its own public constructors and "
+            + "factories allow and the member never changed. A completeness flag that is always "
+            + "true is worse than no flag at all: gate 4 excuses every count and collection on the "
+            + "type because of it, so the whole type reads as verified while nothing was measured. "
+            + "This is what P-62 was - ObjectAttributes.AttributesAreComplete compared a partition "
+            + "of a catalogue against the catalogue it was partitioned from. Make the member "
+            + "compute something the inputs can change, or delete it and let gate 4 fire honestly:"
+            + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
+    /// The vouchers this driver cannot settle, and why each one is out of its reach.
+    ///
+    /// <para>
+    /// <b>An exact set, not a floor.</b> The temptation is to assert that no more than some number
+    /// of vouchers are undecided, and that is the shape <c>LabConfirmationColumnTests</c> was
+    /// re-anchored away from on 2026-08-22: a threshold obliges somebody to edit it every time the
+    /// tree moves, and every edit is an opportunity to edit it to nothing. This names them. A new
+    /// undecided voucher fails here and has to be argued for in writing.
+    /// </para>
+    /// <para>
+    /// <b>Undecided is not excused.</b> These members are not passed by this gate - they are
+    /// declared unmeasured by it, which is a different statement and is why they are named here
+    /// rather than quietly filtered out. Each is still held by
+    /// <see cref="NoVouchingMemberIsALiteral"/>, which needs no instance.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheVouchersThisDriverCannotSettleAreTheOnesNamedHere()
+    {
+        var undecided = BooleanVouchers()
+            .Where(v => WitnessedValuesOf(v.Type, v.Read).Count < 2)
+            .Select(v => $"{ReadableName(v.Type)}.{v.Name}")
+            .OrderBy(t => t, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(BeyondTheDriver.OrderBy(t => t, StringComparer.Ordinal), undecided);
+    }
+
+    /// <summary>
+    /// The list above decays in the safe direction, and this is what stops it decaying in the
+    /// other one.
+    ///
+    /// <para>
+    /// A name on that list is a claim that the driver cannot settle the member. If the driver
+    /// improves - a better candidate value, a deeper reach - the claim becomes false, and a false
+    /// claim there is an excused member that no longer needs excusing. The assertion above already
+    /// fails in that case, because it compares the set exactly rather than checking containment;
+    /// this states the same requirement in the direction a reader will look for it, and fails with
+    /// a message that says what to do.
+    /// </para>
+    /// <para>
+    /// It also catches a name that is simply wrong. An entry naming a member that no longer exists
+    /// excuses nothing and reads as though it excuses something, which is the worst of both.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NothingOnThatListIsStaleOrMisspelled()
+    {
+        var vouchers = BooleanVouchers()
+            .ToDictionary(v => $"{ReadableName(v.Type)}.{v.Name}", v => v, StringComparer.Ordinal);
+
+        foreach (var name in BeyondTheDriver)
+        {
+            Assert.True(
+                vouchers.ContainsKey(name),
+                $"'{name}' is named as beyond the driver's reach and is not a boolean vouching "
+                + "member of the product. Either it was renamed, in which case follow it, or it "
+                + "was removed, in which case delete this entry: a name that matches nothing "
+                + "excuses nothing and reads as though it excuses something.");
+
+            var voucher = vouchers[name];
+
+            Assert.True(
+                WitnessedValuesOf(voucher.Type, voucher.Read).Count < 2,
+                $"'{name}' is named as beyond the driver's reach, and the driver has just settled "
+                + "it as both values. The entry is now false and must be deleted, which puts the "
+                + "member back under the gate where it belongs.");
+        }
+    }
+
+    /// <summary>
+    /// Vouchers the driver cannot settle, each with the reason and, where the member does have a
+    /// value the driver never saw, the line of the product that assigns it.
+    ///
+    /// <para>
+    /// <c>IDirectoryChannel.IsComplete</c> is declared on an interface, which has no instances at
+    /// all. It is the contract every channel honours, and the implementations that carry real
+    /// behaviour are reached on their own account.
+    /// </para>
+    /// <para>
+    /// <c>ControllerSelection</c> and <c>LdapDirectoryChannel</c> expose no public constructor and
+    /// no public static factory returning themselves - they are produced by a connect sequence that
+    /// needs a directory to talk to. Reaching them means standing up the fake channel the connect
+    /// tests already use, which would make this gate depend on a test fixture and is the coupling
+    /// the class summary refuses.
+    /// </para>
+    /// <para>
+    /// <b><c>GpoInventory.DeclaredPoliciesAreComplete</c> is the weakest entry here and is worth
+    /// stating plainly.</b> Unlike the other three the driver does build the type, and reads the
+    /// flag as true. It goes false at
+    /// <c>next/src/SecureAD.Audit/Sysvol/GpoInventory.cs:103</c>, where <c>Observe</c> adds to
+    /// <c>_unlocatable</c>; reaching that line needs a <c>CapturedObject</c> whose object class is
+    /// the literal <c>groupPolicyContainer</c> and which carries a usable object GUID but no file
+    /// system path. That is two particular strings in two particular nested places, and a driver
+    /// that guessed them would be a driver carrying a copy of the product's constants. The entry
+    /// therefore rests on a reading of the code, cited above, which is exactly the kind of claim
+    /// P-62 taught this repository to distrust - so it is written down as a weakness rather than
+    /// presented as a result.
+    /// </para>
+    /// </summary>
+    private static readonly string[] BeyondTheDriver =
+    [
+        "ControllerSelection.IsComplete",
+        "GpoInventory.DeclaredPoliciesAreComplete",
+        "IDirectoryChannel.IsComplete",
+        "LdapDirectoryChannel.IsComplete",
+    ];
+
+    /// <summary>
+    /// The second anchor, and the cheaper one: a getter whose whole body is a constant.
+    ///
+    /// <para>
+    /// This needs no instance, so it covers the three vouchers named in
+    /// <see cref="UnreachableVouchers"/> that the driver cannot build. It catches
+    /// <c>=&gt; true</c> written directly, which is the crudest form of the defect and the one most
+    /// likely to be written in a hurry. It does not catch P-62 and is not claimed to.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NoVouchingMemberIsALiteral()
+    {
+        var offenders = BooleanVouchers()
+            .Where(v => v.Member is PropertyInfo p && GetterIsALiteral(p))
+            .Select(v => $"  {ReadableName(v.Type)}.{v.Name}")
+            .OrderBy(t => t, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            "Vouching members whose getter is a literal (docs/next/README.md, gate 4b). The whole "
+            + "body of each of these is 'push a constant, return it'. It has the name of a "
+            + "statement about whether an answer was reached and it is not reading anything:"
+            + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Scanner self-tests. Every gate carries one - docs/next/README.md, § Gates - because the
+    // failure this repository has seen twice is a check that passes while measuring nothing, and
+    // a gate is not exempt from being the thing it was built to catch.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>A voucher written as a literal is caught, and a real one is not.</summary>
+    [Theory]
+    [InlineData(typeof(ConstantVoucher), true)]
+    [InlineData(typeof(ComputedVoucher), false)]
+    [InlineData(typeof(P62ShapedVoucher), false)]
+    public void TheLiteralScanFiresOnALiteralAndNotOnAComputation(Type fixtureType, bool isLiteral)
+    {
+        var member = fixtureType.GetProperties()
+            .Single(p => p.PropertyType == typeof(bool)
+                         && VouchShapes.Any(s => Matches(s, p.Name)));
+
+        Assert.Equal(isLiteral, GetterIsALiteral(member));
+    }
+
+    /// <summary>
+    /// The driver witnesses both values of a real computation, and only one of a constant.
+    ///
+    /// <para>
+    /// <c>P62ShapedVoucher</c> is the point of this gate, reproduced. Its flag compares a list
+    /// against the catalogue that list was taken from, exactly as
+    /// <c>ObjectAttributes.AttributesAreComplete</c> did, so no constructor argument can make it
+    /// false. It is not a literal and the IL scan above passes it; the driver does not.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(ComputedVoucher), 2)]
+    [InlineData(typeof(ConstantVoucher), 1)]
+    [InlineData(typeof(P62ShapedVoucher), 1)]
+    [InlineData(typeof(MutatedVoucher), 2)]
+    [InlineData(typeof(IUnbuildableVoucher), 0)]
+    public void TheDriverSeparatesAComputationFromAConstant(Type fixtureType, int expectedValues)
+    {
+        var member = fixtureType.GetProperties()
+            .Single(p => p.PropertyType == typeof(bool)
+                         && VouchShapes.Any(s => Matches(s, p.Name)));
+
+        Assert.Equal(expectedValues, WitnessedValuesOf(fixtureType, i => member.GetValue(i)).Count);
+    }
+
+    /// <summary>
+    /// The synthesizer reaches all the way through the product's nesting.
+    ///
+    /// <para>
+    /// The first version of this driver capped recursion at two levels, and a <c>RunCoverage</c>
+    /// is four deep: it holds a <c>SysvolCoverage</c>, which holds <c>GpoCoverage</c> values, which
+    /// hold their own scalars. Past the cap the synthesizer returned null, the lists came back
+    /// empty, and empty lists read as a complete run - so the gate would have reported everything
+    /// as fine having built nothing. That is the failure this gate exists to catch, committed by
+    /// the gate itself, and it is the reason a cap needs a test rather than a comment.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheDriverReachesThroughTheProductsNesting()
+    {
+        var sysvol = Synthesize(typeof(SecureAD.Evidence.Run.SysvolCoverage), Variant.High, depth: 0);
+
+        Assert.NotNull(sysvol);
+        Assert.NotEmpty(((SecureAD.Evidence.Run.SysvolCoverage)sysvol).Policies);
+    }
+
+    /// <summary>
+    /// The driver is looking at a real population, not an empty one.
+    ///
+    /// <para>
+    /// The way this gate dies quietly is for <see cref="BooleanVouchers"/> to stop matching - a
+    /// binding flag dropped, an assembly renamed - at which point every test above passes over
+    /// nothing. This is gate 5's original failure, which passed against fourteen public types while
+    /// nothing in the tree was reachable. The figure is the one measured on 2026-08-22 and
+    /// regenerated by <c>next/tools/measure-vouching-sites.ps1</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheDriverIsPointedAtTheProductsBooleanVouchers()
+    {
+        var found = BooleanVouchers().ToList();
+
+        Assert.Equal(24, found.Count);
+        Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "GpoInventory"
+                                    && v.Name == "DeclaredPoliciesAreComplete");
+    }
+
+    /// <summary>
+    /// Gate 4 and gate 4b vouch on the same eleven shapes.
+    ///
+    /// <para>
+    /// The tables are held separately - see <see cref="VouchShapes"/> for why - so something has to
+    /// notice if they drift. A shape added to gate 4 alone would be a name that vouches without
+    /// ever having to mean anything, which is the whole defect this gate was built for.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheTwoGatesAgreeOnWhatVouchingLooksLike()
+    {
+        var theirs = typeof(UnvouchedResultGateTests)
+            .GetField("VouchShapes", BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetValue(null) as string[];
+
+        Assert.Equal(VouchShapes.OrderBy(s => s, StringComparer.Ordinal),
+                     theirs!.OrderBy(s => s, StringComparer.Ordinal));
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // The driver.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Every boolean member on a production type whose name gate 4 would accept as vouching.
+    /// </summary>
+    private static IEnumerable<(Type Type, MemberInfo Member, string Name, Func<object, object?> Read)>
+        BooleanVouchers() =>
+        RebuildAssemblies.All
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t.IsPublic || t.IsNestedPublic)
+            .Where(t => !t.IsEnum)
+            .Where(t => t.GetCustomAttribute<CompilerGeneratedAttribute>() is null)
+            .SelectMany(t => t
+                .GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => TypeOfMember(m) == typeof(bool))
+                .Where(m => VouchShapes.Any(s => Matches(s, m.Name)))
+                .Select(m => (Type: t, Member: m, m.Name, Read: ReaderFor(m))));
+
+    private static Type? TypeOfMember(MemberInfo member) => member switch
+    {
+        PropertyInfo property when property.GetMethod is not null
+                                   && property.GetIndexParameters().Length == 0
+            => property.PropertyType,
+        FieldInfo field => field.FieldType,
+        _ => null,
+    };
+
+    private static Func<object, object?> ReaderFor(MemberInfo member) => member switch
+    {
+        PropertyInfo property => instance => property.GetValue(instance),
+        FieldInfo field => instance => field.GetValue(instance),
+        _ => _ => null,
+    };
+
+    /// <summary>
+    /// The distinct values of a member across every instance the type's own public surface yields.
+    ///
+    /// <para>
+    /// <b>Construction first, mutation only if it was not enough.</b> Most vouchers sit on records
+    /// and are settled by the constructor sweep alone. <c>GpoInventory</c> is not: it is built
+    /// empty and <c>DeclaredPoliciesAreComplete</c> only goes false once <c>Observe</c> has been
+    /// handed a policy the directory would not place. Driving mutators unconditionally would mean
+    /// calling arbitrary methods on every type in the product for no benefit, so it is the second
+    /// pass and runs only where the first pass left the answer in doubt.
+    /// </para>
+    /// </summary>
+    private static IReadOnlySet<bool> WitnessedValuesOf(Type type, Func<object, object?> read)
+    {
+        var seen = new HashSet<bool>();
+        var instances = ConstructEveryWay(type).ToList();
+
+        foreach (var instance in instances)
+        {
+            if (TryRead(instance, read) is { } value)
+            {
+                seen.Add(value);
+            }
+        }
+
+        if (seen.Count >= 2)
+        {
+            return seen;
+        }
+
+        foreach (var instance in instances)
+        {
+            DriveMutators(type, instance);
+
+            if (TryRead(instance, read) is { } value)
+            {
+                seen.Add(value);
+            }
+        }
+
+        return seen;
+    }
+
+    private static bool? TryRead(object instance, Func<object, object?> read)
+    {
+        try
+        {
+            return read(instance) as bool?;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // A getter that throws on these inputs has witnessed nothing, which is neither a pass
+            // nor a failure. It is silence, and the driver reports silence as an unreachable
+            // voucher rather than as a value.
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Every instance obtainable by calling the type's own public constructors and its public
+    /// static methods that return it.
+    /// </summary>
+    private static IEnumerable<object> ConstructEveryWay(Type type)
+    {
+        foreach (var path in CreationPathsOf(type))
+        {
+            foreach (var arguments in ArgumentVectors(path.Parameters))
+            {
+                object? built;
+
+                try
+                {
+                    built = path.Invoke(arguments);
+                }
+                catch (Exception exception) when (exception is not OutOfMemoryException)
+                {
+                    // Guard clauses reject most of what the synthesizer offers, and that is the
+                    // point of offering a spread rather than one vector.
+                    continue;
+                }
+
+                if (built is not null)
+                {
+                    yield return built;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every public way of obtaining an instance of a type: its constructors, and its static
+    /// methods that hand one back.
+    ///
+    /// <para>
+    /// <b>Factories are not an afterthought here.</b> The first run of this gate could not build
+    /// <c>RunScope</c> or <c>RunCoverage</c> at all, because both are built out of
+    /// <c>DomainCoverage</c>, which has no public constructor - it is reached only through
+    /// <c>Read</c>, <c>PartiallyRead</c>, <c>NotRead</c> and <c>Excluded</c>. Any driver that
+    /// looks for constructors alone is blind to a type whose author hid the constructor on
+    /// purpose, which in this product is most of the interesting ones.
+    /// </para>
+    /// </summary>
+    private static IEnumerable<(ParameterInfo[] Parameters, Func<object?[], object?> Invoke)>
+        CreationPathsOf(Type type)
+    {
+        if (type.IsAbstract || type.IsInterface)
+        {
+            return [];
+        }
+
+        return type.GetConstructors()
+            .Select(c => (Parameters: c.GetParameters(),
+                          Invoke: (Func<object?[], object?>)(args => c.Invoke(args))))
+            .Concat(type
+                .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(m => m.ReturnType == type && !m.IsGenericMethodDefinition)
+                .Select(m => (Parameters: m.GetParameters(),
+                              Invoke: (Func<object?[], object?>)(args => m.Invoke(null, args)))))
+            .ToList();
+    }
+
+    /// <summary>
+    /// The three values the synthesizer offers for any parameter.
+    ///
+    /// <para>
+    /// <b><see cref="Low"/> is the absent end</b> - an empty string, an empty list, a null, a zero.
+    /// It is what a completeness flag reads when nothing was found, and it is also what most guard
+    /// clauses reject, which is fine at the top of a call and fatal inside a list.
+    /// </para>
+    /// <para>
+    /// <b><see cref="High"/>, <see cref="HighAlternate"/> and <see cref="HighContrary"/> are all
+    /// valid, and differ along two separate axes.</b> The pair of the first two differ only in
+    /// their scalar values - "high" against "other" - and are built by the same factory, so a list
+    /// of them holds two distinguishable things of the same kind. <see cref="HighContrary"/> takes
+    /// the type's <i>last</i> factory instead, so a list holding one of each holds two things of
+    /// different kinds.
+    /// </para>
+    /// <para>
+    /// <b>Both axes were forced by the product.</b> <c>CoverageId.ForDomains</c> rejects a list
+    /// containing an empty string, so a spread cannot vary by becoming invalid. <c>RunScope.Of</c>
+    /// then rejects a list covering the same domain twice - "a domain with two outcomes has no
+    /// single answer" - so a spread cannot vary by repetition either. And it rejects an empty list
+    /// outright, because an unread coverage table is not a forest with no domains, which means the
+    /// driver cannot reach "complete" by passing nothing. What is left is what these variants do:
+    /// two domains with different names and the same outcome reads as complete, and two with
+    /// different outcomes reads as incomplete.
+    /// </para>
+    /// </summary>
+    private enum Variant
+    {
+        Low,
+        High,
+        HighAlternate,
+        HighContrary,
+    }
+
+    /// <summary>
+    /// Argument vectors, combined linearly rather than as a cartesian product.
+    ///
+    /// <para>
+    /// <b>Why linear.</b> <c>PreflightDomainRecord</c> takes thirteen parameters. Two candidates
+    /// each is 8,192 constructions for one type, and the product has twenty-four vouchers. This
+    /// takes an all-low vector, an all-high vector, and every single-parameter flip from each -
+    /// <c>2 + 2n</c> rather than <c>2^n</c>, so that same type costs twenty-eight.
+    /// </para>
+    /// <para>
+    /// <b>Why both baselines and not just the flips.</b> A member computed as <c>a &amp;&amp; b</c>
+    /// is false at the all-low vector and false at either single flip from it. Without the all-high
+    /// vector it would never be witnessed true, and the gate would report a false failure against
+    /// a member that works. That is the case the two baselines exist for.
+    /// </para>
+    /// </summary>
+    private static IEnumerable<object?[]> ArgumentVectors(ParameterInfo[] parameters)
+    {
+        var low = parameters.Select(p => Synthesize(p.ParameterType, Variant.Low, depth: 0)).ToArray();
+        var high = parameters.Select(p => Synthesize(p.ParameterType, Variant.High, depth: 0)).ToArray();
+        var contrary = parameters
+            .Select(p => Synthesize(p.ParameterType, Variant.HighContrary, depth: 0)).ToArray();
+
+        yield return (object?[])low.Clone();
+        yield return (object?[])high.Clone();
+        yield return (object?[])contrary.Clone();
+
+        for (var i = 0; i < parameters.Length; i++)
+        {
+            var fromLow = (object?[])low.Clone();
+            fromLow[i] = high[i];
+            yield return fromLow;
+
+            var fromHigh = (object?[])high.Clone();
+            fromHigh[i] = low[i];
+            yield return fromHigh;
+
+            var contraryOne = (object?[])high.Clone();
+            contraryOne[i] = contrary[i];
+            yield return contraryOne;
+        }
+    }
+
+    /// <summary>
+    /// A value of the requested type in the requested variant.
+    ///
+    /// <para>
+    /// Low and high are whatever most plausibly sit on opposite sides of a completeness test: an
+    /// empty list against a populated one, a null against a value, zero against one. The pair
+    /// matters more than the particular values - a voucher reads some quantity and compares it, so
+    /// what the driver needs is two inputs that differ in the direction such a comparison looks.
+    /// </para>
+    /// </summary>
+    private static object? Synthesize(Type type, Variant variant, int depth)
+    {
+        var high = variant != Variant.Low;
+        var underlying = Nullable.GetUnderlyingType(type);
+
+        if (underlying is not null)
+        {
+            return high ? Synthesize(underlying, variant, depth) : null;
+        }
+
+        if (type == typeof(string))
+        {
+            return variant switch
+            {
+                Variant.Low => string.Empty,
+                Variant.High => "high",
+                _ => "other",
+            };
+        }
+        if (type == typeof(bool))
+        {
+            return high;
+        }
+
+        if (type.IsEnum)
+        {
+            var values = Enum.GetValues(type);
+
+            if (values.Length == 0)
+            {
+                return null;
+            }
+
+            return values.GetValue(variant switch
+            {
+                Variant.Low => 0,
+                Variant.High => values.Length - 1,
+                _ => values.Length / 2,
+            });
+        }
+
+        if (type == typeof(Guid))
+        {
+            return variant switch
+            {
+                Variant.Low => Guid.Empty,
+                Variant.High => Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                _ => Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            };
+        }
+
+        if (type == typeof(DateTimeOffset))
+        {
+            return DateTimeOffset.UnixEpoch.AddDays(variant is Variant.Low ? 0 : 1);
+        }
+
+        if (type == typeof(DateTime))
+        {
+            return DateTime.UnixEpoch.AddDays(variant is Variant.Low ? 0 : 1);
+        }
+
+        if (type.IsPrimitive)
+        {
+            return Convert.ChangeType(
+                variant switch { Variant.Low => 0, Variant.High => 1, _ => 2 },
+                type,
+                System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (SequenceElementOf(type) is { } element)
+        {
+            // Low is empty; the populated forms are a spread rather than a single item. A
+            // completeness flag reads across a list and asks whether any member of it failed, so a
+            // list of one thing built the same way every time can only ever produce one answer.
+            // High holds two of the same kind with different identities, which reads as complete;
+            // HighContrary holds one of each kind, which does not.
+            var spread = variant switch
+            {
+                Variant.Low => [],
+                Variant.HighContrary => new[]
+                {
+                    Synthesize(element, Variant.High, depth + 1),
+                    Synthesize(element, Variant.HighContrary, depth + 1),
+                },
+                _ => new[]
+                {
+                    Synthesize(element, Variant.High, depth + 1),
+                    Synthesize(element, Variant.HighAlternate, depth + 1),
+                },
+            };
+
+            var present = spread.Where(v => v is not null).ToArray();
+            var list = Array.CreateInstance(element, present.Length);
+
+            for (var i = 0; i < present.Length; i++)
+            {
+                list.SetValue(present[i], i);
+            }
+
+            return list;
+        }
+
+        // The cap is four because this product nests that far and no further: a RunCoverage holds
+        // a SysvolCoverage, which holds GpoCoverage values, which hold their own strings. A cap of
+        // two was the first attempt and it silently produced empty lists, which read to the gate
+        // as a complete run - the exact false reassurance it exists to catch, committed by the
+        // gate itself. TheDriverReachesThroughTheProductsNesting holds this line.
+        if (depth >= 4)
+        {
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
+        }
+
+        // A composite. No variant uses low arguments, because a guard clause rejects an empty
+        // string and there is nothing to be learnt from a value that was never built. The variety
+        // comes from the scalars, and for HighContrary also from taking the type's last creation
+        // path rather than its first - which for DomainCoverage is Excluded rather than Read.
+        var paths = CreationPathsOf(type).ToList();
+        var order = variant is Variant.HighContrary ? Enumerable.Reverse(paths) : paths;
+        var arguments = variant is Variant.Low ? Variant.High : variant;
+
+        foreach (var path in order)
+        {
+            try
+            {
+                var built = path.Invoke(path.Parameters
+                    .Select(p => Synthesize(p.ParameterType, arguments, depth + 1))
+                    .ToArray());
+
+                if (built is not null)
+                {
+                    return built;
+                }
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                continue;
+            }
+        }
+
+        return type.IsValueType ? Activator.CreateInstance(type) : null;
+    }
+
+    /// <summary>The element type of a sequence the driver can build, or null if it is not one.</summary>
+    private static Type? SequenceElementOf(Type type)
+    {
+        if (type == typeof(string) || !typeof(IEnumerable).IsAssignableFrom(type))
+        {
+            return null;
+        }
+
+        if (type.IsArray)
+        {
+            return type.GetElementType();
+        }
+
+        // An array satisfies IReadOnlyList<T>, IReadOnlyCollection<T>, IEnumerable<T> and IList<T>,
+        // which is every sequence shape the product's constructors ask for.
+        if (type.IsInterface && type.IsGenericType)
+        {
+            return type.GetGenericArguments().SingleOrDefault();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Calls the type's own public instance methods, so an accumulator can accumulate something.
+    ///
+    /// <para>
+    /// This is deliberately narrow. Only methods returning <c>void</c> are called, which is what a
+    /// method that changes the object in place looks like and excludes every query, and only on
+    /// instances the driver built itself from synthesized values. It runs solely for members the
+    /// constructor sweep left with one value or none, so nothing is invoked on a type that had
+    /// already answered.
+    /// </para>
+    /// </summary>
+    private static void DriveMutators(Type type, object instance)
+    {
+        var mutators = type
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(m => m.ReturnType == typeof(void))
+            .Where(m => !m.IsGenericMethodDefinition)
+            .Where(m => m.GetParameters().All(p => !p.ParameterType.IsByRef));
+
+        foreach (var mutator in mutators)
+        {
+            foreach (var arguments in ArgumentVectors(mutator.GetParameters()))
+            {
+                try
+                {
+                    mutator.Invoke(instance, arguments);
+                }
+                catch (Exception exception) when (exception is not OutOfMemoryException)
+                {
+                    continue;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether a getter's entire body is "push a constant, return it".
+    ///
+    /// <para>
+    /// The two byte sequences are <c>ldc.i4.0; ret</c> and <c>ldc.i4.1; ret</c>. An auto-property's
+    /// getter is <c>ldarg.0; ldfld; ret</c> and a computed one is longer still, so nothing but a
+    /// literal is two bytes long.
+    /// </para>
+    /// </summary>
+    private static bool GetterIsALiteral(PropertyInfo property)
+    {
+        var body = property.GetMethod?.GetMethodBody()?.GetILAsByteArray();
+
+        return body is [0x16 or 0x17, 0x2A];
+    }
+
+    /// <summary>
+    /// Turns a shape into an anchored pattern, on the same rule as gate 4: <c>*</c> is the only
+    /// wildcard and stands for the rest of a name, never a substring.
+    /// </summary>
+    private static bool Matches(string shape, string memberName) =>
+        Regex.IsMatch(
+            memberName,
+            "^" + string.Join("[A-Za-z0-9_]*", shape.Split('*').Select(Regex.Escape)) + "$",
+            RegexOptions.CultureInvariant);
+
+    private static string ReadableName(Type type)
+    {
+        var name = type.Name;
+        var tick = name.IndexOf('`', StringComparison.Ordinal);
+        return tick < 0 ? name : name[..tick];
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Fixtures for the scanner self-tests. These live in the test assembly and are invisible to
+    // BooleanVouchers, which reads only the three production assemblies.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>A voucher that is a constant and does not trouble to hide it.</summary>
+    public sealed record ConstantVoucher(string Name)
+    {
+        public bool IsComplete => true;
+    }
+
+    /// <summary>A voucher that reads its input, as one should.</summary>
+    public sealed record ComputedVoucher(IReadOnlyList<string> Missing)
+    {
+        public bool IsComplete => Missing.Count == 0;
+    }
+
+    /// <summary>
+    /// P-62, reproduced: a comparison whose two sides are the same set, so it is a constant that
+    /// looks like a computation. This is the fixture that decides whether the gate is worth having.
+    /// </summary>
+    public sealed record P62ShapedVoucher(string Name)
+    {
+        private static readonly string[] Catalogue = ["a", "b", "c"];
+
+        public IReadOnlyList<string> Attributes { get; } = Catalogue;
+
+        public bool AttributesAreComplete => Attributes.Count == Catalogue.Length;
+    }
+
+    /// <summary>An accumulator, built empty and made incomplete by being told something.</summary>
+    public sealed class MutatedVoucher
+    {
+        private readonly List<string> _unlocatable = [];
+
+        public bool IsComplete => _unlocatable.Count == 0;
+
+        public void Observe(string name)
+        {
+            if (!string.IsNullOrEmpty(name))
+            {
+                _unlocatable.Add(name);
+            }
+        }
+    }
+
+    /// <summary>A voucher on an interface, which has no instances and witnesses nothing.</summary>
+    public interface IUnbuildableVoucher
+    {
+        bool IsComplete { get; }
+    }
+}
