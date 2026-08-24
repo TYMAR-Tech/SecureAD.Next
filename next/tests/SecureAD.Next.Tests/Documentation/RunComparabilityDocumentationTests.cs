@@ -27,6 +27,22 @@ namespace SecureAD.Next.Tests.Documentation;
 /// <c>run-identity-and-coverage.md</c> and are bound by <c>RunIdentityDocumentationTests</c>; the
 /// run states had already gone to <c>the-bundle-on-disk.md</c>.
 /// </para>
+/// <para>
+/// <b><c>RunSummary</c> was added to this page's ownership on 2026-08-24</b>, when the area file
+/// the-run-library.md was deleted. It is the only one of the six that moved; the register already
+/// assigned the other five here.
+/// </para>
+/// <para>
+/// <b>Mutation-tested 2026-08-24 by <c>next/tools/mutate-run-library-doc-gates.ps1</c>, eleven
+/// mutations, all killed; six touched files verified byte-identical by hash.</b> Two were aimed
+/// here. Dropping the <c>RunSummary</c> row is killed by
+/// <see cref="TheTypesTableAndTheComponentAgree"/> and by
+/// <c>TypesTableOwnershipTests.EveryClaimedTypeIsRegisteredToThePageThatClaimsIt</c>. Deleting
+/// <c>typeof(RunSummary)</c> from <see cref="TheComponent"/> is killed only by
+/// <see cref="TheHandWrittenComponentListMatchesWhatTheSourceFilesDeclare"/> - which is the point
+/// of that check, because before it existed every assertion keyed on that array was comparing the
+/// document against a second copy of the document's own claim.
+/// </para>
 /// </summary>
 public sealed class RunComparabilityDocumentationTests
 {
@@ -62,6 +78,80 @@ public sealed class RunComparabilityDocumentationTests
             missing.Count == 0,
             $"{Document} does not name: {string.Join(", ", missing)}. A type the documentation "
             + "does not mention is a piece of the component nobody reading it knows exists.");
+    }
+
+    /// <summary>
+    /// The <c>TYPES</c> table and the component agree, in both directions. Mentioning a type is
+    /// not the same as owning it, and this page's table is what the surface register is held to.
+    /// </summary>
+    [Fact]
+    public void TheTypesTableAndTheComponentAgree()
+    {
+        var documented = TableRows("TYPES")
+            .Select(r => Cells(r)[0].Trim('`'))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var actual = DeclaredPublicTypeNames().ToHashSet(StringComparer.Ordinal);
+
+        var unclaimed = actual.Except(documented).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var invented = documented.Except(actual).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+        Assert.True(
+            unclaimed.Count == 0 && invented.Count == 0,
+            $"The TYPES table in {Document} disagrees with the files its header names. Declared "
+            + $"but not claimed: {Describe(unclaimed)}. Claimed but not declared: "
+            + $"{Describe(invented)}.");
+    }
+
+    /// <summary>
+    /// <see cref="TheComponent"/> is the set the source files declare. It is hand-written, so
+    /// without this every check keyed on it is pointed at a list that may have gone stale, which
+    /// is a sound check aimed at a dead reference.
+    /// </summary>
+    [Fact]
+    public void TheHandWrittenComponentListMatchesWhatTheSourceFilesDeclare()
+    {
+        var listed = TheComponent.Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
+        var declared = DeclaredPublicTypeNames().ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(declared.OrderBy(n => n, StringComparer.Ordinal), listed.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The source scan agrees with the compiler, so a regex that has drifted fails rather than
+    /// quietly narrowing the set the two checks above compare.
+    /// </summary>
+    [Fact]
+    public void EveryTypeTheScanFindsIsOneTheCompilerExports()
+    {
+        var exported = typeof(RunComparability).Assembly
+            .GetExportedTypes()
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var unknown = DeclaredPublicTypeNames()
+            .Where(name => !exported.Contains(name))
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(unknown.Count == 0, $"The scan found unexported types: {Describe(unknown)}.");
+    }
+
+    /// <summary>
+    /// The scanner self-test for the three checks above: without it each passes by scanning no
+    /// files and comparing two empty sets.
+    /// </summary>
+    [Fact]
+    public void TheCheckFindsTheDocumentAndTheComponent()
+    {
+        Assert.True(File.Exists(Path()), $"Expected the layer document at {Path()}.");
+        Assert.NotEmpty(TableRows("TYPES"));
+
+        var declared = DeclaredPublicTypeNames().ToList();
+
+        Assert.Equal(6, declared.Count);
+        Assert.Contains(nameof(RunSummary), declared);
+        Assert.Contains(nameof(BaselineVerdict), declared);
     }
 
     [Fact]
@@ -421,4 +511,48 @@ public sealed class RunComparabilityDocumentationTests
         System.IO.Path.Combine(RepositoryLocation.Root(), "docs", "layers", "evidence", Document);
 
     private static string Read() => File.ReadAllText(Path());
+
+    /// <summary>
+    /// The files this page's <c>Code:</c> header names, and the only files it may claim from.
+    /// </summary>
+    private static readonly string[] SourceFiles =
+        ["RunComparability.cs", "ComparabilityOutcome.cs", "RunSummary.cs"];
+
+    /// <summary>
+    /// The public types declared in the component's own files, read from those files rather than
+    /// from <see cref="TheComponent"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the anchor <see cref="TheComponent"/> did not have.</b> That array is a hand
+    /// written list of six, so every check keyed on it compares the document against a second copy
+    /// of the document's own claim: a seventh public type added to one of these files would be
+    /// absent from both, and nothing would report a disagreement. Reading the declarations out of
+    /// the files puts the anchor outside anything a documentation edit can reach.
+    /// </remarks>
+    private static IEnumerable<string> DeclaredPublicTypeNames()
+    {
+        foreach (var file in SourceFiles)
+        {
+            var path = System.IO.Path.Combine(
+                RepositoryLocation.Root(), "next", "src", "SecureAD.Evidence", "Run", file);
+
+            foreach (var line in File.ReadAllLines(path))
+            {
+                if (!line.StartsWith("public ", StringComparison.Ordinal))
+                    continue;
+
+                var words = line.Split(
+                    [' ', '(', '<', '{'], StringSplitOptions.RemoveEmptyEntries);
+
+                var keyword = Array.FindIndex(
+                    words, w => w is "record" or "class" or "enum" or "struct" or "interface");
+
+                if (keyword >= 0 && keyword + 1 < words.Length)
+                    yield return words[keyword + 1];
+            }
+        }
+    }
+
+    private static string Describe(List<string> names) =>
+        names.Count == 0 ? "none" : string.Join(", ", names);
 }

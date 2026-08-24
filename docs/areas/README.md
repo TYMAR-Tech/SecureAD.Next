@@ -26,7 +26,6 @@ ledger row, or from the shape of the code.
 | Area | File | State |
 |---|---|---|
 | How a run is stored | [how-a-run-is-stored.md](how-a-run-is-stored.md) | written |
-| How the run library stores and lists runs | [the-run-library.md](the-run-library.md) | written |
 
 ## Making sense of it
 

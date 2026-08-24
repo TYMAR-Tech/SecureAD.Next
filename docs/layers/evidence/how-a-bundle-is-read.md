@@ -1,7 +1,7 @@
 # How a bundle is read
 
 **Code:** `next/src/SecureAD.Evidence/Run/RunLibrary.cs`, `RunStateNames.cs`,
-`RunCompletionReader.cs`, `RunListing.cs`
+`RunCompletionReader.cs`, `RunListing.cs`, `RunState.cs`, `RunMoment.cs`, `RunScope.cs`
 **Layer:** Evidence — the managed root, and how a directory on a disk becomes a run in a list.
 
 [`the-bundle-on-disk.md`](the-bundle-on-disk.md) describes the files a bundle directory holds and the
@@ -24,6 +24,35 @@ the code.
 
 ---
 
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `RunLibrary` | The managed root: it creates a run's directory, resolves an identifier to a path, deletes a run, and lists what is there |
+| `RunListing` | One run as a listing shows it — every field observed, none parsed out of the directory name |
+| `RunState` | What became of a run. The one lifecycle vocabulary, used by the writer, the reader and the display |
+| `RunStateNames` | The text a state is stored under in a bundle, in both directions, and the refusal when the text is not one this build knows |
+| `RunMoment` | When a run happened, and whether the run itself recorded that or the directory's creation time is standing in |
+| `RunScope` | Which domains a sealed run covered, read back out of its bundle, and the group of like runs it therefore belongs to |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, and it is bound in both directions against the public
+types the files above declare: one they declare and this table omits fails the build, and so does a
+row naming something they do not. `RunCompletionReader.cs` is named in the header and contributes
+no row, because the class it declares is internal.
+
+**Six types, one component, and the reason they are one.** `RunListing` is the row a library
+produces, and `RunState`, `RunMoment`, `RunScope` and the annotation are its columns. A column's
+type described on a page other than the one describing the row is how a reader comes to believe the
+two were designed apart. The exception is the annotation, which is on
+[`what-an-operator-writes-on-a-run.md`](what-an-operator-writes-on-a-run.md) because it is written
+rather than observed — see below.
+
+---
+
 ## The library is a managed root, not a save dialog
 
 The operator chooses **where** the root is; the tool chooses the layout inside it. Capture to an
@@ -33,8 +62,11 @@ catalogue there is nothing to list, nowhere for a baseline to live, and comparis
 *runs comparable with this one*.
 
 **There is no default root and nothing invents one.** It is supplied by the caller, which gets it
-from configuration. The predecessor hardcoded `%LOCALAPPDATA%` into two constructors, which is how a
-tool comes to fill the wrong disk with several gigabytes of evidence.
+from configuration — kept per user and per machine, per
+[`0047`](../../decisions/0047-settings-are-per-user-and-per-machine.md), so where an operator keeps
+his evidence is his answer and not one this product chose for him. The predecessor hardcoded
+`%LOCALAPPDATA%` into two constructors, which is how a tool comes to fill the wrong disk with
+several gigabytes of evidence.
 
 The root is normalised once, in the constructor, and created if it is absent. Every run lives
 **directly** inside it — there is no nesting, which is what makes *is this one of ours* a question
@@ -145,6 +177,15 @@ cannot be done without knowing it. Only a **sealed** run is opened — anything 
 read, and attempting it would turn every damaged run into a failed open on the way past. A failure
 there is null for that one row, not an error for the whole library.
 
+**A run that ended badly is listed, and says so**, per
+[`0029`](../../decisions/0029-a-run-that-ends-badly-says-so.md). That record also settles how the
+state is arrived at: the file system is asked whether a run is still alive, rather than a record
+being trusted to have been updated. A record only says what the last thing to write it believed,
+and the failures that matter here — a reboot, a disconnect, a full disk — are exactly the ones that
+stop anything from writing it. A run the operator stopped is the exception and keeps nothing at all,
+per [`0058`](../../decisions/0058-a-run-may-be-stopped-and-stopping-it-keeps-nothing.md), so it shows
+no row.
+
 ---
 
 ## The order is a chronological claim
@@ -184,8 +225,11 @@ the moment as not recorded.
 
 ## An unrecognised state is a failure, never a default
 
-`RunStateNames` owns the text a state is stored under, in both directions. The names are in one place
-because of what happened when they were not: in the predecessor the strings were private to the
+`RunStateNames` owns the text a state is stored under, in both directions. **There is one
+vocabulary for this question at all**, per
+[`0028`](../../decisions/0028-one-run-state-vocabulary.md); the predecessor had four with no two
+sharing members. The names are in one place because of what happened when they were not: in the
+predecessor the strings were private to the
 writer while four readers matched bare literals, so renaming one changed what was written without
 changing what was read — and the library funnelled the now-unrecognised value into its in-progress
 state. **A sealed run degraded silently and vanished from every picker that filtered on sealed.**
@@ -199,6 +243,43 @@ a defect in this product rather than an outcome of a run.
 This is the **run** vocabulary only. Phase, checkpoint and coverage states are separate vocabularies
 that share words with this one and are deliberately not collected here: a type holding all of them
 invites a reader of one column to match a constant belonging to another.
+
+**`RunState` is declared here and explained on the on-disk page, and that is not a contradiction.**
+This page owns the enum because the listing is what carries it and `RunStateNames` is what stores
+it. What each member *means* — which files on disk produce it, and how the reader chooses between
+two that both apply — is [`the-bundle-on-disk.md`](the-bundle-on-disk.md), beside the files it is
+observed from. A page may explain a type it does not own; it may not carry a second copy of the
+table, which is why `STATES` appears there and not here.
+
+---
+
+## What a run covered is read from the bundle, and never assumed
+
+`RunScope` is the answer to *3 of 3 domains* on a screen. It is a different question from
+`RunListing.State`: what became of a run is read from the bundle **directory** and costs nothing,
+while what a run *saw* is inside the bundle and costs an open. Both are on a listing row because
+runs are grouped by what they covered, and that cannot be done without knowing it — one cheap read
+of the declaration rows per run.
+
+**Every declared domain has a row, including the ones nobody read.** The denominator is the forest
+as the run found it, not the number of domains the run got to, so a domain nobody looked at is never
+indistinguishable from one that held nothing. `RunScope.ExcludedCount` is counted apart from
+`RunScope.ShortfallCount` per
+[`0063`](../../decisions/0063-excluded-never-looks-like-unreachable.md): an operator reading *2 of 3*
+needs to know whether the third was a decision he made or a failure he has not heard about, and
+those have different remedies.
+
+**`RunScope.Identity` is `CoverageId`'s value read back, not a second answer computed here.** A
+grouping key worked out independently from the domain rows would be a second opinion on *same
+evidence*, and two opinions is how runs come to sit in two groups with one heading.
+
+> **This is the one place two coverage types sit on two pages.**
+> [`run-identity-and-coverage.md`](run-identity-and-coverage.md) owns `RunCoverage`, `DomainCoverage`
+> and `CoverageId` — what a run *is* and what it *read*. `RunScope` is owned here instead because it
+> is a column of `RunListing`, and splitting a record from its columns was judged the worse of the
+> two seams. A reader after coverage as a subject wants that page; a reader after what a listing row
+> holds wants this one. `RunScope.Domains` is a list of that page's `DomainCoverage`, and the two
+> pages are bound to their own files, so neither can drift without a gate saying so.
 
 ---
 
@@ -228,7 +309,10 @@ It does not describe what is inside `evidence.db` — that is
 [`what-a-bundle-holds.md`](what-a-bundle-holds.md) — nor which files a bundle directory contains and
 what each state is observed from, which is
 [`the-bundle-on-disk.md`](the-bundle-on-disk.md). Whether two runs may be compared is
-[`whether-two-runs-compare.md`](whether-two-runs-compare.md).
+[`whether-two-runs-compare.md`](whether-two-runs-compare.md). What an operator typed against a run,
+and how that is stored outside the seal, is
+[`what-an-operator-writes-on-a-run.md`](what-an-operator-writes-on-a-run.md) — `List` reads it and
+puts it on the row, and that read is a call rather than a claim.
 
 It also cannot tell you that `RunLibrary.DeleteRun` behaves as described **at this level**: deletion
 is exercised through the view model against a fake, and the library method itself has no direct test.
@@ -253,6 +337,14 @@ unit-tested but not yet exercised against Active Directory.
 | be certain a sibling whose name merely begins with the root's is not treated as inside it | `RunLibraryTests.ASiblingWhoseNameBeginsWithTheRootsIsNotInsideIt` |  |
 | see a run he can no longer trust, rather than have it quietly omitted | `RunLibraryListTests.ARunWhoseSealDoesNotMatchIsListedAsDamaged` |  |
 | be certain a folder that was never a run is not reported as a damaged audit | `RunLibraryListTests.ADirectoryThatIsNotARunIsLeftOut` |  |
+| see a sealed run listed | `RunLibraryListTests.ASealedRunIsListed` | 2026-08-21 |
+| tell an empty library from one that could not be read | `RunLibraryListTests.AnEmptyLibraryListsNothing` |  |
+| read the explanation on a damaged run | `RunLibraryListTests.ADamagedRunCarriesTheExplanation` |  |
+| be certain a sealed run carries no explanation, so an explanation always means something | `RunLibraryListTests.ASealedRunCarriesNoExplanation` |  |
+| be certain two runs sharing a moment keep a fixed order | `RunLibraryListTests.RunsSharingAMomentAreListedInAStableOrder` |  |
+| see how much of the forest a finished run actually covered | `BundleReaderTests.AWholeForestRunReportsEveryDomainRead` |  |
+| tell a domain he left out from one the run fell short on | `BundleReaderTests.AnExcludedDomainIsCountedApartFromAShortfall` |  |
+| be certain a half-read domain is never counted as read | `BundleReaderTests.APartiallyReadDomainIsNotCountedAsRead` |  |
 | read the top row as the latest run, with two forests in the library | `RunLibraryListTests.TheNewestRunIsListedFirst` |  |
 | be certain a run is placed by when it said it finished, not by its name | `RunLibraryListTests.ARunThatRecordedWhenItFinishedIsPlacedByThat` |  |
 | be certain a run that recorded no moment does not claim one | `RunLibraryListTests.ARunThatRecordedNoMomentDoesNotClaimOne` |  |

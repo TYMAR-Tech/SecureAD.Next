@@ -16,6 +16,29 @@ actually produces, by producing one of every verdict.
 
 ---
 
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `RunComparability` | The one component that decides whether a run may be compared or nominated. Every door calls it |
+| `ComparabilityOutcome` | The closed set of situations two runs can be in |
+| `ComparabilityVerdict` | One answer about two runs: the situation, whether it permits a comparison, and what to say |
+| `BaselineVerdict` | One answer about a single run: whether it may be its scope's baseline, and why not where it may not |
+| `DriftCardShape` | What the card reporting a verdict is permitted to look like |
+| `RunSummary` | What a caller needs to know about a run in order to decide whether it may be used |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, bound in both directions against the public types
+`RunComparability.cs`, `ComparabilityOutcome.cs` and `RunSummary.cs` declare. `ProfileId`,
+`CoverageId` and the coverage records are deliberately absent: what a run *is* and what it *read*
+belong to [`run-identity-and-coverage.md`](run-identity-and-coverage.md), and a component described
+on two pages is one question answered twice.
+
+---
+
 ## One verdict, and every door calls it
 
 `RunComparability` is the only component that decides. The run library, the automatic drift summary,

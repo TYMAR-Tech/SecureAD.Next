@@ -4,8 +4,9 @@ Date: 2026-08-21
 Status: Accepted
 
 Sits under [0025](0025-the-run-library-is-a-managed-root.md) and
-[0069](0069-a-baseline-is-marked-deliberately.md). Answers the first question in the
-*What has not been discussed* section of [the run library](../areas/the-run-library.md).
+[0069](0069-a-baseline-is-marked-deliberately.md). Answers the first of the questions the run
+library had left open, carried as `P-76` in [the punch list](../PUNCH-LIST.md) when
+`docs/areas/the-run-library.md` was deleted on 2026-08-24.
 
 ## Context
 
@@ -59,4 +60,4 @@ cannot be removed, and a library that drops the row anyway would tell the operat
 space he still has not.
 
 **This does not decide archiving, exporting, or moving a run to another machine.** Those remain
-undiscussed in [the run library](../areas/the-run-library.md).
+undiscussed, and are carried as `P-76` in [the punch list](../PUNCH-LIST.md).
