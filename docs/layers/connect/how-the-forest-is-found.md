@@ -304,6 +304,12 @@ none of the subnets it does declare are different faults with different remedies
 | be certain a refused override never silently falls back to the automatic choice | `ControllerSelectionTests.AnOverrideThatIsNotACandidateNeverFallsBack` | |
 | learn that a domain has no readable controller, instead of it vanishing from the run | `ControllerSelectionTests.ADomainWithNoCandidatesIsRecordedRatherThanPlannedAgainst` | |
 | be told plainly that this machine's site is unknown, when the forest declares no subnets | `OperatorSiteTests.AForestDeclaringNoRangesLeavesTheRunWithNoSite` | |
+| see a domain with no candidates shown rather than omitted | `DiscoveryWiringTests.ADomainWithNoCandidatesIsShownRatherThanOmitted` |  |
+| see the failover list ranked, and shown in that order | `DiscoveryWiringTests.TheFailoverListIsRankedAndShownInThatOrder` |  |
+| be certain an override naming an ineligible controller stops the run | `DiscoveryWiringTests.AnOverrideNamingAnIneligibleControllerStopsTheRun` |  |
+| be certain an override naming a domain this forest does not have stops the run | `DiscoveryWiringTests.AnOverrideNamingADomainThisForestDoesNotHaveStopsTheRun` |  |
+| tell a forest with no subnets from one whose subnets did not match | `DiscoveryWiringTests.AForestWithNoSubnetsIsDistinguishedFromOneWhoseSubnetsDidNotMatch` |  |
+| be certain a choice made without every input is not called complete | `DiscoveryWiringTests.ThePreflightFileDoesNotCallAnUninformedChoiceComplete` |  |
 
 **Verified in the lab.** 2026-08-21, against `ad.lab` with `ba.ad.lab` and `ph.ad.lab`, one
 controller per domain, no subnets declared. Two things were checked by eye because no test can check
