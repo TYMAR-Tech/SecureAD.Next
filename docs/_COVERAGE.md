@@ -303,7 +303,8 @@ citations now repeated in `docs/layers/kernel/naming.md` were originally verifie
 > rather than during drafting; it was then ruled **Evidence's** and is documented in no layer today,
 > which is `P-37`. Documents read whole alongside them:
 > `docs/next/S-3-schema-guid-catalogue.md` (412/412, now deleted) and
-> `docs/areas/what-a-permission-means.md` (109/109).
+> docs/areas/what-a-permission-means.md (109/109, deleted 2026-08-24; its Evidence half became
+> [`what-an-objects-permissions-hold.md`](layers/evidence/what-an-objects-permissions-hold.md)).
 
 ---
 

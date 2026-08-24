@@ -32,7 +32,6 @@ ledger row, or from the shape of the code.
 
 | Area | File | State |
 |---|---|---|
-| What a permission means | [what-a-permission-means.md](what-a-permission-means.md) | written |
 | How privilege escalates | [how-privilege-escalates.md](how-privilege-escalates.md) | written |
 | Group Policy | [group-policy.md](group-policy.md) | written |
 | What we call a finding | [what-we-call-a-finding.md](what-we-call-a-finding.md) | written |

@@ -27,6 +27,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 | P-10 | The classifier mixes ACE semantics, capability and risk, and reads raw evidence directly | open | layer 3 first |
 | P-11 | Risk vocabulary may have leaked into the parsing and wording layers | open | — |
 | P-1 | The early-stop correction may itself over-generalise, and the sweep that found it was never completed | decision | owner ruling |
+| P-69 | `captured_object.ace_count` is derived from the deduplicated `ace` projection, so it understates wherever a DACL carries a duplicate entry - measured 2026-08-24 as 9 against 10 on six objects in `ad.lab-20260821-014720`, the two default GPOs in each of three domains. **No production code reads the column today**, so nothing is shown wrong; the defect is latent and becomes a wrong number in front of an auditor the day something displays it. Either derive it from the stored bytes or delete it | open | â€” |
+| P-70 | **Whether the product judges ownership at all.** An owner implicitly holds Modify Permissions and can write himself full control, so the owner is often the real answer to *who controls this object* - and the product reports the owner without saying what owning it grants. `OwnerRightsEntryIsPresent` says only that an `OWNER RIGHTS` entry is present. Cited by `0077`, which rules that naming a well-known SID does not settle this | decision | owner ruling |
+| P-71 | **How effective permissions are presented** - what a principal can actually do to an object once denies, inheritance and group membership are taken together. Nothing computes this today | decision | owner ruling |
+| P-72 | **How a permission held through a group is attributed** - to the group, to the member, or to both. Affects every count an operator reads | decision | owner ruling |
+| P-73 | **What the product says about a permission that is dangerous but expected.** `0006` keeps Tier 0 and expected-administrator as separate sets; what an operator sees where the two meet is undrawn | decision | owner ruling |
 
 ### Detail, where one line is not enough
 
@@ -49,8 +54,8 @@ the first applicable entry, and the specification warns against applying the gen
 algorithm to all AD rights. The original claim was reported corrected in six places, then three more
 were found incidentally; no systematic sweep was ever done.
 
-**P-7, and the open finding it may explain.** `docs/areas/what-a-permission-means.md` carried an
-open finding, `F-4`, with real lab evidence:
+**P-7, and the finding it was once thought to explain.** The deleted area file
+docs/areas/what-a-permission-means.md carried an open finding, `F-4`, with lab evidence:
 
 > The `ace` table and the re-parse of the same descriptor disagree by one entry on `OU=test01` in
 > `ad.lab-20260821-014720` — 57 against 56 — while the descriptor reports
@@ -110,19 +115,31 @@ behaviour of a descriptor with one duplicated entry, and `dacl_completeness = Co
 beside it** — nothing was lost in parsing; the projection collapsed a duplicate on purpose. That
 explains F-4 completely without invoking `AclSize` at all.
 
-**The direction of the numbers decides it, and the punch list does not record which way round they
-were.** Deduplication guarantees `ace` ≤ re-parse, always. So:
+**Settled 2026-08-24 by measuring the bundle, and neither branch above is what happened.**
+Every one of the 363 descriptors in `ad.lab-20260821-014720` was counted both ways: rows in
+`ace` against a fresh `SecurityDescriptorParser.Parse` of the same `raw_bytes`.
 
-- If the re-parse saw 57 and the `ace` table 56, F-4 is deduplication working as designed, is not a
-  defect, and is not evidence for P-7. It should be closed and P-7 judged on its own merits.
-- If the `ace` table really saw 57 and the re-parse 56, that is a **projection larger than the bytes
-  it was derived from**, which deduplication cannot cause and which the `AclSize` mechanism cannot
-  cause either. That would be worse than what was recorded, and would need its own explanation.
+- **On `OU=test01` the two readings agree, at 57 and 57.** The recorded 57-against-56 does not
+  reproduce on the object the finding names, in either direction.
+- Across the bundle: **12,601 projected against 12,604 stored**, and exactly **three descriptors**
+  account for all of it, each 9 against 10.
+- All three are the two default Group Policy objects - `{31B2F340-016D-11D2-945F-00C04FB984F9}`
+  and `{6AC1786C-016F-11D2-945F-00C04fB984F9}` - one descriptor per domain across `DC=ad`,
+  `DC=ba` and `DC=ph`. Each carries a **literally duplicated `AccessAllowed` entry** for that
+  domain's administrators: same type, same trustee, same mask, same flags.
+- **Zero parse errors**, and `dacl_completeness = Complete` is correct throughout: it compares the
+  count the DACL header *declared* against the count parsing *recovered*, which were equal.
 
-Either way the recorded adjudication — *"these are very likely the same defect"* — is unsupported.
-It was written before anything read the descriptor half of the schema back out of a bundle. Settle
-the direction against `ad.lab-20260821-014720` first; it is one query, and it decides whether there
-is a defect here at all.
+So the direction is the benign one wherever a disagreement exists at all, it is deduplication
+behaving exactly as designed, and it is the same three-entries-on-three-objects shape
+`ObjectPermissions` already records against an earlier bundle. **`F-4` is closed as not a defect**
+and was never evidence for `P-7`. What survives it is `P-69`.
+
+One thing the measurement found that was not being looked for: `BundleReader.Open` **refuses this
+bundle**, under `Evidence.SchemaVersionUnsupported` - it was written against schema 5 and the
+build reads 6. That is the product behaving correctly, and it is also a constraint on evidence:
+a lab finding stops being reproducible through the product's own read path once the schema moves.
+The measurement above had to go around `BundleReader` and drive the Kernel parser directly.
 
 **P-7 itself is untouched by this.** That the DACL walk reads `AceCount` and never `AclSize` or
 `AclRevision` is true, and is worth fixing on its own terms. What it has lost is its corroborating
@@ -348,22 +365,22 @@ evidence to directory objects.
 ## Documentation rewrite
 
 Blockers to the consolidation itself. `D-1` — the register forbidding any area file to be deleted —
-was fixed and discharged; the first four area files went with it.
+was fixed and discharged; the first four area files went with it, and what-a-permission-means.md
+followed on 2026-08-24.
 
-**How close each area file is to deletion, measured 2026-08-21** — types it governs in
+**How close each area file is to deletion, regenerated 2026-08-24 by `next/tools/measure-rewrite-progress.ps1`** — types it governs in
 `SURFACE-REGISTER.md`, and how many of those no layer document names yet. `P-52` fails the build
-when a right-hand column reaches zero. Six of the sixteen area files have no register rows and are
-absent here; see `P-56`.
+when a right-hand column reaches zero. Five of the thirteen remaining area files have no register
+rows and are absent here; see `P-56`.
 
 | Area file | Governs | Still undocumented |
 |---|---|---|
-| `what-a-permission-means` | 24 | 3 |
 | `the-new-audit-wizard` | 7 | 3 |
 | `how-failures-are-reported` | 7 | 3 |
 | `the-run-library` | 11 | 5 |
 | `group-policy` | 23 | 6 |
 | `how-results-are-shown` | 8 | 8 |
-| `how-a-run-is-stored` | 17 | 12 |
+| `how-a-run-is-stored` | 17 | 10 |
 | `which-controller-we-read` | 36 | 13 |
 | `what-we-call-a-finding` | 15 | 15 |
 
@@ -373,11 +390,11 @@ absent here; see `P-56`.
 | P-52 | `AreaFileGateTests.EveryAreaFileStillGovernsAtLeastOneUndocumentedType` **added 2026-08-21**. An area file's types are its rows in `SURFACE-REGISTER.md`, which is already held to the exported types of the three production assemblies in both directions; a file whose every type is named by a layer document fails. Proved failing by documenting the last three types of `how-failures-are-reported` in a layer document: it failed naming that file and all seven types it governs. Register parsing moved into a shared `SurfaceRegister` so one table has one parser | done | — |
 | P-53 | Measured 2026-08-21, and **neither hypothesis was right**. `how-the-app-looks.md` has no register rows because the shell exports **zero public types** — `ShellSurfaceGateTests.TheShellProjectExportsNothing` holds it to that, and `SURFACE-REGISTER.md` §*The register* already records the shell as out of its scope. The register is not missing UI types; there are none to miss. The file is 266 lines with 75 backticked citations, describing internal view models and screens | done | — |
 | P-56 | `P-52` cannot reach the six area files with no register rows, `how-the-app-looks.md` among them. A public-type register cannot cover a shell that exports nothing by design, so nothing will ever say when that file is fully consumed. It needs a device anchored to the shell's internal types or its XAML views, not to the register | open | — |
-| P-57 | Capability tables duplicated between an area file and a layer document were copies because a gate forbade emptying the area file's *What is built* section. `P-51` removed that gate, so each duplicate can now be **moved**: delete the rows from the area file in the same turn. Known instance: `what-a-schema-guid-means.md` and `what-a-permission-means.md`. Check `LabConfirmationColumnTests` before trimming — it counts built tables in aggregate | open | — |
+| P-57 | Capability tables duplicated between an area file and a layer document were copies because a gate forbade emptying the area file's *What is built* section. `P-51` removed that gate, so each duplicate can now be **moved**: delete the rows from the area file in the same turn. Known instance: `what-a-schema-guid-means.md`. The other instance went with the deletion of the permissions area file on 2026-08-24, whose capability rows were not copied anywhere. Check `LabConfirmationColumnTests` before trimming — it counts built tables in aggregate | open | — |
 | P-58 | **37 doc-comment citations in 30 source files named documents that were not there**, and the suite was green throughout. Thirty were the second form of the `docs/` → `docs/layers/` move — the path written whole in a comment, where the move searched for it split across `Path.Combine` arguments. Seven named documents deleted outright. **Fixed 2026-08-21** and `DocumentPathCitationTests.EveryDocumentPathCitedInCodeResolves` added, which fails on any path a code tag encloses that does not resolve. A path in plain prose is history, matching the backtick convention `PunchListIdentifierTests` uses for identifiers | done | — |
 | P-59 | **The Sysvol figure carried in `_HANDOFF.md` was wrong, and a session would have acted on it.** It said the folder holds five of `group-policy.md`'s remaining types and that documenting it deletes the area file. Measured 2026-08-21: the folder holds **four** undocumented types — `ISysvolFileReader`, `SmbSysvolFileReader`, `GpoTarget`, `SysvolCapture` — because `GpoInventory` is already named by a layer document, and `P-43` above is stale in the same way. After a Sysvol pass the area file **still stands**, owning `GpoSettingScope` and `RestrictedGroupRelationship`. Those two share one 39-line file, `SecureAD.Evidence/GpoSettingScope.cs`, so **Sysvol plus that one file** is what deletes `group-policy.md`. Cost: 1,161 source lines, 951 test lines | open | — |
 | P-60 | **Seven types were named by more than one layer document, and the register allows each type exactly one owner.** Recorded as six; measured 2026-08-22 as seven, the entry having inherited its table rather than counted it - `CapturedAttribute` was missing and `CapturedAttributeCatalog` was named by four pages, not three. **Closed 2026-08-22, and not by ruling seven cases.** The contention was an artefact of the anchor, exactly as `P-61` predicted: anchored to *mentions*, seven types had two to four claimants; anchored to *declarations* - the type's row in a page's `TYPES` table - 28 of the 31 rows had exactly one owner and none had two. The three undeclared were `ObjectAttributes`, `ObjectAttribute` and `AttributeValue`, which `what-an-object-holds.md` now claims, plus `NamingContextKind`, ruled to `run-identity-and-coverage.md` because `the-search-capture-issues.md` disowns it in writing and the coverage page describes the member it types. Measured by `next/tools/measure-declared-owners.ps1` | done | - |
-| P-61 | **`P-52` measures something slightly weaker than its name.** It treats *named by a layer document* as *documented there*, and `P-60` showed the two differ - a page may mention another folder's type in passing. So it can call an area file redundant before its content is genuinely consumed. It errs in the safe direction, failing early rather than passing falsely. **The stronger anchor P-61 asked for exists and is already in the tree:** a page's `TYPES` table declares what it owns, and `P-60` was dissolved by reading it. It is not yet universal - measured 2026-08-22, 8 of 22 layer documents carry one, and the 14 without include every page under `docs/layers/evidence` and `docs/layers/connect`. Giving every layer document a `TYPES` table, bound in both directions as `what-an-object-holds.md` binds its own, would let `P-52` anchor to ownership instead of to mentions | open | - |
+| P-61 | **`P-52` measures something slightly weaker than its name.** It treats *named by a layer document* as *documented there*, and `P-60` showed the two differ - a page may mention another folder's type in passing. So it can call an area file redundant before its content is genuinely consumed. It errs in the safe direction, failing early rather than passing falsely. **The stronger anchor P-61 asked for exists and is already in the tree:** a page's `TYPES` table declares what it owns, and `P-60` was dissolved by reading it. It is not yet universal - **re-measured 2026-08-24 against the `TYPES:BEGIN` marker itself: 10 of 23 layer documents carry one.** Both figures previously here were wrong. The count was 8 of 22 when it was 9 of 22, because a loose match on the word *TYPES* finds 16 and a match on the marker finds 9; and the claim that every page under `docs/layers/evidence` lacks one was already false, since `what-an-object-holds.md` had one when this was written. Two of the six evidence pages now carry one. Giving every layer document a `TYPES` table, bound in both directions as `what-an-object-holds.md` binds its own, would let `P-52` anchor to ownership instead of to mentions | open | - |
 | P-54 | Only the Capture project has an assembly-wide "every public type is named by some document" gate. Every other documentation gate is scoped to the component a document already claims, so it can only check types somebody chose to describe. `GroupPolicyDocumentationTests` has the stronger shape; widen the rest, highest in-scope debt first (`Evidence/` root, 14 of 44) | open | — |
 | P-55 | `_COVERAGE.md` is stale. The Kernel/GroupPolicy pass read 1,273 source lines, 1,259 test lines and an 86-line area file and recorded none of it | open | — |
 

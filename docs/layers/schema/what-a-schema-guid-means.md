@@ -16,10 +16,11 @@ This folder is that table.
 ## What is built
 
 Each capability names the test that proves it. **The test is the evidence; this table is only the
-index.** These rows are also carried in the governing area file
-[what-a-permission-means](../../areas/what-a-permission-means.md). *They were copied rather than moved
-because a gate required that file to keep its* What is built *table permanently. That gate was
-deleted on 2026-08-21 (`P-51`), so the duplicate is now a copy nothing requires — see `P-57`.*
+index.** These rows were also carried in the governing area file docs/areas/what-a-permission-means.md.
+*They were copied rather than moved because a gate required that file to keep its* What is built
+*table permanently. That gate was deleted on 2026-08-21 (`P-51`), and the area file itself was
+deleted on 2026-08-24 without its capability rows being copied anywhere, so these are now the only
+copy rather than one of two.*
 
 **Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
 unit-tested but not yet exercised against Active Directory.

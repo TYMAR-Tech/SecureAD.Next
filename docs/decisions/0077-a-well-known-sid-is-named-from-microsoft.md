@@ -85,4 +85,4 @@ not by the exemption.
 **It does not decide whether the product judges ownership.** `OWNER RIGHTS` is now named and its
 presence reported; what an owner is left with is not. Microsoft documents the suppression of implicit
 `READ_CONTROL` and `WRITE_DAC` and is silent on `WRITE_OWNER`, and
-`docs/areas/what-a-permission-means.md` still records ownership judgement as undiscussed.
+[`P-70`](../PUNCH-LIST.md) still records ownership judgement as undiscussed.

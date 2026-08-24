@@ -280,8 +280,8 @@ internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
     /// <b>It states a fact and withholds the conclusion.</b> Microsoft documents that Read
     /// Permissions and Modify Permissions are suppressed and says nothing about Modify Owner, so
     /// this reports that the entry is present rather than that the owner is powerless. Whether the
-    /// product should judge ownership is still an open question in
-    /// <c>docs/areas/what-a-permission-means.md</c>, and this does not settle it.
+    /// product should judge ownership is still an open question, recorded as <c>P-70</c> in
+    /// <c>docs/PUNCH-LIST.md</c>, and this does not settle it.
     /// </para>
     /// </remarks>
     public string? OwnerQualification => _permissions.OwnerRightsEntryIsPresent

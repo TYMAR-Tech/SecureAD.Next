@@ -36,6 +36,24 @@ namespace SecureAD.Next.Tests.Architecture;
 /// (<c>TheRegisterNamesNoTypeThatDoesNotExist</c>). The last two were also caught by the scanner
 /// self-test. Baseline and post-revert both 5 passed, 0 failed.
 /// </para>
+/// <para>
+/// <b>The self-test was re-anchored 2026-08-24.</b> It used to prove both kinds of governing
+/// document were recognised by naming two live documents, one of which was
+/// <c>areas/what-a-permission-means</c>. That made it decay with every area file the rewrite
+/// deletes, and repointing it at the next area file would have moved the decay rather than removed
+/// it. It now derives the kinds the register actually cites and asserts the docs scan discovered
+/// one of each, so it retires the areas half by itself when the last areas row goes. A floor such
+/// as <i>at least one area file exists</i> was rejected for the same reason: it would have to be
+/// edited on the day the rewrite finishes.
+/// </para>
+/// <para>
+/// <b>Re-anchoring mutation-tested 2026-08-24 by
+/// <c>next/tools/mutate-register-selftest.ps1</c>, baseline 5 passed, 0 failed:</b> the docs scan
+/// stopping at <c>docs/areas</c>, and the docs scan stopping at <c>docs/layers</c>. Each killed by
+/// <c>TheCheckFindsTheTypesTheRegisterAndTheAreas</c> and <c>EveryGoverningDocumentExists</c>.
+/// Note that the scan returns silently when a directory is absent, so without this check a deleted
+/// documentation tree would read as a clean result.
+/// </para>
 /// </summary>
 public sealed class SurfaceRegisterTests
 {
@@ -147,11 +165,31 @@ public sealed class SurfaceRegisterTests
         // The column is genuinely parsed out of the link, not left as the raw cell.
         Assert.All(entries, e => Assert.DoesNotContain("(", e.Document, StringComparison.Ordinal));
 
-        // Both kinds of governing document are recognised, which is the point of the widening.
-        Assert.Contains("areas/what-a-permission-means", documents);
-        Assert.Contains("layers/kernel/naming", documents);
+        // Every kind of governing document the register actually cites is one the docs scan
+        // discovers. This is the point of the widening, anchored to the register rather than to two
+        // filenames: while the register cites areas/ the areas scan is checked, and when the last
+        // areas row goes the check stops checking areas by itself, because there is nothing left to
+        // check. Naming a live document here instead made the self-test decay with every area file
+        // deleted, and repointing it at the next area file would only move the decay.
+        var citedKinds = entries
+            .Select(e => e.Document)
+            .Select(d => d.Split('/')[0])
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
-        // A cell naming a document that does not exist is caught rather than shrugged off.
+        Assert.NotEmpty(citedKinds);
+
+        foreach (var kind in citedKinds)
+        {
+            Assert.True(
+                documents.Any(d => d.StartsWith(kind + "/", StringComparison.Ordinal)),
+                $"{RegisterFile} cites documents under '{kind}/' but the docs scan discovered none. "
+                + "Either the scan no longer walks that directory, or every document of that kind "
+                + "has been deleted while rows still point at them.");
+        }
+
+        // A cell naming a document that does not exist is caught rather than shrugged off. These
+        // use synthetic input, so no deletion can erode them.
         Assert.DoesNotContain("areas/no-such-area", documents);
         Assert.Equal("areas/no-such-area", GoverningDocument("[no-such-area](../areas/no-such-area.md)"));
         Assert.Equal("layers/kernel/naming", GoverningDocument("[naming](../layers/kernel/naming.md)"));
