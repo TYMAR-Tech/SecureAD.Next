@@ -1,10 +1,22 @@
 # What goes into the new audit wizard
 
 **Area.** The screen an operator uses to start an audit: what it discovers, what it asks, what it
-refuses, and what it commits to. Everything a run does is decided here.
+refuses, and what it commits to.
 
-This file is the starting point for any work in this area. It is meant to be read whole, in a few
-minutes, and it is the only file that needs reading before we talk.
+> **This file has been consumed down to its screen.** On 2026-08-24 the seven types it governed were
+> rehomed and it now owns nothing in
+> [`SURFACE-REGISTER.md`](../next/SURFACE-REGISTER.md). What a run reads and how a controller is
+> chosen went to [`how-the-forest-is-found.md`](../layers/connect/how-the-forest-is-found.md); what
+> preflight proves went to [`what-preflight-proves.md`](../layers/connect/what-preflight-proves.md);
+> the exclusion attestation went to
+> [`a-domain-left-out-on-purpose.md`](../layers/evidence/a-domain-left-out-on-purpose.md). Eleven of
+> the thirteen decisions this file listed are cited on those pages and are not repeated here.
+>
+> **What remains is the shell**, and it stays because there is nowhere for it to go. The capability
+> table below is 84 rows proving the wizard screen, almost all of them
+> `NewAuditViewModelTests`, and no layer document describes the shell — that is `P-56`. This file is
+> deleted by the pass that writes one, not before. Deleting it now would drop 84 claims that
+> nothing else records, which is the defect `P-78` was raised for.
 
 ---
 
@@ -14,26 +26,16 @@ Each line links the record that decided it. A record with `Status: Accepted` is 
 position; nothing on this page overrides one, and where this page and a record disagree the record
 wins and the disagreement is a finding.
 
+**Only the decisions about the screen are listed here.** The rest moved with the types they govern
+and are cited on the three pages named above.
+
 | The product… | Decided by |
 |---|---|
-| offers one way to start a capture, and no other | [`0039`](../decisions/0039-one-way-to-start-a-capture.md) |
 | starts an audit in a modal window rather than a page in the shell | [`0057`](../decisions/0057-starting-an-audit-is-a-modal-act.md) |
-| finds its own forest rather than asking which one to read | [`0053`](../decisions/0053-the-tool-finds-its-own-forest.md) |
-| takes the domain list from the configuration partition, never from trusts | [`0050`](../decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md) |
-| proves a controller answers before a run commits to it | [`0048`](../decisions/0048-preflight-proves-a-controller-before-a-run-commits.md) |
-| works out what a run would read when the window opens, rather than on a press | [`0048`](../decisions/0048-preflight-proves-a-controller-before-a-run-commits.md) |
-| gives the operator a way to stop any long-running action it began | [`0048`](../decisions/0048-preflight-proves-a-controller-before-a-run-commits.md) |
-| establishes the PDC emulator at preflight | [`0055`](../decisions/0055-the-pdc-emulator-is-established-at-preflight.md) |
-| makes the domain the only unit of scope an operator may change | [`0052`](../decisions/0052-the-domain-is-the-only-unit-of-scope.md) |
-| treats a domain with no candidates as an attested exclusion | [`0054`](../decisions/0054-a-domain-with-no-candidates-is-an-attested-exclusion.md) |
-| asks for a reason, an account and an authorising name when a domain is excluded | [`0062`](../decisions/0062-what-an-exclusion-attestation-asks-for.md) |
-| re-asks for that attestation every run, and never carries one forward | [`0059`](../decisions/0059-an-exclusion-is-attested-once-per-run.md) |
-| shows a domain excluded by choice differently from one it could not reach | [`0063`](../decisions/0063-excluded-never-looks-like-unreachable.md) |
+| shows every fact in three states, never as a bare yes or no | [`0056`](../decisions/0056-the-visual-language-encodes-three-states.md) |
 | asks for that attestation from a tick box on the domain row, and raises it as a dialog | S-46, on the owner's answer |
 | refuses to start a run carrying an exclusion nobody has answered for | S-46, on the owner's answer |
 | tells an operator, before he commits, how many facts the run will not establish | S-46, closing `F-0056-1` |
-| shows every fact in three states, never as a bare yes or no | [`0056`](../decisions/0056-the-visual-language-encodes-three-states.md) |
-| keeps the run library path per user and per machine | [`0047`](../decisions/0047-settings-are-per-user-and-per-machine.md) |
 
 ---
 

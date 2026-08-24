@@ -18,6 +18,34 @@ Governed by [`0048`](../../decisions/0048-preflight-proves-a-controller-before-a
 
 ---
 
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `Preflight` | The pass itself: asks every domain whether it can actually be read, before a run commits to it |
+| `DomainPreflight` | What one domain was asked and what it answered |
+| `PreflightAnswer` | The verdict for a single domain — whether it can be read, and where it could not, why |
+| `PreflightReport` | Every domain's answer together, which is what the review screen is built from |
+| `PreflightContents` | What that report holds when it is written down, apart from the file it is written to |
+| `PreflightDomainRecord` | One domain's row as the file stores it |
+| `PreflightFile` | The file preflight leaves behind, so a run does not have to ask twice |
+| `NamedControllerCheck` | Checks a controller the operator named, at the cost of one machine rather than a pass over the forest |
+| `NamedControllerAnswer` | What that check found, and whether the named controller may be used |
+| `CaptureSession` | The connection a proven controller leaves open, which the capture then reads over |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, bound in both directions against the public types the
+files above declare.
+
+**`DomainPreflightRead.cs` and `PreflightDispatch.cs` contribute no rows** — the first is the read
+itself rather than a type a caller holds, and what it produces is `DomainPreflight`; the second is
+how the pass is spread across domains and stopped part way, and it declares nothing public.
+
+---
+
 ## Why it exists
 
 Capture is fail-fast and a forest is only readable as it stands today, so **discovering at hour two

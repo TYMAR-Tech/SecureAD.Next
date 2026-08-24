@@ -23,6 +23,46 @@ Governed by [`0053`](../../decisions/0053-the-tool-finds-its-own-forest.md),
 
 ---
 
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `IMachineDomain` | What the machine running the audit knows about its own domain membership. The whole platform dependency, kept to two properties |
+| `MachineDomain` | The real implementation of that, reading the machine's DNS suffix and NetBIOS domain |
+| `MachineAddresses` | The addresses this machine holds, which is how its site is worked out |
+| `ForestEntry` | The first connection of a run, and where the name it was made to came from |
+| `ForestEntrySource` | Which of the three routes in supplied that name — DNS suffix, NetBIOS name, or a name the operator typed |
+| `ForestBootstrap` | Makes that first connection, to a domain name rather than a host |
+| `ForestDiscovery` | Reads what the forest contains over that one connection, and contacts nobody else |
+| `ForestController` | One controller the forest declares, with the site it sits in and the replicas it holds |
+| `ForestSubnet` | One address range the forest associates with a site |
+| `ForestTopology` | Every controller, every site and every declared address range, read from the configuration partition |
+| `ForestRoles` | Which controllers hold operations master roles, as far as the forest was willing to say |
+| `RoleHolder` | One such role and the controller holding it, or the fact that it could not be established |
+| `PdcEmulatorKnowledge` | Whether a domain's PDC emulator is established, not yet established, or could not be read — three states and not two |
+| `DomainPdcEmulator` | One domain's PDC emulator, and how firmly that is known |
+| `OperatorSite` | Which site the machine running the audit is in, computed from the forest's own subnets |
+| `ControllerSelection` | Ranks the candidates and pins one controller per domain. Pure arithmetic over data already read |
+| `DomainSelection` | Why a controller was chosen to read a domain from, in the order the reasons were applied |
+| `ForestPlan` | What a run would read: one entry per domain, and the domains it cannot |
+| `PlanPreview` | Works that plan out when the window opens, rather than on a press |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership, and it is bound in both directions against the public
+types the files above declare: one they declare and this table omits fails the build, and so does a
+row naming something they do not. `ForestPartitions.cs` is named in the header and contributes no
+row, because the types it works with are declared elsewhere in the component.
+
+**Nineteen types, one component, and the reason they are one.** This page describes a single
+sequence — find the forest, read what it contains, decide which controller each domain is read
+from — and every type above is a step in it or a result of one. Splitting the sequence across pages
+would put the ranking rules on one page and the data they rank on another.
+
+---
+
 ## The way in
 
 > **The first connection is made to a domain name, not to a host.**
