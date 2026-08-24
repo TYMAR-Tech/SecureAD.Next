@@ -126,9 +126,9 @@ four sentences were still in question. The owner decided each one:
   that is a member of this domain". The wording follows Microsoft; the earlier note was wrong
   because it had only read two thirds of Microsoft.
 - `0x00000040` and `0x00000001` are open findings in
-  [what-we-capture](areas/what-we-capture.md), not corrections. Microsoft says one cannot be set
-  directly and the other does not work over LDAP, which would make both sentences claims the bit
-  cannot support. Neither is reworded until a lab run says what real accounts carry.
+  [`PUNCH-LIST.md`](PUNCH-LIST.md) — `P-65` and `P-66` — not corrections. Microsoft says one cannot
+  be set directly and the other does not work over LDAP, which would make both sentences claims the
+  bit cannot support. Neither is reworded until a lab run says what real accounts carry.
 
 No test would have raised any of the four, and the harvest script is deliberately silent on wording
 for the same reason.

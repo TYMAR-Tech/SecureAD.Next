@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -90,16 +91,47 @@ public sealed class LabConfirmationColumnTests
     /// <summary>
     /// The scanner self-test. Without it both checks above pass by reading no tables at all.
     /// </summary>
+    /// <remarks>
+    /// <b>Anchored to the tree rather than to a number.</b> This asked for at least ten area files
+    /// with capability tables until 2026-08-22, when deleting <c>what-we-capture.md</c> took the
+    /// count to nine and failed it. That floor was a decaying proxy: <c>docs/areas</c> is being
+    /// emptied on purpose, so every deletion would have obliged someone to lower the number, and
+    /// each of those edits is an opportunity to lower it to nothing and leave a gate that reads
+    /// like protection. Asserting instead that every area file which <i>lays out</i> a capability
+    /// table yields rows from it cannot decay, and is stronger — a parser that broke on one file
+    /// passed the old wording.
+    /// <para>
+    /// A file is taken to lay out a table when its section carries a header separator. Five area
+    /// files have the heading and no table because nothing in them is built yet, and they must not
+    /// be read as a scan that came back empty.
+    /// </para>
+    /// </remarks>
     [Fact]
     public void TheCheckReadsTheBuiltTables()
     {
-        var withCapabilities = AreaFiles().Count(f => BuiltTableRows(f).Skip(2).Any());
+        var withTable = AreaFiles()
+            .Where(f => BuiltTableRows(f).Any(r => Separator.IsMatch(r)))
+            .ToList();
 
         Assert.True(
-            withCapabilities >= 10,
-            $"Read capability tables from only {withCapabilities} area files, which is too few to "
-            + "be the whole set.");
+            withTable.Count > 0,
+            "Found no area file laying out a capability table, so both checks above read nothing.");
+
+        var silent = withTable
+            .Where(f => !BuiltTableRows(f).Skip(2).Any())
+            .Select(f => "  " + Path.GetFileName(f))
+            .ToList();
+
+        Assert.True(
+            silent.Count == 0,
+            "These area files lay out a capability table and the scan read no rows from it, so "
+            + "every capability in them is unchecked while the checks above report nothing wrong:"
+            + Environment.NewLine + string.Join(Environment.NewLine, silent));
     }
+
+    /// <summary>The dashed line under a table's header, which is what marks it out as a table.</summary>
+    private static readonly Regex Separator =
+        new(@"^\|[-\s|:]+\|$", RegexOptions.Compiled);
 
     private static IEnumerable<string> AreaFiles() =>
         Directory.EnumerateFiles(AreasDirectory(), "*.md")

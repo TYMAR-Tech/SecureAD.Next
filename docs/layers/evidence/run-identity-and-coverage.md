@@ -162,6 +162,12 @@ pass quietly.
 `ForestPartitionCoverage.Outcome` and `ForestPartitionCoverage.Reason`. The outcome is a
 `ForestPartitionReadOutcome`.
 
+`ForestPartitionCoverage.Kind` is a `NamingContextKind` — `Domain`, `Configuration` or `Schema` —
+and it lives in the Evidence layer rather than beside the capture that reads a partition, because a
+coverage record has to say what kind of partition it describes long after the capture ended. The
+capture page [`the-search-capture-issues.md`](../audit/the-search-capture-issues.md) names it to
+point here and does not claim it.
+
 <!-- PARTITION-OUTCOMES:BEGIN -->
 
 | Outcome | What it means |

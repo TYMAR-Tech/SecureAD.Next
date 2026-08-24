@@ -78,6 +78,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\evidence\run-identity-and-coverage.md = ..\docs\layers\evidence\run-identity-and-coverage.md
 		..\docs\layers\evidence\whether-two-runs-compare.md = ..\docs\layers\evidence\whether-two-runs-compare.md
 		..\docs\layers\evidence\how-a-bundle-is-read.md = ..\docs\layers\evidence\how-a-bundle-is-read.md
+		..\docs\layers\evidence\what-an-object-holds.md = ..\docs\layers\evidence\what-an-object-holds.md
 		..\docs\layers\schema\what-a-schema-guid-means.md = ..\docs\layers\schema\what-a-schema-guid-means.md
 		..\docs\layers\kernel\security-descriptors.md = ..\docs\layers\kernel\security-descriptors.md
 		..\docs\layers\kernel\permission-classification.md = ..\docs\layers\kernel\permission-classification.md

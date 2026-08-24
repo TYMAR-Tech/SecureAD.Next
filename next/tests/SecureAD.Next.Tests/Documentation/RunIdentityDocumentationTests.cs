@@ -41,6 +41,7 @@ public sealed class RunIdentityDocumentationTests
         typeof(DomainCoverage),
         typeof(ForestPartitionReadOutcome),
         typeof(ForestPartitionCoverage),
+        typeof(NamingContextKind),
         typeof(SysvolReadOutcome),
         typeof(SysvolCoverage),
         typeof(GpoReadOutcome),

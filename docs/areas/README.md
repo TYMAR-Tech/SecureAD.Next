@@ -19,7 +19,6 @@ ledger row, or from the shape of the code.
 | Area | File | State |
 |---|---|---|
 | Which controller we read, and whether we can | [which-controller-we-read.md](which-controller-we-read.md) | written |
-| What we capture | [what-we-capture.md](what-we-capture.md) | written |
 | Domains we deliberately skip | [domains-we-skip.md](domains-we-skip.md) | written |
 
 ## Keeping it
