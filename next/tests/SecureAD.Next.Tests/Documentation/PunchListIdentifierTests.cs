@@ -46,6 +46,12 @@ public sealed class PunchListIdentifierTests
         new(@"^[A-Z][A-Za-z0-9]{24,}$", RegexOptions.Compiled);
 
     /// <summary>
+    /// The dashed line under a table's header, which is what marks the start of its rows.
+    /// </summary>
+    private static readonly Regex Separator =
+        new(@"^\|[-\s|:]+\|$", RegexOptions.Compiled);
+
+    /// <summary>
     /// Every name the tree actually defines - types, methods, properties and fields across the
     /// production assemblies, plus every test method.
     /// </summary>
@@ -126,6 +132,111 @@ public sealed class PunchListIdentifierTests
         Assert.True(
             missing.Count == 0,
             $"{Document} names paths that do not exist: {string.Join(", ", missing)}.");
+    }
+
+    /// <summary>
+    /// Every line inside a table opens a row.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>An item with no identifier cannot be cited, closed or counted</b>, and no search for its
+    /// number will find it. Two rows were written without one and neither check above noticed,
+    /// because both read the rows that <i>have</i> an identifier - so they passed over exactly the
+    /// rows that were broken. One of the two was this session's own subject, described by its brief
+    /// as recorded when it was not. That is <c>P-64</c>, and this is the check it asked for.
+    /// </para>
+    /// <para>
+    /// The rule is that a line between a table's separator and the blank line ending it must begin
+    /// with a pipe. That is stricter than markdown requires, deliberately: nothing in this document
+    /// needs a continuation line, and allowing one is what let a headless row look ordinary.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryLineInsideATableOpensARow()
+    {
+        var headless = HeadlessRowsIn(File.ReadAllLines(Path()));
+
+        Assert.True(
+            headless.Count == 0,
+            $"{Document} has table lines that open no row: {string.Join("; ", headless)}. A row "
+            + "begins with its identifier in the first cell. A line that does not is an item "
+            + "nobody can cite, close or count, and it is invisible to anyone searching for its "
+            + "number.");
+    }
+
+    // --- scanner self-tests --------------------------------------------------------------------
+
+    /// <summary>
+    /// The table scan really does walk this document's tables, and really does reject a line that
+    /// opens no row. Without this it could pass by never entering a table at all - which is the
+    /// failure mode of the two checks it was added to cover for.
+    /// </summary>
+    [Fact]
+    public void TheTableScanFindsTablesAndRejectsAHeadlessRow()
+    {
+        string[] wellFormed =
+        [
+            "| ID | Item | Status | Blocked on |",
+            "|---|---|---|---|",
+            "| P-1 | Something | open | - |",
+            string.Empty,
+            "Prose below the table opens no row, and is not inside one.",
+        ];
+
+        Assert.Empty(HeadlessRowsIn(wellFormed));
+
+        string[] headless =
+        [
+            "| ID | Item | Status | Blocked on |",
+            "|---|---|---|---|",
+            "| P-1 | Something | open | - |",
+            "and the remainder of it, carrying no identifier | open | - |",
+        ];
+
+        Assert.Single(HeadlessRowsIn(headless));
+
+        var identified = File.ReadAllLines(Path())
+            .Count(line => line.StartsWith("| P-", StringComparison.Ordinal));
+
+        Assert.True(
+            identified > 40,
+            $"Found only {identified} identified rows in {Document}, which is too few to be this "
+            + "document - the scan is looking in the wrong place.");
+    }
+
+    /// <summary>
+    /// Lines that sit inside a table but begin no row, each with the line number that locates it.
+    /// </summary>
+    /// <param name="lines">The document, in order.</param>
+    private static List<string> HeadlessRowsIn(IReadOnlyList<string> lines)
+    {
+        var headless = new List<string>();
+        var inTable = false;
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i].Trim();
+
+            if (Separator.IsMatch(line))
+            {
+                inTable = true;
+                continue;
+            }
+
+            if (!inTable)
+                continue;
+
+            if (line.Length == 0)
+            {
+                inTable = false;
+                continue;
+            }
+
+            if (!line.StartsWith('|'))
+                headless.Add($"line {i + 1}: {line[..Math.Min(60, line.Length)]}");
+        }
+
+        return headless;
     }
 
     // --- scanner self-tests --------------------------------------------------------------------
