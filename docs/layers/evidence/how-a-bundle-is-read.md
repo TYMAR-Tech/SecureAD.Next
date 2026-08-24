@@ -345,6 +345,8 @@ unit-tested but not yet exercised against Active Directory.
 | see how much of the forest a finished run actually covered | `BundleReaderTests.AWholeForestRunReportsEveryDomainRead` |  |
 | tell a domain he left out from one the run fell short on | `BundleReaderTests.AnExcludedDomainIsCountedApartFromAShortfall` |  |
 | be certain a half-read domain is never counted as read | `BundleReaderTests.APartiallyReadDomainIsNotCountedAsRead` |  |
+| be certain a bundle claiming the impossible is refused rather than reported | `BundleReaderTests.ASealedBundleClaimingADomainWasNotReadIsRefused` |  |
+| be certain an outcome written by a later build is not guessed at | `BundleReaderTests.AnOutcomeThisBuildDoesNotRecogniseIsRefused` |  |
 | read the top row as the latest run, with two forests in the library | `RunLibraryListTests.TheNewestRunIsListedFirst` |  |
 | be certain a run is placed by when it said it finished, not by its name | `RunLibraryListTests.ARunThatRecordedWhenItFinishedIsPlacedByThat` |  |
 | be certain a run that recorded no moment does not claim one | `RunLibraryListTests.ARunThatRecordedNoMomentDoesNotClaimOne` |  |

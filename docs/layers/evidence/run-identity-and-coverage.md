@@ -344,6 +344,25 @@ record of it is exhaustive* into three different things with three different nam
 
 ---
 
+## What is built
+
+**The test is the evidence; this table is only the index.**
+
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
+unit-tested but not yet exercised against Active Directory.
+
+These three rows came from the area file the-run-library.md when it was deleted on 2026-08-24. They
+were left behind by that pass and restored the same day, after an audit of what the deleted file
+had carried; the page owns `CoverageId`, so they belong here.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| be certain two runs leaving out different domains are not treated as alike | `CoverageIdTests.LeavingOutADifferentDomainIsDifferentEvidence` |  |
+| be certain a run with a domain left out is not compared against a whole-forest one | `CoverageIdTests.LeavingADomainOutIsNotTheSameAsReadingTheWholeForest` |  |
+| see runs of one scope grouped together, and a later run of that scope join them | `CoverageIdTests.RunsGroupByWhichDomainsTheyCovered` | 2026-08-21 |
+
+---
+
 > **Where this came from.** `S-18` held all of the above and the comparability verdict as well, and
 > was deleted when this page and [`whether-two-runs-compare.md`](whether-two-runs-compare.md) were
 > written. Its `STATES` table had already moved to [`the-bundle-on-disk.md`](the-bundle-on-disk.md).
