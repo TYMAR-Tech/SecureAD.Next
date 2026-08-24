@@ -37,3 +37,29 @@ public enum EvidenceCompleteness
     /// </remarks>
     MayBeMissingConfidentialValues,
 }
+
+/// <summary>
+/// What a read over one rung of the connection ladder can be said to have covered.
+/// </summary>
+/// <remarks>
+/// <b>One mapping rather than two.</b> <see cref="EvidenceObject"/> states this for an object on
+/// its way into a bundle, and <see cref="ObjectAttributesReader"/> states it again for the same
+/// object on the way back out. Two copies of a rule that must agree is how the distinguished-name
+/// helpers ended up with three near-identical ways to ask one question, so the rule is written
+/// once and both sides call it.
+/// </remarks>
+internal static class ReadCoverage
+{
+    /// <summary>
+    /// Whether a read over <paramref name="connectionSecurity"/> could have been served
+    /// confidential attributes at all.
+    /// </summary>
+    /// <param name="connectionSecurity">The rung the partition was actually read over.</param>
+    public static EvidenceCompleteness Over(ConnectionSecurityLevel connectionSecurity) =>
+        connectionSecurity switch
+        {
+            ConnectionSecurityLevel.Ldaps or ConnectionSecurityLevel.SignedAndSealed =>
+                EvidenceCompleteness.Complete,
+            _ => EvidenceCompleteness.MayBeMissingConfidentialValues,
+        };
+}

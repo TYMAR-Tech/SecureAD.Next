@@ -191,16 +191,37 @@ public sealed class ObjectAttributesTests : IDisposable
     }
 
     /// <summary>
-    /// A section that finds nothing must be able to tell an object holding no value from a list
-    /// this build handed back short, so the read says which it is rather than leaving it to be
-    /// inferred from a count.
+    /// An object read over an encrypted connection could have been served every confidential
+    /// attribute it holds, so nothing was withheld on account of how the connection was made.
     /// </summary>
-    [Fact]
-    public void TheReadSaysThatEveryCataloguedAttributeIsThere()
+    [Theory]
+    [InlineData(ConnectionSecurityLevel.Ldaps)]
+    [InlineData(ConnectionSecurityLevel.SignedAndSealed)]
+    public void AnObjectReadOverAnEncryptedConnectionReadsBackAsComplete(
+        ConnectionSecurityLevel security)
     {
-        WriteObject(Alice());
+        WriteObject(AliceReadOver(security));
 
-        Assert.True(Read(AliceDn)!.AttributesAreComplete);
+        Assert.Equal(EvidenceCompleteness.Complete, Read(AliceDn)!.Completeness);
+    }
+
+    /// <summary>
+    /// The other half, and the point of carrying the statement at all: a controller may strip
+    /// confidential attributes from an unencrypted search and return no error, so a section
+    /// finding nothing has to be able to tell that from an object that holds no value. The bundle
+    /// records the rung; this read used to drop it.
+    /// </summary>
+    [Theory]
+    [InlineData(ConnectionSecurityLevel.Signed)]
+    [InlineData(ConnectionSecurityLevel.Unprotected)]
+    public void AnObjectReadOverAnUnencryptedConnectionReadsBackAsPossiblyMissingValues(
+        ConnectionSecurityLevel security)
+    {
+        WriteObject(AliceReadOver(security));
+
+        Assert.Equal(
+            EvidenceCompleteness.MayBeMissingConfidentialValues,
+            Read(AliceDn)!.Completeness);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -268,13 +289,17 @@ public sealed class ObjectAttributesTests : IDisposable
     private void WriteObject(EvidenceObject evidenceObject)
     {
         using var writer = BundleWriter.Create(_directory, Started);
-        writer.WriteCoverage(SomeCoverage());
+        writer.WriteCoverage(evidenceObject.Coverage);
         writer.WriteObject(evidenceObject);
         writer.Complete(OneDomainRead(), Finished);
     }
 
     private static EvidenceObject Alice(params EvidenceAttribute[] attributes) =>
-        new(SomeCoverage(), AliceDn, Guid.NewGuid(), attributes, Started);
+        AliceReadOver(ConnectionSecurityLevel.SignedAndSealed, attributes);
+
+    private static EvidenceObject AliceReadOver(
+        ConnectionSecurityLevel security, params EvidenceAttribute[] attributes) =>
+        new(CoverageOver(security), AliceDn, Guid.NewGuid(), attributes, Started);
 
     private static EvidenceAttribute Text(string ldapDisplayName, params string[] values) =>
         new(
@@ -300,11 +325,14 @@ public sealed class ObjectAttributesTests : IDisposable
             ],
             SysvolCoverage.Of([]));
 
-    private static PartitionCoverage SomeCoverage() => new(
+    private static PartitionCoverage SomeCoverage() =>
+        CoverageOver(ConnectionSecurityLevel.SignedAndSealed);
+
+    private static PartitionCoverage CoverageOver(ConnectionSecurityLevel security) => new(
         DomainDn,
         NamingContextKind.Domain,
         "dc01.contoso.com",
-        ConnectionSecurityLevel.SignedAndSealed,
+        security,
         12,
         4200,
         3,

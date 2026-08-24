@@ -174,12 +174,7 @@ public sealed record EvidenceObject(
     /// comment says that widening it is how a gate dies.
     /// </para>
     /// </remarks>
-    public EvidenceCompleteness Completeness => Coverage.ConnectionSecurity switch
-    {
-        ConnectionSecurityLevel.Ldaps or ConnectionSecurityLevel.SignedAndSealed =>
-            EvidenceCompleteness.Complete,
-        _ => EvidenceCompleteness.MayBeMissingConfidentialValues,
-    };
+    public EvidenceCompleteness Completeness => ReadCoverage.Over(Coverage.ConnectionSecurity);
 }
 
 // PartitionCoverageRecord used to live here, twinned with PartitionCoverage in SecureAD.Audit.

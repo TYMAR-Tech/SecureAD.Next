@@ -79,20 +79,27 @@ public sealed record ObjectAttribute(
 /// password last set six days before a capture is a fact about that forest and stays one, where
 /// the same value measured against a reader's own clock says something different every morning.
 /// </param>
-/// <param name="AttributesAreComplete">
-public sealed record ObjectAttributes(
-    string DistinguishedName,
-    DateTimeOffset CapturedUtc,
-    bool AttributesAreComplete,
-    IReadOnlyList<ObjectAttribute> Attributes)
-{
-/// Whether every attribute the catalogue names is here. False would mean a section finding nothing
-/// is looking at a list this build shortened, which reads identically to an object that holds no
-/// value - so the statement is carried rather than assumed.
+/// <param name="Completeness">
+/// Whether the connection this object was read over could have been served confidential attributes
+/// at all.
+/// <para>
+/// <b>It does not say every attribute is here</b>, and the member is not named as though it does.
+/// Nothing read from a directory can say that: a controller omits a value the caller may not read
+/// in exactly the way it omits one that was never set, so a claim of completeness would be a claim
+/// about a distinction the protocol does not provide (<c>docs/decisions/0022</c>). This says the
+/// narrower thing that is observable, and it is the same statement
+/// <see cref="EvidenceObject.Completeness"/> makes about the same object on the way in.
+/// </para>
 /// </param>
 /// <param name="Attributes">
 /// Every attribute the catalogue names, in the order the catalogue names them.
 /// </param>
+public sealed record ObjectAttributes(
+    string DistinguishedName,
+    DateTimeOffset CapturedUtc,
+    EvidenceCompleteness Completeness,
+    IReadOnlyList<ObjectAttribute> Attributes)
+{
     /// <summary>
     /// The attribute <paramref name="ldapDisplayName"/> names, or null when the catalogue does not
     /// name it - which is a fact about this build and not about the object.
@@ -136,7 +143,7 @@ internal static class ObjectAttributesReader
         if (stored is null)
             return null;
 
-        var (objectId, dn, captured, attributes) = stored.Value;
+        var (objectId, dn, captured, completeness, attributes) = stored.Value;
 
         foreach (var attribute in BundleSchema.MultiValuedTables)
         {
@@ -149,7 +156,7 @@ internal static class ObjectAttributesReader
         return new ObjectAttributes(
             dn,
             captured,
-            attributes.Count == CapturedAttributeCatalog.All.Count,
+            completeness,
             [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)]);
     }
 
@@ -157,16 +164,26 @@ internal static class ObjectAttributesReader
     /// The object's row, turned into one attribute per column - including the two the schema
     /// stores under a name of its own.
     /// </summary>
-    private static (long ObjectId, string Dn, DateTimeOffset Captured, List<ObjectAttribute> Attributes)? SingleValuedOf(
+    /// <remarks>
+    /// <b>The coverage row is joined rather than looked up separately.</b> An object and the rung
+    /// it was read over are one fact, and fetching them in two queries would allow a caller to hold
+    /// an object beside somebody else's coverage. <c>connection_security</c> is selected after the
+    /// attribute columns so that adding a catalogued attribute does not move it.
+    /// </remarks>
+    private static (long ObjectId, string Dn, DateTimeOffset Captured, EvidenceCompleteness Completeness, List<ObjectAttribute> Attributes)? SingleValuedOf(
         SqliteConnection connection, string distinguishedName)
     {
         var columns = BundleSchema.SingleValuedColumns;
 
         using var command = connection.CreateCommand();
         command.CommandText =
-            "SELECT object_id, distinguished_name, object_guid, captured_utc"
-            + string.Concat(columns.Select(a => ", " + BundleSchema.ColumnNameFor(a.LdapDisplayName)))
-            + " FROM captured_object WHERE distinguished_name = $dn COLLATE NOCASE LIMIT 1";
+            "SELECT o.object_id, o.distinguished_name, o.object_guid, o.captured_utc"
+            + string.Concat(
+                columns.Select(a => ", o." + BundleSchema.ColumnNameFor(a.LdapDisplayName)))
+            + ", c.connection_security"
+            + " FROM captured_object AS o"
+            + " JOIN partition_coverage AS c ON c.coverage_id = o.coverage_id"
+            + " WHERE o.distinguished_name = $dn COLLATE NOCASE LIMIT 1";
         command.Parameters.AddWithValue("$dn", distinguishedName);
 
         using var reader = command.ExecuteReader();
@@ -195,7 +212,10 @@ internal static class ObjectAttributesReader
                 reader.IsDBNull(ordinal) ? [] : [ValueAt(reader, ordinal, attribute.Storage, 0)]));
         }
 
-        return (objectId, dn, captured, attributes);
+        var completeness = ReadCoverage.Over(
+            Enum.Parse<ConnectionSecurityLevel>(reader.GetString(4 + columns.Count)));
+
+        return (objectId, dn, captured, completeness, attributes);
     }
 
     /// <summary>
