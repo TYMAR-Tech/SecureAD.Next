@@ -88,6 +88,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\kernel\distinguished-names.md = ..\docs\layers\kernel\distinguished-names.md
 		..\docs\layers\kernel\what-a-policy-declares.md = ..\docs\layers\kernel\what-a-policy-declares.md
 		..\docs\layers\kernel\what-a-policy-file-contains.md = ..\docs\layers\kernel\what-a-policy-file-contains.md
+		..\docs\layers\kernel\how-failure-is-reported.md = ..\docs\layers\kernel\how-failure-is-reported.md
 		..\docs\layers\audit\the-attribute-catalogue.md = ..\docs\layers\audit\the-attribute-catalogue.md
 		..\docs\layers\audit\the-search-capture-issues.md = ..\docs\layers\audit\the-search-capture-issues.md
 		..\docs\next\SURFACE-REGISTER.md = ..\docs\next\SURFACE-REGISTER.md

@@ -45,7 +45,6 @@ ledger row, or from the shape of the code.
 | How results are shown | [how-results-are-shown.md](how-results-are-shown.md) | written |
 | Reports and export | [reports-and-export.md](reports-and-export.md) | written |
 | How the app looks | [how-the-app-looks.md](how-the-app-looks.md) | written |
-| How failures are reported | [how-failures-are-reported.md](how-failures-are-reported.md) | written |
 
 ---
 

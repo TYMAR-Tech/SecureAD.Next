@@ -21,6 +21,25 @@ namespace SecureAD.Next.Tests.Documentation;
 /// the only check ran from the code to the document. Every qualified mention here is resolved
 /// against the type it names.
 /// </para>
+/// <para>
+/// <b>The <c>TYPES</c> checks were mutation-tested 2026-08-24 by
+/// <c>next/tools/mutate-failure-doc-gates.ps1</c>. Baseline 27 passed, 0 failed; all four touched
+/// files reverted byte-identical.</b>
+/// </para>
+/// <list type="bullet">
+///   <item>Page drops the <c>RunOutcome</c> row - killed by
+///   <c>TheTypesTableAndTheComponentAgree</c>.</item>
+///   <item><c>RunOutcomeFile.cs</c> gains a public type the page does not claim - killed by
+///   <c>TheTypesTableAndTheComponentAgree</c> and <c>TheCheckFindsBothTheDocumentAndTheComponent</c>.</item>
+///   <item>Page claims <c>RunState</c>, which none of its four files declares - killed by
+///   <c>TheTypesTableAndTheComponentAgree</c> and
+///   <see cref="TheStateVocabularyIsDescribedButNotClaimed"/>.</item>
+/// </list>
+/// <para>
+/// <see cref="EveryTypeTheScanFindsIsOneTheCompilerExports"/> fired on none of the six, which is
+/// what it is for: a mutation that adds a type to a source file is a type the rebuilt assembly then
+/// exports. It catches the scan drifting from the compiler, not a drifting document.
+/// </para>
 /// </remarks>
 public sealed class BundleOnDiskDocumentationTests
 {
@@ -302,6 +321,14 @@ public sealed class BundleOnDiskDocumentationTests
         Assert.Equal(Enum.GetValues<RunState>().Length, StateTable().Count);
         Assert.NotEmpty(PublicMemberNames());
         Assert.Contains(nameof(BundleSealing.Verify), Mentioned());
+
+        Assert.NotEmpty(TableRows("TYPES"));
+        Assert.Equal(10, DeclaredPublicTypeNames().Count());
+
+        foreach (var file in SourceFiles)
+        {
+            Assert.True(File.Exists(SourcePath(file)), $"Expected a source file at {SourcePath(file)}.");
+        }
     }
 
     /// <summary>
@@ -325,9 +352,129 @@ public sealed class BundleOnDiskDocumentationTests
         Assert.Contains(nameof(BundleSealing.Verify), mentioned);
     }
 
+    // --- what the page owns, both directions --------------------------------------------------
+
+    /// <summary>
+    /// The <c>TYPES</c> table is the page's claim of ownership over its four source files, and it
+    /// is bound both ways.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Added 2026-08-24 when docs/areas/how-failures-are-reported.md was deleted and the three
+    /// outcome-file types came here. Until then no layer document claimed them, and the register
+    /// pointed them at an area file.
+    /// </para>
+    /// <para>
+    /// <b>The component is scoped from the source files, not from <see cref="TheComponent"/>.</b>
+    /// That array is a hand-written list, which is the right anchor for resolving qualified member
+    /// mentions and the wrong one for ownership: a list written beside the page restates the page's
+    /// claim, so a new public type added to one of these files would be invisible to the very check
+    /// meant to notice it. It is also why <c>RunState</c> and <c>RunStateNames</c> are in that array
+    /// and not in the table - they are declared in files this page does not claim, and the page
+    /// describes them without owning them.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheTypesTableAndTheComponentAgree()
+    {
+        var documented = TableRows("TYPES").Select(r => Cells(r)[0].Trim('`'))
+            .ToHashSet(StringComparer.Ordinal);
+        var actual = DeclaredPublicTypeNames().ToHashSet(StringComparer.Ordinal);
+
+        var unclaimed = actual.Except(documented).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var invented = documented.Except(actual).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+        Assert.True(
+            unclaimed.Count == 0 && invented.Count == 0,
+            $"The TYPES table in {Document} disagrees with the files it claims. Declared but not "
+            + $"claimed by the table: {Describe(unclaimed)}. Claimed by the table but not declared: "
+            + $"{Describe(invented)}. A type owned by no page is how the area files came to be the "
+            + "only record of anything.");
+    }
+
+    /// <summary>
+    /// The source scan agrees with the compiler. A regex that has drifted would otherwise narrow
+    /// the set silently, and a check comparing a shrunken set against a shrunken table passes while
+    /// measuring less and less.
+    /// </summary>
+    [Fact]
+    public void EveryTypeTheScanFindsIsOneTheCompilerExports()
+    {
+        var exported = typeof(BundleLayout).Assembly
+            .GetExportedTypes()
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var phantom = DeclaredPublicTypeNames()
+            .Where(name => !exported.Contains(name))
+            .ToList();
+
+        Assert.True(
+            phantom.Count == 0,
+            $"The scan of this page's source files found types the compiler does not export: "
+            + $"{Describe(phantom)}. The scan has drifted from the code.");
+    }
+
+    /// <summary>
+    /// The two types the page describes and does not claim stay unclaimed. They are declared in
+    /// files this page does not own, and a second page claiming them would give one type two
+    /// owners - which is what the register forbids and what <c>P-60</c> was about.
+    /// </summary>
+    [Fact]
+    public void TheStateVocabularyIsDescribedButNotClaimed()
+    {
+        var documented = TableRows("TYPES").Select(r => Cells(r)[0].Trim('`')).ToList();
+
+        Assert.DoesNotContain(nameof(RunState), documented);
+        Assert.DoesNotContain(nameof(RunStateNames), documented);
+        Assert.Contains("`" + nameof(RunState) + "`", Read(), StringComparison.Ordinal);
+    }
+
     // --- helpers ---------------------------------------------------------------------------------
 
-    /// <summary>Every <c>*FileName</c> constant on <c>BundleLayout</c>, by reflection.</summary>
+    /// <summary>
+    /// The files this page is the description of, relative to <c>next/src/SecureAD.Evidence</c>.
+    /// They are the ones its own header names.
+    /// </summary>
+    private static readonly string[][] SourceFiles =
+    [
+        ["BundleLayout.cs"],
+        ["BundleSealing.cs"],
+        ["Run", "RunStateReader.cs"],
+        ["Run", "RunOutcomeFile.cs"],
+    ];
+
+    /// <summary>
+    /// The public types declared in the component's own files, read from those files.
+    /// </summary>
+    private static IEnumerable<string> DeclaredPublicTypeNames()
+    {
+        foreach (var file in SourceFiles)
+        {
+            foreach (var line in File.ReadAllLines(SourcePath(file)))
+            {
+                if (!line.StartsWith("public ", StringComparison.Ordinal))
+                    continue;
+
+                var words = line.Split(
+                    [' ', '(', '<', '{'], StringSplitOptions.RemoveEmptyEntries);
+
+                var keyword = Array.FindIndex(
+                    words, w => w is "record" or "class" or "enum" or "struct" or "interface");
+
+                if (keyword >= 0 && keyword + 1 < words.Length)
+                    yield return words[keyword + 1];
+            }
+        }
+    }
+
+    private static string SourcePath(string[] file) =>
+        System.IO.Path.Combine(
+            [RepositoryLocation.Root(), "next", "src", "SecureAD.Evidence", .. file]);
+
+    private static string Describe(List<string> names) =>
+        names.Count == 0 ? "none" : string.Join(", ", names);
+
     private static List<(string Constant, string Value)> LayoutFileNames() =>
         typeof(BundleLayout)
             .GetFields(BindingFlags.Public | BindingFlags.Static)

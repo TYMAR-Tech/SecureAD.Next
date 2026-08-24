@@ -366,22 +366,21 @@ evidence to directory objects.
 ## Documentation rewrite
 
 Blockers to the consolidation itself. `D-1` — the register forbidding any area file to be deleted —
-was fixed and discharged; the first four area files went with it, and what-a-permission-means.md
-followed on 2026-08-24.
+was fixed and discharged; the first four area files went with it, what-a-permission-means.md
+followed on 2026-08-24, and how-failures-are-reported.md the same day.
 
 **How close each area file is to deletion, regenerated 2026-08-24 by `next/tools/measure-rewrite-progress.ps1`** — types it governs in
 `SURFACE-REGISTER.md`, and how many of those no layer document names yet. `P-52` fails the build
-when a right-hand column reaches zero. Five of the thirteen remaining area files have no register
+when a right-hand column reaches zero. Five of the twelve remaining area files have no register
 rows and are absent here; see `P-56`.
 
 | Area file | Governs | Still undocumented |
 |---|---|---|
 | `the-new-audit-wizard` | 7 | 3 |
-| `how-failures-are-reported` | 7 | 3 |
-| `the-run-library` | 11 | 5 |
+| `the-run-library` | 9 | 4 |
 | `group-policy` | 23 | 6 |
 | `how-results-are-shown` | 8 | 8 |
-| `how-a-run-is-stored` | 17 | 10 |
+| `how-a-run-is-stored` | 12 | 9 |
 | `which-controller-we-read` | 36 | 13 |
 | `what-we-call-a-finding` | 15 | 15 |
 
@@ -395,7 +394,7 @@ rows and are absent here; see `P-56`.
 | P-58 | **37 doc-comment citations in 30 source files named documents that were not there**, and the suite was green throughout. Thirty were the second form of the `docs/` → `docs/layers/` move — the path written whole in a comment, where the move searched for it split across `Path.Combine` arguments. Seven named documents deleted outright. **Fixed 2026-08-21** and `DocumentPathCitationTests.EveryDocumentPathCitedInCodeResolves` added, which fails on any path a code tag encloses that does not resolve. A path in plain prose is history, matching the backtick convention `PunchListIdentifierTests` uses for identifiers | done | — |
 | P-59 | **The Sysvol figure carried in `_HANDOFF.md` was wrong, and a session would have acted on it.** It said the folder holds five of `group-policy.md`'s remaining types and that documenting it deletes the area file. Measured 2026-08-21: the folder holds **four** undocumented types — `ISysvolFileReader`, `SmbSysvolFileReader`, `GpoTarget`, `SysvolCapture` — because `GpoInventory` is already named by a layer document, and `P-43` above is stale in the same way. After a Sysvol pass the area file **still stands**, owning `GpoSettingScope` and `RestrictedGroupRelationship`. Those two share one 39-line file, `SecureAD.Evidence/GpoSettingScope.cs`, so **Sysvol plus that one file** is what deletes `group-policy.md`. Cost: 1,161 source lines, 951 test lines | open | — |
 | P-60 | **Seven types were named by more than one layer document, and the register allows each type exactly one owner.** Recorded as six; measured 2026-08-22 as seven, the entry having inherited its table rather than counted it - `CapturedAttribute` was missing and `CapturedAttributeCatalog` was named by four pages, not three. **Closed 2026-08-22, and not by ruling seven cases.** The contention was an artefact of the anchor, exactly as `P-61` predicted: anchored to *mentions*, seven types had two to four claimants; anchored to *declarations* - the type's row in a page's `TYPES` table - 28 of the 31 rows had exactly one owner and none had two. The three undeclared were `ObjectAttributes`, `ObjectAttribute` and `AttributeValue`, which `what-an-object-holds.md` now claims, plus `NamingContextKind`, ruled to `run-identity-and-coverage.md` because `the-search-capture-issues.md` disowns it in writing and the coverage page describes the member it types. Measured by `next/tools/measure-declared-owners.ps1` | done | - |
-| P-61 | **`P-52` measures something slightly weaker than its name.** It treats *named by a layer document* as *documented there*, and `P-60` showed the two differ - a page may mention another folder's type in passing. So it can call an area file redundant before its content is genuinely consumed. It errs in the safe direction, failing early rather than passing falsely. **The stronger anchor P-61 asked for exists and is already in the tree:** a page's `TYPES` table declares what it owns, and `P-60` was dissolved by reading it. It is not yet universal - **re-measured 2026-08-24 against the `TYPES:BEGIN` marker itself: 10 of 23 layer documents carry one.** Both figures previously here were wrong. The count was 8 of 22 when it was 9 of 22, because a loose match on the word *TYPES* finds 16 and a match on the marker finds 9; and the claim that every page under `docs/layers/evidence` lacks one was already false, since `what-an-object-holds.md` had one when this was written. Two of the six evidence pages now carry one. Giving every layer document a `TYPES` table, bound in both directions as `what-an-object-holds.md` binds its own, would let `P-52` anchor to ownership instead of to mentions | open | - |
+| P-61 | **`P-52` measures something slightly weaker than its name.** It treats *named by a layer document* as *documented there*, and `P-60` showed the two differ - a page may mention another folder's type in passing. So it can call an area file redundant before its content is genuinely consumed. It errs in the safe direction, failing early rather than passing falsely. **The stronger anchor P-61 asked for exists and is already in the tree:** a page's `TYPES` table declares what it owns, and `P-60` was dissolved by reading it. It is not yet universal - **re-measured 2026-08-24 against the `TYPES:BEGIN` marker itself: 12 of 24 layer documents carry one**, the deletion of how-failures-are-reported.md having added one page and given one to another. Both figures previously here were wrong. The count was 8 of 22 when it was 9 of 22, because a loose match on the word *TYPES* finds 16 and a match on the marker finds 9; and the claim that every page under `docs/layers/evidence` lacks one was already false, since `what-an-object-holds.md` had one when this was written. Three of the seven evidence pages now carry one; the figure here said six, counted by nothing. Giving every layer document a `TYPES` table, bound in both directions as `what-an-object-holds.md` binds its own, would let `P-52` anchor to ownership instead of to mentions | open | - |
 | P-54 | Only the Capture project has an assembly-wide "every public type is named by some document" gate. Every other documentation gate is scoped to the component a document already claims, so it can only check types somebody chose to describe. `GroupPolicyDocumentationTests` has the stronger shape; widen the rest, highest in-scope debt first (`Evidence/` root, 14 of 44) | open | — |
 | P-55 | `_COVERAGE.md` is stale. The Kernel/GroupPolicy pass read 1,273 source lines, 1,259 test lines and an 86-line area file and recorded none of it | open | — |
 

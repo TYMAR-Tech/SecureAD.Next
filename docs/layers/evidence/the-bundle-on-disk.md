@@ -1,12 +1,13 @@
 # The bundle on disk
 
-**Code:** `next/src/SecureAD.Evidence/BundleLayout.cs`, `BundleSealing.cs`, `Run/RunStateReader.cs`
+**Code:** `next/src/SecureAD.Evidence/BundleLayout.cs`, `BundleSealing.cs`, `Run/RunStateReader.cs`,
+`Run/RunOutcomeFile.cs`
 **Layer:** Evidence — the files a bundle is made of, and what their presence proves.
 
 [`what-a-bundle-holds.md`](what-a-bundle-holds.md) describes what is inside the evidence database.
 This page is one level out: which files sit in a bundle directory, what stops a half-written one
-being read as a whole one, what the seal proves and what it does not, and how a run's state is read
-back off the disk.
+being read as a whole one, what the seal proves and what it does not, how a run's state is read
+back off the disk, and the note a run leaves when it ends badly.
 
 Bound by `BundleOnDiskDocumentationTests`, which compares the file table below against the names
 `BundleLayout` declares in both directions, the seal table against `SealState` in both directions,
@@ -14,6 +15,30 @@ and the state table against `RunState` in both directions. A name in the code an
 build, and so does a name here and not in the code.
 
 ---
+
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `BundleLayout` | The one owner of a bundle's file names and the paths built from them |
+| `BundleSealing` | Writes the seal over a finished bundle and verifies it again on the way in |
+| `BundleSealContents` | What a seal file holds: the algorithm, named rather than assumed, and the hash |
+| `SealState` | What verifying a seal observed |
+| `SealVerdict` | One verification: the state, a sentence for the operator, and whether the bundle may be opened |
+| `RunStateReader` | Works out what became of a run by looking at the files in its directory |
+| `RunStateObservation` | What that reading concluded, and the moment the run recorded for itself |
+| `RunOutcomeFile` | Writes and reads the note a run leaves when it ends badly |
+| `RunOutcome` | Which bad ending it was |
+| `RunOutcomeContents` | What the run recorded about that ending: which one, why, and when |
+
+<!-- TYPES:END -->
+
+This table is the page's claim of ownership over the four source files named above, and it is bound
+in both directions: a public type declared in one of them and missing here fails the build, and so
+does a row naming something none of them declares. `RunState` and `RunStateNames` are described
+below and are **not** claimed — they are declared elsewhere, and a mention is not a claim.
 
 ## What a bundle is on disk
 

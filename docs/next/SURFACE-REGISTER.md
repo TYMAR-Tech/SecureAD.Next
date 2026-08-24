@@ -59,10 +59,10 @@ The table below sits between the two markers around it, so the test parses only 
 
 | Type | Project | Area |
 |---|---|---|
-| Result | SecureAD.Kernel | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
-| AuditError | SecureAD.Kernel | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
-| ErrorCategory | SecureAD.Kernel | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
-| ErrorSeverity | SecureAD.Kernel | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
+| Result | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
+| AuditError | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
+| ErrorCategory | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
+| ErrorSeverity | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
 | SecurityDescriptorParser | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | ParsedSecurityDescriptor | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | ParsedAce | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
@@ -197,7 +197,7 @@ The table below sits between the two markers around it, so the test parses only 
 | DirectoryTimeWording | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | DirectoryTimeFormat | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | GroupTypeWording | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
-| BundleLayout | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| BundleLayout | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | BundleSchema | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleWriter | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleReader | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
@@ -217,12 +217,12 @@ The table below sits between the two markers around it, so the test parses only 
 | ObjectAttributes | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | ObjectAttribute | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | AttributeValue | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
-| BundleSealing | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| BundleSealing | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | AttestedExclusion | SecureAD.Evidence | [the-new-audit-wizard](../areas/the-new-audit-wizard.md) |
 | ExclusionKind | SecureAD.Evidence | [the-new-audit-wizard](../areas/the-new-audit-wizard.md) |
-| BundleSealContents | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
-| SealState | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
-| SealVerdict | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| BundleSealContents | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| SealState | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| SealVerdict | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | EvidenceObject | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | EvidenceCompleteness | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | EvidenceAttribute | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
@@ -231,12 +231,12 @@ The table below sits between the two markers around it, so the test parses only 
 | CoverageId | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | RunState | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
 | RunStateNames | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
-| RunStateObservation | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
-| RunStateReader | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
+| RunStateObservation | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| RunStateReader | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | RunLibrary | SecureAD.Evidence | [the-run-library](../areas/the-run-library.md) |
-| RunOutcome | SecureAD.Evidence | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
-| RunOutcomeContents | SecureAD.Evidence | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
-| RunOutcomeFile | SecureAD.Evidence | [how-failures-are-reported](../areas/how-failures-are-reported.md) |
+| RunOutcome | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| RunOutcomeContents | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| RunOutcomeFile | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | DomainReadOutcome | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | DomainCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | ForestPartitionReadOutcome | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
