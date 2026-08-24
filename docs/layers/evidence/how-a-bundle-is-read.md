@@ -1,6 +1,6 @@
 # How a bundle is read
 
-**Code:** `next/src/SecureAD.Evidence/Run/RunLibrary.cs`, `RunStateReader.cs`, `RunStateNames.cs`,
+**Code:** `next/src/SecureAD.Evidence/Run/RunLibrary.cs`, `RunStateNames.cs`,
 `RunCompletionReader.cs`, `RunListing.cs`
 **Layer:** Evidence — the managed root, and how a directory on a disk becomes a run in a list.
 
@@ -9,6 +9,12 @@ six states a run can be observed in. This page is one level out again: the **lib
 directories live in, the single door every caller-supplied identifier passes through, how a listing
 is assembled, and the order it comes back in. The state vocabulary itself is not restated here —
 `STATES` lives on the on-disk page, beside the files it is read from.
+
+`RunStateReader` is named below and is **not** owned here. It reads a run's state out of the files
+in a bundle directory, so it belongs beside those files, and its observation table is already bound
+there. This page calls it; that is a mention, not a claim. Both headers named the file until
+2026-08-24, which cost nothing while neither page claimed ownership and would have given one type
+two owners the moment either grew a `TYPES` table.
 
 Bound by `RunLibraryDocumentationTests`, which compares the library's public surface against
 `RunLibrary` in both directions, the refusals table against the error codes the class actually

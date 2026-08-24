@@ -146,8 +146,8 @@ The table below sits between the two markers around it, so the test parses only 
 | AttributeValues | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | AttributeCompleteness | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | AttributeRange | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
-| IDirectoryChannel | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
-| IDirectoryChannelFactory | SecureAD.Audit | [which-controller-we-read](../areas/which-controller-we-read.md) |
+| IDirectoryChannel | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
+| IDirectoryChannelFactory | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | DirectoryPage | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | PageCompleteness | SecureAD.Audit | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | CapturePlan | SecureAD.Audit | [the-search-capture-issues](../layers/audit/the-search-capture-issues.md) |
