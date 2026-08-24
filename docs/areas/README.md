@@ -14,12 +14,6 @@ ledger row, or from the shape of the code.
 
 ---
 
-## Getting the data
-
-| Area | File | State |
-|---|---|---|
-| Domains we deliberately skip | [domains-we-skip.md](domains-we-skip.md) | written |
-
 ## Keeping it
 
 | Area | File | State |
@@ -50,14 +44,21 @@ ledger row, or from the shape of the code.
 
 `AreaFileGateTests` fails the build when this index and the directory disagree, in both directions:
 an area listed as written that is not there, and an area file present that is not listed. It also
-fails when an area file is missing one of its three sections, when a link out of one does not
-resolve, when a capability names a test that does not exist, and when two areas claim the same test
-as their evidence.
+fails when a link out of one does not resolve, when a capability names a test that does not exist,
+when two areas claim the same test as their evidence, and when an area file no longer governs a
+single type some layer document has not already named — which is how a file the rewrite has
+finished consuming says so instead of sitting on.
 
-**Every area now has a file, and that is not the same as every area being discussed.** All nineteen
-were written on 2026-08-16 because the surface register is keyed to areas — every public type must be
-claimed by exactly one, so an area with no page leaves types with no home. An area the product has
-not reached carries an honest empty *What is built* table and a *What has not been discussed* section
+**The three-section check is gone.** It was deleted on 2026-08-21 under `P-51` because no change to
+the product could make it fail, and because forcing three headings into a file being emptied meant
+a page could not be shrunk toward nothing, only deleted whole.
+
+**Nineteen areas were written on 2026-08-16; nine of those files have since been consumed and
+deleted.** They were written all at once because the surface register is keyed to areas — every
+public type had to be claimed by exactly one, so an area with no page left types with no home. That
+is no longer how ownership works: a type is claimed by the layer document that describes it, and an
+area file is an input the rewrite consumes rather than a fixture. An area the product has not
+reached carries an honest empty *What is built* table and a *What has not been discussed* section
 that says so plainly.
 
 **A "not discussed" section written months before the work is still a guess**, and that has not

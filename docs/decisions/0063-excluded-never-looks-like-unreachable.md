@@ -4,9 +4,9 @@ Date: 2026-08-16
 Status: Accepted
 
 Draws the seam between [0052](0052-the-domain-is-the-only-unit-of-scope.md) and
-[0054](0054-a-domain-with-no-candidates-is-an-attested-exclusion.md), raised as open by
-[domains-we-skip](../areas/domains-we-skip.md) and by the area file `which-controller-we-read`,
-since consumed into [docs/layers/connect/](../layers/connect/). Answers `A6` of the
+[0054](0054-a-domain-with-no-candidates-is-an-attested-exclusion.md), raised as open by the area
+files `domains-we-skip` and `which-controller-we-read`, both since consumed into
+[docs/layers/](../layers/). Answers `A6` of the
 S-44 agenda.
 
 ## Context
