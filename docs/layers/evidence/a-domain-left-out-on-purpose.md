@@ -112,6 +112,21 @@ different bucket from the coverage row it belongs to.
 
 ---
 
+## What is built
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| be certain a domain he took out is not read after all | `CapturePlanTests.AnExcludedDomainIsNotRead` |  |
+| be certain excluding a domain does not flatter the run's coverage | `CapturePlanTests.AnExcludedDomainStillCountsAgainstCoverage` |  |
+| have a run that left a domain out still seal, and say why it was not read | `CaptureRunEndToEndTests.ARunThatExcludedADomainSealsAndSaysWhyItWasNotRead` |  |
+| be certain such a run does not claim to have covered the forest | `CaptureRunEndToEndTests.ARunThatExcludedADomainDoesNotClaimFullCoverage` |  |
+| tell an excluded domain from an unreachable one in the run's own coverage | `RunCoverageTests.AnExcludedDomainNeverRecordsTheSameOutcomeAsAnUnreachableOne` |  |
+| find the whole attestation in the bundle months later | `BundleWriterTests.AnExcludedDomainKeepsTheWholeAttestation` |  |
+| tell the two kinds of exclusion apart in the bundle | `BundleWriterTests.TheTwoKindsOfExclusionAreStoredApart` |  |
+| be certain a run that excluded nothing says so by carrying no rows | `BundleWriterTests.ARunThatExcludedNothingLeavesNoExclusionRows` |  |
+
+---
+
 ## What this document cannot tell you
 
 It does not say how an operator is asked for an attestation, or what the wizard refuses to start

@@ -101,11 +101,6 @@ controller sends them.
 | see who authorised an exclusion once it has been answered for | `NewAuditViewModelTests.AnAnsweredExclusionSaysWhoAuthorisedIt` |  |
 | have every attestation carried into the run he started | `NewAuditViewModelTests.EveryAttestationIsCarriedIntoTheRun` |  |
 | have a domain he took out carried into the run as an exclusion | `NewAuditViewModelTests.ADomainTakenOutIsCarriedIntoTheRunAsAnExclusion` |  |
-| be certain a domain he took out is not read after all | `CapturePlanTests.AnExcludedDomainIsNotRead` |  |
-| be certain excluding a domain does not flatter the run's coverage | `CapturePlanTests.AnExcludedDomainStillCountsAgainstCoverage` |  |
-| have a run that left a domain out still seal, and say why it was not read | `CaptureRunEndToEndTests.ARunThatExcludedADomainSealsAndSaysWhyItWasNotRead` |  |
-| be certain such a run does not claim to have covered the forest | `CaptureRunEndToEndTests.ARunThatExcludedADomainDoesNotClaimFullCoverage` |  |
-| tell an excluded domain from an unreachable one in the run's own coverage | `RunCoverageTests.AnExcludedDomainNeverRecordsTheSameOutcomeAsAnUnreachableOne` |  |
 | be told when a run fails unexpectedly, rather than losing the window | `NewAuditViewModelTests.ARunThatThrowsIsReportedRatherThanTakingTheWindowDown` |  |
 | see what is leaving the run listed, and not just a heading | `NewAuditViewModelTests.TheListOfWhatIsLeavingTheRunKeepsOneIdentity` |  |
 | be certain rewording a reason cannot change what past runs appear to say | `NewAuditViewModelTests.AReasonsStoredNameIsNotItsWording` |  |
@@ -114,9 +109,6 @@ controller sends them.
 | be told that total is not yet known rather than shown a zero | `NewAuditViewModelTests.ATotalThatCannotBeComputedSaysSoRatherThanShowingZero` |  |
 | see a domain he excluded counted as establishing none of its facts | `NewAuditViewModelTests.AnExcludedDomainCountsAsEstablishingNoneOfItsFacts` |  |
 | be certain that count stays tied to what a row actually carries | `NewAuditViewModelTests.TheFactsCountedForAnAbsentDomainMatchTheFactsARowCarries` |  |
-| find the whole attestation in the bundle months later | `BundleWriterTests.AnExcludedDomainKeepsTheWholeAttestation` |  |
-| tell the two kinds of exclusion apart in the bundle | `BundleWriterTests.TheTwoKindsOfExclusionAreStoredApart` |  |
-| be certain a run that excluded nothing says so by carrying no rows | `BundleWriterTests.ARunThatExcludedNothingLeavesNoExclusionRows` |  |
 | name a controller himself and have it carried into the run | `NewAuditViewModelTests.AControllerAnOperatorNamesIsCarriedIntoTheRun` |  |
 | be certain a controller he named that is ineligible is refused rather than quietly replaced | `NewAuditViewModelTests.AnIneligibleControllerIsNotQuietlyReplacedByTheRankedChoice` |  |
 | read that refusal in the library's own words | `NewAuditViewModelTests.AnIneligibleControllerIsRefusedInTheLibrarysOwnWords` |  |
