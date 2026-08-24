@@ -106,3 +106,28 @@ a subsystem actually surfaces a failure, which is how `Shell` arrived.
 The distinction is the difference between an audit that is missing a domain and an audit that is
 missing. A reader who cannot tell them apart cannot tell a partial answer from no answer, and a
 partial answer presented as a whole one is the one thing this product must not do.
+
+---
+
+## What is built
+
+**The test is the evidence; this table is only the index.**
+
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
+unit-tested but not yet exercised against Active Directory.
+
+These rows were carried by an area file the rewrite deleted and were left behind by that pass. Restored 2026-08-24 after an audit of all eight deleted area files found 48 such rows.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| be certain a failure carries a code derived from what went wrong and why | `AuditErrorTests.CreateDerivesTheCodeFromTheCategoryAndReason` |  |
+| be certain a failure cannot be raised without a reason | `AuditErrorTests.CreateRejectsAnEmptyReason` |  |
+| be certain a failure cannot be raised without a description | `AuditErrorTests.CreateRejectsAnEmptyDescription` |  |
+| be certain reading the value of a failed result throws and names the code | `ResultTests.ReadingTheValueOfAFailedResultThrowsAndNamesTheCode` |  |
+| be certain a failed result is never mistaken for a successful one | `ResultTests.AFailedResultIsNotSuccessful` |  |
+| be certain an uninitialised result is not mistaken for success | `ResultTests.ADefaultResultIsNotMistakenForSuccess` |  |
+| be certain an uninitialised result reports a self-describing error | `ResultTests.ADefaultResultReportsASelfDescribingError` |  |
+| be certain no public member returns a bare count that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsABareCount` |  |
+| be certain no public member returns a collection that cannot say whether it looked | `UnvouchedResultGateTests.NoPublicMemberReturnsACollectionThatCannotSayWhetherItLooked` |  |
+| be certain that gate reads the real public surface rather than a copy | `UnvouchedResultGateTests.TheGateReadsTheRealPublicSurface` |  |
+| be certain the exemptions to that gate are still earning their place | `UnvouchedResultGateTests.TheCatalogueExemptionsAreStillEarningTheirPlace` |  |

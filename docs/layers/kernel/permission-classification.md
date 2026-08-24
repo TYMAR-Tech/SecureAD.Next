@@ -218,6 +218,7 @@ index.** Blank in **Confirmed in lab** means unit-tested but not yet exercised a
 | see which class of object an entry limited to one class applies to | `PermissionScopeTests.AnEntryLimitedToOneClassNamesThatClass` |  |
 | see the GUID when this build cannot name the class an entry is limited to | `PermissionScopeTests.AnEntryLimitedToAClassThisBuildCannotNameShowsTheGuid` |  |
 | tell an entry the directory marked inherited from one set on the object | `PermissionScopeTests.AnEntryTheDirectoryMarkedInheritedSaysSo` |  |
+| read the same account of classification in the document and the code | `PermissionClassificationDocumentationTests` |  |
 
 ---
 

@@ -250,3 +250,21 @@ seal draws between `Unreadable` and `Absent`.
 > capture badly writes the file before returning, and the state a badly ended run reports is the one
 > it recorded rather than `Interrupted`. Verified against the code during the pass that consumed
 > `S-18`.
+
+---
+
+## What is built
+
+**The test is the evidence; this table is only the index.**
+
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
+unit-tested but not yet exercised against Active Directory.
+
+These rows were carried by an area file the rewrite deleted and were left behind by that pass. Restored 2026-08-24 after an audit of all eight deleted area files found 48 such rows.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| tell a run that was cancelled from one that failed | `RunStateReaderTests.AnOutcomeFileRecordingACancellationIsCancelled` |  |
+| tell a run still going from one nothing is holding any more | `RunStateReaderTests.APartialFileSomethingIsHoldingIsInProgress`, `RunStateReaderTests.APartialFileNothingIsHoldingIsInterrupted` |  |
+| read what was wrong with a damaged run, not merely that it was damaged | `RunStateReaderTests.ADamagedRunSaysWhatWasWrongWithIt` |  |
+| be refused a state for a directory that is not a run, rather than given a misleading one | `RunStateReaderTests.ADirectoryThatIsNotARunIsRefusedRatherThanGivenAState` |  |

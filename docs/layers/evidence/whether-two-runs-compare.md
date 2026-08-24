@@ -208,3 +208,29 @@ the least-verified sentence in this repository and rots invisibly where nothing 
 > [`run-identity-and-coverage.md`](run-identity-and-coverage.md). Its five findings were all
 > repaired, checked against the code, and are held by git rather than repeated here; the one live
 > consequence was routed to the punch list.
+
+---
+
+## What is built
+
+**The test is the evidence; this table is only the index.**
+
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
+unit-tested but not yet exercised against Active Directory.
+
+These rows were carried by an area file the rewrite deleted and were left behind by that pass. Restored 2026-08-24 after an audit of all eight deleted area files found 48 such rows.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| be certain two complete runs of an unchanged forest compare fully | `RunComparabilityTests.TwoCompleteRunsOfAnUnchangedForestAreFullyComparable` |  |
+| be certain a refused comparison never reports that it may proceed | `RunComparabilityTests.NoRefusedComparisonEverReportsThatItMayProceed` |  |
+| be certain only a fully comparable pair is ever measured | `RunComparabilityTests.OnlyAFullyComparablePairIsEverMeasured` |  |
+| read an explanation on every outcome, rather than a bare verdict | `RunComparabilityTests.EveryOutcomeExplainsItself` |  |
+| be certain every outcome in the set is reachable, so none is decorative | `RunComparabilityTests.EveryOutcomeIsProducible` |  |
+| be certain runs from different forests are refused | `RunComparabilityTests.RunsFromDifferentForestsAreRefused` |  |
+| see a failed domain reported ahead of a changed forest, so the more serious cause wins | `RunComparabilityTests.AFailedDomainIsReportedAheadOfAChangedForest` |  |
+| see an earlier run that never completed reported ahead of this run's coverage | `RunComparabilityTests.AnEarlierRunThatNeverCompletedIsReportedAheadOfThisRunsCoverage` |  |
+| be certain a complete sealed run may be a baseline | `RunComparabilityTests.ACompleteSealedRunMayBeABaseline` |  |
+| be certain a run that did not read every domain may not be a baseline | `RunComparabilityTests.ARunThatDidNotReadEveryDomainMayNotBeABaseline` |  |
+| be certain baseline eligibility agrees with comparing a run against itself | `RunComparabilityTests.EligibilityAgreesWithComparingARunAgainstItself` |  |
+| be certain a run cannot claim to be sealed without saying what it read | `RunComparabilityTests.ARunCannotClaimToBeSealedWithoutSayingWhatItRead` |  |

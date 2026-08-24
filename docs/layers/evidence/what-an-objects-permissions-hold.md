@@ -145,3 +145,22 @@ grants little.
 `ReadPermissions` returns null when the bundle captured no object by that name. That is a different
 answer from an object with no entries, and is kept apart from it for the same reason
 `DescriptorAvailability` has three states.
+
+---
+
+## What is built
+
+**The test is the evidence; this table is only the index.**
+
+**Confirmed in lab** is the date the owner saw this working against a real forest. Blank means
+unit-tested but not yet exercised against Active Directory.
+
+These rows were carried by an area file the rewrite deleted and were left behind by that pass. Restored 2026-08-24 after an audit of all eight deleted area files found 48 such rows.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| see `PRINCIPAL SELF` as the object the permission sits on, rather than as a group called Self | `ObjectPermissionsTests.WhenAnEntryNamesPrincipalSelf_ThenItIsReportedAsTheObjectItself` | 2026-08-20 |
+| be certain `CREATOR OWNER` is shown as a template and never as a holder | `ObjectPermissionsTests.WhenAnEntryNamesCreatorOwner_ThenItIsNamedAsAPlaceholderAndHoldsNothing` |  |
+| be certain a well-known SID is not attributed to a domain it does not belong to | `ObjectPermissionsTests.WhenSeveralCapturedObjectsShareAWellKnownSid_ThenTheAnswerIsNotArbitrary` |  |
+| see that an `OWNER RIGHTS` entry restricts what owning an object grants | `ObjectPermissionsTests.WhenAnOwnerRightsEntryIsPresent_ThenTheObjectSaysOwnershipIsQualified` | 2026-08-20 |
+| be certain an `OWNER RIGHTS` entry that applies only to descendants is not read against the container | `ObjectPermissionsTests.WhenAnOwnerRightsEntryAppliesOnlyToDescendants_ThenThisObjectsOwnershipIsNotQualified` |  |

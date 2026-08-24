@@ -158,6 +158,7 @@ parser handles those bytes, not that a domain controller sends them.
 | be certain every entry records the canonicalization version that produced it | `AceNormalizerTests.WhenNormalized_ThenEachAceRecordsTheCanonicalizationVersionThatProducedIt` |  |
 | be certain a name against a permission is the principal the directory named | `SidTests.AWellKnownSidIsWrittenTheWayWindowsWritesIt` |  |
 | be certain a malformed identifier is refused rather than shortened into a different one | `SidTests.ATruncatedSidIsRefusedRatherThanShortened` |  |
+| read the same account of descriptor parsing in the document and the code | `SecurityDocumentationTests` |  |
 
 ---
 
