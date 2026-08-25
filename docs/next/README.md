@@ -380,6 +380,65 @@ component, written from the code and bound to it by a test; `docs/decisions/` fo
 [`PUNCH-LIST.md`](../PUNCH-LIST.md) for work that may need doing; everything else deleted. A pass
 that adds documents without removing any has not consolidated anything.
 
+### Adding documentation: the whole procedure
+
+**Documentation for code lives in `docs/layers/{subsystem}/{a-sentence-about-the-thing}.md`. There
+is nowhere else it may go.** The subsystems are `kernel`, `audit`, `connect`, `evidence`, `schema`
+and `shell` — the folders that exist under [`docs/layers/`](../layers/). Nothing else is a layer
+document: `docs/decisions/` holds positions, `docs/rules/` holds the predecessor's rule cards,
+`docs/planned/` holds specifications for unbuilt work.
+
+Six steps. Steps 1 to 4 fail the build if skipped; 5 and 6 do not, and are the ones to be
+deliberate about.
+
+1. **Put the file in `docs/layers/{subsystem}/`.** Naming a new subsystem means adding it to
+   `LayerDocuments.Subsystems` in the test project **in the same commit** — the gates iterate that
+   list, so a folder missing from it is a folder nothing checks.
+   `EveryLayerDirectoryIsARegisteredSubsystem` fails if you forget.
+2. **Give it a `TYPES` table** between `<!-- TYPES:BEGIN -->` and `<!-- TYPES:END -->`, one row per
+   public type, in the form `` | `TypeName` | what it is | ``. A page that opens the markers and
+   leaves them empty fails.
+3. **Add each type to [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md)**, pointing at that page. The
+   register and the table are checked against each other in both directions: a type in the table
+   and not the register fails, and a type registered to a page whose table does not claim it fails.
+4. **Make every path resolve** — as a link, in backticks, or in a `<c>` tag. Three gates cover
+   those three forms across the whole repository.
+5. **Write it from the code, not from another document.** Open the type, the enum, the query
+   actually sent. A page written from a page inherits its errors, and that is how a wrong sentence
+   survives four rewrites.
+6. **Delete what it replaces, in the same commit.** A document that adds without removing has not
+   consolidated. If something is deleted, `AreaFileCitationSurvivalTests` reads it back out of git
+   history and refuses the deletion if a capability went with it.
+
+**The shape of a layer document**, from the pages that have one:
+
+```
+# A sentence about the thing
+
+**Code:** the source files this page describes, in backticks, comma separated
+**Layer:** Audit — speaks to a customer's directory.
+
+One paragraph on what the part actually does.
+
+---
+
+## The types
+
+<!-- TYPES:BEGIN -->
+| Type | What it is |
+|---|---|
+| `SomeType` | What it is, in a sentence an operator could read |
+<!-- TYPES:END -->
+
+Each type carries its own reasoning in its XML documentation, including the Microsoft sources it
+is anchored to. **That is the reference; this page is the orientation.**
+```
+
+Then whatever the page needs: what it refuses to claim, what an operator can do, what is not built.
+**No gate gets to say what a page contains beyond the `TYPES` block** — testing the shape of prose
+is forbidden by §*When a document counts as documentation*, and a page whose headings are policed
+is a page nobody rewrites when the code changes.
+
 ### Route every fact to exactly one destination
 
 | Kind of fact | Goes to | What holds it there |

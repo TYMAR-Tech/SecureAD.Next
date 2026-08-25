@@ -1,4 +1,4 @@
-?# How a controller's answer is read
+# How a controller's answer is read
 
 **Code:** `next/src/SecureAD.Audit/Capture/PartitionCapture.cs`, `IDirectoryChannel.cs`,
 `DirectoryPage.cs`, `LdapEntryReader.cs`, `AttributeValues.cs`, `AttributeRange.cs`,

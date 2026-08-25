@@ -1,4 +1,4 @@
-?# The search capture issues
+# The search capture issues
 
 **Code:** `next/src/SecureAD.Audit/Capture/CaptureUnit.cs`, `CapturePlan.cs`,
 `CaptureSearchRequestFactory.cs`

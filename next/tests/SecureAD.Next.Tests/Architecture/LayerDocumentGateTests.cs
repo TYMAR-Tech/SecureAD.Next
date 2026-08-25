@@ -32,6 +32,45 @@ public sealed class LayerDocumentGateTests
     /// </summary>
     private static readonly Regex RelativeLink = new(@"\]\((?<target>[^)\s]+)\)", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Every directory under <c>docs/layers</c> is a subsystem the gates know about.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The gates iterate a named list, so a folder missing from it is a folder nothing checks.</b>
+    /// <see cref="LayerDocuments.Subsystems"/> is deliberately named rather than discovered - see the
+    /// reasoning there - and the cost of naming a set is that additions are silent. This closes that
+    /// cost without giving it up: the list still decides what is scanned, and this asks whether the
+    /// list has fallen behind the tree.
+    /// </para>
+    /// <para>
+    /// It has happened. The shell subsystem was created with two documents, both carrying a
+    /// <c>TYPES</c> table, and neither was read by anything for as long as it took somebody to
+    /// notice - the tables were decoration and every gate was green. A new subsystem is exactly when
+    /// a session is least likely to think about a list in the test project.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryLayerDirectoryIsARegisteredSubsystem()
+    {
+        var registered = LayerDocuments.Subsystems.ToHashSet(StringComparer.Ordinal);
+
+        var unregistered = Directory.EnumerateDirectories(LayerDocuments.Root())
+            .Select(Path.GetFileName)
+            .Where(name => name is not null && !registered.Contains(name))
+            .Select(name => $"  docs/layers/{name}/ is not in LayerDocuments.Subsystems, so no gate "
+                + "reads the documents in it")
+            .OrderBy(m => m, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            unregistered.Count == 0,
+            "A layer directory nothing scans holds documents that look enforced and are not. Add it "
+            + "to LayerDocuments.Subsystems in the same commit that creates it:"
+            + Environment.NewLine
+            + string.Join(Environment.NewLine, unregistered));
+    }
+
     [Fact]
     public void EveryLinkOutOfALayerDocumentResolves()
     {
