@@ -44,6 +44,7 @@ READMEs were folded into this file. See §`One fact, one home` below for what wa
 | Question | Where | What it may contain |
 |---|---|---|
 | What does this component do? | [`docs/layers/`](../layers/) | One document per component, written from the code and bound to it by a test. **This is the description** |
+| How will something unbuilt work? | [`docs/layers/specs/`](../layers/specs/) | One document per unbuilt subsystem, carrying the design and the research behind it. **Discussion, never a decision** — it says so in writing, and `SpecDocumentGateTests` fails the build if it does not. Consumed and deleted into the layer document as the code is built |
 | What can an operator do? | a capability row on the layer document that owns the subject | A sentence naming the test that proves it. The test is the evidence; the row is the index |
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |
 | Why was it decided that way? | [`docs/decisions/`](../decisions/) | The reasoning. **The only place a decision is stated** |

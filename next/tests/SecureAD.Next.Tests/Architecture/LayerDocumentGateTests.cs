@@ -33,7 +33,7 @@ public sealed class LayerDocumentGateTests
     private static readonly Regex RelativeLink = new(@"\]\((?<target>[^)\s]+)\)", RegexOptions.Compiled);
 
     /// <summary>
-    /// Every directory under <c>docs/layers</c> is a subsystem the gates know about.
+    /// Every directory under <c>docs/layers</c> is scanned by some gate.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -49,24 +49,36 @@ public sealed class LayerDocumentGateTests
     /// notice - the tables were decoration and every gate was green. A new subsystem is exactly when
     /// a session is least likely to think about a list in the test project.
     /// </para>
+    /// <para>
+    /// <b>There are two ways to be scanned, not one, and the second was added rather than carved
+    /// out.</b> <see cref="SpecDocuments"/> holds designs for code that does not exist, which cannot
+    /// carry a <c>TYPES</c> table resolved against the assemblies because there are no types yet.
+    /// Registering that folder as a subsystem would have forced exactly the placeholder table this
+    /// gate exists to catch, so it has <see cref="SpecDocumentGateTests"/> instead. The question here
+    /// widened from <i>is it a subsystem</i> to <i>is anything reading it</i>; a folder that is
+    /// neither still fails, and the message says which of the two registers to add it to.
+    /// </para>
     /// </remarks>
     [Fact]
-    public void EveryLayerDirectoryIsARegisteredSubsystem()
+    public void EveryLayerDirectoryIsScannedBySomeGate()
     {
-        var registered = LayerDocuments.Subsystems.ToHashSet(StringComparer.Ordinal);
+        var subsystems = LayerDocuments.Subsystems.ToHashSet(StringComparer.Ordinal);
 
         var unregistered = Directory.EnumerateDirectories(LayerDocuments.Root())
             .Select(Path.GetFileName)
-            .Where(name => name is not null && !registered.Contains(name))
-            .Select(name => $"  docs/layers/{name}/ is not in LayerDocuments.Subsystems, so no gate "
-                + "reads the documents in it")
+            .Where(name => name is not null
+                && !subsystems.Contains(name)
+                && !string.Equals(name, SpecDocuments.DirectoryName, StringComparison.Ordinal))
+            .Select(name => $"  docs/layers/{name}/ is in neither LayerDocuments.Subsystems nor "
+                + "SpecDocuments, so no gate reads the documents in it")
             .OrderBy(m => m, StringComparer.Ordinal)
             .ToList();
 
         Assert.True(
             unregistered.Count == 0,
             "A layer directory nothing scans holds documents that look enforced and are not. Add it "
-            + "to LayerDocuments.Subsystems in the same commit that creates it:"
+            + "to LayerDocuments.Subsystems - or to SpecDocuments if it holds designs for code that "
+            + "does not exist yet - in the same commit that creates it:"
             + Environment.NewLine
             + string.Join(Environment.NewLine, unregistered));
     }
