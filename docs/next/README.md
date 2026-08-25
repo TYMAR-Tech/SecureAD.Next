@@ -388,7 +388,16 @@ that adds documents without removing any has not consolidated anything.
 | What an operator can do | a capability row naming the test that proves it | `CapabilityCitationTests`, `AreaFileGateTests` |
 | A product position | a record in `docs/decisions/` | `DecisionIndexTests` — **the index only, never the content** |
 | Work that may need doing | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | `PunchListIdentifierTests` — the shape only |
+| A document and the code disagreeing, where you are not fixing it now | [`_DRIFT.md`](../_DRIFT.md) | **nothing** — see below |
 | Anything else | deleted | — |
+
+**The drift log is the one destination with no gate behind it.** A row added there and never worked
+will not announce itself. All eight of its original items were fixed on 2026-08-25, and the header
+records what went wrong: they had been deferred on the stated grounds that the branch was
+documentation-only, and that was not true of it — it carried thirty-five production files, six with
+behaviour changes. Two of the eight had themselves rotted before anyone returned to them. **If you
+put something there, put a punch-list row beside it**, because that is the destination something
+watches.
 
 ### The rules a session works to
 
@@ -482,3 +491,21 @@ broken.
 **Commit only when green**, stage by name rather than with `git add -A`, and reserve the last
 actions of a pass for `git status --porcelain -uall`, `git diff --stat` and a zero-byte scan —
 writing the summary from their output or not at all.
+
+### Four traps that have each cost something
+
+Kept because they are operational rather than historical — they will happen again this week.
+
+- **A truncated tool result read as a complete one.** A search backing a completeness claim has to
+  return something countable, and **the count has to be read**. This cost a surviving citation in
+  `DnHelper.cs` after a deletion, and it is the same failure as measuring with a substring: check
+  the shape of what came back before believing the number.
+- **`Measure-Object -Line` undercounts.** Use `(Get-Content x).Count`.
+- **`replace_string_in_file` cannot reach `next/SecureAD.Next.sln`**, and it has twice duplicated a
+  block in `TypesTableOwnershipTests.cs` rather than replacing it. For both, edit by line index with
+  `[System.IO.File]::ReadAllLines` on an **absolute** path, assert the boundaries before slicing,
+  and check `git diff --numstat` afterwards: lines added with none removed is the tell.
+- **Summarising from memory at the end of a long pass.** A session once reported a document drafted
+  that was not, and an edit applied that had silently failed. **Write the closing summary from tool
+  output in the same turn, or not at all.** Fabricated detail late in a pass is the signal to end
+  the session.

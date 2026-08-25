@@ -149,7 +149,7 @@ that could not be established is the client reporting its own failure, which is 
 `0018`'s amendment says may not carry a finding. The comment is where the wrong inference is
 recorded, and the code below it is where the wrong inference is acted on.
 
-It is also the trap `_HANDOFF.md` names first — XML comments are argument, not data — with the
+It is also the trap the authority names first — XML comments are argument, not data — with the
 unusual feature that here the argument was believed and shipped.
 
 **Proposed fix.** Take the citation's own words and stop there, in the same edit as the `#17` fix:

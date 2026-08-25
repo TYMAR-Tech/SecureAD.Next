@@ -6,6 +6,9 @@ Set-Location (Join-Path $PSScriptRoot '..\..')
 # decoder is the only reliable check; the terminal re-mangles anything it prints.
 $bad = 0
 foreach ($f in (git ls-files 'docs/*.md')) {
+    # git lists a deleted file until the deletion is staged, so a missing path here is
+    # expected rather than an error. Dying on one would stop the scan part way through.
+    if (-not (Test-Path $f)) { continue }
     $text = [System.IO.File]::ReadAllText((Resolve-Path $f).Path, [System.Text.Encoding]::UTF8)
     $hits = ([regex]::Matches($text, "\u00E2\u20AC")).Count
     if ($hits -gt 0) { $bad++; "{0,5} suspect sequences  {1}" -f $hits, $f }

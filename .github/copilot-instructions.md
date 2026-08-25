@@ -62,9 +62,9 @@ you move, in the same turn you move it**, so each pass leaves the file shorter; 
 when the last content leaves. Do not copy content across and leave the original in place \u2014 that
 doubles what the next session must read, which is the problem this work exists to solve.
 
-**Findings and rules are out of scope for the documentation rewrite.** The rules engine is scaffolding, not a shipped feature. **`docs/rules/` — 67 files, 15,590 lines — is out of scope too**, and is the largest single body of documentation in the repository; it is consolidated into the layer-document format **when the rules are implemented**, not before. The same applies to `SecureAD.Evidence/Findings/`, the 15 types under `what-we-call-a-finding`, and the area files `what-we-call-a-finding.md` and `accepting-a-finding.md`. Do not count any of it as coverage debt and do not plan a pass for it. This was lost once already: the gap was measured correctly and its cause was not recorded beside it, so a later session read *zero of seventeen* as work owed.
+**Findings and rules were out of scope for the documentation rewrite, and that consolidation is now done.** The rule cards under `docs/rules/` are the largest single body of documentation in the repository and were deliberately left in their own format, to be consolidated **when the rules are implemented**. That is the work now starting: 62 rule cards are written and 2 are implemented, so `docs/rules/`, `SecureAD.Evidence/Findings/` and the area files `what-we-call-a-finding.md` and `accepting-a-finding.md` are consolidated **as each rule is built**, against the code that implements it, and not in a documentation pass of their own. Do not count the unbuilt remainder as coverage debt. The exclusion was lost once already: the gap was measured correctly and its cause was not recorded beside it, so a later session read *zero of seventeen* as work owed.
 
-**Before writing any gate, read
+**Before writing any gate, read `docs/next/README.md` §*When a document
 counts as documentation*.** It is the founding rule and it is not optional:
 
 > A test binds a document to the code only if it **derives what it expects from the code**.
