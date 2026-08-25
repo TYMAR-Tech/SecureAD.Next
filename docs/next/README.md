@@ -1,24 +1,38 @@
 # The rebuild
 
-The new product's library, and the record of building it.
+**This is the authority for this repository.** It states what counts as documentation here, the
+gates every change is held to, and how a session continues the work. The root
+[`README.md`](../../README.md) is a signpost to it and nothing more.
 
-Per `0009` the new
-implementation is built in this repository, beside the existing one. Per
+The product is being rebuilt under [`next/`](../../next/), which builds from
+`next/SecureAD.Next.sln`. Per
 [`0013`](../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) the `audit.db` bundle is
-no longer a contract between them: the rebuild writes whatever schema it needs and the old
-application is not expected to open it, so there is no working product end to end until connect,
-capture and storage are rebuilt. Per `0012`
-it lives at [`next/`](../../next/) and builds from `next/SecureAD.Next.sln`, so the old
-tree's architecture tests do not govern it. This folder is where its documentation lives while that
-is true.
+no longer a contract with the predecessor: the rebuild writes whatever schema it needs and the old
+application is not expected to open it. The predecessor is a **separate repository** and is not
+here; documents that mention it are recording history.
 
-**Open the solution you intend to change.** `next/SecureAD.Next.sln` for the rebuild,
-`SecureAD.sln` for the old product. They do not reference each other, and a session started against
-the wrong one will read the wrong tree.
+## What is built, and what is not
 
-**Start at [`ARCHITECTURE.md`](ARCHITECTURE.md)** if the question is *how is this put together* — the
-stages a run passes through, the projects they live in, and which project may use which. It is
-written as the product is built rather than afterwards, so a stage that says *not built* says so.
+Measured 2026-08-24: 28 layer documents carrying 392 capability rows, each naming a test that
+proves it.
+
+**Built.** Finding the forest without anything being typed in; connecting up an ordered ladder of
+protection and recording which rung each controller answered on; proving a controller at preflight
+before a run commits; capturing objects, permissions and Group Policy files into a bundle that is
+sealed when the run completes, with its coverage and any deliberate exclusion recorded inside it;
+and reading that bundle back offline through the run library, a captured directory tree and one
+object's detail.
+
+**Not built.** Findings and rules — nothing in this tree produces a finding, and per
+[`0045`](../decisions/0045-the-shell-is-built-before-the-judgement-half.md) screens bound to
+findings are left out rather than stubbed, so a customer is never shown an empty result that reads
+as *nothing is wrong*. Also unbuilt: effective access evaluation, reports and export, and any
+judgement about Group Policy — the parsers read `Registry.pol`, security templates and Group Policy
+Preferences, but nothing decides what any of it means.
+
+**Start at [`ARCHITECTURE.md`](ARCHITECTURE.md)** if the question is *how is this put together* —
+the stages a run passes through, the projects they live in, and which project may use which. It is
+bound to the real project references in both directions, so a stage that says *not built* says so.
 This file is about how the work is done; that one is about what is being made.
 
 ## Where to look, and what each place is allowed to say
