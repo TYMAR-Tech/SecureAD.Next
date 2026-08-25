@@ -55,7 +55,7 @@ twice.
 | Deny ACEs cancel allow ACEs | Windows walks applicable ACEs in order accumulating granted bits; it does not subtract. The edge exists only where effective access exists | `2b` effective capability |
 | `S-1-5-10` (SELF) is a placeholder, so discard it | It **resolves** to the object's own SID. Discarding it hides a computer writing its own `msDS-KeyCredentialLink` | `2b` SELF |
 | Ownership implies `WriteDacl` | Suppressible by OWNER RIGHTS and by `BlockOwnerImplicitRights` | `2b` ownership |
-| A rule matches an equivalence set of raw rights | It re-implements the security semantics `2b` exists to get right, in a layer without the context to do it | Stage 3 rule shapes |
+| Stage 3 rule shapes |
 | A hard-coded list of "strong" raw rights propagates control | Propagation is a property of the capability, not of the right it came from | `2b` capability |
 | `EdgeClass` grades a route | It is a semantic category, not a rank. Grading comes from feasibility, confidence and preconditions | `2b` capability |
 | The AdminSDHolder-protected list is the Tier 0 floor | Protection answers a different question. `Domain Controllers` is protected and is a container of computer accounts | `2c` protected principals |
@@ -87,6 +87,9 @@ twice.
 | The anchor collapses many principals into one finding | It collapses destinations per principal. Forty principals are forty findings; grouping happens in reporting | `2d` two-run loop |
 | `Accepted` is a lifecycle state | It is a disposition. In the enum it overwrites whether the condition is still true, and acceptance silently evaporates | Stage 3 lifecycle |
 | Removing the ACE closes the replication finding | The capability may rest on several source actions. Only a re-sweep proves none remains | `2b` replication |
+| A blocked capability is safe as low confidence | Confidence grades evidence for something we understand. It cannot stand in for semantics nobody verified | `2b` catalogue |
+| Average the confidence along a route | A chain is as certain as its weakest step. Averaging hides the step that does not hold | `2d` route ordering |
+| A gated SDProp edge means the principal is unprotected | It means unknown. Reporting a protected account as unprotected is the dangerous direction | `2a` protected closure |
 
 **The last row is the one that generalises.** Two first-party facts were recorded as unavailable
 because a keyword search did not surface them; both were one page fetch away. Open Specifications
@@ -119,7 +122,7 @@ tests and commits use **stage** for the logical act and reserve **phase** for sc
 position: a captured bundle nobody has judged is an ordinary state, not an error — and not a clean
 forest. Rules must be re-runnable against an old bundle without returning to the forest.
 
-## Stage 1 — reading a bundle back
+## Implementation prerequisite — reading a bundle back
 
 **The largest single gap, and it is not the engine.** `BundleWriter.WriteObject(EvidenceObject)`
 exists; there is no reverse. `BundleReader` offers `ReadObjectAttributes(dn)` for one distinguished
@@ -131,7 +134,7 @@ Required before anything else:
 - enumerate permissions (`ObjectPermissions`) alongside them
 - stream rather than materialise — a forest capture is hours of data, not a list
 
-## Stage 2 — derive
+## The derive stage
 
 Each phase reads the bundle and earlier phases, and writes derived facts. **Each phase is
 independently fault-isolated**: a phase that fails is recorded by name and the run continues
@@ -205,6 +208,34 @@ either, being historical rather than a current-protection oracle.
 
 Until one or the other is established, the closure follows security-group nesting and records the
 gated edge kinds as a stated limit of the protected-principal derivation.
+
+**A gated edge does not mean the principal is unprotected, and this is where an earlier draft would
+have failed its own uncertainty rule.** "The closure follows security-group nesting" quietly implies
+that a user reaching a protected group *only* through a gated edge comes back
+`IsProtectedPrincipal = false` — which is the boolean-answer-to-an-unknown-question failure the rest
+of this document exists to prevent, and it points the dangerous way: reporting a protected account as
+unprotected.
+
+So protection is tri-state, exactly as reachability is:
+
+```
+ProtectedPrincipalEvaluation:
+    Protected
+    NotProtected
+    Unknown
+
+UnknownReasons:
+    DistributionTraversalResearchBlocked
+    PrimaryGroupTraversalResearchBlocked
+    PartialMembershipEvidence
+    ProtectedCatalogueIncomplete
+```
+
+**Only principals that actually intersect a gated edge become `Unknown`.** A user whose
+`primaryGroupID` names a protected group is `Unknown` with
+`PrimaryGroupTraversalResearchBlocked`; a user with no such path is `NotProtected` as usual. The
+uncertainty is bounded by the observed candidate paths, in the same way an `UncertaintyRegion` is
+bounded — a gated edge kind must not turn the whole forest `Unknown`.
 
 #### Primary-group membership is real membership and is not represented by `member` / `memberOf`
 
@@ -693,7 +724,7 @@ be one step in a conditional route to ownership, which must then pass the owner-
 #### Derived-phase outputs are versioned generations
 
 Atomic delete-and-rebuild is not enough. If derivation v5 fails and v4 remains physically present,
-Stage 3 must not silently treat v4 as a successful v5 result.
+The judge stage must not silently
 
 Each derived product records at least:
 
@@ -727,6 +758,30 @@ CapabilityResearchStatus = ResearchBlocked
 ```
 
 and rules must not consume it as established until the block is cleared.
+
+**Confidence is not a way round that block, and the two must never be traded.** The obvious
+shortcut is to keep a blocked capability moving by admitting it as established with
+`Confidence = Low` — it feels conservative, it produces a route, and the route sorts last under the
+ruled ordering, so nothing looks wrong. It is nevertheless the research gate defeated: the product
+would be asserting a security semantic nobody verified, and merely being unsure about it.
+
+The three are orthogonal and answer different questions:
+
+```
+ResearchStatus     Verified | LabVerified | ResearchBlocked
+                   do we know what this permission means?
+
+EvaluationState    Established | NotEstablished | Unknown
+                   given that we know, does this principal have it here?
+
+Confidence         High | Medium | Low
+                   how good is the evidence for that evaluation?
+```
+
+**They apply in that order.** `ResearchStatus` is a gate, not a grade: until it permits evaluation,
+there is nothing for confidence to grade. So a `ResearchBlocked` capability yields **no established
+edge at any confidence**, it never enters `G_definite`, and no amount of ordering can promote it —
+`Low` is a statement about evidence quality, never a substitute for unverified semantics.
 
 ### 2c — Classification: privileged, protected, dangerous, Tier 0
 
@@ -1574,8 +1629,28 @@ thing that was wrong was never Alice. Three commitments prevent it:
        AffectedFindingKeys[]
        AffectedPrincipalCount
        ResidualSummary
-       IsMandatoryForAll
+       DominatesAllDefiniteRoutes        bool - see below
+       PossibleRouteCoverage             Complete | Incomplete | Unknown
+
+       InputBundleId                     provenance: which evidence
+       DerivationGenerationId            which derive run
+       AnalysisVersion                   which remediation algorithm
+       CoverageState
+       UnknownReasons[]
    ```
+
+   **`IsMandatoryForAll` was renamed because "all" was undefined.** All definite routes? All routes
+   including possible ones? All *displayed* routes? Dominance is computed over definite routes, so
+   the field says so in its name, and `PossibleRouteCoverage` carries separately whether uncertain
+   routes were covered too. A field called `IsMandatoryForAll` invites the phrase *complete fix*
+   over an `Unknown` — which the dominator section forbids in words, and a name should not quietly
+   undo.
+
+   **The provenance fields exist because this object is customer-visible and derived.** Two reports
+   can legitimately show different affected-principal counts for the same action: the directory
+   changed, coverage changed, the capability catalogue changed, or the remediation algorithm did.
+   Without those four recorded, the difference is unexplainable and reads as the tool being
+   unreliable. They are provenance only and take no part in identity.
 
    > One inherited ACE on `OU=Servers` exposes 41 principals to the Tier 0 control plane.
 
@@ -1891,6 +1966,35 @@ amount of advantage lower down can outweigh a difference higher up:
 6. Stable route signature          determinism, never a judgement
 ```
 
+**Those six compare routes; capabilities carry their properties per edge.** How edge values become
+route values is a separate rule, and leaving it unwritten would have each implementation invent one:
+is a route of `High, High, Low` better or worse than one of `Medium, Medium`? The comparison tuple is
+built exactly this way, and no other:
+
+| Route property | Derived from its edges |
+|---|---|
+| `EvidenceClass` | `Definite` only if **every** traversed edge is definite; `Possible` otherwise |
+| `Feasibility` | `Direct` only if **every** traversed edge is `Direct`; `Conditional` otherwise |
+| `UnmetPreconditions` | count of **distinct normalized** precondition identities across all edges |
+| `Confidence` | the **minimum** confidence of any traversed edge |
+| `Length` | displayed security hops; synthetic zero-cost anchor edges excluded |
+| `StableSignature` | deterministic serialization of normalized node, capability, target and source-fact identities |
+
+**Weakest-link for the first four, and that is the ruling applied edgewise.** A chain is exactly as
+certain as its least certain step: one possible edge makes the route possible, one conditional edge
+makes it conditional, one low-confidence edge caps the route at low. Averaging would let a long run
+of solid steps disguise a step that does not hold — the same trade as summing weights, one level
+down.
+
+**Preconditions are deduplicated by normalized identity.** Three edges waiting on the same
+authentication event are **one** unmet precondition, not three, because an administrator satisfies or
+falsifies it once. Counting occurrences would rank a route worse for reusing a condition it already
+depends on.
+
+**The anchor edges are excluded from length** because they are synthetic — an artefact of collapsing
+Tier 0 destinations, not a step an attacker takes. Counting them would penalise every route equally
+and distort nothing except the number shown to a customer.
+
 **Length is fifth on purpose.** A four-hop chain of plain group memberships beats a two-hop chain
 resting on a capability the catalogue is unsure about, because the first can be verified and cut
 today and the second may not be real. That is the ruling, applied.
@@ -1911,7 +2015,7 @@ severity on the rule card, so a route being weak never quietens a finding.
 For drift/tripwire use cases, diff the underlying source facts/capabilities between bundles directly.
 Path-signature churn is a noisy proxy for a permission or membership change.
 
-## Stage 3 — judge
+## The judge stage
 
 ### The rule interface
 
@@ -2003,8 +2107,30 @@ A rule that executed but could not read its required inputs is not a successful 
 Finding/evaluation writes and the run record that says what was judged are committed atomically.
 A throwing rule is recorded as `Error`; other independent rules continue.
 
-Lifecycle updates (`Active`, `Accepted`, `Resolved`, `Reopened`) are applied from stable `FindingKey`
+**Atomic per rule, not per run, and the difference decides what a killed process leaves behind.**
+One transaction for the whole run loses every completed rule when the last one fails; no transaction
+boundary at all leaves findings written with nothing saying which rules produced them. So each rule's
+results commit together with its execution record, and the run is sealed separately once every
+scheduled rule has finished:
+
+```
+JudgementRun:                  RuleExecution:
+    Running                        Succeeded
+    Completed                      Indeterminate
+    CompletedDegraded              Error
+    Failed                         DidNotRun
+```
+
+**A run interrupted mid-way stays `Running` and must never be presented as a judged bundle.** The
+rules that finished remain inspectable — they are real results and discarding them would waste the
+work — but the bundle reports as partially judged, and `StoredFindings.DidNotRun` already says an
+unjudged bundle is not a clean forest. `CompletedDegraded` is the honest state for a run that
+finished with rules in `Error` or `Indeterminate`: every rule was attempted, not every rule answered.
+
+Lifecycle updates (`Active`, `Resolved`, `Reopened`) are applied from stable `FindingKey`
 identity and the new evaluation outcome rather than inferred from whether a row happened to be emitted.
+**Disposition, including `Accepted`, is stored and applied independently** under whatever scope `P-93`
+settles — it is not a lifecycle transition and is not recomputed from an evaluation.
 
 ## What is deliberately not built
 
@@ -2158,9 +2284,9 @@ research status and sources — and the code is generated from that, not from th
 | AC-66 | One direct group membership that feeds many transitive paths remains one source remediation action. |
 | AC-67 | Findings can have non-account subjects (OU, GPO, certificate template, domain root, topology object) without inventing a SID. |
 | AC-68 | Aggregate/set, absence and temporal rules have typed rule shapes and stable finding keys. |
-| AC-69 | `EvaluationOutcome` (`Established`, `NotEstablished`, `Indeterminate`, `DidNotRun`, `Error`) is separate from lifecycle (`Active`, `Accepted`, `Resolved`, `Reopened`). |
+| AC-69 | `EvaluationOutcome` (`Established`, `NotEstablished`, `Indeterminate`, `DidNotRun`, `Error`), lifecycle (`Active`, `Resolved`, `Reopened`) and disposition (`None`, `Accepted`) are three separate state dimensions, and no implementation may collapse any two of them into one enum. |
 | AC-70 | Temporal rules use recorded `EvaluationAsOf` (default capture completion time) so the same bundle does not change merely because it is opened later. |
-| AC-71 | A failed new derivation generation cannot cause Stage 3 to consume an older generation as though it were current; compatibility/status is checked explicitly. |
+| AC-71 | A failed new derivation generation cannot cause the judge stage to consume an older generation as though it were current; compatibility/status is checked explicitly. |
 | AC-72 | Synthetic anchor edges are zero-cost, non-removable and not displayed as security hops. Seed distance is zero. |
 | AC-73 | Unknown propagation is relevant, not global: missing evidence that cannot affect a principal's possible path does not automatically turn that principal `Unknown`. |
 | AC-74 | Capability research blocks are build/rule-visible. A production rule cannot consume a `ResearchBlocked` capability as established. |
@@ -2184,6 +2310,11 @@ research status and sources — and the code is generated from that, not from th
 | AC-92 | Findings stay keyed per principal. The report groups findings sharing a dominant `RemediationActionId` into one `RemediationIssue`, and that grouping never changes finding identity or lifecycle — resolving one member's finding leaves the others untouched. |
 | AC-93 | Disposition does not replace lifecycle. An accepted finding can stay `Active`, become `Resolved` under complete evidence, and later become `Reopened`, retaining its acceptance and evaluation history throughout. An implementation where accepting overwrites lifecycle fails. |
 | AC-94 | A replication finding closes only when a re-sweep shows no remaining authorization source establishes the capability at the naming-context root. Declaring it remediated after removing one ACE, without that re-sweep, fails. |
+| AC-95 | Route-level evidence class, feasibility, unmet preconditions, confidence, length and signature come from the one documented aggregation rule: weakest-link for the first four, distinct normalized preconditions, anchor edges excluded from length. Reordering a route's edges, or repeating one normalized precondition across several edges, does not change its comparison tuple. |
+| AC-96 | A `ResearchBlocked` capability yields no established edge at any confidence, never enters `G_definite`, and is never promoted by ordering. An implementation that admits blocked semantics as `Established` with `Confidence = Low` fails. |
+| AC-97 | A principal with an observed candidate path to a protected group through a research-gated edge evaluates `Unknown` with the naming reason, not `NotProtected`. Principals with no intersecting gated path are unaffected, so one gated edge kind never makes the forest `Unknown`. |
+| AC-98 | Each rule's findings commit atomically with its execution record, and a run interrupted before every scheduled rule finished stays `Running` and is never presented as a judged bundle. Completed rules remain inspectable. |
+| AC-99 | `DominatesAllDefiniteRoutes` is computed over definite routes, with possible-route coverage carried separately. No wording asserting a complete fix is produced while `PossibleRouteCoverage` is `Incomplete` or `Unknown`. |
 
 ## Non-goals
 
