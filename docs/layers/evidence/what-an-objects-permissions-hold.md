@@ -62,6 +62,18 @@ and a viewer that does not keep them apart tells a reader an object is safe when
 whether it is. One production domain returned 19,927 of 100,000 objects with no readable
 descriptor, so this is the common case rather than the corner.
 
+**That figure is a permissions boundary, not a lossy read, and it was checked rather than assumed.**
+The objects were a single sign-on product's per-user credential objects, read by an ordinary
+account, and two hundred of them were re-queried individually to confirm the descriptors were
+genuinely withheld rather than dropped by a paged search. The distinction matters because the two
+look identical in a bundle: a lossy read is a defect to fix, and a boundary is a fact about the
+forest that a report must carry.
+
+It also names a coverage state
+[`0027`](../../decisions/0027-coverage-varies-only-by-failure-or-by-the-forest-changing.md) has no
+word for — the domain was enumerated completely while permissions were unreadable across a fifth of
+it. Whether such a run may serve as a baseline is recorded as `P-82`.
+
 This is a different question from `DaclState`. This says whether the descriptor *arrived*; that
 says what the descriptor, having arrived, *contained*.
 
