@@ -94,11 +94,11 @@ public sealed record CaptureUnit(string NamingContext, NamingContextKind Kind, s
     /// trip per unit.
     /// </para>
     /// <para>
-    /// <b>Who calls it.</b> Inventory row A8 - preflight validation, in branch A - is where this is
-    /// invoked, and that row is not yet decided. The check lives here rather than there so that the
-    /// obligation cannot fall between two rows: B4 owns whether a unit is well formed, and A8 owns
-    /// when the question is asked. A8 not being written yet means the check is not yet called; it
-    /// does not mean it is not yet built.
+    /// <b>Who calls it.</b> Inventory row A8 - preflight validation, in
+    /// <c>SecureAD.Audit.Connect</c> - is where this is invoked, and it is: <c>DomainPreflightRead</c>
+    /// asks it of a channel, and <c>CapturePlan</c> asks it of a published list. The check lives here
+    /// rather than there so that the obligation cannot fall between two rows: B4 owns whether a unit
+    /// is well formed, and A8 owns when the question is asked.
     /// </para>
     /// <para>
     /// <b>The comparison is an exact match, deliberately.</b> Both sides are strings the controller

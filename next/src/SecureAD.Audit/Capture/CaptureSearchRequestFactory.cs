@@ -202,8 +202,8 @@ public static class CaptureSearchRequestFactory
     /// <remarks>
     /// The one place in the product where a referral option is assigned. It cannot be exercised
     /// without a directory, so no test here proves it was called; what proves that is the guard
-    /// forbidding the assignment anywhere else, and gate 5b once inventory row B6 gives the rebuild
-    /// something that runs.
+    /// forbidding the assignment anywhere else, and gate 5b. The entry point gate 5b was waiting on
+    /// now exists - <c>CaptureSession</c> - and whether the gate can be turned on is P-84.
     /// </remarks>
     /// <param name="sessionOptions">The session options of the connection about to be searched.</param>
     public static void ApplyReferralPolicy(LdapSessionOptions sessionOptions)

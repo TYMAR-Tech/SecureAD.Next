@@ -158,9 +158,10 @@ replaceable.
   `ConnectionSecurityGateTests`, which fails the build if anything but that one file opens a
   connection or decides a security level.
 
-  **What is still missing is not a component but a run.** Nothing calls the factory: there is no
-  entry point, so gate 5b remains blocked, and its trigger sits on inventory row B20. That is stated in
-  all four documents rather than glossed.
+  **What was missing was not a component but a run, and it is no longer missing.** `CaptureSession`
+  is the composition root decision `0039` requires, `Program.cs` builds the channel factory directly,
+  and the shell reaches a capture through `CaptureLauncher`. Whether gate 5b can now be turned on is
+  P-84; it was deferred against an entry point that exists.
 
   One thing about the seam is worth naming here because it is a property of the whole product rather
   than of one component. **Capture never asks for a SACL.** The audit half of a security descriptor

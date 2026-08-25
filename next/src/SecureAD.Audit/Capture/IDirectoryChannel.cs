@@ -25,8 +25,9 @@ namespace SecureAD.Audit.Capture;
 /// anywhere in this project.
 /// </para>
 /// <para>
-/// <b>What a channel does not do.</b> It does not choose a controller or decide what to ask - those
-/// are branch A's and are not built. It does not retry: the failure policy is one table, in
+/// <b>What a channel does not do.</b> It does not choose a controller or decide what to ask - both
+/// belong to <c>SecureAD.Audit.Connect</c>, which is built. It does not retry: the failure policy is
+/// one table, in
 /// <see cref="RetryPolicy"/>, and a channel that quietly retried would be a second one. And it
 /// never builds a request; only <see cref="CaptureSearchRequestFactory"/> does, because a request
 /// carries the referral policy.
@@ -137,8 +138,9 @@ public interface IDirectoryChannel : IDisposable
 /// </para>
 /// <para>
 /// Opening the connection - choosing the controller, binding, and applying the referral policy with
-/// <see cref="CaptureSearchRequestFactory.ApplyReferralPolicy"/> - is branch A's work and is not
-/// built. This is the shape of the hand-off.
+/// <see cref="CaptureSearchRequestFactory.ApplyReferralPolicy"/> - belongs to
+/// <c>SecureAD.Audit.Connect</c>, where <c>LdapDirectoryChannelFactory</c> does it. This is the
+/// shape of the hand-off.
 /// </para>
 /// </remarks>
 public interface IDirectoryChannelFactory
