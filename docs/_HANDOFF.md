@@ -215,7 +215,7 @@ happen again this week — rather than history.
 
 | File | Holds |
 |---|---|
-| [`next/README.md`](next/README.md) | **the authority.** §*When a document counts as documentation* is the rule for every gate |
+| [`docs/next/README.md`](next/README.md) | **the authority.** §*When a document counts as docu
 | [`../.github/copilot-instructions.md`](../.github/copilot-instructions.md) | **the authority.** The goal, the routing table, how to orient |
 | [`PUNCH-LIST.md`](PUNCH-LIST.md) | open work, one line each; *Documentation rewrite* holds what blocks the consolidation |
 | [`PUNCH-LIST.md`](PUNCH-LIST.md) | open work, one line each |

@@ -4,7 +4,7 @@ Date: 2026-08-12
 Status: Accepted
 
 Replaces the *append-only* and *supersede instead* rules in
-[`docs/decisions/README.md`](README.md).
+[`docs/next/README.md`](../next/README.md) § *Writing a decision record*.
 
 ## Context
 

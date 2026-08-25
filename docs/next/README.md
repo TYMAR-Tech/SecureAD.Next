@@ -8,7 +8,7 @@ implementation is built in this repository, beside the existing one. Per
 no longer a contract between them: the rebuild writes whatever schema it needs and the old
 application is not expected to open it, so there is no working product end to end until connect,
 capture and storage are rebuilt. Per `0012`
-it lives at [`next/`](../../next/README.md) and builds from `next/SecureAD.Next.sln`, so the old
+it lives at [`next/`](../../next/) and builds from `next/SecureAD.Next.sln`, so the old
 tree's architecture tests do not govern it. This folder is where its documentation lives while that
 is true.
 
@@ -23,23 +23,118 @@ This file is about how the work is done; that one is about what is being made.
 
 ## Where to look, and what each place is allowed to say
 
-Reorganised 2026-08-14, because the same fact was written in too many places to keep them agreeing.
-See §`One fact, one home` below for what was measured and why.
+Reorganised 2026-08-14, because the same fact was written in too many places to keep them agreeing,
+and again on 2026-08-24 when the layer documents replaced the per-component ones and three folder
+READMEs were folded into this file. See §`One fact, one home` below for what was measured and why.
 
 | Question | Where | What it may contain |
 |---|---|---|
-| What is this part of the product for, and what is built? | [`docs/areas/`](../areas/README.md) | **Start here.** One short file per area: what is decided, what is built and the test proving it, and what nobody has discussed yet |
+| What does this component do? | [`docs/layers/`](../layers/) | One document per component, written from the code and bound to it by a test. **This is the description** |
+| What can an operator do? | a capability row on the layer document that owns the subject | A sentence naming the test that proves it. The test is the evidence; the row is the index |
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |
-| Why was it decided that way? | [`docs/decisions/`](../decisions/README.md) | The reasoning. **The only place a decision is stated** |
-| What does this component do? | `docs/next/S-*.md`, named for the thing | A description of something that exists, bound to the code by a test |
-| What did the old app have? | `WHAT-THE-OLD-APP-HAD.md` | An inventory of the predecessor, read as research. **Nothing in it is owed** — it never says what is left |
+| Why was it decided that way? | [`docs/decisions/`](../decisions/) | The reasoning. **The only place a decision is stated** |
+| What may need doing? | [`docs/PUNCH-LIST.md`](../PUNCH-LIST.md) | Open work, findings without a decision, and what blocks each |
+| Which document owns a type? | [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md) | Every public type and its one owning document. Generated against the assemblies |
+| What rules did the predecessor have? | [`docs/rules/`](../rules/) | One card per `SEC-*` rule of the **old** application, kept as reference for rebuilding them. Not documentation of this tree |
+| What has nobody consumed yet? | [`docs/areas/`](../areas/) | An input to the rewrite, not a fixture. Emptied as its content is moved; the folder retires with the last file |
 | What did somebody find on a Tuesday? | the archive, outside this repository | Dated narrative. **Never read to find out what is true** |
 
-The split between the third row and the last is the one the tests already implied: **a document
+The split between the fourth row and the last is the one the tests already implied: **a document
 named for a thing is documentation; a document named for a session or an activity is history.**
-Thirteen `S-` documents describe a component and are bound by a test, and they stayed. Thirteen more
-described a session, were bound by nothing, and moved — and every documentation contradiction found
-on 2026-08-14 came from that second group.
+
+### The rule cards, and the standard they are held to
+
+`docs/rules/` is a **permanent reference, not a review**: the per-rule audit that created it is
+finished, and a rule and its card change together. Two files in there do work the cards cannot:
+
+- `FIRST-PARTY-VERIFICATION.md` is a claim-level ledger — each atomic fact a rule depends on
+  (GUIDs, access-mask bits, SID and RID values, UAC flags, baselines) verified **once** against a
+  first-party Microsoft source and mapped to every rule that consumes it. When a Windows version
+  changes a value, that ledger is what lists the rules to re-check.
+- `IMPROVEMENTS.md` carries the cross-rule backlog and the `[IMP-*]` tags referenced from code
+  comments.
+
+**The guiding principle is "trust no doc".** A claim counts as verified only when the cited
+Microsoft page actually states the value. Internal consistency is not correctness — every
+implementation in a codebase can agree with the others and still be wrong. That is the same lesson
+`F-S44-2` records at the top of the instructions, arrived at independently.
+
+A card's `Reviewer` row records who verified it once. It is not a claim about who maintains it now.
+
+### Writing a decision record
+
+Folded here on 2026-08-24 from the decisions folder's own README, which also carried a hand-maint
+index of every record — a second copy of the generated [`DECISIONS.md`](../DECISIONS.md), and
+exactly the duplication this consolidation exists to remove.
+
+**A decision record answers *why*.** It is not a bug report, a design document, or a task. If you
+find yourself writing what is broken, that is a finding and belongs in
+[`PUNCH-LIST.md`](../PUNCH-LIST.md). If you find yourself writing how the system behaves today,
+that is a description and belongs in the layer document that owns it.
+
+Write one when a choice was made that a later reader could reasonably second-guess, and where the
+reasoning is not visible from the code. A decision obvious from reading the code needs no record.
+
+- **Corrected in place**, per [`0032`](../decisions/0032-a-decision-record-is-corrected-in-place.md).
+  When a later decision changes a record, `## Decision` and `## Consequences` are edited to say the
+  right thing, because both are claims about what holds now. `## Context` is left as written and the
+  superseded claim marked inline where it sits, because a wrong *why* is evidence of how the error
+  entered. **Git is the history** — `git log -p` retrieves any prior version, so editing destroys
+  nothing.
+- **The test is: would a grep hit on this line, with no surrounding context, mislead someone?** If
+  yes, the line changes.
+- **Supersede only when a whole record goes.** Write a new record and set the old one's status to
+  `Superseded by NNNN`. Both stay. A blanket marker over a record that is partly right is how
+  `0019`'s rename rule was nearly lost, so **a supersession marker says where each part went**.
+- **Never delete a record, and never reuse a number.**
+- **Nothing inherited is definitive**, per `0033`. The predecessor's code and documentation are
+  evidence to be checked, not answers to be adopted.
+- **One decision per file**, named `NNNN-short-slug.md`.
+- **Keep it under about 40 lines.** A long one is usually two decisions, or a design document
+  wearing a decision's clothes.
+- **Do not cite finding numbers.** They route review sessions and mean nothing to a reader outside
+  one. State the fact, not the ticket.
+
+```
+# NNNN - Title stating the decision, not the topic
+
+Date: YYYY-MM-DD
+Status: Accepted | Superseded by NNNN
+
+## Context
+What was true that forced a choice.
+
+## Decision
+What was chosen, in the present tense.
+
+## Consequences
+What this makes cheap, what it makes expensive, and what it forbids.
+```
+
+**What no test holds:** whether any of that content is true of the code. See §`How to continue this
+work` for what `DecisionIndexTests` does and does not check.
+
+### Where the rebuild tree's own conventions live
+
+Folded here on 2026-08-24 from the rebuild tree's own README.
+
+`next/` builds from its own solution, `next/SecureAD.Next.sln`, and inherits `Directory.Build.props`
+(nullable, implicit usings, version stamp, analyzers), `Directory.Packages.props` (central package
+versions), `global.json` and `.editorconfig` from the repository root rather than restating them per
+project. The project list and the layering rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md), which
+is bound to the real `.csproj` references in both directions.
+
+**Why the target frameworks differ, which is load-bearing.** `SecureAD.Kernel` and
+`SecureAD.Evidence` target plain `net10.0`, not `net10.0-windows`. The predecessor's
+`SecureAD.Core` targets `net8.0-windows` for no reason its contents require — its parser,
+catalogues and DN helpers use only `BinaryPrimitives`, `FrozenCollections`, `Cryptography` and
+`Text`. That loose target is how presentation-shaped types came to live in the domain project.
+Targeting plain `net10.0` turns a convention someone has to remember into a compile error.
+`SecureAD.Audit` is `net10.0-windows` only because capture uses
+`System.DirectoryServices.Protocols`, which is a reason about LDAP rather than about presentation.
+
+**No live directory reads outside capture**, per
+[`0008`](../decisions/0008-live-verification-is-removed.md).
 
 ## Two libraries, and nothing moves between them
 
@@ -62,7 +157,7 @@ with the code they describe.
 
 ### The one exception
 
-**Decision records stay in [`docs/decisions/`](../decisions/README.md).** They are dated records of
+**Decision records stay in [`docs/decisions/`](../decisions/).** They are dated r
 choices made on a particular day with the reasoning as it stood. A record wholly replaced is
 superseded; a record partly overtaken is **corrected in place**, keeping its `## Context` section as
 written so the reasoning that produced the error survives. Git is the history. See
