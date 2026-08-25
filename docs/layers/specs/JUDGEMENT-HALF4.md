@@ -121,13 +121,38 @@ The nesting above is not nothing — it is a loaded gun with the safety on:
 That is genuinely useful and it is honestly labelled. It is **not** current effective control and
 must never be counted as one.
 
-#### Everything else both closures need
+#### Membership is a fact. Usability is contextual, and belongs in `2b`
 
-- the universal SIDs — `Everyone` (S-1-1-0), `Authenticated Users` (S-1-5-11),
-  `This Organization` (S-1-5-15)
+**An earlier draft made membership itself target-dependent** — `IsEffectiveMember(principal, group,
+targetDomain)`, with the membership graph projected per object being judged. The concern was right
+and the shape was wrong, in a way that would have been expensive.
+
+Alice really *is* transitively a member of a domain-local group in another domain. That is a fact
+about Alice and the group, and it does not change depending on which object anyone is looking at:
+
+```
+SecurityMembershipClosure(principal, group)      target-independent
+```
+
+What varies is whether that group **counts** when checking access to a particular resource, because
+group scope decides where a group can grant anything — a domain-local group grants only within its
+own domain. That is an **authorization** question, not a membership question, and it is answered in
+`2b` where effective access is computed.
+
+**The cost difference is the reason this matters.** Projecting membership per target object is
+principals × objects — on the order of 100,000 × 500,000. Keying the context on **domain** instead
+makes it principals × domains, which in a three-domain forest is three, not half a million.
+
+Microsoft models it the same way: per MS-KILE, the KDC adds the **resource domain's** domain-local
+groups to the authorization data when it issues a service ticket. Domain is the boundary Windows
+itself reuses.
+
+#### Everything both closures need
+
 - **SIDHistory**, forward and reverse. An ACE naming an old SID from a migration grants access to
   the current principal. Missing this under-reports.
-- cycle detection — AD permits membership loops
+- cycle detection — AD permits membership loops. **A cycle is also a finding**, not merely a
+  traversal guard; the predecessor reported it as SEC-052.
 
 **Expansion runs against a budget, and a partial answer says so.** The predecessor returns
 `IsComplete = false` with the specific `PartialGroups` named rather than silently returning a short
@@ -152,10 +177,10 @@ Four behaviours that are easy to omit and wrong to omit:
    applies at all, object- and property-specific rights, inheritance, and ACE ordering. **A deny ACE
    is evidence used in that calculation; it does not independently cancel an allow.**
 
-   An earlier draft of this document said *"deny ACEs cancel allow ACEs"* and carried a flag on the
-   edge. That is a simplification that manufactures and destroys edges. Windows does not collect
-   allows and subtract denies: it walks applicable ACEs in order, accumulating which requested bits
-   are already granted or denied. So this is **not** sufficient:
+   An earlier draft said *"deny ACEs cancel allow ACEs"* and carried a flag on the edge. That is a
+   simplification that manufactures and destroys edges. Windows does not collect allows and subtract
+   denies: it walks applicable ACEs in order, accumulating which requested bits are already granted
+   or denied. So this is **not** sufficient:
 
    ```
    Allow GenericAll   -> GroupA
@@ -168,10 +193,35 @@ Four behaviours that are easy to omit and wrong to omit:
    change** — it is the single most load-bearing computation in the derive stage, because the whole
    graph rests on whether an edge is real.
 2. **`Owns` derives a capability conditionally, not automatically.** See below.
-3. **`S-1-5-10` (Principal Self) is excluded** — a placeholder meaning the object itself, not an
-   attacker.
+3. **`S-1-5-10` (Principal Self) is resolved, not discarded.** See below.
 4. **Build is atomic.** Delete-and-rebuild in one transaction, so a mid-rebuild failure leaves the
    previous edge set rather than a half-built graph that rules would query happily.
+
+#### Principal Self is resolved to the object it stands for
+
+An earlier draft **excluded** `S-1-5-10` as "a placeholder meaning the object itself, not an
+attacker." The premise is right and the conclusion is wrong.
+
+[Security identifiers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers)
+is explicit: SELF is *"a placeholder in an ACE for a user, group, or computer object… During an
+access check, the operating system replaces the SID for Self with the SID for the security principal
+that the object represents."*
+
+So it resolves rather than disappears:
+
+```
+SELF ACE on UserA      -> trustee is UserA
+SELF ACE on ComputerA  -> trustee is ComputerA$
+```
+
+**Discarding it is a silent false negative.** The default SELF rights are deliberately harmless, but
+an administrator can grant more, and a computer account able to write its own
+`msDS-KeyCredentialLink` or `msDS-AllowedToActOnBehalfOfOtherIdentity` is a real primitive — an
+attacker holding that machine holds the write. Resolve the trustee and let the capability layer
+decide whether anything dangerous follows.
+
+Where the target is not a security principal, SELF is evaluated per AD applicability rather than
+assumed to grant anything.
 
 **Attribute GUIDs are the sharpest edge in this stage.** The predecessor shipped three wrong
 literals — `member` pointing at the group object-class GUID, `userAccountControl` at the computer
@@ -180,36 +230,145 @@ negative**. Every GUID is verified against a first-party Microsoft source before
 standing rule that the old app is never a seed for a harvest. `docs/rules/FIRST-PARTY-VERIFICATION.md`
 is the ledger for this and is reused rather than restarted.
 
-#### An edge carries a class, because not all hops are the same kind of thing
+#### The authorization context: which SIDs count, against what
 
-A sweep walks edges. If every edge looks alike, the traversal treats *"can rewrite this object's
-DACL"* and *"privileged users might authenticate to this host"* as interchangeable steps, and they
-are not. Each edge therefore declares:
+An ACE names a trustee. Whether it applies depends on which SIDs the principal actually presents
+**in the security context servicing the request** — and that is where group scope lands, per `2a`.
 
-| Class | Meaning | Example |
+Two sets, and the split is what keeps this affordable:
+
+| Set | Contents | Keyed by |
 |---|---|---|
-| `DirectoryControl` | The principal can change the target now. | `WriteDacl`, `AddMember`, `ResetPassword` |
-| `CredentialExposure` | Credentials **may** become available, given something else happening. | unconstrained delegation on a host |
-| `ConditionalEscalation` | Control exists only if a precondition holds. | a capability derived from ownership where implicit rights may be suppressed |
+| `BaseAuthorizationSids` | the principal's own SID, SIDHistory, transitive **global** and **universal** groups, applicable special identities | principal |
+| `ResourceAuthorizationSids` | base, **plus** domain-local and builtin-local memberships valid for that resource domain | principal **×** domain |
 
-**Unconstrained delegation is the case that forces this.** It does not mean *this server controls
-Domain Admins*. It means *if a sufficiently privileged principal authenticates to this server, and
-the server is controlled, their credentials can be captured.* That is a real and serious exposure
-and it is not the same claim as a directory write. Collapsing the two makes a three-hop chain read
-as though every step were equally certain.
+So the access check asks: *does this ACE's trustee match a SID in this principal's authorization
+context for this resource domain?* — not *is this principal a member of that group anywhere?*
 
-The class feeds the grading described in `2d`, and a chain is only ever as strong as its weakest
-class.
+**Work group-first where possible.** ACEs name trustees, so walking trustee → effective members →
+is that group's scope valid here is usually cheaper than expanding every principal. That also
+matches how `2b` already derives edges.
+
+**Do not derive this from `tokenGroups` in production.** Microsoft warns that querying it per
+principal is expensive enough to affect domain controller performance. It is a good **lab oracle**
+for validating the derivation against Windows' own answer, and a bad production mechanism.
+
+##### Special identities are supplied by the context, not walked
+
+`Everyone` (`S-1-1-0`), `Authenticated Users` (`S-1-5-11`) and `This Organization` (`S-1-5-15`) must
+be honoured when an ACE names them, but they are **not** group memberships. Microsoft calls them
+*special identities* whose *"membership is controlled by the operating system"* — there is no
+`member` attribute to walk. They belong in `BaseAuthorizationSids` as contextual trustees, not in
+the closure.
+
+This matters the moment the product explains *why* an ACE applied. *"Because this principal is in
+that group"* and *"because any authenticated context matches"* are different sentences, and an
+administrator acts differently on each.
+
+##### Which domain is the context? — OPEN
+
+For an ordinary domain-NC object the resource domain is the object's domain, and the question does
+not arise. **For everything else it does**, and this is recorded as unsettled rather than answered.
+
+| Naming context | Context question |
+|---|---|
+| Domain NC | the object's domain |
+| Configuration NC | replicated forest-wide; which servicing domain applies? |
+| Schema NC | forest-wide, with its own behaviour |
+| Application NC (`DomainDnsZones`, `ForestDnsZones`) | spans domains; writable replicas listed in `msDS-NC-Replica-Locations` |
+
+Microsoft provides
+[`msDS-SDReferenceDomain`](https://learn.microsoft.com/windows/win32/ad/application-directory-partition-security)
+on the partition's `crossRef` object for exactly this, defaulting to the parent partition's value,
+then the parent domain, then the forest root.
+
+**But it does not solve the case that matters most to an audit.** The same page says:
+
+> *"A similar issue arises if a local group is specified in an ACL for an object in an application
+> directory partition. In this case, the `msDS-SDReferenceDomain` attribute cannot be used to
+> interpret the reference domain for a local group. To avoid this problem, local groups should not
+> be used in the ACLs of application directory partition objects."*
+
+So Microsoft states that a domain-local trustee in an application-partition ACL **has no
+interpretable reference domain**. Microsoft's advice is not to create them; a forest audit meets
+what exists, not what was advised. **The honest answer is `Unknown`** — the same tri-state that
+governs reachability — and it must propagate rather than being resolved by picking a domain.
+
+**`resourceDomain` must not harden into an API contract in this pass.** Tracked as `P-90`.
+
+#### Identity: what names a node, and what classifies it
+
+Two different jobs, and conflating them breaks multi-domain forests silently.
+
+| Purpose | Key |
+|---|---|
+| **Graph node identity** | `objectGUID` **plus its partition** |
+| **Classification** | SID and RID, where applicable |
+
+**Every domain has its own `Builtin` container**, so `S-1-5-32-544` names a *different directory
+object* in every domain of the forest. Keying graph nodes on SID would merge the Administrators
+groups of every domain into one node and invent control edges between domains that do not exist.
+
+So SID and RID answer *"is this thing a Tier 0 seed?"* — matching by RID is what makes renaming a
+well-known group harmless. They never answer *"which node is this?"* That is `objectGUID`, which
+`docs/decisions/0023` already relies on for finding identity because it survives rename and move.
+
+#### A capability is the unit everything above this layer consumes
+
+Raw rights are captured facts. **Nothing above `2b` reasons about them.** A capability is what an
+attacker can actually do, and it carries everything a later phase needs to judge it:
+
+| Field | Purpose |
+|---|---|
+| `Name` | `CanResetPassword`, `CanWriteRBCD`, `CanReplicateAllDomainSecrets`, … |
+| `EdgeClass` | `DirectoryControl` / `CredentialExposure` / `ConditionalEscalation` — a **semantic category, not a ranking** |
+| `Feasibility` | `Direct` / `Conditional` / `Potential` |
+| `Confidence` | `High` / `Medium` / `Low` |
+| `Preconditions` | what must also be true, **named** |
+| `PropagatesControl` | whether this capability may extend a chain |
+| `DerivedFrom` | the rights and ownership facts that produced it |
+
+**`EdgeClass` is not an ordered score, and an earlier draft used it as one.** That draft said a
+chain is "only as strong as its weakest class", which treats three semantic categories as a ranking.
+A `CredentialExposure` hop is not inherently weaker or stronger than a `ConditionalEscalation` hop —
+they are different *kinds* of thing. Route grading comes from `Feasibility`, `Confidence` and
+`Preconditions`; `EdgeClass` says what sort of step it is.
+
+**`Preconditions` must name the condition.** Telling an administrator a route is "conditional"
+without saying what it depends on is not information. For unconstrained delegation the entries are
+concrete: the source host is under attacker control; a privileged principal authenticates to it;
+reusable credential material becomes available.
+
+**`PropagatesControl` belongs to the capability, and an earlier draft got this wrong too.** It
+proposed propagating only through a hard-coded list of raw rights — `GenericAll`, `WriteDacl`,
+`WriteOwner`, `Owns`, `AddMember`, `ResetPassword`. That contradicts this layer twice over: `Owns`
+is now conditional and is *evidence for* a capability rather than a takeover step itself, and the
+list omits capabilities that plainly do propagate, such as `CanWriteKeyCredential`, `CanWriteRBCD`
+and `CanReplicateAllDomainSecrets`. **The list is deleted.** Propagation is a property of the
+capability, decided once where the semantics live.
+
+**The capability catalogue is not in this document.** Which right, against which target class,
+yields which capability — `WriteSPN`, `WriteKeyCredentialLink`, RBCD, certificate enrolment, GPO
+linking, `CreateChild` and the rest — is a research pass of its own, and it is where the next crop
+of silent errors will live. Named here so its absence is visible.
 
 #### `Owns` derives control conditionally
 
 An object's owner ordinarily has implicit `WRITE_DAC`, and
 [Owner of a New Object](https://learn.microsoft.com/windows/win32/secauthz/owner-of-a-new-object)
-states it plainly. **But it is suppressible**, and
+states it plainly. **Two documented mechanisms suppress it.**
+
 [Security identifiers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers)
-documents the mechanism: `S-1-3-4` OWNER RIGHTS — *"When an ACE that carries this SID is applied to
-an object, the system ignores the implicit READ_CONTROL and WRITE_DAC standard access rights for the
+gives the first: `S-1-3-4` OWNER RIGHTS — *"When an ACE that carries this SID is applied to an
+object, the system ignores the implicit READ_CONTROL and WRITE_DAC standard access rights for the
 object owner."*
+
+[MS-ADTS §6.1.1.2.4.1.2](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/e5899be4-862e-496f-9a38-33950617d2c5)
+gives the second: **`BlockOwnerImplicitRights` is character 29 of `dSHeuristics`**, taking values
+0–3 and defaulting to 0, with the behaviour specified in MS-ADTS §3.1.1.5.2.1.1 and §3.1.1.5.3.1.
+It is supported on the builds listed under `MSFT-CVE-2021-42291`. **Implement against MS-ADTS and
+record the operating-system and configuration conditions**, because whether ownership yields control
+now depends on a forest-wide setting the audit must read.
 
 So ownership is modelled as:
 
@@ -217,15 +376,16 @@ So ownership is modelled as:
 Ownership -> evaluate implicit owner rights -> WriteDacl capability, if actually available
 ```
 
-with the resulting edge carrying whether it is effective, blocked, or conditional. **It is not an
-unconditional `WriteDacl` edge**, and it must not silently join the equivalence set that treats
-`WriteOwner` and `Owns` as conferring the ability to write RBCD or `msDS-KeyCredentialLink`. Those
-are exactly the objects where owner-right restrictions matter most.
+with the resulting capability carrying `Feasibility` and its `Preconditions`. **It is not an
+unconditional `WriteDacl` edge**, and this is precisely why raw-right equivalence sets must not
+survive into the rule layer.
 
-**Unverified and recorded as such:** a review raised `BlockOwnerImplicitRights`, a further mechanism
-said to block implicit owner rights for computer-derived objects. It was **not found** in a search
-of Microsoft Learn on 2026-08-25. It may exist in the Open Specifications rather than the product
-documentation. Do not implement against it until a first-party source is in hand.
+**A correction worth recording, because the mistake will recur.** An earlier draft stated that
+`BlockOwnerImplicitRights` was *"not found in a search of Microsoft Learn"* and told the next session
+not to implement against it. It is documented, and one page fetch found it. **A search that returns
+nothing is not evidence of absence** — it is evidence about the search. Open Specifications are
+published as rendered pages and are reached by fetching the section, not by keyword search; the
+standing rule in the repository instructions says so and this draft did not follow it.
 
 ### 2c — Classification: privileged, protected, dangerous, Tier 0
 
@@ -243,7 +403,13 @@ this document says so explicitly.
 | `IsPrivileged` | Does this principal hold elevated administrative authority? |
 | `IsProtectedPrincipal` | Is it subject to AdminSDHolder and SDProp? |
 | `HasDangerousPermission` | Does this permission materially control its target? |
-| `TierClassification` | Can it control the AD DS identity control plane? |
+| `TierClassification` | Is it part of the identity control plane — a Tier 0 seed, or holding direct control of one? |
+| `Tier0Reachability` | Can it *get* to the identity control plane, at any distance? |
+
+**The last two are deliberately different questions**, and separating them is the `P-87` ruling
+below. An earlier draft had a single `TierClassification` answering *"can it control the AD DS
+identity control plane?"* — which, once indirect control counts, is answered by reachability rather
+than by classification.
 
 **The three implications that must not be written**, each with the case that breaks it:
 
@@ -380,6 +546,40 @@ topology objects, and GPOs that apply to Tier 0 systems.
 **Matching is by SID and RID, never by name.** Renaming a well-known group must not lose its seed
 classification.
 
+##### "Applies to" is not "linked to" — and the answer is tri-state
+
+A GPO becomes a Tier 0 target by **applying** to a Tier 0 system, and an earlier draft twice used
+*"linked to the Domain Controllers OU"* as though that settled it. A link is a configuration
+artefact; application is the result of evaluating it.
+
+Group Policy scope is **site, domain and OU** — an earlier draft listed only domain and OU
+ancestry, which misses site-linked policy entirely, and for domain controllers site-level policy is
+very plausible. Whether a GPO applies to a given computer depends on all of:
+
+- the **site**, **domain** and **OU** hierarchy above it
+- **link order**, whether each **link is enabled**, and whether it is **enforced**
+- whether **block inheritance** is set anywhere between the object and the link
+- the **GPO status** — the computer half can be disabled independently
+- **security filtering** — the target needs both `Read` **and** `Apply Group Policy`
+- **WMI filtering**
+
+```
+GpoAppliesToComputer:   Applies | DoesNotApply | Unknown
+```
+
+**`Unknown` is not defensive padding; it is forced by what the product can see.** A WMI filter is
+evaluated **on the destination computer**, and the GPO applies only if that query succeeds there.
+This product captures directory objects, permissions and SYSVOL — **it does not capture the local
+state of every domain controller**. So where a WMI filter exists and the state it tests was not
+captured, the honest answer is that we cannot say.
+
+That `Unknown` **propagates**: into the capability derived from the GPO, into the Tier 0
+classification that would rest on it, and into reachability. It never quietly becomes
+`DoesNotApply`, which would be a clean verdict over unread data.
+
+Note that security filtering is itself an effective-access question, so it reuses `2b` rather than
+needing new machinery — and it inherits `2b`'s honesty about incomplete data along with it.
+
 ##### A group of domain controllers is not a domain controller
 
 **The Domain Controllers group (RID 516) is not a seed, and an earlier draft had it as one while
@@ -435,31 +635,76 @@ are dangerous before the evidence says so. In practice Print Operators frequentl
 Whether **Replicator (552)** is a seed. It is a legacy file-replication account with no members by
 default and has not been researched against a first-party source.
 
-#### Deriving Tier 0 from control
+#### Deriving Tier 0 beyond the seeds
 
-Beyond the seeds, Tier 0 is **earned by control and never assumed from a label**. Each principal
-carries:
+Two ways to become Tier 0 without being a seed, and they carry **different remediations**, which is
+why they are separate values rather than one.
+
+| `Tier0Basis` | How | What fixes it |
+|---|---|---|
+| `Seed` | it is on the fixed list | nothing — this is what Tier 0 means |
+| `EffectiveMembership` | transitively a member of a seed group, through security-enabled groups | **break the membership chain** |
+| `DirectControl` | holds a capability over a seed that the catalogue says confers control | **remove the capability** |
+
+**`EffectiveMembership` was missing from an earlier draft**, which had only `Seed` and
+`DirectControl`. Alice nested three groups deep inside Domain Admins is neither: she did not
+originate as a seed and she does not *control* Domain Admins — she **is** a Domain Admin, operating
+with that authority. Telling an administrator to "remove the capability" would be nonsense; the fix
+is the nesting.
+
+It also reflects the asymmetry `2a` already states: **membership is followed transitively, control
+is cut at one hop.**
+
+Each principal carries:
 
 | Field | Meaning |
 |---|---|
-| `Tier0Relationship` | `None`, `Seed`, `DirectControl`, or `TransitiveControl` |
-| `Tier0Reason` | why, in a sentence an administrator can act on |
-| `Tier0Path` | the chain of edges that proves it |
+| `TierClassification` | `Tier0` when the basis is any of the three above |
+| `Tier0Basis` | `Seed`, `EffectiveMembership` or `DirectControl` |
+| `Tier0Reason` | the reason in a sentence an administrator can act on |
+| `Tier0Evidence` | the membership chain or the capability and target that earned it |
 | `Tier0Scope` | whether the authority is object-, domain- or forest-scoped |
 
 `Tier0Scope` exists because Schema Admins is forest-wide and a delegated OU administrator is not.
 Reporting both as "Tier 0" without scope misstates the blast radius of each.
 
-**A derived classification without a path is not a classification.** Every non-seed Tier 0 result
-carries the edges that produced it, or it is not reported.
+**A derived classification without evidence is not a classification.** Every non-seed result carries
+what produced it, or it is not reported.
 
-The derivations the predecessor computed as one-hop queries all fall out of the graph rather than
-needing their own pass: transitive membership of a seed group, DCSync rights, unconstrained
-delegation on a non-domain-controller, RBCD on a domain controller, and a GPO linked to the Domain
-Controllers OU.
+##### Which capabilities confer `DirectControl` is a catalogue property, not a graph property
 
-**Transitive membership here means the authorization closure** — security-enabled groups only, per
-`2a`. Distribution-group nesting produces a latent-privilege finding, never a control edge.
+`PropagatesControl` answers *may this capability extend a chain?* It does **not** answer *does
+holding this make you Tier 0?* Those are different questions and an earlier draft ran them together.
+
+So the catalogue carries a second, separate property:
+
+```
+Tier0ClassificationEffect:   None | DirectControl | ReachabilityOnly
+```
+
+**Unconstrained delegation is the case that proves they must be separate.** An earlier draft listed
+it among derivations that are "exactly" direct control — while the capability section two pages
+earlier defines it as `CredentialExposure` requiring three preconditions: attacker control of the
+host, a privileged principal authenticating to it, and reusable credential material becoming
+available. Both cannot be true. It is `ReachabilityOnly`: a real and serious route, and not a
+statement that the host controls the directory today.
+
+**RBCD deserves the same scrutiny.** `CanWriteRBCD` means *I can configure which principal may act
+on behalf of identities to this resource* — whether that completes a takeover depends on the
+delegating service and on Kerberos conditions. It is not automatically `DirectControl`.
+
+**The values are not assigned in this document.** `Tier0ClassificationEffect` is decided per
+capability per target class by the capability catalogue, which does not exist yet and is named in
+`2b` as the next research pass. What this document settles is that the decision **has a home**, and
+that it is not the same field as propagation.
+
+The derivations the predecessor computed as one-hop queries land in these terms: transitive
+membership of a seed group is `EffectiveMembership`; replication of domain secrets and RBCD on a
+domain controller are candidates for `DirectControl`; unconstrained delegation and a GPO applying to
+a domain controller need the catalogue's ruling and must not be assumed.
+
+**Transitive membership here means the closure from `2a`** — security-enabled groups only.
+Distribution-group nesting produces a latent-privilege finding, never a control edge.
 
 **An edge is never created because two objects are both privileged.** Only an actual capability
 makes an edge.
@@ -471,26 +716,46 @@ The three replication rights are captured as **facts**, and the capability that 
 
 [DS-Replication-Get-Changes-All](https://learn.microsoft.com/windows/win32/adschema/r-ds-replication-get-changes-all)
 is documented as the *"control access right that allows the replication of secret domain data"* —
-GUID `1131f6ad-9c07-11d1-f79f-00c04fc2dcd2`. `DS-Replication-Get-Changes` on its own replicates
-changes, not secrets. So:
+GUID `1131f6ad-9c07-11d1-f79f-00c04fc2dcd2`.
+[DS-Replication-Get-Changes](https://learn.microsoft.com/windows/win32/adschema/r-ds-replication-get-changes)
+is the *"extended right needed to replicate changes from a given NC"* — GUID
+`1131f6aa-9c07-11d1-f79f-00c04fc2dcd2` — and replicates changes, not secrets. So:
 
 ```
-CanReplicateSecrets  =  DS-Replication-Get-Changes
-                        AND DS-Replication-Get-Changes-All
+CanReplicateAllDomainSecrets  =  DS-Replication-Get-Changes
+                                 AND DS-Replication-Get-Changes-All
 ```
 
-and only `CanReplicateSecrets` is Tier 0 control. A principal holding `Get-Changes` alone has a
-finding worth reporting and is **not** holding the keys to every credential in the domain.
+and only `CanReplicateAllDomainSecrets` is Tier 0 control. A principal holding `Get-Changes` alone
+has a finding worth reporting and is **not** holding the keys to every credential in the domain.
 
-**Partly verified.** That `Get-Changes-All` is the secret-bearing right is confirmed above. That the
-capability requires **both** rights together is the widely-held model and is **not** yet confirmed
-against MS-DRSR's replication authorization algorithm. Confirm before implementing, and record the
-result in `docs/rules/FIRST-PARTY-VERIFICATION.md`.
+**The name is precise on purpose.** An earlier draft called this `CanReplicateSecrets`, which is
+broader than what the conjunction establishes. MS-DRSR has a separate constrained path for RODC
+secret replication, gated by whether revealing a given principal's secrets is permitted, and that is
+a different capability with a different risk. Naming this one for *all domain* secrets leaves room
+for the other without either being mistaken for it.
 
-The same shape applies wherever a capability is more than one right — the pattern is to keep the
-rights as captured facts and name the capability separately.
+**Not yet verified, and an attempt was made and failed.** Both right definitions are confirmed above.
+The **MS-DRSR authorization procedure has not been opened by anyone working on this document.** A
+review cites Microsoft's IsGetNCChangesPermissionGranted procedure as checking
+`DS-Replication-Get-Changes` first and then requiring `DS-Replication-Get-Changes-All` for
+secret-revealing requests, with a separate EXOP_REPL_SECRETS path for RODC reveal. That is
+consistent with the right definitions and it is **a citation, not a reading**.
 
-#### The closure problem, and how far Tier 0 spreads — OPEN
+An attempt on 2026-08-26 did not reach the section: searches return only the schema pages for the
+two rights, the specification's landing page carries no section index, and a fetched sibling section
+offers no navigation. Section URLs use opaque identifiers that cannot be derived from a section
+number. `P-91` records the routes tried and the two that remain — a link from another section, or
+the published PDF.
+
+Per `P-89` this stays **not read** — neither absent nor verified on a reviewer's word. **Do not
+implement the conjunction until the section has been opened**, because this capability is the basis
+for classifying a principal as controlling every credential in the domain.
+
+The same shape applies wherever a capability is more than one right: keep the rights as captured
+facts and name the capability separately.
+
+#### The closure problem, and how far Tier 0 spreads — RULED 2026-08-25
 
 The rule `Tier0(P) if Controls(P, X) and Tier0(X)` is correct and unbounded. Run it on a real
 forest:
@@ -507,43 +772,52 @@ Domain Admins                                    seed
 lab already carries 1,039 instances of the pattern at the last step. Left alone it produces "you
 have 8,000 Tier 0 principals", which is Microsoft's dilution anti-pattern reached by arithmetic.
 
-**The proposed resolution is to separate two questions the rule runs together**, and to name them
-differently so they cannot be confused:
+**The owner ruled on 2026-08-25: the recursion is cut.** Tier 0 is what a principal **is** — a seed,
+or a principal holding **direct** control over one. Everything further out **reaches** Tier 0, which
+is reported in full and is a different claim.
 
-| Field | Applies to | Meaning |
+| Field | Values | Meaning |
 |---|---|---|
-| `TierClassification = Tier0` | seeds, and principals with **direct** control of a seed | what this principal **is** |
-| `CanReachTier0` | anything with a route | what this principal **can do** |
-| `Tier0Distance` | anything with a route | how many hops |
+| `TierClassification` | `Tier0` `Tier1` `Tier2` `Unclassified` | what this principal **is** |
+| `Tier0Basis` | `Seed` `DirectControl` | why it is Tier 0, where it is |
+| `Tier0Reachability` | `Reachable` `NotReachable` `Unknown` | whether it can **get** there |
+| `Tier0Distance` | hops | how far |
 
 So the helpdesk group three hops out is:
 
 ```
 Helpdesk-Tier2:
-    TierClassification = Tier2
-    CanReachTier0      = true
-    Tier0Distance      = 3
+    TierClassification  = Unclassified
+    Tier0Basis          = (none)
+    Tier0Reachability   = Reachable
+    Tier0Distance       = 3
 ```
 
-and **not** `Tier0`. Nothing is hidden — the route is discovered, reported and remediable — but the
+**The example says `Unclassified`, not `Tier2`, and an earlier draft got this wrong.** The enum
+reserves `Tier1` and `Tier2`, but the non-goals below decline to define what qualifies for either —
+so assigning one here would be a classification this document cannot defend. A principal is
+`Unclassified` until a Tier 1 or Tier 2 catalogue exists to place it.
+
+**`TransitiveControl` is deliberately absent.** An earlier draft had a `Tier0Relationship` field with
+`None`, `Seed`, `DirectControl` and `TransitiveControl`. Under this ruling the last value is a
+contradiction in terms — a transitive controller is precisely the thing that is *not* Tier 0 — and a
+field named `Tier0Relationship` holding it would reintroduce the confusion the ruling removes.
+
+Nothing is hidden: the route is discovered, reported and remediable. What changes is that the
 administrative tier keeps meaning something, and the count of Tier 0 principals stays small enough
 to act on.
 
-**This is a deliberate narrowing of Microsoft's words and must be recorded as ours.** Microsoft's
+**This is a deliberate narrowing of Microsoft's words and is recorded as ours.** Microsoft's
 definition is *"assets and identities that **directly or indirectly** control the directory service"*,
-and read literally, indirect control at any distance is Tier 0. We are declining to follow that to
-its conclusion because the conclusion is a classification containing most of the forest — which is
-the dilution Microsoft separately names as an anti-pattern. Both statements are Microsoft's; the
-choice between them is ours.
+and read literally, indirect control at any distance is Tier 0. We decline to follow that to its
+conclusion because the conclusion is a classification containing most of the forest — which is the
+dilution Microsoft separately names as an anti-pattern. Both statements are Microsoft's; the choice
+between them is ours.
 
-Two refinements that compose with it: propagate only through **strong edges**
-(`GenericAll`, `WriteDacl`, `WriteOwner`, `Owns`, `AddMember`, `ResetPassword`), and apply any hop
-limit to the *plausible* grading rather than to discovery, since an attacker does not respect one.
-
-**The counter-argument, recorded because it is good:** an attacker who compromises the helpdesk
-group does become Domain Admin, so in risk terms it is effectively Tier 0. The answer offered is
-that a classification including everyone drives no action, and the path report already names which
-link to cut. **This is the owner's ruling and it is not yet made.** Tracked as `P-87`.
+**The counter-argument, recorded because it is good:** an attacker who compromises the helpdesk group
+does become Domain Admin, so in risk terms it is effectively Tier 0. The answer is that a
+classification including everyone drives no action, and `Tier0Reachability` with a full route says
+the same thing without destroying the label.
 
 #### `adminCount` is evidence of history, not of current membership
 
@@ -611,10 +885,70 @@ same reason `StoredFindings.DidNotRun` exists. A production domain in the lab re
 100,000 objects with no readable security descriptor; a sweep over that data answering "no route
 found" would be worse than useless.
 
+#### The anchor: what reachability is measured *to*
+
+Reachability is measured to a single synthetic node, the **Tier 0 control plane anchor**. Every
+Tier 0 **seed** is attached to it; nothing else is.
+
+```
+Domain Admins ─┐
+krbtgt        ─┤
+DC01$         ─┼──> [ Tier0ControlPlane ]
+Schema Admins ─┤
+AdminSDHolder ─┘
+```
+
+**Three things follow, and each fixes a defect in an earlier draft.**
+
+**The anchor set is fixed.** An earlier draft had phase 4 producing "seeds and direct controllers"
+while `2d` swept from "seeds" — different sets under the `P-87` ruling, and it never said which was
+the destination. **Derived Tier 0 principals are never endpoints.** If Alice becomes Tier 0 by
+holding `WriteDacl` on Domain Admins, she does not become a destination; Bob's distance is measured
+to the anchor, not to Alice. Otherwise every principal's distance would move whenever some other
+principal gained or lost classification, and findings would churn between runs with nothing changed
+in the directory.
+
+**The sweep and the finding now answer the same question.** They did not before, and this is the
+sharpest defect any review has found in this document.
+
+An earlier draft paired a **multi-source** backward sweep with a finding identity of
+`(ruleId, principal, target)`. Those do not compose. The sweep collapses every destination into one
+answer, so:
+
+```
+Bob ──> Domain Admins
+    └─> DC01
+
+remove the DC01 route:
+    sweep still says   Bob = Reachable      (Domain Admins remains)
+    finding (rule, Bob, DC01) should close  — and cannot be told to
+```
+
+**A finding that should close, does not.** That is exactly the failure this document exists to
+prevent, written into the document by the same hand that wrote the warnings.
+
+**The anchor resolves it**, and Microsoft's own equivalence principle is why it is the right
+resolution rather than merely a convenient one: *"the security sensitivity of all Tier 0 assets is
+equivalent because they are all effectively in control of each other."* If the assets are
+equivalent, then **reaching any of them is the finding**, and which ones were reached is evidence.
+
+So a reachability finding is `(ruleId, principal, Tier0ControlPlane)`, and it closes when the
+principal reaches **no** seed under complete coverage.
+
+**The destinations are not lost — they are reported underneath.** The headline names the control
+plane; the evidence names the seeds actually reached, each with its route:
+
+> **Helpdesk-Tier2 can reach the Tier 0 control plane.** 3 hops.
+> Reaches: `Domain Admins` (3), `SVC-ADSync` (3), `DC01$` (5).
+
+**Capability findings keep per-target identity.** SEC-121 *Domain Controllers OU Write Access* is
+about one OU and stays `(ruleId, principal, thatOU)`. Only **reachability** findings take the
+anchor, because only they were asking the collapsed question.
+
 #### Reachability is computed backwards, once
 
-A **single backward breadth-first sweep from the Tier 0 seeds along reversed edges** marks, for
-every principal in the forest: whether it reaches a seed, the fewest hops, and a predecessor pointer
+A **single backward breadth-first sweep from the anchor along reversed edges** marks, for every
+principal in the forest: whether it reaches the anchor, the fewest hops, and a predecessor pointer
 that reconstructs one shortest route.
 
 This is one traversal of the graph rather than one per principal, and it needs **no depth limit**,
@@ -726,7 +1060,7 @@ invisible when reading a path, and it is exactly what the dominator chain surfac
 
 #### Finding identity is the rule, the principal and the target
 
-A finding is `(ruleId, principal, Tier 0 target)`.
+A finding is `(ruleId, principal, target)`.
 
 **The rule id is not optional, and an earlier draft dropped it while citing the decision that
 requires it.** `docs/decisions/0023` says identity is *the rule*, the subject and the object. Writing
@@ -734,17 +1068,22 @@ requires it.** `docs/decisions/0023` says identity is *the rule*, the subject an
 RBCD control over `DC01`, shadow-credential control over `DC01`, and GPO control reaching `DC01` are
 three findings with three remediations, not one.
 
+**For a reachability finding the target is the `Tier0ControlPlane` anchor**, for the reason worked
+through above: the sweep answers a collapsed question, so the finding must ask the collapsed
+question too. The seeds actually reached are evidence beneath it. **Capability findings keep the
+concrete object** — SEC-121 is about one OU and stays `(ruleId, principal, thatOU)`.
+
 **The path is still excluded from identity**, and that is the point of the shape:
 `docs/decisions/0023` makes identity stable so an acceptance stays attached, and
 `docs/decisions/0067` has an acceptance name one finding. A path-shaped identity would change every
 time an intermediate object moved, silently detaching every acceptance an administrator had made and
 re-presenting the finding as new.
 
-It follows that a finding closes when **reachability is `NotReachable` under complete coverage** —
-not when a displayed path changes, and not when a sweep over incomplete data happens to find no
-route. Where required inputs are missing the state is `Unknown`, which is neither open nor closed.
-An administrator who cuts the route he was shown and sees the finding return has been misled, and
-that is the failure this repository exists to prevent.
+It follows that a reachability finding closes when the principal reaches **no seed** under complete
+coverage — not when a displayed path changes, and not when a sweep over incomplete data happens to
+find no route. Where required inputs are missing the state is `Unknown`, which is neither open nor
+closed. An administrator who cuts the route he was shown and sees the finding return has been
+misled, and that is the failure this repository exists to prevent.
 
 #### The grading still applies
 
@@ -807,7 +1146,8 @@ Recorded here rather than discovered later. None of these is fatal; all are real
 - **Forest-wide chokepoint ranking is not lost, but it is a second computation.** An earlier draft
   recorded this as a degradation, on the reasoning that ranking every edge by how many routes it
   carries needs global path data. That was wrong twice over: dominator analysis answers the stronger
-  question — *every route from here crosses there* — in near-linear time, and it is now part of the
+  question — *every route from here crosses there* — **computed globally rather than by enumerating
+  routes**, and it is now part of the
   design rather than a note about how to recover later. What genuinely remains missing is the
   *count* an edge carries when it is **not** a dominator, which still needs a re-sweep per candidate.
 - **Cost moves from batch to interactive.** The run gets much faster; opening a finding now does
@@ -844,13 +1184,39 @@ What must survive from the current design, because each was bought with a real d
 
 Three, and they should share implementations rather than repeat them:
 
-- **Control-edge rules** — parameterised by control type and target filter. Takes an *equivalence
-  set*: a rule about writing `msDS-AllowedToActOnBehalfOfOtherIdentity` must also match
-  `GenericAll`, `GenericWrite`, `WriteAllProperties`, `WriteDacl`, `WriteOwner` and `Owns`, because
-  each confers the ability. Duplicates collapse to one finding.
-- **Tier/path rules** — filter by target tier, by tier reason, and by path length. Where a rule
-  filters on a *reason*, writer and reader share one token catalogue so they cannot drift.
+- **Capability rules** — parameterised by a **named capability** and a target filter. A rule about
+  resource-based constrained delegation asks for `CanWriteRBCD`, and nothing else. Duplicates
+  collapse to one finding.
+- **Tier and reachability rules** — filter by `TierClassification`, `Tier0Basis`,
+  `Tier0Reachability` and `Tier0Distance`. Where a rule filters on a reason, writer and reader share
+  one token catalogue so they cannot drift.
 - **Attribute rules** — read object attributes across the set.
+
+#### A rule never reconstructs a permission equivalence set
+
+**An earlier draft said the opposite**, and it was the sharpest remaining contradiction in this
+document. It had a rule about `msDS-AllowedToActOnBehalfOfOtherIdentity` matching an *equivalence
+set* of `GenericAll`, `GenericWrite`, `WriteAllProperties`, `WriteDacl`, `WriteOwner` and `Owns`,
+"because each confers the ability."
+
+By `2b`'s own rules that is false. `Owns` confers nothing until implicit owner rights are evaluated
+against OWNER RIGHTS and `BlockOwnerImplicitRights`; `WriteOwner` is a route to ownership and
+inherits the same conditions. A rule listing them as equivalent **re-implements the security
+semantics `2b` exists to get right, and gets them wrong**, in a layer with none of the context
+needed to do it properly.
+
+So the derivation belongs entirely below:
+
+```
+2b:   WriteOwner -> take ownership -> implicit WriteDacl, if available
+                 -> grant WriteProperty(msDS-AllowedToActOnBehalfOfOtherIdentity)
+                 -> CanWriteRBCD   [Feasibility=Conditional, Preconditions named]
+
+Rule: CanWriteRBCD ?
+```
+
+**If a rule names a raw right, that is a defect.** The right answer is a missing capability, added
+where the semantics live.
 
 ### Recording what ran
 
@@ -893,24 +1259,31 @@ it, so they are built and proven in sequence:
 | Phase | Builds | Proven by |
 |---|---|---|
 | 1 | reading objects and permissions back from a sealed bundle | the two existing rules become reachable and produce findings |
-| 2 | effective group membership | "who is really in Domain Admins", against the lab |
-| 3 | control edges | "who can take over this object", against the lab |
-| 4 | Tier 0 seeds, and classification derived from the control graph | every finding carries honest severity, and the Tier 0 population is small enough to read |
-| 5 | reachability, bounded path enumeration, and remediation sets | chains and residual counts, graded so the tool does not overclaim |
+| 2 | effective group membership, in both closures | "who is really in Domain Admins", against the lab |
+| 3 | capabilities from effective access | "who can take over this object", against the lab |
+| 4 | Tier 0 seeds and direct controllers | the Tier 0 population is small enough to read, and every entry names its evidence |
+| 5 | reachability, bounded enumeration, remediation | chains and residual counts, graded so the tool does not overclaim |
 
-**Phases 4 and 5 were separate in an earlier draft and are not separable.** If Tier 0 is defined by
-control reachability, a principal cannot be classified without walking the graph, and the graph's
-targets are the things being classified — they are one fixpoint, not two passes. The predecessor
-hid this by computing its Tier 0 classification as six one-hop SQL queries *before* building paths,
-which is the same computation stopped at depth one; that is why it needed a separate
-`Tier0Shadow` concept at all.
+**Phases 4 and 5 are separable, and an earlier draft argued they were not.** That argument said Tier
+0 classification and path-finding are one fixpoint, because a principal cannot be classified without
+walking the graph whose targets are the things being classified. **That is true only of the
+recursive definition the `P-87` ruling rejects.** Under the ruling, phase 4 is seeds plus one hop of
+control — finite, cheap, no recursion — and phase 5 is a reachability sweep toward the endpoints
+phase 4 produced.
+
+**A retraction is owed to the predecessor as well.** The same draft criticised it for computing
+classification as one-hop queries *before* building paths, calling that "a fixpoint stopped at depth
+one." Read again, it followed **membership** transitively and **control** one hop — which is
+essentially the model just ruled. Its structure was defensible; what it never did was write down
+why, so the reasoning could not be checked or inherited. That is the failure worth avoiding, not the
+shape.
 
 The value of the ordering is that **each phase is checkable against a real forest before the next
 one rests on it.** A defect in effective membership silently corrupts every path built on top of
 it, and the predecessor's two silent false negatives were both in this lower half.
 
-**Phases 4 and 5 are not a rewrite of phases 2 and 3** provided the derived facts carry, from the
-start, what a path needs: stable identifiers on every edge, the reason and scope of a Tier 0
+**Phases 4 and 5 do not force rework of 2 and 3** provided the derived facts carry, from the start,
+what a path needs: stable identifiers on every edge, the capability and scope behind a
 classification, and the completeness of the data each rests on. Those are cheap now and expensive
 to retrofit.
 
@@ -921,11 +1294,11 @@ four properties are kept apart, so they belong beside the design rather than in 
 
 | | Criterion |
 |---|---|
-| AC-01 | Privileged is not automatically Tier 0. A group that can reset ordinary users' passwords is `IsPrivileged` with `Tier0Relationship = None`. |
+| AC-01 | Privileged is not automatically Tier 0. A group that can reset ordinary users' passwords is `IsPrivileged` with `TierClassification` other than `Tier0`. |
 | AC-02 | Protected is not automatically Tier 0. Account Operators with only default authority is `IsProtectedPrincipal` and is not Tier 0. |
 | AC-03 | A dangerous permission is judged with its target. `GenericAll` over an ordinary user is dangerous and not Tier 0. |
 | AC-04 | Direct control of a seed is Tier 0. A principal able to modify Domain Admins membership is `Tier0 / DirectControl`. |
-| AC-05 | A transitive chain is discovered and reported with its full path, whatever the ruling on `P-87` about labelling it. |
+| AC-05 | A transitive chain is discovered and reported with its full path. Under the `P-87` ruling the principal is not labelled `Tier0`; the route is still shown in full. |
 | AC-06 | A **custom** group is classifiable without appearing in any hard-coded Microsoft name list. |
 | AC-07 | `adminCount = 1` alone never produces a Tier 0 classification. |
 | AC-08 | A protected principal is reported as protected even when it is not a seed and holds no control. |
@@ -933,10 +1306,10 @@ four properties are kept apart, so they belong beside the design rather than in 
 | AC-10 | Cycles terminate. Group membership and control edges both form loops in real forests. |
 | AC-11 | Renaming a well-known group does not lose its seed classification. Matching is by SID and RID. |
 | AC-12 | Scope is retained — object-, domain- or forest-scoped authority is distinguishable in the result. |
-| AC-13 | A finding's identity is `(principal, Tier 0 target)`. It survives the routes beneath it changing, so an acceptance stays attached. |
-| AC-14 | A finding closes only when reachability reaches zero — never because a displayed route changed. |
+| AC-13 | A finding's identity is `(ruleId, principal, Tier 0 target)`. It survives the routes beneath it changing, so an acceptance stays attached — and two different rules about the same pair remain two findings. |
+| AC-14 | A finding closes only on `NotReachable` **under complete coverage** — never because a displayed route changed, and never on a sweep over incomplete data. |
 | AC-15 | **Every remediation recommendation states what remains after it is applied**, including when the answer is nothing. This is the promise the design rests on. |
-| AC-16 | A remediation claims completeness only when it is proven — a dominator cut may be described as eliminating every route; a greedy set may not. |
+| AC-16 | A remediation claims completeness only when it is proven **and only for the captured graph** — a dominator cut may be described as removing every route *we can see*, never every route that exists. |
 | AC-17 | A truncated route list says how many exist. "Showing 3 of 120", never 3 rows implying 3. |
 | AC-18 | The same bundle yields the same routes in the same order. |
 | AC-19 | Routes shown and remediation sets offered are recorded in the bundle, so a report is reproducible. |
@@ -945,19 +1318,40 @@ four properties are kept apart, so they belong beside the design rather than in 
 | AC-22 | Where no single waypoint exists, the product says a multi-point change is required rather than presenting the best greedy edge as though it were sufficient. |
 | AC-23 | A new route that bypasses a mandatory waypoint is detected as drift, because it removes that waypoint from the dominator chain. Asserted by planting a bypassing route between two bundles. |
 | AC-24 | **An edge exists only where effective access exists.** A deny ACE that does not actually remove the claimed capability does not remove the edge, and one that does, does. Asserted with an allow-to-group plus deny-to-member fixture in both directions. |
-| AC-25 | The authorization closure does not follow distribution groups. A user nested into a seed group through a distribution group has `CanReachTier0 = false` by that route, and produces a latent-privilege finding instead. |
+| AC-25 | The authorization closure does not follow distribution groups. A user nested into a seed group through a distribution group has `Tier0Reachability = NotReachable` by that route, and produces a latent-privilege finding instead. |
 | AC-26 | The protected closure **does** follow distribution groups, so the same user is `IsProtectedPrincipal`. AC-25 and AC-26 hold simultaneously on one fixture, which is the point of two closures. |
-| AC-27 | `Owns` alone does not produce an unconditional `WriteDacl` edge where an OWNER RIGHTS (`S-1-3-4`) ACE suppresses implicit owner rights. |
-| AC-28 | An edge's class is preserved. A `CredentialExposure` hop is never presented as equivalent to a `DirectoryControl` hop, and a chain is graded by its weakest class. |
-| AC-29 | `DS-Replication-Get-Changes` alone does not yield `CanReplicateSecrets`, and does not classify its holder Tier 0. |
+| AC-27 | *(superseded by AC-37, which asserts both suppression mechanisms rather than only OWNER RIGHTS. Retained as a number so citations do not shift.)* |
+| AC-28 | An edge's class is preserved and reported. A `CredentialExposure` hop is never presented as equivalent to a `DirectoryControl` hop. **Grading is not done from class** — see AC-39. |
+| AC-29 | *(superseded by AC-44, which uses the precise capability name `CanReplicateAllDomainSecrets`. Retained as a number so citations do not shift.)* |
 | AC-30 | Adding an ordinary computer to the Domain Controllers group (516) does not make it a Tier 0 asset. |
 | AC-31 | **Reachability is tri-state.** With any required input incomplete, a sweep that finds no route reports `Unknown`, never `NotReachable`. |
 | AC-32 | A finding closes only on `NotReachable` under complete coverage. `Unknown` is neither open nor closed and never renders as resolved. |
 | AC-33 | No remediation claims completeness while the finding's reachability is `Unknown`; the wording names the gap instead. |
-| AC-34 | A multi-hop reacher is not labelled `Tier0`. It carries `CanReachTier0` and `Tier0Distance`, and its route is still reported in full. |
+| AC-34 | A multi-hop reacher is not `TierClassification = Tier0`. It carries `Tier0Reachability` and `Tier0Distance`, and its route is still reported in full. Asserted against the `P-87` ruling of 2026-08-25. |
+| AC-35 | **No rule predicate names a raw right.** Rules ask for named capabilities; a rule mentioning `GenericAll` or `WriteOwner` fails this and the fix is a missing capability, not a rule change. |
+| AC-36 | A SELF (`S-1-5-10`) ACE on a security principal resolves to that object's own SID and can produce a capability. A computer able to write its own `msDS-KeyCredentialLink` is found. |
+| AC-37 | `Owns` alone produces no capability where OWNER RIGHTS (`S-1-3-4`) or `BlockOwnerImplicitRights` suppresses implicit owner rights. Both mechanisms are asserted. |
+| AC-38 | Propagation is decided by the capability's `PropagatesControl`, not by the right it came from. No hard-coded list of raw rights exists in the traversal. |
+| AC-39 | `EdgeClass` is not ordered. Route grading derives from `Feasibility`, `Confidence` and `Preconditions`; swapping two edges' classes without changing those does not change the grade. |
+| AC-40 | Every `Conditional` capability carries at least one named precondition. "Conditional" with an empty list fails. |
+| AC-41 | **Authorization is target-aware while membership is not.** The closure reports a principal as a member of a domain-local group in another domain; the authorization context for a resource in a third domain excludes it. Both hold on one two-domain fixture. |
+| AC-42 | `S-1-5-32-544` in two domains resolves to **two** graph nodes. Keying by SID alone would merge them; identity is `objectGUID` plus partition. |
+| AC-43 | A GPO that is linked but does not apply — link disabled, inheritance blocked, computer configuration disabled, or security filtering excluding the target — does not make its controllers Tier 0. |
+| AC-44 | `CanReplicateAllDomainSecrets` requires both replication rights. `DS-Replication-Get-Changes` alone does not classify its holder Tier 0. |
+| AC-45 | A membership cycle is reported as a finding, not merely survived by the traversal. |
+| AC-46 | **A reachability finding targets the anchor, and closes only when no seed is reachable.** Removing one of two routes to different seeds does not close it; removing both does. This is the pairing an earlier draft got wrong. |
+| AC-47 | The seeds actually reached are reported as evidence under the anchor finding, each with a route. The destination is not lost by being moved out of the headline. |
+| AC-48 | Distances do not move when a principal gains or loses `Tier0` classification. Only seeds are endpoints. |
+| AC-49 | A principal transitively inside a seed group is `Tier0Basis = EffectiveMembership`, and its remediation names the membership chain rather than a capability. |
+| AC-50 | `PropagatesControl` and `Tier0ClassificationEffect` are independent. A capability may extend a chain without conferring `DirectControl`, and unconstrained delegation is asserted as exactly that case. |
+| AC-51 | **A GPO with an uncaptured WMI filter yields `Unknown`, not `DoesNotApply`**, and that `Unknown` propagates into the capability, the classification and reachability. |
+| AC-52 | A site-linked GPO is considered when deciding applicability. Scope is site, domain and OU. |
+| AC-53 | A domain-local trustee in an application-partition ACL resolves to `Unknown`, because Microsoft states it has no interpretable reference domain. It is never resolved by choosing a domain. |
+| AC-54 | No principal is assigned `Tier1` or `Tier2` while no catalogue defines them. `Unclassified` is the answer. |
 
-**AC-05 is written to survive the open ruling.** Whether a transitive controller is *labelled* Tier 0
-is undecided; that it is *found and shown* is not, and the test asserts only the settled half.
+**AC-05 asserts the settled model.** It was originally worded to survive the open ruling; `P-87` was
+ruled on 2026-08-25, so it now states directly that a transitive reacher keeps its route and does
+not take the `Tier0` label.
 
 ## Non-goals
 
@@ -970,6 +1364,152 @@ Stated so a reviewer does not read absence as oversight. This specification does
 - declare every privileged principal Tier 0
 - declare every AdminSDHolder-protected principal Tier 0
 - define a full Tier 1 or Tier 2 catalogue
+
+## Rule coverage — what this machinery does and does not reach
+
+**Why this table exists.** Everything above was designed from the predecessor's architecture and
+from Microsoft, then checked against reviews. Every check was sound — and every check was anchored
+to *what was designed*, not to *what the rules need*. That is the failure recorded as `F-S44-2`: a
+closed loop of internally consistent checks anchored to the wrong reference, where a rule shape
+nobody wrote is a rule shape nobody misses.
+
+**The 62 cards in `docs/rules/` are the external anchor.** This table is the spec measured against
+them.
+
+**It is not bound by a test yet, deliberately.** A check comparing this table to the card files
+would be a document agreeing with a document — the pattern archived from the predecessor's map
+folder along with the sixteen tests over it, which never touched the product's code. The real anchor
+arrives with the first implemented rule: `RuleDefinition` already forces a rule to declare what it
+reads, and when that declaration is widened from attributes to derived facts, a rule whose
+declaration disagrees with its row here fails the build. **Until then this is a classification
+nobody has executed, in a document whose banner says it is not truth.**
+
+**It classifies shape, not correctness.** A rule that gets retuned during the rule audit almost
+never changes machinery. A rule that gets re-scoped does, and that is a one-line edit.
+
+### Legend
+
+| Code | Machinery | Stage |
+|---|---|---|
+| `O` | object attributes | 1 |
+| `M` | authorization membership closure | 2a |
+| `P` | protected membership closure | 2a |
+| `C` | capabilities from effective access | 2b |
+| `T` | Tier 0 classification | 2c |
+| `R` | reachability, paths, remediation | 2d |
+
+| Marker | Meaning |
+|---|---|
+| **`gp`** | Group Policy content — **out of scope**, see below |
+| **`set`** | needs an aggregate shape the spec does not define |
+| **`time`** | needs an evaluation-time concept the spec does not define |
+| **`abs`** | absence-as-finding, undesigned |
+| **`subj`** | subject is not an account; `FindingSubjectKind` has one value |
+| **`tier`** | needs tier vocabulary this spec does not carry |
+
+### The table
+
+| Rule | Name | Needs | Status |
+|---|---|---|---|
+| SEC-001 | Unexpected GenericAll on Domain | C T `subj` | subject kind |
+| SEC-002 | Unexpected Principal can DCSync | C T | supported |
+| SEC-003 | Unexpected Principal can Reset Admin Password | C M T | supported |
+| SEC-004 | Unexpected Principal can Write DACL on Admin | C M T | supported |
+| SEC-005 | Unexpected Principal can Write Owner on Admin | C M T | supported |
+| SEC-006 | Unexpected Principal can Add Members to Admin Group | C M T | supported |
+| SEC-010 | Unconstrained Delegation | O | **built** |
+| SEC-011 | Unconstrained Delegation on Non-DC | O | **built** |
+| SEC-012 | Constrained Delegation to Sensitive Service | O T | supported |
+| SEC-013 | RBCD Configured on Privileged Resource | O T | supported |
+| SEC-014 | Unexpected Principal can Configure RBCD | C | supported |
+| SEC-020 | Kerberoastable Account | O | supported |
+| SEC-021 | Kerberoastable Privileged Account | O M | supported |
+| SEC-022 | AS-REP Roastable Account | O | supported |
+| SEC-023 | AS-REP Roastable Privileged Account | O M | supported |
+| SEC-024 | Unexpected Principal can Write SPN | C | supported |
+| SEC-025 | Shadow Credentials Attack Vector | C | supported |
+| SEC-026 | Duplicate SPN Registered | O `set` | **gap** |
+| SEC-030 | AdminCount Without Protection | O P | supported — the case the two closures exist for |
+| SEC-031 | Non-Default Owner on Admin Object | O M T | supported |
+| SEC-032 | Disabled Privileged Account | O M | supported |
+| SEC-040 | Unexpected Principal can Enroll Certificates | C `subj` | subject kind |
+| SEC-041 | Certificate Auto-Enrollment for Non-Admin | C `subj` | subject kind — disabled in the predecessor |
+| SEC-050 | Large Privileged Group | M `set` | **gap** |
+| SEC-051 | Nested Group in Domain Admins | M | supported |
+| SEC-052 | Circular Group Membership | M | supported — cycle as a finding, `AC-45` |
+| SEC-060 | Broad Principal with Dangerous Write Access | C | supported |
+| SEC-061 | Pre-Windows 2000 Compatible Access | M C | supported |
+| SEC-062 | Domain Users in Local Admins Equivalent | M C | supported |
+| SEC-063 | Unexpected Broad Control Over Container | C `subj` | subject kind |
+| SEC-064 | Dangerous User Right Granted via Group Policy | `gp` | **out of scope** |
+| SEC-065 | Privileged Local Group Membership via Restricted Groups | `gp` | **out of scope** |
+| SEC-066 | Weak Directory or SMB Signing Posture | `gp` | **out of scope** |
+| SEC-067 | Tier 0 Account Exposed to Delegation Impersonation | O M T | supported |
+| SEC-070 | Short Path to Tier 0 Target | R T | supported |
+| SEC-071 | Path to Tier 0 Target | R T | supported |
+| SEC-072 | Path to Tier 0 Shadow | R T | supported — becomes evidence on the anchor finding, see below |
+| SEC-073 | Short Path to Tier 1 Target | R T `tier` | **gap** — Tier 1 undefined here |
+| SEC-074 | Path to Tier 1 Target | R T `tier` | **gap** — Tier 1 undefined here |
+| SEC-075 | Path to Custom-Tier Target | R T `tier` | **gap** — depends on `P-85` |
+| SEC-076 | Path to DCSync Shadow | R T | supported — evidence category |
+| SEC-077 | Path to Unconstrained Delegation Host | R T | supported — evidence category, pending its `Tier0ClassificationEffect` |
+| SEC-080 | Unexpected Principal can Modify GPO | C `subj` | subject kind — directory ACL, in scope |
+| SEC-081 | Unexpected Principal can Create GPO Links | C `subj` | subject kind — directory ACL, in scope |
+| SEC-082 | Unexpected Principal can Modify GPO via SYSVOL | `gp` | **out of scope** — file permissions |
+| SEC-083 | Group Policy Preferences Password Exposure | `gp` | **out of scope** |
+| SEC-090 | Unexpected Principal can Read LAPS Passwords | C | supported |
+| SEC-091 | LAPS Missing on Computer | O `abs` | **gap** |
+| SEC-092 | LAPS Password Rotation Stale | O `time` | **gap** |
+| SEC-093 | LAPS Decryptor is a Broad Principal | O M | supported |
+| SEC-100 | Service Account with Admin Privileges | O M | supported |
+| SEC-101 | Service Account with Non-Expiring Password | O | supported |
+| SEC-102 | Risky gMSA Password Retrieval Principal | O M | supported |
+| SEC-120 | AdminSDHolder ACL Backdoor | C T | supported |
+| SEC-121 | Domain Controllers OU Write Access | C T `subj` | subject kind |
+| SEC-122 | RBCD Configured on Domain Controller | O T | supported |
+| SEC-123 | Write SIDHistory Permission | C | supported |
+| SEC-124 | Replication Topology Control Permission | C T `subj` | subject kind |
+| SEC-126 | Privileged Service Account with Static Password | O M `time` | **gap** |
+| SEC-131 | Privileged Account with Delegation Enabled | O M | supported |
+| SEC-201 | DACL/Owner Control on Domain Root | C T `subj` | subject kind |
+| SEC-204 | Unexpected Principal with High-Impact Right on Tier-0 Target | C T | supported |
+
+### What the table found
+
+**Group Policy content is out of scope — 5 rules.** SEC-064, 065, 066, 082 and 083. The parsers
+exist in the kernel and nothing judges their output. SEC-082 is the clearest reason to keep it
+separate: **SYSVOL file permissions are a different permission model from AD ACEs**, and folding
+them into `2b` would dilute the one computation this document most needs to get right. `P-46` already
+defers this to a Group Policy implementation; that deferral now has a named rule list.
+
+**Three of the six path rules were resolved by the `Tier0ControlPlane` anchor; three remain.**
+SEC-072, 076 and 077 targeted "Tier 0 Shadow", "DCSync Shadow" and "unconstrained delegation host"
+— destinations that the `P-87` ruling retired as a tier vocabulary. Under the anchor they are not
+destinations at all: they are **evidence categories on one reachability finding**, answering *which
+seeds did this principal reach, and by what kind of route*. That is a better fit than the
+predecessor's separate rules, because it stops the same principal producing three near-identical
+findings.
+
+**SEC-073, 074 and 075 are still gaps, for reasons the anchor does not touch.** SEC-073 and 074
+need **Tier 1**, which the non-goals decline to define. SEC-075 needs customer-declared tiers, open
+under `P-85`. These are not vocabulary problems — they need a classification this product does not
+have.
+
+**Nine rules need a subject that is not an account.** `FindingSubjectKind` has exactly one value,
+`Account`, while these findings are about a GPO, an OU, a certificate template, the domain root or
+a replication topology object. `docs/decisions/0023` already warns against wedging non-SID subjects
+into a column assuming one. Small code change; invisible until attempted.
+
+**Four rules need a shape the spec does not define.** Two aggregate — SEC-026 duplicate SPNs and
+SEC-050 group size — and two need evaluation time, SEC-092 and SEC-126. Both shapes are absent from
+the three rule shapes in Stage 3.
+
+**One needs absence as a finding.** SEC-091, LAPS missing, which is where the tri-state discipline
+matters most: absent because not deployed, or absent because a confidential attribute could not be
+read?
+
+**Roughly 44 of 62 are supported as designed**, 9 more need only a subject kind, and 9 need
+something named above. Two are built.
 
 ## Improvements over the predecessor worth considering
 
