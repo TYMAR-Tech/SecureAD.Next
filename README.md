@@ -1,113 +1,78 @@
 # SecureAD
 
-**Active Directory security assessment and delegation auditing tool for Windows.**
+**Active Directory security assessment and delegation auditing for Windows.**
 
-SecureAD captures Active Directory objects, ACLs, and group memberships into a local SQLite
-database, then derives control edges, escalation paths, and automated security findings. It is a
-single .NET 8 WPF desktop application combining live LDAP exploration with offline audit analysis.
+SecureAD reads a forest over LDAP, captures what it finds into a sealed evidence bundle on disk,
+and lets an operator read that bundle back offline. It runs as a standard domain user; no
+administrative privileges are required.
 
-## What It Does
+> ### This repository is a rebuild in progress
+>
+> The product is being rebuilt from scratch under [`next/`](next/). **The capture half works and
+> the judgement half does not exist yet** - nothing in this tree produces a security finding, and
+> screens bound to findings are deliberately left out rather than stubbed, so a customer is never
+> shown an empty result that reads as *nothing is wrong*.
+>
+> The predecessor is a separate repository and is not here. Documents that mention it are recording
+> history.
 
-- **Security auditing** — capture a forest-wide snapshot into a SQLite bundle, then evaluate 60+
-  built-in security rules against it
-- **Attack path analysis** — map control edges and multi-hop escalation paths to show how an
-  attacker could reach Domain Admin
-- **Delegation analysis** — detect both Kerberos delegation misconfigurations and ACE-based
-  permission delegation bundles
-- **Access review** — "Who Has Access?" scopes what any principal can reach across the environment
-- **Live inspection** — browse the directory tree and inspect any object in real time: permissions,
-  groups, Kerberos delegation, SPNs, password policy
+## What works today
 
-### Object Inspector
+- **Finds its own forest.** Nothing is typed in; the forest is the one this machine is joined to,
+  and every domain in it is read.
+- **Connects up an ordered ladder of protection** - LDAPS, signed-and-sealed, signed, and an
+  unprotected rung a run may only reach where somebody declared it in advance - and records which
+  rung each controller answered on.
+- **Proves a controller before a run commits**, asking every domain at once and no controller two
+  things at once, and tells *was asked and said no* apart from *was never asked*.
+- **Captures objects, permissions and Group Policy files** into a bundle that is sealed when the
+  run completes, with its coverage and any deliberate exclusion recorded inside it.
+- **Reads a bundle back offline** - the run library, a captured directory tree, and one object's
+  detail.
 
-A single inspection surface that works the same way live and offline. Sections marked *offline*
-require a captured bundle, because they read derived analysis rather than the directory.
+## What is not built yet
 
-| Section | Description |
-|---------|------------|
-| Overview | Identity, account status, password hygiene |
-| Permissions | Full DACL with trustee resolution, explicit vs inherited |
-| Groups | Transitive group membership |
-| Kerberos | Delegation type, account flags, LAPS, shadow credentials |
-| Delegated Permissions | ACE-based delegation bundles *(offline)* |
-| SPNs | Registered Service Principal Names |
-| Control Paths | Who can control this object *(offline)* |
-| Findings | Security findings from the built-in rules *(offline)* |
-| Effective Access | What can a specific trustee do on this object? |
-| Inheritance | Trace where each permission comes from |
-| ACL Compare | Side-by-side diff of two objects' ACLs |
+Findings and rules; effective access evaluation; reports and export; and any judgement about Group
+Policy - the parsers exist and read `Registry.pol`, security templates and Group Policy
+Preferences, but nothing yet decides what any of it means.
 
-### Offline analysis
+## Projects
 
-- **60+ built-in security rules** covering privilege escalation, delegation misconfigurations,
-  stale accounts, and infrastructure attacks
-- **Group Policy / SYSVOL analysis** — captures GPO settings and SYSVOL folder DACLs, parses
-  `Registry.pol` and security templates, and flags GPP `cpassword` exposure (MS14-025)
-- **Control edge mapping** — Owner, GenericAll, WriteDacl, WriteOwner, WriteMember, WriteRBCD,
-  WriteSPN, and more
-- **Escalation path detection** — multi-hop chains from any principal to Domain Admin
-- **Delegation bundle matching** — named permission patterns such as Password Reset, Group
-  Management, OU Administration
+| Project | Target | Owns |
+|---|---|---|
+| `SecureAD.Kernel` | `net10.0` | Security descriptors, ACE canonicalisation, distinguished names, schema GUIDs, and the cross-cutting `Result<T>` and `AuditError` |
+| `SecureAD.Evidence` | `net10.0` | The bundle: schema, views, read and write, and what a run covered |
+| `SecureAD.Audit` | `net10.0-windows` | Connecting to a controller, planning a run, and capture |
+| `SecureAD.Shell` | `net10.0-windows` | The WPF window |
+| `SecureAD.Cli` | `net10.0-windows` | The command line |
 
-## Architecture
-
-```
-Live AD (LDAP) --> SQLite capture --> Derived analysis --> WPF UI / Reports / Export
-```
-
-- **SQLite is the primary store.** All captured data and derived analysis lives in audit.db.
-- **UI reads views.** Grid data comes from v_grid_* SQL views over dimension and fact tables.
-- **Determinism is mandatory.** Same inputs produce identical outputs.
-
-## Solution Structure
-
-| Project | Purpose |
-|---|---|
-| SecureAD.Core | Domain types, enums, contracts, catalogs, and built-in findings rule loading. Minimal external dependency on YamlDotNet. |
-| SecureAD.Infrastructure | SQLite storage, LDAP capture, analysis pipelines. Depends on Core. |
-| SecureAD.UI | WPF desktop application (MVVM + CommunityToolkit). Depends on Core + Infrastructure. |
-| SecureAD.Core.Tests | Unit tests for Core |
-| SecureAD.Infrastructure.Tests | Unit tests for Infrastructure |
-| SecureAD.UI.Tests | Unit tests for UI |
-
-## Running It
-
-**Requirements**
-
-- Windows 10/11 or Windows Server 2016+
-- .NET 8 Desktop Runtime
-- Domain-joined machine with LDAP connectivity to a Domain Controller
-- A standard domain user account — no administrative privileges are required
-
-**Quick start**
-
-1. Launch SecureAD. It auto-detects the domain and connects to a DC.
-2. Click **Live** in the nav rail to browse the directory tree.
-3. Select any object and click **Inspect** to open the Object Inspector.
-4. For offline analysis, click **New Audit** to capture a forest-wide snapshot.
-
-## Building It
+## Building and testing
 
 ```powershell
-dotnet build SecureAD.sln -c Debug
-./test.ps1            # runs the full test suite
+dotnet build next/SecureAD.Next.sln
+dotnet test next/SecureAD.Next.sln
 ```
 
-Visual Studio sets `DOTNET_ROOT` to its private runtime folder, which can stop the .NET 8 test
-host from starting on the command line. `test.ps1` points `DOTNET_ROOT` at the system install to
-work around this. See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full contribution
-process and the architectural guardrails a change must respect.
+Requires the .NET SDK pinned in [`global.json`](global.json), Windows 10/11 or Windows Server
+2016+, and a domain-joined machine to capture from. A standard domain user account is enough; no
+administrative privileges are required.
 
 ## Documentation
 
-[`docs/README.md`](docs/README.md) is the index and explains how the documentation is organised.
-The reference documents are:
+**[`docs/next/README.md`](docs/next/README.md) is the authority.** It states what counts as
+documentation here, the gates every change is held to, and how to continue the work.
 
-| Document | What it covers |
+| Where | What it holds |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Projects, layering, service lifetimes, logging, threading |
-| [Data Model](docs/DATA-MODEL.md) | Every table, view and metadata key, and what an absent one means |
-| [Capture Pipeline](docs/CAPTURE-PIPELINE.md) | Phases, sharding, run state, degraded runs, coverage |
-| [Control Edges and Paths](docs/CONTROL-EDGES-AND-PATHS.md) | How control edges and escalation paths are derived |
-| [Group Policy and SYSVOL Capture](docs/GROUP-POLICY-CAPTURE.md) | GPO and SYSVOL capture, and the findings it drives |
-| [Configuration](docs/CONFIGURATION.md) | Settings, capture profiles, connection options |
+| [`docs/next/README.md`](docs/next/README.md) | The rules: what a document must do to count, and the gates |
+| [`docs/layers/`](docs/layers/) | How the code works, one document per component, each bound to the code by a test |
+| [`docs/decisions/`](docs/decisions/) | The product's positions. Only a record with `Status: Accepted` states one |
+| [`docs/next/ARCHITECTURE.md`](docs/next/ARCHITECTURE.md) | Projects, layering, and which project may reference which |
+| [`docs/next/SURFACE-REGISTER.md`](docs/next/SURFACE-REGISTER.md) | Every public type and the document that governs it |
+| [`docs/PUNCH-LIST.md`](docs/PUNCH-LIST.md) | Work that may need doing, and what blocks it |
+| [`docs/rules/`](docs/rules/) | Rule cards describing the **predecessor's** findings rules, kept as reference for rebuilding them |
+
+See [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) for the contribution process.
+
+Nothing outside `docs/decisions/` states the product's position. Everything else - including the
+prose in this file - is one person's understanding at one moment.

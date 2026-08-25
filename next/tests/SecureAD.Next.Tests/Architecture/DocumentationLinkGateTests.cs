@@ -63,14 +63,52 @@ public sealed class DocumentationLinkGateTests
 
     private static string DocsRoot() => Path.Combine(RepositoryLocation.Root(), "docs");
 
+    /// <summary>
+    /// Every document that instructs, wherever it lives.
+    /// </summary>
+    /// <remarks>
+    /// This walked <c>docs/</c> alone until 2026-08-24. The root <c>README.md</c> sat outside it,
+    /// which is how that file came to carry seven links to documents that do not exist and two
+    /// build commands for a solution that is not in this repository - the first thing anyone reads,
+    /// describing the predecessor. The gate was sound; its scope excluded the most-read file here.
+    /// </remarks>
+    private static List<string> DocumentFiles()
+    {
+        var root = RepositoryLocation.Root();
+
+        var found = new List<string>(
+            Directory.EnumerateFiles(root, "*.md", SearchOption.TopDirectoryOnly));
+
+        foreach (var directory in new[] { "docs", ".github", "next" })
+        {
+            var path = Path.Combine(root, directory);
+            Assert.True(Directory.Exists(path), $"Expected documents at {path}.");
+
+            found.AddRange(Directory
+                .EnumerateFiles(path, "*.md", SearchOption.AllDirectories)
+                .Where(NotBuildOutput));
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Build output is skipped: a copy of a generated file would be counted twice and reported at a
+    /// path nobody edits.
+    /// </summary>
+    private static bool NotBuildOutput(string file)
+    {
+        var separator = Path.DirectorySeparatorChar;
+
+        return !file.Contains($"{separator}bin{separator}", StringComparison.Ordinal)
+            && !file.Contains($"{separator}obj{separator}", StringComparison.Ordinal);
+    }
+
     private static List<(string Document, int Line, string Target, string Resolved)> Links()
     {
-        var root = DocsRoot();
-        Assert.True(Directory.Exists(root), $"Expected the documentation at {root}.");
-
         var found = new List<(string, int, string, string)>();
 
-        foreach (var file in Directory.EnumerateFiles(root, "*.md", SearchOption.AllDirectories))
+        foreach (var file in DocumentFiles())
         {
             var directory = Path.GetDirectoryName(file)!;
             var lines = File.ReadAllLines(file);
