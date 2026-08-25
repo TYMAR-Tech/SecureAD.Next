@@ -33,7 +33,7 @@ See §`One fact, one home` below for what was measured and why.
 | Why was it decided that way? | [`docs/decisions/`](../decisions/README.md) | The reasoning. **The only place a decision is stated** |
 | What does this component do? | `docs/next/S-*.md`, named for the thing | A description of something that exists, bound to the code by a test |
 | What did the old app have? | `WHAT-THE-OLD-APP-HAD.md` | An inventory of the predecessor, read as research. **Nothing in it is owed** — it never says what is left |
-| What did somebody find on a Tuesday? | `docs/history/` | Dated narrative. **Never read to find out what is true** |
+| What did somebody find on a Tuesday? | the archive, outside this repository | Dated narrative. **Never read to find out what is true** |
 
 The split between the third row and the last is the one the tests already implied: **a document
 named for a thing is documentation; a document named for a session or an activity is history.**
@@ -135,7 +135,7 @@ So:
   paraphrase the reasoning.
 - **The index over the records is generated**, at [`docs/DECISIONS.md`](../DECISIONS.md), by
   `next/tools/Build-DecisionIndex.ps1`. Never edit it; regenerate it.
-- **Session narratives are history**, in `docs/history/`, and are never read
+- **Session narratives are history**, archived outside this repository, and are never read
   to find out what is true.
 - **An inventory row carries status and citations**, not argument. If a row makes you want to explain
   something, the explanation belongs in a decision record.
@@ -279,7 +279,7 @@ product decision.** This is recorded here because it was got wrong: a session wa
 open points, decided them, built to them, and four did not survive review.
 
 **Where a decision rests on what the old implementation did, read the old implementation.**
-`docs/map/` is a summary written by a different session at a different time. It
+The archived component map is a summary written by a different session at a different time. It
 names the file to open; it is not the evidence. Three claims taken from it on 2026-08-12 were
 contradicted by the code — see `F-S15-9` in `S-15` — and two of them
 had already been built.
@@ -543,7 +543,7 @@ snapshot is at `POINT-IN-TIME-REVIEW.md`, with what the cross-reading
 found at `S-19`. It is the document to read after time away: it
 says what the product does today, what each of the thirty records decided in one line, which have
 been overtaken and by what, and what is built against what is only agreed. **It has moved to
-`docs/history/` and is no longer the thing to read after time away** — it was
+the archive and is no longer the thing to read after time away** — it was
 a hand-maintained summary of the records, and by 2026-08-14 it predated five of them and miscounted
 the production files. [`docs/DECISIONS.md`](../DECISIONS.md) replaces it and is generated, so it
 cannot fall behind. `PointInTimeReviewTests` went with the other checks that held one document
@@ -836,6 +836,6 @@ record's own defect, one field over — and the first draft really did report a 
 as an empty DACL. The count became a closed set of outcomes, and `0037` is corrected in place to
 record that its own first draft reproduced the failure it exists to remove.
 
-`SESSION-LOG.md` stays in `docs/review/` and covers both codebases. It
+`SESSION-LOG.md` stays in the archive and covers both codebases. It
 is the owner's narrative of the product, not of a folder layout, and the interleaving is the honest
 record of a period when both existed.

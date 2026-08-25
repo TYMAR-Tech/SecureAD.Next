@@ -13,11 +13,11 @@ Contributions that violate these rules will not be accepted.
 The following documents describe how the system works and constrain contributions:
 
 - [`README.md`](../README.md) — solution overview and project responsibilities
-- [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) — layering, data flow, capture/analysis pipeline
-- [`docs/DATA-MODEL.md`](../docs/DATA-MODEL.md) — SQLite schema, tables, and `v_grid_*` views
-- [`docs/CONTROL-EDGES-AND-PATHS.md`](../docs/CONTROL-EDGES-AND-PATHS.md) — control edge and escalation path derivation
-- [`docs/work/PUNCH-LIST.md`](../docs/work/PUNCH-LIST.md) — working backlog of follow-ups and decisions to revisit
-- [`docs/CONFIGURATION.md`](../docs/CONFIGURATION.md) — settings, capture profiles, connection options
+- [`docs/next/README.md`](../docs/next/README.md) — **the authority**: what counts as documentation, the gates, and how to continue the work
+- [`docs/next/ARCHITECTURE.md`](../docs/next/ARCHITECTURE.md) — projects, layering, and which project may reference which
+- [`docs/next/SURFACE-REGISTER.md`](../docs/next/SURFACE-REGISTER.md) — every public type and the document that governs it
+- [`docs/PUNCH-LIST.md`](../docs/PUNCH-LIST.md) — working backlog of follow-ups and decisions to revisit
+- [`docs/decisions/`](../docs/decisions/) — the product's positions; only a record with `Status: Accepted` states one
 
 If a contribution conflicts with these documents, update the documents in the same change or do not proceed.
 
@@ -88,7 +88,7 @@ No `Enums/` or `Models/` folders. Enums live in the domain they belong to.
 
 SecureAD is a mature, working application (Core, Infrastructure, and WPF UI are all implemented).
 Ongoing follow-ups and decisions to revisit are tracked in
-[`docs/work/PUNCH-LIST.md`](../docs/work/PUNCH-LIST.md).
+[`docs/PUNCH-LIST.md`](../docs/PUNCH-LIST.md).
 
 When changing analysis behavior, preserve risk semantics and evidence coverage: document any
 change that prunes, filters, caps, deduplicates, or alters path length/evidence.
@@ -100,7 +100,7 @@ change that prunes, filters, caps, deduplicates, or alters path length/evidence.
 Before writing code:
 1. Read the relevant document(s) under `docs/` for the area you are changing
 2. Confirm no architectural guardrails (above) are violated
-3. For analysis/rule changes, check `docs/work/PUNCH-LIST.md` for known follow-ups and open decisions
+3. For analysis/rule changes, check `docs/PUNCH-LIST.md` for known follow-ups and open decisions
 4. Add or update tests that lock in the intended behavior
 
 ### Building and Testing

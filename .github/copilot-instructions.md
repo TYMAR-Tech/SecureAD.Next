@@ -95,11 +95,11 @@ Sessions have repeatedly re-opened settled questions because each one starts at 
 3. **Search `docs/decisions/` for the question being raised.** Cite the record that governs it, or state plainly that none does. Titles do not index by topic — `0017-capture-reads-the-whole-forest` is the decision about what capture reads, and searching for "object class" will not find it.
 4. **Check who calls it before proposing to remove or change it.** Four findings in one session were wrong because a type's shape was read as its purpose. A per-class lookup that nothing calls, a completeness field that is always the same value, and an exemption list with stated terms all looked like what they were named.
 
-**The old application's inventory and component map are gone.** The inventory document under `docs/next/` and the whole of `docs/map/` were archived on 2026-08-20 along with the sixteen tests over them, which only ever checked that one document agreed with another and never touched the product's code. Nothing in this repository now describes what the predecessor had. The owner keeps the old repository and consults it himself; do not ask for it and do not treat its absence as work owed.
+**The old application's inventory and component map are gone.** The inventory document under `docs/next/` and the whole of docs/map/ were archived on 2026-08-20 along with the sixteen tests over them, which only ever checked that one document agreed with another and never touched the product's code. Nothing in this repository now describes what the predecessor had. The owner keeps the old repository and consults it himself; do not ask for it and do not treat its absence as work owed.
 
 **`docs/next/S-*.md` no longer exist.** They were component documents, each held true by a test, and the documentation rewrite has consumed all of them; `S-2` was the last. If a document or a handoff paragraph refers to one, it is describing history. **Layer documents replaced them** — one per code folder, under the subsystem directories listed above, each bound to the code by a test that derives what it expects from the code.
 
-**Session records and session briefs no longer live in this repository.** `docs/history/`, `docs/next/sessions/` and `docs/review/` were archived on 2026-08-20 to `C:\Users\jistrand\Downloads\SecureAD Archive`; every version also remains in git history. They recorded what one session did or intended on one day and never stated current behaviour, and several actively misled — one claimed a specification section had been verified that was never opened. **Nothing outside `docs/decisions/` and `docs/rules/` states the product's position.**
+**Session records and session briefs no longer live in this repository.** docs/history/, docs/next/sessions/ and docs/review/ were archived on 2026-08-20 to `C:\Users\jistrand\Downloads\SecureAD Archive`; every version also remains in git history. They recorded what one session did or intended on one day and never stated current behaviour, and several actively misled — one claimed a specification section had been verified that was never opened. **Nothing outside `docs/decisions/` and `docs/rules/` states the product's position.**
 
 ## Say what you opened
 
@@ -110,7 +110,7 @@ it is a different kind of claim and a much weaker one.
 Every mistake made on 2026-08-20 had one shape: **a proxy for the thing, treated as the thing.**
 A file name where a path was needed, and `README.md` exists in five folders. A grep hit where a declaration was needed, so a comment saying "this test exists in the old tree" counted as the test
 existing. Link text where a resolved target was needed, so `../README.md` written in
-`docs/next/sessions/` was read as the root README and one document's inbound count went from 1 to
+the archived session folder was read as the root README and one document's inbound count went from 1 to
 69. `git diff --numstat` where content was needed - it showed equal lines added and removed while
 29 documents were being double-encoded. None of these was carelessness, and none felt uncertain
 from the inside.

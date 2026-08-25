@@ -219,7 +219,7 @@ happen again this week — rather than history.
 | [`../.github/copilot-instructions.md`](../.github/copilot-instructions.md) | **the authority.** The goal, the routing table, how to orient |
 | [`PUNCH-LIST.md`](PUNCH-LIST.md) | open work, one line each; *Documentation rewrite* holds what blocks the consolidation |
 | [`PUNCH-LIST.md`](PUNCH-LIST.md) | open work, one line each |
-| [`next/SURFACE-REGISTER.md`](next/SURFACE-REGISTER.md) | every public type and the document that governs it — **read before scoping a pass** |
+| [`docs/next/SURFACE-REGISTER.md`](next/SURFACE-REGISTER.md) | every public type and the document that governs it — **read before scoping a pass** |
 | [`_COVERAGE.md`](_COVERAGE.md) | every archive file, subsystem, lines read, consumed or not |
 | [`_DRIFT.md`](_DRIFT.md) | places the documentation and the code disagree |
 | [`planned/effective-access.md`](planned/effective-access.md) | the specification for the two unbuilt layers |

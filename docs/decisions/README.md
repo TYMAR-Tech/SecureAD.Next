@@ -6,7 +6,7 @@ answer that outlives the conversation it was decided in.
 ## What belongs here
 
 A decision record answers **why**. It is not a bug report, a design document, or a task. If you
-find yourself writing what is broken, that is a finding and belongs in `docs/review/`. If you
+find yourself writing what is broken, that is a finding and belongs in `docs/PUNCH-LIST.md`. If you
 find yourself writing how the system behaves today, that is a description and belongs in the
 reference document that owns it — `DATA-MODEL.md`, `CAPTURE-PIPELINE.md`, `ARCHITECTURE.md`.
 

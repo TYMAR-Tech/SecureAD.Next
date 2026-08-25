@@ -10,7 +10,7 @@ conclusion on different grounds; everything else here still binds.
 A run produces a bundle - a directory holding the evidence file, its seal, the customer's
 annotations, and, where the run ended badly, a note saying which ending it was. Where those bundles
 live had not been decided, and
-`docs/history/DESIGN-the-run-library.md` recorded the three
+The archived run-library design note recorded the three
 options: a managed root the tool owns, no catalogue at all with a destination chosen per run, or
 both.
 

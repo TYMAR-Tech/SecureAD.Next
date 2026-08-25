@@ -3,7 +3,7 @@
 Date: 2026-08-09
 Status: Accepted; the claim that capture reads the schema partition is corrected by [0014](0014-capture-reads-the-schema-partition.md)
 
-Supersedes decisions 2, 3 and 4 of `docs/review/00a-product-identity.md`.
+Supersedes decisions 2, 3 and 4 of the archived product-identity review.
 
 ## Context
 

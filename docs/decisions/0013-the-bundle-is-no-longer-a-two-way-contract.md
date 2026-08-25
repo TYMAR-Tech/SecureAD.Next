@@ -26,7 +26,7 @@ preserving; this is about the two live halves, not about the past.
 The rebuild owes the old application nothing. It writes whatever schema it needs, from now, and
 schema improvements are made when they are wanted rather than deferred.
 
-`docs/DATA-MODEL.md` specifies the old bundle only. The rebuild writes its own data model, written
+The old application's data-model document specifies the old bundle only. The rebuild writes its own data model, written
 fresh and bound by a test per [`0011`](0011-rebuild-documentation-is-written-fresh-and-bound-by-tests.md).
 
 The rebuild may read bundles the old pipeline wrote, in **test tooling only**. No reader of the old

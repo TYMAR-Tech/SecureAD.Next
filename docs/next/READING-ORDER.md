@@ -7,7 +7,7 @@ component and the logic runs across components, so reading alphabetically teache
 Read the doc comments first in each file. They explain *why*, and they are the best writing in this
 repository. Skip method bodies unless something does not add up.
 
-**Apply the repository's own rule while reading.** Per `docs/README.md`, nothing outside
+**Apply the repository's own rule while reading.** Per `docs/next/README.md`, nothing outside
 `docs/decisions/` is settled, and that includes every comment here. Where a comment and the code
 disagree, that is a finding. This document was written after reading the files it names, and the
 reading turned up one such contradiction — see step 8.

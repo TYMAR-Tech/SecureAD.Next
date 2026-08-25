@@ -6,7 +6,7 @@ Status: Accepted
 Sits under [0025](0025-the-run-library-is-a-managed-root.md) and
 [0069](0069-a-baseline-is-marked-deliberately.md). Answers the first of the questions the run
 library had left open, carried as `P-76` in [the punch list](../PUNCH-LIST.md) when
-`docs/areas/the-run-library.md` was deleted on 2026-08-24.
+The area file docs/areas/the-run-library.md was deleted on 2026-08-24.
 
 ## Context
 
