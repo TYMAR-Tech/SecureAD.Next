@@ -83,6 +83,10 @@ twice.
 | Include the descriptor hash in the remediation id | An unrelated ACE in the same ACL changes the hash, so the same problem churns as a new action every run | `2d` remediation |
 | The residual predicts the next run | It is a counterfactual over the captured graph. Closure is proved by the next capture, never promised by the last | `2d` residual |
 | The best route is a confirmed route | Ordering picks the best of what exists. The top of a weak field is still weak | `2d` route grading |
+| A definite route can be outranked on later criteria | Definite-before-possible is criterion 1 of a lexicographic order, so it decides absolutely | `2d` route grading |
+| The anchor collapses many principals into one finding | It collapses destinations per principal. Forty principals are forty findings; grouping happens in reporting | `2d` two-run loop |
+| `Accepted` is a lifecycle state | It is a disposition. In the enum it overwrites whether the condition is still true, and acceptance silently evaporates | Stage 3 lifecycle |
+| Removing the ACE closes the replication finding | The capability may rest on several source actions. Only a re-sweep proves none remains | `2b` replication |
 
 **The last row is the one that generalises.** Two first-party facts were recorded as unavailable
 because a keyword search did not surface them; both were one page fetch away. Open Specifications
@@ -103,6 +107,13 @@ permissions   ->   control edges                  ->   findings written to bundl
 SYSVOL        ->   tier classification
                    escalation paths (scope open)
 ```
+
+**"Stage" and "phase" are different words for different things here, and must stay that way.**
+A **stage** is one of the three logical acts above; the sub-sections `2a`–`2d` divide the derive
+stage. A **phase** is a unit of implementation work, and the derive stage takes more than one — the
+computation order inside it is not the same as the document's structure. So `Stage 2b` and `Phase 5`
+name unrelated things, and a test called `Phase2_...` is ambiguous where `Stage2b_...` is not. Code,
+tests and commits use **stage** for the logical act and reserve **phase** for scheduling.
 
 **Capture and judgement stay separate acts.** `StoredFindings.DidNotRun` already states this
 position: a captured bundle nobody has judged is an ordinary state, not an error — and not a clean
@@ -141,7 +152,7 @@ facts are captured once, then three different products are derived from them:
 | Product | Follows | Answers |
 |---|---|---|
 | `AuthorizationMembershipClosure` | security-enabled groups, including primary-group membership | *Which security-group memberships can participate in authorization?* |
-| `ProtectedPrincipalClosure` | security and distribution groups, and primary-group membership — **both edge kinds evidence-gated, see below** | *Is this principal covered by AdminSDHolder / SDProp?* |
+| `ProtectedPrincipalClosure` | transitive **security**-group membership. Distribution-group nesting and primary-group membership are research-gated candidate edges, not part of the product until evidenced | *Is this principal covered by AdminSDHolder / SDProp?* |
 | `LatentPrivilegePaths` | directory nesting through distribution groups | *What privilege would become effective if a distribution group were converted to security-enabled?* |
 
 The names are deliberately different. A distribution-only path can be relevant to SDProp and to a
@@ -213,9 +224,16 @@ The derived relationship is therefore:
 PrimaryGroupSid(account) = account-domain-SID + account.primaryGroupID
 ```
 
-and the phase maintains a reverse index from primary-group SID to accounts. This relationship feeds
-both security membership and protected-principal analysis. It is not a special-case reporting hint;
-it is membership Windows itself recognizes.
+and the phase maintains a reverse index from primary-group SID to accounts. **This relationship feeds
+authorization membership.** It is not a special-case reporting hint; it is membership Windows itself
+recognizes.
+
+**Its participation in protected-principal analysis is a separate claim and remains gated under
+`AC-64`.** The cited sources establish that primary-group membership is real membership and that
+authorization honours it; neither says how SDProp traverses it. An earlier draft said this
+relationship "feeds both security membership and protected-principal analysis", which stated the
+second half as settled fact while the criterion blocked it — the shape of contradiction where one
+implementer follows the prose, another follows the criterion, and both believe they complied.
 
 This is especially important because writable domain-controller accounts normally use the Domain
 Controllers group as primary group, and an administrator can change a user account's primary group.
@@ -1105,8 +1123,15 @@ counted into a phrase like *all three*.
 **Every replication control-access-right check is `AccessCheckCAR(ncRoot, ...)` — against the naming
 context root, not against the object whose secrets are read.** The permission is granted once at the
 top of a partition and confers replication of everything beneath it, which is why a finding carrying
-either capability targets the naming context and why removing the ACE at the root is the whole of
-the remediation.
+either capability targets the naming context.
+
+**That fixes where the check happens, not how many things establish it**, and an earlier draft said
+"removing the ACE at the root is the whole of the remediation." One ACE is one source action; the
+effective capability at that root may rest on several — multiple ACEs, a group membership, nesting,
+`SIDHistory`. Remediation removes the source action *or set of them* that establishes the capability,
+and **a single ACE is sufficient only when a re-sweep proves no alternative authorization source
+remains.** That is exactly what the dominator and residual analysis are for, and the earlier wording
+would have had the product declare DCSync closed while a second grant still stood.
 
 #### P-87 — operational Tier 0 versus transitive reachability
 
@@ -1536,9 +1561,29 @@ thing that was wrong was never Alice. Three commitments prevent it:
 1. **The recommendation is a `RemediationAction`, not a route.** Dominator analysis names the action
    present on *every* route — here the ACE granting `ServerAdmins` control of `DC01`, not the
    membership of whoever walked through it. Removing Alice was treating one symptom.
-2. **All forty share one anchor.** Under `P-92` there is one reachability rule and one destination,
-   so the report leads with *this one ACE puts 41 principals on the Tier 0 control plane*, not with
-   41 rows.
+2. **All forty findings share one anchor and one dominating action.** The anchor collapses
+   *destinations* per principal — Tier 0 shadow, DCSync shadow and delegation host stop being three
+   findings. **It does not collapse principals**, and an earlier draft claimed it did: identity is
+   `(SEC-071, principal, Tier0ControlPlane)`, so forty affected principals are forty findings, as
+   they must be — each has its own lifecycle, and Alice being fixed says nothing about Bob.
+   The consolidation happens one layer up, in reporting, keyed on the shared dominant action:
+
+   ```
+   RemediationIssue                      presentation, not a finding
+       RemediationActionId
+       AffectedFindingKeys[]
+       AffectedPrincipalCount
+       ResidualSummary
+       IsMandatoryForAll
+   ```
+
+   > One inherited ACE on `OU=Servers` exposes 41 principals to the Tier 0 control plane.
+
+   with the forty-one findings beneath it. **The grouping never alters finding identity or
+   lifecycle** — it is a view over findings, and removing it would change what is displayed, never
+   what is true. Without this object the report is 41 rows and the ACE is left to inference; with it
+   claimed as a property of the anchor, findings would have been wrongly merged and the tool would
+   close Bob's exposure because Alice's was fixed.
 3. **Residual is stated before you act.** *"Removing this ACE disconnects 118 principals; two remain
    through independent actions."* The two are named up front, so the second run holds no surprise.
 
@@ -1670,10 +1715,34 @@ The stored finding has a separate lifecycle:
 ```
 LifecycleState:
     Active
-    Accepted
     Resolved
     Reopened
+
+Disposition:
+    None
+    Accepted
 ```
+
+**`Accepted` is a disposition, not a lifecycle state, and an earlier draft had it in the enum.**
+That looked natural and destroys information: accepting a finding would overwrite whether the
+condition is `Active`, and the state machine then has no answer to an obvious question — the
+condition is still established on the next run, so is it `Accepted` or `Active`? If it stays
+`Accepted`, the rule that a continuing condition stays `Active` is broken. If it returns to `Active`,
+the acceptance silently vanished. Neither is acceptable, and both would surface as a customer's
+acceptance quietly evaporating.
+
+Separated, both are answerable at once:
+
+```
+Lifecycle = Active     Disposition = Accepted    still true, and someone signed it off
+Lifecycle = Resolved   Disposition = Accepted    fixed anyway; the sign-off is history
+Lifecycle = Reopened   Disposition = Accepted    came back - and the old acceptance is visible,
+                                                 which is exactly when it needs review
+```
+
+`P-93` still has to settle what acceptance attaches to — a principal, a remediation issue, a rule, or
+something else. **That question is independent of this one**, and conflating them was what put
+`Accepted` in the enum.
 
 For the Tier0 reachability rule:
 
@@ -1731,24 +1800,30 @@ Coverage incomplete
 
 `EdgeClass` is reported as semantics, not used as an ordinal score by itself.
 
-**A route carries its own evaluation class, and the best route may be weaker than the finding.**
-Ordering picks the best of what exists; it does not certify what it picked. The two must be reported
-separately:
+**A route carries its own evaluation class, and a best route is not a certified one.**
+Ordering picks the best of what exists; it does not vouch for what it picked:
 
 ```
 Finding Established (a definite route exists)
-    best route definite    -> the ordinary case
-    best route possible    -> only where a definite route was less good on criteria 2-5.
-                              The finding stands on the definite route; the shown route is
-                              supplemental and must say so
-Finding Indeterminate (only possible routes exist)
-    there is no established reachability finding to display a route under
+    best route is always definite      criterion 1 is absolute
+    possible routes may be shown separately, labelled supplemental
+
+Finding Indeterminate (no definite route exists)
+    no established finding to display a route under. A best possible route may be
+    shown as indeterminate evidence, never as a confirmed path
 ```
 
+**An earlier draft had a third branch — established finding, best route possible, "where a definite
+route was less good on criteria 2-5". That cannot happen.** Definite-before-possible is criterion 1
+of a lexicographic order, so it decides absolutely: no advantage in directness, preconditions,
+confidence or length can lift a possible route above a definite one. The branch contradicted the
+ruling it was written under, and an implementer following it would have violated the ordering while
+citing this document.
+
 **A route containing an `Unknown` edge must never be presented as a confirmed attack path**, whatever
-its rank. Ranking is a comparison among candidates; it is not evidence, and the top of a weak field
-is still weak. Every displayed route states whether it is definite or possible, so *best* is never
-read as *established*.
+its rank. Ranking compares candidates; it is not evidence, and the top of a weak field is still weak.
+Every displayed route states whether it is definite or possible, so *best* is never read as
+*established*.
 
 #### Determinism and provenance are required for reproducibility
 
@@ -2040,7 +2115,7 @@ research status and sources — and the code is generated from that, not from th
 | AC-23 | A new route bypassing a previously mandatory action removes that action from the mandatory set and is detected as remediation drift. |
 | AC-24 | A capability edge exists only where the requested operation is established by the applicable AD authorization semantics; allow-minus-deny shortcuts fail this test. |
 | AC-25 | Distribution-only nesting does not create current authorization/Tier0 reachability. |
-| AC-26 | The same distribution-only nesting can contribute to protected-principal derivation and a latent-privilege finding. |
+| AC-26 | Distribution-only nesting produces a latent-privilege finding. It contributes to protected-principal derivation **only** when the corresponding Microsoft-specified or lab-verified traversal behaviour is enabled in the protected-principal catalogue; absent that, the edge is recorded as a gated limit and not followed. |
 | AC-27 | OWNER RIGHTS (`S-1-3-4`) is evaluated as part of owner implicit-right semantics and can alter the owner's implied access. |
 | AC-28 | `EdgeClass` is preserved as semantic category and is not treated as an ordered risk score. |
 | AC-29 | Full-domain secret replication is represented by a compound semantic capability, not by treating each replication right independently. |
@@ -2105,6 +2180,10 @@ research status and sources — and the code is generated from that, not from th
 | AC-88 | A reachability finding resolves only when a later bundle evaluates it `NotEstablished` under complete evidence. An operator marking it fixed cannot resolve it, and a finding whose evaluation moves from `Reachable` to `Unknown` is reported as reduced coverage rather than as resolved. |
 | AC-89 | A residual names what remains in a counterfactual re-sweep of the captured graph with the stated `RemediationActionId` removed. It is compared against the later bundle and is not treated as proof of future directory state; divergence is explained through changed source facts, coverage, semantic version or how the repair was applied. Wording that asserts the next capture must match fails. |
 | AC-90 | A finding established in consecutive runs stays `Active` and never becomes `Reopened`. `Reopened` is reachable only from `Resolved`, which only a complete capture can produce. A finding whose evaluation becomes `Indeterminate` stays `Active`, so lost coverage cannot present as progress. |
+| AC-91 | Where at least one definite route exists, the selected best route is definite. A possible route appears only as separately labelled supplemental evidence and never outranks a definite one, criterion 1 being absolute. |
+| AC-92 | Findings stay keyed per principal. The report groups findings sharing a dominant `RemediationActionId` into one `RemediationIssue`, and that grouping never changes finding identity or lifecycle — resolving one member's finding leaves the others untouched. |
+| AC-93 | Disposition does not replace lifecycle. An accepted finding can stay `Active`, become `Resolved` under complete evidence, and later become `Reopened`, retaining its acceptance and evaluation history throughout. An implementation where accepting overwrites lifecycle fails. |
+| AC-94 | A replication finding closes only when a re-sweep shows no remaining authorization source establishes the capability at the naming-context root. Declaring it remediated after removing one ACE, without that re-sweep, fails. |
 
 ## Non-goals
 
