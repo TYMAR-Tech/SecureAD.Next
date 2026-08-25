@@ -55,7 +55,7 @@ twice.
 | Deny ACEs cancel allow ACEs | Windows walks applicable ACEs in order accumulating granted bits; it does not subtract. The edge exists only where effective access exists | `2b` effective capability |
 | `S-1-5-10` (SELF) is a placeholder, so discard it | It **resolves** to the object's own SID. Discarding it hides a computer writing its own `msDS-KeyCredentialLink` | `2b` SELF |
 | Ownership implies `WriteDacl` | Suppressible by OWNER RIGHTS and by `BlockOwnerImplicitRights` | `2b` ownership |
-| Stage 3 rule shapes |
+| A rule matches an equivalence set of raw rights | It re-implements the security semantics `2b` exists to get right, in a layer without the context to do it | judge-stage rule shapes |
 | A hard-coded list of "strong" raw rights propagates control | Propagation is a property of the capability, not of the right it came from | `2b` capability |
 | `EdgeClass` grades a route | It is a semantic category, not a rank. Grading comes from feasibility, confidence and preconditions | `2b` capability |
 | The AdminSDHolder-protected list is the Tier 0 floor | Protection answers a different question. `Domain Controllers` is protected and is a container of computer accounts | `2c` protected principals |
@@ -89,6 +89,7 @@ twice.
 | Removing the ACE closes the replication finding | The capability may rest on several source actions. Only a re-sweep proves none remains | `2b` replication |
 | A blocked capability is safe as low confidence | Confidence grades evidence for something we understand. It cannot stand in for semantics nobody verified | `2b` catalogue |
 | Average the confidence along a route | A chain is as certain as its weakest step. Averaging hides the step that does not hold | `2d` route ordering |
+| `Potential` is a kind of conditional | A conditional route may work today. A potential one cannot until something is changed first | `2b` capability |
 | A gated SDProp edge means the principal is unprotected | It means unknown. Reporting a protected account as unprotected is the dangerous direction | `2a` protected closure |
 
 **The last row is the one that generalises.** Two first-party facts were recorded as unavailable
@@ -268,8 +269,9 @@ implementer follows the prose, another follows the criterion, and both believe t
 
 This is especially important because writable domain-controller accounts normally use the Domain
 Controllers group as primary group, and an administrator can change a user account's primary group.
-A user whose `primaryGroupID` names a privileged security group must not disappear from the closure
-because there is no ordinary `member` backlink.
+A user whose `primaryGroupID` names a privileged security group must not disappear from
+`AuthorizationMembershipClosure` merely because there is no ordinary `member` backlink.
+Participation in `ProtectedPrincipalClosure` stays research-gated under `AC-64`.
 
 #### Membership is target-independent
 
@@ -581,7 +583,7 @@ A derived capability carries at least:
 | `Name` | `CanResetPassword`, `CanWriteRBCD`, `CanReplicateAllDomainSecrets`, … |
 | `Target` | stable directory/synthetic reference |
 | `EdgeClass` | `DirectoryControl` / `CredentialExposure` / `ConditionalEscalation` — semantic category, not ranking |
-| `Feasibility` | `Direct` / `Conditional` / `Potential` |
+| `Feasibility` | `Direct` / `Conditional` / `Potential` — see below |
 | `Confidence` | `High` / `Medium` / `Low` |
 | `Preconditions[]` | named conditions that must also hold |
 | `PropagatesControl` | whether the capability may extend a control/reachability chain |
@@ -596,6 +598,26 @@ A derived capability carries at least:
 preconditions.
 
 A `Conditional` capability with no named precondition is invalid evidence.
+
+**`Feasibility` has three values and they are ordered.** The enum was declared once and never
+defined, which left `Potential` liable to be silently folded into `Conditional` at route level —
+losing a distinction the schema deliberately drew:
+
+```
+Direct        the capability is exercisable as captured, with nothing further required
+Conditional   exercisable once its named preconditions hold; each is a fact about the
+              forest that an administrator can check
+Potential     it would become exercisable only after some further change - the latent
+              case, such as a distribution group that would confer authorization if
+              converted to security-enabled
+```
+
+`Direct` before `Conditional` before `Potential`, and that ordering carries through to routes.
+**`Potential` is not a synonym for uncertain**: uncertainty about whether a capability exists lives
+in `EvaluationState`, and uncertainty about whether we understand it lives in `ResearchStatus`.
+`Potential` is a confident statement that something is *not currently* exercisable and would be after
+a named change — which is exactly the latent-privilege finding, and why it must not collapse into
+`Conditional`. A conditional route may work today; a potential one cannot.
 
 `PropagatesControl` and `Tier0ClassificationEffect` are independent. A capability can extend an
 attack chain without meaning the current holder is itself operationally Tier 0.
@@ -724,7 +746,9 @@ be one step in a conditional route to ownership, which must then pass the owner-
 #### Derived-phase outputs are versioned generations
 
 Atomic delete-and-rebuild is not enough. If derivation v5 fails and v4 remains physically present,
-The judge stage must not silently
+the judge stage must not silently treat v4 as a successful v5 result. **It consumes only a
+compatible, successful generation, selected explicitly by generation identity, status, input bundle
+and semantic versions** — never whichever generation happens to be on disk.
 
 Each derived product records at least:
 
@@ -1133,8 +1157,9 @@ different capability and is not conflated with full-domain DCSync.
 `P-91` therefore closes. Other capabilities can remain `ResearchBlocked` until their applicable
 protocol sections are actually read.
 
-**The filtered attribute set is a third capability, and it is a disjunction rather than a
-conjunction.** Read from the same procedure:
+**The filtered attribute set produces a second named compound capability, and its authorization
+expression is a disjunction rather than the conjunction used for full-domain secret replication.**
+Read from the same procedure:
 
 ```
 CanReplicateFilteredAttributes =
@@ -1697,8 +1722,11 @@ rather than settled here. The reasoning above rules out per-route acceptance; it
 that per-principal acceptance is what an administrator should be given. Deciding it now would mean
 designing a lifecycle before anything produces a finding to accept, so it is deferred to when the
 lifecycle is built — with the alternatives recorded in the row so the argument does not have to be
-reconstructed. **Nothing downstream depends on the answer:** acceptance is lifecycle, and the derive
-computes identical routes whichever shape wins.
+reconstructed. **Nothing in derivation depends on the answer:** acceptance is a *disposition*,
+applied after finding identity and evaluation are settled, and the derive stage computes identical
+routes whichever scope wins. Storage and presentation do depend on it — something must know what an
+acceptance attaches to — which is why it must be settled before the lifecycle is built rather than
+after.
 
 #### Finding identity is generalized; reachability uses the anchor as its object
 
@@ -1959,7 +1987,8 @@ amount of advantage lower down can outweigh a difference higher up:
 
 ```
 1. Definite before possible        no route resting on Unknown outranks one that does not
-2. Direct before conditional       preconditions are things that might not hold
+2. Direct, then conditional,       a conditional route may work today; a potential one
+   then potential                  cannot until something is changed first
 3. Fewer unmet preconditions       among conditional routes, the one needing least to be true
 4. Higher confidence               how well the capability semantics are established
 5. Shorter                         only now does length matter
@@ -1974,22 +2003,22 @@ built exactly this way, and no other:
 | Route property | Derived from its edges |
 |---|---|
 | `EvidenceClass` | `Definite` only if **every** traversed edge is definite; `Possible` otherwise |
-| `Feasibility` | `Direct` only if **every** traversed edge is `Direct`; `Conditional` otherwise |
+| `Feasibility` | `Direct` only if **every** edge is `Direct`; `Potential` if **any** edge is `Potential`; `Conditional` otherwise |
 | `UnmetPreconditions` | count of **distinct normalized** precondition identities across all edges |
 | `Confidence` | the **minimum** confidence of any traversed edge |
 | `Length` | displayed security hops; synthetic zero-cost anchor edges excluded |
 | `StableSignature` | deterministic serialization of normalized node, capability, target and source-fact identities |
 
-**Weakest-link for the first four, and that is the ruling applied edgewise.** A chain is exactly as
-certain as its least certain step: one possible edge makes the route possible, one conditional edge
-makes it conditional, one low-confidence edge caps the route at low. Averaging would let a long run
-of solid steps disguise a step that does not hold — the same trade as summing weights, one level
-down.
+**Weakest-link for evidence class, feasibility and confidence — that is the ruling applied edgewise.**
+A chain is exactly as certain as its least certain step: one possible edge makes the route possible,
+one potential edge makes the route potential, one low-confidence edge caps the route at low.
+Averaging would let a long run of solid steps disguise a step that does not hold — the same trade as
+summing weights, one level down.
 
-**Preconditions are deduplicated by normalized identity.** Three edges waiting on the same
-authentication event are **one** unmet precondition, not three, because an administrator satisfies or
-falsifies it once. Counting occurrences would rank a route worse for reusing a condition it already
-depends on.
+**Preconditions are not weakest-link; they are a deduplicated union.** They are counted across all
+edges by normalized identity, so three edges waiting on the same authentication event are **one**
+unmet precondition rather than three — an administrator satisfies or falsifies it once. Counting
+occurrences would rank a route worse for reusing a condition it already depends on.
 
 **The anchor edges are excluded from length** because they are synthetic — an artefact of collapsing
 Tier 0 destinations, not a step an attacker takes. Counting them would penalise every route equally
@@ -2120,6 +2149,23 @@ JudgementRun:                  RuleExecution:
     CompletedDegraded              Error
     Failed                         DidNotRun
 ```
+
+**Each run state is defined, because `Failed` and an interrupted `Running` are not the same thing:**
+
+```
+Completed           every scheduled rule reached a terminal, non-degraded result
+CompletedDegraded   every scheduled rule reached a terminal result, but one or more
+                    were Indeterminate, Error or DidNotRun
+Running             one or more scheduled rules has no terminal execution record,
+                    which includes the process being killed mid-run
+Failed              the coordinator itself failed - scheduling, sealing or result
+                    integrity cannot be established, so the run cannot be trusted
+                    even where individual rules recorded results
+```
+
+**Neither `Running` nor `Failed` may ever be presented as a judged bundle.** `Running` means we do
+not yet know; `Failed` means we cannot trust what we have. Both are honest and neither is a clean
+forest.
 
 **A run interrupted mid-way stays `Running` and must never be presented as a judged bundle.** The
 rules that finished remain inspectable — they are real results and discarding them would waste the
@@ -2300,7 +2346,7 @@ research status and sources — and the code is generated from that, not from th
 | AC-82 | `CanReplicateFilteredAttributes` carries its own security-significance citation, separate from the MS-DRSR procedure that establishes its boolean. A capability whose only source proves the authorization condition and not the impact fails. |
 | AC-83 | Missing evidence produces `UncertaintyRegion` records bounded explicitly or symbolically — explicit set, captured forest population, subtree, naming context or partition. An unreadable DACL yields a region covering the principals it could have named rather than omitting them, and an implementation that drops unidentifiable subjects and thereby reports `NotReachable` fails. No implementation materialises possible edges as a cross product. Evidence that cannot be bounded even symbolically is reported as an unbounded capture gap and blocks `NotReachable` within the scope it affects. |
 | AC-84 | `RemediationActionId` derives from `RemediationActionKey` — captured configuration state — and never from `HumanDescription`. Rewording a description does not change the id; neither does adding an unrelated ACE to the same descriptor, nor a canonicalisation that changes ordinals. Descriptor hash, ordinal and expected bytes are apply-time concurrency evidence, not identity. Two ACEs differing only by inheritance source never share an id, and identical repeated ACEs are separated by an occurrence discriminator. |
-| AC-85 | Route ordering is lexicographic in the ruled sequence: definite before possible, direct before conditional, fewer unmet preconditions, higher confidence, shorter, then stable signature. A two-hop route resting on an `Unknown` input never outranks a longer definite one, and no implementation trades certainty against length by summing weights. |
+| AC-85 | Route ordering is lexicographic in the ruled sequence: definite before possible; `Direct` before `Conditional` before `Potential`; fewer unmet preconditions; higher confidence; shorter; then stable signature. A two-hop route resting on an `Unknown` input never outranks a longer definite one, a route containing a `Potential` edge never outranks a conditional one, and no implementation trades certainty against length by summing weights. |
 | AC-86 | Route ordering never alters severity, which `0066` fixes on the rule card, and never removes a route from the evidence. Two routes equal through all five criteria are ordered by signature alone, so repeated runs of one bundle agree. |
 | AC-87 | Where one source action dominates every route from many principals, the report's primary recommendation is that action once, not one recommendation per affected principal. A design emitting a row per principal for a single dominating ACE fails. |
 | AC-88 | A reachability finding resolves only when a later bundle evaluates it `NotEstablished` under complete evidence. An operator marking it fixed cannot resolve it, and a finding whose evaluation moves from `Reachable` to `Unknown` is reported as reduced coverage rather than as resolved. |
@@ -2310,10 +2356,11 @@ research status and sources — and the code is generated from that, not from th
 | AC-92 | Findings stay keyed per principal. The report groups findings sharing a dominant `RemediationActionId` into one `RemediationIssue`, and that grouping never changes finding identity or lifecycle — resolving one member's finding leaves the others untouched. |
 | AC-93 | Disposition does not replace lifecycle. An accepted finding can stay `Active`, become `Resolved` under complete evidence, and later become `Reopened`, retaining its acceptance and evaluation history throughout. An implementation where accepting overwrites lifecycle fails. |
 | AC-94 | A replication finding closes only when a re-sweep shows no remaining authorization source establishes the capability at the naming-context root. Declaring it remediated after removing one ACE, without that re-sweep, fails. |
-| AC-95 | Route-level evidence class, feasibility, unmet preconditions, confidence, length and signature come from the one documented aggregation rule: weakest-link for the first four, distinct normalized preconditions, anchor edges excluded from length. Reordering a route's edges, or repeating one normalized precondition across several edges, does not change its comparison tuple. |
+| AC-95 | The route comparison tuple is built by one rule: evidence class is `Definite` only when every edge is definite; feasibility is `Direct` only when every edge is `Direct` and `Potential` when any edge is `Potential`; confidence is the minimum edge confidence; unmet preconditions are the distinct normalized union across edges; length excludes synthetic anchor edges; signature is a deterministic serialization of normalized identities. Reordering a route's edges, or repeating one normalized precondition across several edges, does not change the tuple. |
 | AC-96 | A `ResearchBlocked` capability yields no established edge at any confidence, never enters `G_definite`, and is never promoted by ordering. An implementation that admits blocked semantics as `Established` with `Confidence = Low` fails. |
 | AC-97 | A principal with an observed candidate path to a protected group through a research-gated edge evaluates `Unknown` with the naming reason, not `NotProtected`. Principals with no intersecting gated path are unaffected, so one gated edge kind never makes the forest `Unknown`. |
-| AC-98 | Each rule's findings commit atomically with its execution record, and a run interrupted before every scheduled rule finished stays `Running` and is never presented as a judged bundle. Completed rules remain inspectable. |
+| AC-98 | Each rule's findings commit atomically with its execution record. A run with any scheduled rule lacking a terminal execution record stays `Running`; a run whose coordinator could not establish scheduling, sealing or result integrity is `Failed`. Neither is presented as a judged bundle, and completed rules stay inspectable in both. |
+| AC-100 | `Potential` survives route aggregation as a distinct feasibility rather than collapsing into `Conditional`, and a route containing a `Potential` edge is never described as presently exercisable. |
 | AC-99 | `DominatesAllDefiniteRoutes` is computed over definite routes, with possible-route coverage carried separately. No wording asserting a complete fix is produced while `PossibleRouteCoverage` is `Incomplete` or `Unknown`. |
 
 ## Non-goals
