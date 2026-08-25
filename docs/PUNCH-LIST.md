@@ -448,15 +448,17 @@ anyway, and its four open questions became `P-80`. The specification for a delib
 
 ## Judgement half
 
-Raised while extracting the acceptance criteria of
+`P-94` and `P-95` were raised while extracting the acceptance criteria of
 [`JUDGEMENT-HALF.md`](layers/specs/JUDGEMENT-HALF.md) into
-[`JUDGEMENT-HALF-ACCEPTANCE.md`](layers/specs/JUDGEMENT-HALF-ACCEPTANCE.md). Recorded rather than
-fixed: the extraction copied the criteria verbatim and changed nothing in the source.
+[`JUDGEMENT-HALF-ACCEPTANCE.md`](layers/specs/JUDGEMENT-HALF-ACCEPTANCE.md), and recorded rather than
+fixed: the extraction copied the criteria verbatim and changed nothing in the source. `P-96` came
+later, from reading the predecessor's dashboard against the collapsed rule.
 
 | ID | Item | Status | Blocked on |
 |---|---|---|---|
 | P-94 | **`AC-26`'s block is stated somewhere other than `AC-26`.** `AC-64` carries **Blocked pending evidence** in its own sentence; `AC-26` says only that the edge is followed when the behaviour is *enabled in the protected-principal catalogue*, and that it is not enabled — and why — lives 2,000 lines earlier under *What SDProp actually traverses is evidence-gated*. A reader working from the criteria table alone would take `AC-26` for implementable. This is the one-fact-in-two-places shape that has already gone wrong twice in this document | open | — |
 | P-95 | **`AC-14` and `AC-88` both rule on when a reachability finding resolves, in different words.** `AC-14` says it resolves only when `Tier0Reachability = NotReachable` under complete required evidence; `AC-88` says only when a later bundle evaluates it `NotEstablished` under complete evidence. They are probably the same rule stated at two levels, but nothing says so, and two sentences that must be edited together are exactly what drifts. Either one should cite the other or one should go | open | — |
+| P-96 | **Revisit the single `SEC-071` severity once a real forest has been judged, and split by feasibility rather than by path length.** `P-92` collapsed five path rules into one and accepted that a one-hop and a nine-hop path now carry the same severity; its recorded escape route is "a second id split by length". **That escape route is the wrong axis and this entry exists to say so before it is taken.** Length is ranked *fifth* of six in `AC-85`'s ordering - behind definite-over-possible, `Direct`/`Conditional`/`Potential`, unmet preconditions and confidence - so severity turning on length would contradict the ordering the same engine computes, ranking a five-hop route of unconditional `Direct` edges below a one-hop route needing three preconditions nobody has met. Length also measures effort rather than impact, and it moves for reasons unrelated to the finding: a new ACE elsewhere in the forest shortens a route and Alice's severity changes though nothing about Alice did, which undoes the lifecycle stability `AC-90` is built for. **The defensible split is feasibility**: `SEC-071` for a presently exercisable route - every edge `Direct`, no unmet preconditions - and a sibling rule for conditional or potential ones. That keeps severity fixed on the rule card per `0066`, does not reopen `P-92` (which collapsed *destinations*, a different axis), needs no new analysis since feasibility already falls out of route grading, and answers the question an administrator actually asks: *can someone do this today, or must something else go wrong first?* Distance stays as evidence and as a sort column within a severity, per `AC-80`. **Do not act on this until the numbers exist.** If most reachers land `Conditional` the split solves the triage problem; if most are `Direct` it does not, and the answer is the `RemediationIssue` grouping instead - the predecessor's *Fix these first*, which already turned a thousand findings into a handful of actions ranked by blast radius, and which is worth building before severity is touched at all | open | a judged run of a real forest |
 
 ---
 
