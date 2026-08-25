@@ -35,6 +35,15 @@ namespace SecureAD.Next.Tests.Documentation;
 /// record naming a document that no longer exists is not wrong - it is recording what was true
 /// then - but written as a path it sends a reader looking for a file.
 /// </para>
+/// <para>
+/// <b>Mutation-tested 2026-08-24 by <c>next/tools/mutate-documentation-rot-gates.ps1</c>, three
+/// directions, all killed; three touched files verified byte-identical by hash.</b> A backticked
+/// path to a document that does not exist is killed by
+/// <see cref="EveryInRepoPathNamedInProseResolves"/>. A broken link in the root README is killed by
+/// <c>DocumentationLinkGateTests</c>, which is the direction that proves widening it past
+/// <c>docs/</c> did something; a broken link inside <c>docs/</c> is killed by the same, which
+/// proves the widening did not lose the original scope.
+/// </para>
 /// </remarks>
 public sealed class ProsePathCitationTests
 {

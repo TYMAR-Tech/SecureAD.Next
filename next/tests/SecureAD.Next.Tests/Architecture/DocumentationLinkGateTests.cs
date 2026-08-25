@@ -25,7 +25,7 @@ public sealed class DocumentationLinkGateTests
     private static readonly Regex Link = new(@"\]\((?<target>[^)\s]+)\)", RegexOptions.Compiled);
 
     [Fact]
-    public void EveryRelativeLinkUnderDocsResolves()
+    public void EveryRelativeLinkInDocumentationResolves()
     {
         var broken = Links()
             .Where(l => !File.Exists(l.Resolved) && !Directory.Exists(l.Resolved))
