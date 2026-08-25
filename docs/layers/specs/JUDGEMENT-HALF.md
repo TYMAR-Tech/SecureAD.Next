@@ -1465,6 +1465,14 @@ stable across runs — add one unrelated group and every signature through it ch
 would silently evaporate and the operator would never know which. A coarse switch that behaves
 predictably beats a fine one that quietly forgets.
 
+**That rejection is sound and the resulting behaviour may still be wrong**, so it is open as `P-93`
+rather than settled here. The reasoning above rules out per-route acceptance; it does not establish
+that per-principal acceptance is what an administrator should be given. Deciding it now would mean
+designing a lifecycle before anything produces a finding to accept, so it is deferred to when the
+lifecycle is built — with the alternatives recorded in the row so the argument does not have to be
+reconstructed. **Nothing downstream depends on the answer:** acceptance is lifecycle, and the derive
+computes identical routes whichever shape wins.
+
 #### Finding identity is generalized; reachability uses the anchor as its object
 
 The rule catalogue already contains account findings, directory-object findings, aggregate/set
