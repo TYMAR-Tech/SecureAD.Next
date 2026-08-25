@@ -78,6 +78,11 @@ twice.
 | The protocol proves why the capability matters | It proves the boolean. Security significance is a separate claim needing a separate citation | `2b` replication |
 | The shortest route is the best one to show | A short route through uncertain steps may not exist. Certainty is ranked above brevity | `2d` route ordering |
 | Weight the route criteria and add them up | Summing lets length outweigh certainty, which is the trade the ruling forbids | `2d` route ordering |
+| Bound uncertainty by listing who is affected | An unreadable DACL hides the trustees it names. Demanding a list makes an implementation omit them, and omission reports false `NotReachable` | `2d` uncertainty |
+| A finding that came back was reopened | Only if it was resolved first. A change that never took leaves it `Active` throughout | `2d` two-run loop |
+| Include the descriptor hash in the remediation id | An unrelated ACE in the same ACL changes the hash, so the same problem churns as a new action every run | `2d` remediation |
+| The residual predicts the next run | It is a counterfactual over the captured graph. Closure is proved by the next capture, never promised by the last | `2d` residual |
+| The best route is a confirmed route | Ordering picks the best of what exists. The top of a weak field is still weak | `2d` route grading |
 
 **The last row is the one that generalises.** Two first-party facts were recorded as unavailable
 because a keyword search did not surface them; both were one page fetch away. Open Specifications
@@ -136,7 +141,7 @@ facts are captured once, then three different products are derived from them:
 | Product | Follows | Answers |
 |---|---|---|
 | `AuthorizationMembershipClosure` | security-enabled groups, including primary-group membership | *Which security-group memberships can participate in authorization?* |
-| `ProtectedPrincipalClosure` | security and distribution groups, including primary-group membership where applicable | *Is this principal covered by AdminSDHolder / SDProp?* |
+| `ProtectedPrincipalClosure` | security and distribution groups, and primary-group membership — **both edge kinds evidence-gated, see below** | *Is this principal covered by AdminSDHolder / SDProp?* |
 | `LatentPrivilegePaths` | directory nesting through distribution groups | *What privilege would become effective if a distribution group were converted to security-enabled?* |
 
 The names are deliberately different. A distribution-only path can be relevant to SDProp and to a
@@ -166,6 +171,29 @@ Latent privilege:
 > construction.
 
 That is useful and serious, but it is not current control.
+
+#### What SDProp actually traverses is evidence-gated
+
+The citation above establishes what a **distribution group does not do for authorization**. It says
+nothing about how SDProp decides who is protected, and the two questions are independent — which is
+the whole reason `ProtectedPrincipalClosure` is a separate product.
+
+So both non-obvious edge kinds in that closure are gated, on the same terms as `AC-64`:
+
+| Edge in `ProtectedPrincipalClosure` | Status |
+|---|---|
+| Nesting through security groups | specified — the ordinary case |
+| Nesting through **distribution** groups | **gated**: no Microsoft source yet states SDProp follows them |
+| **Primary-group** membership | **gated**: `AC-64`, membership is cited, the SDProp traversal is not |
+
+**Neither gated edge may be implemented from inference.** Each needs a Microsoft protocol citation,
+or a lab observation recorded and labelled as lab-verified rather than specified. Guessing is
+expensive in both directions: include the edge wrongly and principals are reported protected who are
+not; omit it wrongly and a genuinely protected account is missed. `adminCount` cannot settle it
+either, being historical rather than a current-protection oracle.
+
+Until one or the other is established, the closure follows security-group nesting and records the
+gated edge kinds as a stated limit of the protected-principal derivation.
 
 #### Primary-group membership is real membership and is not represented by `member` / `memberOf`
 
@@ -1057,22 +1085,28 @@ memory.** The security characterisation has its own source, fetched 2026-08-26:
 
 [Read-Only DCs and the Active Directory Schema](https://learn.microsoft.com/windows/win32/ad/rodc-and-active-directory-schema)
 
-So the filtered set is defined by the customer, holds credential-like data by design, and is
-populated precisely *because* someone decided it must not leave the writable estate. A principal
-holding `Get-Changes` and `Get-Changes-In-Filtered-Set`, and **not** `Get-Changes-All`, reads exactly
-that material while failing the DCSync test entirely. Treating `Get-Changes-In-Filtered-Set` as a
-weaker sibling of `Get-Changes-All` and folding the two together would either miss this holder or
-report it as full DCSync; both are wrong, and the second is the kind of false statement an audit
-tool must not make.
+So the filtered set is configured by the organisation and can hold credential-like application data
+it has chosen not to replicate to RODCs. **That is as far as the source goes**, and an earlier draft
+went further — *"populated precisely because someone decided it must not leave the writable estate"* —
+which would have every filtered attribute be a high-impact secret. Enough to justify a distinct
+finding; not enough to assume severity. A principal holding `Get-Changes` and
+`Get-Changes-In-Filtered-Set`, and **not** `Get-Changes-All`, reads exactly that material while
+failing the DCSync test entirely. Treating `Get-Changes-In-Filtered-Set` as a weaker sibling of
+`Get-Changes-All` and folding the two together would either miss this holder or report it as full
+DCSync; both are wrong, and the second is the kind of false statement an audit tool must not make.
 
-**Three access rights, two compound outcomes.** The rights are captured facts. `CanReplicateAllDomainSecrets`
-and `CanReplicateFilteredAttributes` are derived capabilities, and the catalogue defines those two
-by name; the constrained `EXOP_REPL_SECRETS` path is a third and is not folded into either.
+**Three access rights, two named capabilities, one separate path.** The rights
+(`Get-Changes`, `Get-Changes-All`, `Get-Changes-In-Filtered-Set`) are captured facts.
+`CanReplicateAllDomainSecrets` and `CanReplicateFilteredAttributes` are derived capabilities the
+catalogue defines by name. The constrained `EXOP_REPL_SECRETS` / `RevealSecretsForUserAllowed` path
+is neither, and is not folded into either — if it later becomes a named capability it is named, not
+counted into a phrase like *all three*.
 
-**All three checks are `AccessCheckCAR(ncRoot, ...)` — against the naming context root, not against
-the object whose secrets are read.** The permission is granted once at the top of a partition and
-confers replication of everything beneath it, which is why the finding's target is the partition and
-why removing the ACE at the root is the whole of the remediation.
+**Every replication control-access-right check is `AccessCheckCAR(ncRoot, ...)` — against the naming
+context root, not against the object whose secrets are read.** The permission is granted once at the
+top of a partition and confers replication of everything beneath it, which is why a finding carrying
+either capability targets the naming context and why removing the ACE at the root is the whole of
+the remediation.
 
 #### P-87 — operational Tier 0 versus transitive reachability
 
@@ -1188,20 +1222,49 @@ So missing evidence is carried as a **bounded region** rather than as edges:
 
 ```
 UncertaintyRegion:
-    AffectedSubjects[]          who might gain an edge
-    AffectedTargets[]           what they might gain it over
+    AffectedSubjectScope        who might gain an edge
+    AffectedTargetScope         what they might gain it over
     AffectedCapabilityKinds[]   which capabilities are in doubt
     Reason                      the UnknownReason that produced it
     CanAffectReachability       whether it could touch a route to the anchor
 ```
 
-The reachability question then asks whether a region **intersects** a candidate route, instead of
-enumerating the edges inside it. An unreadable descriptor on one OU produces one region naming that
-OU's subtree and the capability kinds an ACL there could confer — not a cross product.
+**Both scopes are symbolic, not lists.** An earlier draft required every affected subject and target
+to be enumerable from the bundle, and called a region that could not be enumerated a capture defect.
+**That was wrong, and wrong in the direction that produces false clean results.** An unreadable DACL
+hides the very trustees its ACEs name: the target is known, the subjects are unknowable, and the
+capture recorded that correctly. Demanding a list leaves an implementation two options — invent one,
+or omit the principals it cannot name — and omission yields `NotReachable` for principals that may
+well be reachable. The rule meant to prevent a cross product would have manufactured false negatives
+instead.
 
-**Every region must be bounded by captured facts.** A region whose subjects or targets cannot be
-enumerated from the bundle is a capture defect, not a wider region: the honest response is to say
-which partition could not be read, not to let one unbounded region make the whole forest `Unknown`.
+```
+AffectedSubjectScope:
+    ExplicitPrincipals[]
+    AllCapturedPrincipals
+    PrincipalsMatchingContext
+    UnknownWithinForest
+
+AffectedTargetScope:
+    ExplicitTargets[]
+    ContainerSubtree
+    NamingContext
+    Partition
+```
+
+An unreadable descriptor on one OU is one region — subjects `AllCapturedPrincipals`, target
+`ExplicitTarget(OU-X)`, capability kinds those an ACL there could confer. That names a large set
+without materialising a single edge, which is the whole point: **a symbolic scope is cheap to state
+and cheap to test for intersection.**
+
+The reachability question asks whether a region **intersects** a candidate route, not what is inside
+it. Breadth costs precision, never correctness: a wide region turns more answers into `Unknown`,
+which is the honest direction. The failure to avoid is a region too *narrow* to cover what the
+missing evidence could reach.
+
+**Evidence that cannot be bounded even symbolically is an unbounded capture gap**, reported as such
+and naming what could not be read. It does not silently vanish, and it blocks `NotReachable` within
+the scope it affects.
 
 The evaluator should preserve **why** uncertainty exists:
 
@@ -1356,13 +1419,30 @@ would tell a customer the escalation is closed when it is open.**
 For an ACE the identity is built from captured facts sufficient to name it again on a later run:
 
 ```
-object reference (objectGUID, not DN - a DN moves)
-which security descriptor component (DACL / SACL)
-canonical normalized ACE representation, or its bytes
-inheritance source: explicit here, or inherited and from where
-captured ordinal, where order is what distinguishes it
-evidence hash of the descriptor it came from
+RemediationActionKey:                      does this name the same problem?
+    target object reference (objectGUID, not DN - a DN moves)
+    action kind
+    which security descriptor component (DACL / SACL)
+    canonical normalized ACE representation
+    inheritance source: explicit here, or inherited and from where
+    duplicate-occurrence discriminator, only where identical ACEs repeat
+
+ApplyPrecondition:                         is the directory still as we found it?
+    captured security descriptor hash
+    captured ACE ordinal
+    expected ACE bytes
 ```
+
+**The split matters, and an earlier draft got it wrong by folding the second group into the first.**
+A descriptor hash covers the *whole* ACL, so adding an unrelated ACE anywhere in it changes the hash
+— and with it the id. The same problem would then appear as a brand-new remediation every run, while
+the old one silently disappeared, purely because someone edited a different permission on the same
+object. Ordinals are worse: canonicalisation reorders an ACL on its own. **Identity must not move
+when the problem has not.**
+
+The hash and ordinal are still worth capturing, for a different job: before applying a repair, they
+answer *has this descriptor changed since we analysed it?* That is optimistic concurrency, and using
+it as identity was a category error.
 
 **Explicit and inherited ACEs are never the same action even when identical**, because they are
 removed in different places: one at the object, one at the container above it. Collapsing them
@@ -1405,6 +1485,25 @@ Report the residual, for example:
 Residual statements are about principals/findings/routes in the captured graph, not about hypothetical
 unseen evidence.
 
+**A residual is a counterfactual over the captured graph, never a promise about the next run.** It
+answers *what would this bundle have shown had that action been absent* — a question about evidence
+already in hand. It cannot answer what the next capture will find, and an earlier version of `AC-89`
+required exactly that, which contradicts the rule that closure is proved by the next capture rather
+than predicted by the last one.
+
+The two can legitimately differ, and none of these is a defect in the residual:
+
+- replication had not converged when either bundle was sealed;
+- coverage changed — the second run read something the first could not, or vice versa;
+- the derivation generation or capability catalogue version changed between runs;
+- the directory changed for reasons unrelated to the remediation;
+- inheritance or canonicalisation recomputed something the model treated as one action;
+- the repair was applied differently from the operation that was modelled.
+
+So the prediction is kept and **compared** against the later bundle, with any divergence explained
+through changed source facts, coverage, semantic version or how the repair was applied. A residual
+that turns out wrong is information about one of those, not a broken promise.
+
 #### What an administrator actually experiences across two runs
 
 The parts above describe machinery. This section states the loop they add up to, because a design
@@ -1445,17 +1544,25 @@ thing that was wrong was never Alice. Three commitments prevent it:
 
 **What the second run legitimately shows.** Some things reappearing are correct and not noise:
 
-| Second run shows | What it means |
-|---|---|
-| The finding is gone | The cut worked. Proved by evidence, not asserted |
-| The same finding, `Reopened` | The change did not take, or was reverted. Worth knowing |
-| The named residual, alone | Exactly what you were told would remain |
-| A genuinely new route | Something changed in the directory, or capture now reads what it could not before |
-| `Unknown` where it was `Reachable` | **Not** a fix. Capture got worse, and the product says so |
+| Second run shows | Lifecycle | What it means |
+|---|---|---|
+| Condition gone, evidence complete | `Resolved` | The cut worked. Proved by evidence, not asserted |
+| Condition still established | stays `Active` | The change did not take, or was reverted, or cut only part of it |
+| Established again after a prior `Resolved` | `Reopened` | It came back. Only reachable from `Resolved`, never from `Active` |
+| The named residual, alone | stays `Active` | Exactly what you were told would remain |
+| A genuinely new route | stays `Active` | Something changed, or capture now reads what it could not before |
+| `Unknown` where it was `Reachable` | stays `Active`, evaluation `Indeterminate` | **Not** a fix. Capture got worse, and the product says so |
+
+**A finding that never resolved cannot reopen.** An earlier draft labelled row two `Reopened`, which
+contradicts `AC-88`: only a completed capture can resolve a finding, so a change that failed to take
+leaves it `Active` throughout — it was never closed, and nothing reopens. `Reopened` is reserved for
+the genuinely different event of a fix that later regressed, and conflating the two would hide it.
 
 That last row is the one an auditor should care about most, and it is why `Unknown` is a first-class
-answer. A cut that appears to have worked because a permission became *unreadable* is not a cut, and
-this design refuses to report it as one.
+answer. **Note it keeps the finding `Active` while the evaluation becomes `Indeterminate`** — the two
+state machines move independently, and losing coverage must never look like progress. A cut that
+appears to have worked because a permission became *unreadable* is not a cut, and this design refuses
+to report it as one.
 
 **What is genuinely lost, and it is the honest cost.** Because a finding is keyed on the rule, the
 principal and the anchor — not on the route — **you cannot accept one path while staying alerted to
@@ -1522,24 +1629,26 @@ LAPS missing:
 The path is not part of finding identity. Stable identity preserves acceptance/lifecycle across route
 changes.
 
-#### The path-rule catalogue needs one canonical Tier 0 reachability owner (`P-92`)
+#### SEC-071 is the canonical Tier 0 reachability rule — `P-92`, ruled 2026-08-26
 
 The predecessor has multiple overlapping path rule IDs (short Tier0 path, Tier0 path, shadow/DCSync/
 delegation path categories). Under the anchor model, the last categories are evidence types under the
 same collapsed question.
 
-Before Stage 3 is locked, an owner decision must choose one of:
+```
+Canonical Tier 0 reachability rule:  SEC-071
+Retired, and never reissued:         SEC-070, SEC-072, SEC-076, SEC-077
+```
 
-1. one canonical Tier0 reachability rule ID, with distance and route type as evidence/grade;
-2. intentionally multiple anchor findings per principal with clearly non-overlapping rule semantics;
-3. retire the old path rule IDs and introduce a new canonical rule.
+The multi-source sweep computes one reachability state per principal and the anchor collapses
+equivalent Tier 0 destinations, so one rule matches what is actually computed. Distance and the
+reached destination are **evidence fields** on the finding.
 
-The current preferred architecture is **one canonical reachability rule**, because the multi-source
-sweep computes one reachability state per principal and the anchor deliberately collapses equivalent
-Tier 0 destinations. Severity/grade can still depend on distance and route properties without creating
-several nearly identical findings.
-
-Tracked as `P-92` until accepted.
+**They are not severity.** An earlier version of this section said grade "can still depend on
+distance and route properties", which `0066` forbids — severity is fixed on the rule card and one
+rule means one severity for every path length. That consequence was weighed and accepted when the
+consolidation was ruled; it is not quietly recovered here. See *Five path rules become one* for the
+full ruling and the escape route if ordering by evidence proves insufficient.
 
 #### Evaluation outcome and lifecycle are different state machines
 
@@ -1621,6 +1730,25 @@ Coverage incomplete
 ```
 
 `EdgeClass` is reported as semantics, not used as an ordinal score by itself.
+
+**A route carries its own evaluation class, and the best route may be weaker than the finding.**
+Ordering picks the best of what exists; it does not certify what it picked. The two must be reported
+separately:
+
+```
+Finding Established (a definite route exists)
+    best route definite    -> the ordinary case
+    best route possible    -> only where a definite route was less good on criteria 2-5.
+                              The finding stands on the definite route; the shown route is
+                              supplemental and must say so
+Finding Indeterminate (only possible routes exist)
+    there is no established reachability finding to display a route under
+```
+
+**A route containing an `Unknown` edge must never be presented as a confirmed attack path**, whatever
+its rank. Ranking is a comparison among candidates; it is not evidence, and the top of a weak field
+is still weak. Every displayed route states whether it is definite or possible, so *best* is never
+read as *established*.
 
 #### Determinism and provenance are required for reproducibility
 
@@ -1964,18 +2092,19 @@ research status and sources — and the code is generated from that, not from th
 | AC-75 | `BlockOwnerImplicitRights` reads `dSHeuristics` character 29 and accepts values `0`–`3`, resolving any other value to `1` and an absent character to `0`. Treating `0` as "not configured" fails, and so does treating a malformed value as inert. Applicability follows the recorded server behavior, not a hard-coded release name. |
 | AC-76 | Ownership-derived capabilities are evaluated against the concrete security-descriptor modification the capability requires. A capability that names no modification evaluates to `Unknown`; one that does follows the documented rules and may be `Established` or `NotEstablished`. Returning `Unknown` for every ownership case on a given build fails. |
 | AC-77 | `CanReplicateFilteredAttributes` is derived as `Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set)`. A principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set` alone yields this capability and does **not** yield `CanReplicateAllDomainSecrets`. |
-| AC-78 | All three replication capabilities are evaluated against the naming-context root, and a finding carrying one targets the partition rather than an object beneath it. |
+| AC-78 | Every replication control-access-right check used by these capabilities is evaluated against the naming-context root. Findings carrying `CanReplicateAllDomainSecrets` or `CanReplicateFilteredAttributes` target the applicable naming context or partition, never an object beneath it. |
 | AC-79 | Reachability to the anchor emits findings under SEC-071 only. A finding carrying SEC-070, SEC-072, SEC-076 or SEC-077 fails, and those identifiers are never reissued for anything else. |
 | AC-80 | Path length and the reached destination are evidence fields on the SEC-071 finding, present and orderable. A design that recovers the distinction by varying severity per finding fails, because `0066` fixes severity on the rule card. |
 | AC-81 | The key-credential capability names `msDS-KeyCredentialLink` and no other attribute. Mapping `altSecurityIdentities` to it fails: that attribute is certificate mapping, a separate capability with its own citation, and membership of the `BlockOwnerImplicitRights` protected-property list confers no capability meaning. |
 | AC-82 | `CanReplicateFilteredAttributes` carries its own security-significance citation, separate from the MS-DRSR procedure that establishes its boolean. A capability whose only source proves the authorization condition and not the impact fails. |
-| AC-83 | Missing evidence produces bounded `UncertaintyRegion` records whose subjects and targets are enumerable from the bundle. No implementation materialises possible edges as a cross product, and an unbounded region is reported as a capture defect naming the unread partition rather than making the forest `Unknown`. |
-| AC-84 | `RemediationActionId` is derived from captured configuration state and not from `HumanDescription`. Rewording a description does not change the id, and two ACEs differing only by inheritance source, ordinal or descriptor never share one. |
+| AC-83 | Missing evidence produces `UncertaintyRegion` records bounded explicitly or symbolically — explicit set, captured forest population, subtree, naming context or partition. An unreadable DACL yields a region covering the principals it could have named rather than omitting them, and an implementation that drops unidentifiable subjects and thereby reports `NotReachable` fails. No implementation materialises possible edges as a cross product. Evidence that cannot be bounded even symbolically is reported as an unbounded capture gap and blocks `NotReachable` within the scope it affects. |
+| AC-84 | `RemediationActionId` derives from `RemediationActionKey` — captured configuration state — and never from `HumanDescription`. Rewording a description does not change the id; neither does adding an unrelated ACE to the same descriptor, nor a canonicalisation that changes ordinals. Descriptor hash, ordinal and expected bytes are apply-time concurrency evidence, not identity. Two ACEs differing only by inheritance source never share an id, and identical repeated ACEs are separated by an occurrence discriminator. |
 | AC-85 | Route ordering is lexicographic in the ruled sequence: definite before possible, direct before conditional, fewer unmet preconditions, higher confidence, shorter, then stable signature. A two-hop route resting on an `Unknown` input never outranks a longer definite one, and no implementation trades certainty against length by summing weights. |
 | AC-86 | Route ordering never alters severity, which `0066` fixes on the rule card, and never removes a route from the evidence. Two routes equal through all five criteria are ordered by signature alone, so repeated runs of one bundle agree. |
 | AC-87 | Where one source action dominates every route from many principals, the report's primary recommendation is that action once, not one recommendation per affected principal. A design emitting a row per principal for a single dominating ACE fails. |
 | AC-88 | A reachability finding resolves only when a later bundle evaluates it `NotEstablished` under complete evidence. An operator marking it fixed cannot resolve it, and a finding whose evaluation moves from `Reachable` to `Unknown` is reported as reduced coverage rather than as resolved. |
-| AC-89 | A residual statement names what remains before the change is made, and the principals it names are the ones still reachable in the next bundle if only the stated action was taken. |
+| AC-89 | A residual names what remains in a counterfactual re-sweep of the captured graph with the stated `RemediationActionId` removed. It is compared against the later bundle and is not treated as proof of future directory state; divergence is explained through changed source facts, coverage, semantic version or how the repair was applied. Wording that asserts the next capture must match fails. |
+| AC-90 | A finding established in consecutive runs stays `Active` and never becomes `Reopened`. `Reopened` is reachable only from `Resolved`, which only a complete capture can produce. A finding whose evaluation becomes `Indeterminate` stays `Active`, so lost coverage cannot present as progress. |
 
 ## Non-goals
 
