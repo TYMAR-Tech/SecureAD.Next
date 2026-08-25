@@ -6,7 +6,7 @@ namespace SecureAD.Kernel.Security;
 /// </summary>
 /// <param name="OwnerSid">Owner SID in SDDL string form, or null if absent.</param>
 /// <param name="GroupSid">Primary group SID in SDDL string form, or null if absent.</param>
-/// <param name="DaclState">Whether the DACL is Present, Null, or Empty.</param>
+/// <param name="DaclState">Whether the DACL is Present, Null, Empty, or Unreadable.</param>
 /// <param name="IsDaclProtected">True if SE_DACL_PROTECTED is set (inheritance blocked).</param>
 /// <param name="DaclAces">Parsed ACEs from the DACL. Empty if DACL is Null or Empty.</param>
 /// <param name="ControlFlags">Raw 16-bit control flags from the SD header.</param>

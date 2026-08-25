@@ -5,7 +5,7 @@ using SecureAD.Kernel.Capture;
 namespace SecureAD.Audit.Capture;
 
 /// <summary>
-/// Builds the one search request capture issues, and holds the referral policy that makes it safe.
+/// Builds every search request capture issues, and holds the referral policy that makes them safe.
 /// </summary>
 /// <remarks>
 /// <para>

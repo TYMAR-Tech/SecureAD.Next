@@ -9,9 +9,9 @@ namespace SecureAD.Evidence.Run;
 /// <remarks>
 /// <para>
 /// Internal, and shared by <see cref="ProfileId"/> and <see cref="CoverageId"/> so that the width
-/// and alphabet of an identity cannot drift between the two. They appear side by side in folder
-/// names and in the run library, and two identities of different shapes would look like a defect
-/// to an operator long before anyone noticed it was one.
+/// and alphabet of an identity cannot drift between the two. They are compared as opaque strings -
+/// <see cref="RunScope.Identity"/> groups on one of them - so a difference in shape would not look
+/// like a defect to anybody. It would simply stop matching.
 /// </para>
 /// <para>
 /// Truncated to eight bytes deliberately. This is a grouping key, not a security control: it

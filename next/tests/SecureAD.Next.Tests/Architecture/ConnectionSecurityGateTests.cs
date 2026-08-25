@@ -146,8 +146,10 @@ public sealed class ConnectionSecurityGateTests
             + "with no mechanism in it and reporting it clean.");
 
         // The factory must actually contain the constructs the first two checks permit only in it.
-        // Four transport assignments, because the ladder sets all three options plus the protocol
-        // version on every attempt; a factory containing fewer has stopped setting one of them.
+        // Three transport assignments - SecureSocketLayer, Signing and Sealing, which the ladder
+        // sets on every attempt. ProtocolVersion is set too and is deliberately not policed: it is
+        // not a security level, and it is not in the pattern. A factory containing fewer than three
+        // has stopped setting one of them.
         Assert.Single(RebuildTree.ScanPattern(factories, ConnectionConstruction));
         Assert.Equal(3, RebuildTree.ScanPattern(factories, TransportSecurityAssignment).Count);
 
