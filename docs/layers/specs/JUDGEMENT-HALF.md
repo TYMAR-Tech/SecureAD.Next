@@ -72,6 +72,10 @@ twice.
 | Assign `Tier2` to an unclassified principal | The non-goals decline to define Tier 1 and Tier 2, so no principal can be placed in them yet | `2c` P-87 |
 | Phases 4 and 5 are one fixpoint | True only of the recursive definition `P-87` rejects. Under the ruling they separate | the stages |
 | A search that returns nothing means the thing does not exist | It means the search failed. `BlockOwnerImplicitRights` and MS-DRSR 5.101 were both found by fetching after searches failed | `P-89` |
+| An attribute on Microsoft's protected list is the shadow-credentials target | `altSecurityIdentities` is certificate mapping. Shadow credentials write `msDS-KeyCredentialLink`, which is not on that list at all | `2b` ownership |
+| The answer depends on the requested operation, so the answer is `Unknown` | `EvaluateCapability` carries a `RequestedOperation`. Declining to compute is not the same as having nothing to compute with | `2b` ownership |
+| A heuristic character is on or off | `BlockOwnerImplicitRights` takes `0`–`3`, and **any other value resolves to `1`** — so a typo turns blocking on | `2b` ownership |
+| The protocol proves why the capability matters | It proves the boolean. Security significance is a separate claim needing a separate citation | `2b` replication |
 
 **The last row is the one that generalises.** Two first-party facts were recorded as unavailable
 because a keyword search did not surface them; both were one page fetch away. Open Specifications
@@ -533,26 +537,87 @@ result can differ.
   security-descriptor modification is blocked.
 
 **The setting is at `dSHeuristics` character 29, and its values do not mean what a reader expects.**
-Fetched 2026-08-25:
+Fetched 2026-08-25 from the blocking rules:
 
 > The BlockOwnerImplicitRights dsHeuristic is set to 1, or to 0 or 1 on Windows 11, version 26H1.
 
-So `1` blocks everywhere, and on 26H1 and later **`0` blocks as well** — the value that reads as
-*off* is *on*. There is no documented value that leaves owner rights intact on those builds, so a
-derive that treats `0` as "not configured" reports a suppressed capability as present on the newest
-servers in the estate. Which behavior applies is a property of the domain controller, and the
-capture records the setting rather than a conclusion.
+**An earlier draft read that as "`0` blocks on 26H1 and later" and added "there is no documented
+value that leaves owner rights intact on those builds." Both overreach**, and the value-definition
+section — MS-ADTS 6.1.1.2.4.1.2, a *different* page, fetched 2026-08-26 — shows why:
+
+> If this character is "0", "1", "2", or "3" the BlockOwnerImplicitRights heuristic is set to the
+> equivalent numeric value. If this character is not set, the heuristic defaults to 0. **If this
+> character has any other value, the heuristic defaults to 1.**
+
+Four valid values, not two. `2` and `3` exist and the blocking section says nothing about them, so
+the claim that no value leaves owner rights intact was never established — it was inferred from a
+page that only discusses two of the four. `3` is itself 26H1-and-later. And the applicability is
+Microsoft's exact wording, *the operating systems identified by MSFT-CVE-2021-42291 with the related
+update installed*, which is not the same set as "26H1 and later" and must not be generalised to it.
+
+Two things survive, and they are the ones that matter:
+
+- **`0` must not be treated as "disabled".** It is both the documented default and a value that can
+  trigger blocking under the identified behavior. A derive reading `0` as *not configured* can
+  report a suppressed capability as live.
+- **A malformed value is not inert.** Anything outside `0`–`3` defaults to **`1`**, the blocking
+  value. So a typo in this heuristic silently turns blocking *on*, and a reader who assumes garbage
+  means "ignored" has it backwards.
+
+The capture records the raw character and the server behavior; the derive resolves the value against
+the applicable MS-ADTS version rather than against a hard-coded release name.
 
 **On 26H1 the block is also decided per requested modification, not per object.** The specification
 makes it depend on which ACEs are being added or removed, and it names ten protected properties —
 `altSecurityIdentities`, `dnshostname`, `msDS-AdditionalDnsHostName`,
 `msDS-AdditionalSamAccountName`, `msDS-AllowedToDelegateTo`, `msDS-AssignedAuthNPolicy`,
 `msDS-AssignedAuthNPolicySilo`, `sAMAccountName`, `servicePrincipalName` and `userPrincipalName`.
-Every one of them is an attack primitive: the first is the shadow-credentials target, the last three
-are the Kerberos-abuse targets. **The derive does not evaluate these rules.** A static evidence
-bundle records what an ACL says, not what a hypothetical modification would be permitted to change,
-so ownership over a computer object on a 26H1 domain controller is `Unknown` rather than granted or
-suppressed. That is the honest answer and it is recorded as a stated limit, not a defect.
+
+**An earlier draft of this paragraph said "the first is the shadow-credentials target", and that is
+wrong.** Shadow credentials write `msDS-KeyCredentialLink`, which is **not** in this list;
+`altSecurityIdentities` is the certificate-mapping attribute, a different abuse with a different
+capability. The correction is recorded rather than quietly fixed because of what the mistake would
+have caused downstream: an implementer reading that sentence would map `altSecurityIdentities` to
+the key-credential capability, and the product would then report a certificate-mapping weakness
+using the language of a shadow-credentials attack. **That is the product saying something false
+about a customer's directory**, which is the one thing it must not do — and the error would be
+invisible, because both attributes are real, both are dangerous, and the finding would look
+plausible.
+
+What the list *does* establish is narrower and still worth having: several of these attributes carry
+identity- or Kerberos-related abuse potential, and Microsoft protects them here for that reason.
+Which attribute belongs to which capability is settled in the capability catalogue against its own
+citation, not inferred from membership of this list.
+
+**The derive does not evaluate the 26H1 rules.** A static evidence bundle records what an ACL says,
+not what a hypothetical modification would be permitted to change.
+
+**But that does not make every 26H1 ownership case `Unknown`, and an earlier draft said it did.**
+The mistake was to read "the answer depends on the requested operation" as "there is no requested
+operation", when `EvaluateCapability` already takes a `RequestedOperation`. A capability is not a
+question about ownership in the abstract; it is a question about a specific change. *Can this owner
+add an ACE granting itself write on a non-protected property?* has an answer under the documented
+rules. So does *can it grant `WRITE_DAC` to another principal?* — rule 4 says no, and that is
+`NotEstablished` rather than unknown.
+
+The correct shape:
+
+```
+Ownership alone
+    -> no generic take-over capability, on any build
+
+Ownership + a capability that names its security-descriptor modification
+    -> Established | NotEstablished | Unknown, per the documented rules
+
+Ownership + a capability that does not name one
+    -> Unknown
+```
+
+`Unknown` is for the case where the capability has no defined modification template, or where the
+server behavior needed to pick the rule set was not captured. Blanket-`Unknown` looked like
+honesty and was the opposite: it would suppress every ownership-derived route on the newest servers
+in the estate, and a "found nothing" that is really "declined to compute" is the failure mode this
+document exists to prevent.
 
 Source:
 [MS-ADTS 6.1.3.4: Blocking Implicit Owner Rights](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/fb7c101d-ec8b-4fbf-bca8-7d7c2d747d0c)
@@ -975,13 +1040,32 @@ CanReplicateFilteredAttributes =
           OR DS-Replication-Get-Changes-In-Filtered-Set )
 ```
 
-The filtered attribute set is what an RODC is *not* allowed to cache — it is where an organisation
-puts the secrets it has decided must never reach a branch office, such as credentials held in custom
-attributes. So a principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set`, and **not**
-`Get-Changes-All`, reads exactly that material while failing the DCSync test entirely. Treating
-`Get-Changes-In-Filtered-Set` as a weaker sibling of `Get-Changes-All` and folding the two together
-would either miss this holder or report it as full DCSync; both are wrong, and the second is the
-kind of false statement an audit tool must not make.
+The filtered attribute set is a distinct authorization outcome because MS-DRSR authorizes it through
+a **different boolean condition** from ordinary secret revelation — a disjunction where secrets take
+a conjunction. That much is established by the procedure alone.
+
+**What the procedure does not establish is why it matters, and an earlier draft asserted that from
+memory.** The security characterisation has its own source, fetched 2026-08-26:
+
+> Some applications that use Active Directory Domain Services as a data store may have
+> credential-like data (such as passwords, credentials, or encryption keys) that should not be
+> stored on a Read-Only Domain Controller in case the RODC is stolen or compromised. For this type
+> of application, you can add the attribute to the RODC filtered attribute set to prevent it from
+> replicating to RODCs in the forest.
+
+[Read-Only DCs and the Active Directory Schema](https://learn.microsoft.com/windows/win32/ad/rodc-and-active-directory-schema)
+
+So the filtered set is defined by the customer, holds credential-like data by design, and is
+populated precisely *because* someone decided it must not leave the writable estate. A principal
+holding `Get-Changes` and `Get-Changes-In-Filtered-Set`, and **not** `Get-Changes-All`, reads exactly
+that material while failing the DCSync test entirely. Treating `Get-Changes-In-Filtered-Set` as a
+weaker sibling of `Get-Changes-All` and folding the two together would either miss this holder or
+report it as full DCSync; both are wrong, and the second is the kind of false statement an audit
+tool must not make.
+
+**Three access rights, two compound outcomes.** The rights are captured facts. `CanReplicateAllDomainSecrets`
+and `CanReplicateFilteredAttributes` are derived capabilities, and the catalogue defines those two
+by name; the constrained `EXOP_REPL_SECRETS` path is a third and is not folded into either.
 
 **All three checks are `AccessCheckCAR(ncRoot, ...)` — against the naming context root, not against
 the object whose secrets are read.** The permission is granted once at the top of a partition and
@@ -1091,6 +1175,31 @@ else:
 Not every missing-data condition will be representable as one concrete possible edge; the same rule
 still applies. If the missing evidence could affect a route from the principal to the control plane,
 `NotReachable` is not established.
+
+**That rule is right and, taken literally, unimplementable.** One unreadable security descriptor
+means *anyone might control anything through it*, and building `G_possible` by materialising those
+edges connects everything to everything: quadratic in the forest, and useless — every principal
+would come back `Unknown`. An implementation given only the rule above will either do that or
+quietly drop the case, and dropping it is the `NotReachable`-that-means-*could-not-compute* failure.
+
+So missing evidence is carried as a **bounded region** rather than as edges:
+
+```
+UncertaintyRegion:
+    AffectedSubjects[]          who might gain an edge
+    AffectedTargets[]           what they might gain it over
+    AffectedCapabilityKinds[]   which capabilities are in doubt
+    Reason                      the UnknownReason that produced it
+    CanAffectReachability       whether it could touch a route to the anchor
+```
+
+The reachability question then asks whether a region **intersects** a candidate route, instead of
+enumerating the edges inside it. An unreadable descriptor on one OU produces one region naming that
+OU's subtree and the capability kinds an ACL there could confer — not a cross product.
+
+**Every region must be bounded by captured facts.** A region whose subjects or targets cannot be
+enumerated from the bundle is a capture defect, not a wider region: the honest response is to say
+which partition could not be read, not to let one unbounded region make the whole forest `Unknown`.
 
 The evaluator should preserve **why** uncertainty exists:
 
@@ -1228,6 +1337,29 @@ ChangeOwner(ObjectX, ...)
 
 This is the unit dominator/min-cut analysis should recommend. Splitting every derived capability edge
 into an independently removable node would misrepresent one broad ACE as thousands of separate fixes.
+
+**`RemediationActionId` identifies configuration state, never display text.** Deriving it from
+`HumanDescription` — a hash of the sentence shown to the operator — is the obvious shortcut and it
+is wrong in both directions: rewording the description invents a new action and closes the old one,
+while two genuinely different ACEs that read alike collapse into one. The consequence is not
+cosmetic. A dominator is the action present on *every* route, so two merged ACEs produce a
+remediation that claims removing one ACE cuts every path when it cuts half of them. **The product
+would tell a customer the escalation is closed when it is open.**
+
+For an ACE the identity is built from captured facts sufficient to name it again on a later run:
+
+```
+object reference (objectGUID, not DN - a DN moves)
+which security descriptor component (DACL / SACL)
+canonical normalized ACE representation, or its bytes
+inheritance source: explicit here, or inherited and from where
+captured ordinal, where order is what distinguishes it
+evidence hash of the descriptor it came from
+```
+
+**Explicit and inherited ACEs are never the same action even when identical**, because they are
+removed in different places: one at the object, one at the container above it. Collapsing them
+tells the administrator to edit an object where the ACE cannot be removed at all.
 
 #### Dominators — mandatory remediation actions
 
@@ -1447,9 +1579,36 @@ finding churn.
 - there is no materialized inventory of every simple escalation path;
 - route enumeration work moves partly to interactive/on-demand analysis;
 - per-path acceptance is intentionally not the root lifecycle model;
-- strongest route requires a separate weighted search;
+- strongest route requires a separate weighted search, and **the ordering is not defined here — see
+  below**;
 - non-dominator impact counts can require candidate re-sweeps;
 - non-domain-NC authorization context and some capability semantics remain research gates.
+
+#### "Strongest route" is `ResearchBlocked` until someone defines the ordering
+
+Saying a search is *weighted* names a mechanism, not a comparison. `EdgeClass` is deliberately not a
+rank, so there is no ordering to inherit from it, and the document has been asserting a capability
+it never specified.
+
+**Only the shortest route is buildable today.** Shortest is unambiguous: fewest edges, ties broken by
+a stable route signature. Anything calling itself *strongest* is blocked until the ordering is
+written down and accepted, because the plausible candidates disagree on real inputs:
+
+| Ordering | What it prefers |
+|---|---|
+| Lexicographic | first criterion decides; later ones only break ties |
+| Additive weights | a long cheap chain can beat a short expensive one |
+| Bottleneck | the route is only as good as its worst step |
+| Pareto | no single winner — a set of non-dominated routes |
+
+A plausible lexicographic sketch, offered as a starting point and **not accepted**: definite before
+possible, then direct before conditional, then higher confidence, then fewer unmet preconditions,
+then shorter. Whether that is right is a question about what an administrator should be shown first,
+which makes it the owner's to settle.
+
+**Until it is settled, no code may present a route as strongest**, and the interactive analysis
+offers shortest only. Left unstated, each implementation pass would invent its own comparison and
+every one of them would claim to follow this document.
 
 For drift/tripwire use cases, diff the underlying source facts/capabilities between bundles directly.
 Path-signature churn is a noisy proxy for a permission or membership change.
@@ -1595,6 +1754,42 @@ These criteria are written to become executable tests. Where a criterion depends
 policy, the build must treat the corresponding feature as unresolved rather than silently choosing a
 value.
 
+**A criterion that has not become a named test is not satisfied, however obviously true it reads.**
+That is the founding rule of this repository's gates applied here: the deciding question is *what
+change to the product would make this fail?* If the answer is *nothing*, nothing is being checked.
+Name each test for the criterion it discharges — `AC_055_NullDaclAndEmptyDaclDiffer`,
+`AC_077_FilteredReplicationDoesNotImplyFullSecrets` — so the mapping survives a rename, and state
+in the commit which criteria it covers.
+
+**Most of these criteria are stated in the negative, and that is deliberate.** They name the
+tempting wrong answer and require it to fail — the shortcut that reads as sensible until it reports
+something false. A test that only proves the right answer works will still pass when the shortcut is
+taken; a test that proves the shortcut fails will not.
+
+**Two things cannot be checked by internal consistency, and both have already gone wrong here.**
+
+The first is a set of tests agreeing with each other while anchored to the wrong reference. A
+capability catalogue can be proved self-consistent in every direction and still be missing a
+capability nobody wrote down — the failure recorded as `F-S44-2`, where fifteen attributes went
+missing behind three sound test suites. **Ask what the checks are anchored to, not only whether each
+one is sound.**
+
+The second is semantics. Whether `Get-Changes-All` really implies secret revelation cannot be
+settled by any arrangement of this repository's own code. Every capability needs at least one
+external oracle before its implementation merges: a fixture derived from the protocol pseudocode, a
+lab observation from a real forest, a comparison against the platform's own access check, or a
+negative case proving the tempting shortcut produces the wrong answer. **Ownership, object-specific
+ACEs, group scope, GPO applicability and the replication rights are the five where an agreeable
+simplification is most likely and most costly.**
+
+**Vague words are the mechanism by which this goes wrong.** *Where applicable*, *normally*, *when
+practical*, *qualifying*, *similar special identities* — twelve such phrases remain in this document
+and each is a decision deferred. They are acceptable in prose that argues; they are not acceptable
+in the sentence an implementation is written from. Where one of them governs behaviour, the
+capability catalogue must say what it means in machine-readable terms — target classes, requested
+operation, required facts, authorization procedure, feasibility, propagation, classification effect,
+research status and sources — and the code is generated from that, not from the paragraph.
+
 | ID | Criterion |
 |---|---|
 | AC-01 | Privileged is not automatically Tier0. A helpdesk group delegated password reset over ordinary users can be `IsPrivileged` while `TierClassification != Tier0`. |
@@ -1660,7 +1855,7 @@ value.
 | AC-61 | `Tier0Basis` has one authoritative enumeration everywhere: `Seed`, `EffectiveMembership`, `DirectControl`. |
 | AC-62 | Every finding records the rule, derivation-engine, capability-catalogue, privileged-catalogue, tier-policy and schema/GUID semantic versions that produced it. |
 | AC-63 | `primaryGroupID` membership is included even when neither `memberOf` nor the group's `member` attribute contains the account. A user whose primary group is Domain Admins is found. |
-| AC-64 | Primary-group membership participates in protected-principal derivation as well as authorization membership where the group is in the protected set. |
+| AC-64 | Primary-group membership participates in protected-principal derivation as well as authorization membership where the group is in the protected set. **Blocked pending evidence:** the `primaryGroupID` citation establishes membership and its use in authorization, not the SDProp traversal. This criterion may not be implemented until either a Microsoft protocol citation shows primary-group membership participating in protected-group evaluation, or a lab observation is recorded and labelled as lab-verified rather than specified. |
 | AC-65 | Many derived capability edges produced by one inherited ACE share one `RemediationActionId`; dominator/min-cut analysis recommends the source ACE once, not thousands of child edges. |
 | AC-66 | One direct group membership that feeds many transitive paths remains one source remediation action. |
 | AC-67 | Findings can have non-account subjects (OU, GPO, certificate template, domain root, topology object) without inventing a SID. |
@@ -1671,12 +1866,17 @@ value.
 | AC-72 | Synthetic anchor edges are zero-cost, non-removable and not displayed as security hops. Seed distance is zero. |
 | AC-73 | Unknown propagation is relevant, not global: missing evidence that cannot affect a principal's possible path does not automatically turn that principal `Unknown`. |
 | AC-74 | Capability research blocks are build/rule-visible. A production rule cannot consume a `ResearchBlocked` capability as established. |
-| AC-75 | `BlockOwnerImplicitRights` reads `dSHeuristics` character 29 and treats `0` as blocking on Windows 11 26H1 and later, where the value semantics invert. A derive that reads `0` as "not configured" on those builds fails this. |
-| AC-76 | Ownership over a computer-derived object on a 26H1-or-later server evaluates to `Unknown`, because the 26H1 rules depend on the modification requested and a static bundle does not carry one. Reporting it as granted or as suppressed both fail. |
+| AC-75 | `BlockOwnerImplicitRights` reads `dSHeuristics` character 29 and accepts values `0`–`3`, resolving any other value to `1` and an absent character to `0`. Treating `0` as "not configured" fails, and so does treating a malformed value as inert. Applicability follows the recorded server behavior, not a hard-coded release name. |
+| AC-76 | Ownership-derived capabilities are evaluated against the concrete security-descriptor modification the capability requires. A capability that names no modification evaluates to `Unknown`; one that does follows the documented rules and may be `Established` or `NotEstablished`. Returning `Unknown` for every ownership case on a given build fails. |
 | AC-77 | `CanReplicateFilteredAttributes` is derived as `Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set)`. A principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set` alone yields this capability and does **not** yield `CanReplicateAllDomainSecrets`. |
 | AC-78 | All three replication capabilities are evaluated against the naming-context root, and a finding carrying one targets the partition rather than an object beneath it. |
 | AC-79 | Reachability to the anchor emits findings under SEC-071 only. A finding carrying SEC-070, SEC-072, SEC-076 or SEC-077 fails, and those identifiers are never reissued for anything else. |
 | AC-80 | Path length and the reached destination are evidence fields on the SEC-071 finding, present and orderable. A design that recovers the distinction by varying severity per finding fails, because `0066` fixes severity on the rule card. |
+| AC-81 | The key-credential capability names `msDS-KeyCredentialLink` and no other attribute. Mapping `altSecurityIdentities` to it fails: that attribute is certificate mapping, a separate capability with its own citation, and membership of the `BlockOwnerImplicitRights` protected-property list confers no capability meaning. |
+| AC-82 | `CanReplicateFilteredAttributes` carries its own security-significance citation, separate from the MS-DRSR procedure that establishes its boolean. A capability whose only source proves the authorization condition and not the impact fails. |
+| AC-83 | Missing evidence produces bounded `UncertaintyRegion` records whose subjects and targets are enumerable from the bundle. No implementation materialises possible edges as a cross product, and an unbounded region is reported as a capture defect naming the unread partition rather than making the forest `Unknown`. |
+| AC-84 | `RemediationActionId` is derived from captured configuration state and not from `HumanDescription`. Rewording a description does not change the id, and two ACEs differing only by inheritance source, ordinal or descriptor never share one. |
+| AC-85 | No route is presented as strongest until an accepted ordering exists. Interactive analysis offers shortest route only, and a build that ranks routes by an undocumented comparison fails. |
 
 ## Non-goals
 
