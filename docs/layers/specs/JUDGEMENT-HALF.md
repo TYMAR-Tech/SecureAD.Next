@@ -1675,6 +1675,8 @@ value.
 | AC-76 | Ownership over a computer-derived object on a 26H1-or-later server evaluates to `Unknown`, because the 26H1 rules depend on the modification requested and a static bundle does not carry one. Reporting it as granted or as suppressed both fail. |
 | AC-77 | `CanReplicateFilteredAttributes` is derived as `Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set)`. A principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set` alone yields this capability and does **not** yield `CanReplicateAllDomainSecrets`. |
 | AC-78 | All three replication capabilities are evaluated against the naming-context root, and a finding carrying one targets the partition rather than an object beneath it. |
+| AC-79 | Reachability to the anchor emits findings under SEC-071 only. A finding carrying SEC-070, SEC-072, SEC-076 or SEC-077 fails, and those identifiers are never reissued for anything else. |
+| AC-80 | Path length and the reached destination are evidence fields on the SEC-071 finding, present and orderable. A design that recovers the distinction by varying severity per finding fails, because `0066` fixes severity on the rule card. |
 
 ## Non-goals
 
@@ -1751,14 +1753,14 @@ each rule still needs its own first-party semantic review.
 | SEC-065 | Privileged Local Group Membership via Restricted Groups | GP | outside this architecture layer |
 | SEC-066 | Weak Directory or SMB Signing Posture | GP | outside this architecture layer |
 | SEC-067 | Tier 0 Account Exposed to Delegation Impersonation | O M T | supported |
-| SEC-070 | Short Path to Tier 0 Target | R T | expressible; rule-ID consolidation pending `P-92` |
-| SEC-071 | Path to Tier 0 Target | R T | expressible; rule-ID consolidation pending `P-92` |
-| SEC-072 | Path to Tier 0 Shadow | R T | becomes route/evidence category under canonical anchor finding; `P-92` |
+| SEC-070 | Short Path to Tier 0 Target | R T | retired into SEC-071; path length becomes evidence `P-92` |
+| SEC-071 | Path to Tier 0 Target | R T | supported; the one reachability finding, absorbing SEC-070/072/076/077 `P-92` |
+| SEC-072 | Path to Tier 0 Shadow | R T | retired into SEC-071; destination becomes evidence `P-92` |
 | SEC-073 | Short Path to Tier 1 Target | R TierX | gap — Tier1 undefined |
 | SEC-074 | Path to Tier 1 Target | R TierX | gap — Tier1 undefined |
 | SEC-075 | Path to Custom-Tier Target | R TierX | gap — custom tier policy undefined |
-| SEC-076 | Path to DCSync Shadow | R T | becomes route/evidence category under canonical anchor finding; `P-92` |
-| SEC-077 | Path to Unconstrained Delegation Host | R T | becomes route/evidence category under canonical anchor finding; `P-92` |
+| SEC-076 | Path to DCSync Shadow | R T | retired into SEC-071; destination becomes evidence `P-92` |
+| SEC-077 | Path to Unconstrained Delegation Host | R T | retired into SEC-071; destination becomes evidence `P-92` |
 | SEC-080 | Unexpected Principal can Modify GPO | C | supported by typed GPO subject model |
 | SEC-081 | Unexpected Principal can Create GPO Links | C | supported |
 | SEC-082 | Unexpected Principal can Modify GPO via SYSVOL | GP | outside AD DACL capability layer; file authorization required |
@@ -1798,12 +1800,35 @@ The remaining **architectural** gaps are explicit rather than accidental:
 
 1. Group Policy content/SYSVOL file-permission rules need their own layer.
 2. Tier1/custom-tier path rules need a tier policy that does not exist in this spec.
-3. Old overlapping Tier0 path rule IDs need the `P-92` consolidation decision.
+3. Old overlapping Tier0 path rule IDs are consolidated — `P-92` ruled 2026-08-26, see below.
 4. Rules that depend on `IsPrivileged` require the privileged-role/capability catalogues to be
    populated and versioned before they are implementation-ready.
 5. Every individual capability/rule still requires security-semantic verification; "supported" in
    this table means the architecture has the right input/output shape, not that the rule is already
    correct.
+
+### Five path rules become one — `P-92`, ruled 2026-08-26
+
+The predecessor reported one problem under five identifiers. SEC-070 and SEC-071 are the same
+finding at two path lengths. SEC-072, SEC-076 and SEC-077 name three destinations — Tier 0 shadow,
+DCSync shadow, unconstrained-delegation host — that the `Tier0ControlPlane` anchor makes a single
+destination.
+
+**They collapse into SEC-071.** The other four are retired and, under `0024`, never reissued.
+
+The reason the question needed the owner was that a customer reading SEC-076 in last year's report
+would lose the identifier. **There is no such customer** — the predecessor was only ever run by its
+author — so that cost is zero and the decision is free on that axis.
+
+**One consequence is real and is accepted.** `0066` fixes severity on the rule card, so with one id
+a one-hop path and a nine-hop path carry the same severity. Path length instead becomes evidence on
+the finding, and the report orders on it. This is a genuine loss of the distinction SEC-070 drew,
+and it is taken because five rows opening and closing in unison for one problem is the worse
+reading — particularly under `0023`, where the rule id is part of the identity, so five ids would
+make them five distinct findings rather than one problem seen five ways.
+
+**If ordering by evidence proves insufficient in use, the fix is a second id split by length** —
+not a per-finding severity, which `0066` forbids.
 
 ## Improvements over the predecessor worth carrying forward
 
