@@ -560,6 +560,16 @@ Kept because they are operational rather than historical — they will happen ag
   `DnHelper.cs` after a deletion, and it is the same failure as measuring with a substring: check
   the shape of what came back before believing the number.
 - **`Measure-Object -Line` undercounts.** Use `(Get-Content x).Count`.
+- **PowerShell's text cmdlets rewrite what they touch.** `Set-Content -Encoding utf8` reads UTF-8
+  back through Windows-1252 and turns every em dash, en dash and ellipsis into three characters. It
+  did that to twenty-nine documents in one pass, and fifteen were still carrying five hundred and
+  fourteen corrupted characters weeks later, through several passes that read those very files.
+  **Use `[System.IO.File]::WriteAllText` with `UTF8Encoding($false)` for any edit to a document.**
+  `DocumentEncodingGateTests` now fails the build on a single occurrence, and
+  `next/tools/repair-double-encoded-documents.ps1` inverts the damage exactly if it happens anyway.
+  Windows PowerShell 5.1 also has no `` `u{} `` escape — build a character with `[char]0x2014` or
+  the literal goes in as seven characters of text, which produced a mutation that silently proved
+  nothing.
 - **`replace_string_in_file` cannot reach `next/SecureAD.Next.sln`**, and it has twice duplicated a
   block in `TypesTableOwnershipTests.cs` rather than replacing it. For both, edit by line index with
   `[System.IO.File]::ReadAllLines` on an **absolute** path, assert the boundaries before slicing,
