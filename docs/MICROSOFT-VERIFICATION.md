@@ -23,15 +23,19 @@ the first place*.
 
 ## Verified
 
+**Values** is how many the component holds now, not how many were checked on the harvest date. A
+component that grows makes this number stale, and only re-reading the source refreshes the date
+beside it. The two are separate facts and the column carries the first.
+
 | Component | Values | Microsoft source | Harvested | Anchor test |
 |---|---|---|---|---|
-| `SchemaGuidCatalog` | 100 | AD Schema reference, per-entry pages | 2026-08-19 | `SchemaGuidCatalogMicrosoftAnchorTests` |
+| `SchemaGuidCatalog` | 101 | AD Schema reference, per-entry pages | 2026-08-19 | `SchemaGuidCatalogMicrosoftAnchorTests` |
 | `GenericRightsExpander` | 17 | MS-ADTS 5.1.3.2 | 2026-08-20 | `GenericRightsExpanderMicrosoftAnchorTests` |
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
 | `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
 
-**Defects found: 12 of 237.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
+**Defects found: 12 of 238.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
 nothing had ever checked. The twelfth is below, and it was a **missing** value rather than a wrong
 one.
 

@@ -2,9 +2,20 @@
 
 Discrepancies found between documentation and code during the documentation rewrite.
 
-**Nothing here is fixed as it is found.** The `docs/rewrite` branch stays documentation-only so it
-stays reviewable. Code and code-comment fixes are batched and applied deliberately once the rewrite
-is agreed.
+**All eight are fixed**, on `fix/drift`, in five commits grouped by kind. Each was verified against
+the code before it was touched, and two had themselves rotted in the meantime: `D-3` had been half
+corrected by a later sitting, and `D-2` had lost two of the four sentences it quoted.
+
+The log was written on the premise that `docs/rewrite` stayed documentation-only so it stayed
+reviewable, and that is why nothing here was fixed as it was found. **That premise was not true.**
+That branch carried thirty-five production files, six of them with real behaviour changes, in two
+commits. The deferral was still the right call - these wanted reading together rather than one at a
+time - but it was not being held to the rule it cited, and a rule nobody keeps is worth knowing
+about.
+
+What this log is for, if it is used again: a discrepancy found while writing a document is recorded
+here rather than fixed on the spot, and then worked deliberately on a branch of its own. Nothing
+gates this file. If a row is added and never worked, nothing will say so.
 
 Status values: `open` (found, not yet decided), `agreed` (owner decided the fix), `fixed`.
 
@@ -14,7 +25,7 @@ Status values: `open` (found, not yet decided), `agreed` (owner decided the fix)
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Kernel/Security pilot |
 | **Where** | `next/src/SecureAD.Kernel/Security/ParsedSecurityDescriptor.cs` |
 | **Kind** | Stale XML comment in code |
@@ -50,7 +61,7 @@ the `<param>` line is stale.
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Audit/Capture pass |
 | **Where** | `IDirectoryChannel.cs`, `CaptureSearchRequestFactory.cs`, `CaptureUnit.cs` |
 | **Kind** | Stale XML comments in code |
@@ -74,13 +85,21 @@ condition that has already been met is a gate nobody will reinstate.
 **Proposed fix.** Rewrite the four comment blocks against what is built, and re-examine whether
 gate 5b can now be turned on. The second half is not a comment change and wants its own decision.
 
+**What was done.** Comments only. Two of the four sentences quoted above no longer matched
+verbatim by the time this was worked, and the counter-evidence was stronger than recorded here:
+`Program.cs` constructs `LdapDirectoryChannelFactory` directly, `CaptureSession` is reached from
+both `Program.cs` and the shell's `CaptureLauncher`, and `ConfirmServedBy` is called from
+`DomainPreflightRead` and `CapturePlan`. The same false claim was found in
+`docs/next/ARCHITECTURE.md`, which said nothing calls the factory, and was corrected too. Gate 5b
+is raised as `P-84` rather than attempted: turning it on is its own change with its own fallout.
+
 ---
 
 ## D-3 — The request factory documents itself as building one request
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Audit/Capture pass |
 | **Where** | `next/src/SecureAD.Audit/Capture/CaptureSearchRequestFactory.cs`, class summary |
 | **Kind** | Stale XML comment in code |
@@ -97,13 +116,16 @@ drifted from its own rule, when the rule is intact.
 **Proposed fix.** *"Builds every search request capture issues, and holds the referral policy that
 makes them safe."*
 
+**What was done.** Half of this had already been applied by a later sitting: the referral-policy
+clause was present and *"the one"* was not. Only the first clause was corrected.
+
 ---
 
 ## D-4 — `ConnectionFailureReason` reads a TLS failure into a code that does not carry one
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Audit/Connect pass, while adjudicating `#17` |
 | **Where** | `next/src/SecureAD.Audit/Connect/ConnectionFailureReason.cs` |
 | **Kind** | XML comment asserting more than the citation supports |
@@ -143,7 +165,7 @@ private const int ConnectError = 91;
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Audit/Connect pass |
 | **Where** | `next/src/SecureAD.Audit/Connect/ConnectionSecurityLog.cs` |
 | **Kind** | XML comment asserting a guarantee the implementation does not give |
@@ -163,13 +185,20 @@ for exactly this reason, in the same subsystem.
 dictionary. Given `PreflightDispatch`'s reasoning about stable ordering, the second is the more
 consistent answer.
 
+**What was done.** The second, additively: the dictionary stays as the lookup and the list stands
+beside it. Worth recording that **this one cannot be proven by test.** Reverting `Controllers` to
+the dictionary's values passes the whole suite, because `Dictionary` does happen to enumerate in
+insertion order - which is the accident being removed. Prepending instead of appending fails both
+new tests, so they bite on real ordering changes. The value is structural: the type no longer rests
+on an undocumented implementation detail.
+
 ---
 
 ## D-6 — A gate's self-test says four and asserts three
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Audit/Connect pass, while checking each gate's subject after the move |
 | **Where** | `next/tests/SecureAD.Next.Tests/Architecture/ConnectionSecurityGateTests.cs` |
 | **Kind** | Comment contradicting the assertion directly beneath it |
@@ -207,7 +236,7 @@ from the line above it:
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Evidence pass, second sitting |
 | **Where** | `next/src/SecureAD.Evidence/Run/RunHash.cs`, type remarks |
 | **Kind** | Stale XML comment in code |
@@ -250,7 +279,7 @@ stop matching.
 
 | | |
 |---|---|
-| **Status** | open |
+| **Status** | fixed |
 | **Found** | Kernel/Schema pass |
 | **Where** | `docs/MICROSOFT-VERIFICATION.md` |
 | **Kind** | Stale count in a document |
@@ -270,5 +299,12 @@ every row in the table.
 
 **Nothing is wrong in the code.** The count that governs is the anchor test's, it is
 two-directional, and it passes.
+
+**What was done.** Corrected to 101, and the column sum below it from 237 to 238. The count was
+confirmed three independent ways - GUID literals, a breakdown by declaration form summing to 101,
+and the anchor test's own 101 rows. The reading was settled by measuring the other four components
+rather than by choosing: `AceType` records 10 and holds 10, `UserAccountControlWording` records 22
+and holds 22. So the column means *values the component holds now*, and that is now stated in the
+document's prose so the ambiguity cannot recur.
 
 ---
