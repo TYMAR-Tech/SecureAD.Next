@@ -1405,6 +1405,66 @@ Report the residual, for example:
 Residual statements are about principals/findings/routes in the captured graph, not about hypothetical
 unseen evidence.
 
+#### What an administrator actually experiences across two runs
+
+The parts above describe machinery. This section states the loop they add up to, because a design
+can be correct in every component and still deliver a miserable experience — and the question that
+exposes it is: *I fixed something. Do I now have to re-audit, and will I be shown a near-identical
+path all over again?*
+
+**Answer: re-audit yes, near-identical path no — provided the product recommends cuts rather than
+paths.** The distinction is the reason the anchor and the source-action model exist.
+
+**Why a re-audit is unavoidable.** A bundle is sealed evidence of one moment. The product does not
+hold a live connection and cannot know you removed an ACE; nothing about the old bundle changes when
+the directory does. That is deliberate — `0008` removed live verification — and it is also honest:
+a tool that marked a finding resolved because someone *said* they fixed it would be reporting an
+intention, not a fact. **Closure is proved by the next capture, not asserted by the operator.**
+
+**Why the near-identical path is not the outcome.** The failure being described is real and it is
+what path-enumerating tools do:
+
+```
+Run 1   Alice -> HelpdeskGroup -> ServerAdmins -> DC01     "fix this"
+        (operator removes Alice from HelpdeskGroup)
+Run 2   Bob   -> HelpdeskGroup -> ServerAdmins -> DC01     "fix this"
+        ... and 40 more, one per member
+```
+
+Forty findings for one misconfiguration, each closing individually and pointlessly, because the
+thing that was wrong was never Alice. Three commitments prevent it:
+
+1. **The recommendation is a `RemediationAction`, not a route.** Dominator analysis names the action
+   present on *every* route — here the ACE granting `ServerAdmins` control of `DC01`, not the
+   membership of whoever walked through it. Removing Alice was treating one symptom.
+2. **All forty share one anchor.** Under `P-92` there is one reachability rule and one destination,
+   so the report leads with *this one ACE puts 41 principals on the Tier 0 control plane*, not with
+   41 rows.
+3. **Residual is stated before you act.** *"Removing this ACE disconnects 118 principals; two remain
+   through independent actions."* The two are named up front, so the second run holds no surprise.
+
+**What the second run legitimately shows.** Some things reappearing are correct and not noise:
+
+| Second run shows | What it means |
+|---|---|
+| The finding is gone | The cut worked. Proved by evidence, not asserted |
+| The same finding, `Reopened` | The change did not take, or was reverted. Worth knowing |
+| The named residual, alone | Exactly what you were told would remain |
+| A genuinely new route | Something changed in the directory, or capture now reads what it could not before |
+| `Unknown` where it was `Reachable` | **Not** a fix. Capture got worse, and the product says so |
+
+That last row is the one an auditor should care about most, and it is why `Unknown` is a first-class
+answer. A cut that appears to have worked because a permission became *unreadable* is not a cut, and
+this design refuses to report it as one.
+
+**What is genuinely lost, and it is the honest cost.** Because a finding is keyed on the rule, the
+principal and the anchor — not on the route — **you cannot accept one path while staying alerted to
+others for the same principal.** Accepting is coarse: it silences that principal's reachability
+finding entirely. The alternative, per-route acceptance, was rejected because route identity is not
+stable across runs — add one unrelated group and every signature through it changes, so acceptances
+would silently evaporate and the operator would never know which. A coarse switch that behaves
+predictably beats a fine one that quietly forgets.
+
 #### Finding identity is generalized; reachability uses the anchor as its object
 
 The rule catalogue already contains account findings, directory-object findings, aggregate/set
@@ -1905,6 +1965,9 @@ research status and sources — and the code is generated from that, not from th
 | AC-84 | `RemediationActionId` is derived from captured configuration state and not from `HumanDescription`. Rewording a description does not change the id, and two ACEs differing only by inheritance source, ordinal or descriptor never share one. |
 | AC-85 | Route ordering is lexicographic in the ruled sequence: definite before possible, direct before conditional, fewer unmet preconditions, higher confidence, shorter, then stable signature. A two-hop route resting on an `Unknown` input never outranks a longer definite one, and no implementation trades certainty against length by summing weights. |
 | AC-86 | Route ordering never alters severity, which `0066` fixes on the rule card, and never removes a route from the evidence. Two routes equal through all five criteria are ordered by signature alone, so repeated runs of one bundle agree. |
+| AC-87 | Where one source action dominates every route from many principals, the report's primary recommendation is that action once, not one recommendation per affected principal. A design emitting a row per principal for a single dominating ACE fails. |
+| AC-88 | A reachability finding resolves only when a later bundle evaluates it `NotEstablished` under complete evidence. An operator marking it fixed cannot resolve it, and a finding whose evaluation moves from `Reachable` to `Unknown` is reported as reduced coverage rather than as resolved. |
+| AC-89 | A residual statement names what remains before the change is made, and the principals it names are the ones still reachable in the next bundle if only the stated action was taken. |
 
 ## Non-goals
 
