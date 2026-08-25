@@ -265,78 +265,113 @@ permanent.
 
 ## How to continue this work
 
-**One inventory row, or one small group of them, per session.** Never "work on the kernel". The map
-already sized every component, which is what makes a scope like *K15* honest and *the kernel* not.
+**The documentation is consolidated, and staying that way is the job.** One layer document per
+component, written from the code and bound to it by a test; `docs/decisions/` for positions;
+[`PUNCH-LIST.md`](../PUNCH-LIST.md) for work that may need doing; everything else deleted. A pass
+that adds documents without removing any has not consolidated anything.
 
-**Tests first on a port.** Take the existing tests across, run them red against the new project, then
-move production code. See §Tests for what is copied exactly, what is carried, and what is rewritten.
+### Route every fact to exactly one destination
 
-**Decisions are the owner's, and a session waits for them.** Tooling, code layout, test structure and
-technique are the session's to settle. What the product does, what it stores, what it tells a
-customer and what it refuses are not — those are presented with the options and their costs, and the
-session waits for an answer before writing code. **A brief saying "decide X" is not delegation of a
-product decision.** This is recorded here because it was got wrong: a session was told to decide six
-open points, decided them, built to them, and four did not survive review.
+| Kind of fact | Goes to | What holds it there |
+|---|---|---|
+| What the code does | the layer document for that component, and a row in its `TYPES` table | that page's own component gate, plus `TypesTableOwnershipTests` and `SurfaceRegisterTests` |
+| What an operator can do | a capability row naming the test that proves it | `CapabilityCitationTests`, `AreaFileGateTests` |
+| A product position | a record in `docs/decisions/` | `DecisionIndexTests` — **the index only, never the content** |
+| Work that may need doing | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | `PunchListIdentifierTests` — the shape only |
+| Anything else | deleted | — |
 
-**Where a decision rests on what the old implementation did, read the old implementation.**
-The archived component map is a summary written by a different session at a different time. It
-names the file to open; it is not the evidence. Three claims taken from it on 2026-08-12 were
-contradicted by the code — see `F-S15-9` in `S-15` — and two of them
-had already been built.
+### The rules a session works to
+
+Each says plainly whether the build enforces it, because a rule nothing checks is a rule that
+decays and the point of this section is to stop that happening again.
+
+1. **One type, one owner.** Adding a public type means adding a row to the owning page's `TYPES`
+   table and a row to [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md). Two pages may not claim one
+   type. **Enforced.**
+2. **A capability names a test that exists and passes.** The test is the evidence; the table is the
+   index. **Enforced.**
+3. **Nothing is deleted until its claims have somewhere else to live.** `AreaFileCitationSurvivalTests`
+   reads deleted documents back out of git history and refuses a deletion that dropped a capability.
+   That gate also makes recovery possible: seventeen run-library claims were restored verbatim from
+   history on 2026-08-24 rather than rewritten. **Enforced.**
+4. **Every path you write must resolve** — as a link, in backticks, or in a `<c>` tag.
+   `DocumentationLinkGateTests`, `ProsePathCitationTests` and `DocumentPathCitationTests` cover
+   those three between them, across the whole repository and not only `docs/`. If a document was
+   deleted, take the backticks off so the sentence reads as history. **Enforced.**
+5. **Measure before you plan, and say what you opened.** A count you did not read is not a
+   measurement, and a probe that matches a substring is not a probe — `README.md` is a substring of
+   six paths in this repository and that has produced wrong answers twice. **Not enforced.**
+6. **Prove every new gate failing in both directions before believing it**, with a mutation harness
+   that restores what it touched and verifies byte-identity by hash. Say which checks caught what,
+   including the ones that did not fire. **Not enforced.**
+7. **A floor is a decaying proxy.** If you are editing a threshold to make a gate pass, the
+   threshold is the defect. **Not enforced.**
+
+### What nothing holds, and you should know it
+
+- **Whether a decision record's content matches the code.** `DecisionIndexTests` checks the
+  catalogue is tidy — every record listed, every listing real, each with a title, date and status.
+  It does not read a single word inside one. Measured 2026-08-24: of 77 records, 29 are named in a
+  test, 53 in production code, and **23 appear nowhere in the tree at all**. Several of those
+  describe behaviour that does exist.
+- **Whether a capability sentence describes what its test asserts.** The gate closes the gap where
+  a test was renamed, deleted or never written. It cannot read English.
+- **Whether any of the prose is any good.** That needs a reader.
+
+### Decisions are the owner's, and a session waits for them
+
+Tooling, code layout, test structure and technique are the session's to settle. What the product
+does, what it stores, what it tells a customer and what it refuses are not — those are presented
+with the options and their costs, and the session waits for an answer before writing code. **A brief
+saying "decide X" is not delegation of a product decision.** This is recorded here because it was
+got wrong: a session was told to decide six open points, decided them, built to them, and four did
+not survive review.
+
+**Where a decision rests on what the old implementation did, read the old implementation.** It is a
+separate repository and the owner will point you at it. Any summary of it written by an earlier
+session names the file to open; it is not the evidence. Reading it first is what turned five open
+Group Policy design questions into one on 2026-08-24 — four had already been answered in code years
+before, and the fifth turned out to be an inherited defect rather than a decision to port.
 
 **Record a decision when it is made, not at the end.** A session that batches its documentation is
 one interruption away from losing all of it. If recording is deferred, say plainly that nothing is
 written down yet, so it is the owner's risk to take rather than a silent one.
 
-> ### The code in `SecureAD.Evidence` does not match the decisions
+
+> ### The Evidence warning that stood here has been discharged
 >
-> As of 2026-08-13, [`next/src/SecureAD.Evidence/`](../../next/src/SecureAD.Evidence) still holds
-> writers built on 2026-08-12 and **superseded by review the following day**. It has no re-analysis
-> path, which [`0021`](../decisions/0021-re-analysis-produces-a-new-bundle.md) restored; and its
-> seal is framed as a tamper control, which
-> [`0020`](../decisions/0020-the-seal-detects-corruption-not-tampering.md) rejected.
+> This section carried a warning, dated 2026-08-13, that
+> [`next/src/SecureAD.Evidence/`](../../next/src/SecureAD.Evidence) held writers superseded by
+> review: no re-analysis path, and a seal framed as a tamper control. **Both were checked on
+> 2026-08-24 and neither still holds.** Re-analysis exists across `CaptureRun`, `BundleSchema`,
+> `BundleSealing` and `BundleWriter`; and `RunHash` now describes the seal as detecting corruption,
+> naming the tamper framing in the past tense as the thing it corrected, per
+> [`0020`](../decisions/0020-the-seal-detects-corruption-not-tampering.md) and
+> [`0021`](../decisions/0021-re-analysis-produces-a-new-bundle.md).
 >
-> **The schema is rebuilt and is no longer among the superseded code.** How an object's attributes
-> are stored was corrected at **S-24** on 2026-08-13 — name/value rows became typed columns per
-> [`0022`](../decisions/0022-objects-are-stored-as-typed-columns.md) — and the security-descriptor
-> half was rebuilt at **S-25** on 2026-08-13: descriptors are deduplicated on a cryptographic hash
-> of their bytes with entry sets held once each, a measured 4.81 GB down to 1.24 GB per 100,000
-> objects; the raw bytes are stored; and an object whose descriptor could not be read at all now has
-> a row saying so. `BundleSchema.cs` no longer holds pre-review work. `what-a-bundle-holds.md`
-> describes what the code creates, in both directions.
->
-> **Read the decision records, not that code.** The inventory rows carry `rebuilding after review` for
-> the same reason. It has not been deleted because it still holds work that survives — the bundle
-> layout, the partial-file mechanism, and the guards — and deciding what to keep is part of the next
-> storage session rather than a tidy-up.
+> It is recorded rather than deleted because it stood for eleven days after it stopped being true,
+> which is the failure this whole section exists to prevent. **A dated warning about current code is
+> a claim, and a claim in the authority needs re-checking or removing, not leaving.**
 
 ## How a session is started
 
-**The prompt is a file, written before the session runs**, in
-`sessions/` and named for the slice it will produce. Start the session by
-pointing at that file.
+**Read this document, then measure before planning anything.** There is no prompt template and no
+session folder: session briefs and narratives were archived on 2026-08-20 because they recorded what
+one session intended on one day and never stated current behaviour, and several actively misled.
 
-Until 2026-08-12 the prompt was assembled by hand into a chat window from a template that lived
-here. Three things were wrong with that. The prompt actually used was never recorded, so *what was
-this session told to do* had no answer and a slice document could not be read against its own
-brief. Each expansion was a fresh chance to drop a rule, and an expansion that quietly omits
-`§Tests` looks exactly like one that does not. And nothing checked that a prompt pointed at
-documents that still exist, so a session sent to a renamed file finds nothing and carries on.
+A brief handed to a session is an input, not authority — and it will contain wrong figures, because
+every one so far has. **Re-measure everything it asserts.** The tools under
+[`next/tools/`](../../next/tools) exist for that: `measure-rewrite-progress.ps1` regenerates the
+queue from the tree, `show-area-file-types.ps1` reports who owns what,
+`check-document-encoding.ps1` runs after any scripted edit to a document, and the `mutate-*.ps1`
+harnesses are the shape a proof of a gate should take.
 
-Until 2026-08-14 `SessionPromptTests` held every prompt to four headings — `## Scope`,
-`## Read first`, `## Rules`, `## Finish by` — and checked that every document it named existed. It
-was deleted with the other checks that compared one document to another: it could not be broken by
-any change to the product, and what it could not check was the part that mattered — whether the
-scope is the right scope, or whether the rules named are the ones that matter. **A prompt is now
-read before the work rather than validated by a build.** That is why it is written down in advance
-rather than reconstructed afterwards.
+**Run the whole suite, never a filter.** A targeted run has passed 47 of 47 while the tree was
+broken.
 
-**Prompts name sections rather than repeating them.** A prompt carrying copies of the rules drifts
-from them and nothing can reconcile the two; that has already happened once in this repository.
-Naming them keeps one copy, which is the reason, and it holds whether or not a test is watching.
-
-`sessions/S-19-point-in-time-review.md` is the worked
-example, and the next session to run.
+**Commit only when green**, stage by name rather than with `git add -A`, and reserve the last
+actions of a pass for `git status --porcelain -uall`, `git diff --stat` and a zero-byte scan —
+writing the summary from their output or not at all.
 ## Status
 
 Phase 0. The scaffold exists, the cross-cutting contracts are written, and gates 1, 2, 4 and 5a are
