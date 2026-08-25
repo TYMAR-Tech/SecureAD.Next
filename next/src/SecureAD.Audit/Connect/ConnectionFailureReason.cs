@@ -43,7 +43,7 @@ internal static class ConnectionFailureReason
     /// <summary>The controller answered, and demanded protection this rung did not offer.</summary>
     public const string ProtectionWasRefused = "ProtectionWasRefused";
 
-    /// <summary>The controller answered, and the protected channel could not be built.</summary>
+    /// <summary>The connection could not be established, so nothing about it was observed.</summary>
     public const string ProtectedChannelFailed = "ProtectedChannelCouldNotBeEstablished";
 
     /// <summary>It failed, and the protocol did not say anything this code understands.</summary>
@@ -55,7 +55,7 @@ internal static class ConnectionFailureReason
     /// <summary>Something is there, and it did not reply inside the timeout.</summary>
     private const int TimedOut = 85;
 
-    /// <summary>The transport could not be established - in practice, TLS.</summary>
+    /// <summary>The connection could not be established. Says nothing about the server.</summary>
     private const int ConnectError = 91;
 
     /// <summary>The controller answered and would not authenticate this account (LDAP 49).</summary>
@@ -99,12 +99,19 @@ internal static class ConnectionFailureReason
     /// is that test, and it is deliberately strict: an unrecognised failure does not count as an
     /// answer, because a security claim resting on a code nobody classified is a claim the product
     /// did not measure.
+    /// <para>
+    /// <see cref="ProtectedChannelFailed"/> is not on this list, and that is the whole of
+    /// <c>D-4</c>. It carries LDAP 91, which Microsoft defines as <i>"cannot establish the
+    /// connection"</i> - a failure on this side of the wire. It was listed here on the strength of a
+    /// comment reading <i>in practice, TLS</i>, which would have meant the controller answered and
+    /// negotiated badly. On Microsoft's wording nothing came back at all, and <c>0018</c> says a
+    /// failure this side may not carry a finding.
+    /// </para>
     /// </remarks>
     /// <param name="code">The <c>Category.Reason</c> code of a failed attempt.</param>
     public static bool ProvesTheControllerAnswered(string code) =>
         Is(code, CredentialsWereRejected)
-        || Is(code, ProtectionWasRefused)
-        || Is(code, ProtectedChannelFailed);
+        || Is(code, ProtectionWasRefused);
 
     /// <summary>Whether a code carries this reason.</summary>
     /// <param name="code">The <c>Category.Reason</c> code of a failed attempt.</param>

@@ -377,6 +377,47 @@ public sealed class ConnectionLadderWalkTests
     }
 
     /// <summary>
+    /// A connection that could not be established is not a finding about the forest.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is <c>D-4</c>, and it is <c>F-S35-1</c> a third time. LDAP 91 was classified as
+    /// <c>ProtectedChannelCouldNotBeEstablished</c> and counted as proof the controller answered, on
+    /// the strength of a comment reading <i>in practice, TLS</i>. Microsoft defines
+    /// <c>LDAP_CONNECT_ERROR</c> as <i>"cannot establish the connection"</i> and says nothing
+    /// narrowing it to TLS.
+    /// </para>
+    /// <para>
+    /// The two readings are different accusations. A failed TLS handshake means the controller
+    /// answered and something went wrong between the two of you. A connection that could not be
+    /// established means you never arrived - a firewall, a closed port, a machine switched off - and
+    /// <c>0018</c> says a failure on this side may not carry a finding. Treat 91 as an answer and a
+    /// run that never reached the machine reports that its LDAP traffic is open to alteration.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AConnectionThatCouldNotBeEstablishedIsNotAFindingAboutTheForest()
+    {
+        var outcome = ConnectionLadderWalk.Descend(
+            Controller, UnprotectedConnectionAllowance.Refused, new ConnectionSecurityLog(),
+            _ => CouldNotConnect());
+
+        Assert.Equal("Capture.DomainControllerDidNotAnswer", outcome.Error!.Code);
+        Assert.DoesNotContain("open to alteration", outcome.Error.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A channel that could not be reached at all: LDAP 91, which says nothing about the server.
+    /// </summary>
+    private static Result<IDirectoryChannel> CouldNotConnect() =>
+        AuditError.Create(
+            ErrorCategory.Capture,
+            "ProtectedChannelCouldNotBeEstablished",
+            ErrorSeverity.Failed,
+            "the connection could not be established",
+            context: null);
+
+    /// <summary>
     /// A channel that is nothing but a successful outcome. The walk decides which rungs are tried;
     /// what is on the other end of a successful one is not its business.
     /// </summary>
