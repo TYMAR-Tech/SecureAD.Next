@@ -465,6 +465,57 @@ public sealed class ConnectionSecurityLogTests
     }
 
     /// <summary>
+    /// The order <see cref="ConnectionSecurityLog.Controllers"/> promises is the order it gives.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is <c>D-5</c>. The member said <i>in the order it first connected</i> and returned a
+    /// dictionary's values, which guarantee no order whatever. It enumerated in insertion order
+    /// while nothing was removed and nothing removed anything, so the claim was true by accident.
+    /// </para>
+    /// <para>
+    /// The names here are chosen so that insertion order, alphabetical order and
+    /// <c>OrdinalIgnoreCase</c> order are all different: an implementation that sorted, or that fell
+    /// back to hash order, fails.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheControllersAreGivenBackInTheOrderTheyFirstConnected()
+    {
+        var log = new ConnectionSecurityLog();
+        log.Record("zulu.ad.lab", ConnectionSecurityLevel.Ldaps, rungsRefused: 0);
+        log.Record("alpha.ad.lab", ConnectionSecurityLevel.SignedAndSealed, rungsRefused: 1);
+        log.Record("mike.ad.lab", ConnectionSecurityLevel.Signed, rungsRefused: 2);
+
+        Assert.Equal(
+            ["zulu.ad.lab", "alpha.ad.lab", "mike.ad.lab"],
+            log.Controllers.Select(c => c.DomainController));
+    }
+
+    /// <summary>
+    /// A controller recorded twice appears once, and keeps the place its first answer gave it.
+    /// </summary>
+    /// <remarks>
+    /// The list and the dictionary have to stay in step. A second <c>Record</c> for the same host is
+    /// ignored - the first answer stands, because the question is what the run actually used - and
+    /// an ordered list that appended anyway would report the same machine twice.
+    /// </remarks>
+    [Fact]
+    public void AControllerRecordedTwiceAppearsOnceAndKeepsItsFirstPlace()
+    {
+        var log = new ConnectionSecurityLog();
+        log.Record("zulu.ad.lab", ConnectionSecurityLevel.Ldaps, rungsRefused: 0);
+        log.Record("alpha.ad.lab", ConnectionSecurityLevel.Signed, rungsRefused: 1);
+        log.Record("ZULU.ad.lab", ConnectionSecurityLevel.Unprotected, rungsRefused: 3);
+
+        Assert.Equal(
+            ["zulu.ad.lab", "alpha.ad.lab"],
+            log.Controllers.Select(c => c.DomainController));
+        Assert.Equal(ConnectionSecurityLevel.Ldaps, log.Controllers[0].Level);
+        Assert.False(log.AnyUnprotected);
+    }
+
+    /// <summary>
     /// The difference an empty list cannot express on its own: a run in which nothing was
     /// unprotected and a run in which nothing was reached both leave <c>RefusedIntegrity</c> empty,
     /// and only the errors beside it tell them apart.

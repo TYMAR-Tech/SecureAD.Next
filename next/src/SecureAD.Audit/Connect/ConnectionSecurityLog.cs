@@ -54,10 +54,20 @@ public sealed class ConnectionSecurityLog
     private readonly Dictionary<string, ControllerConnectionSecurity> _byController =
         new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly List<ControllerConnectionSecurity> _inOrderConnected = [];
+
     private readonly List<AuditError> _errors = [];
 
     /// <summary>Every controller this run connected to, in the order it first connected.</summary>
-    public IReadOnlyCollection<ControllerConnectionSecurity> Controllers => _byController.Values;
+    /// <remarks>
+    /// Backed by a list rather than by <see cref="Dictionary{TKey,TValue}.Values"/>, which
+    /// guarantees no order at all. It happens to enumerate in insertion order while nothing is
+    /// removed, and nothing here removes anything - so the sentence above was true by implementation
+    /// accident, and a reader who rendered this collection directly could have had one forest come
+    /// back in a different order between two runs. <c>PreflightDispatch</c> is careful about stable
+    /// ordering for the same reason, in the same subsystem.
+    /// </remarks>
+    public IReadOnlyList<ControllerConnectionSecurity> Controllers => _inOrderConnected;
 
     /// <summary>
     /// The controllers this run could not connect to at all, and why.
@@ -116,7 +126,9 @@ public sealed class ConnectionSecurityLog
         if (_byController.ContainsKey(host))
             return;
 
-        _byController[host] = new ControllerConnectionSecurity(host, level, rungsRefused);
+        var recorded = new ControllerConnectionSecurity(host, level, rungsRefused);
+        _byController[host] = recorded;
+        _inOrderConnected.Add(recorded);
     }
 
     /// <summary>
