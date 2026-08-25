@@ -21,13 +21,18 @@ $mutations = @(
 
     @{ Name = 'the root README links to something absent (outside the old docs/ scope)';
        File = $rootReadme;
-       From = '## Documentation';
-       To   = "## Documentation`r`n`r`nSee [the missing guide](docs/no-such-guide.md)." }
+       From = 'This file is a signpost.';
+       To   = "See [the missing guide](docs/no-such-guide.md).`r`n`r`nThis file is a signpost." }
 
     @{ Name = 'a document under docs/ links to something absent (the original scope still holds)';
        File = $reading;
        From = '# ';
        To   = "See [nothing](no-such-target.md).`r`n`r`n# " }
+
+    @{ Name = 'the root README names an in-repo path in backticks that does not exist (outside the old prose scope)';
+       File = $rootReadme;
+       From = '# SecureAD';
+       To   = "# SecureAD`r`n`r`nSee ``docs/no-such-signpost.md`` for more." }
 )
 
 $touched = $mutations | ForEach-Object { $_.File } | Sort-Object -Unique

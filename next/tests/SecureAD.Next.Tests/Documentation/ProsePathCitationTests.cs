@@ -36,13 +36,19 @@ namespace SecureAD.Next.Tests.Documentation;
 /// then - but written as a path it sends a reader looking for a file.
 /// </para>
 /// <para>
-/// <b>Mutation-tested 2026-08-24 by <c>next/tools/mutate-documentation-rot-gates.ps1</c>, three
+/// <b>Mutation-tested 2026-08-24 by <c>next/tools/mutate-documentation-rot-gates.ps1</c>, four
 /// directions, all killed; three touched files verified byte-identical by hash.</b> A backticked
 /// path to a document that does not exist is killed by
-/// <see cref="EveryInRepoPathNamedInProseResolves"/>. A broken link in the root README is killed by
-/// <c>DocumentationLinkGateTests</c>, which is the direction that proves widening it past
-/// <c>docs/</c> did something; a broken link inside <c>docs/</c> is killed by the same, which
-/// proves the widening did not lose the original scope.
+/// <see cref="EveryInRepoPathNamedInProseResolves"/> — once inside <c>docs/</c> and once in the
+/// root README, which is the direction proving this scan was widened past <c>docs/</c> rather than
+/// only claiming to be. A broken link in the root README is killed by
+/// <c>DocumentationLinkGateTests</c>, and a broken link inside <c>docs/</c> by the same, which
+/// proves that widening did not lose the original scope.
+/// </para>
+/// <para>
+/// The harness earned its keep on that run: a mutation anchored on a heading the root README no
+/// longer carries reported <c>ANCHOR MISS</c> and stopped, rather than mutating nothing and
+/// reporting a gate as passing.
 /// </para>
 /// </remarks>
 public sealed class ProsePathCitationTests
@@ -107,7 +113,15 @@ public sealed class ProsePathCitationTests
         Assert.True(documents.Count > 0, "Found no documents to scan for paths.");
         Assert.True(citations.Count > 0, "Read no in-repo paths out of the documentation.");
 
-        // Both trees are reached, not just whichever one enumerated first.
+        // Every root the scan claims to cover is actually reached. Without this, adding a directory
+        // to the list above would look like widening the gate while scanning nothing - which is what
+        // happened to DocumentationLinkGateTests, whose scope excluded the root README for months.
+        var root = RepositoryLocation.Root();
+        Assert.Contains(documents, d => d == Path.Combine(root, "README.md"));
+        Assert.Contains(documents, d => d.Contains($"{Path.DirectorySeparatorChar}docs{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+        Assert.Contains(documents, d => d.Contains($"{Path.DirectorySeparatorChar}.github{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+
+        // Both trees are reached by the citations too, not just whichever one enumerated first.
         Assert.Contains(citations, c => c.Path.StartsWith("docs/", StringComparison.Ordinal));
         Assert.Contains(citations, c => c.Path.StartsWith("next/", StringComparison.Ordinal));
 
@@ -171,21 +185,52 @@ public sealed class ProsePathCitationTests
     }
 
     /// <summary>
-    /// Every document that instructs: the documentation tree and the instructions beside it.
+    /// Every document that instructs: the documentation tree, the instructions beside it, the
+    /// rebuild tree's own notes, and the root README.
     /// </summary>
+    /// <remarks>
+    /// <c>next/</c> and the root were outside this scan until 2026-08-24, which is why
+    /// <c>next/README.md</c> could cite a data-model document that has never existed in this
+    /// repository and nothing said so. The link gate covered that tree and this one did not, so a
+    /// path written in backticks there was unguarded while the same path written as a link was not.
+    /// <para>
+    /// <b>Stated plainly: <c>next/</c> holds no markdown at all today</b>, because the file that
+    /// prompted this was folded into the authority and deleted. That arm of the scan is therefore
+    /// coverage for the next document written there rather than for anything present now, and the
+    /// directory assertion above is what stops it quietly becoming a scan of nothing if the tree
+    /// moves. The root README is genuinely reached, and
+    /// <see cref="TheCheckReadsTheDocumentsItsPathsAndDiscriminates"/> proves it.
+    /// </para>
+    /// </remarks>
     private static List<string> Documents()
     {
         var root = RepositoryLocation.Root();
-        var found = new List<string>();
 
-        foreach (var directory in new[] { "docs", ".github" })
+        var found = new List<string>(
+            Directory.EnumerateFiles(root, "*.md", SearchOption.TopDirectoryOnly));
+
+        foreach (var directory in new[] { "docs", ".github", "next" })
         {
             var path = Path.Combine(root, directory);
             Assert.True(Directory.Exists(path), $"Expected documents at {path}.");
 
-            found.AddRange(Directory.EnumerateFiles(path, "*.md", SearchOption.AllDirectories));
+            found.AddRange(Directory
+                .EnumerateFiles(path, "*.md", SearchOption.AllDirectories)
+                .Where(NotBuildOutput));
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// Build output is skipped: a copy of a generated file would be counted twice and reported at a
+    /// path nobody edits.
+    /// </summary>
+    private static bool NotBuildOutput(string file)
+    {
+        var separator = Path.DirectorySeparatorChar;
+
+        return !file.Contains($"{separator}bin{separator}", StringComparison.Ordinal)
+            && !file.Contains($"{separator}obj{separator}", StringComparison.Ordinal);
     }
 }
