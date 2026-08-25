@@ -34,6 +34,7 @@ there is nothing left.
 | `ICapturedObjectSink` | Where finished objects go, one at a time rather than as a list |
 | `BundleCaptureSink` | The join between capture and storage. Deliberately thin: it maps and decides nothing |
 | `ContinuationReferenceReconciliation` | What the references revealed — and whether it could see anything at all |
+| `PartitionCoverage` | What one pass over one naming context on one controller actually read, and the grounds on which the run may say that was all of it |
 <!-- TYPES:END -->
 
 Each type carries its own reasoning in its XML documentation, including the Microsoft sources it is

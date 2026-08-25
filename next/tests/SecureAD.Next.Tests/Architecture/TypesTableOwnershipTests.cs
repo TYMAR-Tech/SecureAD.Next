@@ -154,6 +154,48 @@ public sealed class TypesTableOwnershipTests
         page.StartsWith("layers/shell/", StringComparison.Ordinal);
 
     /// <summary>
+    /// A page that carries a <c>TYPES</c> table claims everything the register gives it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This closes the other direction.</b>
+    /// <see cref="EveryClaimedTypeIsRegisteredToThePageThatClaimsIt"/> holds a page's claims to the
+    /// register. Nothing held the register to the page, so a type could carry a register row naming
+    /// a document that never described it and every check would pass: the register was satisfied
+    /// because the row existed, and no page gate looked at it because no page claimed it. The type
+    /// was documented in name only. Found by measurement 2026-08-24, with
+    /// <c>PartitionCoverage</c> live in exactly that state.
+    /// </para>
+    /// <para>
+    /// <b>It applies only to pages that have opened a table</b>, because a page without one has not
+    /// adopted the convention and cannot claim anything. Six layer documents are in that state and
+    /// the eleven types registered to two of them are the remaining hole, recorded as <c>P-83</c>
+    /// rather than papered over here. Scoping it this way is the difference between a check that
+    /// fires on one real defect and one that fires on twelve things nobody has got to yet, which is
+    /// how a gate gets silenced.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryTypeRegisteredToAPageWithATableIsClaimedByIt()
+    {
+        var claims = Claims().ToDictionary(c => c.Page, c => c.Types, StringComparer.Ordinal);
+
+        var wrong = SurfaceRegister.Entries()
+            .Where(e => claims.TryGetValue(e.Document, out var types) && !types.Contains(e.Type))
+            .Select(e => $"  {SurfaceRegister.FileName} gives '{e.Type}' to {e.Document}, whose TYPES table does not claim it")
+            .OrderBy(m => m, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            wrong.Count == 0,
+            "The register assigns a type to a document that carries a TYPES table and does not "
+            + "claim it. Nothing else would notice: the register is satisfied because the row "
+            + "exists, and no page gate reads a type no page claims, so the type is documented in "
+            + "name only:"
+            + Environment.NewLine + string.Join(Environment.NewLine, wrong));
+    }
+
+    /// <summary>
     /// No type is claimed by two pages. This is implied by the check above whenever the register is
     /// intact, and is stated separately because it is the failure that matters: a reader following
     /// either page believes it is the description, and one of them is a second description nobody
