@@ -60,9 +60,22 @@ public static class CapturedAttributeCatalog
     /// controller's view as a fact about the domain - and every judgement built on it would be
     /// wrong in a way nothing on screen could reveal. See <see cref="NotCaptured"/>.
     /// </para>
+    /// <para>
+    /// <b>4 - 2026-08-25.</b> <see cref="DomainAttributes"/> and
+    /// <see cref="PasswordSettingsAttributes"/> added, carrying the domain's password and lockout
+    /// policy, the fine-grained policies that override it, and <c>managedBy</c>. A bundle stamped 3
+    /// cannot say what a domain's password policy was, and no later analysis can recover it.
+    /// <para>
+    /// <b>Nothing checks them, and that is deliberate.</b> The owner ruled on 2026-08-25 that
+    /// SecureAD is not a policy compliance checker; these are captured so an operator can see a
+    /// domain's policy on the domain object and query it, which <c>docs/decisions/0064</c> makes a
+    /// sufficient justification on its own. <c>P-97</c> carries the reasoning, including why the
+    /// entries were refused when first proposed - there was no consumer to name until the object
+    /// view was named.
+    /// </para>
     /// </para>
     /// </remarks>
-    public const int Version = 3;
+    public const int Version = 4;
 
     /// <summary>
     /// Requested for every object, of every class, in every naming context capture reads.
@@ -181,6 +194,91 @@ public static class CapturedAttributeCatalog
     ];
 
     /// <summary>
+    /// The domain object's own password and lockout policy, and who the directory records as
+    /// responsible for it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>None of these is checked against a standard, and that is the point of them.</b> SecureAD
+    /// does not measure password strength - the owner's ruling of 2026-08-25 is that plenty of
+    /// software does, and this is not that product. No rule card reads any of them. They are here
+    /// because an operator looking at a domain should be able to see its policy, which is the
+    /// object-view justification <c>docs/decisions/0064</c> makes sufficient on its own.
+    /// </para>
+    /// <para>
+    /// <b>They live on the domain object by inheritance.</b> Microsoft places them on
+    /// <c>Sam-Domain</c>, which <c>Domain-DNS</c> carries as an auxiliary class, and groups them as
+    /// the
+    /// <see href="https://learn.microsoft.com/windows/win32/adschema/r-domain-password">Domain-Password</see>
+    /// property set that applies to <c>Domain-DNS</c>. So no separate read is needed: the domain
+    /// object is already captured, and this list only widens what is asked for it.
+    /// </para>
+    /// <para>
+    /// <b>Stored as text like every other number here.</b> <c>maxPwdAge</c>, <c>minPwdAge</c>,
+    /// <c>lockoutDuration</c> and <c>lockOutObservationWindow</c> are <c>Interval</c> values - the
+    /// negative count of 100-nanosecond units - and the rest are enumerations. Following
+    /// <c>userAccountControl</c> and <c>pwdLastSet</c>, the catalogue keeps the controller's own
+    /// representation and leaves interpretation to a reader.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<CapturedAttribute> DomainAttributes { get; } =
+    [
+        new("minPwdLength", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("maxPwdAge", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("minPwdAge", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("pwdHistoryLength", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("pwdProperties", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("lockoutThreshold", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("lockoutDuration", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("lockOutObservationWindow", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("managedBy", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// A fine-grained password policy - the settings it carries and the principals it applies to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Read together with <see cref="DomainAttributes"/> or not at all.</b> A policy settings
+    /// object overrides the domain default for the principals it names, so a list of these without
+    /// the default they override says nothing about what is actually enforced.
+    /// </para>
+    /// <para>
+    /// <b>Absence of a policy is a fact only because preflight proved it.</b> These objects carry a
+    /// restrictive default access control list, and an account without access reads the Password
+    /// Settings Container as <i>empty</i> rather than as <i>denied</i>. That is why
+    /// <c>ForPasswordSettingsContainer</c> proves the container readable before a run commits, per
+    /// <c>docs/decisions/0048</c>. Without that proof a bundle holding no policy would be
+    /// indistinguishable from a bundle whose reader was not allowed to see one.
+    /// </para>
+    /// <para>
+    /// <b><c>msDS-PSOAppliesTo</c> is the only range-liable entry here.</b> Microsoft records it as
+    /// <c>Is-Single-Valued: False</c> with syntax <c>Object(DS-DN)</c>
+    /// (<see href="https://learn.microsoft.com/windows/win32/adschema/a-msds-psoappliesto">ms-DS-PSO-Applies-To</see>);
+    /// every other entry is a scalar setting. Marking it single-valued would truncate a policy that
+    /// applies to more principals than the server returns at once, and nothing on screen would say
+    /// so.
+    /// </para>
+    /// <para>
+    /// As with the domain policy, <b>nothing here is checked</b> and no rule card reads it.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<CapturedAttribute> PasswordSettingsAttributes { get; } =
+    [
+        new("msDS-PasswordSettingsPrecedence", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-PSOAppliesTo", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("msDS-MinimumPasswordLength", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-MaximumPasswordAge", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-MinimumPasswordAge", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-PasswordHistoryLength", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-PasswordComplexityEnabled", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-PasswordReversibleEncryptionEnabled", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-LockoutThreshold", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-LockoutDuration", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msDS-LockoutObservationWindow", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
     /// The object classes that get attributes beyond <see cref="Universal"/>, keyed by
     /// <c>lDAPDisplayName</c>. Matched without regard to case, because an LDAP class name is.
     /// </summary>
@@ -195,6 +293,8 @@ public static class CapturedAttributeCatalog
             ["group"] = GroupAttributes,
             ["organizationalUnit"] = OrganizationalUnitAttributes,
             ["groupPolicyContainer"] = GroupPolicyContainerAttributes,
+            ["domainDNS"] = DomainAttributes,
+            ["msDS-PasswordSettings"] = PasswordSettingsAttributes,
         };
 
     /// <summary>

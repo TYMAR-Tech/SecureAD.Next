@@ -108,6 +108,12 @@ internal static class ObjectSectionCatalog
     /// <summary>What this policy is and what it carries.</summary>
     public const string Policy = "Policy";
 
+    /// <summary>The domain's own password and lockout policy.</summary>
+    public const string PasswordPolicy = "PasswordPolicy";
+
+    /// <summary>A fine-grained policy that overrides the domain's for the principals it names.</summary>
+    public const string PasswordSettings = "PasswordSettings";
+
     /// <summary>Who can do what to this object.</summary>
     public const string Permissions = "Permissions";
 
@@ -197,6 +203,60 @@ internal static class ObjectSectionCatalog
         ["displayName", "gPCFileSysPath", "flags", "versionNumber", "gPCMachineExtensionNames"]);
 
     /// <summary>
+    /// The domain's own password and lockout policy, as the directory holds it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Shown, never graded.</b> The owner ruled on 2026-08-25 that SecureAD is not a policy
+    /// compliance checker, so no value here carries a verdict and no rule reads any of them. A
+    /// threshold of zero is reported as zero, not as weak.
+    /// </para>
+    /// <para>
+    /// <b>This is the baseline a fine-grained policy overrides</b>, which is why the two are
+    /// captured and shown together: a policy settings object read without the default it displaces
+    /// says nothing about what a given account is actually subject to.
+    /// </para>
+    /// </remarks>
+    private static readonly ObjectSectionDefinition PasswordPolicySection = new(
+        PasswordPolicy,
+        "Password and lockout policy",
+        [
+            "minPwdLength",
+            "maxPwdAge",
+            "minPwdAge",
+            "pwdHistoryLength",
+            "pwdProperties",
+            "lockoutThreshold",
+            "lockoutDuration",
+            "lockOutObservationWindow",
+        ]);
+
+    /// <summary>
+    /// A fine-grained password policy: what it sets, who it applies to, and which policy wins.
+    /// </summary>
+    /// <remarks>
+    /// <c>msDS-PasswordSettingsPrecedence</c> leads because it is the only value that answers the
+    /// question an operator actually arrives with - several policies can name one principal, and
+    /// without precedence a list of them cannot say which is in force.
+    /// </remarks>
+    private static readonly ObjectSectionDefinition PasswordSettingsSection = new(
+        PasswordSettings,
+        "Fine-grained password policy",
+        [
+            "msDS-PasswordSettingsPrecedence",
+            "msDS-PSOAppliesTo",
+            "msDS-MinimumPasswordLength",
+            "msDS-MaximumPasswordAge",
+            "msDS-MinimumPasswordAge",
+            "msDS-PasswordHistoryLength",
+            "msDS-PasswordComplexityEnabled",
+            "msDS-PasswordReversibleEncryptionEnabled",
+            "msDS-LockoutThreshold",
+            "msDS-LockoutDuration",
+            "msDS-LockoutObservationWindow",
+        ]);
+
+    /// <summary>
     /// The object's own access control list. Built from the security descriptor rather than shown
     /// as an attribute value, which is why it claims <c>nTSecurityDescriptor</c> and lists no
     /// others.
@@ -250,6 +310,8 @@ internal static class ObjectSectionCatalog
             ["group"] = [OverviewSection, GroupSection, MembershipSection, PermissionsSection],
             ["organizationalUnit"] = [OverviewSection, PolicyLinksSection, PermissionsSection],
             ["groupPolicyContainer"] = [OverviewSection, PolicySection, PermissionsSection],
+            ["domainDNS"] = [OverviewSection, PasswordPolicySection, PermissionsSection],
+            ["msDS-PasswordSettings"] = [OverviewSection, PasswordSettingsSection, PermissionsSection],
         };
 
     /// <summary>
@@ -273,6 +335,12 @@ internal static class ObjectSectionCatalog
                 + "because an operator reading any section needs to be certain which object this "
                 + "is. A row repeating it inside the overview was on screen 2026-08-18 and read "
                 + "as two facts rather than one.",
+            ["managedBy"] =
+                "Captured but not yet shown. It is the owner of record - a distinguished name the "
+                + "directory carries - and it is a different thing from the security owner the "
+                + "permissions section already shows. Putting the two side by side without "
+                + "wording that distinction would invite an operator to read a contact as a "
+                + "controller, which is the wrong answer to who can change this object.",
         };
 
     /// <summary>
@@ -319,6 +387,25 @@ internal static class ObjectSectionCatalog
             ["member"] = "Members",
             ["groupType"] = "Group type",
             ["msDS-GroupMSAMembership"] = "Password readers",
+            ["minPwdLength"] = "Minimum password length",
+            ["maxPwdAge"] = "Maximum password age",
+            ["minPwdAge"] = "Minimum password age",
+            ["pwdHistoryLength"] = "Passwords remembered",
+            ["pwdProperties"] = "Password options",
+            ["lockoutThreshold"] = "Lockout after",
+            ["lockoutDuration"] = "Lockout lasts",
+            ["lockOutObservationWindow"] = "Failed attempts counted within",
+            ["msDS-PasswordSettingsPrecedence"] = "Precedence",
+            ["msDS-PSOAppliesTo"] = "Applies to",
+            ["msDS-MinimumPasswordLength"] = "Minimum password length",
+            ["msDS-MaximumPasswordAge"] = "Maximum password age",
+            ["msDS-MinimumPasswordAge"] = "Minimum password age",
+            ["msDS-PasswordHistoryLength"] = "Passwords remembered",
+            ["msDS-PasswordComplexityEnabled"] = "Complexity required",
+            ["msDS-PasswordReversibleEncryptionEnabled"] = "Reversible encryption",
+            ["msDS-LockoutThreshold"] = "Lockout after",
+            ["msDS-LockoutDuration"] = "Lockout lasts",
+            ["msDS-LockoutObservationWindow"] = "Failed attempts counted within",
             ["gPLink"] = "Linked policies",
             ["gPOptions"] = "Inheritance blocked",
             ["displayName"] = "Display name",

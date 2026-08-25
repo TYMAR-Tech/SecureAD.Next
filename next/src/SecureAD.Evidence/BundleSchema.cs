@@ -52,8 +52,16 @@ public static class BundleSchema
     /// truth about the table while lying about the forest. Refusing is what
     /// <c>docs/decisions/0001</c> intends and what <see cref="BundleReader"/> already does.
     /// </para>
+    /// <para>
+    /// <b>Raised to 7 when the password policy attributes were added.</b> The columns of
+    /// <c>captured_object</c> and the per-attribute value tables are generated from
+    /// <c>CapturedAttributeCatalog</c>, so widening the catalogue changes the schema whether or not
+    /// a table is named here. A version 6 bundle has no column for <c>minPwdLength</c>, and a build
+    /// that read one without refusing it would answer <i>no policy</i> where the truthful answer is
+    /// <i>this bundle was never allowed to look</i>.
+    /// </para>
     /// </remarks>
-    public const int Version = 6;
+    public const int Version = 7;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another

@@ -66,6 +66,7 @@ things something pointed at and never saw.
 | `member_value` | One member of one group, in the order the controller sent them | The group has no members, or membership was withheld. The two are one emptiness and the bundle does not claim to tell them apart |
 | `memberof_value` | One group one object belongs to, as the directory reports it back-linked | The object is in no group other than its primary one, which is a column and not a row here |
 | `sidhistory_value` | One security identifier an object carries from a migrated domain, as bytes | The object was never migrated, or its history was withheld. A row here is the finding; an absence is the ordinary case |
+| `msds_psoappliesto_value` | One user or group a fine-grained password policy applies to, as a distinguished name | The policy names nobody, or the list was withheld. The only multi-valued attribute of a policy settings object, so the only one that gets a table rather than a column |
 | `serviceprincipalname_value` | One service principal name registered on an account | The account runs no registered service — which is what makes an account with rows here worth looking at |
 | `msds_allowedtodelegateto_value` | One service this account may delegate to | Constrained delegation is not configured on this account. Unconstrained delegation is a flag on `useraccountcontrol` and leaves nothing here |
 | `msds_keycredentiallink_value` | One key credential registered against the account | No key credential is registered, or they were withheld. This is where a shadow-credential attack leaves its mark |

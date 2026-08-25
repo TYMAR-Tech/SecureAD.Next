@@ -155,11 +155,19 @@ from [`docs/rules/`](../../rules/) — and a named rule must be a card that exis
 `Text` or `Binary`, and `Binary` means the value is an octet string that must never be round-tripped
 through a string.
 
-This catalogue is **version 3**, and every bundle records it, so a bundle read years later can still
+This catalogue is **version 4**, and every bundle records it, so a bundle read years later can still
 say what it was allowed to see. It started at 1 rather than continuing the previous product's
 sequence, which had reached 10: per [`0001`](../../decisions/0001-no-backward-compatibility.md) there
 is no compatibility to preserve, and a continuing number would imply that a bundle stamped 10 and
 one stamped 11 hold comparable evidence.
+
+**Version 4 added the password policy, and checks none of it.** The domain's own password and lockout
+policy, the fine-grained policies that override it, and `managedBy`. The owner ruled on 2026-08-25
+that SecureAD is not a policy compliance checker — plenty of software measures password strength, and
+this is not that product. No rule card reads any of these; they are justified by the object view
+alone, which [`0064`](../../decisions/0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md)
+makes sufficient. A bundle stamped 3 cannot say what a domain's password policy was, and no later
+analysis can recover it.
 
 **Two attributes were refused at version 3, on one rule.** `lastLogon` and `whenChanged` are both
 documented by Microsoft as not replicated, so each controller holds its own value. This product
@@ -250,6 +258,58 @@ previous product kept four near-identical lists for them and they had drifted ap
 | versionNumber | SingleValued | Text | E21 | Whether the directory half and the SYSVOL half of the policy agree. They can disagree, and when they do the policy's effect is not what either half says |
 | gPCMachineExtensionNames | MultiValued | Text | B20, SEC-083 | Which kinds of setting the policy declares it contains, read by `GpoClientSideExtensions.ParseCseGuids`. The SYSVOL read does not narrow by it: what a workstation applies is the files on the share, so `S-33` lists those instead. Kept because a policy whose declared extensions and actual files disagree is worth being able to ask about |
 
+### `domainDNS`
+
+The domain object carries the domain-wide password and lockout policy. Microsoft's schema places
+these on `Sam-Domain`, which `Domain-DNS` takes as an auxiliary class, and groups them as the
+[Domain-Password](https://learn.microsoft.com/windows/win32/adschema/r-domain-password) property set
+that applies to `Domain-DNS`.
+
+**None of these is checked against a standard.** SecureAD does not measure password strength or
+grade a policy, and no rule card reads any of them. They are captured so an operator can see a
+domain's policy on the domain object and query it, per
+[`0064`](../../decisions/0064-an-attribute-is-justified-by-a-rule-or-the-object-view.md).
+
+| Attribute | Cardinality | Storage | Read by | Why |
+|---|---|---|---|---|
+| minPwdLength | SingleValued | Text | J34 | The shortest password the domain accepts. Shown on the domain object |
+| maxPwdAge | SingleValued | Text | J34 | How long a password may live before it must change. An interval, stored as the negative 100-nanosecond count the directory returns |
+| minPwdAge | SingleValued | Text | J34 | How soon a password may be changed again, which is what stops a history being cycled through in one sitting |
+| pwdHistoryLength | SingleValued | Text | J34 | How many previous passwords are remembered |
+| pwdProperties | SingleValued | Text | J34 | The bitfield carrying complexity and reversible-encryption settings ([Pwd-Properties](https://learn.microsoft.com/windows/win32/adschema/a-pwdproperties)). Reported as the flags it sets, never as a verdict |
+| lockoutThreshold | SingleValued | Text | J34 | How many bad passwords lock an account. Zero means never, which is a fact about the domain rather than a judgement on it |
+| lockoutDuration | SingleValued | Text | J34 | How long a lockout lasts |
+| lockOutObservationWindow | SingleValued | Text | J34 | The window in which bad attempts are counted toward the threshold |
+| managedBy | SingleValued | Text | J34 | Who the directory records as responsible for the object. A distinguished name, shown as the owner-of-record beside the security owner, which is a different thing |
+
+### `msDS-PasswordSettings`
+
+Fine-grained password policies. A PSO overrides the domain default for the principals it applies to,
+so the domain policy above and these are read together or neither is meaningful.
+
+**These objects carry a restrictive default DACL**, and an account without access reads the Password
+Settings Container as *empty* rather than as *denied* — which is why preflight proves the container
+is readable before a run commits, per
+[`0048`](../../decisions/0048-preflight-proves-a-controller-before-a-run-commits.md). Absence of a
+PSO in a bundle therefore means *the container was readable and held none*, never *we could not
+look*.
+
+**As above, nothing here is checked.** No rule card reads them.
+
+| Attribute | Cardinality | Storage | Read by | Why |
+|---|---|---|---|---|
+| msDS-PasswordSettingsPrecedence | SingleValued | Text | J34 | Which policy wins when several apply to one principal. Without it a list of policies cannot say which is in force |
+| msDS-PSOAppliesTo | MultiValued | Text | J34 | The users and groups the policy applies to. A linked distinguished-name attribute and the only range-liable entry here ([ms-DS-PSO-Applies-To](https://learn.microsoft.com/windows/win32/adschema/a-msds-psoappliesto), `Is-Single-Valued: False`) |
+| msDS-MinimumPasswordLength | SingleValued | Text | J34 | The PSO's own minimum length, overriding the domain's |
+| msDS-MaximumPasswordAge | SingleValued | Text | J34 | The PSO's own maximum age |
+| msDS-MinimumPasswordAge | SingleValued | Text | J34 | The PSO's own minimum age |
+| msDS-PasswordHistoryLength | SingleValued | Text | J34 | The PSO's own history length |
+| msDS-PasswordComplexityEnabled | SingleValued | Text | J34 | Whether the PSO requires complexity. Reported as set or not, not as adequate or not |
+| msDS-PasswordReversibleEncryptionEnabled | SingleValued | Text | J34 | Whether the PSO stores passwords reversibly |
+| msDS-LockoutThreshold | SingleValued | Text | J34 | The PSO's own lockout threshold |
+| msDS-LockoutDuration | SingleValued | Text | J34 | The PSO's own lockout duration |
+| msDS-LockoutObservationWindow | SingleValued | Text | J34 | The PSO's own observation window |
+
 ### Schema partition — `attributeSchema` and `classSchema` objects
 
 Read once per forest, on every capture, per
@@ -317,6 +377,26 @@ an attribute into a stored column, which is the half where a silent mismatch wou
 | msDS-AllowedToDelegateTo | yes | SEC-010, SEC-011, SEC-012 | — |
 | msDS-AllowedToActOnBehalfOfOtherIdentity | yes | SEC-010, SEC-011, SEC-013, SEC-122 | — |
 | msDS-KeyCredentialLink | yes | — | E19 |
+| minPwdLength | yes | — | J34 |
+| maxPwdAge | yes | — | J34 |
+| minPwdAge | yes | — | J34 |
+| pwdHistoryLength | yes | — | J34 |
+| pwdProperties | yes | — | J34 |
+| lockoutThreshold | yes | — | J34 |
+| lockoutDuration | yes | — | J34 |
+| lockOutObservationWindow | yes | — | J34 |
+| managedBy | yes | — | J34 |
+| msDS-PasswordSettingsPrecedence | yes | — | J34 |
+| msDS-PSOAppliesTo | yes | — | J34 |
+| msDS-MinimumPasswordLength | yes | — | J34 |
+| msDS-MaximumPasswordAge | yes | — | J34 |
+| msDS-MinimumPasswordAge | yes | — | J34 |
+| msDS-PasswordHistoryLength | yes | — | J34 |
+| msDS-PasswordComplexityEnabled | yes | — | J34 |
+| msDS-PasswordReversibleEncryptionEnabled | yes | — | J34 |
+| msDS-LockoutThreshold | yes | — | J34 |
+| msDS-LockoutDuration | yes | — | J34 |
+| msDS-LockoutObservationWindow | yes | — | J34 |
 | msDS-SupportedEncryptionTypes | yes | — | E19 |
 | pwdLastSet | yes | — | E19 |
 | whenCreated | yes (added at S-51) | — | the object view, which asks when anything unexpected came into existence |

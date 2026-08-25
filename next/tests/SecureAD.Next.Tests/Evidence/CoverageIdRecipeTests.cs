@@ -71,6 +71,13 @@ public sealed class CoverageIdRecipeTests
     private static readonly Dictionary<int, string> ExpectedBySchemaVersion = new()
     {
         [6] = "57cf8ba5a9e7fb10",
+
+        // Same value as 6, and that is the correct outcome rather than a missed change. Version 7
+        // widened the captured attribute catalogue, which changes the schema but not this recipe -
+        // coverage_id is built from the forest, the declared domains and the exclusions, none of
+        // which the password policy attributes touch. A differing value here would have meant the
+        // recipe moved without anyone saying so.
+        [7] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>
