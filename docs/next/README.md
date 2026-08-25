@@ -560,16 +560,26 @@ Kept because they are operational rather than historical — they will happen ag
   `DnHelper.cs` after a deletion, and it is the same failure as measuring with a substring: check
   the shape of what came back before believing the number.
 - **`Measure-Object -Line` undercounts.** Use `(Get-Content x).Count`.
-- **PowerShell's text cmdlets rewrite what they touch.** `Set-Content -Encoding utf8` reads UTF-8
-  back through Windows-1252 and turns every em dash, en dash and ellipsis into three characters. It
-  did that to twenty-nine documents in one pass, and fifteen were still carrying five hundred and
-  fourteen corrupted characters weeks later, through several passes that read those very files.
-  **Use `[System.IO.File]::WriteAllText` with `UTF8Encoding($false)` for any edit to a document.**
-  `DocumentEncodingGateTests` now fails the build on a single occurrence, and
-  `next/tools/repair-double-encoded-documents.ps1` inverts the damage exactly if it happens anyway.
-  Windows PowerShell 5.1 also has no `` `u{} `` escape — build a character with `[char]0x2014` or
-  the literal goes in as seven characters of text, which produced a mutation that silently proved
-  nothing.
+- **Run the terminal as PowerShell 7, not Windows PowerShell 5.1.** This is the whole of the
+  encoding problem and it is a setting, not a discipline. 5.1 reads a UTF-8 file as Windows-1252, so
+  `Get-Content` turns every em dash into `U+00E2 U+20AC U+201D` before any edit happens, and writing
+  it back saves the damage — **the corruption is on the read, so passing `-Encoding utf8` to the
+  write does not prevent it.** PowerShell 7 defaults to UTF-8 both ways and does not do this;
+  verified 2026-08-25 by running the same round-trip under both. Twenty-nine documents were
+  corrupted in one pass this way, and fifteen carried it for weeks through passes that read those
+  very files.
+  - **Visual Studio:** Tools → Options → Environment → Terminal, set the default to `pwsh.exe`.
+    That is a user setting and no file in this repository can reach it.
+  - **In the repository:** [`.vscode/settings.json`](../../.vscode/settings.json) pins the shell
+    for VS Code, and every tool under [`next/tools/`](../../next/tools) that writes a file opens
+    with `#Requires -Version 7.0`, so running one under 5.1 refuses rather than corrupts.
+  - **Either way**, use `[System.IO.File]::ReadAllText`/`WriteAllText` with `UTF8Encoding($false)`
+    for document edits, because a tool is not the only thing that touches them.
+  - `DocumentEncodingGateTests` fails the build on a single corrupted character, and
+    `next/tools/repair-double-encoded-documents.ps1` inverts the damage exactly.
+  - Windows PowerShell 5.1 also has no `` `u{} `` escape — build a character with `[char]0x2014` or
+    the literal goes in as seven characters of text, which produced a mutation that silently proved
+    nothing.
 - **`replace_string_in_file` cannot reach `next/SecureAD.Next.sln`**, and it has twice duplicated a
   block in `TypesTableOwnershipTests.cs` rather than replacing it. For both, edit by line index with
   `[System.IO.File]::ReadAllLines` on an **absolute** path, assert the boundaries before slicing,

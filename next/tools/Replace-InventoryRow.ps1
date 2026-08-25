@@ -1,3 +1,7 @@
+#Requires -Version 7.0
+# Windows PowerShell 5.1 reads UTF-8 files as Windows-1252, turning every em dash into three
+# characters. This script writes documents, so running it under 5.1 would corrupt them silently.
+
 # Replaces one WHAT-THE-OLD-APP-HAD.md row whole, by index, guarded by the component id.
 # Written as a script rather than done with the file editor: a partial-line edit has destroyed a
 # row four times, most recently C10 on 2026-08-20 (F-S17-6). Rows are single lines of two thousand

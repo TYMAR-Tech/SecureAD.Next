@@ -1,3 +1,7 @@
+#Requires -Version 7.0
+# Windows PowerShell 5.1 reads UTF-8 files as Windows-1252, turning every em dash into three
+# characters. This script writes documents, so running it under 5.1 would corrupt them silently.
+
 # Mutation harness for the two gates written when docs/areas/how-failures-are-reported.md was
 # deleted: FailureReportingDocumentationTests over the new Kernel page, and the TYPES checks added
 # to BundleOnDiskDocumentationTests.

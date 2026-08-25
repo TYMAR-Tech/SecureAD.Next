@@ -1,3 +1,7 @@
+#Requires -Version 7.0
+# Windows PowerShell 5.1 reads UTF-8 files as Windows-1252, turning every em dash into three
+# characters. This script writes documents, so running it under 5.1 would corrupt them silently.
+
 # Mutation harness for the two gates written to stop the documentation rotting:
 # ProsePathCitationTests, and DocumentationLinkGateTests once widened past docs/.
 #

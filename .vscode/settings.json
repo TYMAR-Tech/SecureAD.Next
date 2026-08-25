@@ -1,0 +1,28 @@
+{
+  // Windows PowerShell 5.1 reads UTF-8 files as Windows-1252. An em dash comes back as three
+  // characters, and writing the file again saves the corruption. It happened to twenty-nine
+  // documents here in a single pass, and fifteen carried it for weeks.
+  //
+  // PowerShell 7 defaults to UTF-8 for both reading and writing, and does not do this.
+  // Verified 2026-08-25: the same read-modify-write round-trip preserves U+2014 under 7.6.5
+  // and corrupts it under 5.1.26100.
+  //
+  // This pins the terminal for anyone opening the repository in VS Code. Visual Studio has its
+  // own setting, under Tools > Options > Environment > Terminal, which this file cannot reach.
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Windows PowerShell 5.1": {
+      "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "icon": "warning"
+    }
+  },
+
+  // Documents are UTF-8 without a BOM. The gate that enforces the first half is
+  // DocumentEncodingGateTests; nothing enforces the second, so it is set here.
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false
+}
