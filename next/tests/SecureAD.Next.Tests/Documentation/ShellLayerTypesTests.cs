@@ -34,6 +34,27 @@ namespace SecureAD.Next.Tests.Documentation;
 /// the screen behind it can answer for itself. This class grows a page at a time as that enum does,
 /// rather than assuming the shell is finished at two screens.
 /// </para>
+/// <para>
+/// <b>Mutation-tested 2026-08-24 by <c>next/tools/mutate-shell-doc-gates.ps1</c>, five directions,
+/// all killed; three touched files verified byte-identical by hash.</b> Dropping a row from either
+/// page's table is killed by that page's check and by
+/// <see cref="TheCheckReadsBothDocumentsAndBothComponents"/>. Removing a file from a page's header
+/// is killed by <see cref="EachPageNamesEveryFileItsComponentIsScopedFrom"/> alone. A shell page
+/// claiming a type the register already holds is killed by
+/// <c>TypesTableOwnershipTests.TheShellExemptionCoversOnlyTypesTheRegisterCannotHold</c>, which is
+/// the one that matters: it is what stops the shell exemption hiding a real disagreement.
+/// </para>
+/// <para>
+/// <b>The fifth mutation was killed by the compiler rather than by any gate, and that is worth
+/// saying plainly.</b> Making <c>NewAuditViewModel</c> public fails the build with an accessibility
+/// error before a test runs, because a public type cannot expose internal ones. So neither
+/// <see cref="TheScanReadsInternalDeclarationsAndNotPublicOnes"/> nor
+/// <see cref="Architecture.ShellSurfaceGateTests"/> was exercised by it. Both are stated here as
+/// reasoning rather than claimed as observed, and the honest position is that the shell growing a
+/// surface is guarded first by the compiler and only then by those two.
+/// <see cref="AMissingTableIsAFailureRatherThanAnEmptyScan"/> fired on none of the five; it guards
+/// the parser, which no edit to these files reaches.
+/// </para>
 /// </remarks>
 public sealed class ShellLayerTypesTests
 {
