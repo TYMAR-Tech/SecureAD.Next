@@ -76,6 +76,8 @@ twice.
 | The answer depends on the requested operation, so the answer is `Unknown` | `EvaluateCapability` carries a `RequestedOperation`. Declining to compute is not the same as having nothing to compute with | `2b` ownership |
 | A heuristic character is on or off | `BlockOwnerImplicitRights` takes `0`–`3`, and **any other value resolves to `1`** — so a typo turns blocking on | `2b` ownership |
 | The protocol proves why the capability matters | It proves the boolean. Security significance is a separate claim needing a separate citation | `2b` replication |
+| The shortest route is the best one to show | A short route through uncertain steps may not exist. Certainty is ranked above brevity | `2d` route ordering |
+| Weight the route criteria and add them up | Summing lets length outweigh certainty, which is the trade the ruling forbids | `2d` route ordering |
 
 **The last row is the one that generalises.** Two first-party facts were recorded as unavailable
 because a keyword search did not surface them; both were one page fetch away. Open Specifications
@@ -1272,9 +1274,14 @@ can be exponential and is therefore performed only on demand for a finding, unde
 The product may show:
 
 - one deterministic shortest route;
-- one strongest/highest-risk route from a separate weighted search;
+- one best route under the ruled ordering, from a separate ordered search;
 - mandatory chokepoints/remediation actions;
 - a bounded sample of additional distinct routes.
+
+**Shortest and best are different routes and both are worth showing.** Shortest answers *how close
+is this principal to Tier 0* — it is the measure of exposure. Best answers *what would I actually
+go and fix* — it is the one the ruling governs. They coincide often and not always, and a design
+that shows only the shortest presents the most alarming route rather than the most actionable one.
 
 Do **not** promise:
 
@@ -1579,36 +1586,56 @@ finding churn.
 - there is no materialized inventory of every simple escalation path;
 - route enumeration work moves partly to interactive/on-demand analysis;
 - per-path acceptance is intentionally not the root lifecycle model;
-- strongest route requires a separate weighted search, and **the ordering is not defined here — see
-  below**;
+- best route requires a separate ordered search, over and above shortest-path — **ordering ruled
+  2026-08-26, see below**;
 - non-dominator impact counts can require candidate re-sweeps;
 - non-domain-NC authorization context and some capability semantics remain research gates.
 
-#### "Strongest route" is `ResearchBlocked` until someone defines the ordering
+#### The best route is the one an administrator can act on — ruled 2026-08-26
 
 Saying a search is *weighted* names a mechanism, not a comparison. `EdgeClass` is deliberately not a
-rank, so there is no ordering to inherit from it, and the document has been asserting a capability
-it never specified.
+rank, so there was no ordering to inherit from it, and an earlier draft asserted a capability it
+never specified. The owner settled it: **prefer the longer route that definitely works over the
+shorter one that might.** Certainty beats brevity, because the point of showing a route is that
+someone does something about it.
 
-**Only the shortest route is buildable today.** Shortest is unambiguous: fewest edges, ties broken by
-a stable route signature. Anything calling itself *strongest* is blocked until the ordering is
-written down and accepted, because the plausible candidates disagree on real inputs:
+The plausible orderings disagree on real inputs, so the choice had to be made rather than left open:
 
-| Ordering | What it prefers |
-|---|---|
-| Lexicographic | first criterion decides; later ones only break ties |
-| Additive weights | a long cheap chain can beat a short expensive one |
-| Bottleneck | the route is only as good as its worst step |
-| Pareto | no single winner — a set of non-dominated routes |
+| Ordering | What it prefers | Why not |
+|---|---|---|
+| Additive weights | a long cheap chain over a short expensive one | uncertainty becomes a number that trades against length — the trade the ruling forbids |
+| Bottleneck | the route whose worst step is least bad | ignores everything but one edge; two routes with the same weak link are indistinguishable |
+| Pareto | no single winner, a set of non-dominated routes | correct and unusable — it answers "here are nine" when the question was "what do I fix" |
+| **Lexicographic** | **first criterion decides absolutely** | **chosen** |
 
-A plausible lexicographic sketch, offered as a starting point and **not accepted**: definite before
-possible, then direct before conditional, then higher confidence, then fewer unmet preconditions,
-then shorter. Whether that is right is a question about what an administrator should be shown first,
-which makes it the owner's to settle.
+**Lexicographic, in this order.** Each criterion is exhausted before the next is consulted, so no
+amount of advantage lower down can outweigh a difference higher up:
 
-**Until it is settled, no code may present a route as strongest**, and the interactive analysis
-offers shortest only. Left unstated, each implementation pass would invent its own comparison and
-every one of them would claim to follow this document.
+```
+1. Definite before possible        no route resting on Unknown outranks one that does not
+2. Direct before conditional       preconditions are things that might not hold
+3. Fewer unmet preconditions       among conditional routes, the one needing least to be true
+4. Higher confidence               how well the capability semantics are established
+5. Shorter                         only now does length matter
+6. Stable route signature          determinism, never a judgement
+```
+
+**Length is fifth on purpose.** A four-hop chain of plain group memberships beats a two-hop chain
+resting on a capability the catalogue is unsure about, because the first can be verified and cut
+today and the second may not be real. That is the ruling, applied.
+
+**Confidence sits below preconditions** because they fail differently. An unmet precondition is a
+fact about the forest an administrator can check — *is unconstrained delegation actually enabled on
+that host?* Low confidence is a limitation in **our** understanding of the capability semantics, and
+it is not his to resolve. The thing he can act on is ranked above the thing he cannot.
+
+**A tie above the signature is not broken by preference.** If two routes are equal through all five,
+the signature decides, so repeated runs agree. Determinism is not an opinion about which route is
+better.
+
+**This ordering does not change which findings exist**, only which evidence leads. Every route to
+the anchor remains available; ordering is presentation. And it is not a severity — `0066` fixes
+severity on the rule card, so a route being weak never quietens a finding.
 
 For drift/tripwire use cases, diff the underlying source facts/capabilities between bundles directly.
 Path-signature churn is a noisy proxy for a permission or membership change.
@@ -1876,7 +1903,8 @@ research status and sources — and the code is generated from that, not from th
 | AC-82 | `CanReplicateFilteredAttributes` carries its own security-significance citation, separate from the MS-DRSR procedure that establishes its boolean. A capability whose only source proves the authorization condition and not the impact fails. |
 | AC-83 | Missing evidence produces bounded `UncertaintyRegion` records whose subjects and targets are enumerable from the bundle. No implementation materialises possible edges as a cross product, and an unbounded region is reported as a capture defect naming the unread partition rather than making the forest `Unknown`. |
 | AC-84 | `RemediationActionId` is derived from captured configuration state and not from `HumanDescription`. Rewording a description does not change the id, and two ACEs differing only by inheritance source, ordinal or descriptor never share one. |
-| AC-85 | No route is presented as strongest until an accepted ordering exists. Interactive analysis offers shortest route only, and a build that ranks routes by an undocumented comparison fails. |
+| AC-85 | Route ordering is lexicographic in the ruled sequence: definite before possible, direct before conditional, fewer unmet preconditions, higher confidence, shorter, then stable signature. A two-hop route resting on an `Unknown` input never outranks a longer definite one, and no implementation trades certainty against length by summing weights. |
+| AC-86 | Route ordering never alters severity, which `0066` fixes on the rule card, and never removes a route from the evidence. Two routes equal through all five criteria are ordered by signature alone, so repeated runs of one bundle agree. |
 
 ## Non-goals
 
