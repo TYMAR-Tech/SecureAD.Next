@@ -85,3 +85,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0083](decisions/0083-a-rule-declares-its-data-dependencies.md) | 2026-08-21 | Accepted | A rule declares the data it depends on, and an undeclared rule fails the build |
 | [0084](decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md) | 2026-08-23 | Accepted | A stored fingerprint's recipe is pinned to the schema version |
 | [0085](decisions/0085-judgement-writes-beside-the-evidence.md) | 2026-08-25 | Accepted *(see record)* | Judgement writes beside the evidence, not into it |
+| [0086](decisions/0086-a-qualified-statement-beats-silence.md) | 2026-08-25 | Accepted | A qualified statement beats silence, except where completeness is claimed |
