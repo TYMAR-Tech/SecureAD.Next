@@ -446,6 +446,20 @@ anyway, and its four open questions became `P-80`. The specification for a delib
 
 ---
 
+## Judgement half
+
+Raised while extracting the acceptance criteria of
+[`JUDGEMENT-HALF.md`](layers/specs/JUDGEMENT-HALF.md) into
+[`JUDGEMENT-HALF-ACCEPTANCE.md`](layers/specs/JUDGEMENT-HALF-ACCEPTANCE.md). Recorded rather than
+fixed: the extraction copied the criteria verbatim and changed nothing in the source.
+
+| ID | Item | Status | Blocked on |
+|---|---|---|---|
+| P-94 | **`AC-26`'s block is stated somewhere other than `AC-26`.** `AC-64` carries **Blocked pending evidence** in its own sentence; `AC-26` says only that the edge is followed when the behaviour is *enabled in the protected-principal catalogue*, and that it is not enabled — and why — lives 2,000 lines earlier under *What SDProp actually traverses is evidence-gated*. A reader working from the criteria table alone would take `AC-26` for implementable. This is the one-fact-in-two-places shape that has already gone wrong twice in this document | open | — |
+| P-95 | **`AC-14` and `AC-88` both rule on when a reachability finding resolves, in different words.** `AC-14` says it resolves only when `Tier0Reachability = NotReachable` under complete required evidence; `AC-88` says only when a later bundle evaluates it `NotEstablished` under complete evidence. They are probably the same rule stated at two levels, but nothing says so, and two sentences that must be edited together are exactly what drifts. Either one should cite the other or one should go | open | — |
+
+---
+
 ## Deferred features
 
 | Item | Where |
