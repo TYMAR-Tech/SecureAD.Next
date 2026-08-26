@@ -17,8 +17,7 @@
              blank grid as reassurance. This says which it is, in words, where the findings would
              have been. -->
         <Border DockPanel.Dock="Top"
-                Background="{StaticResource CardBrush}"
-                Padding="12"
+                Style="{StaticResource Card}"
                 Margin="0,0,0,8"
                 Visibility="{Binding HasFindingsRefusal, Converter={StaticResource Shown}}">
             <StackPanel>
