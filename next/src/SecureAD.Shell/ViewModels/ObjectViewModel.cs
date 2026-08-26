@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
+using SecureAD.Judgement;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 
@@ -57,12 +58,20 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// claiming, and a default would let a caller show a forest's permissions under the shipped
     /// table's names without anyone deciding to.
     /// </param>
+    /// <param name="findings">
+    /// What the rules found about this object, or null when the judgement could not be read.
+    /// </param>
+    /// <param name="findingsRefusal">
+    /// Why the judgement could not be read, or null when it was.
+    /// </param>
     public ObjectViewModel(
         ObjectPermissions permissions,
         ObjectAttributes? attributes,
         string objectType,
         string? objectClass,
-        PermissionVocabulary vocabulary)
+        PermissionVocabulary vocabulary,
+        FindingsPage? findings,
+        string? findingsRefusal)
     {
         ArgumentNullException.ThrowIfNull(permissions);
         ArgumentException.ThrowIfNullOrWhiteSpace(objectType);
@@ -72,7 +81,10 @@ internal sealed partial class ObjectViewModel : ObservableObject
         ObjectType = objectType;
 
         foreach (var definition in ObjectSectionCatalog.For(objectClass))
-            Sections.Add(Build(definition, permissions, attributes, objectType, vocabulary));
+        {
+            Sections.Add(Build(
+                definition, permissions, attributes, objectType, vocabulary, findings, findingsRefusal));
+        }
 
         Selected = Sections.FirstOrDefault();
     }
@@ -125,7 +137,9 @@ internal sealed partial class ObjectViewModel : ObservableObject
         ObjectPermissions permissions,
         ObjectAttributes? attributes,
         string objectType,
-        PermissionVocabulary vocabulary) =>
+        PermissionVocabulary vocabulary,
+        FindingsPage? findings,
+        string? findingsRefusal) =>
         definition.Key switch
         {
             ObjectSectionCatalog.Overview =>
@@ -145,6 +159,8 @@ internal sealed partial class ObjectViewModel : ObservableObject
                 new PermissionsSectionViewModel(definition, permissions, vocabulary),
             ObjectSectionCatalog.Evidence =>
                 new EvidenceSectionViewModel(definition, permissions),
+            ObjectSectionCatalog.Findings =>
+                new FindingsSectionViewModel(definition, findings, findingsRefusal),
             ObjectSectionCatalog.OtherValues =>
                 new OtherValuesSectionViewModel(definition),
             _ => new NotBuiltSectionViewModel(definition),

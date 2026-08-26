@@ -1,4 +1,6 @@
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Security;
 using SecureAD.Shell.ViewModels;
@@ -424,6 +426,147 @@ public sealed class ObjectViewModelTests
     }
 
     // ---------------------------------------------------------------------------------------
+    // Findings on the object
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An object opened from the listing shows what the rules found about it.
+    /// </summary>
+    [Fact]
+    public void AnOpenedObjectShowsWhatTheRulesFoundAboutIt()
+    {
+        var screen = OpenedWith(new FindingsPage([AFinding()], null, RulesRan: 2));
+
+        var findings = screen.Findings();
+
+        var only = Assert.Single(findings.Findings);
+        Assert.Equal("SEC-010", only.Rule);
+        Assert.Null(findings.Verdict);
+    }
+
+    /// <summary>
+    /// The findings section asks only about the object that was opened.
+    /// </summary>
+    /// <remarks>
+    /// Not by container, which is a suffix match: an organisational unit asked for that way would
+    /// be told its members' findings were its own.
+    /// </remarks>
+    [Fact]
+    public void TheFindingsSectionAsksOnlyAboutTheObjectOpened()
+    {
+        var assets = SourceWith(new FindingsPage([], null, RulesRan: 2));
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.OpenObjectCommand.Execute(screen.Objects[0]);
+
+        Assert.Equal(AliceDn, assets.FindingsAsked!.Object);
+        Assert.Null(assets.FindingsAsked.Container);
+    }
+
+    /// <summary>
+    /// An object the rules found nothing about says so, rather than showing an empty list.
+    /// </summary>
+    [Fact]
+    public void AnObjectNothingWasFoundAboutSaysSo()
+    {
+        var screen = OpenedWith(new FindingsPage([], null, RulesRan: 2));
+
+        Assert.Equal(
+            FindingsSectionViewModel.NothingFound,
+            screen.Findings().Verdict);
+    }
+
+    /// <summary>
+    /// An object in a bundle nobody judged is not reported as an object nothing was found about.
+    /// </summary>
+    /// <remarks>
+    /// <b>The distinction this product exists for, one object at a time.</b> Both draw an empty
+    /// list, and only one of them is a statement about the object.
+    /// </remarks>
+    [Fact]
+    public void AnObjectNobodyJudgedIsNotReportedAsClean()
+    {
+        var screen = OpenedWith(new FindingsPage([], null, RulesRan: 0));
+
+        Assert.Equal(
+            FindingsSectionViewModel.NobodyLooked,
+            screen.Findings().Verdict);
+    }
+
+    /// <summary>
+    /// A judgement that could not be read says why, in the words the layer below used.
+    /// </summary>
+    /// <remarks>
+    /// And it does not refuse the object: the evidence read perfectly, and the permissions are the
+    /// reason this screen exists.
+    /// </remarks>
+    [Fact]
+    public void AJudgementThatCouldNotBeReadSaysWhyAndDoesNotRefuseTheObject()
+    {
+        var assets = SourceWith(new FindingsPage([], null, RulesRan: 2));
+        assets.FindingsFail = Failures.Any("The judgement changed after it was sealed.");
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.OpenObjectCommand.Execute(screen.Objects[0]);
+
+        Assert.True(screen.HasOpenObject);
+        Assert.Equal(
+            "The judgement changed after it was sealed.",
+            screen.Findings().Verdict);
+    }
+
+    /// <summary>
+    /// A refusal outranks silence, because a judgement that would not open says nothing about
+    /// whether anybody judged it.
+    /// </summary>
+    [Fact]
+    public void ARefusalIsShownRatherThanSilence()
+    {
+        var section = new FindingsSectionViewModel(
+            new ObjectSectionDefinition("Findings", "Findings", []),
+            new FindingsPage([], null, RulesRan: 0),
+            "The judgement would not open.");
+
+        Assert.Equal("The judgement would not open.", section.Verdict);
+    }
+
+    private static AssetsViewModel OpenedWith(FindingsPage findings)
+    {
+        var screen = new AssetsViewModel(SourceWith(findings));
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.OpenObjectCommand.Execute(screen.Objects[0]);
+        return screen;
+    }
+
+    private static FakeAssetSource SourceWith(FindingsPage findings) => new()
+    {
+        Tree = TreeOfOneDomain(),
+        Page = new ObjectPage(
+            [new ListedObject(AliceDn, "Alice", Guid.NewGuid(), "user", DomainDn)],
+            1,
+            true,
+            null),
+        Permissions = Permissions(),
+        FindingsPage = findings,
+    };
+
+    private static Finding AFinding() =>
+        new(
+            "SEC-010",
+            1,
+            Severity.High,
+            new FindingSubject(FindingSubjectKind.Account, "Alice"),
+            Guid.NewGuid(),
+            AliceDn,
+            "contoso.com",
+            "user",
+            "Alice is trusted for unconstrained delegation.",
+            EvidenceCompleteness.Complete,
+            new UnconstrainedDelegationEvidence(
+                0x80000, false, new DomainControllerSignals(false, false, false)));
+
+    // ---------------------------------------------------------------------------------------
 
     private static AssetsViewModel Opened(ObjectPermissions permissions)
     {
@@ -519,4 +662,9 @@ internal static class OpenedObjectSections
     /// <param name="screen">The assets screen, with an object open.</param>
     public static OverviewSectionViewModel Overview(this AssetsViewModel screen) =>
         (OverviewSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.Overview)!;
+
+    /// <summary>The findings section of the object this screen has open.</summary>
+    /// <param name="screen">The assets screen, with an object open.</param>
+    public static FindingsSectionViewModel Findings(this AssetsViewModel screen) =>
+        (FindingsSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.Findings)!;
 }

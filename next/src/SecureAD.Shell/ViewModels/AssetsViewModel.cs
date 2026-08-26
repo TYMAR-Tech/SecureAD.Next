@@ -456,12 +456,21 @@ internal sealed partial class AssetsViewModel : ObservableObject
         // exists, and each section says for itself when it has nothing.
         var attributes = _assets.ReadObjectAttributes(BundlePath, listed.DistinguishedName);
 
+        // What the rules made of this object, for the findings section. Read the same way: a
+        // judgement that will not open is a fact the section states, not a reason to refuse an
+        // object whose evidence read perfectly.
+        var findings = _assets.ReadFindings(
+            BundlePath, FindingsQuery.About(listed.DistinguishedName));
+
         Opened = new ObjectViewModel(
             read.Value,
             attributes.IsSuccess ? attributes.Value : null,
             listed.ObjectType,
             listed.ObjectClass,
-            Vocabulary());
+            Vocabulary(),
+            findings.IsSuccess ? findings.Value : null,
+            findings.IsSuccess ? null : findings.Error.Description);
+
         Announce();
     }
 
