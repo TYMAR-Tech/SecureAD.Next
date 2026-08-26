@@ -1,5 +1,8 @@
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Security;
 using SecureAD.Shell.ViewModels;
 using Xunit;
 
@@ -336,6 +339,275 @@ public sealed class AssetsViewModelTests
 
         Assert.Equal("not recorded", screen.Objects[0].ObjectType);
     }
+
+    // ---------------------------------------------------------------------------------------
+    // Findings
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Opening a run shows what the judging found.
+    /// </summary>
+    [Fact]
+    public void OpeningARunShowsWhatTheJudgingFound()
+    {
+        var screen = ShowingFindings(new FindingsPage([AFinding()], null, RulesRan: 2));
+
+        var only = Assert.Single(screen.Findings);
+        Assert.Equal("SEC-010", only.Rule);
+        Assert.Equal("High", only.Severity);
+    }
+
+    /// <summary>
+    /// The findings are scoped by the container selected in the tree.
+    /// </summary>
+    /// <remarks>
+    /// An operator who selected <c>OU=People</c> and switched to findings is still asking about
+    /// that container, and a grid that widened to the forest would answer a question he did not
+    /// ask.
+    /// </remarks>
+    [Fact]
+    public void TheFindingsAreScopedByTheContainerSelected()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        screen.Selected = screen.Roots[0].Children[0];
+
+        Assert.Equal("OU=People," + DomainDn, assets.FindingsAsked!.Container);
+    }
+
+    /// <summary>
+    /// A bundle nobody judged is not shown as a forest with nothing wrong with it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The distinction this product exists for, on this screen.</b> An empty grid and a clean
+    /// forest are the same picture, so the screen says which it is in words rather than leaving an
+    /// operator to read a blank table as reassurance.
+    /// </remarks>
+    [Fact]
+    public void ABundleNobodyJudgedIsNotShownAsAForestWithNothingWrong()
+    {
+        var assets = new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            FindingsFail = AuditError.Create(
+                ErrorCategory.Evidence,
+                "JudgementDidNotRun",
+                ErrorSeverity.Failed,
+                "No rule was run over this bundle.",
+                BundlePath),
+        };
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.True(screen.HasFindingsRefusal);
+        Assert.False(screen.NothingWasFound);
+        Assert.Empty(screen.Findings);
+    }
+
+    /// <summary>
+    /// A judging that ran and matched nothing says so, which is a different fact.
+    /// </summary>
+    [Fact]
+    public void AJudgingThatMatchedNothingSaysSoRatherThanRefusing()
+    {
+        var screen = ShowingFindings(new FindingsPage([], null, RulesRan: 2));
+
+        Assert.True(screen.NothingWasFound);
+        Assert.False(screen.HasFindingsRefusal);
+    }
+
+    /// <summary>
+    /// A judgement that could not be read does not make the evidence look unreadable.
+    /// </summary>
+    /// <remarks>
+    /// They are separate files and separate remedies. Telling an operator his evidence could not be
+    /// opened, when the truth is that the judgement beside it could not, sends him to re-capture a
+    /// forest for nothing.
+    /// </remarks>
+    [Fact]
+    public void AJudgementThatCouldNotBeReadDoesNotRefuseTheEvidence()
+    {
+        var assets = new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            FindingsFail = AuditError.Create(
+                ErrorCategory.Evidence,
+                "JudgementSealMismatch",
+                ErrorSeverity.Failed,
+                "The judgement changed after it was sealed.",
+                BundlePath),
+        };
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.True(screen.HasFindingsRefusal);
+        Assert.False(screen.HasRefusal);
+        Assert.True(screen.HasTree);
+    }
+
+    /// <summary>
+    /// There is no next page when the judging fitted on one.
+    /// </summary>
+    [Fact]
+    public void ThereIsNoNextPageWhenTheFindingsFittedOnOne()
+    {
+        var screen = ShowingFindings(new FindingsPage([AFinding()], null, RulesRan: 2));
+
+        Assert.False(screen.HasMoreFindings);
+        Assert.False(screen.HasEarlierFindings);
+    }
+
+    /// <summary>
+    /// Going on and coming back returns to the page the operator was on.
+    /// </summary>
+    /// <remarks>
+    /// Keyset paging only goes forward - a page knows where it ended, not where the one before it
+    /// began - so stepping back means remembering, and this proves the remembering happens.
+    /// </remarks>
+    [Fact]
+    public void GoingOnAndComingBackReturnsToTheFirstPage()
+    {
+        var screen = ShowingFindings(
+            new FindingsPage(
+                [AFinding()],
+                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com"),
+                RulesRan: 2));
+
+        Assert.Equal(1, screen.FindingsPageNumber);
+
+        screen.NextFindings();
+        Assert.Equal(2, screen.FindingsPageNumber);
+        Assert.True(screen.HasEarlierFindings);
+
+        screen.PreviousFindings();
+        Assert.Equal(1, screen.FindingsPageNumber);
+        Assert.False(screen.HasEarlierFindings);
+    }
+
+    /// <summary>
+    /// Choosing a different container starts its findings at the first page.
+    /// </summary>
+    /// <remarks>
+    /// A mark from the previous container points into a list that no longer exists, so carrying it
+    /// over would open a container part way down somebody else's findings.
+    /// </remarks>
+    [Fact]
+    public void ChoosingADifferentContainerStartsItsFindingsAtTheFirstPage()
+    {
+        var screen = ShowingFindings(
+            new FindingsPage(
+                [AFinding()],
+                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com"),
+                RulesRan: 2));
+
+        screen.NextFindings();
+        Assert.Equal(2, screen.FindingsPageNumber);
+
+        screen.Selected = screen.Roots[0].Children[0];
+
+        Assert.Equal(1, screen.FindingsPageNumber);
+    }
+
+    /// <summary>
+    /// No findings are read while a capture is running.
+    /// </summary>
+    /// <remarks>
+    /// <c>docs/decisions/0072</c>: analysis does not run while a capture does, and reading a
+    /// judgement is analysis.
+    /// </remarks>
+    [Fact]
+    public void NoFindingsAreReadWhileACaptureIsRunning()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+
+        screen.Show(BundlePath, aCaptureIsRunning: true);
+
+        Assert.Equal(0, assets.FindingsReads);
+        Assert.Empty(screen.Findings);
+    }
+
+    /// <summary>
+    /// Opening an object takes the findings grid off the screen with the object listing.
+    /// </summary>
+    /// <remarks>
+    /// <b>Both halves derive from whether a listing is showing at all</b>, so opening an object
+    /// changes them without either being assigned. Written after finding that the change
+    /// notification for exactly this had been left out - the grid would have drawn once and never
+    /// moved, which reads as a tab that does nothing.
+    /// </remarks>
+    [Fact]
+    public void OpeningAnObjectTakesTheFindingsGridOffTheScreen()
+    {
+        var assets = new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            FindingsPage = new FindingsPage([AFinding()], null, RulesRan: 2),
+            Permissions = SomePermissions(),
+        };
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.ShowsFindings = true;
+
+        var announced = new List<string>();
+        screen.PropertyChanged += (_, e) => announced.Add(e.PropertyName!);
+
+        screen.OpenObject(screen.Objects[0]);
+
+        Assert.True(screen.HasOpenObject);
+        Assert.False(screen.ShowsFindingsListing);
+        Assert.Contains(nameof(screen.ShowsFindingsListing), announced);
+    }
+
+    private static ObjectPermissions SomePermissions() => new(
+        "CN=Alice," + DomainDn,
+        DescriptorAvailability.Read,
+        UnreadableReason: null,
+        Owner: null,
+        DaclState.Present,
+        DaclCompleteness.Complete,
+        DaclWasCanonical: true,
+        IsDaclProtected: false,
+        [],
+        []);
+
+    // ---------------------------------------------------------------------------------------
+
+    private static AssetsViewModel ShowingFindings(FindingsPage findings)
+    {
+        var screen = new AssetsViewModel(new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            FindingsPage = findings,
+        });
+
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        return screen;
+    }
+
+    private static Finding AFinding() =>
+        new(
+            "SEC-010",
+            1,
+            Severity.High,
+            new FindingSubject(FindingSubjectKind.Account, "svc-web"),
+            Guid.NewGuid(),
+            "CN=svc-web,OU=People," + DomainDn,
+            "contoso.com",
+            "user",
+            "svc-web is trusted for unconstrained delegation.",
+            EvidenceCompleteness.Complete,
+            new UnconstrainedDelegationEvidence(
+                0x80000, false, new DomainControllerSignals(false, false, false)));
 
     // ---------------------------------------------------------------------------------------
 

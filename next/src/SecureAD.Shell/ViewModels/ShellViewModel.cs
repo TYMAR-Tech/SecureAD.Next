@@ -266,11 +266,7 @@ internal sealed partial class ShellViewModel : ObservableObject
         if (section == ShellSection.Assets)
         {
             Views.Add(SectionView.Built("Objects"));
-            Views.Add(SectionView.NotBuilt(
-                "Findings",
-                "Rules are evaluated, but only by a tool run by hand outside this application, "
-                + "so this application has no findings to show. This tab is here to settle where "
-                + "they will live, and it reports nothing about your directory."));
+            Views.Add(SectionView.Built("Findings"));
             Views.Add(SectionView.NotBuilt(
                 "LAPS",
                 "Local administrator password status is not assessed yet. This tab is here to "
@@ -310,6 +306,10 @@ internal sealed partial class ShellViewModel : ObservableObject
 
         foreach (var other in Views.Where(v => !ReferenceEquals(v, selected)))
             other.IsSelected = false;
+
+        // Objects and Findings are two views of one screen, so the tabs cannot choose between two
+        // view models the way the rail does. The screen is told which of its halves is showing.
+        Assets.ShowsFindings = selected.Name == "Findings";
 
         OnPropertyChanged(nameof(SelectedView));
         OnPropertyChanged(nameof(Current));

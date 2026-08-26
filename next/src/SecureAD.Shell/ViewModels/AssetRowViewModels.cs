@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
 using SecureAD.Kernel.Naming;
 
 namespace SecureAD.Shell.ViewModels;
@@ -204,4 +205,89 @@ internal sealed class ListedObjectViewModel
     public FactState State => _listed.ObjectClass is null
         ? FactState.NotEstablished
         : FactState.EstablishedGood;
+}
+
+/// <summary>
+/// One finding, as the findings grid shows it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Every column comes off the stored finding.</b> Nothing here reaches into the evidence to
+/// resolve a name, because the evidence is a separate sealed file and a grid that opened it per row
+/// would pay for it on every page and every re-sort. What was true when the judging ran is what the
+/// judging wrote down.
+/// </para>
+/// <para>
+/// <b>Coverage is a column rather than a footnote.</b> A finding resting on evidence that may be
+/// incomplete is not the same claim as one resting on a complete read, and an operator deciding
+/// what to act on first needs to see the difference in the row rather than by opening it.
+/// </para>
+/// </remarks>
+internal sealed class FindingRowViewModel
+{
+    private readonly Finding _finding;
+
+    /// <summary>Creates a screen's view of one finding.</summary>
+    /// <param name="finding">The finding as the judgement holds it.</param>
+    public FindingRowViewModel(Finding finding)
+    {
+        ArgumentNullException.ThrowIfNull(finding);
+
+        _finding = finding;
+    }
+
+    /// <summary>How serious this is, in the word an operator reads.</summary>
+    public string Severity => _finding.Severity.ToString();
+
+    /// <summary>
+    /// How serious this is, as the value a view keys a colour off.
+    /// </summary>
+    /// <remarks>
+    /// Beside <see cref="Severity"/> rather than instead of it, for the reason
+    /// <see cref="ListedObjectViewModel.ObjectClass"/> gives: a treatment keyed off the word breaks
+    /// silently the day the word changes, and the four state marks in this shell were once set that
+    /// way and every one of them fell through.
+    /// </remarks>
+    public Severity Rank => _finding.Severity;
+
+    /// <summary>The rule that produced it, such as <c>SEC-011</c>.</summary>
+    public string Rule => _finding.RuleId;
+
+    /// <summary>Who or what the finding is about.</summary>
+    public string Principal => _finding.Subject.Key;
+
+    /// <summary>The object it is about, named as an operator would say it.</summary>
+    public string Target => DnHelper.ExtractNameFromDn(_finding.DistinguishedName);
+
+    /// <summary>The object's full name, for an operator who needs to be certain which it is.</summary>
+    public string DistinguishedName => _finding.DistinguishedName;
+
+    /// <summary>The domain it was found in.</summary>
+    public string Domain => _finding.DomainFqdn;
+
+    /// <summary>What was found, said plainly enough to act on.</summary>
+    public string Detail => _finding.Detail;
+
+    /// <summary>
+    /// Whether the evidence this rests on was complete, in words.
+    /// </summary>
+    /// <remarks>
+    /// <b>Said rather than left blank.</b> An empty cell beside a finding reads as though the
+    /// question was not worth asking, and the answer here changes what the finding is worth.
+    /// </remarks>
+    public string Coverage => _finding.Coverage == EvidenceCompleteness.Complete
+        ? "Complete"
+        : "May be incomplete";
+
+    /// <summary>
+    /// What this run established about the evidence behind the finding.
+    /// </summary>
+    /// <remarks>
+    /// <b>Never <see cref="FactState.EstablishedBad"/>.</b> This states whether the evidence was
+    /// whole, not whether the finding is serious - severity already says that, and colouring a row
+    /// twice for two different things is how a screen comes to mean nothing.
+    /// </remarks>
+    public FactState State => _finding.Coverage == EvidenceCompleteness.Complete
+        ? FactState.EstablishedGood
+        : FactState.NotEstablished;
 }

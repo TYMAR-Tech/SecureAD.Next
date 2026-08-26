@@ -89,7 +89,7 @@
                 <views:GapsCard Grid.Row="1" />
             </Grid>
 
-            <DockPanel Grid.Column="2" Visibility="{Binding ShowsListing, Converter={StaticResource Shown}}">
+            <DockPanel Grid.Column="2" Visibility="{Binding ShowsObjectListing, Converter={StaticResource Shown}}">
 
                 <!-- Where you are, said once here rather than repeated on every row of the grid. -->
                 <TextBlock DockPanel.Dock="Top"
@@ -177,6 +177,12 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>
+
+            <!-- What the rules found in the selected container. Beside the objects rather than
+                 instead of them: the tree stays, because an operator reading a finding is
+                 somewhere in the directory and will look at the object next. -->
+            <views:FindingsView Grid.Column="2"
+                                Visibility="{Binding ShowsFindingsListing, Converter={StaticResource Shown}}" />
 
             <!-- One object, opened from a row. It replaces the listing and the tree stays: an
                  operator reading one object is still somewhere in the directory. -->

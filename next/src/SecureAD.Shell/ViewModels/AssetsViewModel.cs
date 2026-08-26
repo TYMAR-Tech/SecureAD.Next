@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Evidence;
+using SecureAD.Judgement;
 using SecureAD.Shell.Services;
 
 namespace SecureAD.Shell.ViewModels;
@@ -72,6 +73,72 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private string? _shortfall;
 
     /// <summary>
+    /// Why there are no findings to show, or null when there are or when none were expected.
+    /// </summary>
+    /// <remarks>
+    /// <b>Held apart from <see cref="Refusal"/>, which is about the evidence.</b> A bundle can be
+    /// read perfectly and have no judgement beside it, and telling an operator his evidence could
+    /// not be opened when the truth is that nobody has judged it would send him to fix the wrong
+    /// thing.
+    /// </remarks>
+    [ObservableProperty]
+    private Notice? _findingsRefusal;
+
+    /// <summary>
+    /// Whether the rules ran over this bundle and found nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>Not the same as an empty grid, and the difference is the product.</b> No findings because
+    /// every rule ran and matched nothing is a clean forest. No findings because nobody judged the
+    /// bundle is silence. Both draw an empty table, so the screen must say which it is in words.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _nothingWasFound;
+
+    /// <summary>
+    /// Whether the findings are the view showing, rather than the objects.
+    /// </summary>
+    /// <remarks>
+    /// <b>Told by the window rather than discovered here.</b> Both views are this one screen, and
+    /// which of them is showing is a fact about the tabs - which belong to the shell. A view model
+    /// that reached for the shell's selected tab would be a screen deciding the application's
+    /// navigation, which is what <c>IRunOpener</c> exists to avoid one level up.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _showsFindings;
+
+    /// <summary>Whether the object listing is the view showing.</summary>
+    /// <remarks>
+    /// Its own answer rather than the negation of <see cref="ShowsFindings"/>, for the reason
+    /// <see cref="HasNoRun"/> gives: a view cannot negate a binding without a converter.
+    /// </remarks>
+    public bool ShowsObjects => !ShowsFindings;
+
+    /// <summary>
+    /// Whether the object grid should be on screen: the objects tab, and no object opened from it.
+    /// </summary>
+    /// <remarks>
+    /// Both conditions together here rather than two bindings in the view, because a view that
+    /// combines them is a view holding a rule about what is visible when - and the day a third
+    /// condition arrives it is edited in a place no test reads.
+    /// </remarks>
+    public bool ShowsObjectListing => ShowsObjects && ShowsListing;
+
+    /// <summary>Whether the findings grid should be on screen.</summary>
+    public bool ShowsFindingsListing => ShowsFindings && ShowsListing;
+
+    /// <summary>Where the findings page being shown ended, so the next can start after it.</summary>
+    private FindingsPageMark? _findingsFrom;
+
+    /// <summary>Where each page shown so far began, so the operator can go back.</summary>
+    /// <remarks>
+    /// <b>Keyset paging goes forward.</b> A page knows where it ended, not where the one before it
+    /// began, so stepping back means remembering. The alternative is an offset, which is the cost
+    /// this paging exists to avoid.
+    /// </remarks>
+    private readonly Stack<FindingsPageMark?> _findingsBack = new();
+
+    /// <summary>
     /// The object the operator opened from the listing, or null while the listing is showing.
     /// </summary>
     /// <remarks>
@@ -102,6 +169,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>The objects on the page being shown.</summary>
     public ObservableCollection<ListedObjectViewModel> Objects { get; } = [];
+
+    /// <summary>The findings on the page being shown.</summary>
+    public ObservableCollection<FindingRowViewModel> Findings { get; } = [];
 
     /// <summary>Whether a run has been chosen to look at.</summary>
     public bool HasRun => BundlePath is not null;
@@ -249,9 +319,15 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Roots.Clear();
         Gaps.Clear();
         Objects.Clear();
+        Findings.Clear();
+        FindingsRefusal = null;
+        NothingWasFound = false;
+        _findingsBack.Clear();
+        _findingsFrom = null;
         Total = 0;
         Shortfall = null;
         Announce();
+        AnnounceFindings();
     }
 
     /// <summary>Reads the chosen bundle again.</summary>
@@ -310,6 +386,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
         // Rooted at the forest, so the screen arrives showing something rather than an empty half
         // and an instruction to click.
         Selected = Roots.FirstOrDefault();
+
+        // Setting the selection lists the findings through OnSelectedChanged, but only when it
+        // changed. A bundle whose tree has no roots leaves it null, and the findings would never be
+        // asked for at all.
+        if (Selected is null)
+            ListFindings();
+
         Announce();
     }
 
@@ -458,6 +541,119 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Lists the findings of the selected container, or of the whole run when nothing is selected.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Scoped by the same selection the object listing uses.</b> An operator who has selected
+    /// <c>OU=Servers</c> and switches to findings is still asking about servers, and a grid that
+    /// silently widened to the forest would answer a question he did not ask.
+    /// </para>
+    /// <para>
+    /// <b>Four silences, kept apart.</b> No run chosen, a capture running, a judgement that cannot
+    /// be read, a bundle nobody judged, and a judging that found nothing are different facts, and
+    /// only the last of them means the forest is clean.
+    /// </para>
+    /// </remarks>
+    private void ListFindings()
+    {
+        Findings.Clear();
+        FindingsRefusal = null;
+        NothingWasFound = false;
+
+        if (BundlePath is null || _captureIsRunning)
+        {
+            AnnounceFindings();
+            return;
+        }
+
+        var read = _assets.ReadFindings(BundlePath, FindingsAsked());
+
+        if (!read.IsSuccess)
+        {
+            FindingsRefusal = new Notice("There are no findings to show", read.Error.Description);
+            AnnounceFindings();
+            return;
+        }
+
+        foreach (var finding in read.Value.Findings)
+            Findings.Add(new FindingRowViewModel(finding));
+
+        _findingsFrom = read.Value.Next;
+        NothingWasFound = read.Value.NothingWasFound;
+        AnnounceFindings();
+    }
+
+    /// <summary>What the findings grid is asking for, as the screen currently stands.</summary>
+    private FindingsQuery FindingsAsked() =>
+        new(
+            Severity: null,
+            RuleId: null,
+            DomainFqdn: null,
+            Container: Selected?.DistinguishedName,
+            After: _findingsBack.Count == 0 ? null : _findingsBack.Peek(),
+            PageSize: FindingsQuery.DefaultPageSize);
+
+    /// <summary>Shows the next page of findings.</summary>
+    [RelayCommand(CanExecute = nameof(HasMoreFindings))]
+    public void NextFindings()
+    {
+        if (_findingsFrom is not { } mark)
+            return;
+
+        _findingsBack.Push(mark);
+        ListFindings();
+    }
+
+    /// <summary>Whether there is another page of findings after this one.</summary>
+    public bool HasMoreFindings => _findingsFrom is not null;
+
+    /// <summary>Goes back to the previous page of findings.</summary>
+    [RelayCommand(CanExecute = nameof(HasEarlierFindings))]
+    public void PreviousFindings()
+    {
+        if (_findingsBack.Count == 0)
+            return;
+
+        _findingsBack.Pop();
+        ListFindings();
+    }
+
+    /// <summary>Whether there is a page of findings before this one.</summary>
+    public bool HasEarlierFindings => _findingsBack.Count > 0;
+
+    /// <summary>Whether any finding is being shown.</summary>
+    public bool HasFindings => Findings.Count > 0;
+
+    /// <summary>Whether the screen is saying why there are no findings.</summary>
+    public bool HasFindingsRefusal => FindingsRefusal is not null;
+
+    /// <summary>
+    /// Which page of findings is showing, counting from one, for an operator who needs to know
+    /// where he is.
+    /// </summary>
+    public int FindingsPageNumber => _findingsBack.Count + 1;
+
+    private void AnnounceFindings()
+    {
+        OnPropertyChanged(nameof(HasFindings));
+        OnPropertyChanged(nameof(HasFindingsRefusal));
+        OnPropertyChanged(nameof(HasMoreFindings));
+        OnPropertyChanged(nameof(HasEarlierFindings));
+        OnPropertyChanged(nameof(FindingsPageNumber));
+        NextFindingsCommand.NotifyCanExecuteChanged();
+        PreviousFindingsCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Keeps the two halves of the screen from both claiming to be showing.</summary>
+    partial void OnShowsFindingsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowsObjects));
+        OnPropertyChanged(nameof(ShowsObjectListing));
+        OnPropertyChanged(nameof(ShowsFindingsListing));
+    }
+
+    /// <summary>
     /// Takes a node reporting itself selected as the selection.
     /// </summary>
     /// <remarks>
@@ -478,10 +674,17 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// A different container is a different listing, and it starts at its first page. Keeping the
     /// page number would open a container at page seven of a listing that has two.
     /// </summary>
+    /// <remarks>
+    /// The findings restart with it, and for the same reason: they are scoped by this selection, so
+    /// a mark from the previous container points into a page of a list that no longer exists.
+    /// </remarks>
     partial void OnSelectedChanged(TreeNodeViewModel? value)
     {
         PageNumber = 1;
+        _findingsBack.Clear();
+        _findingsFrom = null;
         ListObjects();
+        ListFindings();
     }
 
     /// <summary>Changing the level changes the listing, and it starts again at its first page.</summary>
@@ -509,6 +712,14 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(HasOpenObject));
         OnPropertyChanged(nameof(ShowsListing));
+
+        // The two halves derive from ShowsListing, so opening or closing an object changes them
+        // without either of them being assigned. Left out, the grid draws once and never moves,
+        // which reads as a tab that does nothing. Held by
+        // AssetsViewModelTests.OpeningAnObjectTakesTheFindingsGridOffTheScreen.
+        OnPropertyChanged(nameof(ShowsObjectListing));
+        OnPropertyChanged(nameof(ShowsFindingsListing));
+
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(IsShort));
         OnPropertyChanged(nameof(PageDescription));

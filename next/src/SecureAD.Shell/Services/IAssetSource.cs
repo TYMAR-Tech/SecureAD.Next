@@ -1,4 +1,5 @@
 using SecureAD.Evidence;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 
@@ -63,4 +64,15 @@ internal interface IAssetSource
     /// object would re-read the whole schema for every screen an operator turned.
     /// </remarks>
     Result<SchemaGuidCatalog> ReadSchemaGuids(string bundleDirectory);
+
+    /// <summary>Reads one page of the findings a judging produced.</summary>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    /// <param name="query">Which findings, and where to carry on from.</param>
+    /// <remarks>
+    /// <b>The judgement is a different file from the evidence, and may not be there at all.</b> A
+    /// bundle that has been captured but not judged has no findings to page, and that is a fact
+    /// about the judging rather than about the forest - so it is a failure a screen states, not an
+    /// empty grid.
+    /// </remarks>
+    Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query);
 }

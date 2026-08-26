@@ -105,27 +105,52 @@ public sealed class ShellViewModelTests
         var shell = AShell();
         shell.Show(ShellSection.Assets);
 
-        shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
+        shell.Views.Single(v => v.Name == "LAPS").IsSelected = true;
 
         Assert.IsType<SectionView>(shell.Current);
     }
 
     /// <summary>
-    /// An empty findings table would tell an administrator his directory is clean. The tab says
-    /// nothing has looked.
+    /// Choosing the findings tab shows the findings rather than the objects.
     /// </summary>
+    /// <remarks>
+    /// <b>Both tabs are one screen, so the tabs cannot choose between two view models</b> the way
+    /// the rail does. The screen is told which of its halves is showing, and this is what proves
+    /// the telling happens.
+    /// <para>
+    /// This replaced <c>AFindingsTabWithNoFindingsEngineSaysNothingHasLooked</c>, which held that
+    /// the tab must say nothing had looked while no engine existed. One exists now. What that test
+    /// was protecting - that an empty findings table must never read as a clean directory - moved
+    /// to <c>AssetsViewModelTests.ABundleNobodyJudgedIsNotShownAsAForestWithNothingWrong</c>, where
+    /// the findings actually are.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void AFindingsTabWithNoFindingsEngineSaysNothingHasLooked()
+    public void ChoosingTheFindingsTabShowsTheFindings()
     {
         var shell = AShell();
         shell.Show(ShellSection.Assets);
 
         shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
 
-        Assert.Contains(
-            "reports nothing about your directory",
-            ((SectionView)shell.Current).Absent,
-            StringComparison.Ordinal);
+        Assert.True(shell.Assets.ShowsFindingsListing);
+        Assert.False(shell.Assets.ShowsObjectListing);
+    }
+
+    /// <summary>
+    /// Going back to the objects tab shows the objects again.
+    /// </summary>
+    [Fact]
+    public void GoingBackToTheObjectsTabShowsTheObjects()
+    {
+        var shell = AShell();
+        shell.Show(ShellSection.Assets);
+
+        shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
+        shell.Views.Single(v => v.Name == "Objects").IsSelected = true;
+
+        Assert.True(shell.Assets.ShowsObjectListing);
+        Assert.False(shell.Assets.ShowsFindingsListing);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.IO;
 using SecureAD.Evidence;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 
@@ -104,6 +105,38 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
             _schema = read.Value;
 
         return read;
+    }
+
+    /// <inheritdoc/>
+    public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        ArgumentNullException.ThrowIfNull(query);
+
+        // Opened and closed per page rather than held like the evidence. A judgement is rewritten
+        // whenever a bundle is judged again, and a reader kept open across that would go on
+        // answering from the file that was replaced. It is also small: the evidence is held open
+        // because verifying its seal re-reads gigabytes, and that reason does not apply here.
+        var opened = JudgementReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return Result<FindingsPage>.Failure(opened.Error);
+
+        try
+        {
+            using var reader = opened.Value!;
+            return reader.ReadPage(query);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Result<FindingsPage>.Failure(AuditError.Create(
+                ErrorCategory.Shell,
+                "JudgementCannotBeRead",
+                ErrorSeverity.Failed,
+                $"The judgement in '{bundleDirectory}' was opened and could not be read. "
+                + $"{ex.Message}",
+                bundleDirectory));
+        }
     }
 
     /// <inheritdoc/>

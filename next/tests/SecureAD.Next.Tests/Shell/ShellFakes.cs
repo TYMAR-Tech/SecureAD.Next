@@ -218,6 +218,28 @@ internal sealed class FakeAssetSource : IAssetSource
             ? Result<SchemaGuidCatalog>.Failure(error)
             : Result<SchemaGuidCatalog>.Success(Schema);
     }
+
+    /// <summary>The findings this run is pretending to have judged. None, unless a test says so.</summary>
+    public FindingsPage FindingsPage { get; set; } = new([], null, RulesRan: 1);
+
+    /// <summary>Why the findings could not be read, when a test wants that.</summary>
+    public AuditError? FindingsFail { get; set; }
+
+    /// <summary>What the findings were last asked for, so a test can prove the grid is scoped.</summary>
+    public FindingsQuery? FindingsAsked { get; private set; }
+
+    /// <summary>How many times findings were asked for.</summary>
+    public int FindingsReads { get; private set; }
+
+    public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
+    {
+        FindingsAsked = query;
+        FindingsReads++;
+
+        return FindingsFail is { } error
+            ? Result<FindingsPage>.Failure(error)
+            : Result<FindingsPage>.Success(FindingsPage);
+    }
 }
 
 internal sealed class FakeFolderPicker : IFolderPicker

@@ -101,15 +101,23 @@ across a naming-context boundary and at the root as well as in a child domain.
 *Detail:* [`SEC-010`](rules/SEC-010.md), [`SEC-011`](rules/SEC-011.md).
 *Criteria:* `AC-56`, `AC-62`, `AC-98`.
 
-*Still owed:* a findings surface in the shell, and an entry point in the product — judging is
-reachable only through `next/tools/judge-bundle.ps1`. What an operator is shown when the evidence
-verifies and the judgement is degraded is still undecided.
+*Built since:* judging runs from the shell. It follows a capture without being asked for — the
+owner's shape, 2026-08-26 — reports progress, can be stopped, and leaves the earlier judgement
+intact when it is. The findings reach a screen: Assets carries a Findings tab beside Objects,
+scoped by the same tree selection, paged rather than counted, worst first.
+
+*Still owed:* what an operator is shown when the evidence verifies and the judgement is degraded is
+still undecided. The command line still only captures, which is deliberate for now — the owner
+intends it to judge as well, so a long run can happen unattended.
 
 *Also owed, found by asking:* nothing in the product prints what a bundle covered. Which naming
 contexts were read, from which controller, and which were known about but never read are all
 recorded — `BundleReader.ReadScope()` returns them — and the only way to find out today is to guess
 an object and probe for it. Three such probes are what established this bundle spans three domains,
 which is an answer arrived at the wrong way round.
+
+*Owed and now recorded as `P-100`:* the assets screen has no layer document, so the findings grid
+was built with no documentation gate over it.
 
 **Owed from stage 1 — discharged 2026-08-25.** Sixteen tests were deleted with the evidence tables,
 and every claim they made is proven again against the judgement store. The old names are kept beside
