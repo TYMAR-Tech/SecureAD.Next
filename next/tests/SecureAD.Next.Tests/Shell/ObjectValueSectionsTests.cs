@@ -477,7 +477,7 @@ public sealed class ObjectValueSectionsTests
             .First(s => s.Key == key);
 
     private static ObjectAttributes Attributes(params ObjectAttribute[] attributes) =>
-        new(AliceDn, Captured, EvidenceCompleteness.Complete, attributes);
+        new(AliceDn, null, Captured, EvidenceCompleteness.Complete, attributes);
 
     /// <summary>When the run read the object. Ages on screen are measured from here.</summary>
     private static readonly DateTimeOffset Captured =

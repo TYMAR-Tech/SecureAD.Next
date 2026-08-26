@@ -91,11 +91,22 @@ public sealed record ObjectAttribute(
 /// <see cref="EvidenceObject.Completeness"/> makes about the same object on the way in.
 /// </para>
 /// </param>
+/// <param name="ObjectGuid">
+/// Which object this is, immutably.
+/// <para>
+/// Typed here rather than left to be parsed out of the <c>objectGUID</c> attribute, because this is
+/// what a finding's identity rests on and what two bundles are joined on. It survives both rename
+/// and move, which the distinguished name does not. Null is possible and meaningful: an object the
+/// controller returned without one cannot be identified across runs at all, so nothing may be
+/// attached to it that has to outlive this bundle.
+/// </para>
+/// </param>
 /// <param name="Attributes">
 /// Every attribute the catalogue names, in the order the catalogue names them.
 /// </param>
 public sealed record ObjectAttributes(
     string DistinguishedName,
+    Guid? ObjectGuid,
     DateTimeOffset CapturedUtc,
     EvidenceCompleteness Completeness,
     IReadOnlyList<ObjectAttribute> Attributes)
@@ -143,7 +154,7 @@ internal static class ObjectAttributesReader
         if (stored is null)
             return null;
 
-        var (objectId, dn, captured, completeness, attributes) = stored.Value;
+        var (objectId, dn, objectGuid, captured, completeness, attributes) = stored.Value;
 
         foreach (var attribute in BundleSchema.MultiValuedTables)
         {
@@ -155,6 +166,7 @@ internal static class ObjectAttributesReader
 
         return new ObjectAttributes(
             dn,
+            objectGuid,
             captured,
             completeness,
             [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)]);
@@ -170,7 +182,7 @@ internal static class ObjectAttributesReader
     /// an object beside somebody else's coverage. <c>connection_security</c> is selected after the
     /// attribute columns so that adding a catalogued attribute does not move it.
     /// </remarks>
-    private static (long ObjectId, string Dn, DateTimeOffset Captured, EvidenceCompleteness Completeness, List<ObjectAttribute> Attributes)? SingleValuedOf(
+    private static (long ObjectId, string Dn, Guid? ObjectGuid, DateTimeOffset Captured, EvidenceCompleteness Completeness, List<ObjectAttribute> Attributes)? SingleValuedOf(
         SqliteConnection connection, string distinguishedName)
     {
         var columns = BundleSchema.SingleValuedColumns;
@@ -192,13 +204,14 @@ internal static class ObjectAttributesReader
 
         var objectId = reader.GetInt64(0);
         var dn = reader.GetString(1);
+        var storedGuid = reader.IsDBNull(2) ? null : reader.GetString(2);
         var captured = DateTimeOffset.Parse(
             reader.GetString(3), System.Globalization.CultureInfo.InvariantCulture);
 
         var attributes = new List<ObjectAttribute>
         {
             Structural("distinguishedName", dn),
-            Structural("objectGUID", reader.IsDBNull(2) ? null : reader.GetString(2)),
+            Structural("objectGUID", storedGuid),
         };
 
         for (var i = 0; i < columns.Count; i++)
@@ -215,7 +228,13 @@ internal static class ObjectAttributesReader
         var completeness = ReadCoverage.Over(
             Enum.Parse<ConnectionSecurityLevel>(reader.GetString(4 + columns.Count)));
 
-        return (objectId, dn, captured, completeness, attributes);
+        return (
+            objectId,
+            dn,
+            storedGuid is null ? null : Guid.Parse(storedGuid),
+            captured,
+            completeness,
+            attributes);
     }
 
     /// <summary>

@@ -143,6 +143,12 @@ asked for rather than under any name a controller may have answered with.
 
 `ObjectAttributes.DistinguishedName` is the object as the controller named it.
 
+`ObjectAttributes.ObjectGuid` is which object it is, immutably. It is typed rather than left to be
+parsed out of the `objectGUID` attribute, because it is what a finding's identity rests on and what
+two bundles are joined on — it survives both a rename and a move, which the distinguished name does
+not. Null is possible and meaningful: an object the controller returned without one cannot be
+identified across runs at all, so nothing that has to outlive this bundle may be attached to it.
+
 ## What is not here
 
 Which attributes the catalogue asks for, and why each is justified, is
