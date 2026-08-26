@@ -16,6 +16,9 @@ finished and sealed separately from the evidence it judged.
 | Type | What it is |
 |---|---|
 | `JudgementSchema` | Every table in a judgement store, and the indexes built once writing is done |
+| `JudgementWriter` | The one way a judgement store gets written |
+| `RuleExecution` | Everything one rule did to one bundle, and the unit the store commits |
+| `MissingInput` | One declared attribute that was not captured, and how many objects it cost |
 | `JudgementRunState` | What became of a judging run as a whole |
 | `RuleExecutionOutcome` | What became of one rule within that run |
 
@@ -139,8 +142,29 @@ free: there is no data to migrate and no compatibility to keep.
 
 ---
 
-## Nothing here writes a row yet
+## What is built
 
-The schema exists, the two state machines exist, and nothing constructs either. A **What is built**
-table appears here when the writer does, because the test is the evidence and there is nothing yet
-to cite.
+The schema, the two state machines and the writer. Nothing reads a store back yet, and nothing runs
+a rule to fill one.
+
+| An operator can… | Proven by | Confirmed in lab |
+|---|---|---|
+| be certain a judging still in progress cannot be opened | `JudgementWritingTests.AJudgementInProgressHasNoNameAReaderAsksFor` |  |
+| have a finished judgement named and sealed | `JudgementWritingTests.CompletingNamesTheStoreAndSealsIt` |  |
+| keep the previous answer when a re-judging dies part way | `JudgementWritingTests.AJudgingThatDidNotFinishLeavesTheEarlierOneIntact` |  |
+| be certain a judging whose coordinator failed offers nothing to read | `JudgementWritingTests.AnAbandonedJudgingIsNotGivenAReadableName` |  |
+| tell a judging where every rule reached a verdict from one where a rule did not | `JudgementWritingTests.EveryRuleReachingEveryVerdictIsCompleted` |  |
+| be certain one unreadable input degrades the whole judging | `JudgementWritingTests.OneRuleThatCouldNotReadItsInputsDegradesTheJudging` |  |
+| keep the rules around one that threw | `JudgementWritingTests.ARuleThatThrewDoesNotCostTheRulesAroundIt` |  |
+| see which capture a judgement was made against | `JudgementWritingTests.TheStoreRecordsTheEvidenceItJudged` |  |
+| be certain a rule cannot claim every verdict and also have missed objects | `JudgementWritingTests.ARuleThatReachedEveryVerdictCannotAlsoHaveMissedObjects` |  |
+| be certain an unreached verdict says what was missing | `JudgementWritingTests.ARuleThatCouldNotReachAVerdictMustSayWhatWasMissing` |  |
+| see what was missing named rather than counted | `JudgementWritingTests.WhatWasMissingIsRecordedByName` |  |
+| be certain a finding is not filed under a rule that did not make it | `JudgementWritingTests.AFindingCannotBeFiledUnderAnotherRule` |  |
+| be certain a rule that threw does not leave half a verdict behind | `JudgementWritingTests.ARuleThatThrewCannotAlsoCarryFindings` |  |
+| be certain one rule is recorded once | `JudgementWritingTests.OneRuleCannotBeRecordedTwice` |  |
+| be certain nothing is added to a sealed judgement | `JudgementWritingTests.NothingCanBeAddedAfterTheJudgementIsSealed` |  |
+| tell a rule that was skipped from one that was never scheduled | `JudgementWritingTests.ARuleThatDidNotRunIsStillRecorded` |  |
+
+**Confirmed in lab** is blank throughout: these run against stores this test built, and no judging
+has been run against a real capture.
