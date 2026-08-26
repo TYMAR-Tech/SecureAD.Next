@@ -275,6 +275,7 @@ public sealed class JudgementReader : IDisposable
               AND ($rule IS NULL OR f.rule_id = $rule)
               AND ($domain IS NULL OR f.domain_fqdn = $domain)
               AND ($container IS NULL OR f.distinguished_name LIKE $containerLike ESCAPE '\')
+              AND ($object IS NULL OR f.distinguished_name = $object)
               AND ($afterRank IS NULL OR
                    f.severity_rank < $afterRank OR
                    (f.severity_rank = $afterRank AND f.rule_id > $afterRule) OR
@@ -289,6 +290,7 @@ public sealed class JudgementReader : IDisposable
         Bind(command, "$domain", query.DomainFqdn);
         Bind(command, "$container", query.Container);
         Bind(command, "$containerLike", ContainerPattern(query.Container));
+        Bind(command, "$object", query.Object);
         Bind(command, "$afterRank", query.After?.SeverityRank);
         Bind(command, "$afterRule", query.After?.RuleId);
         Bind(command, "$afterDn", query.After?.DistinguishedName);

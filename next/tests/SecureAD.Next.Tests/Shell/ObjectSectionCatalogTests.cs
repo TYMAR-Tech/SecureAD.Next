@@ -126,6 +126,49 @@ public sealed class ObjectSectionCatalogTests
     }
 
     /// <summary>
+    /// Every class has a findings section, including ones the catalogue does not know.
+    /// </summary>
+    /// <remarks>
+    /// <b>Not hidden when there are none, unlike LAPS on a user.</b> Hiding LAPS says something
+    /// this product can defend - a user is not a thing LAPS applies to. <i>No findings</i> says
+    /// nothing about what a class is: an object nothing was found about, an object nobody judged,
+    /// and an object whose rules could not read what they needed are three different facts, and an
+    /// absent section renders all three as silence. That is <c>docs/decisions/0002</c>.
+    /// </remarks>
+    [Theory]
+    [InlineData("user")]
+    [InlineData("computer")]
+    [InlineData("group")]
+    [InlineData("organizationalUnit")]
+    [InlineData("groupPolicyContainer")]
+    [InlineData("domainDNS")]
+    [InlineData("msExchDynamicDistributionList")]
+    [InlineData(null)]
+    public void EveryClassHasAFindingsSection(string? objectClass)
+    {
+        Assert.Contains(
+            ObjectSectionCatalog.For(objectClass),
+            s => s.Key == ObjectSectionCatalog.Findings);
+    }
+
+    /// <summary>
+    /// The findings section claims no attribute, so it cannot take one from another section.
+    /// </summary>
+    /// <remarks>
+    /// A finding is not a value the directory gave. It is what a rule made of several, and it lives
+    /// in another file entirely - so a findings section that claimed an attribute would be saying
+    /// the attribute is shown there when it is not shown at all.
+    /// </remarks>
+    [Fact]
+    public void TheFindingsSectionClaimsNoAttribute()
+    {
+        var findings = ObjectSectionCatalog.For("user")
+            .Single(s => s.Key == ObjectSectionCatalog.Findings);
+
+        Assert.Empty(findings.Attributes);
+    }
+
+    /// <summary>
     /// Curation may not hide a captured value. Because capture requests every attribute of every
     /// object whatever its class, an object can carry a value its class does not justify, and
     /// without somewhere for it to land a class-driven section list would silently drop it.

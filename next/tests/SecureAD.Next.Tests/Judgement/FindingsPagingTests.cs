@@ -279,6 +279,85 @@ public sealed class FindingsPagingTests
         Assert.False(page.HasMore);
     }
 
+    /// <summary>
+    /// Asking about one object returns only that object's findings.
+    /// </summary>
+    /// <remarks>
+    /// This is how the object view fills its findings section: an operator who opened one object is
+    /// asking what is wrong with it.
+    /// </remarks>
+    [Fact]
+    public void AskingAboutOneObjectReturnsOnlyThatObjectsFindings()
+    {
+        var directory = ABundleWith(
+        [
+            AFinding("CN=one,OU=Servers,DC=contoso,DC=com"),
+            AFinding("CN=two,OU=Servers,DC=contoso,DC=com"),
+        ]);
+
+        var page = Page(
+            directory,
+            Query() with { Object = "CN=one,OU=Servers,DC=contoso,DC=com" });
+
+        var only = Assert.Single(page.Findings);
+        Assert.Equal("CN=one,OU=Servers,DC=contoso,DC=com", only.DistinguishedName);
+    }
+
+    /// <summary>
+    /// Asking about a container as an object does not return what is inside it.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is why the object filter is not expressed as a container match.</b> A container match
+    /// is a suffix, so asking about <c>OU=Servers</c> that way would answer with every finding
+    /// beneath it - and an operator who opened the organisational unit itself would be told its
+    /// members' problems were its own.
+    /// </remarks>
+    [Fact]
+    public void AskingAboutAContainerDoesNotReturnWhatIsInsideIt()
+    {
+        var directory = ABundleWith(
+        [
+            AFinding("OU=Servers,DC=contoso,DC=com"),
+            AFinding("CN=one,OU=Servers,DC=contoso,DC=com"),
+            AFinding("CN=two,OU=Servers,DC=contoso,DC=com"),
+        ]);
+
+        var page = Page(directory, Query() with { Object = "OU=Servers,DC=contoso,DC=com" });
+
+        var only = Assert.Single(page.Findings);
+        Assert.Equal("OU=Servers,DC=contoso,DC=com", only.DistinguishedName);
+    }
+
+    /// <summary>
+    /// An object with nothing found about it gives an empty page rather than a refusal.
+    /// </summary>
+    /// <remarks>
+    /// The rules ran; this object is simply not one of the things they found. That is a statement
+    /// about the object, and the findings section on it should say so.
+    /// </remarks>
+    [Fact]
+    public void AnObjectWithNothingFoundAboutItGivesAnEmptyPage()
+    {
+        var directory = ABundleWith([AFinding("CN=one,OU=Servers,DC=contoso,DC=com")]);
+
+        var page = Page(directory, Query() with { Object = "CN=quiet,OU=People,DC=contoso,DC=com" });
+
+        Assert.Empty(page.Findings);
+        Assert.True(page.NothingWasFound);
+    }
+
+    /// <summary>
+    /// The shorthand for asking about one object asks about that object.
+    /// </summary>
+    [Fact]
+    public void TheShorthandForOneObjectAsksAboutThatObject()
+    {
+        var query = FindingsQuery.About("CN=one,OU=Servers,DC=contoso,DC=com");
+
+        Assert.Equal("CN=one,OU=Servers,DC=contoso,DC=com", query.Object);
+        Assert.Null(query.Container);
+    }
+
     private static FindingsQuery Query() => FindingsQuery.Everything();
 
     private static FindingsPage Page(string directory, FindingsQuery query)

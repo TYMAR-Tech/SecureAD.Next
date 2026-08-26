@@ -591,6 +591,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
             RuleId: null,
             DomainFqdn: null,
             Container: Selected?.DistinguishedName,
+            Object: null,
             After: _findingsBack.Count == 0 ? null : _findingsBack.Peek(),
             PageSize: FindingsQuery.DefaultPageSize);
 

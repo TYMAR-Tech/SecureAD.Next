@@ -43,6 +43,16 @@ public readonly record struct FindingsPageMark(
 /// Only findings on objects at or beneath this distinguished name, or null for the whole forest.
 /// This is how the tree selection scopes the grid.
 /// </param>
+/// <param name="Object">
+/// Only findings about this one object, or null for any object.
+/// <para>
+/// <b>Beside <paramref name="Container"/> rather than expressed with it.</b> A container match is a
+/// suffix and matches everything beneath, so asking for one object that way would also return the
+/// findings of everything inside it when that object is itself a container. The two questions are
+/// different — <i>what is wrong under here</i> and <i>what is wrong with this</i> — and an operator
+/// who opened one object is asking the second.
+/// </para>
+/// </param>
 /// <param name="After">Where the previous page ended, or null for the first page.</param>
 /// <param name="PageSize">How many findings to return.</param>
 public sealed record FindingsQuery(
@@ -50,6 +60,7 @@ public sealed record FindingsQuery(
     string? RuleId,
     string? DomainFqdn,
     string? Container,
+    string? Object,
     FindingsPageMark? After,
     int PageSize)
 {
@@ -64,7 +75,23 @@ public sealed record FindingsQuery(
 
     /// <summary>The first page of everything, worst first.</summary>
     public static FindingsQuery Everything() =>
-        new(null, null, null, null, null, DefaultPageSize);
+        new(null, null, null, null, null, null, DefaultPageSize);
+
+    /// <summary>
+    /// Everything found about one object.
+    /// </summary>
+    /// <remarks>
+    /// One page of the default size rather than all of them. An object with more findings than that
+    /// is rare enough that paging them is not worth a screen, and common enough that reading them
+    /// all into a panel would be the one place this product forgot the forest can be large.
+    /// </remarks>
+    /// <param name="distinguishedName">The object to ask about.</param>
+    public static FindingsQuery About(string distinguishedName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+
+        return new(null, null, null, null, distinguishedName, null, DefaultPageSize);
+    }
 
     /// <summary>The same query, resuming after <paramref name="mark"/>.</summary>
     /// <param name="mark">Where the last page ended.</param>

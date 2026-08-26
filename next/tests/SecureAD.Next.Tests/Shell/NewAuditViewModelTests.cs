@@ -294,16 +294,26 @@ public sealed class NewAuditViewModelTests
     /// The operator sees how far the judging has got.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>Waits for the property rather than for a length of time.</b> The window reports progress
     /// through <c>Progress&lt;T&gt;</c>, which marshals to the thread that created it - that is what
     /// keeps a judging running on a background thread from touching the interface - so the report
     /// arrives after the judging returns. A fixed delay would pass on an idle machine and fail on a
     /// loaded one, which is the shape of a test that teaches people to re-run the build.
+    /// </para>
+    /// <para>
+    /// <b>One report, not two, and that is the point.</b> This waited for the value 2,000 out of a
+    /// pair reported back to back, and failed under a full suite roughly once in three runs.
+    /// <c>Progress&lt;T&gt;</c> posts each report separately and does not promise they arrive in
+    /// the order they were made, so the later one could land first and leave the property showing
+    /// the earlier - the assertion then waited for a value that had already been overtaken. A
+    /// single report cannot be reordered against anything.
+    /// </para>
     /// </remarks>
     [Fact]
     public async Task HowFarTheJudgingHasGotIsShown()
     {
-        _judging.Reports = [1_000, 2_000];
+        _judging.Reports = [2_000];
         var screen = await Opened();
 
         var reported = new TaskCompletionSource();

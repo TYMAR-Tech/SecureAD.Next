@@ -120,6 +120,9 @@ internal static class ObjectSectionCatalog
     /// <summary>Captured values no section for this class claims. Shown only when there are some.</summary>
     public const string OtherValues = "OtherValues";
 
+    /// <summary>What the rules concluded about this object.</summary>
+    public const string Findings = "Findings";
+
     /// <summary>How this run came by this object, and what it could not read.</summary>
     public const string Evidence = "Evidence";
 
@@ -266,6 +269,17 @@ internal static class ObjectSectionCatalog
 
     private static readonly ObjectSectionDefinition OtherValuesSection = new(
         OtherValues, "Other captured values", []);
+
+    /// <summary>
+    /// What the rules concluded about this object.
+    /// </summary>
+    /// <remarks>
+    /// <b>Claims no attributes.</b> A finding is not a value the directory gave; it is what a rule
+    /// made of several, and it lives in the judgement store rather than the evidence. The section
+    /// is built from a query rather than from what arrived on the object.
+    /// </remarks>
+    private static readonly ObjectSectionDefinition FindingsSection = new(
+        Findings, "Findings", []);
 
     private static readonly ObjectSectionDefinition EvidenceSection = new(
         Evidence, "Evidence", []);
@@ -449,9 +463,16 @@ internal static class ObjectSectionCatalog
             ? known
             : [OverviewSection, PermissionsSection];
 
-        // Evidence is last for every class, and is never a class's own business: how this run came
-        // by the object is the same question whatever the object is.
-        return [.. sections, OtherValuesSection, EvidenceSection];
+        // Findings and Evidence are last for every class, and neither is a class's own business.
+        //
+        // FINDINGS IS NOT HIDDEN WHEN THERE ARE NONE, and that is the whole reason it is appended
+        // here rather than listed per class. Hiding the LAPS section on a user says something this
+        // product can defend - a user is not a thing LAPS applies to. "No findings" says nothing
+        // about what a class is: an object with none, an object nobody judged, and an object whose
+        // rules could not read what they needed are three different facts, and an absent section
+        // would render all three as silence. That is docs/decisions/0002 exactly, and the section
+        // says which of the three it is.
+        return [.. sections, OtherValuesSection, FindingsSection, EvidenceSection];
     }
 
     /// <summary>

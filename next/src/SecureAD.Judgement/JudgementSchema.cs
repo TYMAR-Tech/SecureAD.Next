@@ -228,6 +228,13 @@ public static class JudgementSchema
         "CREATE INDEX ix_finding_rule ON finding(rule_id)",
         "CREATE INDEX ix_finding_object ON finding(object_guid)",
         "CREATE INDEX ix_finding_domain ON finding(domain_fqdn)",
+
+        // Asked once for every object an operator opens, to fill the findings section of the object
+        // view. Without it that is a scan of every finding in the forest per object opened, which is
+        // the shape of a screen that feels fine in a lab and stalls on a real directory.
+        //
+        // The grid index above leads on severity_rank, so it cannot serve an exact name lookup.
+        "CREATE INDEX ix_finding_name ON finding(distinguished_name)",
     ];
 
     /// <summary>
