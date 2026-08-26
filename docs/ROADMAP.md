@@ -91,6 +91,9 @@ in four — and degrading the whole judging. Those objects have no `userAccountC
 are not accounts. A rule now declares the classes it is about, on the same footing as the attributes
 it reads, and objects it is not about are counted apart from objects it could not judge.
 
+**Not confirmed by that run: the domain-controller exclusion.** No controller appeared in the
+findings, which has three explanations and the run distinguishes none of them.
+
 *Detail:* [`SEC-010`](rules/SEC-010.md), [`SEC-011`](rules/SEC-011.md).
 *Criteria:* `AC-56`, `AC-62`, `AC-98`.
 

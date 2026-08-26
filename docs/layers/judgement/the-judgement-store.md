@@ -255,11 +255,11 @@ yet.
 | be certain that is not said of everything | `JudgementIdentityTests.AFindingWhoseEvidenceWasCompleteComesBackComplete` |  |
 | be certain evidence with no table is refused rather than quietly dropped | `JudgementIdentityTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped` |  |
 | see an account trusted for delegation found in a sealed bundle | `JudgingEndToEndTests.AnAccountTrustedForDelegationIsFoundInASealedBundle` | 2026-08-26 |
-| be certain a domain controller is not reported for a setting it requires | `JudgingEndToEndTests.ADomainControllerIsNotReported` | 2026-08-26 |
+| be certain a domain controller is not reported for a setting it requires | `JudgingEndToEndTests.ADomainControllerIsNotReported` |  |
 | be certain every scheduled rule is recorded whether it found anything or not | `JudgingEndToEndTests.EveryScheduledRuleIsRecordedWhetherItFoundAnythingOrNot` | 2026-08-26 |
 | see which attribute was missing when a rule could not reach a verdict | `JudgingEndToEndTests.AnObjectMissingADeclaredInputDegradesTheJudgingAndNamesTheAttribute` |  |
 | be certain a judgement is bound to the bundle it judged | `JudgingEndToEndTests.TheJudgementIsBoundToTheBundleItJudged` | 2026-08-26 |
-| judge a bundle again without the earlier judgement being added to | `JudgingEndToEndTests.JudgingTwiceReplacesTheEarlierJudgement` | 2026-08-26 |
+| judge a bundle again without the earlier judgement being added to | `JudgingEndToEndTests.JudgingTwiceReplacesTheEarlierJudgement` |  |
 | be certain an object a rule is not about does not make the judging look degraded | `JudgingEndToEndTests.AnObjectTheRuleIsNotAboutDoesNotDegradeTheJudging` | 2026-08-26 |
 | be certain an account genuinely missing an input still degrades it | `JudgingEndToEndTests.AnAccountMissingADeclaredInputStillDegradesTheJudging` |  |
 
@@ -268,10 +268,14 @@ yet.
 **2026-08-26 is the first lab confirmation this product has recorded.** A bundle captured from
 `ph.ad.lab` — 8,361 objects — was judged in 0.72 seconds. Both rules reported `Succeeded`, judging
 2,082 accounts and passing over 6,279 objects they are not about. One finding: an account planted
-for the purpose, `CN=lab.unconstrained`. No domain controller was reported, which is the exclusion
-working on real controllers that genuinely carry `TRUSTED_FOR_DELEGATION` rather than on ones a test
-invented.
+for the purpose, `CN=lab.unconstrained`.
 
-The rows still blank were not exercised by that run. Nothing in the lab threw, no rule was skipped,
-and no account was missing a declared input — so the refusals and the degraded paths remain proven
-by test alone.
+**The domain-controller exclusion is not among the rows confirmed, and the first draft of this
+paragraph said it was.** No controller appeared in the findings, and that has three explanations —
+the exclusion worked, the controller does not carry `TRUSTED_FOR_DELEGATION`, or it was not among
+the objects judged. One observation, three causes. Confirming it needs the controller's
+`userAccountControl` read from the bundle and its absence from the findings shown to be a decision
+rather than a coincidence.
+
+The other blank rows were not exercised: nothing threw, no rule was skipped, and no account was
+missing a declared input, so the refusals and degraded paths remain proven by test alone.
