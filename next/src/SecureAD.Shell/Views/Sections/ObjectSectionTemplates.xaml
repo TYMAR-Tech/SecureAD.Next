@@ -678,6 +678,52 @@
         </Border>
     </DataTemplate>
 
+    <!-- WHAT THE RULES CONCLUDED ABOUT THIS OBJECT.
+
+         The verdict and the list are exclusive by construction: Verdict is null exactly when there
+         is a list to show, so the section cannot say "nothing was found" above a table of findings
+         and cannot show an empty table with nothing explaining it. Which of the three silences it
+         is - nobody judged, the judgement would not open, or the rules found nothing here - is
+         decided in the view model, where a test can reach it. -->
+    <DataTemplate DataType="{x:Type vm:FindingsSectionViewModel}">
+        <StackPanel>
+            <Border Style="{StaticResource Card}"
+                    Visibility="{Binding HasVerdict, Converter={StaticResource Shown}}">
+                <TextBox Text="{Binding Verdict, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Findings}"
+                          Visibility="{Binding HasFindings, Converter={StaticResource Shown}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource RowTitle}">
+                                    <Run Text="{Binding Rule, Mode=OneWay}" />
+                                    <Run Text=" — " Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <Run Text="{Binding Severity, Mode=OneWay}" />
+                                </TextBlock>
+
+                                <TextBox Text="{Binding Detail, Mode=OneWay}"
+                                         Style="{StaticResource SelectableMessage}"
+                                         Margin="0,4,0,0" />
+
+                                <!-- A finding resting on evidence that may be incomplete is a
+                                     weaker claim than one resting on a complete read, and it is
+                                     said here rather than left for the operator to assume. -->
+                                <TextBlock Text="{Binding Coverage}"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </DataTemplate>
+
     <DataTemplate DataType="{x:Type vm:OtherValuesSectionViewModel}">
         <Border Style="{StaticResource Card}">
             <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}"

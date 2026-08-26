@@ -579,6 +579,65 @@ public sealed class AssetsViewModelTests
         [],
         []);
 
+    /// <summary>
+    /// Opening a finding and closing the object returns to the page it was opened from.
+    /// </summary>
+    /// <remarks>
+    /// <b>The owner's shape: same page, same position.</b> An operator who read down to page four
+    /// of a large forest's findings, opened one, and was returned to page one would stop opening
+    /// them. Keyset paging only goes forward, so this works by the mark stack surviving the round
+    /// trip rather than by rebuilding it.
+    /// </remarks>
+    [Fact]
+    public void OpeningAFindingAndClosingItReturnsToThePageItWasOpenedFrom()
+    {
+        var screen = ShowingFindings(
+            new FindingsPage(
+                [AFinding()],
+                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com"),
+                RulesRan: 2));
+
+        screen.NextFindings();
+        screen.NextFindings();
+        Assert.Equal(3, screen.FindingsPageNumber);
+
+        screen.OpenFindingCommand.Execute(screen.Findings[0]);
+        screen.CloseObject();
+
+        Assert.Equal(3, screen.FindingsPageNumber);
+        Assert.NotEmpty(screen.Findings);
+    }
+
+    /// <summary>
+    /// The findings are not re-read when an object is closed.
+    /// </summary>
+    /// <remarks>
+    /// Closing an object is a return to what was already on screen, not a new question. Re-reading
+    /// would cost a query per close, and on a forest that takes hours to judge an operator opens
+    /// and closes a great many findings.
+    /// </remarks>
+    [Fact]
+    public void ClosingAnObjectDoesNotReReadTheFindings()
+    {
+        var assets = new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            Permissions = SomePermissions(),
+            FindingsPage = new FindingsPage([AFinding()], null, RulesRan: 2),
+        };
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        screen.OpenFindingCommand.Execute(screen.Findings[0]);
+        var afterOpening = assets.FindingsReads;
+
+        screen.CloseObject();
+
+        Assert.Equal(afterOpening, assets.FindingsReads);
+    }
+
     // ---------------------------------------------------------------------------------------
 
     private static AssetsViewModel ShowingFindings(FindingsPage findings)
@@ -587,6 +646,7 @@ public sealed class AssetsViewModelTests
         {
             Tree = TreeOfOneDomain(),
             Page = APageOfOne(),
+            Permissions = SomePermissions(),
             FindingsPage = findings,
         });
 

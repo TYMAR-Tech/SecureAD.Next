@@ -577,6 +577,12 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>Goes back to the listing the object was opened from.</summary>
+    /// <remarks>
+    /// <b>The findings are left exactly as they were.</b> Closing an object is a return to what was
+    /// already on screen rather than a new question, so neither the page nor the mark stack behind
+    /// it is disturbed - an operator who opened a finding from page four is put back on page four.
+    /// Keyset paging only goes forward, so a rebuilt stack would mean page one.
+    /// </remarks>
     [RelayCommand]
     public void CloseObject()
     {
