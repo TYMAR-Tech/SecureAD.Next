@@ -15,6 +15,12 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $BundlePath,
 
+    # A distinguished name to explain instead of judging the bundle. Reports whether the object is
+    # in the bundle at all, what the rules make of it, and why - which is the question an operator
+    # asks when something they expected to see is not in the findings, and the question an absence
+    # cannot answer on its own.
+    [string] $Explain,
+
     # Where the built assemblies are - the FOLDER holding them, not one of the files. Only needed
     # when this script is not sitting in the repository: on a lab machine, copy the whole build
     # output folder across and either put this script inside it or point -BinPath at it.
@@ -184,6 +190,80 @@ try {
     $rules = [System.Collections.Generic.List[SecureAD.Evidence.Findings.IRule]]::new()
     $rules.Add([SecureAD.Evidence.Findings.UnconstrainedDelegationOnAccount]::new())
     $rules.Add([SecureAD.Evidence.Findings.UnconstrainedDelegationOnNonDomainController]::new())
+
+    if ($Explain) {
+        $opened = [SecureAD.Evidence.BundleReader]::Open($BundlePath)
+        if (-not $opened.IsSuccess) {
+            throw "Could not open '$BundlePath': $($opened.Error.Code) - $($opened.Error.Description)"
+        }
+
+        $bundle = $opened.Value
+        try {
+            $subject = $bundle.ReadObjectAttributes($Explain)
+
+            Write-Host ''
+            Write-Host $Explain
+            Write-Host ('-' * $Explain.Length)
+
+            if ($null -eq $subject) {
+                Write-Host ''
+                Write-Host 'NOT IN THIS BUNDLE.'
+                Write-Host 'No rule was ever offered it, so its absence from the findings says'
+                Write-Host 'nothing about any rule.'
+                Write-Host ''
+                return
+            }
+
+            $classes = ($subject.Attributes | Where-Object { $_.LdapDisplayName -eq 'objectClass' }).Values.Text
+            $control = ($subject.Attributes | Where-Object { $_.LdapDisplayName -eq 'userAccountControl' }).Values.Text
+
+            Write-Host ''
+            Write-Host ("objectClass          {0}" -f ($classes -join ', '))
+            Write-Host ("userAccountControl   {0}" -f $(if ($control) { $control } else { '(not captured)' }))
+
+            $signals = [SecureAD.Evidence.Findings.DomainControllerSignals]::Of($subject)
+
+            Write-Host ''
+            Write-Host 'Is this a domain controller?'
+            Write-Host ("  SERVER_TRUST_ACCOUNT bit      {0}" -f $signals.ServerTrustAccountBit)
+            Write-Host ("  primary group is 516 or 521   {0}" -f $signals.PrimaryGroupIsDomainController)
+            Write-Host ("  under Domain Controllers OU   {0}" -f $signals.UnderDomainControllersOu)
+            Write-Host ("  => treated as a controller    {0}" -f $signals.IsDomainController)
+            Write-Host ("  => the signals disagree       {0}" -f $signals.SignalsDisagree)
+
+            Write-Host ''
+            Write-Host 'What each rule makes of it'
+            Write-Host '--------------------------'
+
+            foreach ($rule in $rules) {
+                $definition = $rule.Definition
+
+                if (-not $definition.IsAbout($subject)) {
+                    Write-Host ("  {0,-10} not about objects of this class" -f $definition.Id)
+                    continue
+                }
+
+                $verdict = $rule.Judge($subject)
+
+                if (-not $verdict.IsComplete) {
+                    Write-Host ("  {0,-10} could not judge - not captured: {1}" -f
+                        $definition.Id, ($verdict.InputsNotCaptured -join ', '))
+                }
+                elseif ($verdict.Findings.Count -gt 0) {
+                    Write-Host ("  {0,-10} FINDING: {1}" -f $definition.Id, $verdict.Findings[0].Detail)
+                }
+                else {
+                    Write-Host ("  {0,-10} judged, nothing to report" -f $definition.Id)
+                }
+            }
+
+            Write-Host ''
+            return
+        }
+        finally {
+            $bundle.Dispose()
+        }
+    }
 
     $now = [DateTimeOffset]::UtcNow
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
