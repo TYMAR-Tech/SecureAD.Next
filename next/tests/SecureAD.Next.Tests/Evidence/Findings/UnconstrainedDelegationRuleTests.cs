@@ -1,5 +1,6 @@
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Kernel.Capture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence.Findings;
@@ -40,52 +41,70 @@ public sealed class UnconstrainedDelegationRuleTests
         [],
         false);
 
-    private static EvidenceObject Account(
+    /// <summary>
+    /// An account as a bundle hands it back.
+    /// </summary>
+    /// <remarks>
+    /// <b>Built in the read-side shape, because that is what a rule judges.</b> A rule runs over a
+    /// sealed bundle and never over a capture in flight, so building capture-side objects here
+    /// would prove the rules work against something they are never given.
+    /// </remarks>
+    private static ObjectAttributes Account(
         string name,
         string distinguishedName,
         uint? control,
         int? primaryGroup,
         string objectClass)
     {
-        var attributes = new List<EvidenceAttribute>
+        var attributes = new List<ObjectAttribute>
         {
-            new("sAMAccountName", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText(name)]),
-            new("objectClass", StoredAttributeCompleteness.Complete,
-                [EvidenceValue.OfText("top"), EvidenceValue.OfText(objectClass)]),
+            Single("sAMAccountName", name),
+            new(
+                "objectClass",
+                AttributeCardinality.MultiValued,
+                [new AttributeValue(0, "top", null), new AttributeValue(1, objectClass, null)]),
         };
 
         if (control is { } c)
         {
-            attributes.Add(new EvidenceAttribute(
+            attributes.Add(Single(
                 "userAccountControl",
-                StoredAttributeCompleteness.Complete,
-                [EvidenceValue.OfText(c.ToString(System.Globalization.CultureInfo.InvariantCulture))]));
+                c.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         if (primaryGroup is { } g)
         {
-            attributes.Add(new EvidenceAttribute(
+            attributes.Add(Single(
                 "primaryGroupID",
-                StoredAttributeCompleteness.Complete,
-                [EvidenceValue.OfText(g.ToString(System.Globalization.CultureInfo.InvariantCulture))]));
+                g.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         }
 
-        return new EvidenceObject(
-            SomeCoverage(),
+        return new ObjectAttributes(
             distinguishedName,
             Guid.NewGuid(),
-            attributes,
-            DateTimeOffset.UnixEpoch);
+            DateTimeOffset.UnixEpoch,
+            EvidenceCompleteness.Complete,
+            attributes);
     }
 
-    private static EvidenceObject PlantedUser() => Account(
+    /// <summary>
+    /// One single-valued attribute, as a bundle stores it.
+    /// </summary>
+    /// <remarks>
+    /// An attribute the object does not carry is absent from the list rather than present and
+    /// empty, which is how a bundle hands it back: a null column produces no value.
+    /// </remarks>
+    private static ObjectAttribute Single(string ldapDisplayName, string value) =>
+        new(ldapDisplayName, AttributeCardinality.SingleValued, [new AttributeValue(0, value, null)]);
+
+    private static ObjectAttributes PlantedUser() => Account(
         "lab.unconstrained",
         "CN=lab.unconstrained,CN=Users,DC=ph,DC=ad,DC=lab",
         PlantedUserControl,
         513,
         "user");
 
-    private static EvidenceObject DomainController(string name) => Account(
+    private static ObjectAttributes DomainController(string name) => Account(
         name,
         $"CN={name},OU=Domain Controllers,DC=ph,DC=ad,DC=lab",
         DomainControllerControl,

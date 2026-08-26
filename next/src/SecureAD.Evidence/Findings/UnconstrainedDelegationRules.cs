@@ -46,7 +46,7 @@ internal static class UnconstrainedDelegation
     /// Whether this object is a computer, which is what partitions the two rules.
     /// </summary>
     /// <param name="subject">The object to test.</param>
-    internal static bool IsComputer(EvidenceObject subject) =>
+    internal static bool IsComputer(ObjectAttributes subject) =>
         AttributeReading.AllText(subject, "objectClass")
             .Any(c => string.Equals(c, "computer", StringComparison.OrdinalIgnoreCase));
 
@@ -58,7 +58,7 @@ internal static class UnconstrainedDelegation
     /// <param name="wantComputer">Whether the asking rule handles computers.</param>
     /// <param name="detail">How to word the finding once the object qualifies.</param>
     internal static RuleVerdict Judge(
-        EvidenceObject subject,
+        ObjectAttributes subject,
         RuleDefinition definition,
         bool wantComputer,
         Func<string, string> detail)
@@ -134,7 +134,7 @@ public sealed class UnconstrainedDelegationOnAccount : IRule
         UnconstrainedDelegation.RequiredAttributes);
 
     /// <inheritdoc />
-    public RuleVerdict Judge(EvidenceObject subject) =>
+    public RuleVerdict Judge(ObjectAttributes subject) =>
         UnconstrainedDelegation.Judge(
             subject,
             Definition,
@@ -166,7 +166,7 @@ public sealed class UnconstrainedDelegationOnNonDomainController : IRule
         UnconstrainedDelegation.RequiredAttributes);
 
     /// <inheritdoc />
-    public RuleVerdict Judge(EvidenceObject subject) =>
+    public RuleVerdict Judge(ObjectAttributes subject) =>
         UnconstrainedDelegation.Judge(
             subject,
             Definition,

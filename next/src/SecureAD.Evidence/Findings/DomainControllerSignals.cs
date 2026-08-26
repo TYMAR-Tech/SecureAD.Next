@@ -76,7 +76,7 @@ public sealed record DomainControllerSignals(
     /// Reads the three signals from a captured object.
     /// </summary>
     /// <param name="subject">The object to test.</param>
-    public static DomainControllerSignals Of(EvidenceObject subject)
+    public static DomainControllerSignals Of(ObjectAttributes subject)
     {
         ArgumentNullException.ThrowIfNull(subject);
 

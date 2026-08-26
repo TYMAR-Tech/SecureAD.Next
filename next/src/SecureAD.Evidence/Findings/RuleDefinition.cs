@@ -115,5 +115,5 @@ public interface IRule
     /// What this rule makes of one object, and what it could not read to decide.
     /// </summary>
     /// <param name="subject">The object to judge.</param>
-    RuleVerdict Judge(EvidenceObject subject);
+    RuleVerdict Judge(ObjectAttributes subject);
 }

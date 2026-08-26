@@ -16,7 +16,7 @@ internal static class AttributeReading
     /// <summary>The first text value of an attribute, or null when the object has none.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static string? Text(EvidenceObject subject, string ldapDisplayName) =>
+    internal static string? Text(ObjectAttributes subject, string ldapDisplayName) =>
         subject.Attributes
             .FirstOrDefault(a => string.Equals(
                 a.LdapDisplayName, ldapDisplayName, StringComparison.OrdinalIgnoreCase))
@@ -26,7 +26,7 @@ internal static class AttributeReading
     /// <summary>Every text value of an attribute, empty when the object has none.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static IReadOnlyList<string> AllText(EvidenceObject subject, string ldapDisplayName) =>
+    internal static IReadOnlyList<string> AllText(ObjectAttributes subject, string ldapDisplayName) =>
     [
         .. subject.Attributes
             .Where(a => string.Equals(
@@ -40,7 +40,7 @@ internal static class AttributeReading
     /// <summary>An attribute read as a 32-bit unsigned value, or null when it is not one.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static uint? UnsignedInteger(EvidenceObject subject, string ldapDisplayName) =>
+    internal static uint? UnsignedInteger(ObjectAttributes subject, string ldapDisplayName) =>
         uint.TryParse(
             Text(subject, ldapDisplayName),
             NumberStyles.Integer,
@@ -52,7 +52,7 @@ internal static class AttributeReading
     /// <summary>An attribute read as a 32-bit signed value, or null when it is not one.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static int? SignedInteger(EvidenceObject subject, string ldapDisplayName) =>
+    internal static int? SignedInteger(ObjectAttributes subject, string ldapDisplayName) =>
         int.TryParse(
             Text(subject, ldapDisplayName),
             NumberStyles.Integer,
