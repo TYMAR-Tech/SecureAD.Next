@@ -13,6 +13,10 @@ here; documents that mention it are recording history.
 
 ## What is built, and what is not
 
+**[`WHAT-THE-PRODUCT-IS.md`](../WHAT-THE-PRODUCT-IS.md) is the shorter answer** — the stages a run
+passes through, which are built, how judging works, and what the product deliberately is not. This
+section is the longer one.
+
 Measured 2026-08-24: 28 layer documents carrying 392 capability rows, each naming a test that
 proves it.
 
@@ -23,10 +27,17 @@ sealed when the run completes, with its coverage and any deliberate exclusion re
 and reading that bundle back offline through the run library, a captured directory tree and one
 object's detail.
 
-**Not built.** Findings and rules — nothing in this tree produces a finding, and per
-[`0045`](../decisions/0045-the-shell-is-built-before-the-judgement-half.md) screens bound to
-findings are left out rather than stubbed, so a customer is never shown an empty result that reads
-as *nothing is wrong*. Also unbuilt: effective access evaluation, reports and export, and any
+**Built, since the above was written.** Judging: `SecureAD.Judgement` streams a bundle once, offers
+every object to every scheduled rule, and writes findings to a store beside the evidence and never
+into it. Two rules, SEC-010 and SEC-011, confirmed against a real forest on 2026-08-26.
+[`docs/layers/judgement/the-judgement-store.md`](../layers/judgement/the-judgement-store.md)
+describes it.
+
+**Not built.** Any way into judging from the product — it is reachable only through
+`next/tools/judge-bundle.ps1`, a developer script, so the application cannot judge a bundle or open
+one. Per [`0045`](../decisions/0045-the-shell-is-built-before-the-judgement-half.md) screens bound
+to findings are left unbuilt rather than stubbed, so a customer is never shown an empty result that
+reads as *nothing is wrong*. Also unbuilt: effective access evaluation, reports and export, and any
 judgement about Group Policy — the parsers read `Registry.pol`, security templates and Group Policy
 Preferences, but nothing decides what any of it means.
 

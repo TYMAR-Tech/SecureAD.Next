@@ -213,15 +213,16 @@ Both run the same sequence, in this order, and the order matters:
 | tell an account that is clean from one the run could not read | `UnconstrainedDelegationRuleTests.AnObjectMissingADeclaredInputGetsNoVerdictRatherThanACleanOne` |  |
 | be certain that distinction is not made by a rule that never reaches a verdict | `UnconstrainedDelegationRuleTests.AnObjectCarryingEveryDeclaredInputReachesAVerdict` |  |
 
-**Confirmed in lab** is the date the owner saw this working against a real forest. Blank is the
-honest answer for every row: the rules are proven against values taken from a real capture, and
-nothing has been run end to end against a live directory.
+**Confirmed in lab** is the date the owner saw this working against a real forest. The rules have
+now been run end to end against a capture of a live forest — see the capability table in
+[`the-judgement-store.md`](the-judgement-store.md) for what that run confirmed and what it did not.
 
 ---
 
 ## What is not built
 
-**No finding is stored, and none is shown.** A rule reaches a verdict and nothing keeps it. There is
-no judgement store, no code that runs a rule over a bundle, and no screen that presents one.
-`StoredFindings` and `EvaluatedRule` are the shapes such a store would return, and nothing
-constructs either.
+**A finding is stored; none is shown.** `SecureAD.Judgement` holds the store and the coordinator
+that streams a bundle and offers every object to every scheduled rule — see
+[`the-judgement-store.md`](the-judgement-store.md). What is missing is a way in from the product:
+judging is reachable only through `next/tools/judge-bundle.ps1`, a developer script, and no screen
+presents a finding.

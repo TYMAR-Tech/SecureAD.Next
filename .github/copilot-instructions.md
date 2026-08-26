@@ -2,7 +2,7 @@
 
 ## Read this first
 
-**[`docs/WHAT-THE-PRODUCT-IS.md`](../docs/WHAT-THE-PRODUCT-IS.md) — open it before asking the owner anything about the product's shape.** SecureAD is a GUI application; the command line only captures. That file also records what the owner has said about the **predecessor**, which is a different application with a different architecture — read that part as history, never as a design to follow here.
+**[`docs/WHAT-THE-PRODUCT-IS.md`](../docs/WHAT-THE-PRODUCT-IS.md) — open it before asking the owner anything about the product's shape, and before inferring anything about it from the code.** What SecureAD is, the stages a run passes through and which are built, how judging works, the five commitments, what it deliberately is not, and where it departs from the predecessor. The predecessor is a *different application with a different architecture*: read that section as history, never as a design to follow.
 
 **A question the owner has already answered is a defect in this repository, not a lapse of memory.** When he answers one, write the answer into that file in the same turn. The rest of this document is about how to work; that file is about what is being built, and neither substitutes for the other.
 

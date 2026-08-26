@@ -1,97 +1,95 @@
-# What the product is
+# What SecureAD is
 
-This file exists because the same questions were asked of the owner four times in one session, and
-the answers had been given before. Nothing else in this repository says what SecureAD *is* — the
-instructions say how to work, the layer documents say what the code does, the decision records
-settle particular questions. A session that reads all three still does not know the shape of the
-product, and asks.
+An Active Directory security audit tool. **It reads a forest once, seals that reading as evidence,
+and everything it says afterwards it says from that file.**
+
+The product makes two separable claims, and keeping them separable is the whole design:
+
+1. **This is what your directory said, at this moment.** Provable years later, on a machine that
+   never saw the forest.
+2. **This is what we conclude from it.** Re-runnable under better rules without touching claim 1.
 
 **This is orientation, not authority.** Nothing here states the product's position; only a record in
-`docs/decisions/` with `Status: Accepted` does that. Where this file and a decision record disagree,
+[`decisions/`](decisions/) with `Status: Accepted` does that. Where this file and a record disagree,
 the record wins and this file is wrong.
 
-## The shape
+## The shape of a run
 
-**SecureAD is a GUI application.** The owner's words, 2026-08-26: *"this whole app is a GUI, the cli
-is just to capture overnight."* The application is the product; everything else serves it.
-
-**The command line is a capture tool, not a second product.** `securead.exe` exists so a capture can
-be left running overnight without the application open. It captures; it does not analyse and it does
-not show anything. Do not propose adding analysis verbs to it.
-
-**Analysis does not run while a capture does** —
-[`0072`](decisions/0072-analysis-and-capture-do-not-run-at-the-same-time.md) settles that, and is
-the only part of the operator's journey a decision record currently governs.
-
-**What the operator does after analysis finishes is not settled here.** The shell has Home, Assets
-and Domain details built, with Dashboard, Findings and LAPS as placeholders, so the screens are
-named but what they show is undrawn. Do not read the predecessor's screens as the answer.
-
-## What the predecessor did
-
-**This section is history. The architecture here is different and deliberately so.** Nothing below
-is a design to follow, a requirement, or a shape this rebuild owes anything to. It is written down
-only so the owner is not asked the same questions again.
-
-There is an old application. It worked, the owner ran it, and it is why the rebuild knows what it is
-aiming at. **Its inventory and component map were archived and are deliberately not in this
-repository** — the owner keeps the old repository and consults it himself. Do not ask for it.
-
-### How the old application analysed
-
-`DerivedAnalysisPipeline` ran eleven named phases in a fixed order, each committing before the next
-began:
-
-`DerivedAnalysisPipeline` ran eleven named phases in a fixed order, each committing before the next
-began:
-
-> analyze → create views → GUID map → delegation bundle matches → group expansion → control edges →
-> escalation paths → asset tier → findings → backfill finding principals → chokepoints
-
-Three properties of **that** application:
-
-- **Each phase was a distinct pass with its own materialised output.** Group expansion wrote a
-  membership closure; control edges read that closure and wrote edges; escalation paths read those
-  edges.
-- **Findings ran late,** after the graph existed, so a rule could ask "is this principal Tier 0?"
-  and get an answer.
-- **Each phase was independently fault-tolerant.** A failure left later phases running and the run
-  ended degraded.
-
-**How this rebuild analyses is not settled and is not written here.** `JudgingRun` streams a bundle
-once and offers each object to every scheduled rule, which is what the two rules built so far need.
-Whether rules that span objects — anything needing group membership resolved first — are served by a
-stage in front of that pass, by a different design entirely, or by something the old application
-never had, is an open question for the owner. Do not assume the pipeline above is the answer.
-
-### Where the old application's indexes were
-
-The old application carried 55 indexes and roughly forty were on derived tables — data analysis
-produced, not data the directory gave. The concentration says where the pain was:
-
-| Table | Indexes | What that implies |
+| Stage | What happens | State |
 |---|---|---|
-| `fact_control_edge` | 7, including a composite on target, deny state and type | the hot table: queried by source, by target, by type, by deny state |
-| `dim_object` | 7 | domain, class, SID, DN, reversed DN, owner, sAMAccountName |
-| `fact_group_membership_direct` / `_closure` | 4 | both directions, both tables |
-| `fact_delegation_bundle_match` | 3 | by object, by trustee, by bundle |
-| `fact_ace` | 2 | by trustee, by object-type GUID |
+| Connect | Find the forest itself; climb an ordered ladder of protection and record which rung each controller answered on | built |
+| Preflight | Prove a controller can serve what it will be asked, before the run commits | built |
+| Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
+| Seal | Fingerprint the evidence. Coverage and any deliberate exclusion recorded inside it | built |
+| Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, two rules |
+| Read back | Run library, directory tree, object detail | built |
+| Findings, dashboard, reports | — | not built |
 
-Its own performance instrumentation named what was watched on open: binding the objects tab,
-building the tree, binding security grids, counting control edges, counting by severity, building
-the coverage summary. So the slow things were **opening a bundle and binding grids, building the
-tree, and dashboard aggregates.**
+`0008` fixes the boundary: **the only component that touches a domain controller is capture.** A
+screen showing a permission is reading a file, not asking the directory.
 
-**Do not port these.** The old application materialised ACLs per object; this one deduplicates
-descriptors by hash, so its ACE pressure may not transfer at all. This is where to look first, not
-what to build. Nothing here is measured against this schema.
+**The application is the product; the command line only captures.** The owner's words, 2026-08-26:
+*"this whole app is a GUI, the cli is just to capture overnight."* Do not propose analysis verbs for
+`securead.exe`.
 
-## What is built here, as of 2026-08-26
+## How judging works
 
-Capture works and is reachable from both the shell and the command line. Evidence is sealed and can
-be read back. Judging works — two rules, confirmed against a real forest — but **is reachable only
-from `next/tools/judge-bundle.ps1`, a developer script.** The application cannot open a bundle at
-all, which is why the Dashboard and Findings tabs are placeholders.
+Decided, built and measured — see [`layers/judgement/`](layers/judgement/).
 
-[`docs/ROADMAP.md`](ROADMAP.md) is the live plan and says what is owed. This file says what the
-product is; the roadmap says how far along it is. When they disagree the roadmap is newer.
+- **One pass over the bundle, not one per rule.** Every object is streamed once and offered to every
+  scheduled rule while it is in hand, so judging forty rules costs the same read as judging one.
+- **A rule judges one object and nothing else.** No forest, no sibling lookup, no second pass, so a
+  rule cannot quietly acquire an input it never declared.
+- **A rule declares the data it reads, or the build fails** (`0083`).
+- **Atomic per rule, not per run.** A rule that throws loses only itself; its partial findings are
+  discarded, because a partial verdict would read as a complete one.
+- **Findings live outside the seal** (`0085`), in a store that is disposable and rebuildable.
+
+**The one acknowledged gap:** a rule resting on group membership needs a wider shape than this, and
+that shape does not exist yet. It is the only architectural question left open.
+
+## The five commitments
+
+1. **Evidence is permanent.** Sealed once, never re-sealed. Re-analysis copies the source and seals
+   the copy; the original is opened read-only (`0021`).
+2. **A gap is a fact about the capture, never about the forest** (`0002`). A domain left out by
+   choice never looks like one that could not be reached (`0063`); an unfinished run reports nothing
+   at all rather than partially (`0068`).
+3. **Say what you know, with its uncertainty — except when claiming completeness** (`0086`). Silence
+   is reserved for *this is complete*, where a wrong answer makes someone stop looking.
+4. **Severity belongs to the rule and the customer cannot move it** (`0066`, `0082`) — lowering a
+   severity is quieter than accepting a finding and leaves nothing behind.
+5. **A finding carries typed evidence and a permanent identity** (`0080`, `0023`, `0024`), so an
+   acceptance made today still attaches after a rename.
+
+## What it deliberately is not
+
+- **Not a live tool.** No live effective access, inheritance, ACL compare or delegation reporting
+  (`0008`).
+- **Not a policy compliance checker.** Password policy is captured and shown; nothing grades it.
+  Plenty of software measures password strength.
+- **Not tunable.** No assessment modes (`0031`), no customer-editable catalogue (`0082`).
+- **Not an auditor of audit configuration.** The SACL is never requested (`0036`).
+
+## Where it departs from the predecessor
+
+There is an old application. It worked, the owner ran it, and it is why this rebuild knows what it
+is aiming at. **Its architecture is not this one's, and nothing below is a design to follow.** Its
+inventory and component map were archived and are deliberately absent from this repository; the
+owner keeps the old repository and consults it himself. Do not ask for it.
+
+Thirty-nine of seventy-nine decision records reference it. The load-bearing differences:
+
+| | Old app | Here |
+|---|---|---|
+| Live directory | kept a live connection alongside the bundle | removed entirely (`0008`) |
+| Sealing | signed at the end over evidence *and* conclusions; re-analysis re-signed in place | evidence sealed alone at capture, never re-sealed (`0030`, `0085`) |
+| Analysis | eleven dependent phases writing into the same file | one streaming pass into a separate store |
+| Failure | phases fault-tolerant, degraded results still presented | unfinished run reports nothing (`0068`) |
+| Severity | overridable by policy file | fixed by rule card (`0066`) |
+| Capture scope | two class filters as radio buttons | every class except a shipped noise list (`0034`) |
+| Schema partition | not read | read every run (`0014`) — what makes object-specific ACE evaluation possible |
+| Vocabulary | *Accept* on screen, *Suppression* in code | one word, **finding**, everywhere (`0066`) |
+
+**A question the owner has already answered is a defect in this repository.** When he answers one,
+it belongs here, in the same turn.
