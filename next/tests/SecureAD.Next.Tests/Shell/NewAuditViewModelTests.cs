@@ -1,3 +1,5 @@
+using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -22,6 +24,7 @@ public sealed class NewAuditViewModelTests
     private readonly FakeCaptureLauncher _capture = new();
     private readonly FakeNewAuditDialog _dialogs = new();
     private readonly FakeRunOpener _opener = new();
+    private readonly FakeJudgingLauncher _judging = new();
 
     /// <summary>
     /// The refusal that must survive the trip to a window. <c>ControllerSelection</c> refuses a
@@ -185,6 +188,136 @@ public sealed class NewAuditViewModelTests
         await screen.StartAsync();
 
         Assert.Contains("Stopped", screen.Report, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A capture that sealed evidence is judged without being asked for.
+    /// </summary>
+    /// <remarks>
+    /// <b>The decision to audit was the decision to judge</b> - the owner's shape, 2026-08-26. An
+    /// operator who has waited hours for a capture should not come back to a second button and
+    /// another wait he never agreed to.
+    /// </remarks>
+    [Fact]
+    public async Task EvidenceThatWasSealedIsJudgedWithoutBeingAskedFor()
+    {
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(@"D:\audits\run", _judging.AskedFor);
+    }
+
+    /// <summary>
+    /// A run that sealed nothing is not judged.
+    /// </summary>
+    /// <remarks>
+    /// There is no evidence for a rule to read, so a judging would be reading a directory that
+    /// holds an account of why the run stopped and nothing else.
+    /// </remarks>
+    [Fact]
+    public async Task ARunThatSealedNothingIsNotJudged()
+    {
+        _capture.Outcome = new CaptureOutcome(ProducedABundle: false, @"D:\audits\run");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.False(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// What the judging found is put in front of the operator.
+    /// </summary>
+    [Fact]
+    public async Task WhatTheJudgingFoundIsReported()
+    {
+        _judging.Outcome = new JudgingOutcome(
+            JudgementRunState.Completed,
+            ObjectsJudged: 4_795,
+            new Dictionary<Severity, int> { [Severity.High] = 13 });
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(13, screen.Findings[Severity.High]);
+        Assert.Contains("4,795", screen.JudgingReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A judging where a rule could not reach a verdict says so rather than reporting a clean
+    /// result.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the one thing an audit tool cannot do.</b> A count that omits what a rule could
+    /// not read looks exactly like a count that found nothing, and a customer makes a security
+    /// decision on the difference.
+    /// </remarks>
+    [Fact]
+    public async Task AJudgingThatCouldNotFinishEveryRuleSaysSo()
+    {
+        _judging.Outcome = new JudgingOutcome(
+            JudgementRunState.CompletedDegraded,
+            ObjectsJudged: 100,
+            new Dictionary<Severity, int>());
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("not the whole picture", screen.JudgingReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Evidence that was sealed is still offered when the judging could not be done.
+    /// </summary>
+    /// <remarks>
+    /// <b>The evidence is the thing that cannot be got back.</b> It took hours and read a forest
+    /// that has moved on since; a judgement can be made again from it whenever the defect is fixed.
+    /// Throwing the capture away because the judging failed would cost the operator the expensive
+    /// half to punish the cheap one.
+    /// </remarks>
+    [Fact]
+    public async Task EvidenceIsStillOfferedWhenTheJudgingCouldNotBeDone()
+    {
+        _judging.Fails = Failures.Any("The judgement store could not be written.");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal("View results", screen.LeaveLabel);
+        Assert.Contains("sealed and is safe", screen.JudgingReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The operator sees how far the judging has got.
+    /// </summary>
+    /// <remarks>
+    /// <b>Waits for the property rather than for a length of time.</b> The window reports progress
+    /// through <c>Progress&lt;T&gt;</c>, which marshals to the thread that created it - that is what
+    /// keeps a judging running on a background thread from touching the interface - so the report
+    /// arrives after the judging returns. A fixed delay would pass on an idle machine and fail on a
+    /// loaded one, which is the shape of a test that teaches people to re-run the build.
+    /// </remarks>
+    [Fact]
+    public async Task HowFarTheJudgingHasGotIsShown()
+    {
+        _judging.Reports = [1_000, 2_000];
+        var screen = await Opened();
+
+        var reported = new TaskCompletionSource();
+        screen.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(screen.ObjectsJudged) && screen.ObjectsJudged == 2_000)
+                reported.TrySetResult();
+        };
+
+        await screen.StartAsync();
+
+        await reported.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(2_000, screen.ObjectsJudged);
     }
 
     // A domain the forest names no controller for used to stop the run outright, proved here by
@@ -1625,6 +1758,6 @@ public sealed class NewAuditViewModelTests
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
-        return new NewAuditViewModel(location, _capture, _dialogs, _opener);
+        return new NewAuditViewModel(location, _capture, _dialogs, _opener, _judging);
     }
 }

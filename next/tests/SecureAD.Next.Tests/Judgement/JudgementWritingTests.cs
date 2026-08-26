@@ -333,6 +333,8 @@ public sealed class JudgementWritingTests
             new FindingSubject(FindingSubjectKind.Account, "svc-web"),
             Guid.Parse("11111111-2222-3333-4444-555555555555"),
             "CN=svc-web,OU=Service Accounts,DC=contoso,DC=com",
+            "contoso.com",
+            "user",
             "svc-web is trusted for unconstrained delegation.",
             EvidenceCompleteness.Complete,
             new UnconstrainedDelegationEvidence(

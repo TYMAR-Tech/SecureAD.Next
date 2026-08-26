@@ -254,10 +254,46 @@ public sealed class JudgementReadingTests
             new FindingSubject(FindingSubjectKind.Account, "svc-web"),
             Guid.Parse("11111111-2222-3333-4444-555555555555"),
             "CN=svc-web,OU=Service Accounts,DC=contoso,DC=com",
+            "contoso.com",
+            "user",
             "svc-web is trusted for unconstrained delegation.",
             EvidenceCompleteness.Complete,
             new UnconstrainedDelegationEvidence(
                 0x80000, false, new DomainControllerSignals(false, false, false)));
+
+    /// <summary>
+    /// Severity is stored so that the worst can be ordered first.
+    /// </summary>
+    /// <remarks>
+    /// <b>Found 2026-08-26 by reading the predecessor.</b> Ordering on the stored word gives
+    /// Critical, High, Low, Medium - alphabetical, putting Low above Medium - and it looks like a
+    /// working screen. A findings grid orders on the rank, and this proves the rank agrees with the
+    /// word about which is worse.
+    /// </remarks>
+    [Fact]
+    public void SeverityIsStoredSoThatTheWorstSortsFirst()
+    {
+        var directory = NewJudgedBundle(writer => writer.Write(RuleExecution.Judged(
+            Sec010,
+            4,
+            0,
+            [
+                SomeFinding() with { Severity = Severity.Medium, ObjectGuid = Guid.NewGuid() },
+                SomeFinding() with { Severity = Severity.Critical, ObjectGuid = Guid.NewGuid() },
+                SomeFinding() with { Severity = Severity.Low, ObjectGuid = Guid.NewGuid() },
+                SomeFinding() with { Severity = Severity.High, ObjectGuid = Guid.NewGuid() },
+            ])));
+
+        using var reader = Opened(directory);
+
+        var worstFirst = reader.Read().Findings
+            .OrderByDescending(f => f.Severity)
+            .Select(f => f.Severity);
+
+        Assert.Equal(
+            [Severity.Critical, Severity.High, Severity.Medium, Severity.Low],
+            worstFirst);
+    }
 
     private static JudgementReader Opened(string directory)
     {

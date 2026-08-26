@@ -250,7 +250,8 @@ public sealed class JudgementReader : IDisposable
             SELECT f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
                    f.severity, f.distinguished_name, f.detail, f.coverage,
                    d.user_account_control, d.is_computer, d.server_trust_account_bit,
-                   d.primary_group_is_domain_controller, d.under_domain_controllers_ou
+                   d.primary_group_is_domain_controller, d.under_domain_controllers_ou,
+                   f.domain_fqdn, f.object_class
             FROM finding f
             LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
             ORDER BY f.finding_id
@@ -287,6 +288,8 @@ public sealed class JudgementReader : IDisposable
                     reader.GetString(3)),
                 Guid.Parse(reader.GetString(4)),
                 reader.GetString(6),
+                reader.GetString(14),
+                reader.GetString(15),
                 reader.GetString(7),
                 Enum.Parse<EvidenceCompleteness>(reader.GetString(8)),
                 evidence));

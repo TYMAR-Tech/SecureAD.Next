@@ -218,6 +218,8 @@ public sealed class JudgementIdentityTests
             new FindingSubject(FindingSubjectKind.Account, "svc-web"),
             TheObject,
             "CN=svc-web,OU=Service Accounts,DC=contoso,DC=com",
+            "contoso.com",
+            "user",
             "svc-web is trusted for unconstrained delegation.",
             EvidenceCompleteness.Complete,
             new UnconstrainedDelegationEvidence(

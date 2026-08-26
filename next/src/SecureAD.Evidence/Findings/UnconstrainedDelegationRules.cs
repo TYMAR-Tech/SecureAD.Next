@@ -1,3 +1,5 @@
+using SecureAD.Kernel.Naming;
+
 namespace SecureAD.Evidence.Findings;
 
 /// <summary>
@@ -108,6 +110,11 @@ internal static class UnconstrainedDelegation
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
 
+        // What a findings grid shows in every row, taken from the object while it is in hand. The
+        // class is the last objectClass value, which is the most derived one - "computer" rather
+        // than "top" - and is what an operator would call the thing.
+        var classes = AttributeReading.AllText(subject, "objectClass");
+
         return RuleVerdict.Judged(
         [
             new Finding(
@@ -117,6 +124,8 @@ internal static class UnconstrainedDelegation
                 new FindingSubject(FindingSubjectKind.Account, name),
                 objectGuid,
                 subject.DistinguishedName,
+                DnHelper.DnToFqdn(subject.DistinguishedName),
+                classes.Count > 0 ? classes[^1] : string.Empty,
                 detail(name),
                 subject.Completeness,
                 new UnconstrainedDelegationEvidence(control, isComputer, signals)),

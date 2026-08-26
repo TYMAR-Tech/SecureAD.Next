@@ -3,7 +3,7 @@
 **Code:** `next/src/SecureAD.Shell/ViewModels/NewAuditViewModel.cs`, `AuditRowViewModel.cs`,
 `ExcludedDomainViewModel.cs`, `ExclusionAttestationViewModel.cs`, `DomainDetailsViewModel.cs`,
 `next/src/SecureAD.Shell/Services/AuditPlan.cs`, `AuditReview.cs`, `ExclusionAttestation.cs`,
-`INewAuditDialog.cs`, `NewAuditDialog.cs`
+`INewAuditDialog.cs`, `NewAuditDialog.cs`, `IJudgingLauncher.cs`, `JudgingLauncher.cs`
 **Layer:** Shell — the screen an operator starts an audit from: what it discovers, what it asks,
 what it refuses, and what it commits to.
 
@@ -49,6 +49,9 @@ describes `Audit`. Where the run library is chosen is [`the home screen`](the-ho
 | `DomainInclusion` | Whether a domain is in this run, and if it is not, which kind of exclusion it is |
 | `INewAuditDialog` | Starting an audit, and putting the one question that still needs a dialog in front of the operator |
 | `NewAuditDialog` | Puts a freshly planned audit on the shell's audit surface, and takes it off again |
+| `IJudgingLauncher` | Judging a sealed bundle, from a window |
+| `JudgingLauncher` | Judges a bundle by driving `JudgingRun`, off the interface thread |
+| `JudgingOutcome` | What a judging produced, in the shell's own words |
 
 <!-- TYPES:END -->
 
@@ -137,11 +140,50 @@ by accident is a screen that will.
 
 ---
 
+## Judging follows the capture without being asked for
+
+Once a capture has sealed evidence, the window judges it. There is no second button and no second
+prompt: **the decision to audit was the decision to judge** — the owner's shape, 2026-08-26. An
+operator who has waited hours for a capture should not return to a control he has to press and
+another wait he never agreed to.
+
+**Only sealed evidence is judged.** A run can finish and seal nothing, recording why it stopped and
+no objects at all; there is nothing there for a rule to read, so nothing is judged and nothing is
+offered.
+
+**A judging that fails does not fail the run.** The evidence is the expensive half and the half that
+cannot be recovered — it took hours and read a forest that has moved on since. A judging can be made
+again from the same bundle whenever the defect behind it is fixed, so a failed judging is reported
+and the evidence is still offered. Throwing the capture away would cost the operator the part he
+cannot replace to punish the part he can.
+
+**A degraded judging says so.** Where a rule could not reach a verdict, the count that follows is
+what the rules that did finish found, and the screen says it is not the whole picture. A count that
+quietly omitted what a rule could not read would look exactly like a clean result, and a customer
+makes a security decision on that difference.
+
+**The work happens off the interface thread and reports as it goes.** The predecessor took four to
+five hours over the owner's production forest, and a window frozen for an afternoon is
+indistinguishable from one that has crashed.
+
+**`IsJudging` is held apart from `IsCapturing`**, because
+[`0072`](../../decisions/0072-analysis-and-capture-do-not-run-at-the-same-time.md) turns on whether a
+*capture* is running. Folding the two together would refuse to open any bundle for the whole of a
+judging, which is neither what that record says nor what it protects.
+
+---
+
 ## What is built
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|
 | see the domain table filled before any controller is contacted | `NewAuditViewModelTests.TheTableIsFilledBeforeAnyControllerIsContacted` |  |
+| have sealed evidence judged without asking for it | `NewAuditViewModelTests.EvidenceThatWasSealedIsJudgedWithoutBeingAskedFor` |  |
+| be certain a run that sealed nothing is not judged | `NewAuditViewModelTests.ARunThatSealedNothingIsNotJudged` |  |
+| see what the judging found | `NewAuditViewModelTests.WhatTheJudgingFoundIsReported` |  |
+| be certain a judging that could not finish every rule says so | `NewAuditViewModelTests.AJudgingThatCouldNotFinishEveryRuleSaysSo` |  |
+| still be offered evidence when the judging could not be done | `NewAuditViewModelTests.EvidenceIsStillOfferedWhenTheJudgingCouldNotBeDone` |  |
+| see how far the judging has got | `NewAuditViewModelTests.HowFarTheJudgingHasGotIsShown` |  |
 | have the window work the whole thing out on opening, without a press | `NewAuditViewModelTests.OpeningTheWindowWorksTheWholeThingOutWithoutAPress` |  |
 | be certain opening the window is never one click from a capture | `NewAuditViewModelTests.OpeningTheWindowIsNeverOneClickFromACapture` |  |
 | stop the pass the window began | `NewAuditViewModelTests.ThePassTheWindowBeganCanBeStopped` |  |

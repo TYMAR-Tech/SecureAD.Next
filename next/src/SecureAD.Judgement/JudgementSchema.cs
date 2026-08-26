@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 2;
+    public const int Version = 3;
 
     private static readonly string[] TableDdl =
     [
@@ -151,6 +151,20 @@ public static class JudgementSchema
         // coverage records whether the evidence behind this finding was complete. It is NOT NULL and
         // has no default: a finding that does not say must not be storable, because keeping "clean"
         // apart from "we may not have seen everything" is the whole point.
+        //
+        // SEVERITY IS STORED TWICE, AS A WORD AND AS A RANK, AND THE RANK IS WHAT ORDERS A GRID.
+        // The word is what a person reads and what survives a renumbering of the enum. Ordering on
+        // it sorts alphabetically - Critical, High, Low, Medium - which puts Low above Medium and
+        // reads as a working screen. Found 2026-08-26 by reading the predecessor, whose grid sorts
+        // correctly only because its view does not order on the text.
+        //
+        // THE DISPLAY COLUMNS ARE STORED RATHER THAN RESOLVED. The predecessor's grid joined
+        // dim_principal and dim_object for these, which it could do because findings and objects
+        // shared one file. They do not here: evidence is sealed in another database that a
+        // judgement must never write to. The alternative is a lookup per row per page, so what the
+        // grid shows is written when the finding is made, from the object already in hand.
+        //
+        // They are a record of what was true when the judging ran, which is what a judgement is.
         """
         CREATE TABLE finding (
             finding_id               INTEGER PRIMARY KEY,
@@ -159,7 +173,11 @@ public static class JudgementSchema
             subject_key              TEXT    NOT NULL,
             object_guid              TEXT    NOT NULL,
             severity                 TEXT    NOT NULL,
+            severity_rank            INTEGER NOT NULL,
             distinguished_name       TEXT    NOT NULL,
+            principal_name           TEXT    NOT NULL,
+            domain_fqdn              TEXT    NOT NULL,
+            object_class             TEXT    NOT NULL,
             detail                   TEXT    NOT NULL,
             coverage                 TEXT    NOT NULL,
             UNIQUE (rule_id, subject_kind, subject_key, object_guid)
@@ -198,11 +216,18 @@ public static class JudgementSchema
     // maintained through ingest is paid for on every insert and read by nobody until the run is
     // over. A judgement is smaller than a capture, so the saving is smaller - but the two files are
     // written by the same kind of code and there is no reason for them to differ.
+    //
+    // THE FIRST INDEX IS THE GRID'S OWN SORT, TIE-BREAKER AND ALL. Keyset paging asks for the rows
+    // after the last one shown, in the sort order, so an index that stops short of the tie-breaker
+    // leaves the database sorting the remainder on every page. The tie-breaker is not decoration:
+    // rows that sort equal can straddle a page boundary and be shown twice or not at all, which is
+    // silent and close to unreproducible. Learned from the predecessor's KeysetQueryBuilder.
     private static readonly string[] DeferredIndexDdl =
     [
+        "CREATE INDEX ix_finding_grid ON finding(severity_rank DESC, rule_id, distinguished_name)",
         "CREATE INDEX ix_finding_rule ON finding(rule_id)",
         "CREATE INDEX ix_finding_object ON finding(object_guid)",
-        "CREATE INDEX ix_finding_severity ON finding(severity)",
+        "CREATE INDEX ix_finding_domain ON finding(domain_fqdn)",
     ];
 
     /// <summary>

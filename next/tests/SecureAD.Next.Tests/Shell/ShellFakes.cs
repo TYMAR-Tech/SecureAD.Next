@@ -1,5 +1,7 @@
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 using SecureAD.Shell.Services;
@@ -291,8 +293,7 @@ internal sealed class FakeNewAuditDialog : INewAuditDialog
 /// single-controller, re-pinned, unreachable or refusing an override without one existing.
 /// </summary>
 internal sealed class FakeCaptureLauncher : ICaptureLauncher
-{
-    public CaptureOutcome Outcome { get; set; } = new(ProducedABundle: true, @"D:\audits\run");
+{    public CaptureOutcome Outcome { get; set; } = new(ProducedABundle: true, @"D:\audits\run");
 
     public AuditError? Fails { get; set; }
 
@@ -484,4 +485,49 @@ internal static class Failures
         ErrorSeverity.Failed,
         description,
         context: null);
+}
+
+/// <summary>
+/// A stand-in for judging, so the window can be shown a judging that succeeded, failed, found
+/// something or found nothing, without hours of work or a bundle on disk.
+/// </summary>
+internal sealed class FakeJudgingLauncher : IJudgingLauncher
+{
+    /// <summary>What a judging concludes. Completed, nothing found, unless a test says otherwise.</summary>
+    public JudgingOutcome Outcome { get; set; } =
+        new(JudgementRunState.Completed, ObjectsJudged: 0, new Dictionary<Severity, int>());
+
+    /// <summary>Why the judging could not be done, when a test wants that.</summary>
+    public AuditError? Fails { get; set; }
+
+    /// <summary>Whether the judging observes cancellation, for the stop case.</summary>
+    public bool Cancels { get; set; }
+
+    /// <summary>The bundle it was asked to judge, or null where it was never asked.</summary>
+    public string? AskedFor { get; private set; }
+
+    /// <summary>Whether judging was run at all, so a test can prove it was not.</summary>
+    public bool WasRun { get; private set; }
+
+    /// <summary>Progress to report before answering, so a watching screen can be observed.</summary>
+    public IReadOnlyList<long> Reports { get; set; } = [];
+
+    public Task<Result<JudgingOutcome>> RunAsync(
+        string bundleDirectory,
+        IProgress<JudgingRun.JudgingProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        AskedFor = bundleDirectory;
+        WasRun = true;
+
+        foreach (var read in Reports)
+            progress.Report(new JudgingRun.JudgingProgress(read));
+
+        if (Cancels)
+            throw new OperationCanceledException();
+
+        return Task.FromResult(Fails is { } error
+            ? Result<JudgingOutcome>.Failure(error)
+            : Result<JudgingOutcome>.Success(Outcome));
+    }
 }

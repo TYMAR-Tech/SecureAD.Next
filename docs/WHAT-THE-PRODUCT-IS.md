@@ -79,8 +79,14 @@ that shape does not exist yet. It is the only architectural question left open.
 
 There is an old application. It worked, the owner ran it, and it is why this rebuild knows what it
 is aiming at. **Its architecture is not this one's, and nothing below is a design to follow.** Its
-inventory and component map were archived and are deliberately absent from this repository; the
-owner keeps the old repository and consults it himself. Do not ask for it.
+inventory and component map were archived and are deliberately absent from this repository, so that
+nobody treats it as a specification.
+
+**The code, however, is on disk at `C:\Users\jistrand\source\repos\razamus\SecureAD`, and the owner
+has said to read it** — *"treat this as a source not a answer, look at what it did but also consider
+if there is a better way"*, 2026-08-26. It is the only place a working findings screen for a real
+forest exists. Read it for **how something performed**; never for **what the product permits**,
+which the decision records settle and which it frequently contradicts.
 
 Thirty-nine of seventy-nine decision records reference it. The load-bearing differences:
 
@@ -94,6 +100,45 @@ Thirty-nine of seventy-nine decision records reference it. The load-bearing diff
 | Capture scope | two class filters as radio buttons | every class except a shipped noise list (`0034`) |
 | Schema partition | not read | read every run (`0014`) — what makes object-specific ACE evaluation possible |
 | Vocabulary | *Accept* on screen, *Suppression* in code | one word, **finding**, everywhere (`0066`) |
+
+### What its findings grid did, and what of it is worth having
+
+Read 2026-08-26 from `SecureAD.Infrastructure/Paging/`, `Findings/FindingsService.Queries.cs`,
+`Storage/DerivedStoreSchema.Views.cs` and `SecureAD.UI/ViewModels/FindingsGridViewModel.cs`.
+
+**Keyset paging, and it is better than the obvious alternative.** `KeysetQueryBuilder` pages by
+where the last page ended rather than by `LIMIT`/`OFFSET`. Offset paging makes the database walk and
+discard every row before the page, so page 500 of a large forest costs 500 pages of work; keyset
+paging costs one. Three details are the actual engineering, and all three are easy to omit and hard
+to debug afterwards:
+
+- **Every sort ends in a unique tie-breaker** — `severity, rule_id, target_dn`. Without it, rows
+  that sort equal can straddle a page boundary and be shown twice or not at all.
+- **The continuation token records the sort and a hash of the filter**, and a token that does not
+  match them restarts from the first page rather than silently skipping rows.
+- **Identifiers are validated against a strict pattern** before they reach the SQL text.
+
+Its page size was 50, in `GridViewModelBase`.
+
+**Filter values are read from the data**, so a filter cannot be set to something no finding has.
+
+**Its grid resolved names by joining** `dim_principal` and `dim_object`, because findings and objects
+were in one file. **They are not here** — findings are in `judgement.db` and evidence in the sealed
+`evidence.db` — so what the grid shows is stored on the finding when it is made. That costs nothing
+at judging time, because the object is already in hand when a rule fires, and it avoids the
+alternative: fifty lookups into the evidence to paint one page, on every page and every re-sort.
+
+**Three things in it are not worth having, and two are positions this product has reversed.**
+`context_json` is the schemaless blob the judgement schema's own comments record as having silently
+downgraded a finding when a value would not parse. `suppressed`/`suppression_reason` are `0066` and
+`0082` reversed. And `v_grid_findings` rewrites a finding's coverage to *complete* inside the view,
+by matching a `coverage_reason` string — a judgement made in presentation, where nobody reading the
+finding can see it, which is `0002` exactly.
+
+**Reading it found a defect here.** The old app's severity sorts correctly because its view does not
+order on the text. This judgement store writes `severity` as the enum name, so `ORDER BY severity`
+gives Critical, High, Low, Medium — alphabetical, putting Low above Medium. A rank is stored beside
+the name to fix it.
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,
 it belongs here, in the same turn.

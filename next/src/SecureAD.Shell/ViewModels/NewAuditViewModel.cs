@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
@@ -635,6 +637,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// drift apart. It is only ever asked once a run has sealed evidence.
     /// </remarks>
     private readonly IRunOpener _opener;
+    private readonly IJudgingLauncher _judging;
 
     private CancellationTokenSource? _stopping;
 
@@ -646,6 +649,34 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isCapturing;
+
+    /// <summary>Whether the evidence is being judged, which follows the capture.</summary>
+    /// <remarks>
+    /// Held apart from <see cref="IsCapturing"/> because they are different phases with different
+    /// words on screen, and because <c>docs/decisions/0072</c> turns on whether a <i>capture</i> is
+    /// running. Folding judging into that flag would refuse to open a bundle for the whole of a
+    /// judging, which is not what the record says and not what it protects.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isJudging;
+
+    /// <summary>How many objects the judging has reached a verdict on so far.</summary>
+    [ObservableProperty]
+    private long _objectsJudged;
+
+    /// <summary>What the judging has to say, or null before one has run.</summary>
+    [ObservableProperty]
+    private string? _judgingReport;
+
+    /// <summary>How many findings there were, by severity.</summary>
+    /// <remarks>
+    /// Empty both before a judging and after one that found nothing. Those are different states and
+    /// <see cref="JudgingReport"/> is what separates them, which is why a screen must show the
+    /// words beside the counts rather than the counts alone.
+    /// </remarks>
+    [ObservableProperty]
+    private IReadOnlyDictionary<Severity, int> _findings =
+        new Dictionary<Severity, int>();
 
     [ObservableProperty]
     private string? _problem;
@@ -694,21 +725,25 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// How this window puts something in front of the operator and waits for him. Taken as a seam
     /// so a refusal can be proved without a person present to dismiss one.
     /// </param>
+    /// <param name="judging">How the sealed evidence is judged once the capture has produced it.</param>
     public NewAuditViewModel(
         RunLibraryLocation location,
         ICaptureLauncher capture,
         INewAuditDialog dialogs,
-        IRunOpener opener)
+        IRunOpener opener,
+        IJudgingLauncher judging)
     {
         ArgumentNullException.ThrowIfNull(location);
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(opener);
+        ArgumentNullException.ThrowIfNull(judging);
 
         Location = location;
         _capture = capture;
         _dialogs = dialogs;
         _opener = opener;
+        _judging = judging;
     }
 
     /// <summary>Where this installation keeps its runs.</summary>
@@ -1544,6 +1579,14 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             BundleDirectory = outcome.IsSuccess && outcome.Value.ProducedABundle
                 ? outcome.Value.BundleDirectory
                 : null;
+
+            // Judging follows a capture without being asked for - the owner's shape, 2026-08-26.
+            // The decision to audit was the decision to judge, so there is no second prompt and no
+            // control to press. Only sealed evidence is judged: a run that sealed nothing has
+            // nothing for a rule to read.
+            if (BundleDirectory is { } sealedEvidence)
+                await JudgeAsync(sealedEvidence, _stopping.Token).ConfigureAwait(true);
+
             HasFinished = true;
         }
         catch (OperationCanceledException)
@@ -1572,6 +1615,79 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             IsCapturing = false;
         }
     }
+
+    /// <summary>
+    /// Judges the evidence the capture just sealed, reporting progress as it goes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A judging that fails does not fail the run.</b> The evidence is sealed and on disk either
+    /// way, and it is the thing the operator cannot get back - it took hours and read a forest that
+    /// has moved on since. So a judging that could not finish is reported and the evidence is still
+    /// offered, because a judgement can be made again from the same bundle whenever the defect is
+    /// fixed.
+    /// </para>
+    /// <para>
+    /// <b>Cancelling is allowed to reach the caller.</b> Stopping during judging stops the audit,
+    /// which is what an operator pressing Cancel means, and <c>StartAsync</c> already says what
+    /// became of a run that stopped.
+    /// </para>
+    /// </remarks>
+    private async Task JudgeAsync(string bundleDirectory, CancellationToken cancellationToken)
+    {
+        IsJudging = true;
+        JudgingReport = "Judging the evidence. Nothing is read from the directory now.";
+
+        try
+        {
+            var judged = await _judging
+                .RunAsync(bundleDirectory, new Progress<JudgingRun.JudgingProgress>(OnJudged), cancellationToken)
+                .ConfigureAwait(true);
+
+            if (!judged.IsSuccess)
+            {
+                JudgingReport =
+                    $"The evidence was sealed and is safe. It could not be judged: "
+                    + $"{judged.Error!.Description} The findings can be produced again from this "
+                    + "bundle without capturing the forest a second time.";
+                return;
+            }
+
+            Findings = judged.Value.Findings;
+            JudgingReport = Describe(judged.Value);
+        }
+        finally
+        {
+            IsJudging = false;
+        }
+    }
+
+    /// <summary>Notes how far the judging has got, for the screen watching it.</summary>
+    private void OnJudged(JudgingRun.JudgingProgress progress) =>
+        ObjectsJudged = progress.ObjectsRead;
+
+    /// <summary>
+    /// What a finished judging produced, in the words the completion screen uses.
+    /// </summary>
+    /// <remarks>
+    /// <b>A degraded judging says so rather than reporting its findings as if they were all of
+    /// them.</b> A rule that could not read what it declared has established nothing, and a count
+    /// that omits what it missed reads as a clean result.
+    /// </remarks>
+    private static string Describe(JudgingOutcome judged) => judged.State switch
+    {
+        JudgementRunState.Completed when judged.Findings.Count == 0 =>
+            $"Judged {judged.ObjectsJudged:N0} objects. Every rule reached a verdict and none of "
+            + "them found anything.",
+        JudgementRunState.Completed =>
+            $"Judged {judged.ObjectsJudged:N0} objects. Every rule reached a verdict.",
+        JudgementRunState.CompletedDegraded =>
+            $"Judged {judged.ObjectsJudged:N0} objects, and at least one rule could not reach a "
+            + "verdict. The findings below are what the rules that did finish found, and are not "
+            + "the whole picture.",
+        _ =>
+            "The judging did not finish. The evidence is sealed and can be judged again.",
+    };
 
     /// <summary>
     /// Stops whatever is running: a capture, or the pass the window began when it opened.

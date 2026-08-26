@@ -70,6 +70,8 @@ public sealed class ShellLayerTypesTests
         "Services/ExclusionAttestation.cs",
         "Services/INewAuditDialog.cs",
         "Services/NewAuditDialog.cs",
+        "Services/IJudgingLauncher.cs",
+        "Services/JudgingLauncher.cs",
     ];
 
     private static readonly string[] HomeFiles =
@@ -178,7 +180,7 @@ public sealed class ShellLayerTypesTests
     [Fact]
     public void TheCheckReadsBothDocumentsAndBothComponents()
     {
-        Assert.Equal(24, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(27, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
 
         foreach (var (document, _) in Pages())

@@ -96,6 +96,14 @@ public abstract record FindingEvidence;
 /// explanation</b>, and they are not interchangeable. A run that could not read where something
 /// lived has not established that it is clean.
 /// </para>
+/// <para>
+/// <b><see cref="DomainFqdn"/> and <see cref="ObjectClass"/> are stored rather than looked up.</b>
+/// A findings grid shows them in every row, and the evidence they come from is in another database
+/// that a judgement must never write to and should not be reading fifty times to paint one page.
+/// The object is in hand when a rule fires, so they cost nothing to record and are what was true
+/// when the judging ran - which is what a judgement is about. The predecessor joined for these; it
+/// could, because its findings and its objects shared one file.
+/// </para>
 /// </remarks>
 /// <param name="RuleId">The rule that produced this, such as <c>SEC-011</c>.</param>
 /// <param name="RuleVersion">The version of the rule's logic that produced it.</param>
@@ -103,6 +111,8 @@ public abstract record FindingEvidence;
 /// <param name="Subject">Who or what this is about.</param>
 /// <param name="ObjectGuid">The object this is about.</param>
 /// <param name="DistinguishedName">Where the object was, for a reader who needs to find it.</param>
+/// <param name="DomainFqdn">The domain the object was in, for grouping and filtering.</param>
+/// <param name="ObjectClass">What kind of object it was, as the directory named it.</param>
 /// <param name="Detail">What was found, said plainly enough to act on.</param>
 /// <param name="Coverage">Whether the evidence behind this was complete.</param>
 /// <param name="Evidence">The values this rests on, in the shape this kind of finding declares.</param>
@@ -113,6 +123,8 @@ public sealed record Finding(
     FindingSubject Subject,
     Guid ObjectGuid,
     string DistinguishedName,
+    string DomainFqdn,
+    string ObjectClass,
     string Detail,
     EvidenceCompleteness Coverage,
     FindingEvidence Evidence);

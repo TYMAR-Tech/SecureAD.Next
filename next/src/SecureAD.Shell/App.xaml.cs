@@ -63,7 +63,8 @@ internal partial class App : Application
                 {
                     library.Adopt(path);
                     shell.Show(ShellSection.Assets);
-                })),
+                }),
+                new JudgingLauncher()),
             audit => shell.Begin(audit),
             () => shell.Leave());
 

@@ -310,8 +310,10 @@ public sealed class JudgementWriter : IDisposable
         Execute(
             transaction,
             "INSERT INTO finding (finding_id, rule_id, subject_kind, subject_key, object_guid, "
-            + "severity, distinguished_name, detail, coverage) "
-            + "VALUES ($id, $rule, $kind, $key, $guid, $severity, $dn, $detail, $coverage)",
+            + "severity, severity_rank, distinguished_name, principal_name, domain_fqdn, "
+            + "object_class, detail, coverage) "
+            + "VALUES ($id, $rule, $kind, $key, $guid, $severity, $rank, $dn, $principal, "
+            + "$domain, $class, $detail, $coverage)",
             command =>
             {
                 command.Parameters.AddWithValue("$id", findingId);
@@ -320,7 +322,16 @@ public sealed class JudgementWriter : IDisposable
                 command.Parameters.AddWithValue("$key", finding.Subject.Key);
                 command.Parameters.AddWithValue("$guid", finding.ObjectGuid.ToString("D"));
                 command.Parameters.AddWithValue("$severity", finding.Severity.ToString());
+
+                // The enum's own order is the rank, so the two cannot disagree. The word is what a
+                // person reads; the rank is the only thing a grid may sort on, because ordering on
+                // the word is alphabetical and puts Low above Medium.
+                command.Parameters.AddWithValue("$rank", (int)finding.Severity);
+
                 command.Parameters.AddWithValue("$dn", finding.DistinguishedName);
+                command.Parameters.AddWithValue("$principal", finding.Subject.Key);
+                command.Parameters.AddWithValue("$domain", finding.DomainFqdn);
+                command.Parameters.AddWithValue("$class", finding.ObjectClass);
                 command.Parameters.AddWithValue("$detail", finding.Detail);
                 command.Parameters.AddWithValue("$coverage", finding.Coverage.ToString());
             });
