@@ -31,6 +31,8 @@ never produces.
 | `ObjectAttribute` | One attribute: what the catalogue asked for, and what the bundle holds for it |
 | `AttributeValue` | One value of one attribute, still text or still bytes, exactly as the bundle stored it |
 
+| `BundleObjects` | Every object a bundle holds, streamed, beside whether the run that captured them read everything it declared |
+
 <!-- TYPES:END -->
 
 This table is the page's claim of ownership, and it is bound in both directions: a public type of
@@ -148,6 +150,24 @@ parsed out of the `objectGUID` attribute, because it is what a finding's identit
 two bundles are joined on — it survives both a rename and a move, which the distinguished name does
 not. Null is possible and meaningful: an object the controller returned without one cannot be
 identified across runs at all, so nothing that has to outlive this bundle may be attached to it.
+
+## Reading all of them at once
+
+`BundleObjects` is what a caller gets when it needs every object rather than one:
+`BundleObjects.Objects` is the sequence, and `BundleObjects.IsComplete` says whether the run that
+captured them recorded every unit it declared as read.
+
+**The flag is why it is a type rather than a bare sequence.** Walking every object in a bundle is
+walking every object *that was captured*, which is a different claim from having walked the forest.
+A run that reached one domain of nine seals a perfectly valid bundle, and conclusions drawn from it
+are a floor rather than a total. A bare sequence would let a caller walk it, find nothing wrong, and
+say so.
+
+It says nothing about individual attributes. Whether a value was withheld is per object, and each
+one carries its own `ObjectAttributes.Completeness`.
+
+The sequence is lazy and the bundle must stay open while it is walked. Nothing is held but the
+object being assembled, so a forest can be walked without ever being in memory.
 
 ## What is not here
 

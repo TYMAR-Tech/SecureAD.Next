@@ -214,6 +214,26 @@ public sealed class BundleReader : IDisposable
     public DirectoryTree ReadTree() => DirectoryTreeReader.Read(Connection);
 
     /// <summary>
+    /// Every object in the bundle, streamed, beside whether the run that captured them read
+    /// everything it declared.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>For a caller that has to look at all of them.</b> <see cref="ReadObjectAttributes"/> is
+    /// the right shape for one object a person clicked on and the wrong shape for a forest: it
+    /// issues a query per multi-valued table, which is nothing once and ruinous a million times.
+    /// This walks the object table and each value table once, in step.
+    /// </para>
+    /// <para>
+    /// <b>It is lazy, and the connection must outlive the enumeration.</b> Nothing is held but the
+    /// object being assembled, so a caller may walk a forest without the bundle ever being in
+    /// memory - but disposing this reader part way through invalidates the sequence.
+    /// </para>
+    /// </remarks>
+    public BundleObjects StreamObjects() =>
+        new(Description.EveryDeclaredUnitRecordedAsRead, ObjectStreamReader.Stream(Connection));
+
+    /// <summary>
     /// Reads how much of the forest this run covered, one entry per declared domain.
     /// </summary>
     /// <remarks>

@@ -39,6 +39,7 @@ public sealed class ObjectAttributesDocumentationTests : IDisposable
         typeof(ObjectAttributes),
         typeof(ObjectAttribute),
         typeof(AttributeValue),
+        typeof(BundleObjects),
     ];
 
     private readonly string _directory =
@@ -251,7 +252,7 @@ public sealed class ObjectAttributesDocumentationTests : IDisposable
         Assert.True(
             ReadDocument().Length > 1000,
             $"{Document} is too short to be the document it claims.");
-        Assert.Equal(3, TheComponent.Length);
+        Assert.Equal(4, TheComponent.Length);
         Assert.True(
             PublicMemberNames().Count >= 14,
             "The reflection scan found fewer members than the component declares.");

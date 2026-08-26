@@ -35,7 +35,7 @@ the code.
 | `RunState` | What became of a run. The one lifecycle vocabulary, used by the writer, the reader and the display |
 | `RunStateNames` | The text a state is stored under in a bundle, in both directions, and the refusal when the text is not one this build knows |
 | `RunMoment` | When a run happened, and whether the run itself recorded that or the directory's creation time is standing in |
-| `RunScope` | Which domains a sealed run covered, read back out of its bundle, and the group of like runs it therefore belongs to |
+| `RunScope` | Which domains a sealed run covered, read back out of its bundle, and the gr
 
 <!-- TYPES:END -->
 

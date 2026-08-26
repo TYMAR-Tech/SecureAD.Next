@@ -200,6 +200,7 @@ The table below sits between the two markers around it, so the test parses only 
 | BundleLayout | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | BundleSchema | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleWriter | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| BundleObjects | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | BundleReader | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleDescription | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | DirectoryTree | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |

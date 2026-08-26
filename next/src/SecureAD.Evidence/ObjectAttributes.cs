@@ -101,6 +101,29 @@ public sealed record ObjectAttribute(
 /// attached to it that has to outlive this bundle.
 /// </para>
 /// </param>
+/// <summary>
+/// Every object a bundle holds, beside whether the run that captured them read everything it set
+/// out to.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>The flag is why this is a type rather than a sequence.</b> A caller that walked every object
+/// in a bundle has walked every object <i>that was captured</i>, which is a different claim from
+/// having walked the forest. A run that reached one domain of nine seals a perfectly valid bundle,
+/// and conclusions drawn from it are a floor rather than a total. Handing back a bare sequence
+/// would let a caller walk it, find nothing wrong, and say so.
+/// </para>
+/// <para>
+/// <b><see cref="IsComplete"/> is capture's claim, not a reader's.</b> It says every unit the run
+/// declared was recorded as read. It does not say the forest holds nothing else, and it says
+/// nothing about whether individual attributes were withheld - that is per object, and each one
+/// carries its own answer.
+/// </para>
+/// </remarks>
+/// <param name="IsComplete">Whether the run recorded every declared unit as read.</param>
+/// <param name="Objects">The objects, streamed in stored order.</param>
+public sealed record BundleObjects(bool IsComplete, IEnumerable<ObjectAttributes> Objects);
+
 /// <param name="Attributes">
 /// Every attribute the catalogue names, in the order the catalogue names them.
 /// </param>
@@ -270,7 +293,7 @@ internal static class ObjectAttributesReader
         return values;
     }
 
-    private static AttributeValue ValueAt(
+    internal static AttributeValue ValueAt(
         SqliteDataReader reader, int ordinal, AttributeStorage storage, int valueOrdinal) =>
         storage == AttributeStorage.Binary
             ? new AttributeValue(valueOrdinal, null, reader.GetFieldValue<byte[]>(ordinal))
