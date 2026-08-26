@@ -85,26 +85,33 @@ show. The point is the pipeline rather than the rule — everything after this i
 per bundle or one per run, and whether a judged result is a record or is recomputed on open. A rule
 cannot be wired without the first of those.
 
-**Owed from stage 1.** Sixteen tests were deleted with the evidence tables, and each of these has to
-be proven again against whatever the store turns out to be. The old names are kept so the claim is
-searchable, not because the new tests must reuse them:
+**Owed from stage 1 — discharged 2026-08-25.** Sixteen tests were deleted with the evidence tables,
+and every claim they made is proven again against the judgement store. The old names are kept beside
+the new ones so that a search for a deleted test finds where its claim went, rather than finding
+nothing and concluding it was dropped:
 
-- a finding survives being written and comes back out — `FindingStorageTests.AFindingComesBackFromASealedBundle`
-- the evidence a finding rests on comes back with it — `FindingStorageTests.TheEvidenceAFindingRestsOnComesBackWithIt`
-- the domain-controller signals are rebuilt from the three stored signals, not from a stored answer — `FindingStorageTests.TheDomainControllerSignalsAreRebuiltFromWhatWasStored`
-- the same finding from two separate runs keeps one identity — `FindingStorageTests.TheSameFindingFromTwoRunsKeepsOneIdentity`
-- a finding stays attached to an object that was renamed and moved — `FindingStorageTests.AnObjectThatWasRenamedAndMovedIsStillTheSameFinding`
-- tightening a rule does not orphan the findings made under it — `FindingStorageTests.TighteningARuleDoesNotChangeTheIdentityOfItsFindings`
-- two rules about one object are two findings — `FindingStorageTests.TwoRulesAboutOneObjectAreTwoFindings`
-- one rule against two objects is two findings — `FindingStorageTests.OneRuleAgainstTwoObjectsIsTwoFindings`
-- the same finding cannot be stored twice and shown twice — `FindingStorageTests.TheSameFindingCannotBeStoredTwiceInOneBundle`
-- evidence that may be missing confidential values does not come back complete — `FindingStorageTests.AFindingWhoseEvidenceMayBeIncompleteDoesNotComeBackComplete`
-- evidence that was complete comes back complete — `FindingStorageTests.AFindingWhoseEvidenceWasCompleteComesBackComplete`
-- evidence with no table is refused rather than quietly dropped — `FindingStorageTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped`
-- nothing can add a finding after the store is sealed — `FindingStorageTests.AFindingCannotBeAddedAfterTheBundleIsSealed`
-- a bundle nobody judged says so rather than looking clean — `FindingStorageTests.ABundleNoRuleWasRunOverSaysSoRatherThanLookingClean`
-- a bundle where rules ran and nothing matched is not the same thing — `FindingStorageTests.ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing`
-- the rules that ran are recorded with the version that ran — `FindingStorageTests.TheRulesThatRanAreRecordedWithTheVersionThatRan`
+| Deleted with the evidence tables | Proven again by |
+|---|---|
+| `FindingStorageTests.AFindingComesBackFromASealedBundle` | `JudgementReadingTests.AFindingComesBackFromASealedJudgement` |
+| `FindingStorageTests.TheEvidenceAFindingRestsOnComesBackWithIt` | `JudgementReadingTests.TheEvidenceAFindingRestsOnComesBackWithIt` |
+| `FindingStorageTests.TheDomainControllerSignalsAreRebuiltFromWhatWasStored` | `JudgementReadingTests.TheDomainControllerSignalsAreRebuiltFromWhatWasStored` |
+| `FindingStorageTests.TheSameFindingFromTwoRunsKeepsOneIdentity` | `JudgementIdentityTests.TheSameFindingFromTwoRunsKeepsOneIdentity` |
+| `FindingStorageTests.AnObjectThatWasRenamedAndMovedIsStillTheSameFinding` | `JudgementIdentityTests.AnObjectThatWasRenamedAndMovedIsStillTheSameFinding` |
+| `FindingStorageTests.TighteningARuleDoesNotChangeTheIdentityOfItsFindings` | `JudgementIdentityTests.TighteningARuleDoesNotChangeTheIdentityOfItsFindings` |
+| `FindingStorageTests.TwoRulesAboutOneObjectAreTwoFindings` | `JudgementIdentityTests.TwoRulesAboutOneObjectAreTwoFindings` |
+| `FindingStorageTests.OneRuleAgainstTwoObjectsIsTwoFindings` | `JudgementIdentityTests.OneRuleAgainstTwoObjectsIsTwoFindings` |
+| `FindingStorageTests.TheSameFindingCannotBeStoredTwiceInOneBundle` | `JudgementIdentityTests.TheSameFindingCannotBeStoredTwiceInOneJudgement` |
+| `FindingStorageTests.AFindingWhoseEvidenceMayBeIncompleteDoesNotComeBackComplete` | `JudgementIdentityTests.AFindingWhoseEvidenceMayBeIncompleteDoesNotComeBackComplete` |
+| `FindingStorageTests.AFindingWhoseEvidenceWasCompleteComesBackComplete` | `JudgementIdentityTests.AFindingWhoseEvidenceWasCompleteComesBackComplete` |
+| `FindingStorageTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped` | `JudgementIdentityTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped` |
+| `FindingStorageTests.AFindingCannotBeAddedAfterTheBundleIsSealed` | `JudgementWritingTests.NothingCanBeAddedAfterTheJudgementIsSealed` |
+| `FindingStorageTests.ABundleNoRuleWasRunOverSaysSoRatherThanLookingClean` | `JudgementReadingTests.ABundleNoRuleWasRunOverSaysSoRatherThanLookingClean` |
+| `FindingStorageTests.ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing` | `JudgementReadingTests.ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing` |
+| `FindingStorageTests.TheRulesThatRanAreRecordedWithTheVersionThatRan` | `JudgementReadingTests.AFindingCarriesTheVersionOfTheRuleThatMadeIt` |
+
+The claims themselves live in
+[`layers/judgement/the-judgement-store.md`](layers/judgement/the-judgement-store.md), which is where
+they stay once this file is deleted.
 
 ## Stage 4 — the simple posture rules
 
