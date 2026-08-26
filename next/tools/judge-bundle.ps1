@@ -13,13 +13,43 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $BundlePath
+    [string] $BundlePath,
+
+    # Where the built assemblies are. Only needed when this script is not sitting in the
+    # repository - on a lab machine, copy the whole build output folder across and either put this
+    # script inside it or point -BinPath at it.
+    [string] $BinPath
 )
 
 $ErrorActionPreference = 'Stop'
 
-$bin = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows'))
-if (-not (Test-Path $bin)) { throw "Build the solution first - no assemblies at '$bin'." }
+# Three places to look, in order: where the caller said, beside this script (a copied deployment),
+# and the repository layout. The lab machine has no repository, so the second is what makes this
+# runnable there at all.
+$candidates = @()
+if ($BinPath) { $candidates += $BinPath }
+$candidates += $PSScriptRoot
+$candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows')
+
+$bin = $null
+foreach ($candidate in $candidates) {
+    $full = [System.IO.Path]::GetFullPath($candidate)
+    if (Test-Path (Join-Path $full 'SecureAD.Judgement.dll')) { $bin = $full; break }
+}
+
+if (-not $bin) {
+    $looked = ($candidates | ForEach-Object { '  ' + [System.IO.Path]::GetFullPath($_) }) -join [Environment]::NewLine
+    throw @"
+Could not find SecureAD.Judgement.dll. Looked in:
+$looked
+
+On a development machine, build the solution.
+
+On any other machine, copy the whole build output folder across - that is
+next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows, including its runtimes\ subfolder -
+and either put this script inside it or pass -BinPath pointing at it.
+"@
+}
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidence.dll'))

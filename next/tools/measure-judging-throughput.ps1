@@ -15,16 +15,28 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $BundlePath
+    [string] $BundlePath,
+
+    # Where the built assemblies are. See judge-bundle.ps1 for why this exists.
+    [string] $BinPath
 )
 
 $ErrorActionPreference = 'Stop'
 
-$bin = Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows'
-$bin = [System.IO.Path]::GetFullPath($bin)
+$candidates = @()
+if ($BinPath) { $candidates += $BinPath }
+$candidates += $PSScriptRoot
+$candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows')
 
-if (-not (Test-Path $bin)) {
-    throw "Build the solution first - no assemblies at '$bin'."
+$bin = $null
+foreach ($candidate in $candidates) {
+    $full = [System.IO.Path]::GetFullPath($candidate)
+    if (Test-Path (Join-Path $full 'SecureAD.Evidence.dll')) { $bin = $full; break }
+}
+
+if (-not $bin) {
+    $looked = ($candidates | ForEach-Object { '  ' + [System.IO.Path]::GetFullPath($_) }) -join [Environment]::NewLine
+    throw "Could not find SecureAD.Evidence.dll. Looked in:$([Environment]::NewLine)$looked"
 }
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))
