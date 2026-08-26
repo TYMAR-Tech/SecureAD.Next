@@ -94,7 +94,8 @@ it reads, and objects it is not about are counted apart from objects it could no
 **The domain-controller exclusion took a second run to confirm.** No controller appeared in the
 findings, which has three explanations and that run distinguishes none of them. `-Explain` asks the
 bundle about one object instead: PHDC carries `TRUSTED_FOR_DELEGATION`, all three controller signals
-agree, and SEC-011 judged it and had nothing to report. The exclusion is what kept it out.
+agree, and SEC-011 judged it and had nothing to report. The exclusion is what kept it out. `baDC`,
+in a second domain, reads the same, so the exclusion holds across a naming-context boundary.
 
 *Detail:* [`SEC-010`](rules/SEC-010.md), [`SEC-011`](rules/SEC-011.md).
 *Criteria:* `AC-56`, `AC-62`, `AC-98`.
