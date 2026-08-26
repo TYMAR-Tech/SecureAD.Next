@@ -43,9 +43,7 @@ This matters most for the documents that read best. A well-argued paragraph is t
 
 ## The documentation rewrite, and what "done" means
 
-**The goal is fewer files, not better files.** The documentation is being consolidated into **one
-layer document per code folder, written from the code**, and the sprawl is **deleted as it is
-consumed**. A pass that adds documents without removing any has not consolidated anything.
+**The goal is fewer files, not better files.** The documentation is being consolidated into **one layer document per code folder, written from the code**, and the sprawl is **deleted as it is consumed**. A pass that adds documents without removing any has not consolidated anything.
 
 **Route every fact to exactly one destination:**
 
@@ -57,30 +55,18 @@ consumed**. A pass that adds documents without removing any has not consolidated
 | What blocks the rewrite itself | [`PUNCH-LIST.md`](../docs/PUNCH-LIST.md), *Documentation rewrite* |
 | Anything else | deleted |
 
-**`docs/areas/` is being emptied.** An area file is an input, not a fixture. **Delete the content
-you move, in the same turn you move it**, so each pass leaves the file shorter; the file itself goes
-when the last content leaves. Do not copy content across and leave the original in place \u2014 that
-doubles what the next session must read, which is the problem this work exists to solve.
+**`docs/areas/` is being emptied.** An area file is an input, not a fixture. **Delete the content you move, in the same turn you move it**, so each pass leaves the file shorter; the file itself goes when the last content leaves. Do not copy content across and leave the original in place — that doubles what the next session must read, which is the problem this work exists to solve.
 
 **Findings and rules were out of scope for the documentation rewrite, and that consolidation is now done.** The rule cards under `docs/rules/` are the largest single body of documentation in the repository and were deliberately left in their own format, to be consolidated **when the rules are implemented**. That is the work now starting: 62 rule cards are written and 2 are implemented, so `docs/rules/`, `SecureAD.Evidence/Findings/` and the area files `what-we-call-a-finding.md` and `accepting-a-finding.md` are consolidated **as each rule is built**, against the code that implements it, and not in a documentation pass of their own. Do not count the unbuilt remainder as coverage debt. The exclusion was lost once already: the gap was measured correctly and its cause was not recorded beside it, so a later session read *zero of seventeen* as work owed.
 
-**Before writing any gate, read `docs/next/README.md` §*When a document
-counts as documentation*.** It is the founding rule and it is not optional:
+**Before writing any gate, read `docs/next/README.md` §*When a document counts as documentation*.** It is the founding rule and it is not optional:
 
 > A test binds a document to the code only if it **derives what it expects from the code**.
-> The deciding question is *what change to the product would make this fail?* If the answer is
-> *nothing \u2014 only editing the document*, the check is **pinning** and does not belong.
+> The deciding question is *what change to the product would make this fail?* If the answer is *nothing — only editing the document*, the check is **pinning** and does not belong.
 
-**Do not test the shape of prose** \u2014 heading formats, identifiers, status lines, whether a section
-exists. Twelve such test files were deleted on 2026-08-14 and the suite went from 960 tests to 793.
-**They keep coming back**, and a live example is recorded as `P-51` in `PUNCH-LIST.md`.
-A prose gate is worse than useless: it later reads as a structural constraint and blocks the
-consolidation it was meant to protect.
+**Do not test the shape of prose** — heading formats, identifiers, status lines, whether a section exists. Twelve such test files were deleted on 2026-08-14 and the suite went from 960 tests to 793. **They keep coming back**, and a live example is recorded as `P-51` in `PUNCH-LIST.md`. A prose gate is worse than useless: it later reads as a structural constraint and blocks the consolidation it was meant to protect.
 
-**A gate that has never been observed failing is not evidence.** Point a new or retargeted gate at a
-document that does not carry its subject, confirm it fails **naming what it cannot find**, and record
-which checks failed and what they said \u2014 including any that passed, because those are the ones that
-are decoration.
+**A gate that has never been observed failing is not evidence.** Point a new or retargeted gate at a document that does not carry its subject, confirm it fails **naming what it cannot find**, and record which checks failed and what they said — including any that passed, because those are the ones that are decoration.
 
 ---
 
@@ -103,33 +89,17 @@ Sessions have repeatedly re-opened settled questions because each one starts at 
 
 ## Say what you opened
 
-**Before stating that something exists, name what you opened to know it.** Not "I checked" - the
-file, the command, the line. If the honest answer is "I saw it earlier", say that instead, because
-it is a different kind of claim and a much weaker one.
+**Before stating that something exists, name what you opened to know it.** Not "I checked" - the file, the command, the line. If the honest answer is "I saw it earlier", say that instead, because it is a different kind of claim and a much weaker one.
 
-Every mistake made on 2026-08-20 had one shape: **a proxy for the thing, treated as the thing.**
-A file name where a path was needed, and `README.md` exists in five folders. A grep hit where a declaration was needed, so a comment saying "this test exists in the old tree" counted as the test
-existing. Link text where a resolved target was needed, so `../README.md` written in
-the archived session folder was read as the root README and one document's inbound count went from 1 to
-69. `git diff --numstat` where content was needed - it showed equal lines added and removed while
-29 documents were being double-encoded. None of these was carelessness, and none felt uncertain
-from the inside.
+Every mistake made on 2026-08-20 had one shape: **a proxy for the thing, treated as the thing.** A file name where a path was needed, and `README.md` exists in five folders. A grep hit where a declaration was needed, so a comment saying "this test exists in the old tree" counted as the test existing. Link text where a resolved target was needed, so `../README.md` written in the archived session folder was read as the root README and one document's inbound count went from 1 to 69. `git diff --numstat` where content was needed - it showed equal lines added and removed while 29 documents were being double-encoded. None of these was carelessness, and none felt uncertain from the inside.
 
 Three habits follow, and they are cheap:
 
-- **Distinguish a name from a fact.** `NonDestructiveInvariantTests` is a name. Whether that class
-  is declared in this tree is a fact. Say which one is being offered.
-- **Prefer the artefact to the answer.** A script that lists the enforced documents cannot be
-  wrong about itself; a sentence saying how many there are can. When a question will be asked
-  twice, write the script the first time - `next/tools/` is full of them for this reason.
-- **Give the count and how it was counted.** "51 of 69 records are cited by more than one area"
-  can be checked. "Most are shared" cannot, and hides double-counting - the same fault that
-  reported 20 literals in a file holding 10, each counted once in its assignment and once in its
-  XML comment.
+- **Distinguish a name from a fact.** `NonDestructiveInvariantTests` is a name. Whether that class is declared in this tree is a fact. Say which one is being offered.
+- **Prefer the artefact to the answer.** A script that lists the enforced documents cannot be wrong about itself; a sentence saying how many there are can. When a question will be asked twice, write the script the first time - `next/tools/` is full of them for this reason.
+- **Give the count and how it was counted.** "51 of 69 records are cited by more than one area" can be checked. "Most are shared" cannot, and hides double-counting - the same fault that reported 20 literals in a file holding 10, each counted once in its assignment and once in its XML comment.
 
-**Re-reading is the only thing that has ever caught this.** There is no internal signal that
-separates a remembered fact from a retrieved one, so scepticism has to be procedural: open the
-file again, or run the script again, and say which was done.
+**Re-reading is the only thing that has ever caught this.** There is no internal signal that separates a remembered fact from a retrieved one, so scepticism has to be procedural: open the file again, or run the script again, and say which was done.
 
 ## General Guidelines
 - Do NOT run genuinely long-running terminal commands (like synthetic database generation). They time out and waste time. Instead, provide the command for the user to run themselves.
@@ -173,3 +143,6 @@ file again, or run the script again, and say which was done.
 
 ## Lab Checks
 - The owner does not run lab checks from his development device. The SecureAD product is exercised on a separate lab machine (a different Windows account, e.g. ba.admin), not on the dev box where the solution is built. Do not ask him to re-run the app, attach a debugger, or read the Visual Studio Output window on his dev machine to diagnose runtime behaviour. Diagnose from code, tests and the artefacts a lab run produces (bundle contents, screenshots) instead.
+
+## Documentation Updates
+- Documentation is updated as the work goes, not at the end. A stage or task is not finished until its code is merged, its documents are updated, and its status is recorded in `docs/ROADMAP.md`. The owner's words: "make sure we are updating the documentation as we go, I don't want to get to the end and we have nothing."
