@@ -1,5 +1,16 @@
 # Rule Review — Next Up
 
+> **This describes the predecessor, not this repository. It is history.**
+> Everything below refers to the old application: its branches, its test projects
+> (`SecureAD.Core.Tests`, `SecureAD.Infrastructure.Tests`), its `fact_finding` table and its
+> `rules.yaml`. None of them exists here. The branch it names, `feature/sec080-sysvol-dacl-union`,
+> is not a branch of this repository.
+>
+> **For where the rebuild is, read [`docs/ROADMAP.md`](../ROADMAP.md).** This file is kept only
+> because the rule cards it describes were carried across and its per-rule detail is still the
+> best account of what each rule was verified to do. It is consumed as the rules are implemented,
+> on the same terms as the rest of `docs/rules/`.
+
 > Single source of truth for "where were we?" between chats.
 > Keep this file short. Update it at the end of every chat **before** committing.
 > When in doubt, the repo (cards, tests, rules.yaml) is authoritative — not chat history.
