@@ -282,19 +282,21 @@ computer the rule is about, and the coordinator offers every object in the bundl
 scheduled rule, so the object the rule judged here is the object it judged in the run. What stood
 between a real controller and a finding was the exclusion, and nothing else.
 
-**The same was then observed in a second domain.** The forest carries three controllers, one per
-domain, and `CN=baDC,OU=Domain Controllers,DC=ba,DC=ad,DC=lab` gave the same reading as PHDC:
-`userAccountControl` 532480, all three signals agreeing, SEC-011 judging it and reporting nothing.
-So the exclusion holds across a naming-context boundary, not only in the domain the tool was pointed
-at.
+**The same was then observed in every other domain.** The forest carries three controllers, one per
+domain, and all three read alike: `CN=baDC,OU=Domain Controllers,DC=ba,DC=ad,DC=lab` and
+`CN=adDC,OU=Domain Controllers,DC=ad,DC=lab` each gave `userAccountControl` 532480, all three
+signals agreeing, SEC-011 judging them and reporting nothing. So the exclusion holds across a
+naming-context boundary, and at the forest root as well as in a child domain — the two places the
+organisational-unit signal reads a differently shaped distinguished name.
 
 **A guess about that boundary was wrong and is recorded because it was wrong.** The expectation was
 that a controller in another domain is where the three signals part company — the primary-group
 check looks for RID 516 or 521, which is domain-relative, and the organisational-unit check reads a
 distinguished name in a different partition. Neither faltered. `SignalsDisagree` therefore still has
-no lab exercise: every controller this forest has agrees with itself, so the disagreement path
-remains proven by test alone, and the reason it has not been seen is that nothing has yet been
-found to disagree.
+no lab exercise, and now demonstrably cannot get one here: every controller this forest has been
+asked about, and all three agree with themselves. The disagreement path remains proven by test
+alone, and the reason it has not been seen is that a healthy forest does not appear to contain such
+an object.
 
 The other blank rows were not exercised: nothing threw, no rule was skipped, and no account was
 missing a declared input, so the refusals and degraded paths remain proven by test alone.

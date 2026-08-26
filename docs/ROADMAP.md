@@ -94,8 +94,9 @@ it reads, and objects it is not about are counted apart from objects it could no
 **The domain-controller exclusion took a second run to confirm.** No controller appeared in the
 findings, which has three explanations and that run distinguishes none of them. `-Explain` asks the
 bundle about one object instead: PHDC carries `TRUSTED_FOR_DELEGATION`, all three controller signals
-agree, and SEC-011 judged it and had nothing to report. The exclusion is what kept it out. `baDC`,
-in a second domain, reads the same, so the exclusion holds across a naming-context boundary.
+agree, and SEC-011 judged it and had nothing to report. The exclusion is what kept it out. The
+forest's other two controllers, `baDC` and the root's `adDC`, read the same, so the exclusion holds
+across a naming-context boundary and at the root as well as in a child domain.
 
 *Detail:* [`SEC-010`](rules/SEC-010.md), [`SEC-011`](rules/SEC-011.md).
 *Criteria:* `AC-56`, `AC-62`, `AC-98`.
@@ -103,6 +104,12 @@ in a second domain, reads the same, so the exclusion holds across a naming-conte
 *Still owed:* a findings surface in the shell, and an entry point in the product — judging is
 reachable only through `next/tools/judge-bundle.ps1`. What an operator is shown when the evidence
 verifies and the judgement is degraded is still undecided.
+
+*Also owed, found by asking:* nothing in the product prints what a bundle covered. Which naming
+contexts were read, from which controller, and which were known about but never read are all
+recorded — `BundleReader.ReadScope()` returns them — and the only way to find out today is to guess
+an object and probe for it. Three such probes are what established this bundle spans three domains,
+which is an answer arrived at the wrong way round.
 
 **Owed from stage 1 — discharged 2026-08-25.** Sixteen tests were deleted with the evidence tables,
 and every claim they made is proven again against the judgement store. The old names are kept beside
