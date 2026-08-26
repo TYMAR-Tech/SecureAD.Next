@@ -112,9 +112,9 @@ internal sealed partial class ShellViewModel : ObservableObject
     {
         ShellSection.Dashboard => SectionView.NotBuilt(
             "Dashboard",
-            "Nothing in this product evaluates a rule yet, so there is no posture to report. "
-            + "This tab is here to settle where the dashboard will live, and it reports nothing "
-            + "about your directory."),
+            "Rules are evaluated, but only by a tool run by hand outside this application, so "
+            + "there is no posture for this screen to report. This tab is here to settle where "
+            + "the dashboard will live, and it reports nothing about your directory."),
         ShellSection.Settings => SectionView.NotBuilt(
             "Settings",
             "There is no settings screen yet. The one setting this product has - where your runs "
@@ -268,9 +268,9 @@ internal sealed partial class ShellViewModel : ObservableObject
             Views.Add(SectionView.Built("Objects"));
             Views.Add(SectionView.NotBuilt(
                 "Findings",
-                "Nothing in this product evaluates a rule yet, so there are no findings to show. "
-                + "This tab is here to settle where they will live, and it reports nothing about "
-                + "your directory."));
+                "Rules are evaluated, but only by a tool run by hand outside this application, "
+                + "so this application has no findings to show. This tab is here to settle where "
+                + "they will live, and it reports nothing about your directory."));
             Views.Add(SectionView.NotBuilt(
                 "LAPS",
                 "Local administrator password status is not assessed yet. This tab is here to "
