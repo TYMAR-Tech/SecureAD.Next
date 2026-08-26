@@ -30,6 +30,7 @@ $required = @(
     'SecureAD.Kernel.dll',
     'SecureAD.Evidence.dll',
     'SecureAD.Judgement.dll',
+    'Microsoft.Data.Sqlite.dll',
     'SQLitePCLRaw.core.dll',
     'SQLitePCLRaw.provider.e_sqlite3.dll',
     'SQLitePCLRaw.batteries_v2.dll')
@@ -132,6 +133,22 @@ not enough - nothing can open a bundle without this file.
 }
 
 $null = [System.Runtime.InteropServices.NativeLibrary]::Load($native)
+
+# Resolve every other assembly out of the same folder, rather than naming them one at a time.
+#
+# A LoadFrom'd assembly's own dependencies are not resolved from the folder it came from, so each
+# one has to be found somehow. Listing them was a mistake that cost three round trips to the lab:
+# the list was short by Microsoft.Data.Sqlite, and it would have been short by the next one too.
+# This handler answers for anything the runtime asks for, so the folder is either complete or the
+# failure names the assembly that is actually missing.
+[System.Runtime.Loader.AssemblyLoadContext]::Default.add_Resolving({
+    param($context, $name)
+
+    $candidate = Join-Path $bin ($name.Name + '.dll')
+    if (Test-Path $candidate) { return $context.LoadFromAssemblyPath($candidate) }
+
+    return $null
+}.GetNewClosure())
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.core.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.provider.e_sqlite3.dll'))
