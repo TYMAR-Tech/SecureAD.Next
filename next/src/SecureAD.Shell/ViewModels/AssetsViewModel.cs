@@ -419,6 +419,34 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Opens the object a finding is about, and lands on that object's findings.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A finding carries a distinguished name and nothing else about the object.</b> It was
+    /// written by a rule reading the evidence, not by the listing, so it has no class and no type
+    /// to hand over - both are read back out of the bundle here. That is the whole reason this
+    /// exists beside <see cref="OpenObject"/> rather than being folded into it.
+    /// </para>
+    /// <para>
+    /// <b>An object a finding names may not be in the evidence at all.</b> A judgement is an
+    /// ordinary file that can be moved beside another capture, and the reader refuses one whose
+    /// fingerprint disagrees - but a bundle can also simply not hold what it once did. The
+    /// predecessor fell back to a finding-detail window; there is none here, so the honest answer
+    /// is to say so in words rather than to open nothing and look broken.
+    /// </para>
+    /// </remarks>
+    /// <param name="finding">The row the operator chose.</param>
+    [RelayCommand]
+    public void OpenFinding(FindingRowViewModel? finding)
+    {
+        if (finding is null || BundlePath is null)
+            return;
+
+        Open(finding.DistinguishedName, ObjectSectionCatalog.Findings, knownClass: null);
+    }
+
+    /// <summary>
     /// Opens one object from the listing and shows what its permissions say.
     /// </summary>
     /// <param name="listed">The row the operator chose.</param>
@@ -428,7 +456,33 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (listed is null || BundlePath is null)
             return;
 
-        var read = _assets.ReadPermissions(BundlePath, listed.DistinguishedName);
+        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview, listed.ObjectClass);
+    }
+
+    /// <summary>
+    /// Opens the object named, and selects the section asked for.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The class is taken from the listing where there is one, and read from the evidence where
+    /// there is not.</b> A row already carries it, and the listing reads it as the highest ordinal
+    /// of <c>objectclass_value</c> - the most specific class the controller sent. Reading it here
+    /// takes the last value of the same attribute, which is the same rule over the same data, so
+    /// the two cannot disagree about what an object is.
+    /// </para>
+    /// <para>
+    /// <b>Preferring the row is not redundancy, it is the stronger evidence.</b> Attribute values
+    /// are read separately and are allowed to fail; the listing has already succeeded by the time a
+    /// row exists. An object reached from a finding has no row, which is the whole reason the
+    /// fallback exists.
+    /// </para>
+    /// </remarks>
+    /// <param name="distinguishedName">The object to open.</param>
+    /// <param name="section">Which of its sections to land on.</param>
+    /// <param name="knownClass">The class the caller already knows, or null when it does not.</param>
+    private void Open(string distinguishedName, string section, string? knownClass)
+    {
+        var read = _assets.ReadPermissions(BundlePath!, distinguishedName);
 
         if (!read.IsSuccess)
         {
@@ -445,8 +499,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         {
             Refusal = new Notice(
                 "This object is not in this run's evidence",
-                $"'{listed.DistinguishedName}' was listed but no object of that name was found in "
-                + "the bundle.");
+                $"'{distinguishedName}' was named but no object of that name was found in the "
+                + "bundle.");
             Announce();
             return;
         }
@@ -454,25 +508,42 @@ internal sealed partial class AssetsViewModel : ObservableObject
         // Attribute values are read separately and are allowed to be absent. A failure to read
         // them is not a reason to refuse the object: the permissions are the reason this screen
         // exists, and each section says for itself when it has nothing.
-        var attributes = _assets.ReadObjectAttributes(BundlePath, listed.DistinguishedName);
+        var attributes = _assets.ReadObjectAttributes(BundlePath!, distinguishedName);
+        var values = attributes.IsSuccess ? attributes.Value : null;
 
         // What the rules made of this object, for the findings section. Read the same way: a
         // judgement that will not open is a fact the section states, not a reason to refuse an
         // object whose evidence read perfectly.
         var findings = _assets.ReadFindings(
-            BundlePath, FindingsQuery.About(listed.DistinguishedName));
+            BundlePath!, FindingsQuery.About(distinguishedName));
+
+        var objectClass = knownClass ?? ClassOf(values);
 
         Opened = new ObjectViewModel(
             read.Value,
-            attributes.IsSuccess ? attributes.Value : null,
-            listed.ObjectType,
-            listed.ObjectClass,
+            values,
+            objectClass ?? "not recorded",
+            objectClass,
             Vocabulary(),
             findings.IsSuccess ? findings.Value : null,
             findings.IsSuccess ? null : findings.Error.Description);
 
+        Opened.Show(section);
         Announce();
     }
+
+    /// <summary>
+    /// The object's most specific class, or null when it did not arrive.
+    /// </summary>
+    /// <remarks>
+    /// <b>The last value, which is the most derived one.</b> A computer's <c>objectClass</c> is
+    /// <c>top, person, organizationalPerson, user, computer</c>, and an operator calling it a user
+    /// would be reading the fourth of five. The rules take the same value the same way.
+    /// </remarks>
+    private static string? ClassOf(ObjectAttributes? attributes) =>
+        attributes?.Find("objectClass")?.Values is { Count: > 0 } values
+            ? values[^1].Text
+            : null;
 
     /// <summary>
     /// The words and verdicts permissions are read with for the run on screen.

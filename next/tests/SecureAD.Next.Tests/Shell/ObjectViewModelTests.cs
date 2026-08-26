@@ -2,6 +2,7 @@ using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Security;
 using SecureAD.Shell.ViewModels;
 using Xunit;
@@ -530,6 +531,88 @@ public sealed class ObjectViewModelTests
 
         Assert.Equal("The judgement would not open.", section.Verdict);
     }
+
+    /// <summary>
+    /// Opening a finding opens the object it is about, and lands on its findings.
+    /// </summary>
+    /// <remarks>
+    /// The shape the predecessor used, and the owner asked for: a finding names a target, and the
+    /// operator wants to be looking at that target with the finding in front of him.
+    /// </remarks>
+    [Fact]
+    public void OpeningAFindingOpensItsObjectAtItsFindings()
+    {
+        var screen = OpenedWith(new FindingsPage([AFinding()], null, RulesRan: 2));
+        screen.CloseObject();
+
+        screen.OpenFindingCommand.Execute(screen.Findings[0]);
+
+        Assert.True(screen.HasOpenObject);
+        Assert.Equal(AliceDn, screen.Opened!.DistinguishedName);
+        Assert.Equal(ObjectSectionCatalog.Findings, screen.Opened.Selected!.Key);
+    }
+
+    /// <summary>
+    /// An object reached from a finding still knows what class it is.
+    /// </summary>
+    /// <remarks>
+    /// <b>A finding carries a distinguished name and nothing else about the object.</b> The class
+    /// decides which sections the object has, so without reading it back an object reached this way
+    /// would show a different set of sections from the same object reached from the listing.
+    /// </remarks>
+    [Fact]
+    public void AnObjectReachedFromAFindingStillKnowsItsClass()
+    {
+        var assets = SourceWith(new FindingsPage([AFinding()], null, RulesRan: 2));
+        assets.Attributes = AttributesOfAUser();
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.OpenFindingCommand.Execute(screen.Findings[0]);
+
+        Assert.Equal("user", screen.Opened!.ObjectType);
+    }
+
+    /// <summary>
+    /// A finding naming an object the evidence does not hold says so.
+    /// </summary>
+    /// <remarks>
+    /// <b>Rather than opening nothing and looking broken.</b> The predecessor fell back to a
+    /// finding-detail window; there is none here, so the honest answer is words. It is the same
+    /// refusal the listing already makes when a row names an object the bundle does not have.
+    /// </remarks>
+    [Fact]
+    public void AFindingNamingAnObjectTheEvidenceDoesNotHoldSaysSo()
+    {
+        var assets = SourceWith(new FindingsPage([AFinding()], null, RulesRan: 2));
+        assets.Permissions = null;
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.OpenFindingCommand.Execute(screen.Findings[0]);
+
+        Assert.False(screen.HasOpenObject);
+        Assert.True(screen.HasRefusal);
+        Assert.Contains(
+            "not in this run's evidence", screen.Refusal!.Title, StringComparison.Ordinal);
+    }
+
+    private static ObjectAttributes AttributesOfAUser() =>
+        new(
+            AliceDn,
+            Guid.NewGuid(),
+            new DateTimeOffset(2026, 8, 26, 9, 0, 0, TimeSpan.Zero),
+            EvidenceCompleteness.Complete,
+            [
+                new ObjectAttribute(
+                    "objectClass",
+                    AttributeCardinality.MultiValued,
+                    [
+                        new AttributeValue(0, "top", null),
+                        new AttributeValue(1, "person", null),
+                        new AttributeValue(2, "user", null),
+                    ]),
+            ]);
 
     private static AssetsViewModel OpenedWith(FindingsPage findings)
     {

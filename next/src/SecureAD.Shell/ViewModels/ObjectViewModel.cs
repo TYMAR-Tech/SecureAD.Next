@@ -124,6 +124,22 @@ internal sealed partial class ObjectViewModel : ObservableObject
         Sections.FirstOrDefault(s => s.Key == key);
 
     /// <summary>
+    /// Selects the section with this key, if the object's class has one.
+    /// </summary>
+    /// <remarks>
+    /// <b>A section the class does not have leaves the selection alone.</b> An operator who reached
+    /// this object by asking about something lands on the first section instead, which is a whole
+    /// object rather than an empty screen. Nothing in the catalogue is optional today, so this is a
+    /// guard against a future class list rather than a case that arises.
+    /// </remarks>
+    /// <param name="key">The section's stable name, from <see cref="ObjectSectionCatalog"/>.</param>
+    public void Show(string key)
+    {
+        if (Section(key) is { } section)
+            Selected = section;
+    }
+
+    /// <summary>
     /// Builds the view model for one section, or a placeholder saying it is not built.
     /// </summary>
     /// <remarks>
