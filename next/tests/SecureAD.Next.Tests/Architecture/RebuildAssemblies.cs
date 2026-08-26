@@ -30,7 +30,10 @@ namespace SecureAD.Next.Tests.Architecture;
 /// <b>Each assembly is named by a type that cannot leave it.</b> <c>Result</c> is the kernel's own
 /// vocabulary, <c>BundleSchema</c> owns the SQLite schema, and <c>LdapEntryReader</c> is bound to
 /// <c>System.DirectoryServices.Protocols</c> - which is the only reason <c>SecureAD.Audit</c>
-/// targets <c>net8.0-windows</c>, so it cannot move down.
+/// targets <c>net8.0-windows</c>, so it cannot move down. <c>JudgementSchema</c> owns the judgement
+/// store's schema, and that store exists precisely because what a rule concludes is kept out of the
+/// sealed evidence, so it cannot move into <c>SecureAD.Evidence</c> without undoing the separation
+/// it was built for.
 /// </para>
 /// </remarks>
 public static class RebuildAssemblies
@@ -45,6 +48,7 @@ public static class RebuildAssemblies
         typeof(SecureAD.Kernel.Result<int>).Assembly,
         typeof(SecureAD.Evidence.BundleSchema).Assembly,
         typeof(SecureAD.Audit.Capture.LdapEntryReader).Assembly,
+        typeof(SecureAD.Judgement.JudgementSchema).Assembly,
     ];
 }
 
@@ -59,13 +63,13 @@ public sealed class RebuildAssemblyTests
     /// against something a type reference cannot quietly change.
     /// </summary>
     private static readonly string[] ExpectedNames =
-        ["SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Audit"];
+        ["SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Audit", "SecureAD.Judgement"];
 
     /// <summary>
-    /// The gates cover three distinct assemblies, and they are the three the rebuild has.
+    /// The gates cover four distinct assemblies, and they are the four the rebuild has.
     /// </summary>
     [Fact]
-    public void TheGatesCoverThreeDistinctAndCorrectlyNamedAssemblies()
+    public void TheGatesCoverFourDistinctAndCorrectlyNamedAssemblies()
     {
         var names = RebuildAssemblies.All.Select(a => a.GetName().Name).ToList();
 
@@ -77,7 +81,7 @@ public sealed class RebuildAssemblyTests
     }
 
     /// <summary>
-    /// And the covered surface is not empty. Three assemblies exporting nothing would satisfy every
+    /// And the covered surface is not empty. Four assemblies exporting nothing would satisfy every
     /// gate above by giving each of them nothing to check.
     /// </summary>
     [Fact]

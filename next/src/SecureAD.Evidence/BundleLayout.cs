@@ -19,7 +19,8 @@ namespace SecureAD.Evidence;
 /// </para>
 /// <para>
 /// <b>Which files are present says what became of the run.</b> A finished bundle holds the
-/// evidence, its seal and the annotations. A run that ended badly holds the partial file and
+/// evidence, its seal and the annotations, and a judged one also holds the judgement and its own
+/// seal. A run that ended badly holds the partial file and
 /// <see cref="OutcomeFileName"/> saying which ending it was. A run still capturing holds the
 /// partial file alone - and is told apart from one that was interrupted by asking the file system
 /// whether anything still holds that file open, which is
@@ -60,6 +61,55 @@ public static class BundleLayout
     /// It is created when the bundle is sealed, so that opening a bundle never writes to it.
     /// </remarks>
     public const string AnnotationsFileName = "annotations.db";
+
+    /// <summary>
+    /// What the rules concluded about this bundle.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Beside the evidence and never inside it.</b> The evidence is sealed at the end of
+    /// capture, before any rule has run, and that seal is what lets the product say <i>this is what
+    /// the directory said</i> about a bundle judged many times. A finding written into the sealed
+    /// file would either invalidate that seal or force it to be reissued, and a reissued seal means
+    /// only <i>unchanged since we last wrote to it</i>.
+    /// </para>
+    /// <para>
+    /// <b>One per bundle, and rebuildable.</b> Re-judging replaces this file rather than adding
+    /// another beside it, so there is one current answer about one capture and no question of which
+    /// of several is meant. Nothing is lost by deleting it: the evidence is untouched and the
+    /// bundle can be judged again.
+    /// </para>
+    /// <para>
+    /// <b>It records the evidence it judged, and a reader refuses a mismatch.</b> This file can be
+    /// copied, and two captures of one forest produce bundles of the same shape with the same file
+    /// names - so a judgement moved into the wrong bundle would resolve most of its objects and be
+    /// quietly wrong about all of them. The seal over <see cref="EvidenceFileName"/> is a permanent
+    /// fingerprint of exactly one capture, so a judgement naming it can be checked rather than
+    /// trusted. Copying one between bundles is possible and is not supported; the check is what
+    /// makes the attempt safe rather than silent.
+    /// </para>
+    /// </remarks>
+    public const string JudgementFileName = "judgement.db";
+
+    /// <summary>
+    /// The judgement of a run that has not finished. Deliberately not a name any reader asks for.
+    /// </summary>
+    /// <remarks>
+    /// The same mechanism <see cref="PartialFileName"/> uses, for the same reason: a judgement is
+    /// written under this name and renamed only after every scheduled rule has finished and the
+    /// seal is written, so an interrupted judgement has no file by the name a reader asks for. A
+    /// half-judged bundle showing some of its findings would be the more dangerous half of
+    /// <c>docs/decisions/0002</c> - fewer findings than the truth, presented as the truth.
+    /// </remarks>
+    public const string JudgementPartialFileName = "judgement.db.partial";
+
+    /// <summary>The seal covering <see cref="JudgementFileName"/>.</summary>
+    /// <remarks>
+    /// Separate from <see cref="SealFileName"/> because the two cover different artefacts made at
+    /// different times, and they can disagree: evidence may verify under a judgement that does not.
+    /// Anything presenting both to an operator has to say which is which.
+    /// </remarks>
+    public const string JudgementSealFileName = "judgement.db.seal";
 
     /// <summary>
     /// The note a run leaves when it ends badly, saying which ending it was.
@@ -113,6 +163,21 @@ public static class BundleLayout
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string AnnotationsPath(string bundleDirectory) =>
         Combine(bundleDirectory, AnnotationsFileName);
+
+    /// <summary>The judgement of a finished bundle in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string JudgementPath(string bundleDirectory) =>
+        Combine(bundleDirectory, JudgementFileName);
+
+    /// <summary>The judgement of a run in progress in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string JudgementPartialPath(string bundleDirectory) =>
+        Combine(bundleDirectory, JudgementPartialFileName);
+
+    /// <summary>The judgement seal in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string JudgementSealPath(string bundleDirectory) =>
+        Combine(bundleDirectory, JudgementSealFileName);
 
     /// <summary>The run-outcome file in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>

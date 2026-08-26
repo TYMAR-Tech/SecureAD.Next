@@ -54,14 +54,18 @@ gigabytes of evidence go is a tool that fills the wrong disk.
 | `PartialFileName` | `evidence.db.partial` | A run that has not finished, or did not |
 | `SealFileName` | `evidence.db.seal` | The seal covering `evidence.db` |
 | `AnnotationsFileName` | `annotations.db` | The customer's notes, acceptances and declared scope. Created at seal time |
+| `JudgementFileName` | `judgement.db` | What the rules concluded. Present only on a bundle that has been judged, and replaced rather than added to when it is judged again |
+| `JudgementPartialFileName` | `judgement.db.partial` | A judging that has not finished, or did not |
+| `JudgementSealFileName` | `judgement.db.seal` | The seal covering `judgement.db`, separate from the evidence seal because the two cover different artefacts made at different times and can disagree |
 | `OutcomeFileName` | `run-outcome.json` | The note a run leaves when it ends badly, saying which ending it was |
 | `PreflightFileName` | `preflight.json` | What preflight proved about each domain before any capture traffic was sent |
 
 <!-- FILES:END -->
 
 `BundleLayout` also carries one path helper per file — `EvidencePath`, `PartialPath`, `SealPath`,
-`AnnotationsPath`, `OutcomePath` and `PreflightPath` — so that no caller composes a bundle path by
-concatenation and no bundle's file names have a second owner.
+`AnnotationsPath`, `JudgementPath`, `JudgementPartialPath`, `JudgementSealPath`, `OutcomePath` and
+`PreflightPath` — so that no caller composes a bundle path by concatenation and no bundle's file
+names have a second owner.
 
 > `S-16` said a bundle was four files. It was written before `run-outcome.json` and `preflight.json`
 > existed and was never revisited, and the count survived because nothing counted it.

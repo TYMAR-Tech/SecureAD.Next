@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SecureAD.Judgement</RootNamespace>
+    <AssemblyName>SecureAD.Judgement</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+
+  <!-- Judgement reads sealed evidence and writes beside it, so it depends on Evidence and
+       Evidence does not depend on it. The direction is the whole point: capture must be able to
+       produce a bundle with nothing that judges it present, and a rule must never be able to
+       reach back into the writer that sealed the file it is reading. -->
+  <ItemGroup>
+    <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+  </ItemGroup>
+
+</Project>
