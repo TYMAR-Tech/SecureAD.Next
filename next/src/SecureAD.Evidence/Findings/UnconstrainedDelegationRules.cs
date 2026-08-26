@@ -43,6 +43,17 @@ internal static class UnconstrainedDelegation
         ["userAccountControl", "objectClass", "primaryGroupID"];
 
     /// <summary>
+    /// The classes both rules are about: security principals that can be trusted for delegation.
+    /// </summary>
+    /// <remarks>
+    /// Nothing else in a directory can hold <c>TRUSTED_FOR_DELEGATION</c>. Declaring it keeps an
+    /// organisational unit out of the rule's arithmetic entirely rather than counting it as an
+    /// object the rule could not read - which is what the rules did until 2026-08-26, on three
+    /// objects in four of a real forest.
+    /// </remarks>
+    internal static IReadOnlyList<string> SubjectClasses { get; } = ["user", "computer"];
+
+    /// <summary>
     /// Whether this object is a computer, which is what partitions the two rules.
     /// </summary>
     /// <param name="subject">The object to test.</param>
@@ -131,6 +142,7 @@ public sealed class UnconstrainedDelegationOnAccount : IRule
         "Unconstrained delegation",
         Severity.High,
         Version: 1,
+        UnconstrainedDelegation.SubjectClasses,
         UnconstrainedDelegation.RequiredAttributes);
 
     /// <inheritdoc />
@@ -163,6 +175,7 @@ public sealed class UnconstrainedDelegationOnNonDomainController : IRule
         "Unconstrained delegation on a non-domain controller",
         Severity.High,
         Version: 1,
+        UnconstrainedDelegation.SubjectClasses,
         UnconstrainedDelegation.RequiredAttributes);
 
     /// <inheritdoc />

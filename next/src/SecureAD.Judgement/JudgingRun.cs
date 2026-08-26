@@ -112,6 +112,7 @@ public static class JudgingRun
         private readonly Dictionary<string, int> _missing = new(StringComparer.OrdinalIgnoreCase);
 
         private int _judged;
+        private int _notApplicable;
         private int _notJudged;
         private string? _error;
 
@@ -121,13 +122,25 @@ public static class JudgingRun
             : RuleExecutionOutcome.Succeeded;
 
         /// <summary>
-        /// Offers one object to the rule, unless it has already thrown.
+        /// Offers one object to the rule, unless it has already thrown or the rule is not about
+        /// objects of this kind.
         /// </summary>
+        /// <remarks>
+        /// <b>An object the rule is not about is counted apart and never offered.</b> It is not a
+        /// gap in the evidence, and treating it as one told an operator that three objects in four
+        /// of a real forest were unreadable.
+        /// </remarks>
         /// <param name="subject">The object to judge.</param>
         public void Offer(ObjectAttributes subject)
         {
             if (_error is not null)
                 return;
+
+            if (!rule.Definition.IsAbout(subject))
+            {
+                _notApplicable++;
+                return;
+            }
 
             RuleVerdict verdict;
 
@@ -145,6 +158,7 @@ public static class JudgingRun
                 _error = error.ToString();
                 _findings.Clear();
                 _judged = 0;
+                _notApplicable = 0;
                 _notJudged = 0;
                 _missing.Clear();
                 return;
@@ -170,6 +184,7 @@ public static class JudgingRun
                     rule.Definition,
                     Outcome,
                     _judged,
+                    _notApplicable,
                     _notJudged,
                     [.. _missing
                         .OrderBy(m => m.Key, StringComparer.OrdinalIgnoreCase)

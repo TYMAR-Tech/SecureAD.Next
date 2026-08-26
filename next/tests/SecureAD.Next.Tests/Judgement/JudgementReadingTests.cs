@@ -29,7 +29,7 @@ public sealed class JudgementReadingTests
     public void AFindingComesBackFromASealedJudgement()
     {
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()])));
+            writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()])));
 
         using var reader = Opened(directory);
         var finding = Assert.Single(reader.Read().Findings);
@@ -48,7 +48,7 @@ public sealed class JudgementReadingTests
     public void TheEvidenceAFindingRestsOnComesBackWithIt()
     {
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()])));
+            writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()])));
 
         using var reader = Opened(directory);
         var finding = Assert.Single(reader.Read().Findings);
@@ -76,7 +76,7 @@ public sealed class JudgementReadingTests
         };
 
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(Sec010, 1, [disagreeing])));
+            writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [disagreeing])));
 
         using var reader = Opened(directory);
         var evidence = Assert.IsType<UnconstrainedDelegationEvidence>(
@@ -95,7 +95,7 @@ public sealed class JudgementReadingTests
         var tightened = Sec010 with { Version = 7 };
 
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(tightened, 1, [SomeFinding()])));
+            writer => writer.Write(RuleExecution.Judged(tightened, 1, 0, [SomeFinding()])));
 
         using var reader = Opened(directory);
 
@@ -123,7 +123,7 @@ public sealed class JudgementReadingTests
     public void ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing()
     {
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(Sec010, 4000, [])));
+            writer => writer.Write(RuleExecution.Judged(Sec010, 4000, 0, [])));
 
         using var reader = Opened(directory);
 
@@ -139,7 +139,7 @@ public sealed class JudgementReadingTests
     {
         var directory = NewJudgedBundle(
             writer => writer.Write(RuleExecution.Indeterminate(
-                Sec010, 2, 40, [new MissingInput("primaryGroupID", 40)], [])));
+                Sec010, 2, 0, 40, [new MissingInput("primaryGroupID", 40)], [])));
 
         using var reader = Opened(directory);
         var execution = Assert.Single(reader.Read().RulesRun);
@@ -174,7 +174,7 @@ public sealed class JudgementReadingTests
     public void AJudgementMadeAgainstAnotherCaptureIsRefused()
     {
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()])));
+            writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()])));
 
         WriteEvidenceSeal(directory, AnotherCapture);
 
@@ -214,7 +214,7 @@ public sealed class JudgementReadingTests
 
         using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()]));
+            writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
             writer.Abandon(Finished);
         }
 
@@ -231,7 +231,7 @@ public sealed class JudgementReadingTests
     public void AJudgementThatWasEditedAfterSealingIsRefused()
     {
         var directory = NewJudgedBundle(
-            writer => writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()])));
+            writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()])));
 
         File.AppendAllText(BundleLayout.JudgementPath(directory), " ");
 
@@ -243,6 +243,7 @@ public sealed class JudgementReadingTests
 
     private static readonly RuleDefinition Sec010 = new(
         "SEC-010", "Unconstrained delegation on an account", Severity.High, 1,
+        ["user", "computer"],
         ["userAccountControl", "objectClass", "primaryGroupID"]);
 
     private static Finding SomeFinding() =>

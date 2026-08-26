@@ -35,6 +35,7 @@ public sealed record StoredRuleExecution(
     int RuleVersion,
     RuleExecutionOutcome Outcome,
     int ObjectsJudged,
+    int ObjectsNotApplicable,
     int ObjectsNotJudged,
     IReadOnlyList<MissingInput> MissingInputs,
     string? Error);
@@ -206,8 +207,8 @@ public sealed class JudgementReader : IDisposable
 
         using var command = _connection.CreateCommand();
         command.CommandText =
-            "SELECT rule_id, rule_version, outcome, objects_judged, objects_not_judged, error "
-            + "FROM rule_execution ORDER BY rule_id";
+            "SELECT rule_id, rule_version, outcome, objects_judged, objects_not_applicable, "
+            + "objects_not_judged, error FROM rule_execution ORDER BY rule_id";
 
         using var reader = command.ExecuteReader();
 
@@ -221,8 +222,9 @@ public sealed class JudgementReader : IDisposable
                 Enum.Parse<RuleExecutionOutcome>(reader.GetString(2)),
                 reader.GetInt32(3),
                 reader.GetInt32(4),
+                reader.GetInt32(5),
                 missing.TryGetValue(ruleId, out var inputs) ? inputs : [],
-                reader.IsDBNull(5) ? null : reader.GetString(5)));
+                reader.IsDBNull(6) ? null : reader.GetString(6)));
         }
 
         return executions;

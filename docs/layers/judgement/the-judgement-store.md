@@ -84,10 +84,18 @@ matched. A screen with only the findings to go on would print both as a clean fo
 A rule that was scheduled and never executed gets a row too, with `RuleExecutionOutcome.DidNotRun`,
 because an absent row cannot tell *never scheduled* from *scheduled and skipped*.
 
-`objects_judged` and `objects_not_judged` are counted separately, and their sum is deliberately not
-the object count — a rule is only offered objects of the kind it applies to. A rule that reached a
-verdict on forty objects and could not reach one on four thousand has said almost nothing about the
-forest, and `Succeeded` with no findings would otherwise present that as clean.
+`objects_judged`, `objects_not_applicable` and `objects_not_judged` are three different answers and
+none is derived from the others.
+
+**Not applicable is not a gap.** A rule declares the classes it is about, and an organisational unit
+offered to a delegation rule is not an object the rule failed to read — it has no
+`userAccountControl` because it is not an account. Judged against a real forest on 2026-08-26 the
+delegation rules called 6,279 of 8,361 objects unreadable on exactly that account, three in four,
+which would have reported every judging as degraded for ever and taught an operator to ignore the
+one signal that says the findings are incomplete.
+
+**`objects_not_judged` is the real gap**: an object the rule *is* about, missing something the rule
+declared it reads. That still degrades the run, and still should.
 
 `rule_execution_missing_input` says which declared attributes were absent and on how many objects.
 That turns *SEC-010 could not judge 4,000 objects* into *`primaryGroupID` was not captured*, which
@@ -252,6 +260,8 @@ yet.
 | see which attribute was missing when a rule could not reach a verdict | `JudgingEndToEndTests.AnObjectMissingADeclaredInputDegradesTheJudgingAndNamesTheAttribute` |  |
 | be certain a judgement is bound to the bundle it judged | `JudgingEndToEndTests.TheJudgementIsBoundToTheBundleItJudged` |  |
 | judge a bundle again without the earlier judgement being added to | `JudgingEndToEndTests.JudgingTwiceReplacesTheEarlierJudgement` |  |
+| be certain an object a rule is not about does not make the judging look degraded | `JudgingEndToEndTests.AnObjectTheRuleIsNotAboutDoesNotDegradeTheJudging` |  |
+| be certain an account genuinely missing an input still degrades it | `JudgingEndToEndTests.AnAccountMissingADeclaredInputStillDegradesTheJudging` |  |
 
 **Confirmed in lab** is blank throughout: these run against stores the tests built, and no judging
 has been run against a real capture.

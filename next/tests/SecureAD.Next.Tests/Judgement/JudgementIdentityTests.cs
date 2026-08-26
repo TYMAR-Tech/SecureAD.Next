@@ -96,8 +96,8 @@ public sealed class JudgementIdentityTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()]));
-            writer.Write(RuleExecution.Judged(Sec011, 1, [SomeFinding("SEC-011")]));
+            writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
+            writer.Write(RuleExecution.Judged(Sec011, 1, 0, [SomeFinding("SEC-011")]));
             writer.Complete(Finished);
         }
 
@@ -120,7 +120,7 @@ public sealed class JudgementIdentityTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 2, [SomeFinding(), other]));
+            writer.Write(RuleExecution.Judged(Sec010, 2, 0, [SomeFinding(), other]));
             writer.Complete(Finished);
         }
 
@@ -141,7 +141,7 @@ public sealed class JudgementIdentityTests
         using var writer = NewWriter(directory);
 
         Assert.Throws<SqliteException>(
-            () => writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding(), SomeFinding()])));
+            () => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding(), SomeFinding()])));
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public sealed class JudgementIdentityTests
         var unstorable = SomeFinding() with { Evidence = new UnstorableEvidence() };
 
         Assert.Throws<ArgumentException>(
-            () => writer.Write(RuleExecution.Judged(Sec010, 1, [unstorable])));
+            () => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [unstorable])));
     }
 
     /// <summary>
@@ -202,10 +202,12 @@ public sealed class JudgementIdentityTests
 
     private static readonly RuleDefinition Sec010 = new(
         "SEC-010", "Unconstrained delegation on an account", Severity.High, 1,
+        ["user", "computer"],
         ["userAccountControl", "objectClass", "primaryGroupID"]);
 
     private static readonly RuleDefinition Sec011 = new(
         "SEC-011", "Unconstrained delegation on a member computer", Severity.High, 1,
+        ["user", "computer"],
         ["userAccountControl", "objectClass", "primaryGroupID"]);
 
     private static Finding SomeFinding(string ruleId = "SEC-010") =>
@@ -239,7 +241,7 @@ public sealed class JudgementIdentityTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(rule ?? Sec010, 1, [finding]));
+            writer.Write(RuleExecution.Judged(rule ?? Sec010, 1, 0, [finding]));
             writer.Complete(Finished);
         }
 

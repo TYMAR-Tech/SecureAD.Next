@@ -192,8 +192,9 @@ try {
         Write-Host '---------'
 
         foreach ($rule in $stored.RulesRun) {
-            Write-Host ("  {0,-10} {1,-14} judged {2,9:N0}   could not judge {3,9:N0}" -f
-                $rule.RuleId, $rule.Outcome, $rule.ObjectsJudged, $rule.ObjectsNotJudged)
+            Write-Host ("  {0,-10} {1,-14} judged {2,9:N0}   not about {3,9:N0}   could not judge {4,9:N0}" -f
+                $rule.RuleId, $rule.Outcome, $rule.ObjectsJudged, $rule.ObjectsNotApplicable,
+                $rule.ObjectsNotJudged)
 
             foreach ($missing in $rule.MissingInputs) {
                 Write-Host ("      not captured: {0} on {1:N0} objects" -f

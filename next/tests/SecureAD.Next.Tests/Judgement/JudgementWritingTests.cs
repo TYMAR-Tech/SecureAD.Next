@@ -42,7 +42,7 @@ public sealed class JudgementWritingTests
         var directory = NewBundle();
         using var writer = NewWriter(directory);
 
-        writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()]));
+        writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
 
         Assert.True(File.Exists(BundleLayout.JudgementPartialPath(directory)));
         Assert.False(File.Exists(BundleLayout.JudgementPath(directory)));
@@ -58,7 +58,7 @@ public sealed class JudgementWritingTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()]));
+            writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
             writer.Complete(Finished);
         }
 
@@ -82,7 +82,7 @@ public sealed class JudgementWritingTests
 
         using (var first = NewWriter(directory))
         {
-            first.Write(RuleExecution.Judged(Sec010, 1, [SomeFinding()]));
+            first.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
             first.Complete(Finished);
         }
 
@@ -107,7 +107,7 @@ public sealed class JudgementWritingTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 1, []));
+            writer.Write(RuleExecution.Judged(Sec010, 1, 0, []));
             writer.Abandon(Finished);
         }
 
@@ -125,8 +125,8 @@ public sealed class JudgementWritingTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 4, [SomeFinding()]));
-            writer.Write(RuleExecution.Judged(Sec011, 9, []));
+            writer.Write(RuleExecution.Judged(Sec010, 4, 0, [SomeFinding()]));
+            writer.Write(RuleExecution.Judged(Sec011, 9, 0, []));
             writer.Complete(Finished);
         }
 
@@ -147,9 +147,9 @@ public sealed class JudgementWritingTests
 
         using (var writer = NewWriter(directory))
         {
-            writer.Write(RuleExecution.Judged(Sec010, 4, []));
+            writer.Write(RuleExecution.Judged(Sec010, 4, 0, []));
             writer.Write(RuleExecution.Indeterminate(
-                Sec011, 2, 40, [new MissingInput("primaryGroupID", 40)], []));
+                Sec011, 2, 0, 40, [new MissingInput("primaryGroupID", 40)], []));
             writer.Complete(Finished);
         }
 
@@ -167,7 +167,7 @@ public sealed class JudgementWritingTests
         using (var writer = NewWriter(directory))
         {
             writer.Write(RuleExecution.Threw(Sec010, "object reference not set"));
-            writer.Write(RuleExecution.Judged(Sec011, 9, [SomeFinding("SEC-011")]));
+            writer.Write(RuleExecution.Judged(Sec011, 9, 0, [SomeFinding("SEC-011")]));
             writer.Complete(Finished);
         }
 
@@ -199,7 +199,7 @@ public sealed class JudgementWritingTests
         using var writer = NewWriter(directory);
 
         var contradiction = new RuleExecution(
-            Sec010, RuleExecutionOutcome.Succeeded, 4, 40, [], [], null);
+            Sec010, RuleExecutionOutcome.Succeeded, 4, 0, 40, [], [], null);
 
         Assert.Throws<ArgumentException>(() => writer.Write(contradiction));
     }
@@ -214,7 +214,7 @@ public sealed class JudgementWritingTests
         using var writer = NewWriter(directory);
 
         var unexplained = new RuleExecution(
-            Sec010, RuleExecutionOutcome.Indeterminate, 4, 40, [], [], null);
+            Sec010, RuleExecutionOutcome.Indeterminate, 4, 0, 40, [], [], null);
 
         Assert.Throws<ArgumentException>(() => writer.Write(unexplained));
     }
@@ -228,7 +228,7 @@ public sealed class JudgementWritingTests
         var directory = NewBundle();
         using var writer = NewWriter(directory);
 
-        var misfiled = RuleExecution.Judged(Sec011, 1, [SomeFinding("SEC-010")]);
+        var misfiled = RuleExecution.Judged(Sec011, 1, 0, [SomeFinding("SEC-010")]);
 
         Assert.Throws<ArgumentException>(() => writer.Write(misfiled));
     }
@@ -243,7 +243,7 @@ public sealed class JudgementWritingTests
         using var writer = NewWriter(directory);
 
         var partial = new RuleExecution(
-            Sec010, RuleExecutionOutcome.Error, 0, 0, [], [SomeFinding()], "fell over");
+            Sec010, RuleExecutionOutcome.Error, 0, 0, 0, [], [SomeFinding()], "fell over");
 
         Assert.Throws<ArgumentException>(() => writer.Write(partial));
     }
@@ -257,10 +257,10 @@ public sealed class JudgementWritingTests
         var directory = NewBundle();
         using var writer = NewWriter(directory);
 
-        writer.Write(RuleExecution.Judged(Sec010, 1, []));
+        writer.Write(RuleExecution.Judged(Sec010, 1, 0, []));
 
         Assert.Throws<InvalidOperationException>(
-            () => writer.Write(RuleExecution.Judged(Sec010, 1, [])));
+            () => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [])));
     }
 
     /// <summary>
@@ -275,7 +275,7 @@ public sealed class JudgementWritingTests
         writer.Complete(Finished);
 
         Assert.Throws<InvalidOperationException>(
-            () => writer.Write(RuleExecution.Judged(Sec010, 1, [])));
+            () => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [])));
     }
 
     /// <summary>
@@ -306,7 +306,7 @@ public sealed class JudgementWritingTests
         using (var writer = NewWriter(directory))
         {
             writer.Write(RuleExecution.Indeterminate(
-                Sec010, 2, 40, [new MissingInput("primaryGroupID", 40)], []));
+                Sec010, 2, 0, 40, [new MissingInput("primaryGroupID", 40)], []));
             writer.Complete(Finished);
         }
 
@@ -317,10 +317,12 @@ public sealed class JudgementWritingTests
 
     private static readonly RuleDefinition Sec010 = new(
         "SEC-010", "Unconstrained delegation on an account", Severity.High, 1,
+        ["user", "computer"],
         ["userAccountControl", "objectClass", "primaryGroupID"]);
 
     private static readonly RuleDefinition Sec011 = new(
         "SEC-011", "Unconstrained delegation on a member computer", Severity.High, 1,
+        ["user", "computer"],
         ["userAccountControl", "objectClass", "primaryGroupID"]);
 
     private static Finding SomeFinding(string ruleId = "SEC-010") =>

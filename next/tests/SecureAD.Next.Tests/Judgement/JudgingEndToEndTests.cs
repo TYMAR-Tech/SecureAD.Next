@@ -151,6 +151,55 @@ public sealed class JudgingEndToEndTests
         Assert.Single(Read(directory).Findings);
     }
 
+    /// <summary>
+    /// An object the rule is not about does not make the judging look degraded.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the defect a real forest found on 2026-08-26.</b> An organisational unit has no
+    /// <c>userAccountControl</c> because it is not an account, and the rules were counting it as an
+    /// object they could not read - 6,279 of 8,361, three in four. Every judging would have
+    /// reported itself degraded, and an operator would have learned to ignore the one signal that
+    /// says the findings are incomplete.
+    /// </remarks>
+    [Fact]
+    public void AnObjectTheRuleIsNotAboutDoesNotDegradeTheJudging()
+    {
+        var directory = ABundleHolding(
+            Account("bob", "CN=bob,OU=People,DC=contoso,DC=com", OrdinaryAccount, 513, "user"),
+            NotAnAccount("OU=People,DC=contoso,DC=com", "organizationalUnit"),
+            NotAnAccount("CN=Builtin,DC=contoso,DC=com", "builtinDomain"));
+
+        Assert.Equal(JudgementRunState.Completed, Judged(directory));
+
+        var judgement = Read(directory);
+
+        Assert.True(judgement.EveryRuleReachedEveryVerdict);
+        Assert.All(judgement.RulesRun, r => Assert.Equal(0, r.ObjectsNotJudged));
+        Assert.All(judgement.RulesRun, r => Assert.Equal(2, r.ObjectsNotApplicable));
+        Assert.All(judgement.RulesRun, r => Assert.Equal(1, r.ObjectsJudged));
+    }
+
+    /// <summary>
+    /// And an account genuinely missing a declared input still degrades it.
+    /// </summary>
+    /// <remarks>
+    /// Without this, the check above would pass on a build that had stopped noticing gaps at all.
+    /// </remarks>
+    [Fact]
+    public void AnAccountMissingADeclaredInputStillDegradesTheJudging()
+    {
+        var directory = ABundleHolding(
+            NotAnAccount("OU=People,DC=contoso,DC=com", "organizationalUnit"),
+            Account("ghost", "CN=ghost,OU=People,DC=contoso,DC=com", OrdinaryAccount, null, "user"));
+
+        Assert.Equal(JudgementRunState.CompletedDegraded, Judged(directory));
+
+        var judgement = Read(directory);
+
+        Assert.All(judgement.RulesRun, r => Assert.Equal(1, r.ObjectsNotJudged));
+        Assert.All(judgement.RulesRun, r => Assert.Equal(1, r.ObjectsNotApplicable));
+    }
+
     private static JudgementRunState Judged(string directory)
     {
         var judged = JudgingRun.Judge(
@@ -224,6 +273,23 @@ public sealed class JudgingEndToEndTests
         return new EvidenceObject(
             SomeCoverage(), distinguishedName, Guid.NewGuid(), attributes, Started);
     }
+
+    /// <summary>
+    /// An object that is not a security principal: no <c>userAccountControl</c> and no
+    /// <c>primaryGroupID</c>, because its class does not have them.
+    /// </summary>
+    private static EvidenceObject NotAnAccount(string distinguishedName, string objectClass) =>
+        new(
+            SomeCoverage(),
+            distinguishedName,
+            Guid.NewGuid(),
+            [
+                new EvidenceAttribute(
+                    "objectClass",
+                    StoredAttributeCompleteness.Complete,
+                    [EvidenceValue.OfText("top"), EvidenceValue.OfText(objectClass)]),
+            ],
+            Started);
 
     private static PartitionCoverage SomeCoverage() => new(
         "DC=contoso,DC=com",

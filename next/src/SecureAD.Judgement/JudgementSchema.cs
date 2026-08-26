@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 1;
+    public const int Version = 2;
 
     private static readonly string[] TableDdl =
     [
@@ -89,11 +89,18 @@ public static class JudgementSchema
         // rather than the row being absent. A rule missing from a run because it threw during
         // scheduling is a fact about the judgement, and absence cannot state it.
         //
-        // objects_judged and objects_not_judged are counted separately and neither is derived from
-        // the other, because their sum is not the object count: a rule is only offered objects of
-        // the kind it applies to. A rule that reached a verdict on 40 objects and could not reach
-        // one on 4,000 has said almost nothing about the forest, and an outcome of Succeeded with
-        // no findings would otherwise present that as clean.
+        // objects_judged, objects_not_applicable and objects_not_judged are three different answers
+        // and none is derived from the others.
+        //
+        // NOT APPLICABLE IS NOT A GAP. A rule declares the classes it is about, and an
+        // organisational unit offered to a delegation rule is not an object the rule failed to
+        // read - it is an object the rule has nothing to say about. Counting the two together is
+        // what this column exists to stop: judged against a real forest on 2026-08-26 the
+        // delegation rules called 6,279 of 8,361 objects unreadable on that account, three in four,
+        // which would have reported every judging as degraded for ever.
+        //
+        // objects_not_judged is the real gap: an object the rule IS about, missing something the
+        // rule declared it reads. That still degrades the run, and still should.
         //
         // error is set only when outcome is Error. A throwing rule does not stop the others, per
         // the write contract, so its message has to be kept somewhere a reader can reach.
@@ -103,6 +110,7 @@ public static class JudgementSchema
             rule_version             INTEGER NOT NULL,
             outcome                  TEXT    NOT NULL,
             objects_judged           INTEGER NOT NULL,
+            objects_not_applicable   INTEGER NOT NULL,
             objects_not_judged       INTEGER NOT NULL,
             error                    TEXT        NULL,
             PRIMARY KEY (rule_id)

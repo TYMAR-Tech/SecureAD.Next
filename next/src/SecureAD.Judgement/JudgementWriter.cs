@@ -153,14 +153,15 @@ public sealed class JudgementWriter : IDisposable
         Execute(
             transaction,
             "INSERT INTO rule_execution (rule_id, rule_version, outcome, objects_judged, "
-            + "objects_not_judged, error) "
-            + "VALUES ($rule, $version, $outcome, $judged, $notJudged, $error)",
+            + "objects_not_applicable, objects_not_judged, error) "
+            + "VALUES ($rule, $version, $outcome, $judged, $notApplicable, $notJudged, $error)",
             command =>
             {
                 command.Parameters.AddWithValue("$rule", ruleId);
                 command.Parameters.AddWithValue("$version", execution.Definition.Version);
                 command.Parameters.AddWithValue("$outcome", execution.Outcome.ToString());
                 command.Parameters.AddWithValue("$judged", execution.ObjectsJudged);
+                command.Parameters.AddWithValue("$notApplicable", execution.ObjectsNotApplicable);
                 command.Parameters.AddWithValue("$notJudged", execution.ObjectsNotJudged);
                 command.Parameters.AddWithValue("$error", (object?)execution.Error ?? DBNull.Value);
             });

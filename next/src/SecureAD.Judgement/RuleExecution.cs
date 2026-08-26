@@ -35,7 +35,14 @@ public sealed record MissingInput(string Attribute, int ObjectsAffected);
 /// <param name="Definition">The rule, as it was when it ran.</param>
 /// <param name="Outcome">What became of it.</param>
 /// <param name="ObjectsJudged">Objects it reached a verdict on.</param>
-/// <param name="ObjectsNotJudged">Objects it could not reach a verdict on.</param>
+/// <param name="ObjectsNotApplicable">
+/// Objects it was not about, by the classes it declared. Not a gap: an organisational unit offered
+/// to a delegation rule is not an object the rule failed to read.
+/// </param>
+/// <param name="ObjectsNotJudged">
+/// Objects it was about and could not reach a verdict on. This is the real gap, and it degrades the
+/// run.
+/// </param>
 /// <param name="MissingInputs">The declared attributes that were absent, and on how many objects.</param>
 /// <param name="Findings">What it found. Empty is meaningful only beside <paramref name="Outcome"/>.</param>
 /// <param name="Error">Why it threw, when it did. Null otherwise.</param>
@@ -43,6 +50,7 @@ public sealed record RuleExecution(
     RuleDefinition Definition,
     RuleExecutionOutcome Outcome,
     int ObjectsJudged,
+    int ObjectsNotApplicable,
     int ObjectsNotJudged,
     IReadOnlyList<MissingInput> MissingInputs,
     IReadOnlyList<Finding> Findings,
@@ -59,10 +67,22 @@ public sealed record RuleExecution(
     /// </remarks>
     /// <param name="definition">The rule.</param>
     /// <param name="objectsJudged">How many objects it judged.</param>
+    /// <param name="objectsNotApplicable">How many it was not about.</param>
     /// <param name="findings">What it found, if anything.</param>
     public static RuleExecution Judged(
-        RuleDefinition definition, int objectsJudged, IReadOnlyList<Finding> findings) =>
-        new(definition, RuleExecutionOutcome.Succeeded, objectsJudged, 0, [], findings, null);
+        RuleDefinition definition,
+        int objectsJudged,
+        int objectsNotApplicable,
+        IReadOnlyList<Finding> findings) =>
+        new(
+            definition,
+            RuleExecutionOutcome.Succeeded,
+            objectsJudged,
+            objectsNotApplicable,
+            0,
+            [],
+            findings,
+            null);
 
     /// <summary>
     /// A rule that ran and could not reach a verdict on everything, because declared inputs were
@@ -70,12 +90,14 @@ public sealed record RuleExecution(
     /// </summary>
     /// <param name="definition">The rule.</param>
     /// <param name="objectsJudged">How many objects it did judge.</param>
-    /// <param name="objectsNotJudged">How many it could not.</param>
+    /// <param name="objectsNotApplicable">How many it was not about.</param>
+    /// <param name="objectsNotJudged">How many it was about and could not judge.</param>
     /// <param name="missingInputs">Which declared attributes were absent.</param>
     /// <param name="findings">What it found on the objects it could judge.</param>
     public static RuleExecution Indeterminate(
         RuleDefinition definition,
         int objectsJudged,
+        int objectsNotApplicable,
         int objectsNotJudged,
         IReadOnlyList<MissingInput> missingInputs,
         IReadOnlyList<Finding> findings) =>
@@ -83,6 +105,7 @@ public sealed record RuleExecution(
             definition,
             RuleExecutionOutcome.Indeterminate,
             objectsJudged,
+            objectsNotApplicable,
             objectsNotJudged,
             missingInputs,
             findings,
@@ -95,14 +118,14 @@ public sealed record RuleExecution(
     /// <param name="definition">The rule.</param>
     /// <param name="error">What went wrong.</param>
     public static RuleExecution Threw(RuleDefinition definition, string error) =>
-        new(definition, RuleExecutionOutcome.Error, 0, 0, [], [], error);
+        new(definition, RuleExecutionOutcome.Error, 0, 0, 0, [], [], error);
 
     /// <summary>
     /// A rule that was scheduled and never executed.
     /// </summary>
     /// <param name="definition">The rule.</param>
     public static RuleExecution DidNotRun(RuleDefinition definition) =>
-        new(definition, RuleExecutionOutcome.DidNotRun, 0, 0, [], [], null);
+        new(definition, RuleExecutionOutcome.DidNotRun, 0, 0, 0, [], [], null);
 
     /// <summary>
     /// Whether this rule said anything about the forest at all.
