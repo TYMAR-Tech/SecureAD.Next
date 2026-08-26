@@ -34,7 +34,7 @@ merged, its documents are updated and its row here says so. The owner's standing
 | — | Connect, capture, seal, browse | **built** |
 | 1 | Findings move out of the sealed evidence | **built** |
 | 2 | Dashboard: coverage and inventory | not started |
-| 3 | One rule, end to end | not started |
+| 3 | One rule, end to end | **built** |
 | 4 | The simple posture rules | not started |
 | 5 | Group expansion | not started |
 | 6 | Control edges | not started |
@@ -76,14 +76,27 @@ coverage in more detail than it did.
 
 ## Stage 3 — one rule, end to end
 
-Carry unconstrained delegation from sealed bundle to a findings surface: read, evaluate, store,
-show. The point is the pipeline rather than the rule — everything after this is repetition.
+**Built 2026-08-25, confirmed against a real forest 2026-08-26.** Unconstrained delegation now runs
+from a sealed bundle to a stored finding: read, evaluate, store, show — with *show* still meaning a
+command-line tool rather than a screen.
+
+`SecureAD.Judgement` is a fourth production assembly at layer 4. It holds the judgement store,
+written beside the evidence and never into it, and the coordinator that streams a bundle once and
+offers every object to every scheduled rule. `docs/layers/judgement/the-judgement-store.md` describes
+it.
+
+**What the lab run found that no test could.** The delegation rules were counting every
+organisational unit, container and policy as an object they could not read — 6,279 of 8,361, three
+in four — and degrading the whole judging. Those objects have no `userAccountControl` because they
+are not accounts. A rule now declares the classes it is about, on the same footing as the attributes
+it reads, and objects it is not about are counted apart from objects it could not judge.
 
 *Detail:* [`SEC-010`](rules/SEC-010.md), [`SEC-011`](rules/SEC-011.md).
 *Criteria:* `AC-56`, `AC-62`, `AC-98`.
-*Needs first:* **the judgement store's shape.** `0085` deliberately left open whether it is one file
-per bundle or one per run, and whether a judged result is a record or is recomputed on open. A rule
-cannot be wired without the first of those.
+
+*Still owed:* a findings surface in the shell, and an entry point in the product — judging is
+reachable only through `next/tools/judge-bundle.ps1`. What an operator is shown when the evidence
+verifies and the judgement is degraded is still undecided.
 
 **Owed from stage 1 — discharged 2026-08-25.** Sixteen tests were deleted with the evidence tables,
 and every claim they made is proven again against the judgement store. The old names are kept beside
