@@ -155,6 +155,27 @@ $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.pro
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.batteries_v2.dll'))
 [SQLitePCL.Batteries_V2]::Init()
 
+# The assemblies and this script travel separately between machines, so they can disagree - and a
+# script newer than its assemblies fails silently rather than loudly: a column this script prints
+# but the older type does not have comes out blank, and the run looks like a result rather than a
+# mismatch. That cost a lab round trip on 2026-08-26. Checked here instead.
+$expectedSchema = 2
+$actualSchema = [SecureAD.Judgement.JudgementSchema]::Version
+
+if ($actualSchema -lt $expectedSchema) {
+    throw @"
+These assemblies are older than this script.
+
+  judgement schema this script expects   $expectedSchema
+  judgement schema the assemblies have   $actualSchema
+  assemblies loaded from                 $bin
+
+Copy the build output folder across again - the whole of
+next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows, including runtimes\. Copying the script
+alone leaves the behaviour unchanged and the output misleading.
+"@
+}
+
 $BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
 Push-Location $bin
 
