@@ -46,10 +46,14 @@ $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidenc
 # that only the .NET host resolves - PowerShell's loader does not. So the native directory goes on
 # PATH and the batteries are initialised by hand. Without this the first connection fails with a
 # type initialiser error that says nothing about the real cause.
-$native = Join-Path $bin 'runtimes\win-x64\native'
-if (Test-Path $native) {
-    $env:PATH = $native + [System.IO.Path]::PathSeparator + $env:PATH
+$architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
+$native = Join-Path $bin "runtimes\win-$architecture\native\e_sqlite3.dll"
+
+if (-not (Test-Path $native)) {
+    throw "The native SQLite library is missing. This process is $architecture, so it needs '$native'. Copy the build output folder across whole, including runtimes\."
 }
+
+$null = [System.Runtime.InteropServices.NativeLibrary]::Load($native)
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.core.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.provider.e_sqlite3.dll'))

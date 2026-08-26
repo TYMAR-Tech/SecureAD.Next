@@ -15,39 +15,75 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $BundlePath,
 
-    # Where the built assemblies are. Only needed when this script is not sitting in the
-    # repository - on a lab machine, copy the whole build output folder across and either put this
-    # script inside it or point -BinPath at it.
+    # Where the built assemblies are - the FOLDER holding them, not one of the files. Only needed
+    # when this script is not sitting in the repository: on a lab machine, copy the whole build
+    # output folder across and either put this script inside it or point -BinPath at it.
     [string] $BinPath
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Three places to look, in order: where the caller said, beside this script (a copied deployment),
-# and the repository layout. The lab machine has no repository, so the second is what makes this
-# runnable there at all.
+# Everything this script needs in one folder. Checked up front rather than discovered one
+# LoadFrom at a time, because a half-populated folder otherwise fails with a loader error naming
+# a single file and no clue that the other eleven are missing too.
+$required = @(
+    'SecureAD.Kernel.dll',
+    'SecureAD.Evidence.dll',
+    'SecureAD.Judgement.dll',
+    'SQLitePCLRaw.core.dll',
+    'SQLitePCLRaw.provider.e_sqlite3.dll',
+    'SQLitePCLRaw.batteries_v2.dll')
+
 $candidates = @()
-if ($BinPath) { $candidates += $BinPath }
+
+if ($BinPath) {
+    $given = [System.IO.Path]::GetFullPath($BinPath)
+
+    # A folder is wanted and a file is easy to give - tab completion offers files. Take the
+    # folder it is in rather than failing on something that says plainly enough what was meant.
+    if (Test-Path $given -PathType Leaf) { $given = Split-Path $given -Parent }
+
+    $candidates += $given
+}
+
 $candidates += $PSScriptRoot
 $candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows')
+$candidates += (Join-Path $PSScriptRoot 'net10.0-windows')
 
 $bin = $null
 foreach ($candidate in $candidates) {
     $full = [System.IO.Path]::GetFullPath($candidate)
-    if (Test-Path (Join-Path $full 'SecureAD.Judgement.dll')) { $bin = $full; break }
+    if (-not (Test-Path $full -PathType Container)) { continue }
+
+    $absent = @($required | Where-Object { -not (Test-Path (Join-Path $full $_)) })
+    if ($absent.Count -eq 0) { $bin = $full; break }
 }
 
 if (-not $bin) {
-    $looked = ($candidates | ForEach-Object { '  ' + [System.IO.Path]::GetFullPath($_) }) -join [Environment]::NewLine
+    $report = foreach ($candidate in $candidates) {
+        $full = [System.IO.Path]::GetFullPath($candidate)
+
+        if (-not (Test-Path $full -PathType Container)) {
+            "  $full" + [Environment]::NewLine + '      no such folder'
+        }
+        else {
+            $absent = @($required | Where-Object { -not (Test-Path (Join-Path $full $_)) })
+            "  $full" + [Environment]::NewLine + '      missing: ' + ($absent -join ', ')
+        }
+    }
+
     throw @"
-Could not find SecureAD.Judgement.dll. Looked in:
-$looked
+Could not find a folder holding all the assemblies this needs. Looked in:
+$($report -join [Environment]::NewLine)
+
+-BinPath wants the FOLDER, not a file inside it.
 
 On a development machine, build the solution.
 
 On any other machine, copy the whole build output folder across - that is
-next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows, including its runtimes\ subfolder -
-and either put this script inside it or pass -BinPath pointing at it.
+next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows, including its runtimes\ subfolder,
+which holds the native SQLite library - and either put this script inside it or pass -BinPath
+pointing at it.
 "@
 }
 
@@ -55,8 +91,47 @@ $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidence.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Judgement.dll'))
 
-$native = Join-Path $bin 'runtimes\win-x64\native'
-if (Test-Path $native) { $env:PATH = $native + [System.IO.Path]::PathSeparator + $env:PATH }
+# The native SQLite library, loaded by absolute path rather than left to PATH.
+#
+# SQLite ships one native binary per processor architecture under runtimes\, and only the .NET
+# host does that selection - a PowerShell process does not, so the DllImport for 'e_sqlite3'
+# fails with "Unable to load DLL" and names nothing useful. Loading it here by full path means the
+# module is already in the process when the provider asks for it.
+#
+# The architecture is read from the running process rather than assumed, because an arm64 machine
+# with an x64 folder present would otherwise load a library it cannot execute.
+$architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
+
+$nativeCandidates = @(
+    (Join-Path $bin "runtimes\win-$architecture\native\e_sqlite3.dll"),
+    (Join-Path $bin 'e_sqlite3.dll'))
+
+$native = $nativeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $native) {
+    $found = Get-ChildItem $bin -Recurse -Filter 'e_sqlite3.dll' -ErrorAction SilentlyContinue |
+        ForEach-Object { '  ' + $_.FullName }
+
+    $detail = if ($found) {
+        'Copies that are present, none of them for this machine:' + [Environment]::NewLine + ($found -join [Environment]::NewLine)
+    }
+    else {
+        'No copy of e_sqlite3.dll anywhere under that folder - the runtimes\ subfolder was not copied.'
+    }
+
+    throw @"
+The native SQLite library is missing. This process is $architecture, so it needs:
+
+  $(Join-Path $bin "runtimes\win-$architecture\native\e_sqlite3.dll")
+
+$detail
+
+Copy the build output folder across whole, including runtimes\. The managed assemblies alone are
+not enough - nothing can open a bundle without this file.
+"@
+}
+
+$null = [System.Runtime.InteropServices.NativeLibrary]::Load($native)
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.core.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.provider.e_sqlite3.dll'))
