@@ -146,3 +146,6 @@ Three habits follow, and they are cheap:
 
 ## Documentation Updates
 - Documentation is updated as the work goes, not at the end. A stage or task is not finished until its code is merged, its documents are updated, and its status is recorded in `docs/ROADMAP.md`. The owner's words: "make sure we are updating the documentation as we go, I don't want to get to the end and we have nothing."
+
+## Documentation Management
+- Documentation for new work goes in `docs/layers/` (one layer document per code folder), never `docs/areas/`. The `docs/areas/` files are being retired and drained into `docs/layers/`; do not add content to them. `docs/layers/specs/JUDGEMENT-HALF.md` is reliable. Do not treat existing `docs/decisions/` records and area documents as settled authority — the owner wants design decisions made during the build, in conversation, rather than read off existing documents.
