@@ -255,7 +255,7 @@ yet.
 | be certain that is not said of everything | `JudgementIdentityTests.AFindingWhoseEvidenceWasCompleteComesBackComplete` |  |
 | be certain evidence with no table is refused rather than quietly dropped | `JudgementIdentityTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped` |  |
 | see an account trusted for delegation found in a sealed bundle | `JudgingEndToEndTests.AnAccountTrustedForDelegationIsFoundInASealedBundle` | 2026-08-26 |
-| be certain a domain controller is not reported for a setting it requires | `JudgingEndToEndTests.ADomainControllerIsNotReported` |  |
+| be certain a domain controller is not reported for a setting it requires | `JudgingEndToEndTests.ADomainControllerIsNotReported` | 2026-08-26 |
 | be certain every scheduled rule is recorded whether it found anything or not | `JudgingEndToEndTests.EveryScheduledRuleIsRecordedWhetherItFoundAnythingOrNot` | 2026-08-26 |
 | see which attribute was missing when a rule could not reach a verdict | `JudgingEndToEndTests.AnObjectMissingADeclaredInputDegradesTheJudgingAndNamesTheAttribute` |  |
 | be certain a judgement is bound to the bundle it judged | `JudgingEndToEndTests.TheJudgementIsBoundToTheBundleItJudged` | 2026-08-26 |
@@ -270,12 +270,17 @@ yet.
 2,082 accounts and passing over 6,279 objects they are not about. One finding: an account planted
 for the purpose, `CN=lab.unconstrained`.
 
-**The domain-controller exclusion is not among the rows confirmed, and the first draft of this
-paragraph said it was.** No controller appeared in the findings, and that has three explanations —
-the exclusion worked, the controller does not carry `TRUSTED_FOR_DELEGATION`, or it was not among
-the objects judged. One observation, three causes. Confirming it needs the controller's
-`userAccountControl` read from the bundle and its absence from the findings shown to be a decision
-rather than a coincidence.
+**The domain-controller exclusion was confirmed separately, and the first draft of this paragraph
+claimed it without grounds.** No controller appeared in the findings, and that had three
+explanations — the exclusion worked, the controller does not carry `TRUSTED_FOR_DELEGATION`, or it
+was never judged. An absence cannot choose between them, so `judge-bundle.ps1 -Explain` was built to
+ask the bundle directly. Against `CN=PHDC,OU=Domain Controllers,DC=ph,DC=ad,DC=lab` it reported
+`userAccountControl` 532480 — `SERVER_TRUST_ACCOUNT` and `TRUSTED_FOR_DELEGATION` together — all
+three controller signals agreeing, and SEC-011 reaching a verdict of nothing to report. That is the
+second explanation eliminated and the third with it: SEC-011 is the computer rule, PHDC is a
+computer the rule is about, and the coordinator offers every object in the bundle to every
+scheduled rule, so the object the rule judged here is the object it judged in the run. What stood
+between a real controller and a finding was the exclusion, and nothing else.
 
 The other blank rows were not exercised: nothing threw, no rule was skipped, and no account was
 missing a declared input, so the refusals and degraded paths remain proven by test alone.
