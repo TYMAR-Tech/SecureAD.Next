@@ -106,6 +106,19 @@ owner's shape, 2026-08-26 — reports progress, can be stopped, and leaves the e
 intact when it is. The findings reach a screen: Assets carries a Findings tab beside Objects,
 scoped by the same tree selection, paged rather than counted, worst first.
 
+**Seen working end to end on 2026-08-26.** The owner ran a new audit in the application, pressed
+*View results*, and read findings the product had computed. That is the whole of stage 3 in one
+gesture — capture, seal, judge, show — and it is the first time a finding this product made has
+reached a person. The first attempt crashed on an invented resource key; `ViewResourceGateTests`
+now holds every resource a view names to the ones the application defines.
+
+*Still owed on that screen:* **how the operator moves around it.** The owner's words on seeing it:
+*"there is still a lot of work to be done on how the UI navigates."* The grid shows what was found;
+getting from a finding to the object it is about, and back, is not built. Nor are the filters the
+predecessor carried — severity, rule, domain, family — though `FindingsQuery` already takes all four
+and `JudgementReader.ReadPage` already applies them, so the screen is what is missing rather than
+the engine.
+
 *Still owed:* what an operator is shown when the evidence verifies and the judgement is degraded is
 still undecided. The command line still only captures, which is deliberate for now — the owner
 intends it to judge as well, so a long run can happen unattended.

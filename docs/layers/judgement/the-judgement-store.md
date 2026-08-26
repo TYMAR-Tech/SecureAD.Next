@@ -337,6 +337,16 @@ yet.
 
 **Confirmed in lab** is the date the owner saw this working against a real forest.
 
+**On 2026-08-26 a finding this product computed reached a screen for the first time.** The owner ran
+an audit in the application, pressed *View results*, and read it. Everything above it — capture,
+seal, stream, judge, store, page, show — ran in one gesture with nobody at a command line. The run
+before that one crashed on a resource key that never existed, which is why
+`ViewResourceGateTests` was written.
+
+**Dates are not filled in from that run beyond what it actually exercised.** A run producing a
+handful of findings does not confirm a second page, an empty page, or a wildcard in a container
+name, and a date against those rows would say the owner had seen something he had not.
+
 **2026-08-26 is the first lab confirmation this product has recorded.** A bundle captured from
 `ph.ad.lab` — 8,361 objects — was judged in 0.72 seconds. Both rules reported `Succeeded`, judging
 2,082 accounts and passing over 6,279 objects they are not about. One finding: an account planted
