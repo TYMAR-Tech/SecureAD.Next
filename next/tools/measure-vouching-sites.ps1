@@ -5,6 +5,7 @@ Add-Type -AssemblyName System.Runtime | Out-Null
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidence.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Audit.dll'))
+$null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Judgement.dll'))
 
 $shapes = @('Errors','Warnings','Verdict','Verdicts','IsComplete','Completeness',
             '*AreComplete','*WereAsked','FailedPhase','FailedPhases','DidNotRun')
@@ -29,7 +30,7 @@ Get-ChildItem $src -Recurse -Filter *.cs | ForEach-Object {
 }
 
 $rows = @()
-foreach ($asm in @('SecureAD.Kernel','SecureAD.Evidence','SecureAD.Audit')) {
+foreach ($asm in @('SecureAD.Kernel','SecureAD.Evidence','SecureAD.Audit','SecureAD.Judgement')) {
     $a = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin "$asm.dll"))
     foreach ($t in $a.GetTypes()) {
         if (-not $t.IsPublic) { continue }

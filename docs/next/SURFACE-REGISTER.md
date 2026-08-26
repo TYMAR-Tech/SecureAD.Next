@@ -261,6 +261,10 @@ The table below sits between the two markers around it, so the test parses only 
 | LdapDirectoryChannelFactory | SecureAD.Audit | [how-a-connection-is-opened](../layers/connect/how-a-connection-is-opened.md) |
 | DomainControllerSignals | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | JudgementRunState | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| JudgementDescription | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| JudgementReader | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| StoredJudgement | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| StoredRuleExecution | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | JudgementSchema | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | JudgementWriter | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | MissingInput | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |

@@ -17,6 +17,10 @@ finished and sealed separately from the evidence it judged.
 |---|---|
 | `JudgementSchema` | Every table in a judgement store, and the indexes built once writing is done |
 | `JudgementWriter` | The one way a judgement store gets written |
+| `JudgementReader` | Reads a store back, and refuses one that does not belong to the bundle it sits in |
+| `JudgementDescription` | What one judging recorded about itself |
+| `StoredJudgement` | Everything a judging concluded: what it found, and which rules were run to produce it |
+| `StoredRuleExecution` | One rule's execution, read back |
 | `RuleExecution` | Everything one rule did to one bundle, and the unit the store commits |
 | `MissingInput` | One declared attribute that was not captured, and how many objects it cost |
 | `JudgementRunState` | What became of a judging run as a whole |
@@ -142,10 +146,44 @@ free: there is no data to migrate and no compatibility to keep.
 
 ---
 
+## Opening checks three different ways of being wrong
+
+`JudgementReader.Open` refuses before it returns anything:
+
+| Check | What it establishes | Refused as |
+|---|---|---|
+| The judgement seal | These bytes are the bytes that were written | `JudgementSealAbsent`, `JudgementSealUnreadable`, `JudgementSealMismatch` |
+| The schema version | This build understands these tables | `JudgementUnreadable` |
+| The evidence fingerprint | This judgement is about *this* capture | `JudgementIsNotForThisEvidence` |
+
+The third is the one no care by the writer can establish, because a store is an ordinary file that
+can be moved. A bundle with no readable evidence seal is refused on the same footing as a mismatched
+one: unverifiable is not the same as verified, and passing it would make the check optional in
+exactly the case where the bundle is already odd.
+
+`BundleSealing.VerifyJudgement` does the seal half, sharing one implementation with the evidence
+seal so there is one set of four states rather than two copies of it. `BundleSealing.ReadSeal` is
+how a judgement gets the fingerprint to record.
+
+---
+
+## Findings never leave the reader on their own
+
+`Read` returns a `StoredJudgement` carrying the findings **and** the rules that ran. There is no way
+to ask for one without the other.
+
+That is a type-system decision rather than a documentation one. A caller holding a bare list of
+findings can render an empty one as a clean forest without ever asking whether a rule ran, and no
+amount of warning in a comment prevents it. `StoredJudgement.DidNotRun` and
+`StoredJudgement.EveryRuleReachedEveryVerdict` are the two questions a screen has to answer before
+it shows a count.
+
+---
+
 ## What is built
 
-The schema, the two state machines and the writer. Nothing reads a store back yet, and nothing runs
-a rule to fill one.
+The schema, the two state machines, the writer and the reader. Nothing runs a rule to fill a store
+yet.
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|
@@ -165,6 +203,18 @@ a rule to fill one.
 | be certain one rule is recorded once | `JudgementWritingTests.OneRuleCannotBeRecordedTwice` |  |
 | be certain nothing is added to a sealed judgement | `JudgementWritingTests.NothingCanBeAddedAfterTheJudgementIsSealed` |  |
 | tell a rule that was skipped from one that was never scheduled | `JudgementWritingTests.ARuleThatDidNotRunIsStillRecorded` |  |
+| have a finding survive into a sealed judgement and come back out | `JudgementReadingTests.AFindingComesBackFromASealedJudgement` |  |
+| see the evidence a finding rests on come back with it | `JudgementReadingTests.TheEvidenceAFindingRestsOnComesBackWithIt` |  |
+| be certain the domain-controller signals are rebuilt rather than trusted | `JudgementReadingTests.TheDomainControllerSignalsAreRebuiltFromWhatWasStored` |  |
+| see which version of a rule produced a finding | `JudgementReadingTests.AFindingCarriesTheVersionOfTheRuleThatMadeIt` |  |
+| tell a bundle nobody judged from one where every rule ran and nothing matched | `JudgementReadingTests.ABundleNoRuleWasRunOverSaysSoRatherThanLookingClean` |  |
+| be certain that distinction is not made by a reader that says it of everything | `JudgementReadingTests.ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing` |  |
+| see what a rule could not read, by name | `JudgementReadingTests.WhatARuleCouldNotReadComesBackNamed` |  |
+| see which capture a judgement was made against | `JudgementReadingTests.TheJudgementNamesTheCaptureItWasMadeAgainst` |  |
+| be certain a judgement from another capture is refused rather than believed | `JudgementReadingTests.AJudgementMadeAgainstAnotherCaptureIsRefused` |  |
+| be certain a judgement that cannot be checked is refused too | `JudgementReadingTests.AJudgementWithNoEvidenceSealToCheckAgainstIsRefused` |  |
+| be certain a judging that never finished cannot be opened | `JudgementReadingTests.AJudgingThatNeverFinishedCannotBeOpened` |  |
+| be certain a judgement edited after sealing is refused | `JudgementReadingTests.AJudgementThatWasEditedAfterSealingIsRefused` |  |
 
-**Confirmed in lab** is blank throughout: these run against stores this test built, and no judging
+**Confirmed in lab** is blank throughout: these run against stores the tests built, and no judging
 has been run against a real capture.

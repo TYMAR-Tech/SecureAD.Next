@@ -155,6 +155,20 @@ since it was made. And it says nothing about whether the capture was correct.
 Folding `Unreadable` into `Absent` would render a failure as a benign absence, which is the one
 shape of defect an audit tool cannot have. The implementation being replaced did exactly that.
 
+**`BundleSealing.VerifyJudgement` asks the same four questions of `judgement.db`**, sharing one
+implementation with the evidence seal so that there is one set of four states rather than two copies
+of it that can drift. It is a different question from `BundleSealing.Verify` and the two can
+disagree: they cover different artefacts made at different times, and a bundle may hold intact
+evidence beside a judgement that does not verify. Anything showing both to an operator has to say
+which is which.
+
+**`BundleSealing.ReadSeal` returns what a seal file records**, or null if it is absent or does not
+parse. It exists so a judgement can name the capture it was made against — the evidence seal is a
+permanent fingerprint of exactly one capture, which makes it the one value that can settle whether a
+judgement belongs to the bundle it is sitting in. A caller that needs to tell an absent seal from an
+unreadable one wants `BundleSealing.Verify` instead; this is for the caller that already knows the
+seal is intact and wants the value out of it.
+
 `SealVerdict` carries `SealVerdict.State`, `SealVerdict.Detail` — never empty, including for
 `Intact`, so a caller rendering the detail never renders a blank — and `SealVerdict.MayBeOpened`,
 which is the single statement of which states may be opened. Stated once rather than left to each

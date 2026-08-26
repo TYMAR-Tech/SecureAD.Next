@@ -131,24 +131,85 @@ public static class BundleSealing
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
-        var sealPath = BundleLayout.SealPath(bundleDirectory);
-        var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
+        return Verify(
+            BundleLayout.EvidencePath(bundleDirectory),
+            BundleLayout.SealPath(bundleDirectory),
+            "evidence file",
+            "Every bundle this product writes is sealed before its evidence file is given the name "
+            + "a reader asks for, so a bundle with no seal was assembled by something other than a "
+            + "capture.",
+            "It does not prove the capture was complete, which is a claim the bundle makes in its "
+            + "own tables.");
+    }
 
+    /// <summary>
+    /// Verifies the seal on a bundle's judgement store.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is a different question from <see cref="Verify(string)"/> and the two can disagree.</b>
+    /// They cover different artefacts made at different times: the evidence is sealed when capture
+    /// ends, the judgement when judging ends, and a bundle may hold intact evidence beside a
+    /// judgement that does not verify. Anything showing both to an operator has to say which is
+    /// which.
+    /// </remarks>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static SealVerdict VerifyJudgement(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        return Verify(
+            BundleLayout.JudgementPath(bundleDirectory),
+            BundleLayout.JudgementSealPath(bundleDirectory),
+            "judgement store",
+            "A judgement is sealed before it is given the name a reader asks for, so a store with "
+            + "no seal was assembled by something other than a judging run.",
+            "It does not prove every scheduled rule reached a verdict, which is a claim the store "
+            + "makes in its own tables.");
+    }
+
+    /// <summary>
+    /// What a seal file records, or null if it is absent or does not parse.
+    /// </summary>
+    /// <remarks>
+    /// Exposed so a judgement can name the capture it was made against. It returns null for two
+    /// different reasons and a caller that needs to tell them apart wants
+    /// <see cref="Verify(string)"/> instead - this is for the caller that already knows the seal is
+    /// intact and wants the value out of it.
+    /// </remarks>
+    /// <param name="sealFilePath">The seal file.</param>
+    public static BundleSealContents? ReadSeal(string sealFilePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sealFilePath);
+
+        if (!File.Exists(sealFilePath))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealFilePath));
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static SealVerdict Verify(
+        string dataPath, string sealPath, string artefact, string absentCaveat, string intactCaveat)
+    {
         if (!File.Exists(sealPath))
         {
             return new SealVerdict(
                 SealState.Absent,
-                $"No seal file at '{sealPath}'. Every bundle this product writes is sealed before "
-                + "its evidence file is given the name a reader asks for, so a bundle with no seal "
-                + "was assembled by something other than a capture.");
+                $"No seal file at '{sealPath}'. " + absentCaveat);
         }
 
-        if (!File.Exists(evidencePath))
+        if (!File.Exists(dataPath))
         {
             return new SealVerdict(
                 SealState.Mismatch,
-                $"A seal is present at '{sealPath}' and there is no evidence file at "
-                + $"'{evidencePath}' for it to cover.");
+                $"A seal is present at '{sealPath}' and there is no {artefact} at "
+                + $"'{dataPath}' for it to cover.");
         }
 
         BundleSealContents? contents;
@@ -181,17 +242,16 @@ public static class BundleSealing
                 + "absent, and not as a mismatch either, because nothing was compared.");
         }
 
-        var actual = HashFile(evidencePath);
+        var actual = HashFile(dataPath);
 
         return string.Equals(actual, contents.Hash, StringComparison.Ordinal)
             ? new SealVerdict(
                 SealState.Intact,
-                $"The evidence file matches its seal ({Algorithm}). This proves the bytes are "
-                + "unchanged since the run finished. It does not prove the capture was complete, "
-                + "which is a claim the bundle makes in its own tables.")
+                $"The {artefact} matches its seal ({Algorithm}). This proves the bytes are "
+                + "unchanged since it was written. " + intactCaveat)
             : new SealVerdict(
                 SealState.Mismatch,
-                $"The evidence file at '{evidencePath}' does not match its seal. The seal records "
+                $"The {artefact} at '{dataPath}' does not match its seal. The seal records "
                 + $"{contents.Hash} and the file hashes to {actual}.");
     }
 }
