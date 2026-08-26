@@ -48,6 +48,7 @@ if ($BinPath) {
 }
 
 $candidates += $PSScriptRoot
+$candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows\win-x64')
 $candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows')
 $candidates += (Join-Path $PSScriptRoot 'net10.0-windows')
 

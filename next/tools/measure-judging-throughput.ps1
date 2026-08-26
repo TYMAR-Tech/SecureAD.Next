@@ -26,6 +26,7 @@ $ErrorActionPreference = 'Stop'
 $candidates = @()
 if ($BinPath) { $candidates += $BinPath }
 $candidates += $PSScriptRoot
+$candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows\win-x64')
 $candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows')
 
 $bin = $null
@@ -47,7 +48,8 @@ $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidenc
 # PATH and the batteries are initialised by hand. Without this the first connection fails with a
 # type initialiser error that says nothing about the real cause.
 $architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
-$native = Join-Path $bin "runtimes\win-$architecture\native\e_sqlite3.dll"
+$native = Join-Path $bin 'e_sqlite3.dll'
+if (-not (Test-Path $native)) { $native = Join-Path $bin "runtimes\win-$architecture\native\e_sqlite3.dll" }
 
 if (-not (Test-Path $native)) {
     throw "The native SQLite library is missing. This process is $architecture, so it needs '$native'. Copy the build output folder across whole, including runtimes\."

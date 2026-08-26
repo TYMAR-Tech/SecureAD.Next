@@ -5,6 +5,19 @@
     <IsPackable>false</IsPackable>
     <RootNamespace>SecureAD.Next.Tests</RootNamespace>
     <AssemblyName>SecureAD.Next.Tests</AssemblyName>
+
+    <!-- Matched to SecureAD.Cli and SecureAD.Shell, which have said this since they were written.
+         Without it this project built as MSIL while referencing their AMD64 output, which every
+         build reported as MSB3270 and nobody acted on.
+
+         It also decides where native dependencies land. Left unset, SQLite's native library sits
+         under runtimes\win-x64\native and is found only by the .NET host - so a folder copied to
+         another machine and driven by a script has to carry that subtree, and a partial copy fails
+         at the first connection with a message naming nothing useful. Stated here, the native
+         library is written beside the assemblies and a flat copy is enough. SelfContained stays
+         off, for the reason the other two projects give. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
