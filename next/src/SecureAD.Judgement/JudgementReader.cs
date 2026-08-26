@@ -200,6 +200,144 @@ public sealed class JudgementReader : IDisposable
         return new StoredJudgement(Description, ReadExecutions(), ReadFindings());
     }
 
+    /// <summary>
+    /// One page of findings, worst first, for a grid that must not hold a forest in memory.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the one place findings leave without the rules beside them, and it is guarded
+    /// rather than trusted.</b> <see cref="Read"/> hands the two out together because an empty list
+    /// means nothing on its own. A page cannot carry every rule execution on every page, so instead
+    /// a judging where no rule ran is <i>refused</i> here: there is no page of findings to show,
+    /// and a caller that received an empty page would draw a clean grid over a bundle nobody
+    /// judged.
+    /// </para>
+    /// <para>
+    /// <b>Ordered worst first, by rank rather than by the word.</b> The stored severity is the
+    /// enum's name, so ordering on it is alphabetical - Critical, High, Low, Medium - which puts
+    /// Low above Medium on a security screen and looks entirely normal.
+    /// </para>
+    /// <para>
+    /// <b>The distinguished name ends the sort, and is not decoration.</b> Findings that share a
+    /// severity and a rule have no order between them otherwise, so a page boundary landing inside
+    /// such a group shows some of them twice and loses others - silently, and differently each
+    /// time.
+    /// </para>
+    /// <para>
+    /// <b>One row more than the page is fetched, and not returned.</b> That is how a page knows
+    /// another follows without a second query counting rows nobody asked to see.
+    /// </para>
+    /// </remarks>
+    /// <param name="query">Which findings, and where to carry on from.</param>
+    /// <returns>The page, or why no page of findings can honestly be shown.</returns>
+    public Result<FindingsPage> ReadPage(FindingsQuery query)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (query.PageSize < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(query),
+                query.PageSize,
+                "A page holds at least one finding.");
+        }
+
+        var executions = ReadExecutions();
+
+        if (executions.Count == 0)
+        {
+            return Result<FindingsPage>.Failure(AuditError.Create(
+                ErrorCategory.Evidence,
+                "JudgementDidNotRun",
+                ErrorSeverity.Failed,
+                "No rule was run over this bundle, so there is no page of findings to show. An "
+                + "empty grid here would say the forest is clean, and what is true is that nobody "
+                + "has looked.",
+                BundleDirectory));
+        }
+
+        var versions = ReadRuleVersions();
+        var findings = new List<Finding>();
+        FindingsPageMark? next = null;
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
+                   f.severity, f.distinguished_name, f.detail, f.coverage,
+                   d.user_account_control, d.is_computer, d.server_trust_account_bit,
+                   d.primary_group_is_domain_controller, d.under_domain_controllers_ou,
+                   f.domain_fqdn, f.object_class, f.severity_rank
+            FROM finding f
+            LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
+            WHERE ($severity IS NULL OR f.severity = $severity)
+              AND ($rule IS NULL OR f.rule_id = $rule)
+              AND ($domain IS NULL OR f.domain_fqdn = $domain)
+              AND ($container IS NULL OR f.distinguished_name LIKE $containerLike ESCAPE '\')
+              AND ($afterRank IS NULL OR
+                   f.severity_rank < $afterRank OR
+                   (f.severity_rank = $afterRank AND f.rule_id > $afterRule) OR
+                   (f.severity_rank = $afterRank AND f.rule_id = $afterRule
+                    AND f.distinguished_name > $afterDn))
+            ORDER BY f.severity_rank DESC, f.rule_id ASC, f.distinguished_name ASC
+            LIMIT $limit
+            """;
+
+        Bind(command, "$severity", query.Severity?.ToString());
+        Bind(command, "$rule", query.RuleId);
+        Bind(command, "$domain", query.DomainFqdn);
+        Bind(command, "$container", query.Container);
+        Bind(command, "$containerLike", ContainerPattern(query.Container));
+        Bind(command, "$afterRank", query.After?.SeverityRank);
+        Bind(command, "$afterRule", query.After?.RuleId);
+        Bind(command, "$afterDn", query.After?.DistinguishedName);
+
+        // One more than asked for, so the extra row answers "is there another page" and is then
+        // dropped. The alternative is a second query counting everything that matched.
+        command.Parameters.AddWithValue("$limit", query.PageSize + 1);
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            if (findings.Count == query.PageSize)
+            {
+                // The extra row. Its existence is the whole answer, so it is not read as a finding
+                // and not shown - the mark points at the last row that was.
+                var last = findings[^1];
+                next = new FindingsPageMark((int)last.Severity, last.RuleId, last.DistinguishedName);
+                break;
+            }
+
+            findings.Add(ReadFinding(reader, versions));
+        }
+
+        return Result<FindingsPage>.Success(
+            new FindingsPage(findings, next, executions.Count));
+    }
+
+    /// <summary>
+    /// Binds a value that may be absent, where absent means <i>every one of them</i>.
+    /// </summary>
+    private static void Bind(SqliteCommand command, string name, object? value) =>
+        command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+
+    /// <summary>
+    /// The pattern that matches a container and everything beneath it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The wildcards in the operator's own text are escaped first.</b> A distinguished name may
+    /// contain <c>%</c> or <c>_</c>, and left alone they would quietly widen the scope of a grid
+    /// that says it is showing one container.
+    /// </remarks>
+    private static string? ContainerPattern(string? container) =>
+        container is null
+            ? null
+            : "%" + container.Replace(@"\", @"\\", StringComparison.Ordinal)
+                             .Replace("%", @"\%", StringComparison.Ordinal)
+                             .Replace("_", @"\_", StringComparison.Ordinal);
+
     private IReadOnlyList<StoredRuleExecution> ReadExecutions()
     {
         var missing = ReadMissingInputs();
@@ -260,42 +398,56 @@ public sealed class JudgementReader : IDisposable
         using var reader = command.ExecuteReader();
 
         while (reader.Read())
-        {
-            var ruleId = reader.GetString(1);
-
-            if (reader.IsDBNull(9))
-            {
-                throw new InvalidOperationException(
-                    $"Finding {reader.GetInt64(0)} ({ruleId}) is stored with no evidence row, so "
-                    + "what it rests on has been lost. A finding that cannot say what it rests on "
-                    + "must not be presented as one.");
-            }
-
-            var evidence = new UnconstrainedDelegationEvidence(
-                (uint)reader.GetInt64(9),
-                reader.GetInt64(10) != 0,
-                new DomainControllerSignals(
-                    reader.GetInt64(11) != 0,
-                    reader.GetInt64(12) != 0,
-                    reader.GetInt64(13) != 0));
-
-            findings.Add(new Finding(
-                ruleId,
-                versions[ruleId],
-                Enum.Parse<Severity>(reader.GetString(5)),
-                new FindingSubject(
-                    Enum.Parse<FindingSubjectKind>(reader.GetString(2)),
-                    reader.GetString(3)),
-                Guid.Parse(reader.GetString(4)),
-                reader.GetString(6),
-                reader.GetString(14),
-                reader.GetString(15),
-                reader.GetString(7),
-                Enum.Parse<EvidenceCompleteness>(reader.GetString(8)),
-                evidence));
-        }
+            findings.Add(ReadFinding(reader, versions));
 
         return findings;
+    }
+
+    /// <summary>
+    /// Reads one finding, with the evidence it rests on.
+    /// </summary>
+    /// <remarks>
+    /// <b>One mapping, shared by the whole read and by a page.</b> Two would be two accounts of the
+    /// same row, and the day one of them gained a column the other would quietly keep answering
+    /// without it.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The finding has no evidence row, so what it rests on has been lost.
+    /// </exception>
+    private static Finding ReadFinding(SqliteDataReader reader, IReadOnlyDictionary<string, int> versions)
+    {
+        var ruleId = reader.GetString(1);
+
+        if (reader.IsDBNull(9))
+        {
+            throw new InvalidOperationException(
+                $"Finding {reader.GetInt64(0)} ({ruleId}) is stored with no evidence row, so "
+                + "what it rests on has been lost. A finding that cannot say what it rests on "
+                + "must not be presented as one.");
+        }
+
+        var evidence = new UnconstrainedDelegationEvidence(
+            (uint)reader.GetInt64(9),
+            reader.GetInt64(10) != 0,
+            new DomainControllerSignals(
+                reader.GetInt64(11) != 0,
+                reader.GetInt64(12) != 0,
+                reader.GetInt64(13) != 0));
+
+        return new Finding(
+            ruleId,
+            versions[ruleId],
+            Enum.Parse<Severity>(reader.GetString(5)),
+            new FindingSubject(
+                Enum.Parse<FindingSubjectKind>(reader.GetString(2)),
+                reader.GetString(3)),
+            Guid.Parse(reader.GetString(4)),
+            reader.GetString(6),
+            reader.GetString(14),
+            reader.GetString(15),
+            reader.GetString(7),
+            Enum.Parse<EvidenceCompleteness>(reader.GetString(8)),
+            evidence);
     }
 
     /// <inheritdoc />

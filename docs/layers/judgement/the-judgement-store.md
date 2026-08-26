@@ -26,6 +26,9 @@ finished and sealed separately from the evidence it judged.
 | `MissingInput` | One declared attribute that was not captured, and how many objects it cost |
 | `JudgementRunState` | What became of a judging run as a whole |
 | `RuleExecutionOutcome` | What became of one rule within that run |
+| `FindingsQuery` | What a findings grid asks for: which findings, and where to carry on from |
+| `FindingsPage` | One page of findings, and whether there is another |
+| `FindingsPageMark` | Where a page of findings ended, so the next can start after it |
 
 <!-- TYPES:END -->
 
@@ -228,6 +231,41 @@ name the state would be able to call a judging complete while a rule had read no
 
 ---
 
+## Findings are read a page at a time
+
+A grid cannot hold a forest, so `JudgementReader.ReadPage` hands back one page and where to carry on
+from. The approach is the predecessor's, read on 2026-08-26 and taken because it is better than the
+obvious alternative.
+
+**A page starts where the last one ended, not at a row number.** `LIMIT` with an `OFFSET` makes the
+database walk and discard every row before the page, so the hundredth page costs a hundred pages of
+work. `FindingsPageMark` carries the sort values of the last row shown and the next page is the rows
+after it, which costs one seek at any depth.
+
+**The sort ends in the distinguished name, and that is load-bearing.** Findings sharing a severity
+and a rule have no order between them otherwise, so a page boundary landing inside such a group
+shows some of them twice and loses others — silently, and differently each run. A distinguished name
+is unique within a forest, so no two findings can tie on all three.
+
+**Ordered by rank rather than by the word.** The stored severity is the enum's name, so ordering on
+it is alphabetical — Critical, High, Low, Medium — which puts Low above Medium on a security screen
+and looks entirely normal.
+
+**One row more than the page is fetched and not returned.** Its existence is how a page knows another
+follows, without a second query counting rows nobody asked to see. There is deliberately no total:
+*page 3 of 400* costs the 400 on every page.
+
+**A judging where no rule ran is refused rather than paged as empty.** `Read` hands findings out
+beside the rules that ran because an empty list means nothing on its own; a page cannot carry every
+rule execution, so it refuses instead, and `FindingsPage.DidNotRun` keeps the distinction reachable
+for a screen holding a page.
+
+**Wildcards in a container's own name are escaped before they reach the query.** `%` and `_` are
+legal in a distinguished name and mean something to a `LIKE`, so selecting `OU=Test_1` would
+otherwise quietly also show findings from `OU=Test01`.
+
+---
+
 ## What is built
 
 The schema, the two state machines, the writer and the reader. Nothing runs a rule to fill a store
@@ -284,6 +322,18 @@ yet.
 | be certain the last count reported is everything that was read | `JudgingEndToEndTests.TheLastProgressReportedIsEverythingThatWasRead` |  |
 | stop a judging that is running | `JudgingEndToEndTests.AJudgingStopsWhenItIsAskedTo` |  |
 | keep the earlier judgement after cancelling a re-judging | `JudgingEndToEndTests.CancellingARejudgingLeavesTheEarlierJudgementIntact` |  |
+| read one page of findings and be told there is more | `FindingsPagingTests.APageHoldsWhatItWasAskedForAndSaysThereIsMore` |  |
+| be certain the last page says there is nothing after it | `FindingsPagingTests.TheLastPageSaysThereIsNothingAfterIt` |  |
+| be certain a page that exactly empties the findings offers no empty page after it | `FindingsPagingTests.APageThatExactlyEmptiesTheFindingsHasNothingAfterIt` |  |
+| be certain reading every page shows every finding exactly once | `FindingsPagingTests.ReadingEveryPageShowsEveryFindingExactlyOnce` |  |
+| see the worst findings first | `FindingsPagingTests.TheWorstFindingsAreOnTheFirstPage` |  |
+| narrow a grid to one severity | `FindingsPagingTests.AskingForOneSeverityReturnsOnlyThatSeverity` |  |
+| narrow a grid to one rule | `FindingsPagingTests.AskingForOneRuleReturnsOnlyThatRulesFindings` |  |
+| narrow a grid to one container | `FindingsPagingTests.AskingForOneContainerReturnsWhatIsBeneathIt` |  |
+| be certain a container whose name holds a wildcard does not widen the grid | `FindingsPagingTests.AContainerHoldingAWildcardDoesNotWidenTheGrid` |  |
+| be certain a bundle nobody judged is refused rather than shown as a clean grid | `FindingsPagingTests.AJudgingWhereNoRuleRanIsRefusedRatherThanPagedAsEmpty` |  |
+| tell that apart from a judging that ran and matched nothing | `FindingsPagingTests.AJudgingThatMatchedNothingGivesAnEmptyPage` |  |
+| be certain severity orders by seriousness rather than alphabetically | `JudgementReadingTests.SeverityIsStoredSoThatTheWorstSortsFirst` |  |
 
 **Confirmed in lab** is the date the owner saw this working against a real forest.
 
