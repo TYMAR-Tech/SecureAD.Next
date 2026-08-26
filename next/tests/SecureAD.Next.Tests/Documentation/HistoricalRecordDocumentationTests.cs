@@ -60,9 +60,6 @@ public sealed class HistoricalRecordDocumentationTests
         "gpo_file_error",
         "sysvol_path_security_descriptor",
         "unreadable_sysvol_descriptor",
-        "finding",
-        "finding_unconstrained_delegation",
-        "evaluated_rule",
     ];
 
     /// <summary>

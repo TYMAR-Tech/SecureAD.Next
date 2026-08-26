@@ -259,21 +259,20 @@ The table below sits between the two markers around it, so the test parses only 
 | PartitionCoverage | SecureAD.Evidence | [how-a-controller-is-read](../layers/audit/how-a-controller-is-read.md) |
 | LdapDirectoryChannel | SecureAD.Audit | [how-a-connection-is-opened](../layers/connect/how-a-connection-is-opened.md) |
 | LdapDirectoryChannelFactory | SecureAD.Audit | [how-a-connection-is-opened](../layers/connect/how-a-connection-is-opened.md) |
-| DomainControllerSignals | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| Finding | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| FindingEvidence | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| FindingSubject | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| FindingSubjectKind | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| IRule | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| RuleDefinition | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| RuleVerdict | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| Severity | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| UnconstrainedDelegationEvidence | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| UnconstrainedDelegationOnAccount | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| UnconstrainedDelegationOnNonDomainController | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| FindingReader | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| StoredFindings | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
-| EvaluatedRule | SecureAD.Evidence | [what-we-call-a-finding](../areas/what-we-call-a-finding.md) |
+| DomainControllerSignals | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| Finding | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| FindingEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| FindingSubject | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| FindingSubjectKind | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| IRule | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleDefinition | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleVerdict | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| Severity | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnconstrainedDelegationEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnconstrainedDelegationOnAccount | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnconstrainedDelegationOnNonDomainController | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| StoredFindings | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| EvaluatedRule | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 
 <!-- REGISTER:END -->
 

@@ -26,7 +26,6 @@ ledger row, or from the shape of the code.
 |---|---|---|
 | How privilege escalates | [how-privilege-escalates.md](how-privilege-escalates.md) | written |
 | Group Policy | [group-policy.md](group-policy.md) | written |
-| What we call a finding | [what-we-call-a-finding.md](what-we-call-a-finding.md) | written |
 | Accepting a finding | [accepting-a-finding.md](accepting-a-finding.md) | written |
 
 ## Showing it

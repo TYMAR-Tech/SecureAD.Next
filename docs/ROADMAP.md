@@ -32,7 +32,7 @@ merged, its documents are updated and its row here says so. The owner's standing
 | Stage | What | Status |
 |---|---|---|
 | — | Connect, capture, seal, browse | **built** |
-| 1 | Findings move out of the sealed evidence | not started |
+| 1 | Findings move out of the sealed evidence | **built** |
 | 2 | Dashboard: coverage and inventory | not started |
 | 3 | One rule, end to end | not started |
 | 4 | The simple posture rules | not started |
@@ -50,10 +50,19 @@ predecessor went wrong.
 
 ## Stage 1 — findings move out of the sealed evidence
 
-`BundleSchema` carries `finding` and `evaluated_rule` inside the sealed evidence file, which
-contradicts [`0085`](decisions/0085-judgement-writes-beside-the-evidence.md). Nothing in production
-writes them — only `FindingStorageTests` — so the change is contained today and unpleasant once rules
-exist.
+**Built 2026-08-25.** `BundleSchema` carried `finding`, `finding_unconstrained_delegation` and
+`evaluated_rule` inside the sealed evidence file, contradicting
+[`0085`](decisions/0085-judgement-writes-beside-the-evidence.md). The three tables are gone, with
+`BundleWriter.WriteFinding`, `WriteEvaluatedRule`, `BundleReader.ReadFindings` and `FindingReader`.
+`BundleSchema.Version` stands at 8.
+
+Nothing in production wrote them, so no capability was lost — but sixteen tests went with them, and
+what they proved is owed back at stage 3, where it is listed. `StoredFindings` and `EvaluatedRule`
+were kept, unconstructed, because they are the shapes a judgement store has to return.
+
+The documentation moved in the same change:
+[`layers/judgement/what-a-finding-is.md`](layers/judgement/what-a-finding-is.md) is new and owns the
+fourteen judgement types, and the area file that held them was deleted.
 
 *Needs first:* nothing.
 
@@ -75,6 +84,27 @@ show. The point is the pipeline rather than the rule — everything after this i
 *Needs first:* **the judgement store's shape.** `0085` deliberately left open whether it is one file
 per bundle or one per run, and whether a judged result is a record or is recomputed on open. A rule
 cannot be wired without the first of those.
+
+**Owed from stage 1.** Sixteen tests were deleted with the evidence tables, and each of these has to
+be proven again against whatever the store turns out to be. Written down because a deleted test
+leaves no trace:
+
+- a finding survives being written and comes back out
+- the evidence a finding rests on comes back with it
+- the domain-controller signals are rebuilt from the three stored signals, not from a stored answer
+- the same finding from two separate runs keeps one identity
+- a finding stays attached to an object that was renamed and moved
+- tightening a rule does not orphan the findings made under it
+- two rules about one object are two findings
+- one rule against two objects is two findings
+- the same finding cannot be stored twice and shown twice
+- evidence that may be missing confidential values does not come back complete
+- evidence that was complete comes back complete
+- evidence with no table is refused rather than quietly dropped
+- nothing can add a finding after the store is sealed
+- a bundle nobody judged says so rather than looking clean
+- a bundle where rules ran and nothing matched is not the same thing
+- the rules that ran are recorded with the version that ran
 
 ## Stage 4 — the simple posture rules
 

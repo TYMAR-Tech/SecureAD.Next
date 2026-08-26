@@ -16,9 +16,13 @@ SYSVOL, and seals a bundle. The shell exists and can start a run.
 
 The judgement half is two rules — `UnconstrainedDelegationOnAccount` (SEC-010) and
 `UnconstrainedDelegationOnNonDomainController` (SEC-011) — and **nothing constructs either of
-them.** Searched across `next/src` on 2026-08-25: no caller of `IRule.Judge`, no caller of
-`BundleWriter.WriteFinding`, no caller of `BundleReader.ReadFindings` outside the test project. A
-run today captures a forest and produces zero findings, because no code asks a rule anything.
+them.** Searched across `next/src` on 2026-08-25: no caller of `IRule.Judge`, and no way to store a
+verdict at all. `BundleWriter.WriteFinding` and `BundleReader.ReadFindings` were removed the same
+day, when stage 1 of the roadmap carried out
+[`0085`](../../decisions/0085-judgement-writes-beside-the-evidence.md) and moved findings out of the
+sealed evidence; the judgement store that replaces them has no shape yet. A run today captures a
+forest and produces zero findings, because no code asks a rule anything and nothing would keep the
+answer.
 
 ## The problem with the current shape
 

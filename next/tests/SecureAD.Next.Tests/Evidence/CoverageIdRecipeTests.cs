@@ -78,6 +78,13 @@ public sealed class CoverageIdRecipeTests
         // which the password policy attributes touch. A differing value here would have meant the
         // recipe moved without anyone saying so.
         [7] = "57cf8ba5a9e7fb10",
+
+        // Same value again, and again the correct outcome. Version 8 removed the finding,
+        // finding_unconstrained_delegation and evaluated_rule tables under docs/decisions/0085.
+        // coverage_id is built from the forest, the declared domains and the exclusions, and a
+        // rule's verdict was never one of its inputs - so a differing value here would have meant
+        // the recipe moved while nobody was looking at it.
+        [8] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

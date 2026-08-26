@@ -87,9 +87,6 @@ things something pointed at and never saw.
 | `gpo_file_error` | One file inside a policy that was opened and could not be understood | Every file that was opened parsed cleanly. The same distinction `security_descriptor_error` draws: without it, a template that failed to parse and a policy that assigns no privileges are the same evidence |
 | `sysvol_path_security_descriptor` | One path inside a policy's folder read together with its permissions, joined to the same descriptor and entry tables the directory's permissions use | Nothing under that policy was permission-read. How deep the read goes is set by [`0043`](../../decisions/0043-a-gpos-file-permissions-are-read-below-the-root-folder.md): the policy folder, every folder beneath it, every file whose contents were read, and everything under `Machine\Scripts` and `User\Scripts` |
 | `unreadable_sysvol_descriptor` | One path inside a policy whose permissions could not be read at all | Every path that was reached had its permissions read. The file-share counterpart of `unreadable_security_descriptor`, and it exists for the same reason: no rows in `ace` must not mean both *this path grants nothing* and *nobody could look* |
-| `finding` | One thing a rule found, about one object: its rule, its subject, the object by `objectGUID`, the severity the rule fixed, and whether the evidence behind it was complete | No rule matched anything. It does not mean the rules were not run and it does not mean the forest is clean: a rule that could not read a declared input reaches no verdict under [`0083`](../../decisions/0083-a-rule-declares-its-data-dependencies.md) and writes no row here, so a reader must consult the coverage tables before presenting an empty table as a clean forest |
-| `finding_unconstrained_delegation` | What an unconstrained delegation finding rests on: the `userAccountControl` value, whether the object declared the computer class, and the three raw domain-controller signals | A defect rather than an absence with a meaning. Every finding SEC-010 or SEC-011 produces has exactly one row here, so a finding of that kind without one is a write that half happened |
-| `evaluated_rule` | Which rules were run over this bundle, and at what version of their logic | The bundle was captured and never judged. This is what makes an empty `finding` table readable: no findings beside no rules means nobody looked, and no findings beside rules that ran means nothing matched. Presenting the first as a clean forest is the failure [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) forbids |
 
 <!-- TABLES:END -->
 
@@ -327,9 +324,11 @@ There is no schema migration path and no column added conditionally on open. Per
 [`0013`](../../decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) the bundle is not a
 contract with anything, so a schema mismatch is a broken build rather than an old file. The schema
 version is recorded so a reader can refuse a bundle it does not understand, not so it can adapt to
-one. It stands at **6**, raised when `finding` was added: a version 5 bundle has no findings table,
-so a build that read one without refusing would report no findings and be telling the truth about
-the table while lying about the forest.
+one. It stands at **8**, raised when `finding`, `finding_unconstrained_delegation` and
+`evaluated_rule` left for the judgement store under
+[`0085`](../../decisions/0085-judgement-writes-beside-the-evidence.md). A version 7 bundle carries
+them, and a build that read one without refusing it would be reading a rule's verdict out of the
+sealed evidence — which is the arrangement that decision exists to end.
 
 ---
 

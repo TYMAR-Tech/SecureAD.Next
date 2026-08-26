@@ -25,6 +25,13 @@ public sealed record EvaluatedRule(string RuleId, int RuleVersion);
 /// instead. That put the guarantee somewhere a caller cannot see it: the comment is invisible at
 /// the call site, and the type still made "nothing was found" the easiest thing to write.
 /// </para>
+/// <para>
+/// <b>Nothing constructs this today.</b> The reader that did was removed when
+/// <c>docs/decisions/0085</c> moved findings out of the sealed evidence, and the judgement store
+/// that will construct it has no shape yet. The type is kept rather than deleted because the
+/// guarantee above is what a judgement store has to honour, and rediscovering it from an empty
+/// namespace is how a bare list gets written the second time.
+/// </para>
 /// </remarks>
 /// <param name="Findings">What the rules found. Empty is meaningful only beside <paramref name="RulesRun"/>.</param>
 /// <param name="RulesRun">The rules that were run over this bundle.</param>

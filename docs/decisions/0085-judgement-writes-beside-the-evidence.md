@@ -32,10 +32,11 @@ capture, before any rule has run. The judgement spec assumes the same shape and 
 stating that "the run is sealed separately once every scheduled rule has finished" - a
 `JudgementRun` with its own states.
 
-**The schema currently contradicts that.** `BundleSchema` carries `finding` and `evaluated_rule`
-tables inside the sealed evidence, added at schema version 6. Nothing in production writes them:
-`WriteFinding` and `WriteEvaluatedRule` are called only by `FindingStorageTests`. So the
-contradiction is cheap to resolve today and expensive once rules exist.
+**The schema contradicted that, and no longer does.** `BundleSchema` carried `finding` and
+`evaluated_rule` tables inside the sealed evidence, added at schema version 6. Nothing in production
+wrote them: `WriteFinding` and `WriteEvaluatedRule` were called only by `FindingStorageTests`. So
+the contradiction was cheap to resolve, and it was resolved on 2026-08-25 as stage 1 of the roadmap
+— the three tables and the code serving them are gone, and `BundleSchema.Version` stands at 8.
 
 **Indexing is the reason this looked like a hard call.** The predecessor carried 55 indexes and
 getting them right was real work, so a design that forbids adding indexes later reads as a

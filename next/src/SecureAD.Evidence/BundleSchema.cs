@@ -60,8 +60,15 @@ public static class BundleSchema
     /// that read one without refusing it would answer <i>no policy</i> where the truthful answer is
     /// <i>this bundle was never allowed to look</i>.
     /// </para>
+    /// <para>
+    /// <b>Raised to 8 when <c>finding</c> and <c>evaluated_rule</c> left.</b> Per
+    /// <c>docs/decisions/0085</c> judgement writes beside the evidence rather than into it, so the
+    /// three tables that held what a rule concluded now belong to the judgement store. A version 7
+    /// bundle has them, and a build that read one without refusing it would be reading findings out
+    /// of the sealed evidence - which is the arrangement the decision exists to end.
+    /// </para>
     /// </remarks>
-    public const int Version = 7;
+    public const int Version = 8;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -116,9 +123,6 @@ public static class BundleSchema
         "gpo_file_error",
         "sysvol_path_security_descriptor",
         "unreadable_sysvol_descriptor",
-        "finding",
-        "finding_unconstrained_delegation",
-        "evaluated_rule",
     ];
 
     /// <summary>
@@ -855,98 +859,12 @@ public static class BundleSchema
         )
         """,
 
-        // One thing a rule found, about one object. Written before the seal, because
-        // BundleWriterTests.NothingCanBeAddedAfterTheBundleIsSealed means there is no afterwards.
-        //
-        // NO ROWS MEANS NO RULE MATCHED ANYTHING. It does not mean the rules were not run, and it
-        // does not mean the run was clean. A rule that could not read a declared input reaches no
-        // verdict at all under docs/decisions/0083, so it produces no row here and no row anywhere
-        // else either - which is why a reader must consult the coverage tables before presenting an
-        // empty findings table as a clean forest. That is docs/decisions/0002 at the artefact.
-        //
-        // THE UNIQUE CONSTRAINT IS THE IDENTITY. docs/decisions/0023 fixes a finding's identity as
-        // its rule, its subject and the object it is about, and the constraint puts that in the
-        // schema rather than leaving it to whichever code happens to be writing. The object is
-        // identified by object_guid because it is immutable in Active Directory and survives both
-        // rename and move, so an acceptance made against this finding stays attached months later.
-        //
-        // object_guid is stored rather than referenced. captured_object.object_guid is nullable and
-        // not unique, so no foreign key is available - but the deeper reason is that identity has to
-        // work ACROSS bundles, and a surrogate row id is meaningless in the next one.
-        //
-        // rule_version sits beside the identity and is deliberately outside the unique constraint,
-        // per 0023: tightening a rule's logic must not orphan every acceptance ever made against it.
-        //
-        // severity is the rule's, never a customer's - docs/decisions/0066 and 0082. It is stored
-        // rather than looked up at read time so that a bundle says what it said when it was sealed,
-        // even after the catalogue moves on.
-        //
-        // coverage records whether the evidence behind this finding was complete, per 0023. It is
-        // NOT NULL and has no default: a finding that does not say must not be storable, because the
-        // whole point is that "clean" and "we may not have seen everything" stay apart.
-        """
-        CREATE TABLE finding (
-            finding_id               INTEGER PRIMARY KEY,
-            rule_id                  TEXT    NOT NULL,
-            rule_version             INTEGER NOT NULL,
-            subject_kind             TEXT    NOT NULL,
-            subject_key              TEXT    NOT NULL,
-            object_guid              TEXT    NOT NULL,
-            severity                 TEXT    NOT NULL,
-            distinguished_name       TEXT    NOT NULL,
-            detail                   TEXT    NOT NULL,
-            coverage                 TEXT    NOT NULL,
-            UNIQUE (rule_id, subject_kind, subject_key, object_guid)
-        )
-        """,
-
-        // What an unconstrained delegation finding rests on, in the shape
-        // UnconstrainedDelegationEvidence declares. One table per kind of evidence is the price
-        // docs/decisions/0080 decided to pay: the predecessor carried a schemaless ContextJson that
-        // three components read undeclared keys out of, and the helper parsing it swallowed every
-        // exception, so a malformed value silently downgraded an edge to a principal action - a
-        // wrong answer rather than an error.
-        //
-        // NO ROW FOR A FINDING OF THIS KIND IS A DEFECT, not an absence with a meaning. Every
-        // finding SEC-010 or SEC-011 produces has one.
-        //
-        // THE THREE SIGNALS ARE STORED RAW AND THE TWO ANSWERS ARE NOT. IsDomainController and
-        // SignalsDisagree are computed from these three columns, so storing them as well would
-        // create a second copy that can disagree with the first. A reader re-derives them; that
-        // cannot drift.
-        """
-        CREATE TABLE finding_unconstrained_delegation (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
-            user_account_control                INTEGER NOT NULL,
-            is_computer                         INTEGER NOT NULL,
-            server_trust_account_bit            INTEGER NOT NULL,
-            primary_group_is_domain_controller  INTEGER NOT NULL,
-            under_domain_controllers_ou         INTEGER NOT NULL,
-            PRIMARY KEY (finding_id)
-        )
-        """,
-
-        // Which rules were run over this bundle, and at what version.
-        //
-        // THIS TABLE IS WHAT MAKES AN EMPTY finding TABLE READABLE. Without it, no rows in finding
-        // means either "every rule ran and nothing matched" or "nobody ever judged this bundle",
-        // and those are opposite answers a screen would print identically as a clean forest. That
-        // is docs/decisions/0002 exactly, and it is why gate 4 refuses a bare collection.
-        //
-        // NO ROWS MEANS NO RULE WAS RUN OVER THIS BUNDLE. A bundle that has been captured and not
-        // judged is a legitimate state - capture and evaluation are separate acts - and it must
-        // never be presented as a forest with nothing wrong with it.
-        //
-        // The version is recorded per rule rather than once per run, because rules do not move
-        // together: a bundle judged again under docs/decisions/0021 may run a tightened SEC-010
-        // beside an unchanged SEC-011, and a single run-wide number could not say so.
-        """
-        CREATE TABLE evaluated_rule (
-            rule_id                  TEXT    NOT NULL,
-            rule_version             INTEGER NOT NULL,
-            PRIMARY KEY (rule_id)
-        )
-        """,
+        // NOTHING A RULE CONCLUDED IS STORED HERE. docs/decisions/0085 puts findings, the evidence
+        // they rest on and the record of which rules ran into the judgement store, beside the
+        // evidence rather than inside it, so that the evidence fingerprint is taken once and re-
+        // judging a bundle under a better rule catalogue cannot alter what the directory said.
+        // A finding table here would put findings in two places, and would mean improving a rule
+        // either cannot be applied to an existing bundle or re-seals the evidence to apply it.
     ];
 
     /// <summary>
