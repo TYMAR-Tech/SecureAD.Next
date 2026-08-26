@@ -268,7 +268,13 @@ try {
     $now = [DateTimeOffset]::UtcNow
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $judged = [SecureAD.Judgement.JudgingRun]::Judge($BundlePath, $rules, $now, $now)
+    $judged = [SecureAD.Judgement.JudgingRun]::Judge(
+        $BundlePath,
+        $rules,
+        $now,
+        $now,
+        [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
+        [System.Threading.CancellationToken]::None)
 
     $watch.Stop()
 

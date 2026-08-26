@@ -195,10 +195,28 @@ it shows a count.
 scheduled rule while it is in hand. Judging forty rules costs the same read as judging one, so
 adding a rule costs comparisons rather than another walk of the forest.
 
-Measured on the development machine on 2026-08-26: **43,409 objects a second**, which is 23 seconds
-for a million objects. `next/tools/measure-judging-throughput.ps1` reports the figure for a real
-bundle on a real machine, and `next/tools/make-synthetic-bundle.ps1` builds one of a given size to
-measure against.
+**How long judging takes is not known, and the numbers measured here do not answer it.** Streaming a
+synthetic bundle on the development machine reached 43,409 objects a second on 2026-08-26, but that
+is the read alone with no rule running; with the two delegation rules it fell to roughly 4,689. Both
+figures come from invented objects carrying a handful of attributes, and the owner's judgement is
+that a synthetic bundle is not complex enough to stand in for a forest. **The number that should be
+trusted instead is the predecessor's: four to five hours over the owner's production forest.**
+Judging is built for that duration rather than for the lab's 0.72 seconds.
+
+**So a judging reports progress and can be stopped.** `Judge` takes an `IProgress<JudgingProgress>`
+and a `CancellationToken`, both required rather than defaulted — gate 1 records that progress,
+cancellation and the performance log all became quietly unused in the predecessor by being optional,
+and a caller with no operator to tell says so by passing `JudgingRun.NobodyIsWatching`.
+
+Progress counts objects rather than a percentage, because nothing counts a bundle before streaming
+it and a percentage wrong by a little would stall at 99 in front of someone watching for hours. It
+is reported every 1,000 objects, and the final report is unconditional so that a run ending between
+two batches does not leave a total short of what was read.
+
+**Cancelling costs the operator nothing but the time it ran.** The partial file is never renamed
+over the finished one, so the earlier judgement survives — the same protection a crash gets, by the
+same mechanism. A cancel that destroyed the previous answer would teach an operator never to press
+it.
 
 **A rule that throws loses only itself.** It is recorded as `Error`, offered no further objects, and
 the rules beside it carry on. Its findings are discarded, because a rule that failed part way
@@ -262,6 +280,10 @@ yet.
 | judge a bundle again without the earlier judgement being added to | `JudgingEndToEndTests.JudgingTwiceReplacesTheEarlierJudgement` |  |
 | be certain an object a rule is not about does not make the judging look degraded | `JudgingEndToEndTests.AnObjectTheRuleIsNotAboutDoesNotDegradeTheJudging` | 2026-08-26 |
 | be certain an account genuinely missing an input still degrades it | `JudgingEndToEndTests.AnAccountMissingADeclaredInputStillDegradesTheJudging` |  |
+| see how far a judging has got | `JudgingEndToEndTests.AJudgingReportsHowFarItHasGot` |  |
+| be certain the last count reported is everything that was read | `JudgingEndToEndTests.TheLastProgressReportedIsEverythingThatWasRead` |  |
+| stop a judging that is running | `JudgingEndToEndTests.AJudgingStopsWhenItIsAskedTo` |  |
+| keep the earlier judgement after cancelling a re-judging | `JudgingEndToEndTests.CancellingARejudgingLeavesTheEarlierJudgementIntact` |  |
 
 **Confirmed in lab** is the date the owner saw this working against a real forest.
 

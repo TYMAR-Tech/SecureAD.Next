@@ -28,9 +28,13 @@ the record wins and this file is wrong.
 `0008` fixes the boundary: **the only component that touches a domain controller is capture.** A
 screen showing a permission is reading a file, not asking the directory.
 
-**The application is the product; the command line only captures.** The owner's words, 2026-08-26:
-*"this whole app is a GUI, the cli is just to capture overnight."* Do not propose analysis verbs for
-`securead.exe`.
+**The application is the product; the command line runs unattended.** The owner's words, 2026-08-26:
+*"this whole app is a GUI, the cli is just to capture overnight."* The GUI is where an operator
+works and is what every screen is designed for. The command line exists so a long run can happen
+overnight without the application open, and **it is intended to grow judging too** — the owner,
+later the same day: *"i will be making it so the user can run the audit and it complete the judging
+via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
+unattended path, and the GUI is the worked path.
 
 ## How judging works
 

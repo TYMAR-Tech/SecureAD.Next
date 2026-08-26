@@ -200,13 +200,147 @@ public sealed class JudgingEndToEndTests
         Assert.All(judgement.RulesRun, r => Assert.Equal(1, r.ObjectsNotApplicable));
     }
 
+    /// <summary>
+    /// A judging reports how far it has got.
+    /// </summary>
+    /// <remarks>
+    /// <b>The predecessor took four to five hours over the owner's production forest.</b> A phase
+    /// that long with nothing on screen is indistinguishable from one that has hung, and an
+    /// operator who cannot tell the difference will kill a run that was working.
+    /// </remarks>
+    [Fact]
+    public void AJudgingReportsHowFarItHasGot()
+    {
+        var directory = ABundleHolding(
+            Account("bob", "CN=bob,OU=People,DC=contoso,DC=com", OrdinaryAccount, 513, "user"));
+
+        var reports = new Collected();
+
+        JudgingRun.Judge(
+            directory,
+            [new UnconstrainedDelegationOnAccount()],
+            Started,
+            Started,
+            reports,
+            CancellationToken.None);
+
+        Assert.NotEmpty(reports.Reports);
+    }
+
+    /// <summary>
+    /// The last thing a judging reports is everything it read.
+    /// </summary>
+    /// <remarks>
+    /// Progress is reported in batches, so a run whose object count is not a whole number of
+    /// batches would leave the operator looking at a total short of what was judged - and the
+    /// difference between 4,999,000 and 4,999,317 is exactly the kind of discrepancy that makes
+    /// someone doubt a number they should trust.
+    /// </remarks>
+    [Fact]
+    public void TheLastProgressReportedIsEverythingThatWasRead()
+    {
+        var directory = ABundleHolding(
+            Account("bob", "CN=bob,OU=People,DC=contoso,DC=com", OrdinaryAccount, 513, "user"),
+            Account("eve", "CN=eve,OU=People,DC=contoso,DC=com", OrdinaryAccount, 513, "user"),
+            NotAnAccount("OU=People,DC=contoso,DC=com", "organizationalUnit"));
+
+        var reports = new Collected();
+
+        JudgingRun.Judge(
+            directory,
+            [new UnconstrainedDelegationOnAccount()],
+            Started,
+            Started,
+            reports,
+            CancellationToken.None);
+
+        Assert.Equal(3, reports.Reports[^1].ObjectsRead);
+    }
+
+    /// <summary>
+    /// Collects progress on the thread that reported it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Not <see cref="Progress{T}"/>, which raises its callback asynchronously.</b> Under a full
+    /// suite the reports had not arrived by the time the assertion ran, so the test failed alone
+    /// and passed in isolation - the shape of a flaky test, which is worse than no test because it
+    /// teaches everyone to re-run the build.
+    /// </remarks>
+    private sealed class Collected : IProgress<JudgingRun.JudgingProgress>
+    {
+        public List<JudgingRun.JudgingProgress> Reports { get; } = [];
+
+        public void Report(JudgingRun.JudgingProgress value) => Reports.Add(value);
+    }
+
+    /// <summary>
+    /// A judging that is asked to stop, stops.
+    /// </summary>
+    [Fact]
+    public void AJudgingStopsWhenItIsAskedTo()
+    {
+        var directory = ABundleHolding(
+            Account("bob", "CN=bob,OU=People,DC=contoso,DC=com", OrdinaryAccount, 513, "user"));
+
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() => JudgingRun.Judge(
+            directory,
+            [new UnconstrainedDelegationOnAccount()],
+            Started,
+            Started,
+            JudgingRun.NobodyIsWatching,
+            cancelled.Token));
+    }
+
+    /// <summary>
+    /// Cancelling a re-judging leaves the earlier judgement intact.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is what makes cancelling safe to offer.</b> A judging runs for hours, so an operator
+    /// will stop one - and if stopping cost him the answer he already had, he would learn not to.
+    /// The partial file is never renamed over the finished one, which is the same protection a
+    /// crash gets.
+    /// </remarks>
+    [Fact]
+    public void CancellingARejudgingLeavesTheEarlierJudgementIntact()
+    {
+        var directory = ABundleHolding(
+            Account("svc-web", "CN=svc-web,OU=People,DC=contoso,DC=com", TrustedForDelegation, 513, "user"));
+
+        Judged(directory);
+
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        try
+        {
+            JudgingRun.Judge(
+                directory,
+                [new UnconstrainedDelegationOnAccount()],
+                Started,
+                Started,
+                JudgingRun.NobodyIsWatching,
+                cancelled.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // The cancellation is the point; what survives it is what this test is about.
+        }
+
+        Assert.Single(Read(directory).Findings);
+    }
+
     private static JudgementRunState Judged(string directory)
     {
         var judged = JudgingRun.Judge(
             directory,
             [new UnconstrainedDelegationOnAccount(), new UnconstrainedDelegationOnNonDomainController()],
             Started,
-            Started);
+            Started,
+            JudgingRun.NobodyIsWatching,
+            CancellationToken.None);
 
         Assert.True(judged.IsSuccess, judged.Error?.Description);
         return judged.Value;

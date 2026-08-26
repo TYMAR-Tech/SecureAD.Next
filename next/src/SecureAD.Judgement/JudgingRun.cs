@@ -27,9 +27,26 @@ namespace SecureAD.Judgement;
 /// <see cref="JudgementWriter.Complete"/>. A coordinator that could name the state would be able to
 /// call a judging complete while a rule had read nothing.
 /// </para>
+/// <para>
+/// <b>Judging is measured in hours, not seconds, and is built for that.</b> The predecessor took
+/// four to five hours over the owner's production forest. So this reports progress as it goes and
+/// stops when asked, and a caller that offers neither is asking an operator to watch a still screen
+/// for an afternoon with no way out.
+/// </para>
 /// </remarks>
 public static class JudgingRun
 {
+    /// <summary>
+    /// How far a judging has got.
+    /// </summary>
+    /// <remarks>
+    /// <b>Objects rather than a percentage.</b> Nothing counts a bundle's objects before streaming
+    /// it, so a percentage would need a count this does not have, and one wrong by a little would
+    /// stall at 99 or pass 100 in front of an operator watching for hours.
+    /// </remarks>
+    /// <param name="ObjectsRead">How many objects have been offered to the rules so far.</param>
+    public readonly record struct JudgingProgress(long ObjectsRead);
+
     /// <summary>
     /// Judges the bundle in <paramref name="bundleDirectory"/> and writes the judgement beside it.
     /// </summary>
@@ -44,15 +61,31 @@ public static class JudgingRun
     /// The reference time temporal rules are evaluated against, recorded so that the same sealed
     /// evidence gives the same answer next year.
     /// </param>
+    /// <param name="progress">
+    /// Told how many objects have been read. Pass <see cref="NobodyIsWatching"/> where there is no
+    /// operator to tell - required rather than defaulted, because gate 1 records that progress,
+    /// cancellation and the performance log all became quietly unused in the predecessor by being
+    /// optional. Reported every <see cref="ProgressEvery"/> objects rather than every object,
+    /// because a run of millions would otherwise spend its time raising events.
+    /// </param>
+    /// <param name="cancellationToken">Stops the judging. See the remarks on what that leaves.</param>
     /// <returns>What became of the run, or why it could not be judged at all.</returns>
+    /// <exception cref="OperationCanceledException">
+    /// The judging was cancelled. <b>The earlier judgement is left intact</b>: the partial file is
+    /// never renamed over it, so a cancelled re-judging costs the operator nothing but the time it
+    /// ran for. That is the same guarantee a crash gets, by the same mechanism.
+    /// </exception>
     public static Result<JudgementRunState> Judge(
         string bundleDirectory,
         IReadOnlyList<IRule> rules,
         DateTimeOffset startedUtc,
-        DateTimeOffset evaluationAsOf)
+        DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
+        ArgumentNullException.ThrowIfNull(progress);
 
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
@@ -76,11 +109,27 @@ public static class JudgingRun
 
         var tallies = rules.Select(r => new Tally(r)).ToList();
 
+        long objectsRead = 0;
+
         foreach (var subject in bundle.StreamObjects().Objects)
         {
+            // Checked per object rather than per batch. A rule catalogue that has grown expensive
+            // could spend a long time on one object, and a cancel that waits for the batch boundary
+            // is a cancel the operator has to press twice to believe.
+            cancellationToken.ThrowIfCancellationRequested();
+
             foreach (var tally in tallies)
                 tally.Offer(subject);
+
+            objectsRead++;
+
+            if (objectsRead % ProgressEvery == 0)
+                progress.Report(new JudgingProgress(objectsRead));
         }
+
+        // The last report is unconditional, so a run that ends between two reports does not leave
+        // the operator looking at a count short of what was actually read.
+        progress.Report(new JudgingProgress(objectsRead));
 
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
@@ -91,6 +140,35 @@ public static class JudgingRun
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
     }
+
+    /// <summary>
+    /// Progress for a judging nobody is watching.
+    /// </summary>
+    /// <remarks>
+    /// <b>Named rather than defaulted.</b> A caller that passes this has said it has no operator to
+    /// tell; a caller that passed nothing would only have said it did not think about it, and gate
+    /// 1 exists because that is how the predecessor's progress reporting went unused.
+    /// </remarks>
+    public static IProgress<JudgingProgress> NobodyIsWatching { get; } = new Unwatched();
+
+    /// <summary>Discards what it is told.</summary>
+    private sealed class Unwatched : IProgress<JudgingProgress>
+    {
+        public void Report(JudgingProgress value)
+        {
+            // Nobody is watching, by the caller's own statement.
+        }
+    }
+
+    /// <summary>
+    /// How many objects pass between progress reports.
+    /// </summary>
+    /// <remarks>
+    /// Chosen so that a forest large enough to take hours still reports often enough to look alive,
+    /// without a run of millions spending its time raising events. It is not tuned against a real
+    /// forest, because no measurement of one exists yet.
+    /// </remarks>
+    private const int ProgressEvery = 1_000;
 
     private static Result<JudgementRunState> Failure(
         string reason, string description, string context) =>
