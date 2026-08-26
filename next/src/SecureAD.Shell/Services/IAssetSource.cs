@@ -75,4 +75,12 @@ internal interface IAssetSource
     /// empty grid.
     /// </remarks>
     Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query);
+
+    /// <summary>Reads what the findings grid's filters may offer.</summary>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    /// <remarks>
+    /// <b>Asked once for a run, not once for a page.</b> The values are for the whole judgement, so
+    /// a list that changed as the operator moved about the tree would be a filter clearing itself.
+    /// </remarks>
+    Result<FindingsFilterValues> ReadFindingsFilterValues(string bundleDirectory);
 }

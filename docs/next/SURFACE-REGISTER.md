@@ -273,6 +273,7 @@ The table below sits between the two markers around it, so the test parses only 
 | FindingsQuery | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | FindingsPage | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | FindingsPageMark | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| FindingsFilterValues | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | RuleExecution | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | RuleExecutionOutcome | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | Finding | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

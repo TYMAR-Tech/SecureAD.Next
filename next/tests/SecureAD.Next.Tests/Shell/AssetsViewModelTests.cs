@@ -639,6 +639,181 @@ public sealed class AssetsViewModelTests
     }
 
     // ---------------------------------------------------------------------------------------
+    // Findings filters
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// What the filters offer comes from the findings that exist.
+    /// </summary>
+    /// <remarks>
+    /// <b>The reason the values are read rather than written into the screen.</b> A fixed list
+    /// offers Critical whether or not anything is critical, and an operator who picks it and gets an
+    /// empty grid has learned only to distrust the control.
+    /// </remarks>
+    [Fact]
+    public void TheFiltersOfferOnlyWhatTheFindingsHave()
+    {
+        var screen = ShowingFindings(
+            APageOfFindings(),
+            new FindingsFilterValues([Severity.High, Severity.Low], ["SEC-010"], RulesRan: 2));
+
+        Assert.Equal([AssetsViewModel.Any, "High", "Low"], screen.Severities);
+        Assert.Equal([AssetsViewModel.Any, "SEC-010"], screen.Rules);
+    }
+
+    /// <summary>
+    /// The filter values are read once for the run rather than on every selection.
+    /// </summary>
+    /// <remarks>
+    /// They describe the whole judgement, so re-reading them as the operator moves about the tree
+    /// would be the same query for the same answer - and worse, if they were scoped to the
+    /// selection instead, a chosen filter would vanish from its own list on the next click.
+    /// </remarks>
+    [Fact]
+    public void TheFilterValuesAreReadOnceForTheRun()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        screen.Selected = screen.Roots[0].Children[0];
+        screen.Selected = screen.Roots[0];
+
+        Assert.Equal(1, assets.FilterValueReads);
+    }
+
+    /// <summary>
+    /// Choosing a severity asks for that severity.
+    /// </summary>
+    [Fact]
+    public void ChoosingASeverityNarrowsWhatIsAskedFor()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        screen.SeverityFilter = "High";
+
+        Assert.Equal(Severity.High, assets.FindingsAsked!.Severity);
+    }
+
+    /// <summary>
+    /// Choosing a rule asks for that rule.
+    /// </summary>
+    [Fact]
+    public void ChoosingARuleNarrowsWhatIsAskedFor()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        screen.RuleFilter = "SEC-010";
+
+        Assert.Equal("SEC-010", assets.FindingsAsked!.RuleId);
+    }
+
+    /// <summary>
+    /// Clearing a filter stops narrowing rather than asking for a rule called "Any".
+    /// </summary>
+    [Fact]
+    public void ClearingTheFiltersStopsNarrowing()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.SeverityFilter = "High";
+        screen.RuleFilter = "SEC-010";
+
+        screen.ClearFindingsFilters();
+
+        Assert.Null(assets.FindingsAsked!.Severity);
+        Assert.Null(assets.FindingsAsked.RuleId);
+        Assert.False(screen.IsFiltered);
+    }
+
+    /// <summary>
+    /// A different filter is a different list, so the grid returns to its first page.
+    /// </summary>
+    /// <remarks>
+    /// <b>Keyset paging only goes forward.</b> The mark from the previous list points into rows the
+    /// new one may not contain, so carrying it over would open the grid part way down a list that no
+    /// longer exists - and the operator has no way back to the top.
+    /// </remarks>
+    [Fact]
+    public void ChangingAFilterStartsTheGridAgainAtItsFirstPage()
+    {
+        var assets = new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            FindingsPage = new FindingsPage(
+                [AFinding()], new FindingsPageMark(1, "SEC-010", "CN=svc-web"), RulesRan: 2),
+        };
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.NextFindingsCommand.Execute(null);
+        Assert.NotNull(assets.FindingsAsked!.After);
+
+        screen.SeverityFilter = "High";
+
+        Assert.Null(assets.FindingsAsked.After);
+    }
+
+    /// <summary>
+    /// An empty filtered grid does not claim the container is clean.
+    /// </summary>
+    /// <remarks>
+    /// <b>Two different facts wear the same empty table.</b> Nothing found says the rules ran over
+    /// this container and matched nothing, which is about the directory. Nothing matching says what
+    /// they found lies outside what was asked for, which is about the question - and stating the
+    /// first while the second is true tells an operator his container is clean when he has narrowed
+    /// to one severity that happens to be absent.
+    /// </remarks>
+    [Fact]
+    public void AnEmptyFilteredGridDoesNotSayTheContainerIsClean()
+    {
+        var screen = ShowingFindings(new FindingsPage([], null, RulesRan: 2));
+        var unfiltered = screen.NothingFoundReason;
+
+        screen.SeverityFilter = "High";
+
+        Assert.True(screen.NothingWasFound);
+        Assert.NotEqual(unfiltered, screen.NothingFoundReason);
+        Assert.Contains("filters", screen.NothingFoundReason);
+    }
+
+    /// <summary>
+    /// A judgement that will not open leaves the filters empty rather than refusing twice.
+    /// </summary>
+    /// <remarks>
+    /// The grid itself says why in words. A second refusal from the filters would state the same
+    /// failure twice, and the operator can act on neither until the judgement is fixed.
+    /// </remarks>
+    [Fact]
+    public void AJudgementThatWillNotOpenLeavesTheFiltersEmpty()
+    {
+        var assets = new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            FindingsFail = AuditError.Create(
+                ErrorCategory.Evidence,
+                "JudgementUnreadable",
+                ErrorSeverity.Failed,
+                "The judgement could not be opened.",
+                BundlePath),
+        };
+
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal([AssetsViewModel.Any], screen.Severities);
+        Assert.Equal([AssetsViewModel.Any], screen.Rules);
+        Assert.True(screen.HasFindingsRefusal);
+    }
+
+    // ---------------------------------------------------------------------------------------
 
     private static AssetsViewModel ShowingFindings(FindingsPage findings)
     {
@@ -653,6 +828,25 @@ public sealed class AssetsViewModelTests
         screen.Show(BundlePath, aCaptureIsRunning: false);
         return screen;
     }
+
+    private static AssetsViewModel ShowingFindings(
+        FindingsPage findings, FindingsFilterValues values)
+    {
+        var screen = new AssetsViewModel(new FakeAssetSource
+        {
+            Tree = TreeOfOneDomain(),
+            Page = APageOfOne(),
+            Permissions = SomePermissions(),
+            FindingsPage = findings,
+            FilterValues = values,
+        });
+
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        return screen;
+    }
+
+    private static FindingsPage APageOfFindings() =>
+        new([AFinding()], null, RulesRan: 2);
 
     private static Finding AFinding() =>
         new(

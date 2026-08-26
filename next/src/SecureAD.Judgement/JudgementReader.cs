@@ -326,6 +326,52 @@ public sealed class JudgementReader : IDisposable
         command.Parameters.AddWithValue(name, value ?? DBNull.Value);
 
     /// <summary>
+    /// What a findings grid's filters may offer, taken from the findings that exist.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Read from the data rather than listed in the screen.</b> A severity list written into a
+    /// view offers Critical whether or not any finding is critical, so an operator picks it, sees
+    /// an empty grid, and has learned nothing except to distrust the filter. The predecessor read
+    /// its values the same way.
+    /// </para>
+    /// <para>
+    /// <b>Not scoped by the container.</b> The values are for the whole judgement, so the list does
+    /// not change under the operator as he moves about the tree - a filter whose options come and
+    /// go while a selection is held is a filter that silently clears itself.
+    /// </para>
+    /// </remarks>
+    /// <returns>The severities and rules some finding has, worst and lowest first.</returns>
+    public FindingsFilterValues ReadFilterValues()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var severities = new List<Severity>();
+        var rules = new List<string>();
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText =
+                "SELECT DISTINCT severity, severity_rank FROM finding ORDER BY severity_rank DESC";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                severities.Add(Enum.Parse<Severity>(reader.GetString(0)));
+        }
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = "SELECT DISTINCT rule_id FROM finding ORDER BY rule_id";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                rules.Add(reader.GetString(0));
+        }
+
+        return new FindingsFilterValues(severities, rules, ReadExecutions().Count);
+    }
+
+    /// <summary>
     /// The pattern that matches a container and everything beneath it.
     /// </summary>
     /// <remarks>

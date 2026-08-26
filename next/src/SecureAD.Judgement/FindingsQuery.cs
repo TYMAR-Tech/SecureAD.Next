@@ -29,6 +29,34 @@ public readonly record struct FindingsPageMark(
     string DistinguishedName);
 
 /// <summary>
+/// What a findings grid's filters may offer.
+/// </summary>
+/// <remarks>
+/// <b>Taken from the findings that exist, so a filter cannot be set to nothing.</b> A list written
+/// into a screen offers every severity whether or not any finding has one, and an operator who
+/// picks one and gets an empty grid has learned only to distrust the control.
+/// </remarks>
+/// <param name="Severities">The severities some finding has, worst first.</param>
+/// <param name="Rules">The rules some finding came from, in order.</param>
+/// <param name="RulesRan">How many rules were run over the bundle these came from.</param>
+public sealed record FindingsFilterValues(
+    IReadOnlyList<Severity> Severities,
+    IReadOnlyList<string> Rules,
+    int RulesRan)
+{
+    /// <summary>
+    /// Whether no rule has been run, so empty lists say nothing about the forest.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty filters have two causes and they are not alike.</b> A judged bundle whose rules
+    /// found nothing genuinely offers nothing to filter by. A bundle nobody judged offers nothing
+    /// either, and a screen that could not tell them apart would show the same two empty lists for
+    /// <i>your forest is quiet</i> and <i>nobody has looked</i>.
+    /// </remarks>
+    public bool DidNotRun => RulesRan == 0;
+}
+
+/// <summary>
 /// What a findings grid asks for: which findings, and where to carry on from.
 /// </summary>
 /// <remarks>

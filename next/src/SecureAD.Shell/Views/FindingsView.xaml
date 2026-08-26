@@ -12,6 +12,30 @@
 
     <DockPanel>
 
+        <!-- WHAT THE FILTERS OFFER COMES FROM THE FINDINGS THAT EXIST. A fixed list would offer
+             Critical whether or not anything is critical, and an operator who picks it and gets an
+             empty grid has learned only to distrust the control. A third filter is a combo box
+             here and a line in FindingsAsked - nothing about loading or paging changes. -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Severity" Style="{StaticResource FieldLabel}"
+                       VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox ItemsSource="{Binding Severities}"
+                      SelectedItem="{Binding SeverityFilter, Mode=TwoWay}"
+                      MinWidth="120" Margin="0,0,16,0" />
+
+            <TextBlock Text="Rule" Style="{StaticResource FieldLabel}"
+                       VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox ItemsSource="{Binding Rules}"
+                      SelectedItem="{Binding RuleFilter, Mode=TwoWay}"
+                      MinWidth="120" Margin="0,0,16,0" />
+
+            <!-- Shown only while something is narrowed, so it is never a control that does
+                 nothing. -->
+            <Button Content="Clear"
+                    Command="{Binding ClearFindingsFiltersCommand}"
+                    Visibility="{Binding IsFiltered, Converter={StaticResource Shown}}" />
+        </StackPanel>
+
         <!-- WHY A REFUSAL IS A SENTENCE RATHER THAN AN EMPTY TABLE. A bundle nobody judged and a
              forest with nothing wrong with it draw the same blank grid, and an operator reads a
              blank grid as reassurance. This says which it is, in words, where the findings would
@@ -30,10 +54,13 @@
             </StackPanel>
         </Border>
 
-        <!-- Said only when every rule ran and none of them matched, which is the one case where an
-             empty table is a statement about the directory rather than about the judging. -->
+        <!-- Said only when the rules ran and none of them matched, which is the one case where an
+             empty table is a statement about the directory rather than about the judging. The
+             wording comes from the view model because it is not the same claim once a filter is
+             on: "nothing was found here" and "nothing matched what you asked for" are different
+             facts, and only the first is about the forest. -->
         <TextBlock DockPanel.Dock="Top"
-                   Text="Every rule ran over this container and none of them found anything."
+                   Text="{Binding NothingFoundReason}"
                    Foreground="{StaticResource SecondaryTextBrush}"
                    Margin="0,0,0,8"
                    Visibility="{Binding NothingWasFound, Converter={StaticResource Shown}}" />

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Shell.Services;
 
@@ -126,6 +127,57 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>Whether the findings grid should be on screen.</summary>
     public bool ShowsFindingsListing => ShowsFindings && ShowsListing;
+
+    /// <summary>The severities a finding on this run actually has, worst first.</summary>
+    /// <remarks>
+    /// <b>Read from the judgement rather than listed here.</b> A fixed list offers Critical whether
+    /// or not anything is critical, and an operator who picks it and gets an empty grid has learned
+    /// only to distrust the control.
+    /// </remarks>
+    public ObservableCollection<string> Severities { get; } = [];
+
+    /// <summary>The rules that found something on this run.</summary>
+    public ObservableCollection<string> Rules { get; } = [];
+
+    /// <summary>
+    /// What every filter reads when nothing is chosen.
+    /// </summary>
+    /// <remarks>
+    /// A word rather than an empty entry, because a blank first row in a list reads as a missing
+    /// value rather than as a deliberate choice not to narrow anything.
+    /// </remarks>
+    public const string Any = "Any";
+
+    /// <summary>The severity the grid is narrowed to, or <see cref="Any"/>.</summary>
+    /// <remarks>
+    /// Named for the filter rather than for the thing, because a property called
+    /// <c>Severity</c> on this screen would shadow the type of the same name and force every use
+    /// of it to be spelled out.
+    /// </remarks>
+    [ObservableProperty]
+    private string _severityFilter = Any;
+
+    /// <summary>The rule the grid is narrowed to, or <see cref="Any"/>.</summary>
+    [ObservableProperty]
+    private string _ruleFilter = Any;
+
+    /// <summary>Whether any filter is narrowing the grid.</summary>
+    public bool IsFiltered => SeverityFilter != Any || RuleFilter != Any;
+
+    /// <summary>
+    /// Why the findings grid is empty when the rules ran and matched nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>A filtered grid and an unfiltered one are making different claims.</b> Empty with no
+    /// filter says the rules found nothing here, which is about the directory. Empty with a filter
+    /// says nothing matched what was asked for, which is about the question - and stating the first
+    /// while the second is true would tell an operator his container is clean when he has narrowed
+    /// to one severity that happens to be absent.
+    /// </remarks>
+    public string NothingFoundReason => IsFiltered
+        ? "Nothing here matches the filters. The rules ran; what they found is outside what you "
+          + "have asked for."
+        : "The rules ran over this container and none of them found anything.";
 
     /// <summary>Where the findings page being shown ended, so the next can start after it.</summary>
     private FindingsPageMark? _findingsFrom;
@@ -322,6 +374,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Findings.Clear();
         FindingsRefusal = null;
         NothingWasFound = false;
+        Severities.Clear();
+        Rules.Clear();
+        SeverityFilter = Any;
+        RuleFilter = Any;
         _findingsBack.Clear();
         _findingsFrom = null;
         Total = 0;
@@ -382,6 +438,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
             Gaps.Add(new TreeGapViewModel(gap));
 
         HasLooked = true;
+
+        // What the filters may offer, asked once for the run. Scoped to the whole judgement rather
+        // than to the selected container, so the lists do not come and go as the operator moves
+        // about the tree - a filter whose options vanish under a held selection clears itself.
+        ReadFindingsFilterValues();
 
         // Rooted at the forest, so the screen arrives showing something rather than an empty half
         // and an instruction to click.
@@ -627,6 +688,37 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Fills the filter lists from the findings this run holds.
+    /// </summary>
+    /// <remarks>
+    /// <b>A judgement that will not open leaves the lists empty rather than refusing.</b> The grid
+    /// itself says why in words; a second refusal from the filters would state the same failure
+    /// twice, and the operator cannot act on either until the judgement is fixed.
+    /// </remarks>
+    private void ReadFindingsFilterValues()
+    {
+        Severities.Clear();
+        Rules.Clear();
+
+        Severities.Add(Any);
+        Rules.Add(Any);
+
+        if (BundlePath is null || _captureIsRunning)
+            return;
+
+        var values = _assets.ReadFindingsFilterValues(BundlePath);
+
+        if (!values.IsSuccess)
+            return;
+
+        foreach (var severity in values.Value.Severities)
+            Severities.Add(severity.ToString());
+
+        foreach (var rule in values.Value.Rules)
+            Rules.Add(rule);
+    }
+
+    /// <summary>
     /// Lists the findings of the selected container, or of the whole run when nothing is selected.
     /// </summary>
     /// <remarks>
@@ -671,15 +763,54 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>What the findings grid is asking for, as the screen currently stands.</summary>
+    /// <remarks>
+    /// <b>Every filter is read here and nowhere else.</b> A third one is a property, a line in this
+    /// method, and a control - not a change to how the grid is loaded or paged.
+    /// </remarks>
     private FindingsQuery FindingsAsked() =>
         new(
-            Severity: null,
-            RuleId: null,
+            Severity: Chosen(SeverityFilter) is { } severity
+                ? Enum.Parse<Severity>(severity)
+                : null,
+            RuleId: Chosen(RuleFilter),
             DomainFqdn: null,
             Container: Selected?.DistinguishedName,
             Object: null,
             After: _findingsBack.Count == 0 ? null : _findingsBack.Peek(),
             PageSize: FindingsQuery.DefaultPageSize);
+
+    /// <summary>The value a filter is set to, or null when it is not narrowing anything.</summary>
+    private static string? Chosen(string filter) =>
+        filter == Any || string.IsNullOrEmpty(filter) ? null : filter;
+
+    /// <summary>
+    /// A different filter is a different list, and it starts at its first page.
+    /// </summary>
+    /// <remarks>
+    /// The mark from the previous list points into rows this one may not contain, so carrying it
+    /// over would open the grid part way down a list that no longer exists.
+    /// </remarks>
+    partial void OnSeverityFilterChanged(string value) => RefilterFindings();
+
+    /// <inheritdoc cref="OnSeverityFilterChanged"/>
+    partial void OnRuleFilterChanged(string value) => RefilterFindings();
+
+    private void RefilterFindings()
+    {
+        _findingsBack.Clear();
+        _findingsFrom = null;
+        OnPropertyChanged(nameof(IsFiltered));
+        OnPropertyChanged(nameof(NothingFoundReason));
+        ListFindings();
+    }
+
+    /// <summary>Clears every filter, so the grid shows the whole container again.</summary>
+    [RelayCommand]
+    public void ClearFindingsFilters()
+    {
+        SeverityFilter = Any;
+        RuleFilter = Any;
+    }
 
     /// <summary>Shows the next page of findings.</summary>
     [RelayCommand(CanExecute = nameof(HasMoreFindings))]

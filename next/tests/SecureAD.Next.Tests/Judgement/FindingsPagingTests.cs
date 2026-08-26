@@ -358,7 +358,95 @@ public sealed class FindingsPagingTests
         Assert.Null(query.Container);
     }
 
+    /// <summary>
+    /// The filter values are the severities and rules some finding actually has.
+    /// </summary>
+    /// <remarks>
+    /// <b>Why they are read rather than listed.</b> A screen that offers every severity offers
+    /// Critical whether or not anything is critical, and an operator who picks it and gets an empty
+    /// grid has learned only to distrust the control.
+    /// </remarks>
+    [Fact]
+    public void TheFilterValuesAreOnlyWhatTheFindingsHave()
+    {
+        var directory = ABundleWith(
+        [
+            AFinding("CN=a,DC=contoso,DC=com") with { Severity = Severity.Low },
+            AFinding("CN=b,DC=contoso,DC=com") with { Severity = Severity.Low },
+        ]);
+
+        var values = FilterValues(directory);
+
+        Assert.Equal([Severity.Low], values.Severities);
+        Assert.Equal(["SEC-010"], values.Rules);
+    }
+
+    /// <summary>
+    /// The severities come back worst first rather than alphabetically.
+    /// </summary>
+    /// <remarks>
+    /// The same trap as the grid: the stored severity is the enum's name, so ordering on it puts
+    /// Low above Medium - which on a filter list reads as a mistake rather than as a sort.
+    /// </remarks>
+    [Fact]
+    public void TheFilterSeveritiesComeBackWorstFirst()
+    {
+        var directory = ABundleWith(
+        [
+            AFinding("CN=a,DC=contoso,DC=com") with { Severity = Severity.Low },
+            AFinding("CN=b,DC=contoso,DC=com") with { Severity = Severity.Critical },
+            AFinding("CN=c,DC=contoso,DC=com") with { Severity = Severity.Medium },
+        ]);
+
+        var values = FilterValues(directory);
+
+        Assert.Equal([Severity.Critical, Severity.Medium, Severity.Low], values.Severities);
+    }
+
+    /// <summary>
+    /// A bundle nobody judged says so rather than offering two empty lists.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty filters have two causes and they are not alike.</b> A judged bundle whose rules
+    /// found nothing genuinely offers nothing to filter by; a bundle nobody judged offers nothing
+    /// either. A screen that could not tell them apart would show the same picture for
+    /// <i>your forest is quiet</i> and <i>nobody has looked</i>.
+    /// </remarks>
+    [Fact]
+    public void FilterValuesFromABundleNobodyJudgedSaySoRatherThanLookingEmpty()
+    {
+        var directory = ADirectory();
+
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+            writer.Complete(Started);
+
+        var values = FilterValues(directory);
+
+        Assert.True(values.DidNotRun);
+        Assert.Empty(values.Severities);
+    }
+
+    /// <summary>
+    /// A judging that ran and matched nothing is not mistaken for one that never ran.
+    /// </summary>
+    [Fact]
+    public void FilterValuesFromAJudgingThatMatchedNothingSayTheRulesRan()
+    {
+        var directory = ABundleWith([]);
+
+        var values = FilterValues(directory);
+
+        Assert.False(values.DidNotRun);
+        Assert.Empty(values.Severities);
+    }
+
     private static FindingsQuery Query() => FindingsQuery.Everything();
+
+    private static FindingsFilterValues FilterValues(string directory)
+    {
+        using var reader = Opened(directory);
+        return reader.ReadFilterValues();
+    }
 
     private static FindingsPage Page(string directory, FindingsQuery query)
     {

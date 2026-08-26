@@ -29,6 +29,7 @@ finished and sealed separately from the evidence it judged.
 | `FindingsQuery` | What a findings grid asks for: which findings, and where to carry on from |
 | `FindingsPage` | One page of findings, and whether there is another |
 | `FindingsPageMark` | Where a page of findings ended, so the next can start after it |
+| `FindingsFilterValues` | What a findings grid's filters may offer, taken from the findings that exist |
 
 <!-- TYPES:END -->
 
@@ -266,6 +267,29 @@ otherwise quietly also show findings from `OU=Test01`.
 
 ---
 
+## What a filter may offer comes from the findings that exist
+
+`ReadFilterValues` hands back the severities and rules some finding actually has, and a screen
+builds its filter lists from those rather than from the enum.
+
+**A filter that cannot be set to nothing.** A list written into a screen offers Critical whether or
+not anything is critical, and an operator who picks it and gets an empty grid has learned only to
+distrust the control. Taking the values from the data means every choice narrows to something.
+
+**Severities come back worst first, by rank.** The same alphabetical trap as the grid: ordering on
+the stored word puts Low above Medium, which on a filter list reads as a mistake rather than as a
+sort.
+
+**Empty lists carry the count of rules that ran.** Two unlike things wear the same empty list — a
+judged bundle whose rules found nothing, and a bundle nobody judged — so `FindingsFilterValues`
+carries `RulesRan` and `DidNotRun` tells them apart rather than leaving a screen to guess.
+
+**Filtering is a question, not a position.** The values narrow what `ReadPage` is asked for, and
+because the resulting list is a different list, a `FindingsPageMark` taken from the old one does not
+carry over: it points at rows the new list may not contain.
+
+---
+
 ## What is built
 
 The schema, the two state machines, the writer and the reader. Nothing runs a rule to fill a store
@@ -334,6 +358,14 @@ yet.
 | be certain a bundle nobody judged is refused rather than shown as a clean grid | `FindingsPagingTests.AJudgingWhereNoRuleRanIsRefusedRatherThanPagedAsEmpty` |  |
 | tell that apart from a judging that ran and matched nothing | `FindingsPagingTests.AJudgingThatMatchedNothingGivesAnEmptyPage` |  |
 | be certain severity orders by seriousness rather than alphabetically | `JudgementReadingTests.SeverityIsStoredSoThatTheWorstSortsFirst` |  |
+| offer a filter only the values some finding actually has | `FindingsPagingTests.TheFilterValuesAreOnlyWhatTheFindingsHave` |  |
+| read a filter's severities worst first rather than alphabetically | `FindingsPagingTests.TheFilterSeveritiesComeBackWorstFirst` |  |
+| be certain empty filters from a bundle nobody judged say so | `FindingsPagingTests.FilterValuesFromABundleNobodyJudgedSaySoRatherThanLookingEmpty` |  |
+| tell that apart from a judging that ran and matched nothing | `FindingsPagingTests.FilterValuesFromAJudgingThatMatchedNothingSayTheRulesRan` |  |
+| narrow the findings grid by severity or rule from the screen | `AssetsViewModelTests.ChoosingASeverityNarrowsWhatIsAskedFor`, `AssetsViewModelTests.ChoosingARuleNarrowsWhatIsAskedFor` |  |
+| stop narrowing without asking for a rule called "Any" | `AssetsViewModelTests.ClearingTheFiltersStopsNarrowing` |  |
+| be certain changing a filter does not open the grid part way down a list that no longer exists | `AssetsViewModelTests.ChangingAFilterStartsTheGridAgainAtItsFirstPage` |  |
+| be certain an empty filtered grid does not claim the container is clean | `AssetsViewModelTests.AnEmptyFilteredGridDoesNotSayTheContainerIsClean` |  |
 
 **Confirmed in lab** is the date the owner saw this working against a real forest.
 

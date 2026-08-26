@@ -240,6 +240,21 @@ internal sealed class FakeAssetSource : IAssetSource
             ? Result<FindingsPage>.Failure(error)
             : Result<FindingsPage>.Success(FindingsPage);
     }
+
+    /// <summary>What the filters may offer. Nothing, unless a test says otherwise.</summary>
+    public FindingsFilterValues FilterValues { get; set; } = new([], [], RulesRan: 1);
+
+    /// <summary>How many times the filter values were asked for, so a test can prove it is once.</summary>
+    public int FilterValueReads { get; private set; }
+
+    public Result<FindingsFilterValues> ReadFindingsFilterValues(string bundleDirectory)
+    {
+        FilterValueReads++;
+
+        return FindingsFail is { } error
+            ? Result<FindingsFilterValues>.Failure(error)
+            : Result<FindingsFilterValues>.Success(FilterValues);
+    }
 }
 
 internal sealed class FakeFolderPicker : IFolderPicker
