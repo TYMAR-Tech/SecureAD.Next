@@ -24,7 +24,6 @@ ledger row, or from the shape of the code.
 
 | Area | File | State |
 |---|---|---|
-| How privilege escalates | [how-privilege-escalates.md](how-privilege-escalates.md) | written |
 | Group Policy | [group-policy.md](group-policy.md) | written |
 | Accepting a finding | [accepting-a-finding.md](accepting-a-finding.md) | written |
 

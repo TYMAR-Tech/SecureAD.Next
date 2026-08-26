@@ -86,25 +86,25 @@ per bundle or one per run, and whether a judged result is a record or is recompu
 cannot be wired without the first of those.
 
 **Owed from stage 1.** Sixteen tests were deleted with the evidence tables, and each of these has to
-be proven again against whatever the store turns out to be. Written down because a deleted test
-leaves no trace:
+be proven again against whatever the store turns out to be. The old names are kept so the claim is
+searchable, not because the new tests must reuse them:
 
-- a finding survives being written and comes back out
-- the evidence a finding rests on comes back with it
-- the domain-controller signals are rebuilt from the three stored signals, not from a stored answer
-- the same finding from two separate runs keeps one identity
-- a finding stays attached to an object that was renamed and moved
-- tightening a rule does not orphan the findings made under it
-- two rules about one object are two findings
-- one rule against two objects is two findings
-- the same finding cannot be stored twice and shown twice
-- evidence that may be missing confidential values does not come back complete
-- evidence that was complete comes back complete
-- evidence with no table is refused rather than quietly dropped
-- nothing can add a finding after the store is sealed
-- a bundle nobody judged says so rather than looking clean
-- a bundle where rules ran and nothing matched is not the same thing
-- the rules that ran are recorded with the version that ran
+- a finding survives being written and comes back out — `FindingStorageTests.AFindingComesBackFromASealedBundle`
+- the evidence a finding rests on comes back with it — `FindingStorageTests.TheEvidenceAFindingRestsOnComesBackWithIt`
+- the domain-controller signals are rebuilt from the three stored signals, not from a stored answer — `FindingStorageTests.TheDomainControllerSignalsAreRebuiltFromWhatWasStored`
+- the same finding from two separate runs keeps one identity — `FindingStorageTests.TheSameFindingFromTwoRunsKeepsOneIdentity`
+- a finding stays attached to an object that was renamed and moved — `FindingStorageTests.AnObjectThatWasRenamedAndMovedIsStillTheSameFinding`
+- tightening a rule does not orphan the findings made under it — `FindingStorageTests.TighteningARuleDoesNotChangeTheIdentityOfItsFindings`
+- two rules about one object are two findings — `FindingStorageTests.TwoRulesAboutOneObjectAreTwoFindings`
+- one rule against two objects is two findings — `FindingStorageTests.OneRuleAgainstTwoObjectsIsTwoFindings`
+- the same finding cannot be stored twice and shown twice — `FindingStorageTests.TheSameFindingCannotBeStoredTwiceInOneBundle`
+- evidence that may be missing confidential values does not come back complete — `FindingStorageTests.AFindingWhoseEvidenceMayBeIncompleteDoesNotComeBackComplete`
+- evidence that was complete comes back complete — `FindingStorageTests.AFindingWhoseEvidenceWasCompleteComesBackComplete`
+- evidence with no table is refused rather than quietly dropped — `FindingStorageTests.AnEvidenceKindWithNoTableIsRefusedRatherThanDropped`
+- nothing can add a finding after the store is sealed — `FindingStorageTests.AFindingCannotBeAddedAfterTheBundleIsSealed`
+- a bundle nobody judged says so rather than looking clean — `FindingStorageTests.ABundleNoRuleWasRunOverSaysSoRatherThanLookingClean`
+- a bundle where rules ran and nothing matched is not the same thing — `FindingStorageTests.ABundleWhereRulesRanAndNothingMatchedIsNotTheSameThing`
+- the rules that ran are recorded with the version that ran — `FindingStorageTests.TheRulesThatRanAreRecordedWithTheVersionThatRan`
 
 ## Stage 4 — the simple posture rules
 
