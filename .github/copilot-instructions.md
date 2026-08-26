@@ -2,7 +2,7 @@
 
 ## Read this first
 
-**[`docs/WHAT-THE-PRODUCT-IS.md`](../docs/WHAT-THE-PRODUCT-IS.md) — open it before asking the owner anything about the product's shape.** SecureAD is a GUI application; the command line only captures. Analysis is a pipeline of dependent stages, not one pass. The old application's analysis phases and index layout are written down there because they were asked for four times in one session and answered every time in a chat log the next session could not read.
+**[`docs/WHAT-THE-PRODUCT-IS.md`](../docs/WHAT-THE-PRODUCT-IS.md) — open it before asking the owner anything about the product's shape.** SecureAD is a GUI application; the command line only captures. That file also records what the owner has said about the **predecessor**, which is a different application with a different architecture — read that part as history, never as a design to follow here.
 
 **A question the owner has already answered is a defect in this repository, not a lapse of memory.** When he answers one, write the answer into that file in the same turn. The rest of this document is about how to work; that file is about what is being built, and neither substitutes for the other.
 

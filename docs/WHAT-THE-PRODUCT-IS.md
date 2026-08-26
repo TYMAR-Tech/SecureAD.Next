@@ -12,28 +12,35 @@ the record wins and this file is wrong.
 
 ## The shape
 
-**SecureAD is a GUI application.** The operator starts an audit, waits while it captures and
-analyses, then clicks around what it found — findings, LAPS status, objects, permissions. That
-clicking-around is the product. Everything else serves it.
+**SecureAD is a GUI application.** The owner's words, 2026-08-26: *"this whole app is a GUI, the cli
+is just to capture overnight."* The application is the product; everything else serves it.
 
 **The command line is a capture tool, not a second product.** `securead.exe` exists so a capture can
 be left running overnight without the application open. It captures; it does not analyse and it does
 not show anything. Do not propose adding analysis verbs to it.
 
-**The three phases the operator sees are capture, analysis, then reading.** They are sequential and
-they do not overlap — [`0072`](decisions/0072-analysis-and-capture-do-not-run-at-the-same-time.md)
-settles that analysis never runs while a capture does.
+**Analysis does not run while a capture does** —
+[`0072`](decisions/0072-analysis-and-capture-do-not-run-at-the-same-time.md) settles that, and is
+the only part of the operator's journey a decision record currently governs.
+
+**What the operator does after analysis finishes is not settled here.** The shell has Home, Assets
+and Domain details built, with Dashboard, Findings and LAPS as placeholders, so the screens are
+named but what they show is undrawn. Do not read the predecessor's screens as the answer.
 
 ## What the predecessor did
 
-There is an old application. It worked, the owner ran it, and it is the reason this rebuild knows
-what it is aiming at. **Its inventory and component map were archived and are deliberately not in
-this repository** — the owner keeps the old repository and consults it himself. Do not ask for it.
+**This section is history. The architecture here is different and deliberately so.** Nothing below
+is a design to follow, a requirement, or a shape this rebuild owes anything to. It is written down
+only so the owner is not asked the same questions again.
 
-What follows is what the owner has told this repository about it, written down so it is not asked
-for again. It is history, not a specification.
+There is an old application. It worked, the owner ran it, and it is why the rebuild knows what it is
+aiming at. **Its inventory and component map were archived and are deliberately not in this
+repository** — the owner keeps the old repository and consults it himself. Do not ask for it.
 
-### Analysis was a pipeline, not one pass
+### How the old application analysed
+
+`DerivedAnalysisPipeline` ran eleven named phases in a fixed order, each committing before the next
+began:
 
 `DerivedAnalysisPipeline` ran eleven named phases in a fixed order, each committing before the next
 began:
@@ -41,23 +48,23 @@ began:
 > analyze → create views → GUID map → delegation bundle matches → group expansion → control edges →
 > escalation paths → asset tier → findings → backfill finding principals → chokepoints
 
-Three properties matter for anything built here:
+Three properties of **that** application:
 
 - **Each phase was a distinct pass with its own materialised output.** Group expansion wrote a
   membership closure; control edges read that closure and wrote edges; escalation paths read those
-  edges. Dependent stages, not one pass offering every object to every rule.
+  edges.
 - **Findings ran late,** after the graph existed, so a rule could ask "is this principal Tier 0?"
   and get an answer.
 - **Each phase was independently fault-tolerant.** A failure left later phases running and the run
   ended degraded.
 
-**This differs from what is built here today.** `JudgingRun` streams the bundle once and offers each
-object to every scheduled rule. That is right for rules that read one object's attributes — which is
-all SEC-010 and SEC-011 do — and it cannot express a rule that needs group membership already
-resolved. Graph rules will need a derived stage in front of the streaming pass. That is a known
-shape, not a defect in the current design.
+**How this rebuild analyses is not settled and is not written here.** `JudgingRun` streams a bundle
+once and offers each object to every scheduled rule, which is what the two rules built so far need.
+Whether rules that span objects — anything needing group membership resolved first — are served by a
+stage in front of that pass, by a different design entirely, or by something the old application
+never had, is an open question for the owner. Do not assume the pipeline above is the answer.
 
-### Where the indexes were
+### Where the old application's indexes were
 
 The old application carried 55 indexes and roughly forty were on derived tables — data analysis
 produced, not data the directory gave. The concentration says where the pain was:
