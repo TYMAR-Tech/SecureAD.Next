@@ -1,3 +1,4 @@
+using SecureAD.Kernel;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
@@ -222,6 +223,7 @@ public sealed class JudgingEndToEndTests
             Started,
             Started,
             reports,
+            RunLog.Discarded,
             CancellationToken.None);
 
         Assert.NotEmpty(reports.Reports);
@@ -252,6 +254,7 @@ public sealed class JudgingEndToEndTests
             Started,
             Started,
             reports,
+            RunLog.Discarded,
             CancellationToken.None);
 
         Assert.Equal(3, reports.Reports[^1].ObjectsRead);
@@ -291,6 +294,7 @@ public sealed class JudgingEndToEndTests
             Started,
             Started,
             JudgingRun.NobodyIsWatching,
+            RunLog.Discarded,
             cancelled.Token));
     }
 
@@ -322,6 +326,7 @@ public sealed class JudgingEndToEndTests
                 Started,
                 Started,
                 JudgingRun.NobodyIsWatching,
+                RunLog.Discarded,
                 cancelled.Token);
         }
         catch (OperationCanceledException)
@@ -340,6 +345,7 @@ public sealed class JudgingEndToEndTests
             Started,
             Started,
             JudgingRun.NobodyIsWatching,
+            RunLog.Discarded,
             CancellationToken.None);
 
         Assert.True(judged.IsSuccess, judged.Error?.Description);

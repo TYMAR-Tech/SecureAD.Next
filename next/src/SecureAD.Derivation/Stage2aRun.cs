@@ -1,3 +1,4 @@
+using System.Globalization;
 using SecureAD.Evidence;
 using SecureAD.Kernel;
 
@@ -51,6 +52,11 @@ public static class Stage2aRun
     /// Where to report progress. Named rather than defaulted: a caller passing
     /// <see cref="Unwatched"/> has said it has no operator to tell.
     /// </param>
+    /// <param name="log">
+    /// Where the run says what it did. Required rather than defaulted, per gate 1 and
+    /// <c>docs/decisions/0088-a-run-writes-a-log.md</c> - this stage is the one whose first real
+    /// failure reached an operator as a bare SQLite message with no phase and no subject.
+    /// </param>
     /// <param name="cancellationToken">Stops the derivation.</param>
     /// <returns>What became of the run, or why it could not start.</returns>
     public static Result<DerivationRunState> Derive(
@@ -58,23 +64,28 @@ public static class Stage2aRun
         ExpansionBudget budget,
         DateTimeOffset startedUtc,
         IProgress<DerivationProgress> progress,
+        IRunLog log,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(budget);
         ArgumentNullException.ThrowIfNull(progress);
+        ArgumentNullException.ThrowIfNull(log);
 
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
         if (seal is null || string.IsNullOrWhiteSpace(seal.Hash))
         {
-            return Failure(
+            var refusal = Failure(
                 "EvidenceSealUnreadable",
                 $"There is no readable evidence seal in '{bundleDirectory}', so derived facts "
                 + "written here could not say which capture they came from. A closure that cannot "
                 + "name its evidence is consulted silently by every rule resting on it, which "
                 + "makes naming it the whole of its trustworthiness.",
                 bundleDirectory);
+
+            log.Record(DerivePhase, refusal.Error!, []);
+            return refusal;
         }
 
         var opened = BundleReader.Open(bundleDirectory);
@@ -89,7 +100,7 @@ public static class Stage2aRun
 
         using var writer = DerivationWriter.Create(bundleDirectory, seal.Hash, startedUtc);
 
-        var facts = ReadNesting(bundle, writer, progress, cancellationToken);
+        var facts = ReadNesting(bundle, writer, progress, log, cancellationToken);
 
         if (facts is null)
         {
@@ -99,10 +110,32 @@ public static class Stage2aRun
             writer.RecordPhase(ProtectedPrincipalDeriver.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
             writer.RecordPhase(LatentPrivilegeDeriver.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
 
+            log.Note(
+                DerivePhase,
+                "the pass over the evidence produced nothing, so no closure was attempted",
+                []);
+
             writer.WriteSids([], []);
             writer.Complete(DateTimeOffset.UtcNow);
             return DerivationRunState.CompletedDegraded;
         }
+
+        // What the pass found, before anything is expanded from it. These are the numbers that
+        // said the graph was the wrong shape when the scoping defect of 0087 was found.
+        log.Note(
+            DerivePhase,
+            "read the nesting",
+            [
+                new RunLogDetail("principals", facts.Principals.Count.ToString(CultureInfo.InvariantCulture)),
+                // "collected" rather than "edges", because member and memberOf describe the same
+                // relationship from both ends and the pass keeps both. The store holds each once,
+                // so this is roughly twice the row count and saying "edges" would invite the reader
+                // to compare it against nesting_edge and conclude half of them went missing.
+                new RunLogDetail("edgesCollected", facts.Edges.Count.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("unresolved", facts.UnresolvedTrustees.Count.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("collapsed", facts.CollapsedStubs.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("unscopedBuiltins", facts.Sids.UnscopedBuiltins.ToString(CultureInfo.InvariantCulture)),
+            ]);
 
         var graph = NestingGraph.Build(facts);
 
@@ -110,22 +143,32 @@ public static class Stage2aRun
             writer,
             nameof(ExpansionPhase),
             progress,
+            log,
             () => AuthorizationMembershipExpander.Expand(graph, budget, cancellationToken),
             result => result.IsComplete
                 ? DerivationPhaseOutcome.Succeeded
                 : DerivationPhaseOutcome.Degraded);
 
-        RunProtection(writer, graph, facts, closure, progress, cancellationToken);
-        RunLatent(writer, graph, closure, progress, cancellationToken);
+        RunProtection(writer, graph, facts, closure, progress, log, cancellationToken);
+        RunLatent(writer, graph, closure, progress, log, cancellationToken);
 
         WriteFacts(writer, facts);
 
         writer.Complete(DateTimeOffset.UtcNow);
 
-        return closure is null || !closure.IsComplete || facts.UnresolvedTrustees.Count > 0
+        var state = closure is null || !closure.IsComplete || facts.UnresolvedTrustees.Count > 0
             ? DerivationRunState.CompletedDegraded
             : DerivationRunState.Completed;
+
+        log.Note(DerivePhase, "finished", [new RunLogDetail("state", state.ToString())]);
+
+        return state;
     }
+
+    /// <summary>
+    /// The name the coordinator itself logs under, as against the phases it runs.
+    /// </summary>
+    private const string DerivePhase = "Derive";
 
     /// <summary>
     /// Progress for a derivation nobody is watching.
@@ -144,11 +187,13 @@ public static class Stage2aRun
         BundleReader bundle,
         DerivationWriter writer,
         IProgress<DerivationProgress> progress,
+        IRunLog log,
         CancellationToken cancellationToken)
     {
         try
         {
             long objectsRead = 0;
+            log.Note(MembershipNestingPass.PhaseName, "started", []);
             progress.Report(new DerivationProgress(MembershipNestingPass.PhaseName, 0));
 
             var counted = Counted(bundle.StreamObjects().Objects, () =>
@@ -176,6 +221,16 @@ public static class Stage2aRun
             writer.RecordPhase(
                 MembershipNestingPass.PhaseName, DerivationPhaseOutcome.Failed, error.Message);
 
+            log.Record(
+                MembershipNestingPass.PhaseName,
+                AuditError.Create(
+                    ErrorCategory.Evidence,
+                    "NestingPassFailed",
+                    ErrorSeverity.Failed,
+                    error.Message,
+                    context: null),
+                [new RunLogDetail("exception", error.GetType().Name)]);
+
             return null;
         }
     }
@@ -186,6 +241,7 @@ public static class Stage2aRun
         NestingFacts facts,
         MembershipClosure? closure,
         IProgress<DerivationProgress> progress,
+        IRunLog log,
         CancellationToken cancellationToken)
     {
         // It needs the graph and nothing else, so a failed expansion does not stop it. What a failed
@@ -200,6 +256,7 @@ public static class Stage2aRun
             writer,
             ProtectedPrincipalDeriver.PhaseName,
             progress,
+            log,
             () => ProtectedPrincipalDeriver.Derive(
                 graph, facts.Sids, ProtectedGroupCatalogue.Default, evidenceIsPartial, cancellationToken),
             _ => evidenceIsPartial
@@ -212,6 +269,7 @@ public static class Stage2aRun
         NestingGraph graph,
         MembershipClosure? closure,
         IProgress<DerivationProgress> progress,
+        IRunLog log,
         CancellationToken cancellationToken)
     {
         if (closure is null)
@@ -221,6 +279,12 @@ public static class Stage2aRun
             // latent privilege anywhere.
             writer.RecordPhase(
                 LatentPrivilegeDeriver.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
+
+            log.Note(
+                LatentPrivilegeDeriver.PhaseName,
+                "did not run: the expansion it reads had no answer to give",
+                []);
+
             return;
         }
 
@@ -228,6 +292,7 @@ public static class Stage2aRun
             writer,
             LatentPrivilegeDeriver.PhaseName,
             progress,
+            log,
             () => LatentPrivilegeDeriver.Derive(graph, closure, cancellationToken),
             _ => closure.IsComplete
                 ? DerivationPhaseOutcome.Succeeded
@@ -246,21 +311,40 @@ public static class Stage2aRun
         DerivationWriter writer,
         string phase,
         IProgress<DerivationProgress> progress,
+        IRunLog log,
         Func<T> work,
         Func<T, DerivationPhaseOutcome> outcomeOf)
         where T : class
     {
         progress.Report(new DerivationProgress(phase, 0));
+        log.Note(phase, "started", []);
 
         try
         {
             var result = work();
-            writer.RecordPhase(phase, outcomeOf(result), error: null);
+            var outcome = outcomeOf(result);
+
+            writer.RecordPhase(phase, outcome, error: null);
+            log.Note(phase, "finished", [new RunLogDetail("outcome", outcome.ToString())]);
             return result;
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
             writer.RecordPhase(phase, DerivationPhaseOutcome.Failed, error.Message);
+
+            // The type is named as well as the message. "UNIQUE constraint failed" says what the
+            // store refused; SqliteException says which layer refused it, and the two together are
+            // what turned a day of guessing into a search.
+            log.Record(
+                phase,
+                AuditError.Create(
+                    ErrorCategory.Evidence,
+                    "DerivationPhaseFailed",
+                    ErrorSeverity.Degraded,
+                    error.Message,
+                    phase),
+                [new RunLogDetail("exception", error.GetType().Name)]);
+
             return null;
         }
     }

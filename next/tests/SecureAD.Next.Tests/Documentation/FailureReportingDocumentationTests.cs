@@ -56,7 +56,7 @@ public sealed class FailureReportingDocumentationTests
     /// <summary>
     /// The two files this page claims, and the only two it may claim from.
     /// </summary>
-    private static readonly string[] SourceFiles = ["Result.cs", "AuditError.cs"];
+    private static readonly string[] SourceFiles = ["Result.cs", "AuditError.cs", "IRunLog.cs"];
 
     [Fact]
     public void TheTypesTableAndTheComponentAgree()
@@ -139,7 +139,7 @@ public sealed class FailureReportingDocumentationTests
         Assert.True(Read().Length > 1000, $"{Document} is too short to be the document it claims.");
 
         var declared = DeclaredPublicTypeNames().ToList();
-        Assert.Equal(4, declared.Count);
+        Assert.Equal(7, declared.Count);
         Assert.Contains(nameof(AuditError), declared);
         Assert.Contains("Result", declared);
 
@@ -243,7 +243,10 @@ public sealed class FailureReportingDocumentationTests
                 var words = line.Split(
                     [' ', '(', '<', '{'], StringSplitOptions.RemoveEmptyEntries);
 
-                var keyword = Array.FindIndex(
+                // The LAST keyword, not the first. "public readonly record struct RunLogDetail"
+                // carries two of them, and taking the first yields "struct" as the type name -
+                // which is how this scan first reported a type the compiler does not export.
+                var keyword = Array.FindLastIndex(
                     words, w => w is "record" or "class" or "enum" or "struct" or "interface");
 
                 if (keyword >= 0 && keyword + 1 < words.Length)

@@ -1,3 +1,4 @@
+using SecureAD.Kernel;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -36,6 +37,7 @@ public sealed class Stage2aRunTests
             ExpansionBudget.Bulk,
             Started,
             Stage2aRun.Unwatched,
+            RunLog.Discarded,
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -56,6 +58,7 @@ public sealed class Stage2aRunTests
             ExpansionBudget.Bulk,
             Started,
             Stage2aRun.Unwatched,
+            RunLog.Discarded,
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);

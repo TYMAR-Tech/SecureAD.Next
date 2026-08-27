@@ -1,3 +1,4 @@
+using System.Globalization;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
@@ -81,31 +82,44 @@ public static class JudgingRun
         DateTimeOffset startedUtc,
         DateTimeOffset evaluationAsOf,
         IProgress<JudgingProgress> progress,
+        IRunLog log,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(progress);
+        ArgumentNullException.ThrowIfNull(log);
 
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
         if (seal is null || string.IsNullOrWhiteSpace(seal.Hash))
         {
-            return Failure(
+            var refusal = Failure(
                 "EvidenceSealUnreadable",
                 $"There is no readable evidence seal in '{bundleDirectory}', so a judgement written "
                 + "here could not say which capture it was made against. A judgement that cannot "
                 + "name its evidence is not one this product will write.",
                 bundleDirectory);
+
+            log.Record(JudgePhase, refusal.Error!, []);
+            return refusal;
         }
 
         var opened = BundleReader.Open(bundleDirectory);
         if (!opened.IsSuccess)
+        {
+            log.Record(JudgePhase, opened.Error!, []);
             return Result<JudgementRunState>.Failure(opened.Error!);
+        }
 
         using var bundle = opened.Value!;
         using var writer = JudgementWriter.Create(
             bundleDirectory, seal.Hash, startedUtc, evaluationAsOf);
+
+        log.Note(
+            JudgePhase,
+            "started",
+            [new RunLogDetail("rules", rules.Count.ToString(CultureInfo.InvariantCulture))]);
 
         var tallies = rules.Select(r => new Tally(r)).ToList();
 
@@ -136,10 +150,36 @@ public static class JudgingRun
 
         writer.Complete(DateTimeOffset.UtcNow);
 
-        return tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
+        var state = tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
+
+        // A rule that could not reach a verdict is named rather than counted. Which rule stopped is
+        // the question an operator asks next, and a tally of failures does not answer it.
+        foreach (var unfinished in tallies.Where(t => t.Outcome != RuleExecutionOutcome.Succeeded))
+        {
+            log.Note(
+                JudgePhase,
+                "a rule did not reach a verdict on every object",
+                [
+                    new RunLogDetail("rule", unfinished.RuleId),
+                    new RunLogDetail("outcome", unfinished.Outcome.ToString()),
+                ]);
+        }
+
+        log.Note(
+            JudgePhase,
+            "finished",
+            [
+                new RunLogDetail("state", state.ToString()),
+                new RunLogDetail("objects", objectsRead.ToString(CultureInfo.InvariantCulture)),
+            ]);
+
+        return state;
     }
+
+    /// <summary>The name the judging coordinator logs under.</summary>
+    private const string JudgePhase = "Judge";
 
     /// <summary>
     /// Progress for a judging nobody is watching.
@@ -198,6 +238,9 @@ public static class JudgingRun
             _error is not null ? RuleExecutionOutcome.Error
             : _notJudged > 0 ? RuleExecutionOutcome.Indeterminate
             : RuleExecutionOutcome.Succeeded;
+
+        /// <summary>Which rule this is tallying, so a log line can name it.</summary>
+        public string RuleId => rule.Definition.Id;
 
         /// <summary>
         /// Offers one object to the rule, unless it has already thrown or the rule is not about

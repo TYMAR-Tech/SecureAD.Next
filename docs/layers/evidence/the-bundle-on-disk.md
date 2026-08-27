@@ -1,7 +1,7 @@
 # The bundle on disk
 
 **Code:** `next/src/SecureAD.Evidence/BundleLayout.cs`, `BundleSealing.cs`, `Run/RunStateReader.cs`,
-`Run/RunOutcomeFile.cs`
+`Run/RunOutcomeFile.cs`, `RunLogFile.cs`
 **Layer:** Evidence — the files a bundle is made of, and what their presence proves.
 
 [`what-a-bundle-holds.md`](what-a-bundle-holds.md) describes what is inside the evidence database.
@@ -25,6 +25,7 @@ build, and so does a name here and not in the code.
 | `BundleLayout` | The one owner of a bundle's file names and the paths built from them |
 | `BundleSealing` | Writes the seal over a finished bundle and verifies it again on the way in |
 | `BundleSealContents` | What a seal file holds: the algorithm, named rather than assumed, and the hash |
+| `RunLogFile` | Writes `run.log` beside the evidence: one line per note or failure, flushed as it goes |
 | `SealState` | What verifying a seal observed |
 | `SealVerdict` | One verification: the state, a sentence for the operator, and whether the bundle may be opened |
 | `RunStateReader` | Works out what became of a run by looking at the files in its directory |
@@ -62,23 +63,31 @@ gigabytes of evidence go is a tool that fills the wrong disk.
 | `DerivationSealFileName` | `derivation.db.seal` | The seal covering `derivation.db`. A third seal over a third artefact made at a third time; all three can disagree |
 | `OutcomeFileName` | `run-outcome.json` | The note a run leaves when it ends badly, saying which ending it was |
 | `PreflightFileName` | `preflight.json` | What preflight proved about each domain before any capture traffic was sent |
+| `RunLogFileName` | `run.log` | What the run said it was doing while it did it, and what went wrong. One log per bundle, appended to by the capture, then the derivation, then the judging |
 
 <!-- FILES:END -->
 
 `BundleLayout` also carries one path helper per file — `EvidencePath`, `PartialPath`, `SealPath`,
 `AnnotationsPath`, `JudgementPath`, `JudgementPartialPath`, `JudgementSealPath`, `DerivationPath`,
-`DerivationPartialPath`, `DerivationSealPath`, `OutcomePath` and `PreflightPath` — so that no caller
+`DerivationPartialPath`, `DerivationSealPath`, `OutcomePath`, `PreflightPath` and `RunLogPath` — so that no caller
 composes a bundle path by concatenation and no bundle's file names have a second owner.
 
 > `S-16` said a bundle was four files. It was written before `run-outcome.json` and `preflight.json`
 > existed and was never revisited, and the count survived because nothing counted it.
 
-**Two of the six sit outside the seal, and have to.** `run-outcome.json` and `preflight.json` are
-written by runs that have no `evidence.db` for a seal to cover — a failed run writes the first, and
-the second exists before the evidence database does. That is what makes them useful: they survive
-the unattended run that died at three in the morning, which is the case where an operator has
-nothing else to read. It is also what makes them **not evidence**, and nothing that reads either may
+**Three of them sit outside the seal, and have to.** `run-outcome.json`, `preflight.json` and
+`run.log` are written by runs that have no `evidence.db` for a seal to cover — a failed run writes
+the first, the second exists before the evidence database does, and the third is written *during*
+the run whose evidence is sealed at the end of it. That is what makes them useful: they survive the
+unattended run that died at three in the morning, which is the case where an operator has nothing
+else to read. It is also what makes them **not evidence**, and nothing that reads any of them may
 present it as proof of anything.
+
+**`run.log` is the account of a run rather than a part of it**, per
+[`0088`](../../decisions/0088-a-run-writes-a-log.md). One file per bundle, appended to by each stage
+in turn, so a bundle reads top to bottom in the order things happened. It is diagnostic: a rule
+reads the evidence and never this. It exists because a defect in the derive stage once reached an
+operator as a bare SQLite message naming no run, no phase and no subject.
 
 **`annotations.db` is separate for the opposite reason.** An acceptance written into the evidence
 would invalidate the seal that proves the evidence is unmodified, so a customer could not annotate a

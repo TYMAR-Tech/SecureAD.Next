@@ -323,7 +323,7 @@ public sealed class BundleOnDiskDocumentationTests
         Assert.Contains(nameof(BundleSealing.Verify), Mentioned());
 
         Assert.NotEmpty(TableRows("TYPES"));
-        Assert.Equal(10, DeclaredPublicTypeNames().Count());
+        Assert.Equal(11, DeclaredPublicTypeNames().Count());
 
         foreach (var file in SourceFiles)
         {
@@ -442,6 +442,7 @@ public sealed class BundleOnDiskDocumentationTests
         ["BundleSealing.cs"],
         ["Run", "RunStateReader.cs"],
         ["Run", "RunOutcomeFile.cs"],
+        ["RunLogFile.cs"],
     ];
 
     /// <summary>

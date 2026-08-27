@@ -200,6 +200,15 @@ internal static class Program
     {
         Result<DerivationRunState> derived;
 
+        // The capture wrote the first stretch of this file; this appends to it, so one bundle's
+        // log reads top to bottom whatever produced each part of it.
+        using var file = RunLogFile.Open(bundleDirectory, "deriving", TimeProvider.System)
+            is { IsSuccess: true } opened
+            ? opened.Value
+            : null;
+
+        IRunLog log = file ?? RunLog.Discarded;
+
         try
         {
             derived = Stage2aRun.Derive(
@@ -207,6 +216,7 @@ internal static class Program
                 ExpansionBudget.Bulk,
                 DateTimeOffset.UtcNow,
                 Stage2aRun.Unwatched,
+                log,
                 cancellationToken);
         }
         catch (OperationCanceledException)

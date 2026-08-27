@@ -1,4 +1,5 @@
 using SecureAD.Derivation;
+using SecureAD.Evidence;
 using SecureAD.Kernel;
 
 namespace SecureAD.Shell.Services;
@@ -65,11 +66,22 @@ internal sealed class DerivationLauncher : IDerivationLauncher
                 progress.Report(report);
             });
 
+        // The capture wrote the first stretch of this file and the judging will write the last. A
+        // log that could not be opened does not stop the derivation: the facts are worth more than
+        // the account of how they were derived.
+        using var file = RunLogFile.Open(bundleDirectory, "deriving", TimeProvider.System)
+            is { IsSuccess: true } opened
+            ? opened.Value
+            : null;
+
+        IRunLog log = file ?? RunLog.Discarded;
+
         var derived = Stage2aRun.Derive(
             bundleDirectory,
             ExpansionBudget.Bulk,
             DateTimeOffset.UtcNow,
             watched,
+            log,
             cancellationToken);
 
         return derived.IsSuccess

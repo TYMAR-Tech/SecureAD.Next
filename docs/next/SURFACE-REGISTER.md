@@ -63,6 +63,9 @@ The table below sits between the two markers around it, so the test parses only 
 | AuditError | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
 | ErrorCategory | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
 | ErrorSeverity | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
+| IRunLog | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
+| RunLog | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
+| RunLogDetail | SecureAD.Kernel | [how-failure-is-reported](../layers/kernel/how-failure-is-reported.md) |
 | SecurityDescriptorParser | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | ParsedSecurityDescriptor | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | ParsedAce | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
@@ -198,6 +201,7 @@ The table below sits between the two markers around it, so the test parses only 
 | DirectoryTimeFormat | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | GroupTypeWording | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | BundleLayout | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| RunLogFile | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | BundleSchema | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleWriter | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleObjects | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |

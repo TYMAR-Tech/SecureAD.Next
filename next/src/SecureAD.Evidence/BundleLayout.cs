@@ -180,10 +180,38 @@ public static class BundleLayout
     /// </remarks>
     public const string PreflightFileName = "preflight.json";
 
+    /// <summary>
+    /// What the run said it was doing while it did it, and what went wrong.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One log for the whole run, appended to by the capture, then the derivation, then the judging,
+    /// so a bundle reads top to bottom in the order things happened. Per
+    /// <c>docs/decisions/0088-a-run-writes-a-log.md</c>, which exists because a defect in the derive
+    /// stage reached an operator as a bare SQLite message with no run, no phase and no subject.
+    /// </para>
+    /// <para>
+    /// Like <see cref="OutcomeFileName"/> and <see cref="PreflightFileName"/> it sits outside the
+    /// seal, and cannot do otherwise: it is written <i>during</i> the run whose evidence is sealed
+    /// at the end. It is diagnostic and not evidence, and nothing may present it as proof of
+    /// anything - a rule reads the evidence, never this.
+    /// </para>
+    /// <para>
+    /// It is kept when a run dies before sealing, which is the unattended case and the one where it
+    /// is worth most.
+    /// </para>
+    /// </remarks>
+    public const string RunLogFileName = "run.log";
+
     /// <summary>The evidence database of a finished bundle in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string EvidencePath(string bundleDirectory) =>
         Combine(bundleDirectory, EvidenceFileName);
+
+    /// <summary>The run's log in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string RunLogPath(string bundleDirectory) =>
+        Combine(bundleDirectory, RunLogFileName);
 
     /// <summary>The evidence database of a run in progress in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>

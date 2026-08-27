@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using SecureAD.Audit.Capture;
 using SecureAD.Audit.Sysvol;
@@ -337,6 +338,35 @@ public sealed class CaptureSession
         // which controller served each domain and how well protected the connection to it was.
         PreflightFile.Write(directory.Value!, report, _time.GetUtcNow());
 
+        // THE LOG IS OPENED HERE RATHER THAN TAKEN AS AN ARGUMENT, and the reason is the line above
+        // it: until CreateRun there is no directory to write beside, so no caller could have opened
+        // one. Deriving and judging take an IRunLog because they are handed a bundle that already
+        // exists; capture is the stage that makes it, so capture owns the log.
+        //
+        // What that costs is real and worth stating: every refusal above this point - a forest that
+        // could not be found, a domain nobody attested for, a controller that refused every rung -
+        // is returned to the caller and never reaches a file. Those are the failures where no
+        // bundle exists at all, so run-outcome.json is what speaks for them, per 0029.
+        using var file = RunLogFile.Open(directory.Value!, "capture", _time) is { IsSuccess: true } opened
+            ? opened.Value
+            : null;
+
+        // A log that could not be opened does not stop a capture. Losing the account of a run is
+        // not a reason to lose the run, which is hours against a directory that has moved on since.
+        IRunLog log = file ?? RunLog.Discarded;
+
+        log.Note(
+            CapturePhase,
+            "started",
+            [
+                new RunLogDetail("forest", report.Plan.ForestFqdn),
+                new RunLogDetail(
+                    "domains",
+                    report.Plan.Units.Count(u => u.Kind == NamingContextKind.Domain)
+                        .ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("excluded", exclusions.Count.ToString(CultureInfo.InvariantCulture)),
+            ]);
+
         var connections = new LdapDirectoryChannelFactory(_settings, new ConnectionSecurityLog());
 
         // The share is read with the token the run already holds. There is no alternate-credential
@@ -351,12 +381,31 @@ public sealed class CaptureSession
         //
         // Coverage still measures against every domain the forest declared, so what this produces
         // is a bundle that reports the domain as not read rather than one that quietly omits it.
-        return await run
+        var captured = await run
             .RunAsync(
                 report.Plan.Excluding(exclusions.Keys),
                 directory.Value!,
                 exclusions,
                 cancellationToken)
             .ConfigureAwait(false);
+
+        // A capture that ended badly carries its own error rather than returning a failure, so the
+        // log reads it off the result. Both endings are written: a run that sealed nothing is the
+        // case an operator most needs an account of.
+        if (captured.Error is { } failure)
+            log.Record(CapturePhase, failure, [new RunLogDetail("bundle", captured.BundleDirectory)]);
+        else
+            log.Note(
+                CapturePhase,
+                "finished",
+                [
+                    new RunLogDetail("outcome", captured.Outcome.ToString()),
+                    new RunLogDetail("bundle", captured.BundleDirectory),
+                ]);
+
+        return captured;
     }
+
+    /// <summary>The name the capture coordinator logs under.</summary>
+    private const string CapturePhase = "Capture";
 }

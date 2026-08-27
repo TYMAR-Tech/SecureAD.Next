@@ -1,6 +1,6 @@
 # How a failure is reported
 
-**Code:** `next/src/SecureAD.Kernel/Result.cs`, `AuditError.cs`
+**Code:** `next/src/SecureAD.Kernel/Result.cs`, `AuditError.cs`, `IRunLog.cs`
 **Layer:** Kernel — how an operation says it did not succeed, and what stops that being optional.
 
 This is the mechanism behind the product's oldest rule: *found nothing* and *could not compute* must
@@ -26,6 +26,9 @@ build, and so does a row here naming one that does not exist.
 | `AuditError` | A structured failure — its category, its stable code, how much it matters, what went wrong and what it was about |
 | `ErrorCategory` | Which subsystem the failure came from |
 | `ErrorSeverity` | Whether a result survived the failure |
+| `IRunLog` | Where a run says what it is doing, and what went wrong while it did |
+| `RunLog` | The logs a caller can choose when it has nowhere to write |
+| `RunLogDetail` | One named value on a log line, so the quoting rule has a single owner |
 
 <!-- TYPES:END -->
 

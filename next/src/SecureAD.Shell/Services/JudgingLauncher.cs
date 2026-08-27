@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
@@ -52,12 +53,18 @@ internal sealed class JudgingLauncher : IJudgingLauncher
         IProgress<JudgingRun.JudgingProgress> progress,
         CancellationToken cancellationToken)
     {
+        using var file = RunLogFile.Open(bundleDirectory, "judging", TimeProvider.System)
+            is { IsSuccess: true } log
+            ? log.Value
+            : null;
+
         var judged = JudgingRun.Judge(
             bundleDirectory,
             RuleCatalogue.All,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             progress,
+            file ?? RunLog.Discarded,
             cancellationToken);
 
         if (!judged.IsSuccess)
