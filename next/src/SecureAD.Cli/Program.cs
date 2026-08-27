@@ -1,12 +1,14 @@
 using System.Collections.Immutable;
 using SecureAD.Audit.Connect;
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
 
 namespace SecureAD.Cli;
 
 /// <summary>
-/// The command that starts a capture.
+/// The command that starts a capture, and derives from what it seals.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -162,8 +164,85 @@ internal static class Program
         }
 
         Console.Out.WriteLine("Sealed: " + run.Value.BundleDirectory);
+
+        return Derive(run.Value.BundleDirectory, cancellationToken);
+    }
+
+    /// <summary>
+    /// Derives facts about more than one object from the bundle the run has just sealed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Deriving follows a capture here for the same reason it does in the window.</b> The
+    /// decision to audit was the decision to derive, and a scheduled run that sealed evidence and
+    /// left the closures for somebody to ask for later would need somebody to remember asking.
+    /// </para>
+    /// <para>
+    /// <b>A derivation that could not be done does not fail the run.</b> The bundle is sealed and
+    /// that is what the capture was for - it read a forest that has moved on since, and it cannot be
+    /// had again. Deriving can be done again from the same bundle whenever the defect is fixed, so
+    /// reporting a non-zero exit here would tell a scheduler to alarm about work that is safe.
+    /// What went wrong is printed, because a limit nobody is told about is a limit nobody acts on.
+    /// </para>
+    /// <para>
+    /// <b>Nothing watches the progress.</b> <see cref="Stage2aRun.Unwatched"/> is passed rather than
+    /// a reporter writing lines, because a scheduled run has no operator to tell and a log filling
+    /// with counts nobody reads is what the predecessor's progress reporting became.
+    /// </para>
+    /// <para>
+    /// <b>Cancelling is absorbed here rather than left to reach <c>Main</c>.</b> Main reports a
+    /// cancelled run as one that produced no bundle, and by this point that is false - the evidence
+    /// is sealed. The exit code is still the one for an interrupt, so a scheduler can tell a
+    /// stopped run from a finished one.
+    /// </para>
+    /// </remarks>
+    private static int Derive(string bundleDirectory, CancellationToken cancellationToken)
+    {
+        Result<DerivationRunState> derived;
+
+        try
+        {
+            derived = Stage2aRun.Derive(
+                bundleDirectory,
+                ExpansionBudget.Bulk,
+                DateTimeOffset.UtcNow,
+                Stage2aRun.Unwatched,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Absorbed here rather than left to reach Main. Main reports a cancelled run as one
+            // that produced no bundle, which was true while this command only captured and is not
+            // true now: by this point the evidence is sealed. An operator told his bundle does not
+            // exist would capture the forest a second time for nothing.
+            Console.Error.WriteLine(
+                "Stopped while deriving. The evidence is sealed and safe at "
+                + bundleDirectory
+                + ". Nothing was derived from it.");
+
+            return Cancelled;
+        }
+
+        if (!derived.IsSuccess)
+        {
+            Console.Error.WriteLine(
+                "The evidence is sealed and safe. Nothing could be derived from it: "
+                + derived.Error!.Description);
+
+            return Success;
+        }
+
+        Console.Out.WriteLine(derived.Value switch
+        {
+            DerivationRunState.CompletedDegraded =>
+                "Derived, and at least one part could not be completed. What was derived says "
+                + "which, and anything resting on it is not working from the whole picture.",
+            _ => "Derived: " + BundleLayout.DerivationPath(bundleDirectory),
+        });
+
         return Success;
     }
+
     /// <summary>
     /// Says what preflight found out about every domain, then whether the run would proceed.
     /// </summary>

@@ -1,3 +1,4 @@
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
@@ -540,6 +541,11 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
     /// <summary>Whether the judging observes cancellation, for the stop case.</summary>
     public bool Cancels { get; set; }
 
+    /// <summary>
+    /// A defect to throw rather than a refusal to return. See <see cref="FakeDerivationLauncher.Throws"/>.
+    /// </summary>
+    public Exception? Throws { get; set; }
+
     /// <summary>The bundle it was asked to judge, or null where it was never asked.</summary>
     public string? AskedFor { get; private set; }
 
@@ -549,6 +555,16 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
     /// <summary>Progress to report before answering, so a watching screen can be observed.</summary>
     public IReadOnlyList<long> Reports { get; set; } = [];
 
+    /// <summary>
+    /// Where each phase writes its name as it runs, so a test can prove the order they ran in.
+    /// </summary>
+    /// <remarks>
+    /// Shared with <see cref="FakeDerivationLauncher"/> by handing both the same list. Order matters
+    /// here and nowhere else in these fakes: a judging that ran before the derivation would rest on
+    /// facts that had not been written yet, and neither fake can notice that on its own.
+    /// </remarks>
+    public IList<string> Order { get; set; } = [];
+
     public Task<Result<JudgingOutcome>> RunAsync(
         string bundleDirectory,
         IProgress<JudgingRun.JudgingProgress> progress,
@@ -556,6 +572,7 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
     {
         AskedFor = bundleDirectory;
         WasRun = true;
+        Order.Add("judging");
 
         foreach (var read in Reports)
             progress.Report(new JudgingRun.JudgingProgress(read));
@@ -563,8 +580,74 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
         if (Cancels)
             throw new OperationCanceledException();
 
+        if (Throws is { } defect)
+            throw defect;
+
         return Task.FromResult(Fails is { } error
             ? Result<JudgingOutcome>.Failure(error)
             : Result<JudgingOutcome>.Success(Outcome));
+    }
+}
+
+/// <summary>
+/// A stand-in for deriving, so the window can be shown a derivation that completed, was degraded or
+/// could not be done at all, without a bundle on disk or a forest's worth of nesting to expand.
+/// </summary>
+internal sealed class FakeDerivationLauncher : IDerivationLauncher
+{
+    /// <summary>What a derivation concludes. Completed, unless a test says otherwise.</summary>
+    public DerivingOutcome Outcome { get; set; } =
+        new(DerivationRunState.Completed, ObjectsRead: 0);
+
+    /// <summary>Why the derivation could not be done, when a test wants that.</summary>
+    public AuditError? Fails { get; set; }
+
+    /// <summary>Whether the derivation observes cancellation, for the stop case.</summary>
+    public bool Cancels { get; set; }
+
+    /// <summary>
+    /// A defect to throw rather than a refusal to return, for the case where deriving fails in a
+    /// way nobody anticipated.
+    /// </summary>
+    /// <remarks>
+    /// Held apart from <see cref="Fails"/> because they are different events. A refusal is the
+    /// derivation saying why it cannot proceed; a throw is a defect, and the two reach the window
+    /// down different paths.
+    /// </remarks>
+    public Exception? Throws { get; set; }
+
+    /// <summary>The bundle it was asked to derive from, or null where it was never asked.</summary>
+    public string? AskedFor { get; private set; }
+
+    /// <summary>Whether deriving was run at all, so a test can prove it was not.</summary>
+    public bool WasRun { get; private set; }
+
+    /// <summary>Progress to report before answering, so a watching screen can be observed.</summary>
+    public IReadOnlyList<long> Reports { get; set; } = [];
+
+    /// <summary>Where each phase writes its name as it runs. See <see cref="FakeJudgingLauncher.Order"/>.</summary>
+    public IList<string> Order { get; set; } = [];
+
+    public Task<Result<DerivingOutcome>> RunAsync(
+        string bundleDirectory,
+        IProgress<DerivationProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        AskedFor = bundleDirectory;
+        WasRun = true;
+        Order.Add("deriving");
+
+        foreach (var read in Reports)
+            progress.Report(new DerivationProgress("Fake", read));
+
+        if (Cancels)
+            throw new OperationCanceledException();
+
+        if (Throws is { } defect)
+            throw defect;
+
+        return Task.FromResult(Fails is { } error
+            ? Result<DerivingOutcome>.Failure(error)
+            : Result<DerivingOutcome>.Success(Outcome));
     }
 }

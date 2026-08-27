@@ -3,7 +3,8 @@
 **Code:** `next/src/SecureAD.Shell/ViewModels/NewAuditViewModel.cs`, `AuditRowViewModel.cs`,
 `ExcludedDomainViewModel.cs`, `ExclusionAttestationViewModel.cs`, `DomainDetailsViewModel.cs`,
 `next/src/SecureAD.Shell/Services/AuditPlan.cs`, `AuditReview.cs`, `ExclusionAttestation.cs`,
-`INewAuditDialog.cs`, `NewAuditDialog.cs`, `IJudgingLauncher.cs`, `JudgingLauncher.cs`
+`INewAuditDialog.cs`, `NewAuditDialog.cs`, `IJudgingLauncher.cs`, `JudgingLauncher.cs`,
+`IDerivationLauncher.cs`, `DerivationLauncher.cs`
 **Layer:** Shell — the screen an operator starts an audit from: what it discovers, what it asks,
 what it refuses, and what it commits to.
 
@@ -52,6 +53,9 @@ describes `Audit`. Where the run library is chosen is [`the home screen`](the-ho
 | `IJudgingLauncher` | Judging a sealed bundle, from a window |
 | `JudgingLauncher` | Judges a bundle by driving `JudgingRun`, off the interface thread |
 | `JudgingOutcome` | What a judging produced, in the shell's own words |
+| `IDerivationLauncher` | Deriving from a sealed bundle, from a window |
+| `DerivationLauncher` | Derives from a bundle by driving `Stage2aRun`, off the interface thread |
+| `DerivingOutcome` | What a derivation produced, in the shell's own words |
 
 <!-- TYPES:END -->
 
@@ -140,9 +144,37 @@ by accident is a screen that will.
 
 ---
 
+## Deriving follows the capture, and precedes the judging
+
+Once a capture has sealed evidence, the window derives from it before any rule reads it. The shape is
+the judging's, for the same reason and on the same date: **the decision to audit was the decision to
+derive.** There is no control to press.
+
+**The order is the whole of why it is wired in at all.** What deriving produces are facts about more
+than one object — who is really in a group, whose account the protection process manages, which
+arrangement is one flag away from being privileged. A judging that ran first would find nothing
+written and reach its verdicts from an empty set, and an empty set that should have held a closure
+reads as a clean result.
+
+**A derivation that could not be done does not stop the judging.** Every rule that exists today reads
+one object and needs nothing derived, so withholding findings that do not depend on a closure would
+cost the operator the whole judging to punish a stage none of it used. What went wrong is reported
+and the evidence is still offered, because the facts can be derived again from the same bundle.
+
+**A degraded derivation says so.** A closure that was cut short by a budget looks exactly like a
+closure that found nothing, and every rule resting on it would inherit that difference without being
+told. See [what stage 2a derives](../derivation/what-stage-2a-derives.md) for what the budgets are
+and why the outermost groups are the ones that go unanswered.
+
+**`ExpansionBudget.Bulk` is what a whole-bundle derivation runs under.** The launcher chooses no
+budget of its own; one that did would be a second opinion about how much of a forest is worth
+answering for.
+
+---
+
 ## Judging follows the capture without being asked for
 
-Once a capture has sealed evidence, the window judges it. There is no second button and no second
+Once a capture has sealed evidence, the window judges it.
 prompt: **the decision to audit was the decision to judge** — the owner's shape, 2026-08-26. An
 operator who has waited hours for a capture should not return to a control he has to press and
 another wait he never agreed to.
@@ -184,6 +216,13 @@ judging, which is neither what that record says nor what it protects.
 | be certain a judging that could not finish every rule says so | `NewAuditViewModelTests.AJudgingThatCouldNotFinishEveryRuleSaysSo` |  |
 | still be offered evidence when the judging could not be done | `NewAuditViewModelTests.EvidenceIsStillOfferedWhenTheJudgingCouldNotBeDone` |  |
 | see how far the judging has got | `NewAuditViewModelTests.HowFarTheJudgingHasGotIsShown` |  |
+| have sealed evidence derived from without asking for it | `NewAuditViewModelTests.EvidenceThatWasSealedIsDerivedFromWithoutBeingAskedFor` |  |
+| be certain a run that sealed nothing is not derived from | `NewAuditViewModelTests.ARunThatSealedNothingIsNotDerivedFrom` |  |
+| be certain deriving happens before judging | `NewAuditViewModelTests.DerivingHappensBeforeJudging` |  |
+| see what the derivation produced | `NewAuditViewModelTests.WhatTheDerivationProducedIsReported` |  |
+| be certain a derivation that could not be completed says so | `NewAuditViewModelTests.ADerivationThatCouldNotBeCompletedSaysSo` |  |
+| still have the evidence judged when the derivation could not be done | `NewAuditViewModelTests.ADerivationThatCouldNotBeDoneDoesNotStopTheJudging` |  |
+| still be offered evidence when the derivation could not be done | `NewAuditViewModelTests.EvidenceIsStillOfferedWhenTheDerivationCouldNotBeDone` |  |
 | have the window work the whole thing out on opening, without a press | `NewAuditViewModelTests.OpeningTheWindowWorksTheWholeThingOutWithoutAPress` |  |
 | be certain opening the window is never one click from a capture | `NewAuditViewModelTests.OpeningTheWindowIsNeverOneClickFromACapture` |  |
 | stop the pass the window began | `NewAuditViewModelTests.ThePassTheWindowBeganCanBeStopped` |  |

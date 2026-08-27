@@ -1,3 +1,4 @@
+using SecureAD.Derivation;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Shell.Services;
@@ -24,7 +25,18 @@ public sealed class NewAuditViewModelTests
     private readonly FakeCaptureLauncher _capture = new();
     private readonly FakeNewAuditDialog _dialogs = new();
     private readonly FakeRunOpener _opener = new();
+    private readonly FakeDerivationLauncher _deriving = new();
     private readonly FakeJudgingLauncher _judging = new();
+
+    /// <summary>
+    /// Where the derivation and the judging record that they ran, in the order they ran.
+    /// </summary>
+    /// <remarks>
+    /// Handed to both fakes so the order between them can be asserted. Neither can observe the
+    /// other, and the order is the thing worth holding: a judging that ran first would be resting on
+    /// facts that had not been derived yet.
+    /// </remarks>
+    private readonly List<string> _order = [];
 
     /// <summary>
     /// The refusal that must survive the trip to a window. <c>ControllerSelection</c> refuses a
@@ -224,6 +236,178 @@ public sealed class NewAuditViewModelTests
         await screen.StartAsync();
 
         Assert.False(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// A capture that sealed evidence is derived from without being asked for.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same shape judging has, and for the same reason</b> - the owner's shape, 2026-08-26.
+    /// The decision to audit was the decision to derive, so there is no second button and no second
+    /// wait the operator never agreed to.
+    /// </remarks>
+    [Fact]
+    public async Task EvidenceThatWasSealedIsDerivedFromWithoutBeingAskedFor()
+    {
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(@"D:\audits\run", _deriving.AskedFor);
+    }
+
+    /// <summary>
+    /// A run that sealed nothing is not derived from.
+    /// </summary>
+    /// <remarks>
+    /// There is no evidence to read the nesting out of, so a derivation would be opening a directory
+    /// that holds an account of why the run stopped and nothing else.
+    /// </remarks>
+    [Fact]
+    public async Task ARunThatSealedNothingIsNotDerivedFrom()
+    {
+        _capture.Outcome = new CaptureOutcome(ProducedABundle: false, @"D:\audits\run");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.False(_deriving.WasRun);
+    }
+
+    /// <summary>
+    /// Deriving happens before judging.
+    /// </summary>
+    /// <remarks>
+    /// <b>The order is the whole of why this is wired in at all.</b> What deriving produces are
+    /// facts about more than one object, which is what a rule reading a group's membership will
+    /// rest on. A judging that ran first would find nothing written and would reach its verdicts
+    /// from an empty set - and an empty set that should have held a closure reads as a clean
+    /// result, which is the failure the derive stage exists to prevent.
+    /// </remarks>
+    [Fact]
+    public async Task DerivingHappensBeforeJudging()
+    {
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(["deriving", "judging"], _order);
+    }
+
+    /// <summary>
+    /// What the derivation produced is put in front of the operator.
+    /// </summary>
+    [Fact]
+    public async Task WhatTheDerivationProducedIsReported()
+    {
+        _deriving.Outcome = new DerivingOutcome(DerivationRunState.Completed, ObjectsRead: 4_795);
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("4,795", screen.DerivationReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A derivation where a part could not be completed says so rather than reporting a whole one.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same thing an audit tool cannot do, one stage earlier.</b> A closure that was cut
+    /// short looks exactly like a closure that found nothing, and every rule resting on it inherits
+    /// the difference without being told about it.
+    /// </remarks>
+    [Fact]
+    public async Task ADerivationThatCouldNotBeCompletedSaysSo()
+    {
+        _deriving.Outcome = new DerivingOutcome(
+            DerivationRunState.CompletedDegraded,
+            ObjectsRead: 100);
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("not working from the whole picture", screen.DerivationReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A derivation that could not be done does not stop the judging.
+    /// </summary>
+    /// <remarks>
+    /// <b>Every rule that exists today reads one object and needs nothing derived.</b> Withholding
+    /// findings that do not depend on a closure because the closure could not be built would cost
+    /// the operator the whole judging to punish a stage none of it used.
+    /// </remarks>
+    [Fact]
+    public async Task ADerivationThatCouldNotBeDoneDoesNotStopTheJudging()
+    {
+        _deriving.Fails = Failures.Any("The derivation store could not be written.");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.True(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// Evidence that was sealed is still offered when the derivation could not be done.
+    /// </summary>
+    /// <remarks>
+    /// <b>The evidence is the thing that cannot be got back.</b> The facts can be derived from it
+    /// again whenever the defect is fixed, so the run is not thrown away over a stage that can be
+    /// repeated for nothing.
+    /// </remarks>
+    [Fact]
+    public async Task EvidenceIsStillOfferedWhenTheDerivationCouldNotBeDone()
+    {
+        _deriving.Fails = Failures.Any("The derivation store could not be written.");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal("View results", screen.LeaveLabel);
+        Assert.Contains("sealed and is safe", screen.DerivationReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A defect in deriving does not stop the judging.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the shape of the first fault the wiring produced.</b> Deriving threw a SQLite
+    /// constraint violation on a real forest, and because it was awaited inside the run's own try
+    /// it skipped the judging and was reported as a run that failed. The findings never depended on
+    /// the closures, so a defect in the newest stage took down the part that was working.
+    /// </remarks>
+    [Fact]
+    public async Task ADefectInDerivingDoesNotStopTheJudging()
+    {
+        _deriving.Throws = new InvalidOperationException("UNIQUE constraint failed.");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.True(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// A defect after the seal does not tell the operator his evidence does not exist.
+    /// </summary>
+    /// <remarks>
+    /// <b>The run's catch-all speaks for a capture, and it is no longer the only thing in the
+    /// try.</b> An operator told no bundle was sealed would capture the forest a second time -
+    /// hours, against a directory that has moved on - to replace evidence he already had.
+    /// </remarks>
+    [Fact]
+    public async Task ADefectAfterTheSealDoesNotClaimNoBundleWasSealed()
+    {
+        _judging.Throws = new InvalidOperationException("The judgement store fell over.");
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.DoesNotContain("No bundle was sealed", screen.Report, StringComparison.Ordinal);
+        Assert.Contains(@"D:\audits\run", screen.Report, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1768,6 +1952,9 @@ public sealed class NewAuditViewModelTests
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
-        return new NewAuditViewModel(location, _capture, _dialogs, _opener, _judging);
+        _deriving.Order = _order;
+        _judging.Order = _order;
+
+        return new NewAuditViewModel(location, _capture, _dialogs, _opener, _deriving, _judging);
     }
 }

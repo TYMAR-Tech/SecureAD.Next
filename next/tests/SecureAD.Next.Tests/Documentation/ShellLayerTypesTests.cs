@@ -83,6 +83,8 @@ public sealed class ShellLayerTypesTests
         "Services/NewAuditDialog.cs",
         "Services/IJudgingLauncher.cs",
         "Services/JudgingLauncher.cs",
+        "Services/IDerivationLauncher.cs",
+        "Services/DerivationLauncher.cs",
     ];
 
     /// <summary>
@@ -223,7 +225,7 @@ public sealed class ShellLayerTypesTests
     [Fact]
     public void TheCheckReadsBothDocumentsAndBothComponents()
     {
-        Assert.Equal(27, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(30, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(29, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
 

@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SecureAD.Kernel\SecureAD.Kernel.csproj" />
     <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+    <ProjectReference Include="..\SecureAD.Derivation\SecureAD.Derivation.csproj" />
     <ProjectReference Include="..\SecureAD.Audit\SecureAD.Audit.csproj" />
   </ItemGroup>
 

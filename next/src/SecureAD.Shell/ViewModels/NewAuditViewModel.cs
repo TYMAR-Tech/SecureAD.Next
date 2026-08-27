@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SecureAD.Derivation;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
@@ -637,6 +638,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// drift apart. It is only ever asked once a run has sealed evidence.
     /// </remarks>
     private readonly IRunOpener _opener;
+    private readonly IDerivationLauncher _deriving;
     private readonly IJudgingLauncher _judging;
 
     private CancellationTokenSource? _stopping;
@@ -649,6 +651,24 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isCapturing;
+
+    /// <summary>Whether facts are being derived, which follows the capture and precedes judging.</summary>
+    /// <remarks>
+    /// Held apart from <see cref="IsJudging"/> for the same reason that is held apart from
+    /// <see cref="IsCapturing"/>: they are different phases with different words on screen, and an
+    /// operator watching a derivation expand a forest's nesting is not watching rules reach
+    /// verdicts.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _isDeriving;
+
+    /// <summary>How many objects the derivation's pass over the evidence has read so far.</summary>
+    [ObservableProperty]
+    private long _objectsDerived;
+
+    /// <summary>What the derivation has to say, or null before one has run.</summary>
+    [ObservableProperty]
+    private string? _derivationReport;
 
     /// <summary>Whether the evidence is being judged, which follows the capture.</summary>
     /// <remarks>
@@ -725,24 +745,31 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// How this window puts something in front of the operator and waits for him. Taken as a seam
     /// so a refusal can be proved without a person present to dismiss one.
     /// </param>
+    /// <param name="deriving">
+    /// How facts about more than one object are derived from the sealed evidence, before any rule
+    /// reads it.
+    /// </param>
     /// <param name="judging">How the sealed evidence is judged once the capture has produced it.</param>
     public NewAuditViewModel(
         RunLibraryLocation location,
         ICaptureLauncher capture,
         INewAuditDialog dialogs,
         IRunOpener opener,
+        IDerivationLauncher deriving,
         IJudgingLauncher judging)
     {
         ArgumentNullException.ThrowIfNull(location);
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(dialogs);
         ArgumentNullException.ThrowIfNull(opener);
+        ArgumentNullException.ThrowIfNull(deriving);
         ArgumentNullException.ThrowIfNull(judging);
 
         Location = location;
         _capture = capture;
         _dialogs = dialogs;
         _opener = opener;
+        _deriving = deriving;
         _judging = judging;
     }
 
@@ -1580,12 +1607,22 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 ? outcome.Value.BundleDirectory
                 : null;
 
-            // Judging follows a capture without being asked for - the owner's shape, 2026-08-26.
-            // The decision to audit was the decision to judge, so there is no second prompt and no
-            // control to press. Only sealed evidence is judged: a run that sealed nothing has
-            // nothing for a rule to read.
+            // Deriving and judging both follow a capture without being asked for - the owner's
+            // shape, 2026-08-26. The decision to audit was the decision to do both, so there is no
+            // second prompt and no control to press. Only sealed evidence is read: a run that
+            // sealed nothing has nothing for a closure or a rule to read.
+            //
+            // Deriving goes first. What it produces are facts about more than one object, which is
+            // what a rule reading a group's membership will rest on - so a judging that ran before
+            // it would rest on nothing.
             if (BundleDirectory is { } sealedEvidence)
+            {
+                // Each is asked to absorb its own defects. Deriving that threw its way out of here
+                // would skip the judging entirely and land in the catch below, which speaks for a
+                // capture and would say no bundle was sealed - by this point one has been.
+                await DeriveAsync(sealedEvidence, _stopping.Token).ConfigureAwait(true);
                 await JudgeAsync(sealedEvidence, _stopping.Token).ConfigureAwait(true);
+            }
 
             HasFinished = true;
         }
@@ -1603,10 +1640,19 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             // Nothing is swallowed. The exception's own words are put in front of him and left on
             // the screen, because a window that quietly returned to idle after a failed run would
             // be worse than the crash - he would not know the run had not happened.
+            //
+            // WHAT BECAME OF THE EVIDENCE IS READ RATHER THAN ASSUMED. This said "No bundle was
+            // sealed" outright, which was true while a capture was the only thing inside this try.
+            // It is not true of a fault after the seal, and an operator told his evidence does not
+            // exist would capture the forest again for nothing - hours, against a directory that has
+            // moved on.
             Report =
                 $"The run stopped on an error the product did not expect: {failure.Message}\n\n"
-                + "No bundle was sealed. This is a defect rather than something you did, and the "
-                + "message above is what to report.";
+                + (BundleDirectory is { } sealedEvidence
+                    ? $"The evidence was sealed and is safe at {sealedEvidence}. "
+                    : "No bundle was sealed. ")
+                + "This is a defect rather than something you did, and the message above is what "
+                + "to report.";
 
             Notice = new Notice("The run could not finish", Report!);
         }
@@ -1615,6 +1661,92 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             IsCapturing = false;
         }
     }
+
+    /// <summary>
+    /// Derives facts from the evidence the capture just sealed, reporting progress as it goes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A derivation that fails does not fail the run, and does not stop the judging.</b> The
+    /// evidence is sealed and on disk either way, and every rule that exists today reads one object
+    /// and needs nothing derived. Refusing to judge because a closure could not be built would
+    /// withhold findings that do not depend on it.
+    /// </para>
+    /// <para>
+    /// <b>A degraded derivation is reported rather than passed over.</b> Deriving writes a store
+    /// saying what went wrong, and an operator told only that it finished would read a partial
+    /// closure as a whole one - which is the failure the whole derive stage is shaped around.
+    /// </para>
+    /// <para>
+    /// <b>Cancelling is allowed to reach the caller.</b> Stopping during a derivation stops the
+    /// audit, which is what an operator pressing Cancel means, and <c>StartAsync</c> already says
+    /// what became of a run that stopped.
+    /// </para>
+    /// </remarks>
+    private async Task DeriveAsync(string bundleDirectory, CancellationToken cancellationToken)
+    {
+        IsDeriving = true;
+        DerivationReport = "Deriving from the evidence. Nothing is read from the directory now.";
+
+        try
+        {
+            var derived = await _deriving
+                .RunAsync(bundleDirectory, new Progress<DerivationProgress>(OnDerived), cancellationToken)
+                .ConfigureAwait(true);
+
+            if (!derived.IsSuccess)
+            {
+                DerivationReport =
+                    $"The evidence was sealed and is safe. Nothing could be derived from it: "
+                    + $"{derived.Error!.Description} The facts can be derived again from this "
+                    + "bundle without capturing the forest a second time.";
+                return;
+            }
+
+            DerivationReport = Describe(derived.Value);
+        }
+        catch (Exception failure) when (failure is not OperationCanceledException)
+        {
+            // A defect in deriving costs the derivation and nothing else. Left to escape, it would
+            // skip the judging and be reported as a run that failed - so a fault in the newest and
+            // least-exercised stage would take the findings down with it, and the findings do not
+            // depend on it. Cancelling is excluded deliberately: stopping means stopping the audit,
+            // not carrying on to judge.
+            DerivationReport =
+                $"The evidence was sealed and is safe. Deriving stopped on an error the product "
+                + $"did not expect: {failure.Message} This is a defect rather than something you "
+                + "did. The judging below ran regardless, and the facts can be derived again from "
+                + "this bundle once the defect is fixed.";
+        }
+        finally
+        {
+            IsDeriving = false;
+        }
+    }
+
+    /// <summary>Notes how far the derivation has got, for the screen watching it.</summary>
+    private void OnDerived(DerivationProgress progress) =>
+        ObjectsDerived = progress.ObjectsRead;
+
+    /// <summary>
+    /// What a finished derivation produced, in the words the completion screen uses.
+    /// </summary>
+    /// <remarks>
+    /// <b>A degraded derivation says so rather than reporting its facts as if they were all of
+    /// them.</b> A closure that could not be completed has established less than a complete one, and
+    /// wording that omits what it missed reads as a clean result.
+    /// </remarks>
+    private static string Describe(DerivingOutcome derived) => derived.State switch
+    {
+        DerivationRunState.Completed =>
+            $"Derived from {derived.ObjectsRead:N0} objects. Every closure was completed.",
+        DerivationRunState.CompletedDegraded =>
+            $"Derived from {derived.ObjectsRead:N0} objects, and at least one part could not be "
+            + "completed. What was derived says which, and rules resting on it are not working from "
+            + "the whole picture.",
+        _ =>
+            "Nothing was derived. The evidence is sealed and can be derived from again.",
+    };
 
     /// <summary>
     /// Judges the evidence the capture just sealed, reporting progress as it goes.
