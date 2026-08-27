@@ -113,11 +113,19 @@ reached a person. The first attempt crashed on an invented resource key; `ViewRe
 now holds every resource a view names to the ones the application defines.
 
 *Still owed on that screen:* **how the operator moves around it.** The owner's words on seeing it:
-*"there is still a lot of work to be done on how the UI navigates."* The grid shows what was found;
-getting from a finding to the object it is about, and back, is not built. Nor are the filters the
-predecessor carried — severity, rule, domain, family — though `FindingsQuery` already takes all four
-and `JudgementReader.ReadPage` already applies them, so the screen is what is missing rather than
-the engine.
+*"there is still a lot of work to be done on how the UI navigates."* Two pieces of that are now
+built. Double-clicking a finding opens the object it is about, on its Findings tab; closing it
+returns to the grid on the same page, because the grid is left untouched while an object is open.
+And the grid filters by severity and rule, offering only the values some finding actually has — a
+list built from the enum would offer Critical whether or not anything is critical. Changing a filter
+restarts at page one, since a keyset mark from the old list points into rows the new one may not
+contain, and an empty filtered grid says nothing matches the filters rather than claiming the
+container is clean.
+
+*Still owed there:* the domain and family filters the predecessor carried. `FindingsQuery` takes
+both and `JudgementReader.ReadPage` already applies the domain, so each is a property, a line in
+`FindingsAsked()`, and a control — which is the shape the two built filters were made to leave
+behind. Coverage beside a finding is skipped and recorded below.
 
 *Still owed:* what an operator is shown when the evidence verifies and the judgement is degraded is
 still undecided. The command line still only captures, which is deliberate for now — the owner
@@ -129,8 +137,10 @@ recorded — `BundleReader.ReadScope()` returns them — and the only way to fin
 an object and probe for it. Three such probes are what established this bundle spans three domains,
 which is an answer arrived at the wrong way round.
 
-*Owed and now recorded as `P-100`:* the assets screen has no layer document, so the findings grid
-was built with no documentation gate over it.
+*Owed and now recorded as `P-100`:* the assets screen has no layer document, so the findings grid,
+the navigation to an object and the filters over it were all built with no documentation gate over
+them. This is the largest untested-by-documentation surface in the product and it grows with every
+screen.
 
 **Owed from stage 1 — discharged 2026-08-25.** Sixteen tests were deleted with the evidence tables,
 and every claim they made is proven again against the judgement store. The old names are kept beside
