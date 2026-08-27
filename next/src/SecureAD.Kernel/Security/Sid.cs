@@ -154,4 +154,40 @@ public static class Sid
 
         return bytes;
     }
+
+    /// <summary>
+    /// The prefix every SID in the built-in domain carries. <c>[MS-DTYP]</c> 2.4.2.4 names
+    /// <c>S-1-5-32</c> <c>SECURITY_BUILTIN_DOMAIN_RID</c>.
+    /// </summary>
+    private const string BuiltinDomainPrefix = "S-1-5-32-";
+
+    /// <summary>
+    /// Whether this SID belongs to the built-in domain, and so names a different principal in every
+    /// domain that has one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the one range whose SIDs repeat across a forest on purpose.</b> Microsoft's
+    /// <i>Security identifiers</i> is explicit that the domain identifier 32 "identifies the domain,
+    /// Builtin, which exists on every computer", and that distinguishing one computer's built-in
+    /// groups from another's "is never necessary, because they're local in scope". So
+    /// <c>S-1-5-32-544</c> is <c>BUILTIN\Administrators</c> in every domain, and those are different
+    /// groups holding different members.
+    /// </para>
+    /// <para>
+    /// <b>Everything else is left alone, because Microsoft guarantees it.</b> A domain SID carries
+    /// the issuing domain inside it - "no two domains in an enterprise share the same domain
+    /// identifier" - so a domain principal is already unique forest-wide and scoping it would split
+    /// one principal into several.
+    /// </para>
+    /// <para>
+    /// <b>Asked of text rather than bytes</b> because that is the form the stores keep, and the
+    /// alternative is decoding a SID twice to answer one question about its prefix.
+    /// </para>
+    /// </remarks>
+    /// <param name="text">A SID in <c>S-1-5-…</c> form.</param>
+    /// <returns>Whether the SID is in the built-in domain.</returns>
+    /// <seealso href="https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers"/>
+    public static bool IsBuiltinDomain(string? text) =>
+        text is not null && text.StartsWith(BuiltinDomainPrefix, StringComparison.OrdinalIgnoreCase);
 }

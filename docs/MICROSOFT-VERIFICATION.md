@@ -34,6 +34,7 @@ beside it. The two are separate facts and the column carries the first.
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
 | `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
+| `ProtectedGroupCatalogue` | 15 | Appendix C: Protected Accounts and Groups in Active Directory | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests` |
 
 **Defects found: 12 of 238.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
 nothing had ever checked. The twelfth is below, and it was a **missing** value rather than a wrong
@@ -60,6 +61,29 @@ catalogue it replaces was not: the predecessor's hand-assembled table had `S-1-5
 581 at all. Both errors were internally consistent and would have survived any test written from
 that file. Two of the three checks in `WhenASidWasCarriedWrongBefore_ThenTheCatalogueCarriesMicrosoftsValue`
 exist to stop either coming back.
+
+`ProtectedGroupCatalogue` is where this register was used to settle a question the specification had
+recorded as unanswerable, which is a use it had not been put to before.
+
+`docs/layers/specs/JUDGEMENT-HALF.md` gated two edge kinds in the protected-principal derivation on
+the grounds that no Microsoft source stated whether the protection process follows them. For
+distribution nesting one does, and it is the same page the specification already quotes for the
+adjacent claim: *Reducing the Active Directory Attack Surface* states that an account with
+transitive membership in a protected group inherits the restricted security **regardless of whether
+the membership is derived from security or distribution groups**, gives the nested distribution
+group as its worked example, and says distribution groups are included in protected group member
+enumeration for exactly that reason. The sentence the specification did quote - that such an account
+receives no token SID - is the next one along.
+
+**The gate was not wrong to exist; it was wrong about what had been read.** Both halves were on one
+page, and the specification's own preamble says as much about an earlier miss: *both were one page
+fetch away*. What this register adds is that the finding is now written down with its date, so the
+next reader does not re-open the question or, worse, implement the edge from inference.
+
+It is recorded as documentation rather than specification. Appendix C and the attack-surface guidance
+are product documentation, not Open Specifications, and `ProtectedEdgeProvenance` keeps the three
+strengths of claim apart so the weakest can be revisited when something better turns up. The primary
+group half of the same gate, `AC-64`, remains unevidenced and unfollowed.
 
 ## Not yet verified
 

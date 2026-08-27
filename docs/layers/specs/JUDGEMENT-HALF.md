@@ -197,22 +197,48 @@ The citation above establishes what a **distribution group does not do for autho
 nothing about how SDProp decides who is protected, and the two questions are independent — which is
 the whole reason `ProtectedPrincipalClosure` is a separate product.
 
-So both non-obvious edge kinds in that closure are gated, on the same terms as `AC-64`:
+So both non-obvious edge kinds in that closure were gated, on the same terms as `AC-64`:
 
 | Edge in `ProtectedPrincipalClosure` | Status |
 |---|---|
 | Nesting through security groups | specified — the ordinary case |
-| Nesting through **distribution** groups | **gated**: no Microsoft source yet states SDProp follows them |
+| Nesting through **distribution** groups | **resolved 2026-08-27** — see below |
 | **Primary-group** membership | **gated**: `AC-64`, membership is cited, the SDProp traversal is not |
 
-**Neither gated edge may be implemented from inference.** Each needs a Microsoft protocol citation,
+**A gated edge may not be implemented from inference.** Each needs a Microsoft protocol citation,
 or a lab observation recorded and labelled as lab-verified rather than specified. Guessing is
 expensive in both directions: include the edge wrongly and principals are reported protected who are
 not; omit it wrongly and a genuinely protected account is missed. `adminCount` cannot settle it
 either, being historical rather than a current-protection oracle.
 
-Until one or the other is established, the closure follows security-group nesting and records the
-gated edge kinds as a stated limit of the protected-principal derivation.
+Until one or the other is established, the closure follows the edges it has evidence for and records
+the gated edge kinds as a stated limit of the protected-principal derivation.
+
+#### Distribution nesting is no longer gated
+
+**This section said no Microsoft source stated that SDProp follows distribution nesting. One does,
+and it is on the page already quoted above.** *Reducing the Active Directory Attack Surface* states
+that an account with direct or transitive membership in a protected group inherits the restricted
+security **regardless of whether the membership is derived from security or distribution groups**,
+gives a user nested through a distribution group as its worked example, says such an account is
+flagged with `adminCount` set to 1, and explains that distribution groups are included in protected
+group member enumeration precisely because they can later be converted. The sentence this document
+did quote — that such an account receives no token SID — is the next one along in the same passage.
+
+This is the failure this document's own preamble describes: *both were one page fetch away*. The
+gate was right to exist and wrong about what had been read.
+
+`ProtectedPrincipalClosure` therefore follows distribution nesting, recorded as **documented**
+rather than **specified**, because the source is product guidance and not an Open Specification.
+`ProtectedEdgeProvenance` keeps the two apart so the weaker one can be revisited. `AC-26` is
+satisfied by the catalogue flag it already anticipated.
+
+`AC-64` is unaffected and remains gated: the primary-group citation establishes real membership and
+authorization's honouring of it, and still says nothing about SDProp.
+
+Recorded in `docs/MICROSOFT-VERIFICATION.md`, anchored by
+`ProtectedGroupCatalogueMicrosoftAnchorTests`, and built as described in
+`docs/layers/derivation/what-stage-2a-derives.md`.
 
 **A gated edge does not mean the principal is unprotected, and this is where an earlier draft would
 have failed its own uncertainty rule.** "The closure follows security-group nesting" quietly implies

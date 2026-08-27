@@ -50,7 +50,7 @@ internal static class ObjectStreamReader
             "SELECT o.object_id, o.distinguished_name, o.object_guid, o.captured_utc"
             + string.Concat(
                 columns.Select(a => ", o." + BundleSchema.ColumnNameFor(a.LdapDisplayName)))
-            + ", c.connection_security"
+            + ", c.connection_security, o.domain_fqdn"
             + " FROM captured_object AS o"
             + " JOIN partition_coverage AS c ON c.coverage_id = o.coverage_id"
             + " ORDER BY o.object_id";
@@ -103,7 +103,10 @@ internal static class ObjectStreamReader
                     ReadCoverage.Over(
                         Enum.Parse<ConnectionSecurityLevel>(
                             objects.GetString(4 + columns.Count))),
-                    [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)]);
+                    [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)],
+                    objects.IsDBNull(5 + columns.Count)
+                        ? null
+                        : objects.GetString(5 + columns.Count));
             }
         }
         finally

@@ -84,7 +84,8 @@ public sealed class UnconstrainedDelegationRuleTests
             Guid.NewGuid(),
             DateTimeOffset.UnixEpoch,
             EvidenceCompleteness.Complete,
-            attributes);
+            attributes,
+            DomainFqdn: "ad.lab");
     }
 
     /// <summary>

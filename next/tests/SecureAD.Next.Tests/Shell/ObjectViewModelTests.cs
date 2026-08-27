@@ -612,7 +612,8 @@ public sealed class ObjectViewModelTests
                         new AttributeValue(1, "person", null),
                         new AttributeValue(2, "user", null),
                     ]),
-            ]);
+            ],
+            DomainFqdn: "contoso.com");
 
     private static AssetsViewModel OpenedWith(FindingsPage findings)
     {

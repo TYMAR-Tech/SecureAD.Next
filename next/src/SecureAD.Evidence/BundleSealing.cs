@@ -168,6 +168,30 @@ public static class BundleSealing
     }
 
     /// <summary>
+    /// Verifies the seal on a bundle's derived facts.
+    /// </summary>
+    /// <remarks>
+    /// A third question, independent of <see cref="Verify(string)"/> and
+    /// <see cref="VerifyJudgement(string)"/>. A bundle may hold intact evidence, a judgement that
+    /// verifies, and derived facts that do not - or derived facts alone, because deriving and
+    /// judging are separate acts and a bundle may have had one without the other.
+    /// </remarks>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static SealVerdict VerifyDerivation(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        return Verify(
+            BundleLayout.DerivationPath(bundleDirectory),
+            BundleLayout.DerivationSealPath(bundleDirectory),
+            "derived facts",
+            "Derived facts are sealed before they are given the name a reader asks for, so a "
+            + "store with no seal was assembled by something other than a derivation run.",
+            "It does not prove every closure is complete, which is a claim the store makes in "
+            + "its own tables.");
+    }
+
+    /// <summary>
     /// What a seal file records, or null if it is absent or does not parse.
     /// </summary>
     /// <remarks>

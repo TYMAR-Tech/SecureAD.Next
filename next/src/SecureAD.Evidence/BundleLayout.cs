@@ -112,6 +112,42 @@ public static class BundleLayout
     public const string JudgementSealFileName = "judgement.db.seal";
 
     /// <summary>
+    /// The derived facts of a finished derivation in a bundle directory.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A third file rather than more tables in <see cref="JudgementFileName"/>, because the two
+    /// have different lifetimes.</b> A judgement is rebuilt from scratch every time a bundle is
+    /// judged. Derived facts are expensive - group expansion over a forest is the costliest thing
+    /// the product does - and nothing about them changes when the rules do. Keeping them apart is
+    /// what lets a bundle be re-judged without deriving it again.
+    /// </para>
+    /// <para>
+    /// It sits outside the seal for the same reason a judgement does: it is what the product
+    /// worked out, not what the directory said. It is disposable and can be deleted and rebuilt
+    /// from the evidence at any time.
+    /// </para>
+    /// </remarks>
+    public const string DerivationFileName = "derivation.db";
+
+    /// <summary>The derived facts of a derivation in progress in a bundle directory.</summary>
+    /// <remarks>
+    /// A derivation writes here and is renamed only once every phase has finished, exactly as
+    /// <see cref="JudgementPartialFileName"/> is. A partial closure presented as a complete one
+    /// is the same failure as a partial judgement presented as a complete one, and worse: a rule
+    /// resting on it would report a clean result it never established.
+    /// </remarks>
+    public const string DerivationPartialFileName = "derivation.db.partial";
+
+    /// <summary>The seal covering <see cref="DerivationFileName"/>.</summary>
+    /// <remarks>
+    /// A third seal, separate from <see cref="SealFileName"/> and
+    /// <see cref="JudgementSealFileName"/>, covering a third artefact made at a third time. All
+    /// three can disagree, and anything presenting them to an operator has to say which is which.
+    /// </remarks>
+    public const string DerivationSealFileName = "derivation.db.seal";
+
+    /// <summary>
     /// The note a run leaves when it ends badly, saying which ending it was.
     /// </summary>
     /// <remarks>
@@ -178,6 +214,21 @@ public static class BundleLayout
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string JudgementSealPath(string bundleDirectory) =>
         Combine(bundleDirectory, JudgementSealFileName);
+
+    /// <summary>The derived facts of a finished derivation in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string DerivationPath(string bundleDirectory) =>
+        Combine(bundleDirectory, DerivationFileName);
+
+    /// <summary>The derived facts of a derivation in progress in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string DerivationPartialPath(string bundleDirectory) =>
+        Combine(bundleDirectory, DerivationPartialFileName);
+
+    /// <summary>The derivation seal in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string DerivationSealPath(string bundleDirectory) =>
+        Combine(bundleDirectory, DerivationSealFileName);
 
     /// <summary>The run-outcome file in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>

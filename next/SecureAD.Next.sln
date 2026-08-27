@@ -80,6 +80,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\evidence\a-domain-left-out-on-purpose.md = ..\docs\layers\evidence\a-domain-left-out-on-purpose.md
 		..\docs\layers\judgement\what-a-finding-is.md = ..\docs\layers\judgement\what-a-finding-is.md
 		..\docs\layers\judgement\the-judgement-store.md = ..\docs\layers\judgement\the-judgement-store.md
+		..\docs\layers\derivation\what-stage-2a-derives.md = ..\docs\layers\derivation\what-stage-2a-derives.md
 		..\docs\layers\evidence\how-a-bundle-is-read.md = ..\docs\layers\evidence\how-a-bundle-is-read.md
 		..\docs\layers\evidence\what-an-object-holds.md = ..\docs\layers\evidence\what-an-object-holds.md
 		..\docs\layers\evidence\what-an-objects-permissions-hold.md = ..\docs\layers\evidence\what-an-objects-permissions-hold.md
@@ -125,6 +126,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Gallery", "tools\SecureAD.Gallery\SecureAD.Gallery.csproj", "{674413E6-349B-45A0-8486-CCA42EAFC875}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Judgement", "src\SecureAD.Judgement\SecureAD.Judgement.csproj", "{E82AF7B2-5AFD-45F8-919E-EB6C2D19D0D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Derivation", "src\SecureAD.Derivation\SecureAD.Derivation.csproj", "{5E4F8D77-FD2C-47AB-B11D-254C28B09490}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -232,6 +235,18 @@ Global
 		{E82AF7B2-5AFD-45F8-919E-EB6C2D19D0D9}.Release|x64.Build.0 = Release|Any CPU
 		{E82AF7B2-5AFD-45F8-919E-EB6C2D19D0D9}.Release|x86.ActiveCfg = Release|Any CPU
 		{E82AF7B2-5AFD-45F8-919E-EB6C2D19D0D9}.Release|x86.Build.0 = Release|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Debug|x64.Build.0 = Debug|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Debug|x86.Build.0 = Debug|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Release|x64.ActiveCfg = Release|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Release|x64.Build.0 = Release|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Release|x86.ActiveCfg = Release|Any CPU
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -251,6 +266,7 @@ Global
 		{5938BBCA-A8F6-4324-9563-EEA049856BF0} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
 		{674413E6-349B-45A0-8486-CCA42EAFC875} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{E82AF7B2-5AFD-45F8-919E-EB6C2D19D0D9} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
+		{5E4F8D77-FD2C-47AB-B11D-254C28B09490} = {2C8FB4DD-3F8E-41BE-A701-F6A6385A4D30}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {DB05C39B-5380-41D3-A685-E12726E9B537}

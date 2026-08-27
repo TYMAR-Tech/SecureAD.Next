@@ -24,7 +24,7 @@ namespace SecureAD.Next.Tests.Architecture;
 internal static class LayerDocuments
 {
     /// <summary>The subsystems whose folders hold layer documents.</summary>
-    internal static readonly string[] Subsystems = ["kernel", "audit", "connect", "evidence", "judgement", "schema", "shell"];
+    internal static readonly string[] Subsystems = ["kernel", "audit", "connect", "derivation", "evidence", "judgement", "schema", "shell"];
 
     /// <summary>The documentation root for the layer documents.</summary>
     internal static string Root() => Path.Combine(RepositoryLocation.Root(), "docs", "layers");

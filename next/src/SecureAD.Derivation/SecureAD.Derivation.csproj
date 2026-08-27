@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SecureAD.Derivation</RootNamespace>
+    <AssemblyName>SecureAD.Derivation</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+
+  <!-- Derivation reads a sealed bundle and writes derived facts beside it, so it depends on
+       Evidence and Evidence does not depend on it - the same direction, and for the same
+       reason, as Judgement.
+
+       It is a project of its own rather than a folder in either neighbour, and the boundary
+       is load-bearing in both directions. It cannot live in Evidence because derived facts
+       are written outside the seal: Evidence is the sealed-capture concern and must be able
+       to produce a bundle with nothing that interprets it present. It does not live in
+       Judgement because the two stages isolate failure along different axes - Judgement is
+       atomic per rule, Derivation is fault-isolated per phase - and folding them together
+       would put those two schemes in one class.
+
+       Judgement depends on this project, not the reverse. A derivation phase must never be
+       able to see a rule, or it could quietly derive what a particular rule wanted rather
+       than what the directory said. -->
+  <ItemGroup>
+    <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+  </ItemGroup>
+
+</Project>

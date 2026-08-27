@@ -57,15 +57,18 @@ gigabytes of evidence go is a tool that fills the wrong disk.
 | `JudgementFileName` | `judgement.db` | What the rules concluded. Present only on a bundle that has been judged, and replaced rather than added to when it is judged again |
 | `JudgementPartialFileName` | `judgement.db.partial` | A judging that has not finished, or did not |
 | `JudgementSealFileName` | `judgement.db.seal` | The seal covering `judgement.db`, separate from the evidence seal because the two cover different artefacts made at different times and can disagree |
+| `DerivationFileName` | `derivation.db` | What was worked out from the evidence before any rule ran — group nesting, membership closures, the identities a principal carries. Present only on a bundle that has been derived. A third file rather than more tables in `judgement.db` because the two have different lifetimes: a judgement is rebuilt every time a bundle is judged, while deriving is the most expensive thing the product does and nothing about it changes when a rule does, so a bundle is derived once and judged many times |
+| `DerivationPartialFileName` | `derivation.db.partial` | A derivation that has not finished, or did not |
+| `DerivationSealFileName` | `derivation.db.seal` | The seal covering `derivation.db`. A third seal over a third artefact made at a third time; all three can disagree |
 | `OutcomeFileName` | `run-outcome.json` | The note a run leaves when it ends badly, saying which ending it was |
 | `PreflightFileName` | `preflight.json` | What preflight proved about each domain before any capture traffic was sent |
 
 <!-- FILES:END -->
 
 `BundleLayout` also carries one path helper per file — `EvidencePath`, `PartialPath`, `SealPath`,
-`AnnotationsPath`, `JudgementPath`, `JudgementPartialPath`, `JudgementSealPath`, `OutcomePath` and
-`PreflightPath` — so that no caller composes a bundle path by concatenation and no bundle's file
-names have a second owner.
+`AnnotationsPath`, `JudgementPath`, `JudgementPartialPath`, `JudgementSealPath`, `DerivationPath`,
+`DerivationPartialPath`, `DerivationSealPath`, `OutcomePath` and `PreflightPath` — so that no caller
+composes a bundle path by concatenation and no bundle's file names have a second owner.
 
 > `S-16` said a bundle was four files. It was written before `run-outcome.json` and `preflight.json`
 > existed and was never revisited, and the count survived because nothing counted it.
@@ -161,6 +164,11 @@ of it that can drift. It is a different question from `BundleSealing.Verify` and
 disagree: they cover different artefacts made at different times, and a bundle may hold intact
 evidence beside a judgement that does not verify. Anything showing both to an operator has to say
 which is which.
+
+**`BundleSealing.VerifyDerivation` asks them of `derivation.db`**, sharing the same implementation
+again. It is a third question, independent of the other two: a bundle may hold intact evidence, a
+judgement that verifies, and derived facts that do not — or derived facts and no judgement at all,
+because deriving and judging are separate acts and a bundle may have had one without the other.
 
 **`BundleSealing.ReadSeal` returns what a seal file records**, or null if it is absent or does not
 parse. It exists so a judgement can name the capture it was made against — the evidence seal is a

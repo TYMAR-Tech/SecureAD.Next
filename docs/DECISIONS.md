@@ -14,7 +14,7 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0005](decisions/0005-withhold-at-the-widest-scope-that-shares-the-verdict.md) | 2026-08-07 | Accepted | A withheld count is withheld at the widest scope that shares its verdict |
 | [0006](decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) | 2026-08-07 | Accepted *(see record)* | Tier-0 membership and expected-admin suppression are separate sets |
 | [0008](decisions/0008-live-verification-is-removed.md) | 2026-08-09 | Accepted *(see record)* | Live directory verification is removed from the product |
-| [0010](decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) | 2026-08-09 | Accepted | The rule catalogue is data; the rule logic is code |
+| [0010](decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md) | 2026-08-09 | Accepted *(see record)* | The rule catalogue is data; the rule logic is code |
 | [0011](decisions/0011-rebuild-documentation-is-written-fresh-and-bound-by-tests.md) | 2026-08-09 | Accepted | The rebuild's documentation is written fresh and bound by tests |
 | [0013](decisions/0013-the-bundle-is-no-longer-a-two-way-contract.md) | 2026-08-10 | Accepted | The bundle is no longer a two-way contract |
 | [0014](decisions/0014-capture-reads-the-schema-partition.md) | 2026-08-10 | Accepted | Capture reads the schema partition, and names come with it |
@@ -86,3 +86,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0084](decisions/0084-a-stored-fingerprints-recipe-is-pinned-to-the-schema-version.md) | 2026-08-23 | Accepted | A stored fingerprint's recipe is pinned to the schema version |
 | [0085](decisions/0085-judgement-writes-beside-the-evidence.md) | 2026-08-25 | Accepted *(see record)* | Judgement writes beside the evidence, not into it |
 | [0086](decisions/0086-a-qualified-statement-beats-silence.md) | 2026-08-25 | Accepted | A qualified statement beats silence, except where completeness is claimed |
+| [0087](decisions/0087-a-sid-is-unique-within-its-scope.md) | 2026-08-28 | Accepted | A SID is unique within its scope, not within the forest |

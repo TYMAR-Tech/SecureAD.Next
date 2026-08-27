@@ -131,6 +131,22 @@ The coverage row is joined in the same query that reads the object rather than f
 because an object and the rung it was read over are one fact. Two queries would let a caller hold
 an object beside somebody else's coverage.
 
+## Which domain it came from
+
+`ObjectAttributes.DomainFqdn` names the domain this object was captured from, and is null where the
+caller did not ask for one — `ObjectAttributesReader`, which reads a single object by name for a
+screen, states `null` deliberately rather than fetching a value nothing there uses.
+
+**It is part of a principal's identity rather than decoration.** A SID is unique within its scope
+and not within a forest: `S-1-5-32-544` is `BUILTIN\Administrators` in *every* domain, and those are
+different groups holding different members. A derivation that keys principals by SID alone merges
+them, and reports one domain's local Administrators as containing another's Domain Admins. The
+domain is what keeps them apart, which is why it travels with the object rather than being looked up
+later. See [`0087`](../../decisions/0087-a-sid-is-unique-within-its-scope.md).
+
+The value is the `domain_fqdn` the capture recorded on the object's own row, so it is a fact the
+bundle holds rather than one inferred from the distinguished name.
+
 `ObjectAttributes.CapturedUtc` is carried for a related reason: a timestamp is only meaningful
 beside the moment it was read. A password last set six days before a capture is a fact about that
 forest and stays one, where the same value measured against a reader's own clock says something

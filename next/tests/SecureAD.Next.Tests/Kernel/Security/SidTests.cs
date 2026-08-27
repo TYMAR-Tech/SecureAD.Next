@@ -15,6 +15,60 @@ public sealed class SidTests
 {
     private const string DomainAdmins = "S-1-5-21-1834058357-2590327168-2246012571-512";
 
+    /// <summary>
+    /// A built-in group's SID is recognised as belonging to the built-in domain, so a derivation
+    /// can keep one domain's copy of it apart from another's.
+    /// </summary>
+    /// <remarks>
+    /// <b>Every domain in a forest has an <c>S-1-5-32-544</c> and they are different groups.</b>
+    /// Microsoft's <i>Security identifiers</i> calls the built-in domain "local in scope", and a
+    /// lab forest of three domains carried 84 objects sharing a built-in SID. Treating them as one
+    /// principal unions their memberships, which reports one domain's local Administrators as
+    /// containing another's. See <c>docs/decisions/0087-a-sid-is-unique-within-its-scope.md</c>.
+    /// </remarks>
+    /// <param name="sid">A built-in SID.</param>
+    [Theory]
+    [InlineData("S-1-5-32-544")]
+    [InlineData("S-1-5-32-545")]
+    [InlineData("S-1-5-32-551")]
+    public void ABuiltinGroupIsRecognisedAsBelongingToTheBuiltinDomain(string sid) =>
+        Assert.True(Sid.IsBuiltinDomain(sid));
+
+    /// <summary>
+    /// A domain principal is not treated as built-in, because its SID already carries the domain
+    /// that issued it and is unique forest-wide.
+    /// </summary>
+    /// <remarks>
+    /// Scoping one of these would split a single principal into one per domain it was seen from,
+    /// which is the opposite defect and just as wrong.
+    /// </remarks>
+    /// <param name="sid">A SID from outside the built-in domain.</param>
+    [Theory]
+    [InlineData(DomainAdmins)]
+    [InlineData("S-1-5-11")]
+    [InlineData("S-1-1-0")]
+    [InlineData("S-1-5-18")]
+    public void ASidOutsideTheBuiltinDomainIsNotScopedToADomain(string sid) =>
+        Assert.False(Sid.IsBuiltinDomain(sid));
+
+    /// <summary>
+    /// The built-in domain itself is not mistaken for a principal inside it.
+    /// </summary>
+    /// <remarks>
+    /// <c>S-1-5-32</c> is the domain, not a group in it. The prefix test requires the trailing
+    /// separator so a SID that merely starts with the same digits cannot pass.
+    /// </remarks>
+    [Fact]
+    public void TheBuiltinDomainItselfIsNotAPrincipalInIt() =>
+        Assert.False(Sid.IsBuiltinDomain("S-1-5-32"));
+
+    /// <summary>
+    /// A SID nobody supplied is not claimed to be built-in.
+    /// </summary>
+    [Fact]
+    public void ASidThatIsNotThereIsNotBuiltin() =>
+        Assert.False(Sid.IsBuiltinDomain(null));
+
     [Fact]
     public void AWellKnownSidIsWrittenTheWayWindowsWritesIt()
     {

@@ -127,12 +127,23 @@ public sealed record BundleObjects(bool IsComplete, IEnumerable<ObjectAttributes
 /// <param name="Attributes">
 /// Every attribute the catalogue names, in the order the catalogue names them.
 /// </param>
+/// <param name="DomainFqdn">
+/// The domain this object was captured from, or null where the bundle did not record one.
+/// </param>
+/// <remarks>
+/// <b><paramref name="DomainFqdn"/> is part of a principal's identity, not decoration.</b> A SID is
+/// unique within its scope rather than within a forest: <c>S-1-5-32-544</c> is
+/// <c>BUILTIN\Administrators</c> in every domain, and those are different groups holding different
+/// members. A derivation that keys principals by SID alone merges them. See
+/// <c>docs/decisions/0087-a-sid-is-unique-within-its-scope.md</c>.
+/// </remarks>
 public sealed record ObjectAttributes(
     string DistinguishedName,
     Guid? ObjectGuid,
     DateTimeOffset CapturedUtc,
     EvidenceCompleteness Completeness,
-    IReadOnlyList<ObjectAttribute> Attributes)
+    IReadOnlyList<ObjectAttribute> Attributes,
+    string? DomainFqdn)
 {
     /// <summary>
     /// The attribute <paramref name="ldapDisplayName"/> names, or null when the catalogue does not
@@ -192,7 +203,11 @@ internal static class ObjectAttributesReader
             objectGuid,
             captured,
             completeness,
-            [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)]);
+            [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)],
+            // This reads one object by name for a screen to show. Nothing here keys a principal, so
+            // the domain is not fetched rather than being fetched and ignored - and it is stated
+            // here so a caller that later needs it changes this deliberately.
+            DomainFqdn: null);
     }
 
     /// <summary>
