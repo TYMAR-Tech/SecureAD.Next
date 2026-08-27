@@ -1,3 +1,20 @@
+<!-- PREDECESSOR-MATERIAL:BEGIN -->
+> **Predecessor material. Not a specification for this product.**
+>
+> This file was written against the previous SecureAD, and every code path, table and query in it
+> describes that product. `rules.yaml`, `FindingsService`, `RuleEvaluatorHelpers` and the `dim_*`
+> tables **do not exist here** and are not going to. Where this file says what a rule *does*, it is
+> reporting what the old tool did, not what this one must do.
+>
+> Read it as a source, not an answer. The Active Directory reasoning is worth having; the
+> implementation is not. In this product a rule is an `IRule` in `SecureAD.Evidence/Findings`,
+> registered in `JudgingLauncher.Rules()`, resting on evidence stored by `JudgementWriter`, and
+> reading only attributes declared in `CapturedAttributeCatalog`. What a rule is here is described
+> in [`layers/judgement/what-a-finding-is.md`](../layers/judgement/what-a-finding-is.md).
+>
+> Nothing in here is held by any gate. It is quarantined rather than rewritten, per `P-101`.
+<!-- PREDECESSOR-MATERIAL:END -->
+
 # Rule Review — Next Up
 
 > **This describes the predecessor, not this repository. It is history.**

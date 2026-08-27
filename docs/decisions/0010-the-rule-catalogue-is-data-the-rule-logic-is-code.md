@@ -1,14 +1,17 @@
 # 0010 - The rule catalogue is data; the rule logic is code
 
 Date: 2026-08-09
-Status: Accepted
+Status: Accepted. **The mechanism described below is the predecessor's and no longer exists**;
+corrected by the amendment at the foot of this record, 2026-08-26. The decision itself — that
+detection is code rather than configuration, and that the rule set is not the customer's — stands and
+is reinforced by [0082](0082-the-rule-catalogue-is-not-customer-tunable.md).
 
 ## Context
 
-Rule metadata moved out of C# in April 2026, when `BuiltInRules.cs` held 571 lines of object
-initialisers. The move reduced it to 13 and put the seven metadata fields in an embedded
-`rules.yaml`. Severity followed later, so the yaml became the single source for what a rule is
-called, how bad it is, and whether it runs at all.
+Rule metadata moved out of C# in April 2026, when the predecessor's `BuiltInRules.cs` held 571 lines
+of object initialisers. The move reduced it to 13 and put the seven metadata fields in an embedded
+predecessor `rules.yaml`. Severity followed later, so that yaml became the single source for what a
+rule is called, how bad it is, and whether it runs at all.
 
 None of the detection logic moved, and none was ever intended to. A rule fires when an
 `IRuleEvaluator` says so, in C# and SQL. The rules that reduce to a declaration already do — four
@@ -47,3 +50,32 @@ the product reports is something the product can be held to.
 
 Specifications in `docs/rules/` become load-bearing rather than descriptive, because a rule without
 one is now incomplete.
+
+---
+
+## Amendment, 2026-08-26 — the mechanism was the predecessor's
+
+**Everything above about *how* describes the previous product.** The `rules.yaml` catalogue, the
+split into two catalogue files, `IRuleEvaluator`, `RuleEvaluatorHelpers`, the parity tests and the
+coverage requirements are all the predecessor's, and none of them exists in this tree. The
+consequence written above — *adding a rule touches two catalogue files instead of one* — is not true
+here and would send anyone who read it looking for files that are not there.
+
+**What this product does instead.** A rule is an `IRule` in `SecureAD.Evidence/Findings`, carrying
+its own `RuleDefinition` — identity, severity, version, the classes it judges and the attributes it
+reads. The set that runs is a literal list in `JudgingLauncher.Rules()`, which is deliberate:
+`0082` keeps the rule set out of the customer's hands, and a set assembled by reflection is a set
+nobody can read off the page. There is no catalogue file of any kind.
+
+**The decision itself is untouched by this.** Detection is code, not a configuration format or a rule
+language; a rule's identity and severity are declared rather than computed; and nothing lets a
+customer supply or tune a rule. All three hold, and hold more simply than they did — with no yaml,
+the question of which fields are behavioural and which are presentation copy does not arise.
+
+**The last consequence is now false and worth naming.** `docs/rules/` is *not* load-bearing here. Its
+sixty-six cards are the predecessor's, quarantined on 2026-08-26 under `P-101` and marked as such on
+every file, because they describe an architecture this product does not have. What a rule is here is
+[`layers/judgement/what-a-finding-is.md`](../layers/judgement/what-a-finding-is.md), and that page is
+held to the code by a gate. This amendment exists because
+`PredecessorMaterialGateTests` — written to stop exactly this contamination spreading out of
+`docs/rules/` — failed on this record within minutes of being written.
