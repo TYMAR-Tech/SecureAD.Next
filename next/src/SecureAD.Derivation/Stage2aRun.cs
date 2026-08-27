@@ -214,6 +214,14 @@ public static class Stage2aRun
                     : DerivationPhaseOutcome.Succeeded,
                 error: null);
 
+            log.Note(
+                MembershipNestingPass.PhaseName,
+                "finished",
+                [
+                    new RunLogDetail(
+                        "objectsRead", objectsRead.ToString(CultureInfo.InvariantCulture)),
+                ]);
+
             return facts;
         }
         catch (Exception error) when (error is not OperationCanceledException)

@@ -60,6 +60,19 @@ timestamp, level and phase, or the search returns an orphan and the reader has t
 the context — which is most of what the format was chosen for. A description is prose, is long, and
 is not something anybody searches for, so it is the one thing that goes on its own line.
 
+**A value is quoted when it contains a space, an `=` or a quotation mark. A backslash is left
+alone.** That last part is a deliberate departure from logfmt, and it was decided by reading the
+first real run against a forest:
+
+```
+bundle="C:\\Users\\ba.admin\\Downloads\\SecureAD\\ad.lab-20260827-201826"
+```
+
+Correct, unambiguous, and exactly the decoding this record chose text over JSON to avoid. This log
+is going to be mostly Windows paths and distinguished names. The cost is one theoretical ambiguity —
+a value *ending* in a backslash would look like an escaped quote — and no path, DN, SID or domain
+name ends in one. Pinned by `RunLogFileTests.AWindowsPathIsNotDoubledUp`.
+
 **Nothing is redacted.** The log names distinguished names, SIDs and domains, which is precisely
 what the bundle lying next to it already holds. Redacting would remove the only detail that makes it
 worth keeping - the defect above was a specific SID in a specific domain - and would not protect

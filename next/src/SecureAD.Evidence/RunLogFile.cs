@@ -186,9 +186,20 @@ public sealed class RunLogFile : IRunLog, IDisposable
     /// The detail pairs, as <c>name=value</c> separated by spaces.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>The quoting rule lives here and nowhere else.</b> A distinguished name carries both spaces
     /// and equals signs, so an unquoted <c>object=CN=Some Group,OU=X</c> cannot be read back
     /// unambiguously - and the values this log names are mostly distinguished names.
+    /// </para>
+    /// <para>
+    /// <b>A backslash is written as it stands rather than doubled, and that is a deliberate
+    /// departure from logfmt.</b> The first real run wrote
+    /// <c>bundle="C:\\Users\\ba.admin\\Downloads\\SecureAD"</c>, and this log will be full of
+    /// Windows paths. Doubling every separator is precisely the decoding <c>0088</c> chose text over
+    /// JSON to avoid. The cost is one theoretical ambiguity - a value ending in a backslash, which
+    /// would look like an escaped quote - and no distinguished name, SID, domain or bundle path
+    /// ends in one.
+    /// </para>
     /// </remarks>
     private static string Detail(IReadOnlyList<RunLogDetail> detail) =>
         string.Join(' ', detail.Select(d => d.Name + "=" + Quoted(d.Value)));
@@ -198,10 +209,9 @@ public sealed class RunLogFile : IRunLog, IDisposable
         if (value.Length > 0 && !value.Any(NeedsQuoting))
             return value;
 
-        return "\"" + value.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
+        return "\"" + value.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
     }
 
     private static bool NeedsQuoting(char c) =>
-        char.IsWhiteSpace(c) || c is '=' or '"' or '\\';
+        char.IsWhiteSpace(c) || c is '=' or '"';
 }

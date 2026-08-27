@@ -164,6 +164,42 @@ public sealed class RunLogFileTests : IDisposable
     }
 
     /// <summary>
+    /// A Windows path is written as it stands, not with every separator doubled.
+    /// </summary>
+    /// <remarks>
+    /// <b>The first real run against a forest produced
+    /// <c>bundle="C:\\Users\\ba.admin\\Downloads\\SecureAD"</c></b>, because the rule escaped
+    /// backslashes the way logfmt does. It was unambiguous and unreadable, and this log is going to
+    /// be full of paths. <c>0088</c> chose text over JSON so a person could read it without
+    /// decoding, and doubling every separator gives back exactly what that bought.
+    /// </remarks>
+    [Fact]
+    public void AWindowsPathIsNotDoubledUp()
+    {
+        var line = Single(log => log.Note(
+            "Capture",
+            "finished",
+            [new RunLogDetail("bundle", @"C:\Users\ba.admin\Downloads\SecureAD\ad.lab-20260827")]));
+
+        Assert.Contains(@"bundle=C:\Users\ba.admin\Downloads\SecureAD\ad.lab-20260827", line, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"\\", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A path with a space in it is still quoted, and still readable inside the quotes.
+    /// </summary>
+    [Fact]
+    public void APathWithASpaceIsQuotedButNotEscaped()
+    {
+        var line = Single(log => log.Note(
+            "Capture",
+            "finished",
+            [new RunLogDetail("bundle", @"C:\Program Files\SecureAD")]));
+
+        Assert.Contains(@"bundle=""C:\Program Files\SecureAD""", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A second session appends rather than replacing, and says where it began.
     /// </summary>
     /// <remarks>

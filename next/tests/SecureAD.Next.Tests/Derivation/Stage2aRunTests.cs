@@ -45,6 +45,47 @@ public sealed class Stage2aRunTests
     }
 
     /// <summary>
+    /// A derivation that could not start still says so in the run's log.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the coverage whose absence made a stale binary hard to tell from a defect.</b>
+    /// The log was threaded through three coordinators and nothing asserted that any of them wrote
+    /// a line, so when a real run produced no <c>run.log</c> the only way to reason about it was
+    /// which files were on disk. A test here answers that question directly.
+    /// </para>
+    /// <para>
+    /// The refusal is used rather than a whole derivation because it needs no bundle: what is
+    /// being proved is that the coordinator writes to the log it was handed, not what it derives.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Stage2a_TheRefusalReachesTheRunsLog()
+    {
+        var directory = NewDirectory();
+
+        var opened = RunLogFile.Open(directory, "deriving", TimeProvider.System);
+        Assert.True(opened.IsSuccess);
+
+        using (var log = opened.Value!)
+        {
+            Stage2aRun.Derive(
+                directory,
+                ExpansionBudget.Bulk,
+                Started,
+                Stage2aRun.Unwatched,
+                log,
+                CancellationToken.None);
+        }
+
+        var written = File.ReadAllText(BundleLayout.RunLogPath(directory));
+
+        Assert.Contains("deriving ====", written, StringComparison.Ordinal);
+        Assert.Contains("ERROR", written, StringComparison.Ordinal);
+        Assert.Contains("EvidenceSealUnreadable", written, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A directory that is not a bundle is refused rather than half-derived.
     /// </summary>
     [Fact]
