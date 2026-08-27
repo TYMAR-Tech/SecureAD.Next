@@ -55,6 +55,17 @@ namespace SecureAD.Next.Tests.Documentation;
 /// <see cref="AMissingTableIsAFailureRatherThanAnEmptyScan"/> fired on none of the five; it guards
 /// the parser, which no edit to these files reaches.
 /// </para>
+/// <para>
+/// <b>The assets page was mutation-tested on the day it was added, three directions, all killed.</b>
+/// Dropping the <c>ObjectPaging</c> row from its table failed
+/// <see cref="TheAssetsPageTypesTableAndItsComponentAgree"/>, naming the type. Removing
+/// <c>FactState.cs</c> from the page's header failed
+/// <see cref="EachPageNamesEveryFileItsComponentIsScopedFrom"/>, naming the file. Removing
+/// <c>BundleAssetSource.cs</c> from <see cref="AssetsFiles"/> failed two tests including
+/// <see cref="TheCheckReadsBothDocumentsAndBothComponents"/>, which is the one worth having: it
+/// proves the component count is measuring the component rather than agreeing with whatever the
+/// scan happened to find.
+/// </para>
 /// </remarks>
 public sealed class ShellLayerTypesTests
 {
@@ -72,6 +83,32 @@ public sealed class ShellLayerTypesTests
         "Services/NewAuditDialog.cs",
         "Services/IJudgingLauncher.cs",
         "Services/JudgingLauncher.cs",
+    ];
+
+    /// <summary>
+    /// The assets screen's component, which is the largest in the shell.
+    /// </summary>
+    /// <remarks>
+    /// <b>One page, because <see cref="ShellSection"/> has one member for it.</b> The objects, the
+    /// findings and an opened object are all <c>Assets</c>: an object is opened from the grid rather
+    /// than navigated to. Splitting them across pages would invent a second rule for what a shell
+    /// page is, beside the one this class already states.
+    /// <para>
+    /// <b>Added 2026-08-26, closing <c>P-100</c>.</b> Until then this screen had no layer document,
+    /// so this gate bound none of its types - and the findings grid, the navigation to an object and
+    /// the filters over it were all built with nothing holding them.
+    /// </para>
+    /// </remarks>
+    private static readonly string[] AssetsFiles =
+    [
+        "ViewModels/AssetsViewModel.cs",
+        "ViewModels/AssetRowViewModels.cs",
+        "ViewModels/ObjectViewModel.cs",
+        "ViewModels/ObjectSections.cs",
+        "ViewModels/ObjectSectionCatalog.cs",
+        "ViewModels/FactState.cs",
+        "Services/IAssetSource.cs",
+        "Services/BundleAssetSource.cs",
     ];
 
     private static readonly string[] HomeFiles =
@@ -97,6 +134,12 @@ public sealed class ShellLayerTypesTests
     public void TheHomePageTypesTableAndItsComponentAgree()
     {
         AssertTableMatchesFiles("the-home-screen.md", HomeFiles);
+    }
+
+    [Fact]
+    public void TheAssetsPageTypesTableAndItsComponentAgree()
+    {
+        AssertTableMatchesFiles("the-assets-screen.md", AssetsFiles);
     }
 
     /// <summary>
@@ -182,6 +225,7 @@ public sealed class ShellLayerTypesTests
     {
         Assert.Equal(27, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(29, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
 
         foreach (var (document, _) in Pages())
         {
@@ -191,6 +235,7 @@ public sealed class ShellLayerTypesTests
 
         Assert.Contains(nameof(NewAuditViewModel), FirstColumn("the-new-audit-screen.md", "TYPES"));
         Assert.Contains(nameof(HomeViewModel), FirstColumn("the-home-screen.md", "TYPES"));
+        Assert.Contains(nameof(AssetsViewModel), FirstColumn("the-assets-screen.md", "TYPES"));
     }
 
     /// <summary>
@@ -210,6 +255,7 @@ public sealed class ShellLayerTypesTests
     [
         ("the-new-audit-screen.md", NewAuditFiles),
         ("the-home-screen.md", HomeFiles),
+        ("the-assets-screen.md", AssetsFiles),
     ];
 
     private static void AssertTableMatchesFiles(string document, string[] files)

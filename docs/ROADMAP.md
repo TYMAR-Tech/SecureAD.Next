@@ -137,10 +137,13 @@ recorded — `BundleReader.ReadScope()` returns them — and the only way to fin
 an object and probe for it. Three such probes are what established this bundle spans three domains,
 which is an answer arrived at the wrong way round.
 
-*Owed and now recorded as `P-100`:* the assets screen has no layer document, so the findings grid,
-the navigation to an object and the filters over it were all built with no documentation gate over
-them. This is the largest untested-by-documentation surface in the product and it grows with every
-screen.
+*`P-100`, recorded and discharged 2026-08-26:* the assets screen had no layer document, so the
+findings grid, the navigation to an object and the filters over it were all built with nothing
+holding them. [`the-assets-screen.md`](layers/shell/the-assets-screen.md) now claims all 29 types
+across the eight files behind that screen, and `ShellLayerTypesTests` binds the claim to the code in
+both directions. What is still unheld is the XAML: the views declare no types, so only
+`ViewBindingGateTests` and `ViewResourceGateTests` stand over them, and the second of those exists
+because a view naming a resource nobody defined crashed the product with the build green.
 
 **Owed from stage 1 — discharged 2026-08-25.** Sixteen tests were deleted with the evidence tables,
 and every claim they made is proven again against the judgement store. The old names are kept beside
