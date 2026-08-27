@@ -27,6 +27,7 @@ takes and the logic the two rules apply; what is not built is everything that wo
 | `StoredFindings` | Findings beside the rules that were run to produce them |
 | `EvaluatedRule` | One rule that was run, at the version of its logic that ran |
 | `IRule` | A rule: what it is, and what it makes of one object |
+| `RuleCatalogue` | Every rule this product runs, as one written-out list |
 | `RuleDefinition` | What a rule is as data — its identity, wording and declared inputs |
 | `RuleVerdict` | What one rule made of one object, and what it could not read |
 | `UnconstrainedDelegationOnAccount` | SEC-010 — a user or service account trusted for unconstrained delegation |
@@ -54,6 +55,27 @@ does not exist yet.
 
 Returning nothing is the ordinary case. Most objects are fine, and a rule says so by yielding no
 finding rather than by yielding a finding that says nothing is wrong.
+
+---
+
+## The rule set is written out, and it is not the shell's
+
+`RuleCatalogue.All` is the rules this product runs. A list in source rather than a set discovered at
+runtime, because [`0082`](../../decisions/0082-the-rule-catalogue-is-not-customer-tunable.md) keeps
+the rule set out of the customer's hands and a set assembled by reflection is a set nobody can read
+off the page. Adding a rule is a line here, which is a line in a diff a reviewer can be asked to
+look at.
+
+**It sits beside `IRule` rather than beside a caller.** Until 2026-08-26 the list lived in the
+shell's `JudgingLauncher`, which put the definition of what an audit *is* inside the WPF project — so
+a command line judging a bundle overnight would have had to keep a second copy. Two lists that can
+disagree about which rules ran is a difference nobody notices until a finding is missing from one of
+them, and the store records what was scheduled, so the disagreement would have been written down as
+fact.
+
+**It is the set offered, not the record of what happened.** `StoredRuleExecution` is what became of
+each rule. One in this list with no execution record did not run, and that is a judging which did not
+complete rather than a forest with nothing wrong with it.
 
 ---
 

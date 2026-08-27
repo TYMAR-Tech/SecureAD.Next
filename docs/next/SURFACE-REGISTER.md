@@ -281,6 +281,7 @@ The table below sits between the two markers around it, so the test parses only 
 | FindingSubject | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | FindingSubjectKind | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | IRule | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleCatalogue | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleDefinition | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleVerdict | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | Severity | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

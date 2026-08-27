@@ -54,7 +54,7 @@ internal sealed class JudgingLauncher : IJudgingLauncher
     {
         var judged = JudgingRun.Judge(
             bundleDirectory,
-            Rules(),
+            RuleCatalogue.All,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             progress,
@@ -80,18 +80,4 @@ internal sealed class JudgingLauncher : IJudgingLauncher
                 stored.RulesRun.Sum(r => (long)r.ObjectsJudged),
                 bySeverity));
     }
-
-    /// <summary>
-    /// The rules this product runs.
-    /// </summary>
-    /// <remarks>
-    /// A list here rather than a catalogue discovered at runtime, because
-    /// <c>docs/decisions/0082</c> keeps the rule set out of the customer's hands and a set assembled
-    /// by reflection is a set nobody can read off the page.
-    /// </remarks>
-    private static IReadOnlyList<IRule> Rules() =>
-    [
-        new UnconstrainedDelegationOnAccount(),
-        new UnconstrainedDelegationOnNonDomainController(),
-    ];
 }

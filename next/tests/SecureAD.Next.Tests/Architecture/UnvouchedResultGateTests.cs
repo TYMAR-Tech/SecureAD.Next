@@ -141,8 +141,29 @@ public sealed class UnvouchedResultGateTests
         [
             "SchemaGuidCatalog", "CapturedAttributeCatalog", "ConnectionSecurityLadder",
             "BundleSchema", "GpoClientSideExtensionCatalog", "DirectoryTime",
-            "WellKnownSidCatalog",
+            "WellKnownSidCatalog", "RuleCatalogue",
         ];
+
+    /// <summary>
+    /// <b>The eighth entry, added 2026-08-26 when the rule set moved out of the shell</b>, on the
+    /// same reason as the seven before it. <c>RuleCatalogue.All</c> is a list written out in the
+    /// source: it constructs the rules and returns them, reading nothing and opening nothing.
+    ///
+    /// <para>
+    /// <b>An empty answer is not a state this can reach.</b> There is no query behind it and no file
+    /// to fail to load, so it cannot hand back nothing while meaning <i>I could not tell</i> - the
+    /// distinction gate 4 exists to force. If it were ever empty the product would ship judging no
+    /// rules at all, and that is caught upstream: a judging where no rule ran is refused rather than
+    /// reported as a clean forest, by <c>JudgementReader</c>.
+    /// </para>
+    /// <para>
+    /// <b>The exemption expires if the list ever becomes discovered rather than written.</b> A set
+    /// assembled by reflection, or loaded from a file, can be empty because it failed to load -
+    /// which is exactly the ambiguity this gate refuses. <c>docs/decisions/0082</c> makes that
+    /// unlikely rather than impossible, so it is stated here as the condition on the exemption
+    /// rather than assumed.
+    /// </para>
+    /// </summary>
 
     /// <summary>
     /// <b>The seventh entry, added with the well-known SID catalogue</b>, on the identical reason.
