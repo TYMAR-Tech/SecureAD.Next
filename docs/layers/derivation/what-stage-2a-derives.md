@@ -345,6 +345,15 @@ nothing. A derivation that could not be done is reported and does not stop the j
 that exists today reads one object and needs nothing derived. See
 [the New Audit screen](../shell/the-new-audit-screen.md).
 
+**A bundle can also be derived on its own.** `securead --derive <bundle>` opens a sealed bundle,
+derives from it and writes beside it, contacting no controller. It exists because deriving improves
+while evidence does not: a bundle captured before this stage understood something can be derived
+again without reading the forest a second time, which for a large forest is hours against seconds.
+It refuses to be combined with anything that captures - naming a library, a forest or a controller
+beside it asks for two things at once, and guessing which was meant is how an operator gets a
+capture he did not ask for. A missing derivation is a failure here rather than the tolerated outcome
+it is after a capture: a run asked only to derive has produced nothing if it did not.
+
 **Closures are written and not read back.** `DerivationReader` reads the header, the phases and how
 much the store holds, which is what the window needed: `DerivingOutcome` now reports the principals
 and nesting relationships a derivation produced instead of how far its pass read. It deliberately
@@ -413,6 +422,8 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Be told which budget stopped a closure short, after the run has ended | `DerivationReadingTests.Stage2a_TheLimitThatStoppedTheExpansionComesBack` | 2026-08-28 |
 | Tell a domain nobody could reach from one left out, reading a store back | `DerivationReadingTests.Stage2a_ADomainThatCouldNotBeReachedDoesNotReadBackAsOneLeftOut` | 2026-08-28 |
 | Have a derivation that covered everything say so rather than say nothing | `DerivationWritingTests.Stage2a_ACompleteDerivationStillRecordsThatItIsComplete` | 2026-08-28 |
+| Derive a bundle again without reading the forest a second time | `CommandLineTests.DerivingNamesTheBundle` | 2026-08-28 |
+| Not get a capture he did not ask for by mistyping a derive | `CommandLineTests.DerivingIsNotCombinedWithARunLibrary` | 2026-08-28 |
 | Have every type this stage publishes held to the same rules as the rest of the product | `SurfaceRegisterTests` | 2026-08-28 |
 | Not meet two methods called `Expand` that answer unrelated questions | `ConceptRegistryTests` | 2026-08-28 |
 | See the protected set his own forest enforces, not the one Microsoft publishes | `ProtectedCatalogueExclusionTests.Stage2a_AnExcludedGroupIsNotProtected` | 2026-08-28 |

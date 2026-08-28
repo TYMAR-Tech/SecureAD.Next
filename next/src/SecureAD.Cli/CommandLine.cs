@@ -38,7 +38,8 @@ internal sealed record CommandLine(
     string? Forest,
     IReadOnlyDictionary<string, string> Overrides,
     bool ValidateOnly,
-    bool PreviewOnly)
+    bool PreviewOnly,
+    string? DeriveOnly)
 {
     /// <summary>
     /// What to print when the arguments were not understood.
@@ -54,6 +55,7 @@ internal sealed record CommandLine(
             string.Empty,
             "  securead --library <directory> [--forest <name>]",
             "           [--controller <domain>=<host>]... [--validate | --preview]",
+            "  securead --derive <bundle directory>",
             string.Empty,
             "  --library     Where runs are kept. Created if absent. Required for a run or a",
             "                validate: this tool does not choose where several gigabytes of",
@@ -71,7 +73,12 @@ internal sealed record CommandLine(
             "                every answer is reported. Seconds, rather than hours.",
             "  --preview     Print which controller each domain would be read from, its site, what",
             "                the run would fall back to, and any domain the forest names no",
-            "                controller for. Contacts no domain's controller.");
+            "                controller for. Contacts no domain's controller.",
+            "  --derive      Derive from a bundle that has already been captured, without capturing",
+            "                anything. Contacts no controller and opens the evidence read-only. Use",
+            "                it to derive again after this tool has learned something new, or to",
+            "                derive a bundle captured elsewhere. Any earlier derivation in that",
+            "                bundle is replaced; the evidence is never written to.");
 
     /// <summary>
     /// Reads the arguments, or returns null when they were not understood.
@@ -99,6 +106,7 @@ internal sealed record CommandLine(
         var overrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var validateOnly = false;
         var previewOnly = false;
+        string? deriveOnly = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -128,9 +136,31 @@ internal sealed record CommandLine(
                     previewOnly = true;
                     break;
 
+                case "--derive" when i + 1 < args.Length:
+                    deriveOnly = args[++i];
+                    break;
+
                 default:
                     return null;
             }
+        }
+
+        // --derive reads a bundle that already exists, so it needs neither a library to write runs
+        // into nor a forest to contact. Naming one alongside it asks for two different things at
+        // once, and guessing which was meant is how an operator ends up with a capture he did not
+        // ask for.
+        if (deriveOnly is not null)
+        {
+            var contradicted =
+                validateOnly
+                || previewOnly
+                || library is not null
+                || forest is not null
+                || overrides.Count > 0;
+
+            return contradicted || string.IsNullOrWhiteSpace(deriveOnly)
+                ? null
+                : new CommandLine(library, forest, overrides, validateOnly, previewOnly, deriveOnly);
         }
 
         // --preview writes nothing, so it does not need somewhere to write to. Requiring a library
@@ -140,7 +170,7 @@ internal sealed record CommandLine(
             return null;
         }
 
-        return new CommandLine(library, forest, overrides, validateOnly, previewOnly);
+        return new CommandLine(library, forest, overrides, validateOnly, previewOnly, DeriveOnly: null);
     }
 
     /// <summary>

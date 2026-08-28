@@ -134,4 +134,110 @@ public sealed class CommandLineTests
         Assert.NotNull(typed);
         Assert.Equal("contoso.com", typed.Forest);
     }
+
+    /// <summary>
+    /// Deriving names the bundle to derive from.
+    /// </summary>
+    [Fact]
+    public void DerivingNamesTheBundle()
+    {
+        var parsed = CommandLine.Parse(["--derive", @"D:\audits\contoso-20260828"]);
+
+        Assert.NotNull(parsed);
+        Assert.Equal(@"D:\audits\contoso-20260828", parsed.DeriveOnly);
+    }
+
+    /// <summary>
+    /// Deriving needs no run library, because it writes beside a bundle that already exists.
+    /// </summary>
+    /// <remarks>
+    /// Requiring one would make an operator name a directory this command never writes to, and the
+    /// obvious thing to type would be the library the bundle came from - which is not where the
+    /// derivation goes.
+    /// </remarks>
+    [Fact]
+    public void DerivingNeedsNoRunLibrary()
+    {
+        var parsed = CommandLine.Parse(["--derive", @"D:\audits\contoso-20260828"]);
+
+        Assert.NotNull(parsed);
+        Assert.Null(parsed.LibraryRoot);
+    }
+
+    /// <summary>
+    /// Deriving is not combined with a run library.
+    /// </summary>
+    /// <remarks>
+    /// <b>Each of the four below asks for two different things at once.</b> Deriving reads a bundle
+    /// that exists; the rest contact a forest. Guessing which was meant is how an operator ends up
+    /// with a capture he did not ask for, against a forest he may not have meant to touch.
+    /// </remarks>
+    [Fact]
+    public void DerivingIsNotCombinedWithARunLibrary()
+    {
+        Assert.Null(CommandLine.Parse(["--derive", @"D:\b", "--library", @"D:\audits"]));
+    }
+
+    /// <summary>Deriving is not combined with a forest name.</summary>
+    [Fact]
+    public void DerivingIsNotCombinedWithAForestName()
+    {
+        Assert.Null(CommandLine.Parse(["--derive", @"D:\b", "--forest", "contoso.com"]));
+    }
+
+    /// <summary>Deriving is not combined with a validate.</summary>
+    [Fact]
+    public void DerivingIsNotCombinedWithAValidate()
+    {
+        Assert.Null(CommandLine.Parse(["--derive", @"D:\b", "--validate"]));
+    }
+
+    /// <summary>Deriving is not combined with a preview.</summary>
+    [Fact]
+    public void DerivingIsNotCombinedWithAPreview()
+    {
+        Assert.Null(CommandLine.Parse(["--derive", @"D:\b", "--preview"]));
+    }
+
+    /// <summary>Deriving is not combined with a named controller.</summary>
+    [Fact]
+    public void DerivingIsNotCombinedWithANamedController()
+    {
+        Assert.Null(CommandLine.Parse(
+            ["--derive", @"D:\b", "--controller", "contoso.com=DC01.contoso.com"]));
+    }
+
+    /// <summary>
+    /// The order the two are typed in does not change the refusal.
+    /// </summary>
+    [Fact]
+    public void DerivingIsRefusedWhicheverWayRoundItIsTyped()
+    {
+        Assert.Null(CommandLine.Parse(["--library", @"D:\audits", "--derive", @"D:\b"]));
+    }
+
+    /// <summary>
+    /// Deriving without naming a bundle is refused rather than defaulted to somewhere.
+    /// </summary>
+    [Fact]
+    public void DerivingWithoutABundleIsRefused()
+    {
+        Assert.Null(CommandLine.Parse(["--derive"]));
+    }
+
+    /// <summary>
+    /// An ordinary run does not look like a derive.
+    /// </summary>
+    /// <remarks>
+    /// The two are told apart by this one member, so a capture that carried a derive path would run
+    /// the wrong half of the program.
+    /// </remarks>
+    [Fact]
+    public void AnOrdinaryRunNamesNoBundleToDeriveFrom()
+    {
+        var parsed = CommandLine.Parse(["--library", @"D:\audits"]);
+
+        Assert.NotNull(parsed);
+        Assert.Null(parsed.DeriveOnly);
+    }
 }

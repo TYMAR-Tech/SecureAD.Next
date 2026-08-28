@@ -95,6 +95,12 @@ internal static class Program
     private static async Task<int> RunAsync(
         CommandLine options, CancellationToken cancellationToken)
     {
+        // Before this machine's own addresses are read, because deriving contacts nothing: it opens
+        // a sealed bundle that already exists. Asking the network anything first would make a
+        // read-only operation depend on the machine being able to see a forest.
+        if (options.DeriveOnly is not null)
+            return Derive(options.DeriveOnly, afterCapture: false, cancellationToken);
+
         // A machine whose own addresses cannot be read has no site, and every domain then reports
         // as chosen without full knowledge rather than the run pretending it was sited.
         var addresses = MachineAddresses.OfThisMachine();
@@ -165,7 +171,7 @@ internal static class Program
 
         Console.Out.WriteLine("Sealed: " + run.Value.BundleDirectory);
 
-        return Derive(run.Value.BundleDirectory, cancellationToken);
+        return Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken);
     }
 
     /// <summary>
@@ -196,9 +202,19 @@ internal static class Program
     /// stopped run from a finished one.
     /// </para>
     /// </remarks>
-    private static int Derive(string bundleDirectory, CancellationToken cancellationToken)
+    private static int Derive(
+        string bundleDirectory, bool afterCapture, CancellationToken cancellationToken)
     {
         Result<DerivationRunState> derived;
+
+        // Named by an operator rather than produced by a capture, so it is worth checking before
+        // anything opens it. A typed path that does not exist should say so plainly instead of
+        // failing somewhere inside the reader.
+        if (!afterCapture && !Directory.Exists(bundleDirectory))
+        {
+            Console.Error.WriteLine("There is no bundle at " + bundleDirectory + ".");
+            return Failed;
+        }
 
         // The capture wrote the first stretch of this file; this appends to it, so one bundle's
         // log reads top to bottom whatever produced each part of it.
@@ -239,7 +255,11 @@ internal static class Program
                 "The evidence is sealed and safe. Nothing could be derived from it: "
                 + derived.Error!.Description);
 
-            return Success;
+            // After a capture this is a success: the run was asked to read a forest and it did,
+            // and the evidence is sealed whatever happened next. Asked only to derive, the same
+            // outcome is a failure - nothing the operator wanted was produced, and a scheduler
+            // told otherwise would report a job that did nothing as having worked.
+            return afterCapture ? Success : Failed;
         }
 
         Console.Out.WriteLine(derived.Value switch
