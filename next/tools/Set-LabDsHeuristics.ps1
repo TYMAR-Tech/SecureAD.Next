@@ -75,12 +75,15 @@ $ErrorActionPreference = 'Stop'
 # The position of dwAdminSDExMask, one-based as MS-ADTS numbers it.
 $MaskPosition = 16
 
-$GroupsByBit = [ordered]@{
-    1 = 'Account Operators (S-1-5-32-548)'
-    2 = 'Server Operators  (S-1-5-32-549)'
-    4 = 'Print Operators   (S-1-5-32-550)'
-    8 = 'Backup Operators  (S-1-5-32-551)'
-}
+# An explicit array rather than a hashtable keyed by the bit value. An [ordered] hashtable's .Keys
+# are boxed objects, so enumerating them and indexing back in silently returned the wrong names -
+# mask 'f' reported two groups and two blanks. Pairs cannot drift the same way.
+$GroupsByBit = @(
+    [pscustomobject]@{ Bit = 1; Name = 'Account Operators (S-1-5-32-548)' }
+    [pscustomobject]@{ Bit = 2; Name = 'Server Operators  (S-1-5-32-549)' }
+    [pscustomobject]@{ Bit = 4; Name = 'Print Operators   (S-1-5-32-550)' }
+    [pscustomobject]@{ Bit = 8; Name = 'Backup Operators  (S-1-5-32-551)' }
+)
 
 function Get-DirectoryServiceDn {
     param([string] $Server)
@@ -93,8 +96,12 @@ function Resolve-Mask {
     <#
         Applies the same rules the product's DirectoryHeuristics does, so a disagreement between
         this script and SecureAD is a real disagreement rather than two different readings.
+
+        $Value is deliberately untyped. A [string] parameter coerces $null to '', which would
+        collapse "the forest holds no attribute" into "the forest holds an empty one" - the exact
+        distinction the product keeps apart, erased by a type annotation.
     #>
-    param([string] $Value)
+    param($Value)
 
     if ($null -eq $Value) {
         return [pscustomobject]@{ State = 'NotRead'; Character = $null; Excluded = @() }
@@ -119,7 +126,7 @@ function Resolve-Mask {
         return [pscustomobject]@{ State = 'Undocumented'; Character = $character; Excluded = @() }
     }
 
-    $excluded = @($GroupsByBit.Keys | Where-Object { $digit -band $_ } | ForEach-Object { $GroupsByBit[$_] })
+    $excluded = @($GroupsByBit | Where-Object { $digit -band $_.Bit } | ForEach-Object { $_.Name })
     [pscustomobject]@{ State = 'Stated'; Character = $character; Excluded = $excluded }
 }
 
@@ -128,7 +135,7 @@ function New-HeuristicsValue {
         Builds the value to write, preserving every character already present and honouring the
         every-tenth-character checksum the server enforces.
     #>
-    param([string] $Existing, [char] $NewMaskCharacter)
+    param($Existing, [char] $NewMaskCharacter)
 
     $characters = [char[]]::new($MaskPosition)
 
@@ -163,13 +170,19 @@ function Assert-Checksums {
 }
 
 function Write-State {
-    param([string] $Dn, [string] $Value)
+    # $Value untyped for the reason Resolve-Mask gives: [string] would turn $null into ''.
+    param([string] $Dn, $Value)
 
     $resolved = Resolve-Mask $Value
 
+    $shown =
+        if ($null -eq $Value) { '<attribute not present>' }
+        elseif ($Value -eq '') { "'' (present, empty)" }
+        else { "'$Value'" }
+
     Write-Host ''
     Write-Host "  Object : $Dn"
-    Write-Host "  Value  : $(if ($null -eq $Value) { '<not set>' } else { "'$Value'" })"
+    Write-Host "  Value  : $shown"
     Write-Host "  Char 16: $(if ($resolved.Character) { "'$($resolved.Character)'" } else { '-' })  ($($resolved.State))"
 
     if ($resolved.Excluded.Count -eq 0) {
