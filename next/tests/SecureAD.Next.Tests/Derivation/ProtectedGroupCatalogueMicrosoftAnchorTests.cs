@@ -95,7 +95,7 @@ public sealed class ProtectedGroupCatalogueMicrosoftAnchorTests
     [Fact]
     public void CertPublishersIsDeliberatelyAbsent()
     {
-        Assert.False(ProtectedGroupCatalogue.IsProtected(DomainSid + "-517"));
+        Assert.False(ProtectedGroupCatalogue.IsInThePublishedCatalogue(DomainSid + "-517"));
     }
 
     /// <summary>

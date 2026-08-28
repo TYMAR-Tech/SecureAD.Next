@@ -63,13 +63,33 @@ internal enum ProtectionUnknownReason
     /// The set of protected principals could not be confirmed for this domain.
     /// </summary>
     /// <remarks>
-    /// <c>dSHeuristics</c> on the AdminSDHolder object can remove groups from the protected set, and
-    /// this product does not capture it. Removal can only shrink the set, so the effect is to report
-    /// protection that may have been turned off rather than to miss protection that is on - the
-    /// safer of the two directions, and the reason this does not make every principal
-    /// <see cref="ProtectedPrincipalEvaluation.Unknown"/>.
+    /// <para>
+    /// <c>dSHeuristics</c> can remove four operator groups from the protected set, and this bundle
+    /// does not carry it - either because nothing read the forest's configuration object, or
+    /// because the bundle was captured before the attribute was requested. Removal can only shrink
+    /// the set, so the effect is to report protection that may have been turned off rather than to
+    /// miss protection that is on - the safer of the two directions, and the reason this does not
+    /// make every principal <see cref="ProtectedPrincipalEvaluation.Unknown"/>.
+    /// </para>
+    /// <para>
+    /// <b>Not raised where the forest was asked and answered.</b> A forest holding no value has a
+    /// documented answer - every character defaults to zero, so nothing is excluded - and reporting
+    /// that as a limit would state doubt nobody has.
+    /// </para>
     /// </remarks>
     ProtectedCatalogueIncomplete = 8,
+
+    /// <summary>
+    /// The forest has removed one or more operator groups from AdminSDHolder's protection.
+    /// </summary>
+    /// <remarks>
+    /// <b>Not a doubt, and recorded beside them because a smaller answer needs an explanation.</b>
+    /// Everything else here says something could not be established; this says something was
+    /// established and the answer was narrower than the published catalogue. Without it an operator
+    /// sees four groups missing from the protected set with nothing to say why, which reads as the
+    /// product having lost them.
+    /// </remarks>
+    ProtectedCatalogueNarrowedByForest = 16,
 }
 
 /// <summary>
@@ -156,7 +176,7 @@ internal static class ProtectedPrincipalDeriver
 
         for (var sidId = 0; sidId < count; sidId++)
         {
-            if (ProtectedGroupCatalogue.IsProtected(sids.TextOf(sidId)))
+            if (catalogue.IsProtected(sids.TextOf(sidId)))
                 seeds.Add(sidId);
         }
 
@@ -174,11 +194,15 @@ internal static class ProtectedPrincipalDeriver
         var evaluations = new ProtectedPrincipalEvaluation[count];
         var reasons = new ProtectionUnknownReason[count];
 
-        // dSHeuristics can remove groups from the protected set and this product does not read it,
-        // so every Protected verdict carries that caveat. It is stated once about the derivation
-        // rather than stamped on each principal, because removal can only shrink the set: the risk
-        // is over-reporting protection, never missing it.
-        var statedLimits = ProtectionUnknownReason.ProtectedCatalogueIncomplete;
+        // What the forest said about its own protected set, rather than a caveat stated whatever
+        // the evidence. An unread dSHeuristics leaves the published catalogue in force and says so;
+        // a read one either confirms it or narrows it, and both are answers rather than doubts.
+        var statedLimits = catalogue.Exclusions.IsComplete
+            ? ProtectionUnknownReason.None
+            : ProtectionUnknownReason.ProtectedCatalogueIncomplete;
+
+        if (catalogue.Exclusions.Excluded.Count > 0)
+            statedLimits |= ProtectionUnknownReason.ProtectedCatalogueNarrowedByForest;
 
         if (membershipEvidenceIsPartial)
             statedLimits |= ProtectionUnknownReason.PartialMembershipEvidence;

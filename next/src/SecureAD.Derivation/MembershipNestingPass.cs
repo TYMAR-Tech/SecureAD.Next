@@ -26,6 +26,12 @@ namespace SecureAD.Derivation;
 /// and all of them are the same principal - so the extra objects are folded onto it. Counted rather
 /// than passed over, because a fidelity loss nobody is told about is one nobody can check.
 /// </param>
+/// <param name="ForestHeuristics">
+/// The forest's <c>dSHeuristics</c> value, an empty string where the object carries none, or null
+/// where the bundle does not hold the object at all. Required rather than defaulted, per gate 1:
+/// a default of null would make "nobody read it" the quiet answer, and that is precisely the state
+/// a caller must decide about rather than inherit.
+/// </param>
 internal sealed record NestingFacts(
     SidInterner Sids,
     IReadOnlyList<SidIdentityRow> Identities,
@@ -33,7 +39,8 @@ internal sealed record NestingFacts(
     IReadOnlyList<NestingEdge> Edges,
     IReadOnlyList<string> UnresolvedTrustees,
     int ObjectsWithoutSid,
-    int CollapsedStubs = 0);
+    int CollapsedStubs,
+    string? ForestHeuristics);
 
 /// <summary>
 /// Reads a sealed bundle once and works out the directory's nesting: who is in what, what each
@@ -106,12 +113,27 @@ internal static class MembershipNestingPass
         var objectsWithoutSid = 0;
         var collapsedStubs = 0;
 
+        // The forest's own settings, picked up from the object that carries them rather than by
+        // reading the bundle a second time. There is one nTDSService object in a forest and this
+        // pass already goes past every object, so noticing it here costs nothing - where a separate
+        // read would open the evidence again for one string.
+        //
+        // Null until the object is seen, and that is the point: a bundle whose capture predates the
+        // attribute carries no value because nobody asked, which is not the same as a forest that
+        // set none. Only the first stays null.
+        string? forestHeuristics = null;
+
         foreach (var subject in objects)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var ownNameId = names.IdOf(subject.DistinguishedName);
             var ownSid = SidTextOf(subject, "objectSid");
+
+            // Before the no-SID branch below, because the object carrying this has no SID: it is a
+            // settings object, not a principal, and the branch that skips such objects would skip
+            // this with them.
+            forestHeuristics ??= HeuristicsOf(subject);
 
             if (ownSid is null)
             {
@@ -205,7 +227,8 @@ internal static class MembershipNestingPass
             edges,
             [.. unresolved.Distinct(StringComparer.OrdinalIgnoreCase)],
             objectsWithoutSid,
-            collapsedStubs);
+            collapsedStubs,
+            forestHeuristics);
     }
 
     /// <summary>
@@ -327,6 +350,35 @@ internal static class MembershipNestingPass
 
     private static IReadOnlyList<string> ClassesOf(ObjectAttributes subject) =>
         TextsOf(subject, "objectClass");
+
+    /// <summary>
+    /// The forest's <c>dSHeuristics</c>, if this object is the one that carries it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Recognised by class rather than by name.</b> The object's distinguished name ends in the
+    /// forest root's own, so matching on a name would mean composing one out of a domain - the
+    /// string surgery <c>a-domain-left-out-on-purpose.md</c> refuses. There is one
+    /// <c>nTDSService</c> object per forest, so its class identifies it and nothing has to be
+    /// assembled.
+    /// </para>
+    /// <para>
+    /// <b>An empty string is returned where the object holds no value, and it is not null.</b> That
+    /// distinction is the whole point: the object being present means the forest was asked, and
+    /// MS-ADTS says an absent value means every character defaults. Null is reserved for never
+    /// having looked.
+    /// </para>
+    /// </remarks>
+    private static string? HeuristicsOf(ObjectAttributes subject)
+    {
+        if (!ClassesOf(subject).Any(
+                c => string.Equals(c, "nTDSService", StringComparison.OrdinalIgnoreCase)))
+        {
+            return null;
+        }
+
+        return TextsOf(subject, "dSHeuristics").FirstOrDefault() ?? string.Empty;
+    }
 
     private static int? SignedIntegerOf(ObjectAttributes subject, string ldapDisplayName) =>
         int.TryParse(

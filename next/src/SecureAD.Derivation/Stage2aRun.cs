@@ -274,13 +274,19 @@ public static class Stage2aRun
             || !closure.IsComplete
             || facts.UnresolvedTrustees.Count > 0;
 
+        // The catalogue this forest actually enforces, rather than the one Microsoft publishes. A
+        // forest that never set dSHeuristics gets the published set and says it was asked; one that
+        // set a mask gets a narrower set; a bundle that does not carry the value gets the published
+        // set and says nobody looked.
+        var catalogue = ProtectedGroupCatalogue.NarrowedBy(facts.ForestHeuristics);
+
         Run(
             writer,
             ProtectedPrincipalDeriver.PhaseName,
             progress,
             log,
             () => ProtectedPrincipalDeriver.Derive(
-                graph, facts.Sids, ProtectedGroupCatalogue.Default, evidenceIsPartial, cancellationToken),
+                graph, facts.Sids, catalogue, evidenceIsPartial, cancellationToken),
             _ => evidenceIsPartial
                 ? DerivationPhaseOutcome.Degraded
                 : DerivationPhaseOutcome.Succeeded);

@@ -1,3 +1,5 @@
+using SecureAD.Kernel.Security;
+
 namespace SecureAD.Derivation;
 
 /// <summary>
@@ -55,11 +57,37 @@ internal enum ProtectedEdgeProvenance
 /// <param name="PrimaryGroupProvenance">
 /// What establishes that primary-group membership reaches a protected principal.
 /// </param>
+/// <param name="Exclusions">
+/// What the forest's own <c>dSHeuristics</c> says about which operator groups it has stopped
+/// protecting, and whether that was read at all.
+/// </param>
 internal sealed record ProtectedGroupCatalogue(
     string Version,
     ProtectedEdgeProvenance DistributionNestingProvenance,
-    ProtectedEdgeProvenance PrimaryGroupProvenance)
+    ProtectedEdgeProvenance PrimaryGroupProvenance,
+    AdminSdExclusionMask Exclusions)
 {
+    /// <summary>
+    /// Whether this catalogue's exclusions name the builtin group <paramref name="sid"/> is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Computed each time rather than cached, and the two attempts before this one are why.</b>
+    /// A field initialiser is copied verbatim by a <c>with</c> expression rather than recomputed,
+    /// so <see cref="NarrowedBy"/> produced a catalogue holding a new mask beside the old empty
+    /// set. Replacing it with a lazily populated field was worse: <see cref="Default"/> is a static
+    /// singleton, so whichever caller reached it first decided what every later copy inherited, and
+    /// the tests passed alone and failed together.
+    /// </para>
+    /// <para>
+    /// The mask names at most four groups, so this is four comparisons against a list that is
+    /// almost always empty - cheaper than the allocation the cache was avoiding.
+    /// </para>
+    /// </remarks>
+    /// <param name="sid">The SID in its canonical text form.</param>
+    private bool IsExcludedByTheForest(string sid) =>
+        Exclusions.Excluded.Any(
+            g => string.Equals(sid, $"S-1-5-32-{(int)g}", StringComparison.Ordinal));
     /// <summary>
     /// Relative identifiers protected within their own domain.
     /// </summary>
@@ -125,11 +153,43 @@ internal sealed record ProtectedGroupCatalogue(
     /// how the protection process traverses it. A principal that reaches a protected group only that
     /// way is <c>Unknown</c>, never <c>NotProtected</c>.
     /// </para>
+    /// <para>
+    /// <b><see cref="Exclusions"/> is unread here, and that is the honest default.</b> This is the
+    /// catalogue as Microsoft publishes it, before any forest has been asked whether it narrowed
+    /// the set. A derivation using it states <c>ProtectedCatalogueIncomplete</c>, which is correct:
+    /// nobody looked. <see cref="ForForest"/> is how a forest's own answer gets applied.
+    /// </para>
     /// </remarks>
     public static ProtectedGroupCatalogue Default { get; } = new(
         Version: "appendix-c-2026-08",
         DistributionNestingProvenance: ProtectedEdgeProvenance.Documented,
-        PrimaryGroupProvenance: ProtectedEdgeProvenance.NotEstablished);
+        PrimaryGroupProvenance: ProtectedEdgeProvenance.NotEstablished,
+        Exclusions: new AdminSdExclusionMask(
+            [], HeuristicReadOutcome.NotRead, Character: null));
+
+    /// <summary>
+    /// The published catalogue, narrowed by what one forest's <c>dSHeuristics</c> says.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The forest can only take groups out, never add them.</b> <c>dwAdminSDExMask</c> names four
+    /// operator groups and nothing else, so a mask cannot explain a protected principal this
+    /// catalogue does not list - and a forest that excludes all four still protects the other
+    /// eleven.
+    /// </para>
+    /// <para>
+    /// <b>Named <c>NarrowedBy</c> rather than <c>ForForest</c>.</b> <c>CONCEPT-REGISTRY.md</c> gives
+    /// <i>which forest a run assessed</i> to <c>ProfileId</c> with the shape <c>For*</c>, and a
+    /// second member under that shape would claim a question that already has an owner. The name is
+    /// also the truer one: this narrows a catalogue and identifies no forest.
+    /// </para>
+    /// </remarks>
+    /// <param name="dsHeuristics">
+    /// The forest's <c>dSHeuristics</c> value, or null where it was not read.
+    /// </param>
+    /// <returns>The catalogue this forest actually enforces.</returns>
+    public static ProtectedGroupCatalogue NarrowedBy(string? dsHeuristics) =>
+        Default with { Exclusions = DirectoryHeuristics.AdminSdExclusions(dsHeuristics) };
 
     /// <summary>Whether nesting through a distribution group is followed.</summary>
     public bool FollowsDistributionNesting =>
@@ -142,8 +202,42 @@ internal sealed record ProtectedGroupCatalogue(
     /// <summary>
     /// Whether a SID names a principal this catalogue protects.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>An instance member rather than a static one, because the answer depends on the forest.</b>
+    /// <c>dwAdminSDExMask</c> can remove four operator groups from AdminSDHolder's protection, so
+    /// <i>is this principal protected</i> has no answer that holds everywhere. A static method
+    /// would have to ignore the mask, which is how this product came to state
+    /// <c>ProtectedCatalogueIncomplete</c> on every derivation.
+    /// </para>
+    /// <para>
+    /// <b>An excluded group is still in the published catalogue.</b> It is removed here rather than
+    /// deleted from <see cref="BuiltinSids"/>, so what Microsoft publishes and what this forest
+    /// does are two facts a reader can still tell apart.
+    /// </para>
+    /// </remarks>
     /// <param name="sid">The SID in its canonical text form.</param>
-    public static bool IsProtected(string sid)
+    public bool IsProtected(string sid)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+
+        if (IsExcludedByTheForest(sid))
+            return false;
+
+        return IsInThePublishedCatalogue(sid);
+    }
+
+    /// <summary>
+    /// Whether a SID names a principal Microsoft publishes as protected, before any forest-specific
+    /// exclusion is applied.
+    /// </summary>
+    /// <remarks>
+    /// Kept separate from <see cref="IsProtected"/> so the published set stays answerable on its
+    /// own: an operator asking why a group is not protected needs to know whether it was never in
+    /// the catalogue or was taken out by this forest, and those are different remedies.
+    /// </remarks>
+    /// <param name="sid">The SID in its canonical text form.</param>
+    public static bool IsInThePublishedCatalogue(string sid)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sid);
 

@@ -21,10 +21,10 @@ public sealed class ProtectedPrincipalDeriverTests
     [Fact]
     public void Stage2a_ProtectedGroupsAreRecognisedByRelativeIdentifier()
     {
-        Assert.True(ProtectedGroupCatalogue.IsProtected(DomainSid + "-512"));
-        Assert.True(ProtectedGroupCatalogue.IsProtected(DomainSid + "-500"));
-        Assert.True(ProtectedGroupCatalogue.IsProtected("S-1-5-32-544"));
-        Assert.False(ProtectedGroupCatalogue.IsProtected(DomainSid + "-1104"));
+        Assert.True(ProtectedGroupCatalogue.IsInThePublishedCatalogue(DomainSid + "-512"));
+        Assert.True(ProtectedGroupCatalogue.IsInThePublishedCatalogue(DomainSid + "-500"));
+        Assert.True(ProtectedGroupCatalogue.IsInThePublishedCatalogue("S-1-5-32-544"));
+        Assert.False(ProtectedGroupCatalogue.IsInThePublishedCatalogue(DomainSid + "-1104"));
     }
 
     /// <summary>
@@ -33,8 +33,8 @@ public sealed class ProtectedPrincipalDeriverTests
     [Fact]
     public void Stage2a_AWellKnownSidIsNotMistakenForAProtectedAccount()
     {
-        Assert.False(ProtectedGroupCatalogue.IsProtected("S-1-5-500"));
-        Assert.False(ProtectedGroupCatalogue.IsProtected("S-1-5-18"));
+        Assert.False(ProtectedGroupCatalogue.IsInThePublishedCatalogue("S-1-5-500"));
+        Assert.False(ProtectedGroupCatalogue.IsInThePublishedCatalogue("S-1-5-18"));
     }
 
     /// <summary>
@@ -227,7 +227,7 @@ public sealed class ProtectedPrincipalDeriverTests
             [.. principals.Select(p => p.Row)],
             [.. edges.Select(e => new NestingEdge(e.Group, e.Member))],
             UnresolvedTrustees: [],
-            ObjectsWithoutSid: 0));
+            ObjectsWithoutSid: 0, CollapsedStubs: 0, ForestHeuristics: null));
 
     private static SidInterner SidsFor(IReadOnlyList<Fixture> principals)
     {

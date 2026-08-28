@@ -135,7 +135,7 @@ public sealed class NestingGraphTests
             Principals: [User(0)],
             Edges: [],
             UnresolvedTrustees: [],
-            ObjectsWithoutSid: 0);
+            ObjectsWithoutSid: 0, CollapsedStubs: 0, ForestHeuristics: null);
 
         var graph = NestingGraph.Build(facts);
 
@@ -154,7 +154,7 @@ public sealed class NestingGraphTests
             sids.Intern("S-1-5-21-1-2-3-" + (1000 + i), domainFqdn: null);
 
         return NestingGraph.Build(new NestingFacts(
-            sids, [], principals, edges, [], 0));
+            sids, [], principals, edges, [], 0, 0, null));
     }
 
     private static SidInterner InternerOf(params string[] sids)

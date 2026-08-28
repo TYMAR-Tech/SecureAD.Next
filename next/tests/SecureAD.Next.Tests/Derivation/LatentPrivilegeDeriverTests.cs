@@ -171,7 +171,7 @@ public sealed class LatentPrivilegeDeriverTests
             principals,
             [.. edges.Select(e => new NestingEdge(e.Group, e.Member))],
             UnresolvedTrustees: [],
-            ObjectsWithoutSid: 0));
+            ObjectsWithoutSid: 0, CollapsedStubs: 0, ForestHeuristics: null));
 
         var closure = AuthorizationMembershipExpander.ClosureOf(
             graph, ExpansionBudget.Bulk, CancellationToken.None);

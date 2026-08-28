@@ -262,7 +262,7 @@ public sealed class AuthorizationMembershipExpanderTests
             principals,
             [.. edges.Select(e => new NestingEdge(e.Group, e.Member))],
             UnresolvedTrustees: [],
-            ObjectsWithoutSid: 0);
+            ObjectsWithoutSid: 0, CollapsedStubs: 0, ForestHeuristics: null);
 
         return AuthorizationMembershipExpander.ClosureOf(
             NestingGraph.Build(facts), budget, CancellationToken.None);

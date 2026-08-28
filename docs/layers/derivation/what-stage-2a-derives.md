@@ -311,11 +311,24 @@ The two degraded paths say so rather than recording nothing:
 
 ## Known gaps
 
-**`dSHeuristics` is not captured.** It allows a domain to remove groups from its protected set, so
-without it the catalogue cannot be confirmed to apply. `ProtectionUnknownReason.ProtectedCatalogueIncomplete`
-is stated on every derivation until capture reads it. Removal can only shrink the set, so the effect
-is over-reporting protection rather than missing it - the safer direction, and why it is a stated
-limit rather than a universal `Unknown`.
+**`dSHeuristics` is captured, and the protected set is the forest's own.** Character 16,
+`dwAdminSDExMask`, can remove Account, Server, Print or Backup Operators from the set AdminSDHolder
+protects, and the derivation now applies it. Three states are held apart, because collapsing them
+is how a hole gets reported as a clean answer:
+
+| What the bundle carries | What the derivation says |
+|---|---|
+| a value naming excluded groups | those groups are not protected, and `ProtectedCatalogueNarrowedByForest` says why the set is smaller |
+| the object, holding no value | the published catalogue applies, and the forest was asked - MS-ADTS makes an absent value a documented answer, not a gap |
+| no such object, or a bundle captured before catalogue version 5 | the published catalogue applies, and `ProtectedCatalogueIncomplete` says nobody looked |
+
+**The middle row is what changed.** Before this the derivation stated
+`ProtectedCatalogueIncomplete` on every run whatever the evidence, which is doubt a forest that gave
+a clear answer does not deserve.
+
+**An excluded group is removed, never deleted.** `IsInThePublishedCatalogue` still answers for
+Microsoft's set, so an operator asking why a group is unprotected can tell *never in the catalogue*
+from *taken out by this forest* - different facts with different remedies.
 
 **Deriving runs between the capture and the judging.** `NewAuditViewModel` calls it through
 `IDerivationLauncher` once a capture has sealed evidence, and `SecureAD.Cli` calls `Stage2aRun.Derive`
@@ -395,3 +408,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Have a derivation that covered everything say so rather than say nothing | `DerivationWritingTests.Stage2a_ACompleteDerivationStillRecordsThatItIsComplete` | 2026-08-28 |
 | Have every type this stage publishes held to the same rules as the rest of the product | `SurfaceRegisterTests` | 2026-08-28 |
 | Not meet two methods called `Expand` that answer unrelated questions | `ConceptRegistryTests` | 2026-08-28 |
+| See the protected set his own forest enforces, not the one Microsoft publishes | `ProtectedCatalogueExclusionTests.Stage2a_AnExcludedGroupIsNotProtected` | |
+| Tell a group his forest excluded from one that was never protected | `ProtectedCatalogueExclusionTests.Stage2a_ThePublishedSetIsStillAnswerableAfterNarrowing` | |
+| Not be told the protected set is in doubt when his forest answered clearly | `ProtectedCatalogueExclusionTests.Stage2a_AForestThatExcludedNothingSaysItWasAsked` | |
+| Keep every published protection where a bundle cannot say what the forest set | `ProtectedCatalogueExclusionTests.Stage2a_ABundleWithoutTheValueKeepsThePublishedSet` | |

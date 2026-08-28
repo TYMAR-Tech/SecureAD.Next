@@ -159,7 +159,7 @@ public sealed class DerivationCompletenessTests
             principals,
             [.. edges.Select(e => new NestingEdge(e.Group, e.Member))],
             unresolvedTrustees,
-            ObjectsWithoutSid: 0);
+            ObjectsWithoutSid: 0, CollapsedStubs: 0, ForestHeuristics: null);
 
         return (facts, NestingGraph.Build(facts));
     }
