@@ -300,7 +300,11 @@ public sealed class NewAuditViewModelTests
     [Fact]
     public async Task WhatTheDerivationProducedIsReported()
     {
-        _deriving.Outcome = new DerivingOutcome(DerivationRunState.Completed, ObjectsRead: 4_795);
+        _deriving.Outcome = new DerivingOutcome(
+            DerivationRunState.Completed,
+            Principals: 4_795,
+            NestingEdges: 12_004,
+            EveryPhaseThatRanSucceeded: true);
 
         var screen = await Opened();
 
@@ -322,7 +326,9 @@ public sealed class NewAuditViewModelTests
     {
         _deriving.Outcome = new DerivingOutcome(
             DerivationRunState.CompletedDegraded,
-            ObjectsRead: 100);
+            Principals: 100,
+            NestingEdges: 2,
+            EveryPhaseThatRanSucceeded: false);
 
         var screen = await Opened();
 

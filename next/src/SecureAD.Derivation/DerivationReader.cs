@@ -1,0 +1,268 @@
+using System.Globalization;
+using Microsoft.Data.Sqlite;
+using SecureAD.Evidence;
+using SecureAD.Kernel;
+
+namespace SecureAD.Derivation;
+
+/// <summary>
+/// What a derivation recorded about itself.
+/// </summary>
+/// <param name="SchemaVersion">The shape of the store, so a reader can refuse one it cannot read.</param>
+/// <param name="EvidenceSeal">The capture these facts were derived from.</param>
+/// <param name="GenerationId">Which derive run produced them.</param>
+/// <param name="State">What became of that run.</param>
+/// <param name="StartedUtc">When deriving started.</param>
+/// <param name="CompletedUtc">When it finished.</param>
+public sealed record DerivationDescription(
+    int SchemaVersion,
+    string EvidenceSeal,
+    Guid GenerationId,
+    DerivationRunState State,
+    DateTimeOffset StartedUtc,
+    DateTimeOffset CompletedUtc);
+
+/// <summary>
+/// One phase of a derivation, read back.
+/// </summary>
+/// <param name="Phase">The phase, as it named itself.</param>
+/// <param name="Outcome">What became of it.</param>
+/// <param name="Error">Why it failed, when it did.</param>
+public sealed record StoredDerivationPhase(
+    string Phase,
+    DerivationPhaseOutcome Outcome,
+    string? Error);
+
+/// <summary>
+/// How much a derivation holds.
+/// </summary>
+/// <remarks>
+/// <b>Counts rather than the rows themselves.</b> A forest's nesting is millions of edges and
+/// nothing yet has a use for them; what the window needs is to say what a derivation produced
+/// instead of how far its pass read. Handing back the rows would be an API designed against no
+/// caller, which is what the rule interface is still deferred for.
+/// </remarks>
+/// <param name="Principals">Principals the derivation knows about.</param>
+/// <param name="Identities">SIDs resolving to a principal, current and historical alike.</param>
+/// <param name="NestingEdges">Direct nesting relationships, each held once.</param>
+public sealed record DerivationSize(long Principals, long Identities, long NestingEdges);
+
+/// <summary>
+/// Everything a derivation store holds about the run that wrote it.
+/// </summary>
+/// <remarks>
+/// <b>One call, because the parts are only meaningful together</b> - the reason
+/// <c>StoredJudgement</c> gives. A count of principals without the phase outcomes beside it lets a
+/// caller report a degraded derivation as though it were whole, which is the failure this stage is
+/// shaped around.
+/// </remarks>
+/// <param name="Description">What the run recorded about itself.</param>
+/// <param name="Phases">Every phase, whatever became of it.</param>
+/// <param name="Size">How much the store holds.</param>
+public sealed record StoredDerivation(
+    DerivationDescription Description,
+    IReadOnlyList<StoredDerivationPhase> Phases,
+    DerivationSize Size)
+{
+    /// <summary>Whether every phase that ran succeeded.</summary>
+    /// <remarks>
+    /// A phase that did not run is not a failure and is not counted as one - it had no input, which
+    /// is a different sentence from having misbehaved.
+    /// </remarks>
+    public bool EveryPhaseThatRanSucceeded =>
+        Phases.All(p => p.Outcome is DerivationPhaseOutcome.Succeeded or DerivationPhaseOutcome.DidNotRun);
+}
+
+/// <summary>
+/// Reads a derivation store back, the way <c>BundleReader</c> reads evidence and
+/// <c>JudgementReader</c> reads a judgement.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Refusing a store this build cannot read is its first job.</b> The SID dictionary gained a
+/// scope at schema version 2, because a SID is unique within its scope and not within a forest. A
+/// version 1 store keys principals by SID alone, so every domain's built-in groups are merged in it
+/// - reading one as though it were current would hand back the fabricated cross-domain privilege
+/// path that <c>docs/decisions/0087-a-sid-is-unique-within-its-scope.md</c> exists to prevent.
+/// </para>
+/// <para>
+/// <b>It reads the header, the phases and the size, and no closures.</b> Nothing consumes a
+/// membership closure yet; the rule interface that would is deliberately unbuilt until a rule needs
+/// it. An API shaped now would be shaped against no caller, which is how the predecessor's
+/// <c>GetPrecomputedClosure</c> came to have none.
+/// </para>
+/// </remarks>
+public sealed class DerivationReader : IDisposable
+{
+    private readonly SqliteConnection _connection;
+    private bool _disposed;
+
+    private DerivationReader(
+        string bundleDirectory, SqliteConnection connection, DerivationDescription description)
+    {
+        BundleDirectory = bundleDirectory;
+        _connection = connection;
+        Description = description;
+    }
+
+    /// <summary>The bundle this derivation was opened from.</summary>
+    public string BundleDirectory { get; }
+
+    /// <summary>What the derivation recorded about itself.</summary>
+    public DerivationDescription Description { get; }
+
+    /// <summary>
+    /// Verifies the derivation's seal and, only if it is intact and this build understands the
+    /// store, opens it for reading.
+    /// </summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    /// <returns>The open reader, or an <see cref="AuditError"/> saying which check refused it.</returns>
+    public static Result<DerivationReader> Open(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        var verdict = BundleSealing.VerifyDerivation(bundleDirectory);
+        if (!verdict.MayBeOpened)
+        {
+            return Failure(
+                "DerivationSealNotIntact",
+                verdict.Detail,
+                bundleDirectory);
+        }
+
+        var path = BundleLayout.DerivationPath(bundleDirectory);
+        var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = path,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString());
+
+        try
+        {
+            connection.Open();
+            var description = ReadDescription(connection);
+
+            if (description is null)
+            {
+                connection.Dispose();
+                return Failure(
+                    "DerivationUnreadable",
+                    $"The derivation at '{path}' records no run. Its seal is intact, so this is a "
+                    + "defect in the build that wrote it rather than damage to the file.",
+                    path);
+            }
+
+            if (description.SchemaVersion != DerivationSchema.Version)
+            {
+                connection.Dispose();
+                return Failure(
+                    "DerivationSchemaNotUnderstood",
+                    $"The derivation at '{path}' is schema version {description.SchemaVersion} and "
+                    + $"this build reads version {DerivationSchema.Version}. It is refused rather "
+                    + "than read, because the versions differ in what a stored principal means: "
+                    + "before version 2 a SID was keyed without its scope, so every domain's "
+                    + "built-in groups were held as one principal and their memberships merged. "
+                    + "Delete it and derive the bundle again - the evidence is untouched and "
+                    + "nothing else rests on it.",
+                    path);
+            }
+
+            return new DerivationReader(bundleDirectory, connection, description);
+        }
+        catch (SqliteException error)
+        {
+            connection.Dispose();
+            return Failure(
+                "DerivationUnreadable",
+                $"The seal on the derivation in '{bundleDirectory}' is intact and the store could "
+                + $"not be read: {error.Message}. The bytes are the bytes that were sealed, so this "
+                + "is a defect in this build rather than damage to the store.",
+                path);
+        }
+    }
+
+    /// <summary>
+    /// Everything this derivation recorded about the run that wrote it.
+    /// </summary>
+    public StoredDerivation Read()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        return new StoredDerivation(Description, ReadPhases(), ReadSize());
+    }
+
+    /// <summary>Closes the store.</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _connection.Dispose();
+        _disposed = true;
+    }
+
+    private static DerivationDescription? ReadDescription(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT schema_version, evidence_seal, derivation_generation_id, "
+            + "deriving_started_utc, deriving_completed_utc, state FROM derivation";
+
+        using var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+            return null;
+
+        return new DerivationDescription(
+            reader.GetInt32(0),
+            reader.GetString(1),
+            Guid.Parse(reader.GetString(2)),
+            Enum.Parse<DerivationRunState>(reader.GetString(5)),
+            DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
+            reader.IsDBNull(4)
+                ? default
+                : DateTimeOffset.Parse(reader.GetString(4), CultureInfo.InvariantCulture));
+    }
+
+    private IReadOnlyList<StoredDerivationPhase> ReadPhases()
+    {
+        var phases = new List<StoredDerivationPhase>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT phase, outcome, error FROM derivation_phase ORDER BY phase";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            phases.Add(new StoredDerivationPhase(
+                reader.GetString(0),
+                Enum.Parse<DerivationPhaseOutcome>(reader.GetString(1)),
+                reader.IsDBNull(2) ? null : reader.GetString(2)));
+        }
+
+        return phases;
+    }
+
+    private DerivationSize ReadSize()
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT (SELECT COUNT(*) FROM principal), "
+            + "(SELECT COUNT(*) FROM sid_identity), "
+            + "(SELECT COUNT(*) FROM nesting_edge)";
+
+        using var reader = command.ExecuteReader();
+        reader.Read();
+
+        return new DerivationSize(reader.GetInt64(0), reader.GetInt64(1), reader.GetInt64(2));
+    }
+
+    private static Result<DerivationReader> Failure(
+        string reason, string description, string context) =>
+        Result<DerivationReader>.Failure(
+            AuditError.Create(
+                ErrorCategory.Evidence, reason, ErrorSeverity.Failed, description, context));
+}

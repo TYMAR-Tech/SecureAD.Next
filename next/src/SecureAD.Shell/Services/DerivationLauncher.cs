@@ -57,14 +57,11 @@ internal sealed class DerivationLauncher : IDerivationLauncher
         IProgress<DerivationProgress> progress,
         CancellationToken cancellationToken)
     {
-        var objectsRead = 0L;
-
-        var watched = new Watching(
-            report =>
-            {
-                objectsRead = report.ObjectsRead;
-                progress.Report(report);
-            });
+        // Progress is forwarded and nothing is remembered from it. It says how far the pass has
+        // read, which is what an operator watching wants; what a finished derivation produced is
+        // read back from the store below, so the screen cannot report a different answer from the
+        // one the bundle holds.
+        var watched = new Watching(progress.Report);
 
         // The capture wrote the first stretch of this file and the judging will write the last. A
         // log that could not be opened does not stop the derivation: the facts are worth more than
@@ -84,13 +81,26 @@ internal sealed class DerivationLauncher : IDerivationLauncher
             log,
             cancellationToken);
 
-        return derived.IsSuccess
-            ? Result<DerivingOutcome>.Success(new DerivingOutcome(derived.Value, objectsRead))
-            : Result<DerivingOutcome>.Failure(derived.Error!);
+        if (!derived.IsSuccess)
+            return Result<DerivingOutcome>.Failure(derived.Error!);
+
+        var reopened = DerivationReader.Open(bundleDirectory);
+        if (!reopened.IsSuccess)
+            return Result<DerivingOutcome>.Failure(reopened.Error!);
+
+        using var reader = reopened.Value!;
+        var stored = reader.Read();
+
+        return Result<DerivingOutcome>.Success(
+            new DerivingOutcome(
+                derived.Value,
+                stored.Size.Principals,
+                stored.Size.NestingEdges,
+                stored.EveryPhaseThatRanSucceeded));
     }
 
     /// <summary>
-    /// Passes each report on, and remembers the count from it.
+    /// Passes each report on.
     /// </summary>
     private sealed class Watching(Action<DerivationProgress> onReport) : IProgress<DerivationProgress>
     {

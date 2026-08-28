@@ -1739,11 +1739,12 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private static string Describe(DerivingOutcome derived) => derived.State switch
     {
         DerivationRunState.Completed =>
-            $"Derived from {derived.ObjectsRead:N0} objects. Every closure was completed.",
+            $"Derived {derived.Principals:N0} principals and {derived.NestingEdges:N0} nesting "
+            + "relationships. Every closure was completed.",
         DerivationRunState.CompletedDegraded =>
-            $"Derived from {derived.ObjectsRead:N0} objects, and at least one part could not be "
-            + "completed. What was derived says which, and rules resting on it are not working from "
-            + "the whole picture.",
+            $"Derived {derived.Principals:N0} principals and {derived.NestingEdges:N0} nesting "
+            + "relationships, and at least one part could not be completed. What was derived says "
+            + "which, and rules resting on it are not working from the whole picture.",
         _ =>
             "Nothing was derived. The evidence is sealed and can be derived from again.",
     };

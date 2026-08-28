@@ -597,7 +597,7 @@ internal sealed class FakeDerivationLauncher : IDerivationLauncher
 {
     /// <summary>What a derivation concludes. Completed, unless a test says otherwise.</summary>
     public DerivingOutcome Outcome { get; set; } =
-        new(DerivationRunState.Completed, ObjectsRead: 0);
+        new(DerivationRunState.Completed, Principals: 0, NestingEdges: 0, EveryPhaseThatRanSucceeded: true);
 
     /// <summary>Why the derivation could not be done, when a test wants that.</summary>
     public AuditError? Fails { get; set; }

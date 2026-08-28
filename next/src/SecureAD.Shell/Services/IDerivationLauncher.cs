@@ -8,21 +8,27 @@ namespace SecureAD.Shell.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The state, and how much of the bundle the pass read - nothing else.</b> A
-/// <see cref="JudgingOutcome"/> can report what was written because <c>JudgementReader</c> exists to
-/// read it back. Nothing reads <c>derivation.db</c> yet, so counting closures here would mean
-/// tallying them on the way past, which is the second account of the same run that
-/// <c>JudgingLauncher</c> refuses to keep.
+/// <b>Read back from the store rather than tallied on the way past</b>, which is the rule
+/// <see cref="JudgingOutcome"/> already follows. What the completion screen reports is then what an
+/// operator will find when he opens the bundle, and cannot drift from it.
 /// </para>
 /// <para>
-/// <b><see cref="ObjectsRead"/> comes from the progress the run reported.</b> It says how far the
-/// pass over the evidence got, not how large the answer is. The two are different quantities and
-/// only one of them is available without a reader.
+/// <b>It reported <c>ObjectsRead</c> until <c>DerivationReader</c> existed</b>, because that was the
+/// only number available - the effort of deriving rather than the answer. The two are different
+/// quantities and only one of them is worth showing.
 /// </para>
 /// </remarks>
 /// <param name="State">What became of the derivation.</param>
-/// <param name="ObjectsRead">How many objects the pass over the bundle read.</param>
-internal sealed record DerivingOutcome(DerivationRunState State, long ObjectsRead);
+/// <param name="Principals">How many principals it knows about.</param>
+/// <param name="NestingEdges">How many direct nesting relationships it holds.</param>
+/// <param name="EveryPhaseThatRanSucceeded">
+/// Whether anything went wrong in a phase. False makes the counts a floor rather than a total.
+/// </param>
+internal sealed record DerivingOutcome(
+    DerivationRunState State,
+    long Principals,
+    long NestingEdges,
+    bool EveryPhaseThatRanSucceeded);
 
 /// <summary>
 /// Deriving from a sealed bundle, from a window.

@@ -60,6 +60,9 @@ NestingGraph                   compressed sparse rows over integer ids
                                                        |
                                                        v
                                               DerivationWriter -> derivation.db
+                                                       |
+                                                       v
+                                              DerivationReader <- read back
 ```
 
 ### Phases fail separately, but they are not independent
@@ -266,15 +269,29 @@ nothing. A derivation that could not be done is reported and does not stop the j
 that exists today reads one object and needs nothing derived. See
 [the New Audit screen](../shell/the-new-audit-screen.md).
 
-**Derived facts are written but never read back.** `DerivationWriter` fills `derivation.db`; there
-is no reader for it, in the way `BundleReader` reads the evidence. Nothing needs one until a rule
-does - but the shell now has a use for one short of that. `DerivingOutcome` reports how far the pass
-read rather than how large the closures are, because counting them in flight would be a second
-account of the same run. A reader is what would let it report the answer instead of the effort.
+**Closures are written and not read back.** `DerivationReader` reads the header, the phases and how
+much the store holds, which is what the window needed: `DerivingOutcome` now reports the principals
+and nesting relationships a derivation produced instead of how far its pass read. It deliberately
+offers no way to ask *who is in this group* — nothing consumes a closure yet, and an interface shaped
+against no caller is how the predecessor's `GetPrecomputedClosure` came to have none. That part waits
+for the rule that needs it.
+
+**A store from another schema is refused rather than read.** Version 2 gave the SID dictionary a
+scope; a version 1 store keys principals by SID alone, so every domain's built-in groups are one
+principal in it with their memberships merged. Reading one would hand back the fabricated
+cross-domain privilege path [`0087`](../../decisions/0087-a-sid-is-unique-within-its-scope.md) was
+written to remove, so the refusal names what differs and says the evidence is untouched.
 
 **No rule reads any of this.** The rule interface over declared derived facts is a judge-stage
 change and has not been made. `IRule` still takes one object. The right moment to design its
 replacement is when the first rule that needs a derived fact exists to shape it.
+
+**The derive stage sits outside the surface register.** `RebuildAssemblies` names the kernel,
+evidence, audit and judgement assemblies, so none of this project's public types are held by
+`SurfaceRegisterTests` or the gates keyed on that list, and this page has no `TYPES` table. The
+register's own record describes this defect happening once before, when a type moved and
+`SecureAD.Audit` stopped being covered; this is the same hole reached by adding a project rather than
+moving a type.
 
 ## What is built
 
@@ -314,6 +331,10 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Read one SID captured in several places as one principal | `MembershipNestingPassTests.OneSidCapturedInSeveralPlacesIsOnePrincipal` | 2026-08-28 |
 | Keep a real object's facts rather than a stub's | `MembershipNestingPassTests.ARealObjectBeatsAStubStandingInForIt` | |
 | Be told when a built-in SID had no domain to scope it by | `MembershipNestingPassTests.ABuiltinSidWithNoDomainIsCounted` | |
+| Read a derivation back: what it recorded, its phases, and how much it holds | `DerivationReadingTests` | |
+| Be refused a store written by a build whose schema differs, with the reason | `DerivationReadingTests.Stage2a_AStoreFromAnotherSchemaIsRefused` | |
+| Tell a phase that did not run from one that failed, reading back | `DerivationReadingTests.Stage2a_APhaseThatDidNotRunIsNotAFailure` | |
+| See what a derivation produced rather than how far its pass read | `NewAuditViewModelTests.WhatTheDerivationProducedIsReported` | 2026-08-28 |
 | Have a sealed bundle derived from without asking for it | `NewAuditViewModelTests.EvidenceThatWasSealedIsDerivedFromWithoutBeingAskedFor` | |
 | Be certain deriving happens before judging | `NewAuditViewModelTests.DerivingHappensBeforeJudging` | |
 | Still have the evidence judged when the derivation could not be done | `NewAuditViewModelTests.ADerivationThatCouldNotBeDoneDoesNotStopTheJudging` | |
