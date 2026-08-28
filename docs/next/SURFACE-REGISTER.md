@@ -306,6 +306,11 @@ The table below sits between the two markers around it, so the test parses only 
 | DerivationDescription | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | StoredDerivationPhase | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | DerivationSize | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| DirectoryHeuristics | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
+| HeuristicCharacter | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
+| HeuristicReadOutcome | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
+| AdminSdExclusionMask | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
+| AdminSdExcludableGroup | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 
 <!-- REGISTER:END -->
 

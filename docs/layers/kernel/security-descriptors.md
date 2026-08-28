@@ -69,6 +69,11 @@ to one value and collapse to one entry rather than two.
 | `AceCanonicalization` | The version stamped onto each canonical entry, and the ordering category |
 | `AceSetHash` | The hash of a whole set of entries, as one value |
 | `Sid` | A security identifier between its two forms — stored bytes and `S-1-5-…` text |
+| `DirectoryHeuristics` | Reads the forest-wide settings held one per character position in `dSHeuristics` |
+| `HeuristicCharacter` | One character read at a stated position, and whether it was stated, defaulted or never read |
+| `HeuristicReadOutcome` | Which of those three a character was |
+| `AdminSdExclusionMask` | Which operator groups a forest has removed from AdminSDHolder's protection |
+| `AdminSdExcludableGroup` | The four groups that mask can name, and no others |
 <!-- TYPES:END -->
 
 Each type carries its own reasoning in its XML documentation, including the Microsoft sources it is

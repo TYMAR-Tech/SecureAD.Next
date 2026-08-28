@@ -35,6 +35,7 @@ beside it. The two are separate facts and the column carries the first.
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
 | `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
 | `ProtectedGroupCatalogue` | 15 | Appendix C: Protected Accounts and Groups in Active Directory | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests` |
+| `DirectoryHeuristics` | 4 | MS-ADTS 6.1.1.2.4.1.2, and KB 56a70fa8 for the bit assignments | 2026-08-28 | `DirectoryHeuristicsMicrosoftAnchorTests` |
 
 **Defects found: 12 of 238.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
 nothing had ever checked. The twelfth is below, and it was a **missing** value rather than a wrong
