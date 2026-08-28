@@ -355,6 +355,14 @@ internal static class ObjectSectionCatalog
                 + "permissions section already shows. Putting the two side by side without "
                 + "wording that distinction would invite an operator to read a contact as a "
                 + "controller, which is the wrong answer to who can change this object.",
+            ["dSHeuristics"] =
+                "The raw form is not the useful form. It is a string in which each character "
+                + "position is a separate forest-wide setting, so the value reads as "
+                + "'000000000100000f' and tells an operator nothing - while the fact it carries, "
+                + "that four operator groups may have been removed from AdminSDHolder "
+                + "protection, belongs beside the protected set where somebody can act on it. It "
+                + "is also a fact about the forest rather than about the object an operator "
+                + "opened, and this view answers questions about one object.",
         };
 
     /// <summary>

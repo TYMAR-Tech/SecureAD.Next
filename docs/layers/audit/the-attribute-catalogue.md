@@ -155,11 +155,17 @@ from [`docs/rules/`](../../rules/) — and a named rule must be a card that exis
 `Text` or `Binary`, and `Binary` means the value is an octet string that must never be round-tripped
 through a string.
 
-This catalogue is **version 4**, and every bundle records it, so a bundle read years later can still
+This catalogue is **version 5**, and every bundle records it, so a bundle read years later can still
 say what it was allowed to see. It started at 1 rather than continuing the previous product's
 sequence, which had reached 10: per [`0001`](../../decisions/0001-no-backward-compatibility.md) there
 is no compatibility to preserve, and a continuing number would imply that a bundle stamped 10 and
 one stamped 11 hold comparable evidence.
+
+**Version 5 added the forest's own heuristics, and it is the first entry captured to qualify an
+answer rather than to state a fact.** `dSHeuristics` decides whether the protected-principal
+catalogue applies as published or with four groups removed. A bundle stamped 4 cannot say which, so
+a derivation reading one can only report that its protected set might be larger than the forest's
+really is — and reporting more protection than exists is the wrong direction for an audit tool.
 
 **Version 4 added the password policy, and checks none of it.** The domain's own password and lockout
 policy, the fine-grained policies that override it, and `managedBy`. The owner ruled on 2026-08-25
@@ -341,6 +347,31 @@ property sets and validated writes are stored here too, which Microsoft states o
 | validAccesses | SingleValued | Text | D3 | Which of the three this entry is: 256 an extended right, 48 a property set, 8 a validated write. Without it the three are indistinguishable and a property-set permission cannot be expanded |
 | appliesTo | MultiValued | Text | D3 | The classes the right is defined for, as schema GUIDs. What stops a right being reported against an object it cannot apply to |
 
+### `nTDSService` — the forest's directory-service settings
+
+One object in a forest, at `CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration`, already
+read because capture reads the configuration partition in full. Version 5 asks it for one attribute.
+
+**`dSHeuristics` changes what other evidence means, rather than adding a fact of its own.** It is a
+string in which each character position is a separate forest-wide setting
+([MS-ADTS 6.1.1.2.4.1.2](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/e5899be4-862e-496f-9a38-33950617d2c5)),
+and three of those positions bear on claims this product makes:
+
+- **Character 16, `dwAdminSDExMask`** — removes Account, Server, Print or Backup Operators from the
+  set AdminSDHolder protects. This is why the attribute is captured now: without it the
+  protected-principal derivation can only state that its catalogue *might* not apply.
+- **Character 12, `fDontStandardizeSDs`** — named as an open gap by
+  [`0038`](../../decisions/0038-a-descriptor-records-whether-its-dacl-was-canonical.md).
+- **Character 29, `BlockOwnerImplicitRights`** — needed by the judgement-half specification.
+
+**The raw string is captured, not a parsed result.** Only character 16 is resolved today. Storing the
+whole value means the other two need no further capture when the decision and the rule that want them
+are built — and a bundle cannot be re-read for an attribute it never carried.
+
+| Attribute | Cardinality | Storage | Read by | Why |
+|---|---|---|---|---|
+| dSHeuristics | SingleValued | Text | D3 | Forest-wide settings held one per character position. Character 16 can remove four operator groups from AdminSDHolder protection, so a protected-set answer computed without it is a floor rather than a fact. An absent attribute is a documented answer — every character defaults to `0` — which is why it is told apart from an unread one rather than both reading as *nothing excluded* |
+
 <!-- CATALOGUE:END -->
 
 ---
@@ -426,6 +457,7 @@ an attribute into a stored column, which is the half where a silent mismatch wou
 | rightsGuid | yes | none directly; SEC-002 and SEC-040 match extended rights through it | D3, J33 |
 | validAccesses | yes | — | D3 |
 | appliesTo | yes | — | D3 |
+| dSHeuristics | yes | none directly; it decides whether the protected-principal catalogue applies in full, so every claim about AdminSDHolder protection rests on it | D3 |
 
 <!-- DERIVATION:END -->
 

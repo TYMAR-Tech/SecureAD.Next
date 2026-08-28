@@ -74,8 +74,15 @@ public static class CapturedAttributeCatalog
     /// view was named.
     /// </para>
     /// </para>
+    /// <para>
+    /// <b>5 - 2026-08-28.</b> <see cref="DirectoryServiceAttributes"/> added, carrying
+    /// <c>dSHeuristics</c> from the forest's one <c>nTDSService</c> object. A bundle stamped 4
+    /// cannot say whether its forest removed any group from the set AdminSDHolder protects, so a
+    /// derivation reading one can only state that its protected catalogue might not apply. The
+    /// object was already captured; only the value was not asked for.
+    /// </para>
     /// </remarks>
-    public const int Version = 4;
+    public const int Version = 5;
 
     /// <summary>
     /// Requested for every object, of every class, in every naming context capture reads.
@@ -279,6 +286,37 @@ public static class CapturedAttributeCatalog
     ];
 
     /// <summary>
+    /// Attributes carried by the forest's one <c>nTDSService</c> object, at
+    /// <c>CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>One object in a forest, and what it says applies to all of it.</b> <c>dSHeuristics</c> is
+    /// a string in which each character position is a separate setting
+    /// (<see href="https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/e5899be4-862e-496f-9a38-33950617d2c5">MS-ADTS
+    /// 6.1.1.2.4.1.2</see>), and several of them change what other evidence in a bundle
+    /// <i>means</i> rather than adding a fact of their own.
+    /// </para>
+    /// <para>
+    /// <b>Character 16, <c>dwAdminSDExMask</c>, is why it is captured now.</b> It can remove
+    /// Account, Server, Print and Backup Operators from the set AdminSDHolder protects, so without
+    /// it the protected-principal derivation can only state that its catalogue might not apply.
+    /// Two others are already named as gaps elsewhere: <c>fDontStandardizeSDs</c> at character 12,
+    /// in <c>docs/decisions/0038</c>, and <c>BlockOwnerImplicitRights</c> at character 29, which
+    /// the judgement-half specification needs.
+    /// </para>
+    /// <para>
+    /// <b>The object was always captured; only the attribute was missing.</b> It sits in the
+    /// configuration partition, which capture reads in full, so this entry adds a column to the
+    /// request rather than a new thing to go and read.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<CapturedAttribute> DirectoryServiceAttributes { get; } =
+    [
+        new("dSHeuristics", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
     /// The object classes that get attributes beyond <see cref="Universal"/>, keyed by
     /// <c>lDAPDisplayName</c>. Matched without regard to case, because an LDAP class name is.
     /// </summary>
@@ -295,6 +333,7 @@ public static class CapturedAttributeCatalog
             ["groupPolicyContainer"] = GroupPolicyContainerAttributes,
             ["domainDNS"] = DomainAttributes,
             ["msDS-PasswordSettings"] = PasswordSettingsAttributes,
+            ["nTDSService"] = DirectoryServiceAttributes,
         };
 
     /// <summary>
