@@ -116,6 +116,12 @@ public static class Stage2aRun
                 []);
 
             writer.WriteSids([], []);
+
+            // An empty store is also what a forest with no groups would produce. This row is what
+            // keeps the run that read nothing from reading as the clean one.
+            writer.RecordCompleteness(
+                DerivationCompleteness.NothingWasRead(scope.Value!, writer.GenerationId));
+
             writer.Complete(DateTimeOffset.UtcNow);
             return DerivationRunState.CompletedDegraded;
         }
@@ -153,6 +159,14 @@ public static class Stage2aRun
         RunLatent(writer, graph, closure, progress, log, cancellationToken);
 
         WriteFacts(writer, facts);
+
+        // What none of the three products covers, recorded beside them rather than left for a
+        // reader to infer. Written after the facts because the partial groups it names are sid
+        // dictionary ids, and the dictionary is written by WriteFacts.
+        writer.RecordCompleteness(
+            closure is null
+                ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
+                : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId));
 
         writer.Complete(DateTimeOffset.UtcNow);
 

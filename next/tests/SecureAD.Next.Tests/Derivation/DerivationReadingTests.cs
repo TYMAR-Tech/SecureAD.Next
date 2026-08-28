@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Derivation;
@@ -92,6 +93,15 @@ public sealed class DerivationReadingTests
             writer.WriteSids([], []);
             writer.RecordPhase("Ran", DerivationPhaseOutcome.Succeeded, error: null);
             writer.RecordPhase("Never", DerivationPhaseOutcome.DidNotRun, error: null);
+
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: true,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.None));
+
             writer.Complete(Finished);
         }
 
@@ -183,6 +193,132 @@ public sealed class DerivationReadingTests
         Assert.False(opened.IsSuccess);
     }
 
+    /// <summary>
+    /// A derivation that did not cover everything reads back saying so.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the property the completeness tables exist for.</b> Without them a store built
+    /// under a budget that ran out is indistinguishable from one that reached everything, and the
+    /// judgement specification requires that a partial answer is never serialized as a complete
+    /// closure.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_APartialDerivationReadsBackAsPartial()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        Assert.False(stored.Completeness.IsComplete);
+    }
+
+    /// <summary>
+    /// Which budget stopped the expansion comes back with it.
+    /// </summary>
+    /// <remarks>
+    /// An operator who knows the answer is a floor still has to decide what to do about it, and
+    /// raising a budget and reaching an unreachable domain are different remedies.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_TheLimitThatStoppedTheExpansionComesBack()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        Assert.Equal(ExpansionLimit.MaxTimeReached, stored.Completeness.Limit);
+    }
+
+    /// <summary>
+    /// A group whose membership was never worked out is named.
+    /// </summary>
+    [Fact]
+    public void Stage2a_AGroupLeftUnexpandedIsNamed()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        Assert.Equal([1], stored.Completeness.PartialGroups);
+    }
+
+    /// <summary>
+    /// A member no captured object answers to is named.
+    /// </summary>
+    [Fact]
+    public void Stage2a_AnUnresolvedTrusteeIsNamed()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        Assert.Equal(["CN=Gone,DC=ad,DC=lab"], stored.Completeness.UnresolvedTrustees);
+    }
+
+    /// <summary>
+    /// A domain nobody could reach does not read back as one left out by choice.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is <c>docs/decisions/0063-excluded-never-looks-like-unreachable.md</c> surviving a
+    /// round trip.</b> Both domains are absent from the graph, and reducing the missing partitions
+    /// to a list of names would make them the same fact - but one is a decision the operator
+    /// already knows about and the other may be the most important thing the run found.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_ADomainThatCouldNotBeReachedDoesNotReadBackAsOneLeftOut()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        var unreachable = stored.Completeness.MissingPartitions
+            .Single(p => p.DomainFqdn == "ba.ad.lab");
+
+        Assert.Equal(DomainReadOutcome.NotRead, unreachable.Outcome);
+    }
+
+    /// <summary>
+    /// A domain the operator left out says so, and says what he stated.
+    /// </summary>
+    [Fact]
+    public void Stage2a_ADomainLeftOutByChoiceKeepsTheReasonGiven()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        var excluded = stored.Completeness.MissingPartitions
+            .Single(p => p.DomainFqdn == "ph.ad.lab");
+
+        Assert.Equal("the operator left it out", excluded.Reason);
+    }
+
+    /// <summary>
+    /// The completeness names the run that wrote it.
+    /// </summary>
+    /// <remarks>
+    /// Taken from the header rather than a column of its own, so this pins that the two agree by
+    /// construction rather than by being kept in step.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_CompletenessNamesTheRunThatWroteIt()
+    {
+        var directory = Derived();
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+
+        Assert.Equal(
+            stored.Description.GenerationId,
+            stored.Completeness.DerivationGenerationId);
+    }
+
     /// <summary>A bundle with a completed derivation in it.</summary>
     private static string Derived()
     {
@@ -209,6 +345,23 @@ public sealed class DerivationReadingTests
             writer.RecordPhase("MembershipAndNesting", DerivationPhaseOutcome.Succeeded, error: null);
             writer.RecordPhase("ExpansionPhase", DerivationPhaseOutcome.Failed, "it fell over");
             writer.RecordPhase("LatentPrivilegePaths", DerivationPhaseOutcome.DidNotRun, error: null);
+
+            // A derivation with a hole of each kind, so the reader is tested against a store that
+            // has something to say rather than one whose lists are all empty.
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: false,
+                PartialGroups: [1],
+                MissingPartitions:
+                [
+                    DomainCoverage.NotRead("ba.ad.lab", "no controller answered"),
+                    DomainCoverage.Excluded(
+                        "ph.ad.lab", ExclusionKind.ByChoice, "the operator left it out"),
+                ],
+                UnresolvedTrustees: ["CN=Gone,DC=ad,DC=lab"],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.MaxTimeReached,
+                CollapsedStubs: 4,
+                UnscopedBuiltins: 0));
 
             writer.Complete(Finished);
         }

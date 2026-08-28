@@ -41,11 +41,23 @@ namespace SecureAD.Next.Tests.Evidence;
 /// as unread</b>. The correction is made here rather than left to be noticed because a correct test
 /// carrying a wrong explanation is how the next session is misled.
 /// </para>
+/// <para>
+/// <b>Originating an unread unit is what is forbidden, not naming one.</b> <c>DerivationReader</c>
+/// calls <c>DomainCoverage.NotRead</c> and is exempt, because it invents nothing: it rebuilds a
+/// coverage row a capture recorded and a derivation stored, and rebuilding it through the factory is
+/// what holds a stored row to the same rules as one the capture made. The coverage it produces
+/// describes what a derivation did not cover and never reaches a bundle's <c>RunCoverage</c>, so the
+/// guarantee above is untouched. The exemption is one named file rather than a relaxed rule, so the
+/// next writer that reaches for this factory still has to come here and argue for itself.
+/// </para>
 /// </remarks>
 public class UnreadOutcomeIsUnreachableTests
 {
     private const string DomainFactory = "DomainCoverage.NotRead(";
     private const string PartitionFactory = "ForestPartitionCoverage.NotRead(";
+
+    /// <summary>The one file that rebuilds a stored coverage row rather than originating one.</summary>
+    private const string Reconstitutes = "DerivationReader.cs";
 
     /// <summary>
     /// Nothing in the product records a domain or a forest-wide partition as unread.
@@ -54,6 +66,7 @@ public class UnreadOutcomeIsUnreachableTests
     public void NoProductionCodeRecordsAUnitAsUnread()
     {
         var offenders = ProductionSources()
+            .Where(file => Path.GetFileName(file) != Reconstitutes)
             .Where(file =>
             {
                 var text = File.ReadAllText(file);
@@ -75,6 +88,22 @@ public class UnreadOutcomeIsUnreachableTests
             + "RunCoverage.AllDeclaredUnitsAreComplete means, from an internal consistency "
             + "check into a statement about a customer's forest. Say so in a decision record and "
             + "in the reader before deleting this test.");
+    }
+
+    /// <summary>
+    /// The exempt file still does the thing it is exempt for.
+    /// </summary>
+    /// <remarks>
+    /// An exemption nobody needs is one that silently covers whatever is written in that file next.
+    /// This fails when the reader stops rebuilding coverage rows, which is the moment to delete the
+    /// exemption rather than inherit it.
+    /// </remarks>
+    [Fact]
+    public void TheExemptFileStillRebuildsAStoredCoverageRow()
+    {
+        var reader = ProductionSources().Single(f => Path.GetFileName(f) == Reconstitutes);
+
+        Assert.Contains(DomainFactory, File.ReadAllText(reader), System.StringComparison.Ordinal);
     }
 
     /// <summary>

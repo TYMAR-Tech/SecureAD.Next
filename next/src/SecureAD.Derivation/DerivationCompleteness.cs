@@ -109,27 +109,74 @@ public sealed record DerivationCompleteness(
             facts.CollapsedStubs,
             facts.Sids.UnscopedBuiltins);
     }
+
+    /// <summary>
+    /// What a derivation covers when the pass read the bundle but the expansion never produced a
+    /// closure.
+    /// </summary>
+    /// <remarks>
+    /// <b>Never complete, whatever the pass found.</b> The expansion is what turns direct edges
+    /// into the memberships an answer is made of, so without it every group's membership is a
+    /// floor - and a graph read perfectly whose closure never ran looks, by every other measure
+    /// here, exactly like a whole one.
+    /// </remarks>
+    /// <param name="facts">What one pass over the bundle found.</param>
+    /// <param name="scope">What the capture covered, one entry per declared domain.</param>
+    /// <param name="derivationGenerationId">The derive run's identifier.</param>
+    /// <returns>What the derivation does not cover.</returns>
+    public static DerivationCompleteness WithoutExpansion(
+        NestingFacts facts,
+        RunScope scope,
+        Guid derivationGenerationId)
+    {
+        ArgumentNullException.ThrowIfNull(facts);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        return new DerivationCompleteness(
+            IsComplete: false,
+            // Not one group is named, because the expansion got far enough to name none of them.
+            // The empty list is not a claim that every membership was worked out; IsComplete
+            // already says none of them was.
+            PartialGroups: [],
+            MissingPartitions: [.. scope.Domains.Where(d => d.Outcome != DomainReadOutcome.Read)],
+            UnresolvedTrustees: facts.UnresolvedTrustees,
+            DerivationGenerationId: derivationGenerationId,
+            Limit: ExpansionLimit.None,
+            CollapsedStubs: facts.CollapsedStubs,
+            UnscopedBuiltins: facts.Sids.UnscopedBuiltins);
+    }
+
+    /// <summary>
+    /// What a derivation covers when the pass over the evidence produced nothing at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the case the type exists for.</b> A derivation with no facts has an empty store,
+    /// and an empty store is exactly what a forest with no groups would also produce. Recording
+    /// completeness is what keeps those two apart - without it, the run that read nothing is the
+    /// clean one.
+    /// </para>
+    /// <para>
+    /// The capture's coverage is still carried, because it is still known and it is very often the
+    /// reason: a pass that produced nothing usually did so because there was nothing to read.
+    /// </para>
+    /// </remarks>
+    /// <param name="scope">What the capture covered, one entry per declared domain.</param>
+    /// <param name="derivationGenerationId">The derive run's identifier.</param>
+    /// <returns>What the derivation does not cover, which is everything.</returns>
+    public static DerivationCompleteness NothingWasRead(RunScope scope, Guid derivationGenerationId)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        return new DerivationCompleteness(
+            IsComplete: false,
+            PartialGroups: [],
+            MissingPartitions: [.. scope.Domains.Where(d => d.Outcome != DomainReadOutcome.Read)],
+            UnresolvedTrustees: [],
+            DerivationGenerationId: derivationGenerationId,
+            Limit: ExpansionLimit.None,
+            CollapsedStubs: 0,
+            UnscopedBuiltins: 0);
+    }
 }
 
-/// <summary>
-/// Everything stage 2a derives from one bundle, and what it does not cover.
-/// </summary>
-/// <remarks>
-/// <b>The three products are separate because they answer different questions about the same
-/// edges.</b> One principal can be outside a group's authorization membership, inside its protected
-/// set, and one attribute change away from holding its authority - all three at once, all three
-/// true. A single closure would have to be wrong about two of them.
-/// </remarks>
-/// <param name="Facts">The nesting the pass read out of the bundle.</param>
-/// <param name="Graph">Those facts as a graph, for anything that wants to walk them again.</param>
-/// <param name="Membership">Which memberships can take part in authorization.</param>
-/// <param name="Protection">Which principals AdminSDHolder covers.</param>
-/// <param name="LatentPaths">Which distribution groups are one conversion from conferring privilege.</param>
-/// <param name="Completeness">What none of the above covers.</param>
-public sealed record Stage2aDerivation(
-    NestingFacts Facts,
-    NestingGraph Graph,
-    MembershipClosure Membership,
-    ProtectedPrincipalClosure Protection,
-    IReadOnlyList<LatentPrivilegePath> LatentPaths,
-    DerivationCompleteness Completeness);

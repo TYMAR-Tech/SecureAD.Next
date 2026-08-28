@@ -42,8 +42,15 @@ public static class DerivationSchema
     /// <c>docs/decisions/0087-a-sid-is-unique-within-its-scope.md</c>. A version 1 store keyed
     /// principals by SID alone and so merged every domain's built-in groups into one.
     /// </para>
+    /// <para>
+    /// <b>3 - completeness is recorded.</b> Before it, a store said nothing about what its closures
+    /// did not cover, so one built under a hit budget or missing a whole domain was
+    /// indistinguishable from a clean one. The judgement specification requires that "a partial
+    /// answer is never serialized as a complete closure"; until version 3 this store did exactly
+    /// that.
+    /// </para>
     /// </remarks>
-    public const int Version = 2;
+    public const int Version = 3;
 
     private static readonly string[] TableDdl =
     [
@@ -238,6 +245,70 @@ public static class DerivationSchema
             outcome TEXT NOT NULL,
             error   TEXT     NULL,
             PRIMARY KEY (phase)
+        )
+        """,
+
+        // What the derivation does not cover, which the judgement specification requires every
+        // derived closure to record: "a partial answer is never serialized as a complete closure".
+        //
+        // ONE ROW FOR THE WHOLE DERIVATION RATHER THAN ONE PER PRODUCT. All three products come
+        // from one graph built by one pass over one bundle, so their coverage is the same coverage.
+        // Three copies would be three things that can disagree about one fact.
+        //
+        // THE GENERATION ID IS NOT REPEATED HERE. The specification asks each closure to record
+        // which derive run produced it, and the derivation header above holds that once, for the
+        // run all three closures came from. A second copy is a second thing to keep in step.
+        //
+        // is_complete IS NOT DERIVABLE FROM THE LISTS BELOW. A domain the capture never read leaves
+        // no unresolved trustee and no partial group - there is nothing in the graph to be short
+        // of - so a reader computing completeness from what it can see would call that store whole.
+        """
+        CREATE TABLE derivation_completeness (
+            is_complete       INTEGER NOT NULL,
+            expansion_limit   TEXT    NOT NULL,
+            collapsed_stubs   INTEGER NOT NULL,
+            unscoped_builtins INTEGER NOT NULL,
+            only_one_row      INTEGER NOT NULL DEFAULT 1
+                              CHECK (only_one_row = 1),
+            PRIMARY KEY (only_one_row)
+        )
+        """,
+
+        // Groups whose membership was never worked out, because a budget stopped the expansion
+        // first. Held as dictionary ids like everything else that names a principal.
+        """
+        CREATE TABLE completeness_partial_group (
+            sid_id INTEGER NOT NULL REFERENCES sid(sid_id),
+            PRIMARY KEY (sid_id)
+        )
+        """,
+
+        // Names a group claimed as a member that no captured object answers to. Text rather than an
+        // id, and that is the point: there is no principal to give an id to, which is what makes it
+        // unresolved.
+        """
+        CREATE TABLE completeness_unresolved_trustee (
+            distinguished_name TEXT NOT NULL,
+            PRIMARY KEY (distinguished_name)
+        )
+        """,
+
+        // Declared domains the capture did not read in full, each carrying why.
+        //
+        // THE WHOLE COVERAGE ROW IS KEPT, not a list of names. A domain left out by an operator's
+        // choice and one nobody could reach are both absent from the graph and are not the same
+        // fact - and the remedy differs, so an operator told only that a domain is missing cannot
+        // act on it.
+        //
+        // The reason is NOT NULL because only domains that were not read in full reach this table,
+        // and every one of those carries why: a refusal that names no cause is one an operator
+        // cannot act on.
+        """
+        CREATE TABLE completeness_missing_partition (
+            domain_fqdn TEXT NOT NULL,
+            outcome     TEXT NOT NULL,
+            reason      TEXT NOT NULL,
+            PRIMARY KEY (domain_fqdn)
         )
         """,
     ];

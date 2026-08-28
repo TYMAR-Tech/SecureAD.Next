@@ -35,6 +35,7 @@ public sealed class DerivationWriter : IDisposable
     private readonly HashSet<string> _phasesRecorded = new(StringComparer.Ordinal);
 
     private bool _sidsWritten;
+    private bool _completenessWritten;
     private bool _finished;
     private bool _disposed;
 
@@ -275,6 +276,111 @@ public sealed class DerivationWriter : IDisposable
         }
 
         transaction.Commit();
+    }
+
+    /// <summary>
+    /// Records what the derivation does not cover.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Written for every derivation, including a complete one.</b> The judgement specification
+    /// requires that a partial answer is never serialized as a complete closure, and a store with
+    /// no completeness row cannot say which it is - absence would mean both "nothing was missing"
+    /// and "nobody recorded whether anything was", which is the conversion of a missing input into
+    /// a clean result that this whole stage is shaped against.
+    /// </para>
+    /// <para>
+    /// <b>The three lists are written even when empty</b>, for the same reason the row is: an empty
+    /// table beside a recorded completeness means the derivation had none of that kind of hole,
+    /// where an absent one would mean nobody looked.
+    /// </para>
+    /// </remarks>
+    /// <param name="completeness">What the pass, the expansion and the capture's coverage said.</param>
+    /// <exception cref="InvalidOperationException">Completeness has been recorded already.</exception>
+    public void RecordCompleteness(DerivationCompleteness completeness)
+    {
+        ArgumentNullException.ThrowIfNull(completeness);
+        ThrowIfFinished();
+        ThrowIfSidsNotWritten(nameof(RecordCompleteness));
+
+        if (_completenessWritten)
+        {
+            throw new InvalidOperationException(
+                "Completeness has already been recorded. One derivation covers one bundle read "
+                + "once, so a second record would be a second answer about the same coverage.");
+        }
+
+        using var transaction = _connection.BeginTransaction();
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                "INSERT INTO derivation_completeness "
+                + "(is_complete, expansion_limit, collapsed_stubs, unscoped_builtins) "
+                + "VALUES ($complete, $limit, $collapsed, $unscoped)";
+
+            command.Parameters.AddWithValue("$complete", completeness.IsComplete ? 1 : 0);
+            command.Parameters.AddWithValue("$limit", completeness.Limit.ToString());
+            command.Parameters.AddWithValue("$collapsed", completeness.CollapsedStubs);
+            command.Parameters.AddWithValue("$unscoped", completeness.UnscopedBuiltins);
+            command.ExecuteNonQuery();
+        }
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                "INSERT OR IGNORE INTO completeness_partial_group (sid_id) VALUES ($sid)";
+            var sid = command.Parameters.Add("$sid", SqliteType.Integer);
+
+            foreach (var group in completeness.PartialGroups)
+            {
+                sid.Value = group;
+                command.ExecuteNonQuery();
+            }
+        }
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                "INSERT OR IGNORE INTO completeness_unresolved_trustee (distinguished_name) "
+                + "VALUES ($name)";
+            var name = command.Parameters.Add("$name", SqliteType.Text);
+
+            foreach (var trustee in completeness.UnresolvedTrustees)
+            {
+                name.Value = trustee;
+                command.ExecuteNonQuery();
+            }
+        }
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                "INSERT OR IGNORE INTO completeness_missing_partition (domain_fqdn, outcome, reason) "
+                + "VALUES ($domain, $outcome, $reason)";
+
+            var domain = command.Parameters.Add("$domain", SqliteType.Text);
+            var outcome = command.Parameters.Add("$outcome", SqliteType.Text);
+            var reason = command.Parameters.Add("$reason", SqliteType.Text);
+
+            foreach (var partition in completeness.MissingPartitions)
+            {
+                domain.Value = partition.DomainFqdn;
+                outcome.Value = partition.Outcome.ToString();
+
+                // Every coverage row that reaches this table was not read in full, and DomainCoverage
+                // requires each of those to carry why, so this is never null.
+                reason.Value = partition.Reason!;
+                command.ExecuteNonQuery();
+            }
+        }
+
+        transaction.Commit();
+        _completenessWritten = true;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 
 namespace SecureAD.Derivation;
@@ -59,10 +60,16 @@ public sealed record DerivationSize(long Principals, long Identities, long Nesti
 /// <param name="Description">What the run recorded about itself.</param>
 /// <param name="Phases">Every phase, whatever became of it.</param>
 /// <param name="Size">How much the store holds.</param>
+/// <param name="Completeness">
+/// What the derivation does not cover. Not nullable, and not omitted for a whole derivation: a
+/// caller that had to check for its absence before trusting the size beside it would eventually
+/// forget to, and the reading it would then give is the clean one.
+/// </param>
 public sealed record StoredDerivation(
     DerivationDescription Description,
     IReadOnlyList<StoredDerivationPhase> Phases,
-    DerivationSize Size)
+    DerivationSize Size,
+    DerivationCompleteness Completeness)
 {
     /// <summary>Whether every phase that ran succeeded.</summary>
     /// <remarks>
@@ -190,7 +197,7 @@ public sealed class DerivationReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        return new StoredDerivation(Description, ReadPhases(), ReadSize());
+        return new StoredDerivation(Description, ReadPhases(), ReadSize(), ReadCompleteness());
     }
 
     /// <summary>Closes the store.</summary>
@@ -258,6 +265,118 @@ public sealed class DerivationReader : IDisposable
         reader.Read();
 
         return new DerivationSize(reader.GetInt64(0), reader.GetInt64(1), reader.GetInt64(2));
+    }
+
+    /// <remarks>
+    /// A store this build opened has a completeness row, because every writer that could produce
+    /// schema 3 records one. A missing row is therefore not "the derivation was complete" but a
+    /// store that is not what it claims to be, and it is refused rather than read as whole.
+    /// </remarks>
+    private DerivationCompleteness ReadCompleteness()
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT is_complete, expansion_limit, collapsed_stubs, unscoped_builtins "
+            + "FROM derivation_completeness";
+
+        using var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+        {
+            throw new InvalidOperationException(
+                "This derivation records no completeness, though its schema version says it must. "
+                + "The store is not what it claims to be, and reading it would report a derivation "
+                + "of unknown coverage as a whole one.");
+        }
+
+        var isComplete = reader.GetInt32(0) != 0;
+        var limit = Enum.Parse<ExpansionLimit>(reader.GetString(1));
+        var collapsedStubs = reader.GetInt32(2);
+        var unscopedBuiltins = reader.GetInt32(3);
+
+        return new DerivationCompleteness(
+            isComplete,
+            ReadPartialGroups(),
+            ReadMissingPartitions(),
+            ReadUnresolvedTrustees(),
+            // Taken from the header rather than a column of its own, because the run that wrote the
+            // completeness is the run that wrote the store. Two copies would be two things that can
+            // disagree about which derivation this is.
+            Description.GenerationId,
+            limit,
+            collapsedStubs,
+            unscopedBuiltins);
+    }
+
+    private IReadOnlyList<int> ReadPartialGroups()
+    {
+        var groups = new List<int>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT sid_id FROM completeness_partial_group ORDER BY sid_id";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+            groups.Add(reader.GetInt32(0));
+
+        return groups;
+    }
+
+    private IReadOnlyList<string> ReadUnresolvedTrustees()
+    {
+        var trustees = new List<string>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT distinguished_name FROM completeness_unresolved_trustee "
+            + "ORDER BY distinguished_name";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+            trustees.Add(reader.GetString(0));
+
+        return trustees;
+    }
+
+    private IReadOnlyList<DomainCoverage> ReadMissingPartitions()
+    {
+        var partitions = new List<DomainCoverage>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT domain_fqdn, outcome, reason FROM completeness_missing_partition "
+            + "ORDER BY domain_fqdn";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var domain = reader.GetString(0);
+            var outcome = Enum.Parse<DomainReadOutcome>(reader.GetString(1));
+            var reason = reader.GetString(2);
+
+            // Rebuilt through the factories rather than by setting fields, so a stored row is held
+            // to the same rules as one the capture made.
+            partitions.Add(outcome switch
+            {
+                DomainReadOutcome.PartiallyRead => DomainCoverage.PartiallyRead(domain, reason),
+                DomainReadOutcome.NotRead => DomainCoverage.NotRead(domain, reason),
+                DomainReadOutcome.ExcludedByChoice =>
+                    DomainCoverage.Excluded(domain, ExclusionKind.ByChoice, reason),
+                DomainReadOutcome.ExcludedForWantOfCandidates =>
+                    DomainCoverage.Excluded(domain, ExclusionKind.ForWantOfCandidates, reason),
+
+                // Read included: a domain that was read in full is not a missing partition, so its
+                // presence here means the table holds something no writer could have put there.
+                _ => throw new InvalidOperationException(
+                    $"This derivation lists '{domain}' as a partition it did not read, with the "
+                    + $"outcome '{outcome}', which is not a way of not reading one."),
+            });
+        }
+
+        return partitions;
     }
 
     private static Result<DerivationReader> Failure(

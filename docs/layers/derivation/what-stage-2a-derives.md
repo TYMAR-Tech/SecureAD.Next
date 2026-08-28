@@ -253,6 +253,28 @@ it omits, so the derivation is not complete while any exist. It should be zero o
 it is measured rather than assumed, because a derivation reporting none and one that never looked
 are different facts.
 
+### It reaches the store
+
+Completeness is recorded in the derivation alongside the closures, in `derivation_completeness` and
+the three tables beside it, and `DerivationReader` hands it back on `StoredDerivation` as a
+non-nullable member. A caller cannot read how much the store holds without the coverage of it.
+
+**Every derivation records one, including a whole one.** An absent row would mean both *nothing was
+missing* and *nobody recorded whether anything was*, and the second would read as the first. For the
+same reason the three lists are written even when empty: an empty table means the derivation had no
+holes of that kind, where an absent one would mean nobody looked.
+
+**`IsComplete` is stored rather than worked out from the lists.** A domain the capture never read
+leaves no unresolved trustee and no partial group behind - there is nothing in the graph to be short
+of - so a reader computing completeness from what it can see would call that store whole.
+
+The two degraded paths say so rather than recording nothing:
+
+| What happened | What is recorded |
+|---|---|
+| the pass produced nothing | `NothingWasRead` - never complete, and still carrying the capture's coverage, because an empty store is also what a forest with no groups would produce |
+| the pass ran, the expansion did not | `WithoutExpansion` - never complete whatever the pass found, because a perfectly read graph with no closure looks whole by every other measure |
+
 ## Known gaps
 
 **`dSHeuristics` is not captured.** It allows a domain to remove groups from its protected set, so
@@ -280,7 +302,9 @@ for the rule that needs it.
 scope; a version 1 store keys principals by SID alone, so every domain's built-in groups are one
 principal in it with their memberships merged. Reading one would hand back the fabricated
 cross-domain privilege path [`0087`](../../decisions/0087-a-sid-is-unique-within-its-scope.md) was
-written to remove, so the refusal names what differs and says the evidence is untouched.
+written to remove. Version 3 added completeness, and a version 2 store records none - reading one
+would report a derivation of unknown coverage as a whole one. Either way the refusal names what
+differs and says the evidence is untouched.
 
 **No rule reads any of this.** The rule interface over declared derived facts is a judge-stage
 change and has not been made. `IRule` still takes one object. The right moment to design its
@@ -338,3 +362,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Have a sealed bundle derived from without asking for it | `NewAuditViewModelTests.EvidenceThatWasSealedIsDerivedFromWithoutBeingAskedFor` | |
 | Be certain deriving happens before judging | `NewAuditViewModelTests.DerivingHappensBeforeJudging` | |
 | Still have the evidence judged when the derivation could not be done | `NewAuditViewModelTests.ADerivationThatCouldNotBeDoneDoesNotStopTheJudging` | |
+| Read back what a derivation did not cover, not only what it found | `DerivationReadingTests.Stage2a_APartialDerivationReadsBackAsPartial` | 2026-08-28 |
+| Be told which budget stopped a closure short, after the run has ended | `DerivationReadingTests.Stage2a_TheLimitThatStoppedTheExpansionComesBack` | 2026-08-28 |
+| Tell a domain nobody could reach from one left out, reading a store back | `DerivationReadingTests.Stage2a_ADomainThatCouldNotBeReachedDoesNotReadBackAsOneLeftOut` | 2026-08-28 |
+| Have a derivation that covered everything say so rather than say nothing | `DerivationWritingTests.Stage2a_ACompleteDerivationStillRecordsThatItIsComplete` | 2026-08-28 |

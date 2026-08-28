@@ -88,9 +88,11 @@ situations are separated deliberately:
 | Universal well-known SID (`S-1-5-11`) appears once per domain as a stub | Yes | One id, one row |
 | `foreignSecurityPrincipal` stands in for a principal from another domain | Yes | One id; the real principal wins over the stub |
 
-**What is collapsed is counted.** A stub folded onto a real principal is recorded and travels with
-the derivation, for the same reason an unresolved trustee does: a fidelity loss nobody is told about
-is one nobody can check.
+**What is collapsed is counted.** A stub folded onto a real principal is recorded in the run log and
+in the derivation's completeness, for the same reason an unresolved trustee is: a fidelity loss
+nobody is told about is one nobody can check. A built-in SID with no domain to scope it by is
+counted the same way, and unlike a collapsed stub it makes the derivation incomplete - folding a
+stub loses no fact, but an unscoped built-in may have merged two principals that are not the same.
 
 ## Why not the alternatives
 

@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Derivation;
@@ -237,6 +238,91 @@ public sealed class DerivationWritingTests
         Assert.False(File.Exists(BundleLayout.DerivationSealPath(directory)));
         Assert.True(File.Exists(BundleLayout.DerivationPartialPath(directory)));
     }
+
+    /// <summary>
+    /// A derivation that covered everything still records its completeness.
+    /// </summary>
+    /// <remarks>
+    /// <b>An absent row would mean two opposite things.</b> "Nothing was missing" and "nobody
+    /// recorded whether anything was" would look identical, and the second one would read as the
+    /// first - which is the conversion of a missing input into a clean result that this stage is
+    /// shaped against.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_ACompleteDerivationStillRecordsThatItIsComplete()
+    {
+        var directory = NewBundle();
+
+        using (var writer = DerivationWriter.Create(directory, EvidenceSeal, Started))
+        {
+            writer.WriteSids(["S-1-5-21-1-2-3-512"], [null]);
+            writer.RecordCompleteness(Complete(writer.GenerationId));
+            writer.Complete(Finished);
+        }
+
+        Assert.Equal("1", ScalarOf(directory, "SELECT is_complete FROM derivation_completeness"));
+    }
+
+    /// <summary>
+    /// One derivation records its coverage once.
+    /// </summary>
+    /// <remarks>
+    /// All three products come from one graph built by one pass over one bundle, so a second record
+    /// would be a second answer about a single fact, and two answers that can disagree are worse
+    /// than none.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_CompletenessCannotBeRecordedTwice()
+    {
+        var directory = NewBundle();
+
+        using var writer = DerivationWriter.Create(directory, EvidenceSeal, Started);
+        writer.WriteSids(["S-1-5-21-1-2-3-512"], [null]);
+        writer.RecordCompleteness(Complete(writer.GenerationId));
+
+        Assert.Throws<InvalidOperationException>(
+            () => writer.RecordCompleteness(Complete(writer.GenerationId)));
+    }
+
+    /// <summary>
+    /// A domain that was not read is stored with why, not only that it is missing.
+    /// </summary>
+    /// <remarks>
+    /// An operator told only that a domain is absent cannot act on it: raising a credential and
+    /// reaching a network are different remedies.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AMissingDomainIsStoredWithItsReason()
+    {
+        var directory = NewBundle();
+
+        using (var writer = DerivationWriter.Create(directory, EvidenceSeal, Started))
+        {
+            writer.WriteSids(["S-1-5-21-1-2-3-512"], [null]);
+
+            writer.RecordCompleteness(Complete(writer.GenerationId) with
+            {
+                IsComplete = false,
+                MissingPartitions = [DomainCoverage.NotRead("ba.ad.lab", "no controller answered")],
+            });
+
+            writer.Complete(Finished);
+        }
+
+        Assert.Equal(
+            "no controller answered",
+            ScalarOf(directory, "SELECT reason FROM completeness_missing_partition"));
+    }
+
+    /// <summary>What a derivation that covered everything records.</summary>
+    private static DerivationCompleteness Complete(Guid generationId) =>
+        new(
+            IsComplete: true,
+            PartialGroups: [],
+            MissingPartitions: [],
+            UnresolvedTrustees: [],
+            DerivationGenerationId: generationId,
+            Limit: ExpansionLimit.None);
 
     private static string NewBundle()
     {
