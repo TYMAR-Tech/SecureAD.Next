@@ -8,7 +8,7 @@ namespace SecureAD.Derivation;
 /// through an edge nobody has established is not thereby unprotected - saying so would report a
 /// genuinely protected account as unprotected, which is the direction this stage exists to avoid.
 /// </remarks>
-public enum ProtectedPrincipalEvaluation
+internal enum ProtectedPrincipalEvaluation
 {
     /// <summary>Covered, on evidence.</summary>
     Protected,
@@ -31,7 +31,7 @@ public enum ProtectedPrincipalEvaluation
 /// once, and reporting only the first found would understate the doubt.
 /// </remarks>
 [Flags]
-public enum ProtectionUnknownReason
+internal enum ProtectionUnknownReason
 {
     /// <summary>Nothing is in doubt.</summary>
     None = 0,
@@ -82,7 +82,7 @@ public enum ProtectionUnknownReason
 /// <param name="StatedLimits">
 /// What is in doubt about the whole derivation rather than about one principal.
 /// </param>
-public sealed record ProtectedPrincipalClosure(
+internal sealed record ProtectedPrincipalClosure(
     IReadOnlyList<ProtectedPrincipalEvaluation> EvaluationBySid,
     IReadOnlyList<ProtectionUnknownReason> ReasonsBySid,
     IReadOnlyList<int> Seeds,
@@ -123,7 +123,7 @@ public sealed record ProtectedPrincipalClosure(
 /// account that reaches nothing protected at all is simply not protected.
 /// </para>
 /// </remarks>
-public static class ProtectedPrincipalDeriver
+internal static class ProtectedPrincipalDeriver
 {
     /// <summary>The name this phase is recorded under.</summary>
     public const string PhaseName = "ProtectedPrincipals";

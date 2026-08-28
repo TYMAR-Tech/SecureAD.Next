@@ -10,7 +10,7 @@ namespace SecureAD.Derivation;
 /// "matched SIDHistory" are both matches and they mean different things to whoever is reading:
 /// the second one says the access came through a migration nobody has cleaned up.
 /// </remarks>
-public enum SidIdentityKind
+internal enum SidIdentityKind
 {
     /// <summary>The principal's own <c>objectSid</c>.</summary>
     Current,
@@ -43,7 +43,7 @@ public enum SidIdentityKind
 /// name a principal reads the text back out of the dictionary.
 /// </para>
 /// </remarks>
-public sealed class SidInterner
+internal sealed class SidInterner
 {
     /// <summary>
     /// Separates a scope from a SID in a key. A null character because no domain name and no SID

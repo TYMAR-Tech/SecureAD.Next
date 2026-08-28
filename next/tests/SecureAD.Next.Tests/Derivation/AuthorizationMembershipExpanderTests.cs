@@ -264,7 +264,7 @@ public sealed class AuthorizationMembershipExpanderTests
             UnresolvedTrustees: [],
             ObjectsWithoutSid: 0);
 
-        return AuthorizationMembershipExpander.Expand(
+        return AuthorizationMembershipExpander.ClosureOf(
             NestingGraph.Build(facts), budget, CancellationToken.None);
     }
 

@@ -103,7 +103,7 @@ public sealed class DerivationCompletenessTests
         }
 
         var (facts, graph) = Build(principals, edges, unresolvedTrustees: []);
-        var closure = AuthorizationMembershipExpander.Expand(
+        var closure = AuthorizationMembershipExpander.ClosureOf(
             graph, new ExpansionBudget(MaxClosureEntries: 1, TimeSpan.FromMinutes(1)), CancellationToken.None);
 
         var completeness = DerivationCompleteness.Of(
@@ -137,7 +137,7 @@ public sealed class DerivationCompletenessTests
         var (facts, graph) = Build(
             [Security(0), User(1)], [(0, 1)], unresolvedTrustees);
 
-        var closure = AuthorizationMembershipExpander.Expand(
+        var closure = AuthorizationMembershipExpander.ClosureOf(
             graph, ExpansionBudget.Bulk, CancellationToken.None);
 
         return DerivationCompleteness.Of(

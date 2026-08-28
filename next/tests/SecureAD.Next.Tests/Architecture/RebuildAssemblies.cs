@@ -35,6 +35,14 @@ namespace SecureAD.Next.Tests.Architecture;
 /// sealed evidence, so it cannot move into <c>SecureAD.Evidence</c> without undoing the separation
 /// it was built for.
 /// </para>
+/// <para>
+/// <b><c>Stage2aRun</c> is the derive stage</b>, not a part of it: it is the whole of what that
+/// project offers a caller, so a rebuild that moved it elsewhere would have moved the stage. The
+/// project joined this list once its surface was narrowed from thirty-two public types to twelve -
+/// the pass, the graph, the interner, the writer and the three closure derivations are internal,
+/// because a register row states that anything may come to depend on a type, and that is the
+/// opposite of what is wanted for the derive's workings.
+/// </para>
 /// </remarks>
 public static class RebuildAssemblies
 {
@@ -49,6 +57,7 @@ public static class RebuildAssemblies
         typeof(SecureAD.Evidence.BundleSchema).Assembly,
         typeof(SecureAD.Audit.Capture.LdapEntryReader).Assembly,
         typeof(SecureAD.Judgement.JudgementSchema).Assembly,
+        typeof(SecureAD.Derivation.Stage2aRun).Assembly,
     ];
 }
 
@@ -63,13 +72,16 @@ public sealed class RebuildAssemblyTests
     /// against something a type reference cannot quietly change.
     /// </summary>
     private static readonly string[] ExpectedNames =
-        ["SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Audit", "SecureAD.Judgement"];
+    [
+        "SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Audit", "SecureAD.Judgement",
+        "SecureAD.Derivation",
+    ];
 
     /// <summary>
-    /// The gates cover four distinct assemblies, and they are the four the rebuild has.
+    /// The gates cover five distinct assemblies, and they are the five the rebuild has.
     /// </summary>
     [Fact]
-    public void TheGatesCoverFourDistinctAndCorrectlyNamedAssemblies()
+    public void TheGatesCoverEveryDistinctAndCorrectlyNamedAssembly()
     {
         var names = RebuildAssemblies.All.Select(a => a.GetName().Name).ToList();
 
@@ -81,7 +93,7 @@ public sealed class RebuildAssemblyTests
     }
 
     /// <summary>
-    /// And the covered surface is not empty. Four assemblies exporting nothing would satisfy every
+    /// And the covered surface is not empty. An assembly exporting nothing would satisfy every
     /// gate above by giving each of them nothing to check.
     /// </summary>
     [Fact]

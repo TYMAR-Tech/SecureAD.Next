@@ -11,6 +11,17 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The derive's workings are worth testing and are not worth publishing. The pass, the graph,
+         the interner, the writer and the three closure derivations are how this project answers
+         its callers, not what it offers them: nothing outside this assembly names any of them.
+         Left public they would each need a row in SURFACE-REGISTER.md, which would state that
+         anything may come to depend on them - the opposite of what is true and what is wanted.
+
+         Same shape as SecureAD.Cli and SecureAD.Shell: one assembly, one direction. -->
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
+  </ItemGroup>
+
   <!-- Derivation reads a sealed bundle and writes derived facts beside it, so it depends on
        Evidence and Evidence does not depend on it - the same direction, and for the same
        reason, as Judgement.

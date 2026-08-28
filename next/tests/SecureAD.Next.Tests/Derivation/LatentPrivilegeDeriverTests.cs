@@ -173,7 +173,7 @@ public sealed class LatentPrivilegeDeriverTests
             UnresolvedTrustees: [],
             ObjectsWithoutSid: 0));
 
-        var closure = AuthorizationMembershipExpander.Expand(
+        var closure = AuthorizationMembershipExpander.ClosureOf(
             graph, ExpansionBudget.Bulk, CancellationToken.None);
 
         return LatentPrivilegeDeriver.Derive(graph, closure, CancellationToken.None);

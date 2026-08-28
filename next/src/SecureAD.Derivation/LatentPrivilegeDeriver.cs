@@ -10,7 +10,7 @@ namespace SecureAD.Derivation;
 /// Who would gain it, excluding anyone who already holds it by some other route. A path that
 /// changes nothing for anybody is not worth reporting.
 /// </param>
-public sealed record LatentPrivilegePath(
+internal sealed record LatentPrivilegePath(
     int DistributionGroupSidId,
     int WouldGainSidId,
     int[] PrincipalsWhoWouldGain);
@@ -42,7 +42,7 @@ public sealed record LatentPrivilegePath(
 /// <see cref="ProtectedGroupCatalogue"/> to filter with.
 /// </para>
 /// </remarks>
-public static class LatentPrivilegeDeriver
+internal static class LatentPrivilegeDeriver
 {
     /// <summary>The name this phase is recorded under.</summary>
     public const string PhaseName = "LatentPrivilegePaths";

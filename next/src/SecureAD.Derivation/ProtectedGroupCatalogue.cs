@@ -10,7 +10,7 @@ namespace SecureAD.Derivation;
 /// three beat inference, and collapsing them would lose the ability to revisit the weakest one
 /// when something better turns up.
 /// </remarks>
-public enum ProtectedEdgeProvenance
+internal enum ProtectedEdgeProvenance
 {
     /// <summary>Nothing establishes it. The edge is not followed.</summary>
     NotEstablished,
@@ -55,7 +55,7 @@ public enum ProtectedEdgeProvenance
 /// <param name="PrimaryGroupProvenance">
 /// What establishes that primary-group membership reaches a protected principal.
 /// </param>
-public sealed record ProtectedGroupCatalogue(
+internal sealed record ProtectedGroupCatalogue(
     string Version,
     ProtectedEdgeProvenance DistributionNestingProvenance,
     ProtectedEdgeProvenance PrimaryGroupProvenance)

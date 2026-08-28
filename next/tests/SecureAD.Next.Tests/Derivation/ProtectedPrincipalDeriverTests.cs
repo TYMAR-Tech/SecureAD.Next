@@ -95,7 +95,7 @@ public sealed class ProtectedPrincipalDeriverTests
         var edges = new[] { (0, 1), (1, 2) };
 
         var protectedClosure = Derive(principals, edges);
-        var membership = AuthorizationMembershipExpander.Expand(
+        var membership = AuthorizationMembershipExpander.ClosureOf(
             GraphOf(principals, edges), ExpansionBudget.Bulk, CancellationToken.None);
         Assert.Equal(ProtectedPrincipalEvaluation.Protected, protectedClosure.EvaluationOf(2));
         Assert.DoesNotContain(2, membership.MembersOf(0).ToArray());

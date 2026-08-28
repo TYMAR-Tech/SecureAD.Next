@@ -26,7 +26,7 @@ namespace SecureAD.Derivation;
 /// itself refuses the wrong order rather than trusting the caller to remember it.
 /// </para>
 /// </remarks>
-public sealed class DerivationWriter : IDisposable
+internal sealed class DerivationWriter : IDisposable
 {
     private readonly string _bundleDirectory;
     private readonly string _partialPath;

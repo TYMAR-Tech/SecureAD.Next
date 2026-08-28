@@ -71,7 +71,7 @@ public sealed record DerivationCompleteness(
     /// <param name="scope">What the capture covered, one entry per declared domain.</param>
     /// <param name="derivationGenerationId">The derive run's identifier.</param>
     /// <returns>What the derivation does not cover.</returns>
-    public static DerivationCompleteness Of(
+    internal static DerivationCompleteness Of(
         NestingFacts facts,
         MembershipClosure closure,
         RunScope scope,
@@ -124,7 +124,7 @@ public sealed record DerivationCompleteness(
     /// <param name="scope">What the capture covered, one entry per declared domain.</param>
     /// <param name="derivationGenerationId">The derive run's identifier.</param>
     /// <returns>What the derivation does not cover.</returns>
-    public static DerivationCompleteness WithoutExpansion(
+    internal static DerivationCompleteness WithoutExpansion(
         NestingFacts facts,
         RunScope scope,
         Guid derivationGenerationId)
@@ -164,7 +164,7 @@ public sealed record DerivationCompleteness(
     /// <param name="scope">What the capture covered, one entry per declared domain.</param>
     /// <param name="derivationGenerationId">The derive run's identifier.</param>
     /// <returns>What the derivation does not cover, which is everything.</returns>
-    public static DerivationCompleteness NothingWasRead(RunScope scope, Guid derivationGenerationId)
+    internal static DerivationCompleteness NothingWasRead(RunScope scope, Guid derivationGenerationId)
     {
         ArgumentNullException.ThrowIfNull(scope);
 

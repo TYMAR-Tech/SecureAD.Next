@@ -26,7 +26,7 @@ namespace SecureAD.Derivation;
 /// and all of them are the same principal - so the extra objects are folded onto it. Counted rather
 /// than passed over, because a fidelity loss nobody is told about is one nobody can check.
 /// </param>
-public sealed record NestingFacts(
+internal sealed record NestingFacts(
     SidInterner Sids,
     IReadOnlyList<SidIdentityRow> Identities,
     IReadOnlyList<PrincipalRow> Principals,
@@ -57,7 +57,7 @@ public sealed record NestingFacts(
 /// side would lose every relationship whose other half was not captured.
 /// </para>
 /// </remarks>
-public static class MembershipNestingPass
+internal static class MembershipNestingPass
 {
     /// <summary>The name this phase is recorded under.</summary>
     public const string PhaseName = "MembershipAndNesting";

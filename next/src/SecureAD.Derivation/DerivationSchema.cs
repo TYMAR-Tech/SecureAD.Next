@@ -27,7 +27,7 @@ namespace SecureAD.Derivation;
 /// file to delete and derive again.
 /// </para>
 /// </remarks>
-public static class DerivationSchema
+internal static class DerivationSchema
 {
     /// <summary>
     /// The schema version stamped into every derivation store.

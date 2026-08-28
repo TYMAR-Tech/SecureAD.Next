@@ -28,7 +28,7 @@ namespace SecureAD.Derivation;
 /// asking about them is an ordinary thing for a traversal to do.
 /// </para>
 /// </remarks>
-public sealed class NestingGraph
+internal sealed class NestingGraph
 {
     private readonly int[] _memberOffsets;
     private readonly int[] _members;

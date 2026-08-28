@@ -6,7 +6,7 @@ namespace SecureAD.Derivation;
 /// <param name="SidId">The SID.</param>
 /// <param name="PrincipalSidId">The current SID of the principal it identifies.</param>
 /// <param name="Kind">Whether this is that principal's own SID or one it carries from a migration.</param>
-public readonly record struct SidIdentityRow(int SidId, int PrincipalSidId, SidIdentityKind Kind);
+internal readonly record struct SidIdentityRow(int SidId, int PrincipalSidId, SidIdentityKind Kind);
 
 /// <summary>
 /// Everything about one principal that a membership question needs, other than its edges.
@@ -26,7 +26,7 @@ public readonly record struct SidIdentityRow(int SidId, int PrincipalSidId, SidI
 /// here rather than as an edge: it is real membership, but it is also the most uniform fact in the
 /// directory, and materialising it would add one row per account all pointing at Domain Users.
 /// </param>
-public readonly record struct PrincipalRow(
+internal readonly record struct PrincipalRow(
     int SidId,
     Guid ObjectGuid,
     bool IsGroup,
@@ -44,4 +44,4 @@ public readonly record struct PrincipalRow(
 /// </remarks>
 /// <param name="GroupSidId">The containing group.</param>
 /// <param name="MemberSidId">The principal directly inside it.</param>
-public readonly record struct NestingEdge(int GroupSidId, int MemberSidId);
+internal readonly record struct NestingEdge(int GroupSidId, int MemberSidId);

@@ -150,7 +150,7 @@ public static class Stage2aRun
             nameof(ExpansionPhase),
             progress,
             log,
-            () => AuthorizationMembershipExpander.Expand(graph, budget, cancellationToken),
+            () => AuthorizationMembershipExpander.ClosureOf(graph, budget, cancellationToken),
             result => result.IsComplete
                 ? DerivationPhaseOutcome.Succeeded
                 : DerivationPhaseOutcome.Degraded);

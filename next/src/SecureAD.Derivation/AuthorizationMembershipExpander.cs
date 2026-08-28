@@ -30,7 +30,7 @@ namespace SecureAD.Derivation;
 /// Whether every group was expanded in full. False means a closure read from here is a floor rather
 /// than an answer, and a rule resting on it has established nothing clean.
 /// </param>
-public sealed record MembershipClosure(
+internal sealed record MembershipClosure(
     IReadOnlyList<int[]> MembersByGroup,
     IReadOnlyList<int[]> Cycles,
     IReadOnlyList<int> GroupsOfUnknownType,
@@ -78,16 +78,25 @@ public sealed record MembershipClosure(
 /// cycle need not reach each other through followable edges alone.
 /// </para>
 /// </remarks>
-public static class AuthorizationMembershipExpander
+internal static class AuthorizationMembershipExpander
 {
     /// <summary>
-    /// Expands every group in the graph.
+    /// Works out every group's membership, transitively.
     /// </summary>
+    /// <remarks>
+    /// <b>Named <c>ClosureOf</c> rather than <c>Expand</c>, because the kernel already expands
+    /// something else.</b> <c>GenericRightsExpander.Expand</c> turns <c>GENERIC_ALL</c> into the
+    /// specific rights it implies, and <c>CONCEPT-REGISTRY.md</c> gives that question the shape
+    /// <c>Expand*</c> so a second answer to it cannot appear quietly. This is not a second answer -
+    /// a bitmask and a membership graph have nothing to do with each other - but the registry
+    /// matches on names, and it is right to: a reader who has to check the parameter types to know
+    /// which question a method answers is a reader who will eventually not check.
+    /// </remarks>
     /// <param name="graph">The nesting graph.</param>
     /// <param name="budget">The limits to run under.</param>
     /// <param name="cancellationToken">Stops the expansion.</param>
     /// <returns>The closure, and what it could not establish.</returns>
-    public static MembershipClosure Expand(
+    public static MembershipClosure ClosureOf(
         NestingGraph graph,
         ExpansionBudget budget,
         CancellationToken cancellationToken)

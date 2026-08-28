@@ -1,5 +1,8 @@
 # What stage 2a derives
 
+**Code:** `next/src/SecureAD.Derivation/`
+**Layer:** Derivation — where a sealed bundle becomes answers about more than one object.
+
 Group nesting, read once out of a sealed bundle and turned into three separate answers. This is the
 first phase of the derive stage, and the first thing in this product that answers a question about
 more than one object.
@@ -7,6 +10,37 @@ more than one object.
 **Status: built, 2026-08-27. Wired in 2026-08-28.** Runs end to end over a sealed bundle through
 `Stage2aRun.Derive`, which both the window and the command line call once a capture has sealed
 evidence. No rule consumes what it produces yet.
+
+---
+
+## What this page owns
+
+<!-- TYPES:BEGIN -->
+
+| Type | What it is |
+|---|---|
+| `Stage2aRun` | Deriving a sealed bundle: one pass over the nesting, three closures, one store |
+| `DerivationProgress` | How far a derivation has got, for a window that shows it |
+| `DerivationRunState` | What became of a derive run as a whole |
+| `DerivationPhaseOutcome` | What became of one phase within that run, including one that never ran |
+| `ExpansionBudget` | The limits a membership expansion runs under |
+| `ExpansionLimit` | Which budget stopped an expansion, when one did |
+| `DerivationCompleteness` | What a derivation does not cover, so a partial answer is never read as a whole one |
+| `DerivationReader` | Reads a derivation back, and refuses one written to a schema this build does not understand |
+| `StoredDerivation` | Everything a derivation recorded: its description, its phases, its size and its completeness |
+| `DerivationDescription` | What one derive run recorded about itself |
+| `StoredDerivationPhase` | One phase, read back, with why it failed if it did |
+| `DerivationSize` | How much the store holds |
+
+<!-- TYPES:END -->
+
+**The derive's workings are internal, deliberately.** The pass, the graph, the SID interner, the
+writer, the schema and the three closure derivations are not on this list because nothing outside
+the assembly names them — a register row states that anything may come to depend on a type, and
+that is the opposite of what is wanted for how this stage happens to do its work. The tests reach
+them through `InternalsVisibleTo`, as they do for the command line and the window.
+
+---
 
 ## Three products, because one graph answers three questions
 
@@ -310,13 +344,6 @@ differs and says the evidence is untouched.
 change and has not been made. `IRule` still takes one object. The right moment to design its
 replacement is when the first rule that needs a derived fact exists to shape it.
 
-**The derive stage sits outside the surface register.** `RebuildAssemblies` names the kernel,
-evidence, audit and judgement assemblies, so none of this project's public types are held by
-`SurfaceRegisterTests` or the gates keyed on that list, and this page has no `TYPES` table. The
-register's own record describes this defect happening once before, when a type moved and
-`SecureAD.Audit` stopped being covered; this is the same hole reached by adding a project rather than
-moving a type.
-
 ## What is built
 
 **The test is the evidence; this table is only the index.**
@@ -366,3 +393,5 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Be told which budget stopped a closure short, after the run has ended | `DerivationReadingTests.Stage2a_TheLimitThatStoppedTheExpansionComesBack` | 2026-08-28 |
 | Tell a domain nobody could reach from one left out, reading a store back | `DerivationReadingTests.Stage2a_ADomainThatCouldNotBeReachedDoesNotReadBackAsOneLeftOut` | 2026-08-28 |
 | Have a derivation that covered everything say so rather than say nothing | `DerivationWritingTests.Stage2a_ACompleteDerivationStillRecordsThatItIsComplete` | 2026-08-28 |
+| Have every type this stage publishes held to the same rules as the rest of the product | `SurfaceRegisterTests` | 2026-08-28 |
+| Not meet two methods called `Expand` that answer unrelated questions | `ConceptRegistryTests` | 2026-08-28 |
