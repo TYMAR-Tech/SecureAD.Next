@@ -100,16 +100,27 @@ function Resolve-Mask {
         $Value is deliberately untyped. A [string] parameter coerces $null to '', which would
         collapse "the forest holds no attribute" into "the forest holds an empty one" - the exact
         distinction the product keeps apart, erased by a type annotation.
+
+        NOTE ON WHAT $null MEANS HERE, WHICH IS NOT WHAT IT MEANS IN THE PRODUCT.
+
+        This script reaches the directory itself. Getting here at all means the Directory Service
+        object was read, so an absent attribute is the documented default - MS-ADTS says the
+        attribute does not exist by default and every character is then "0". The forest was asked
+        and answered.
+
+        The product reads a bundle rather than a directory, so it meets a third case this script
+        cannot: a capture taken before the attribute was catalogued, which holds no column for it.
+        That is genuinely unread, and its DirectoryHeuristics reports NotRead for it.
+
+        Reporting NotRead here would therefore disagree with the product about the same forest -
+        which was this script's first draft, and is corrected rather than carried.
     #>
     param($Value)
 
-    if ($null -eq $Value) {
-        return [pscustomobject]@{ State = 'NotRead'; Character = $null; Excluded = @() }
-    }
-
-    if ($Value.Length -lt $MaskPosition) {
-        # Past the end of the string is normal: the order is fixed and truncation is the only way
-        # to omit a character, so every value is a prefix of a longer one nobody wrote.
+    if ($null -eq $Value -or $Value.Length -lt $MaskPosition) {
+        # Two ways to reach the default and the same answer for both: no attribute at all, or a
+        # string that ends before this position. The order of the characters is fixed and
+        # truncation is the only way to omit one, so a short value is an ordinary value.
         return [pscustomobject]@{ State = 'DefaultedByAbsence'; Character = '0'; Excluded = @() }
     }
 
@@ -176,8 +187,8 @@ function Write-State {
     $resolved = Resolve-Mask $Value
 
     $shown =
-        if ($null -eq $Value) { '<attribute not present>' }
-        elseif ($Value -eq '') { "'' (present, empty)" }
+        if ($null -eq $Value) { '<attribute not present - every character defaults>' }
+        elseif ($Value -eq '') { "'' (present, empty - every character defaults)" }
         else { "'$Value'" }
 
     Write-Host ''
