@@ -330,6 +330,13 @@ a clear answer does not deserve.
 Microsoft's set, so an operator asking why a group is unprotected can tell *never in the catalogue*
 from *taken out by this forest* - different facts with different remedies.
 
+**Confirmed against a real forest, 2026-08-28.** `tymar.lab` was given
+`dSHeuristics = 000000000100000f` through `next/tools/Set-LabDsHeuristics.ps1` and captured. The
+value reached `captured_object` on the Directory Service object, character 16 resolved to all four
+bits, and the four operator groups left the protected set while Administrators and Replicator stayed
+in it. The same forest read as excluding nothing before the value was set, which is the case every
+other forest will present.
+
 **Deriving runs between the capture and the judging.** `NewAuditViewModel` calls it through
 `IDerivationLauncher` once a capture has sealed evidence, and `SecureAD.Cli` calls `Stage2aRun.Derive`
 directly after it prints the sealed bundle. It goes before the judging because what it produces is
@@ -408,7 +415,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Have a derivation that covered everything say so rather than say nothing | `DerivationWritingTests.Stage2a_ACompleteDerivationStillRecordsThatItIsComplete` | 2026-08-28 |
 | Have every type this stage publishes held to the same rules as the rest of the product | `SurfaceRegisterTests` | 2026-08-28 |
 | Not meet two methods called `Expand` that answer unrelated questions | `ConceptRegistryTests` | 2026-08-28 |
-| See the protected set his own forest enforces, not the one Microsoft publishes | `ProtectedCatalogueExclusionTests.Stage2a_AnExcludedGroupIsNotProtected` | |
-| Tell a group his forest excluded from one that was never protected | `ProtectedCatalogueExclusionTests.Stage2a_ThePublishedSetIsStillAnswerableAfterNarrowing` | |
-| Not be told the protected set is in doubt when his forest answered clearly | `ProtectedCatalogueExclusionTests.Stage2a_AForestThatExcludedNothingSaysItWasAsked` | |
+| See the protected set his own forest enforces, not the one Microsoft publishes | `ProtectedCatalogueExclusionTests.Stage2a_AnExcludedGroupIsNotProtected` | 2026-08-28 |
+| Tell a group his forest excluded from one that was never protected | `ProtectedCatalogueExclusionTests.Stage2a_ThePublishedSetIsStillAnswerableAfterNarrowing` | 2026-08-28 |
+| Not be told the protected set is in doubt when his forest answered clearly | `ProtectedCatalogueExclusionTests.Stage2a_AForestThatExcludedNothingSaysItWasAsked` | 2026-08-28 |
 | Keep every published protection where a bundle cannot say what the forest set | `ProtectedCatalogueExclusionTests.Stage2a_ABundleWithoutTheValueKeepsThePublishedSet` | |
