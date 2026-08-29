@@ -85,6 +85,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\derivation\adminsdholder-catalogue-implementation.md = ..\docs\layers\derivation\adminsdholder-catalogue-implementation.md
 		..\docs\reviews\adminsdholder-catalogue-review.md = ..\docs\reviews\adminsdholder-catalogue-review.md
 		..\docs\reviews\01-evidence-capture-review.md = ..\docs\reviews\01-evidence-capture-review.md
+		..\docs\reviews\02-derivation-review.md = ..\docs\reviews\02-derivation-review.md
 		..\docs\reviews\README.md = ..\docs\reviews\README.md
 		..\docs\reviews\REVIEW-REGISTER.md = ..\docs\reviews\REVIEW-REGISTER.md
 		..\docs\reviews\_template.md = ..\docs\reviews\_template.md
