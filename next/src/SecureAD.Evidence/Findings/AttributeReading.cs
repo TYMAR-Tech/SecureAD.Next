@@ -11,12 +11,12 @@ namespace SecureAD.Evidence.Findings;
 /// directory does not tell the two apart. Returning zero would let a rule conclude that no flags
 /// are set, which is a statement the evidence does not support.
 /// </remarks>
-internal static class AttributeReading
+public static class AttributeReading
 {
     /// <summary>The first text value of an attribute, or null when the object has none.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static string? Text(ObjectAttributes subject, string ldapDisplayName) =>
+    public static string? Text(ObjectAttributes subject, string ldapDisplayName) =>
         subject.Attributes
             .FirstOrDefault(a => string.Equals(
                 a.LdapDisplayName, ldapDisplayName, StringComparison.OrdinalIgnoreCase))
@@ -37,10 +37,41 @@ internal static class AttributeReading
             .Select(t => t!),
     ];
 
+    /// <summary>Whether the object carries at least one text value for an attribute.</summary>
+    /// <param name="subject">The object to read.</param>
+    /// <param name="ldapDisplayName">The attribute to read.</param>
+    public static bool HasTextValue(ObjectAttributes subject, string ldapDisplayName) =>
+        Text(subject, ldapDisplayName) is not null;
+
+    /// <summary>Whether any text value equals <paramref name="value"/>, without regard to case.</summary>
+    /// <param name="subject">The object to read.</param>
+    /// <param name="ldapDisplayName">The attribute to read.</param>
+    /// <param name="value">The value to find.</param>
+    public static bool ContainsText(
+        ObjectAttributes subject, string ldapDisplayName, string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+        return AllText(subject, ldapDisplayName)
+            .Contains(value, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The last text value of an attribute, or null when the object has none.</summary>
+    /// <remarks>
+    /// Used for <c>objectClass</c>, whose last value is the most-derived class an operator names.
+    /// </remarks>
+    /// <param name="subject">The object to read.</param>
+    /// <param name="ldapDisplayName">The attribute to read.</param>
+    public static string? LastText(ObjectAttributes subject, string ldapDisplayName)
+    {
+        var values = AllText(subject, ldapDisplayName);
+        return values.Count == 0 ? null : values[^1];
+    }
+
     /// <summary>An attribute read as a 32-bit unsigned value, or null when it is not one.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static uint? UnsignedInteger(ObjectAttributes subject, string ldapDisplayName) =>
+    public static uint? UnsignedInteger(ObjectAttributes subject, string ldapDisplayName) =>
         uint.TryParse(
             Text(subject, ldapDisplayName),
             NumberStyles.Integer,
@@ -52,7 +83,7 @@ internal static class AttributeReading
     /// <summary>An attribute read as a 32-bit signed value, or null when it is not one.</summary>
     /// <param name="subject">The object to read.</param>
     /// <param name="ldapDisplayName">The attribute to read.</param>
-    internal static int? SignedInteger(ObjectAttributes subject, string ldapDisplayName) =>
+    public static int? SignedInteger(ObjectAttributes subject, string ldapDisplayName) =>
         int.TryParse(
             Text(subject, ldapDisplayName),
             NumberStyles.Integer,

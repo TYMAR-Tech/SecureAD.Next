@@ -1,5 +1,6 @@
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence.Findings;

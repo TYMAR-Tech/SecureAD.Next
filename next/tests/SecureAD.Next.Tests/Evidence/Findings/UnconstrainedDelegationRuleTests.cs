@@ -1,5 +1,6 @@
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Kernel.Capture;
 using Xunit;
 

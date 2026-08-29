@@ -61,11 +61,19 @@ coverage requirements are all the predecessor's, and none of them exists in this
 consequence written above — *adding a rule touches two catalogue files instead of one* — is not true
 here and would send anyone who read it looking for files that are not there.
 
-**What this product does instead.** A rule is an `IRule` in `SecureAD.Evidence/Findings`, carrying
+**What this product did at the 2026-08-26 amendment.** A rule was an `IRule` in
+`SecureAD.Evidence/Findings`, carrying
 its own `RuleDefinition` — identity, severity, version, the classes it judges and the attributes it
 reads. The set that runs is a literal list in `JudgingLauncher.Rules()`, which is deliberate:
 `0082` keeps the rule set out of the customer's hands, and a set assembled by reflection is a set
 nobody can read off the page. There is no catalogue file of any kind.
+
+**Ownership correction, 2026-08-28.** Executable `IRule`, `RuleVerdict`, rule implementations and
+the literal `RuleCatalogue` now live in `SecureAD.Judgement`, the layer that coordinates captured
+evidence and reusable derivation. Passive `RuleDefinition`, finding identities and typed finding
+evidence remain in `SecureAD.Evidence.Findings`. The decision is unchanged: detection is code and the
+customer cannot tune the catalogue. Only the project owning executable policy moved, so Evidence
+does not need an upward dependency on Derivation.
 
 **The decision itself is untouched by this.** Detection is code, not a configuration format or a rule
 language; a rule's identity and severity are declared rather than computed; and nothing lets a

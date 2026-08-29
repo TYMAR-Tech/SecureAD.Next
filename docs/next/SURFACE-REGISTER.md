@@ -265,6 +265,7 @@ The table below sits between the two markers around it, so the test parses only 
 | LdapDirectoryChannel | SecureAD.Audit | [how-a-connection-is-opened](../layers/connect/how-a-connection-is-opened.md) |
 | LdapDirectoryChannelFactory | SecureAD.Audit | [how-a-connection-is-opened](../layers/connect/how-a-connection-is-opened.md) |
 | DomainControllerSignals | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| AttributeReading | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | JudgementRunState | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | JudgementDescription | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | JudgementReader | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
@@ -284,14 +285,14 @@ The table below sits between the two markers around it, so the test parses only 
 | FindingEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | FindingSubject | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | FindingSubjectKind | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| IRule | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| RuleCatalogue | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| IRule | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleDefinition | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| RuleVerdict | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleVerdict | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | Severity | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | UnconstrainedDelegationEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| UnconstrainedDelegationOnAccount | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| UnconstrainedDelegationOnNonDomainController | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnconstrainedDelegationOnAccount | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnconstrainedDelegationOnNonDomainController | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | StoredFindings | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | EvaluatedRule | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | Stage2aRun | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |

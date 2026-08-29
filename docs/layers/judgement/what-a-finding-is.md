@@ -1,15 +1,18 @@
 # What a finding is
 
-**Code:** `next/src/SecureAD.Evidence/Findings/`
-**Layer:** Judgement — what a rule makes of an object, and what that answer rests on.
+**Code:** `next/src/SecureAD.Evidence/Findings/`, `next/src/SecureAD.Judgement/Rule*.cs`,
+`next/src/SecureAD.Judgement/UnconstrainedDelegationRules.cs`
+**Layer:** Judgement — what executable rules make of captured and derived facts, and the durable data
+those answers carry.
 
-The capture half reads a forest and seals it. This page is the other half beginning: **a rule reads
-one captured object and says what it found**, in a shape that keeps *nothing is wrong* apart from
-*nobody could look*.
+The capture half reads a forest and seals it. Judgement is the other half: executable rules consume
+declared inputs and write findings outside the seal, keeping *nothing is wrong* apart from *nobody
+could look*.
 
-Two rules exist, both about unconstrained delegation. Nothing runs them — no code constructs an
-`IRule` outside the tests, and nothing stores a `Finding`. What is built is the shape a verdict
-takes and the logic the two rules apply; what is not built is everything that would call them.
+Two rules exist, both about unconstrained delegation. `JudgingRun` executes them over sealed bundles,
+stores their findings, and the Shell reads those findings back. The executable contracts and rules
+live in `SecureAD.Judgement`; passive finding and rule-definition records stay in Evidence because
+they are durable data rather than executable policy.
 
 ---
 
@@ -24,6 +27,7 @@ takes and the logic the two rules apply; what is not built is everything that wo
 | `FindingSubjectKind` | What sort of thing that is |
 | `Severity` | How serious a finding is |
 | `FindingEvidence` | The values a finding rests on, in a shape its kind declares |
+| `AttributeReading` | The one Evidence-owned interpretation of captured attribute values, used by rule definitions, signals and executable rules |
 | `StoredFindings` | Findings beside the rules that were run to produce them |
 | `EvaluatedRule` | One rule that was run, at the version of its logic that ran |
 | `IRule` | A rule: what it is, and what it makes of one object |
@@ -43,15 +47,15 @@ types of the production assemblies by `SurfaceRegisterTests`.
 
 ---
 
-## A rule judges one object and nothing else
+## Today's rules judge one object; Judgement owns the widening seam
 
-`IRule.Judge` takes a single `EvidenceObject` and returns a `RuleVerdict`. There is no forest, no
+`IRule.Judge` takes a single `ObjectAttributes` and returns a `RuleVerdict`. There is no forest, no
 sibling lookup and no second pass.
 
 Both delegation rules decide from one object's own attributes, so the narrow shape costs nothing
-today. What it buys is that **a rule cannot quietly acquire an input it never declared** — there is
-nowhere to reach. A rule resting on group membership needs a wider shape than this, and that shape
-does not exist yet.
+today. Executable contracts live in Judgement now because that layer can coordinate both Evidence
+and Derivation without a dependency cycle. The method remains narrow in this seam-only move; a
+declared multi-source input package is the next implementation phase, not hidden inside this one.
 
 Returning nothing is the ordinary case. Most objects are fine, and a rule says so by yielding no
 finding rather than by yielding a finding that says nothing is wrong.

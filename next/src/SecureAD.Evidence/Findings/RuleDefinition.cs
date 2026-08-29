@@ -5,9 +5,11 @@ namespace SecureAD.Evidence.Findings;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The catalogue is data and the logic is code</b>, per <c>docs/decisions/0010</c>. This type
-/// is the data half. What a rule looks for lives in an <see cref="IRule"/> implementation; what a
-/// rule <i>is</i> lives here, where it can be read, listed and compared without running anything.
+/// <b>The catalogue is data and the logic is code</b>, per <c>docs/decisions/0010</c>. This is the
+/// data half. Rule execution belongs to <c>SecureAD.Judgement</c>; identity, wording, severity and
+/// declared captured inputs stay here because they are durable data written into findings and the
+/// judgement store. Keeping that split means Evidence describes what a rule was without depending
+/// on the component that executes it.
 /// </para>
 /// <para>
 /// <b><see cref="RequiredAttributes"/> is the reason this type exists at all.</b> The predecessor
@@ -80,72 +82,4 @@ public sealed record RuleDefinition(
         return AttributeReading.AllText(subject, "objectClass")
             .Any(c => SubjectClasses.Contains(c, StringComparer.OrdinalIgnoreCase));
     }
-}
-
-/// <summary>
-/// What one rule made of one object: what it found, and what it could not read.
-/// </summary>
-/// <remarks>
-/// <para>
-/// <b>An empty list of findings means two different things and this type keeps them apart.</b>
-/// Either the object is fine, or the rule was handed an object missing something it declared it
-/// needed. Returning a bare list makes those identical, and <c>docs/decisions/0002</c> forbids
-/// rendering an unavailable answer as an empty result - the predecessor's version of this mistake
-/// stamped rules coverage-complete on bundles that never carried their inputs.
-/// </para>
-/// <para>
-/// <b>This is what declaring inputs buys.</b> Because a rule names the attributes it reads, it can
-/// say exactly which of them the object did not carry, rather than falling silent.
-/// </para>
-/// </remarks>
-/// <param name="Findings">What was found. Empty when there was nothing to say.</param>
-/// <param name="InputsNotCaptured">
-/// Declared attributes this object did not carry, so the rule could not reach a verdict on it.
-/// Empty when everything the rule needed was present.
-/// </param>
-public sealed record RuleVerdict(
-    IReadOnlyList<Finding> Findings,
-    IReadOnlyList<string> InputsNotCaptured)
-{
-    /// <summary>A verdict reached with everything the rule asked for.</summary>
-    /// <param name="findings">What was found, if anything.</param>
-    public static RuleVerdict Judged(IReadOnlyList<Finding> findings) => new(findings, []);
-
-    /// <summary>No verdict, because the object did not carry what the rule declared it reads.</summary>
-    /// <param name="missing">The declared attributes that were absent.</param>
-    public static RuleVerdict CouldNotJudge(IReadOnlyList<string> missing) => new([], missing);
-
-    /// <summary>
-    /// Whether the rule had everything it declared it needed. False means silence here is not a
-    /// statement that the object is clean.
-    /// </summary>
-    public bool IsComplete => InputsNotCaptured.Count == 0;
-}
-
-/// <summary>
-/// A rule: what it is, and what it makes of one object.
-/// </summary>
-/// <remarks>
-/// <para>
-/// <b>One object at a time, deliberately.</b> Both delegation rules decide from a single object's
-/// own attributes, and a rule that cannot reach beyond the object it was handed cannot quietly
-/// acquire a dependency it never declared. A rule that genuinely needs the forest - anything
-/// resting on group membership, for instance - needs a wider shape than this and a decision to go
-/// with it, rather than being smuggled in through a captured field.
-/// </para>
-/// <para>
-/// <b>Returning nothing is the normal case.</b> Most objects are fine, and a rule says so by
-/// yielding no finding rather than by yielding a finding that says nothing is wrong.
-/// </para>
-/// </remarks>
-public interface IRule
-{
-    /// <summary>What this rule is, as data.</summary>
-    RuleDefinition Definition { get; }
-
-    /// <summary>
-    /// What this rule makes of one object, and what it could not read to decide.
-    /// </summary>
-    /// <param name="subject">The object to judge.</param>
-    RuleVerdict Judge(ObjectAttributes subject);
 }

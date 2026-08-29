@@ -7,7 +7,7 @@
 > reporting what the old tool did, not what this one must do.
 >
 > Read it as a source, not an answer. The Active Directory reasoning is worth having; the
-> implementation is not. In this product a rule is an `IRule` in `SecureAD.Evidence/Findings`,
+> implementation is not. In this product executable rules are `IRule` implementations in `SecureAD.Judgement`,
 > registered in `JudgingLauncher.Rules()`, resting on evidence stored by `JudgementWriter`, and
 > reading only attributes declared in `CapturedAttributeCatalog`. What a rule is here is described
 > in [`layers/judgement/what-a-finding-is.md`](../layers/judgement/what-a-finding-is.md).

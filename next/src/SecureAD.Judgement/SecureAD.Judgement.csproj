@@ -11,12 +11,13 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
   </ItemGroup>
 
-  <!-- Judgement reads sealed evidence and writes beside it, so it depends on Evidence and
-       Evidence does not depend on it. The direction is the whole point: capture must be able to
-       produce a bundle with nothing that judges it present, and a rule must never be able to
-       reach back into the writer that sealed the file it is reading. -->
+  <!-- Judgement coordinates executable rules over both sealed evidence and reusable derived facts.
+       Evidence and Derivation do not depend on it: capture must be able to produce a bundle with
+       nothing that judges it present, and derivation must never see a rule or it could compute what
+       one rule wanted rather than what the directory said. -->
   <ItemGroup>
     <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+    <ProjectReference Include="..\SecureAD.Derivation\SecureAD.Derivation.csproj" />
   </ItemGroup>
 
 </Project>
