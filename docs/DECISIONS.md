@@ -88,3 +88,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0086](decisions/0086-a-qualified-statement-beats-silence.md) | 2026-08-25 | Accepted | A qualified statement beats silence, except where completeness is claimed |
 | [0087](decisions/0087-a-sid-is-unique-within-its-scope.md) | 2026-08-28 | Accepted | A SID is unique within its scope, not within the forest |
 | [0088](decisions/0088-a-run-writes-a-log.md) | 2026-08-28 | Accepted | A run writes a log, beside the evidence and outside the seal |
+| [0089](decisions/0089-principal-protection-and-member-propagation-are-separate-claims.md) | 2026-08-28 | Accepted | Principal protection and member propagation are separate claims |

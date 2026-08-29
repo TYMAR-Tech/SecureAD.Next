@@ -34,8 +34,9 @@ beside it. The two are separate facts and the column carries the first.
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
 | `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
-| `ProtectedGroupCatalogue` | 15 | Appendix C: Protected Accounts and Groups in Active Directory | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests` |
-| `DirectoryHeuristics` | 4 | MS-ADTS 6.1.1.2.4.1.2, and KB 56a70fa8 for the bit assignments | 2026-08-28 | `DirectoryHeuristicsMicrosoftAnchorTests` |
+| `ProtectedGroupCatalogue` principal-object list | 15 | Appendix C: Protected Accounts and Groups in Active Directory | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests` |
+| Protected-member distribution traversal | 1 semantic claim | Reducing the Active Directory Attack Surface, protected accounts and groups section | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests.TheProvenanceOfEachEdgeKindIsRecorded` |
+| `DirectoryHeuristics` mask encoding and bit assignments | 4 bits | MS-ADTS 6.1.1.2.4.1.2, and KB 56a70fa8 for the bit assignments | 2026-08-28 | `DirectoryHeuristicsMicrosoftAnchorTests` |
 
 **Defects found: 12 of 238.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
 nothing had ever checked. The twelfth is below, and it was a **missing** value rather than a wrong
@@ -63,8 +64,11 @@ catalogue it replaces was not: the predecessor's hand-assembled table had `S-1-5
 that file. Two of the three checks in `WhenASidWasCarriedWrongBefore_ThenTheCatalogueCarriesMicrosoftsValue`
 exist to stop either coming back.
 
-`ProtectedGroupCatalogue` is where this register was used to settle a question the specification had
-recorded as unanswerable, which is a use it had not been put to before.
+`ProtectedGroupCatalogue` is where this register first exposed that one component can carry several
+different Microsoft-defined claims. Appendix C verifies fifteen protected **objects**. It does not,
+by itself, verify that all fifteen group objects propagate protection to members. Decision `0089`
+therefore splits principal protection from member propagation and requires each to carry its own
+status and provenance.
 
 `docs/layers/specs/JUDGEMENT-HALF.md` gated two edge kinds in the protected-principal derivation on
 the grounds that no Microsoft source stated whether the protection process follows them. For
@@ -85,6 +89,11 @@ It is recorded as documentation rather than specification. Appendix C and the at
 are product documentation, not Open Specifications, and `ProtectedEdgeProvenance` keeps the three
 strengths of claim apart so the weakest can be revisited when something better turns up. The primary
 group half of the same gate, `AC-64`, remains unevidenced and unfollowed.
+
+**What is not verified by the rows above:** member propagation for RIDs 498, 516, 521, 526 or 527;
+principal protection for RID 498; primary-group-only traversal; malformed character-16 fallback; or
+whether `dwAdminSDExMask` changes the operator group object's own principal protection. Those remain
+`Disputed` or `Unverified` under `0089` and may not be inferred from the green anchor tests.
 
 ## Not yet verified
 

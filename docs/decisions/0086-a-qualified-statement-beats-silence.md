@@ -3,6 +3,14 @@
 Date: 2026-08-25
 Status: Accepted
 
+**Correction 2026-08-28 under [`0089`](0089-principal-protection-and-member-propagation-are-separate-claims.md):**
+the general uncertainty rule remains accepted. Statements below that AC-26 still blocks
+distribution-group traversal are superseded: Microsoft's *Reducing the Active Directory Attack
+Surface* explicitly includes direct or transitive membership through security or distribution
+groups in protected-member enumeration. Distribution traversal is therefore established with
+Microsoft-product-documentation provenance. AC-64 primary-group-only traversal remains unverified
+and gated.
+
 Sits under [0066](0066-a-finding-is-called-a-finding.md), which fixes severity on the rule card, and
 beside [0002](0002-absent-view-means-degraded-run.md), which refuses to let a gap pass as a clean
 result. Generalises `AC-97` from one rule to the product.

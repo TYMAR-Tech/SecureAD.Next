@@ -330,12 +330,15 @@ a clear answer does not deserve.
 Microsoft's set, so an operator asking why a group is unprotected can tell *never in the catalogue*
 from *taken out by this forest* - different facts with different remedies.
 
-**Confirmed against a real forest, 2026-08-28.** `tymar.lab` was given
-`dSHeuristics = 000000000100000f` through `next/tools/Set-LabDsHeuristics.ps1` and captured. The
-value reached `captured_object` on the Directory Service object, character 16 resolved to all four
-bits, and the four operator groups left the protected set while Administrators and Replicator stayed
-in it. The same forest read as excluding nothing before the value was set, which is the case every
-other forest will present.
+**Product path confirmed against a real forest, 2026-08-28; server semantics not fully confirmed.**
+`tymar.lab` was given `dSHeuristics = 000000000100000f` through
+`next/tools/Set-LabDsHeuristics.ps1` and captured. The value reached `captured_object` on the Directory
+Service object, character 16 resolved to all four bits, and the then-current product removed the four
+operator group objects from `IsProtected` while leaving Administrators and Replicator. That proves
+capture, parsing and execution. It does **not** prove that AD stops protecting the selected operator
+group objects themselves rather than only disabling propagation to their members. Decision `0089`
+accepts the latter as the current evidence-supported model; a controlled before/after SDProp check is
+required before claiming the group-object effect.
 
 **Deriving runs between the capture and the judging.** `NewAuditViewModel` calls it through
 `IDerivationLauncher` once a capture has sealed evidence, and `SecureAD.Cli` calls `Stage2aRun.Derive`

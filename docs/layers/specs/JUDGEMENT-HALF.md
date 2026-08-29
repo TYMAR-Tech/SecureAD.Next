@@ -160,7 +160,7 @@ facts are captured once, then three different products are derived from them:
 | Product | Follows | Answers |
 |---|---|---|
 | `AuthorizationMembershipClosure` | security-enabled groups, including primary-group membership | *Which security-group memberships can participate in authorization?* |
-| `ProtectedPrincipalClosure` | transitive **security**-group membership. Distribution-group nesting and primary-group membership are research-gated candidate edges, not part of the product until evidenced | *Is this principal covered by AdminSDHolder / SDProp?* |
+| `ProtectedPrincipalClosure` | transitive security- and distribution-group membership to established member-propagation roots. Primary-group-only membership remains unverified; disputed/unverified catalogue routes produce `Unknown` | *Is this principal covered by AdminSDHolder / SDProp?* |
 | `LatentPrivilegePaths` | directory nesting through distribution groups | *What privilege would become effective if a distribution group were converted to security-enabled?* |
 
 The names are deliberately different. A distribution-only path can be relevant to SDProp and to a
@@ -2317,7 +2317,7 @@ research status and sources — and the code is generated from that, not from th
 | AC-23 | A new route bypassing a previously mandatory action removes that action from the mandatory set and is detected as remediation drift. |
 | AC-24 | A capability edge exists only where the requested operation is established by the applicable AD authorization semantics; allow-minus-deny shortcuts fail this test. |
 | AC-25 | Distribution-only nesting does not create current authorization/Tier0 reachability. |
-| AC-26 | Distribution-only nesting produces a latent-privilege finding. It contributes to protected-principal derivation **only** when the corresponding Microsoft-specified or lab-verified traversal behaviour is enabled in the protected-principal catalogue; absent that, the edge is recorded as a gated limit and not followed. |
+| AC-26 | Distribution-only nesting produces a latent-privilege finding and contributes to protected-principal derivation for an active root whose member propagation is established. It never creates current authorization/Tier0 reachability merely by that distribution-only hop. |
 | AC-27 | OWNER RIGHTS (`S-1-3-4`) is evaluated as part of owner implicit-right semantics and can alter the owner's implied access. |
 | AC-28 | `EdgeClass` is preserved as semantic category and is not treated as an ordered risk score. |
 | AC-29 | Full-domain secret replication is represented by a compound semantic capability, not by treating each replication right independently. |

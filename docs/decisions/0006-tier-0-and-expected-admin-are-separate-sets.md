@@ -9,6 +9,15 @@ Services](https://learn.microsoft.com/windows-server/identity/ad-ds/tier-model),
 groups. Expected-admin keeps its membership and is now written out rather than derived from Tier 0.
 The Context below is left as written because that reasoning is how the error entered.
 
+**Correction 2026-08-28 under [`0089`](0089-principal-protection-and-member-propagation-are-separate-claims.md):**
+the separation still stands, but this record's sentence that Microsoft protects Enterprise Read-only
+Domain Controllers (RID 498) unconditionally is superseded. Current first-party sources conflict:
+the group-specific Microsoft page says `Protected by AdminSDHolder? Yes`, while Appendix C omits the
+group. RID 498 remains in these product policy sets as the owner's Tier/expected-admin classification;
+that policy membership is not evidence that AdminSDHolder protection is established. The shared
+AdminSDHolder catalogue carries principal protection as `Disputed` and member propagation as
+`Unverified`.
+
 ## Context
 
 Two different questions are answered from one list of well-known RIDs: *is this principal
