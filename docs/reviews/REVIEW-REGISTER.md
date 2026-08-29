@@ -10,7 +10,7 @@
 | 02 | Derivation correctness and persistence | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `02-derivation-review.md` |
 | 03 | Test architecture and false-green risks | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `03-test-architecture-review.md` |
 | 04 | Judgement, rule execution and uncertainty | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `04-judgement-review.md` |
-| 05 | Kernel AD semantics and parsers | — | `review-baseline-2026-08-28` | Pending | — |
+| 05 | Kernel AD semantics and parsers | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `05-kernel-review.md` |
 | 06 | Shell/CLI reachability and operator truthfulness | — | `review-baseline-2026-08-28` | Pending | — |
 | 07 | Synthesis and correction order | — | `review-baseline-2026-08-28` | Pending | — |
 
