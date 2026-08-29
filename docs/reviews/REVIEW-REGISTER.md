@@ -12,6 +12,6 @@
 | 04 | Judgement, rule execution and uncertainty | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `04-judgement-review.md` |
 | 05 | Kernel AD semantics and parsers | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `05-kernel-review.md` |
 | 06 | Shell/CLI reachability and operator truthfulness | GitHub Copilot | `review-baseline-2026-08-28` | Complete; findings open | `06-shell-cli-review.md` |
-| 07 | Synthesis and correction order | — | `review-baseline-2026-08-28` | Pending | — |
+| 07 | Synthesis and correction order | GitHub Copilot | `review-baseline-2026-08-28` | Complete; implementation pending | `07-repository-synthesis.md` |
 
 Update this table when a review begins, when findings are verified, and when the review closes.
