@@ -93,6 +93,18 @@ public sealed class JudgingEndToEndTests
         Assert.True(judgement.EveryRuleReachedEveryVerdict);
     }
 
+    [Fact]
+    public void AnExcludedDeclaredDomainMakesTheJudgementDegraded()
+    {
+        var directory = ABundleHoldingWithExcludedDomain(
+            Account("bob", "CN=bob,DC=contoso,DC=com", OrdinaryAccount, 513, "user"));
+
+        var state = Judged(directory);
+
+        Assert.Equal(JudgementRunState.CompletedDegraded, state);
+        Assert.Equal(JudgementRunState.CompletedDegraded, Read(directory).Description.State);
+    }
+
     /// <summary>
     /// An object missing a declared input degrades the judging and says which attribute was absent.
     /// </summary>
@@ -377,6 +389,44 @@ public sealed class JudgingEndToEndTests
                 writer.WriteObject(subject);
 
             writer.Complete(OneDomainRead(), Finished);
+        }
+
+        return directory;
+    }
+
+    private static string ABundleHoldingWithExcludedDomain(params EvidenceObject[] objects)
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(), "securead-judging-e2e", Guid.NewGuid().ToString("N"));
+
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+
+            foreach (var subject in objects)
+                writer.WriteObject(subject);
+
+            writer.Complete(
+                RunCoverage.Of(
+                    CoverageId.ForDomainsExcluding(
+                        "contoso.com",
+                        ["contoso.com", "child.contoso.com"],
+                        ["child.contoso.com"]),
+                    [
+                        DomainCoverage.Read("contoso.com"),
+                        DomainCoverage.Excluded(
+                            "child.contoso.com",
+                            ExclusionKind.ByChoice,
+                            "Excluded for this reproduction."),
+                    ],
+                    [
+                        ForestPartitionCoverage.Read(
+                            "CN=Configuration,DC=contoso,DC=com", NamingContextKind.Configuration),
+                        ForestPartitionCoverage.Read(
+                            "CN=Schema,CN=Configuration,DC=contoso,DC=com", NamingContextKind.Schema),
+                    ],
+                    SysvolCoverage.Of([])),
+                Finished);
         }
 
         return directory;

@@ -212,6 +212,27 @@ public sealed class CaptureRunEndToEndTests : IDisposable
         Assert.Contains("could not be read", outcome.Value.Detail, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AConnectionFailureAfterOnePersistedPageRestartsWithoutDuplicatingTheAttempt()
+    {
+        var controller = new ControllerModel
+        {
+            // Configuration and Schema consume requests one and two. The domain's first page is
+            // request three and persists 1,000 objects; fail its continuation request.
+            FailRequestNumber = 4,
+            FailWithCode = 81,
+        };
+        controller.AnswersTo.Add("example.com");
+        controller.AddObjects(1_001, "DC=example,DC=com");
+
+        var run = await RunAsync(controller);
+
+        Assert.Equal(RunCompletion.Sealed, run.Outcome);
+        Assert.Equal(
+            1_001,
+            Query(run.BundleDirectory, "SELECT distinguished_name FROM captured_object").Count);
+    }
+
     /// <summary>
     /// The state reader agrees with what the run left on disk.
     /// </summary>

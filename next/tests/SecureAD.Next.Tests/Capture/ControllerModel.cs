@@ -259,6 +259,11 @@ internal sealed class ControllerModel
     /// <summary>Fail this many times with <see cref="FailWithCode"/> before answering.</summary>
     public int FailuresBeforeAnswering { get; set; }
 
+    /// <summary>
+    /// Fail the request with this one-based number. Null leaves request-position failure disabled.
+    /// </summary>
+    public int? FailRequestNumber { get; set; }
+
     public int FailWithCode { get; set; } = 51;
 
     /// <summary>How many connections this model has been asked for.</summary>
@@ -375,6 +380,9 @@ internal sealed class ControllerModel
         {
             cancellationToken.ThrowIfCancellationRequested();
             model.RequestsReceived++;
+
+            if (model.FailRequestNumber == model.RequestsReceived)
+                throw new LdapException(model.FailWithCode);
 
             if (model.FailuresBeforeAnswering > 0)
             {

@@ -193,6 +193,38 @@ public sealed class DerivationReadingTests
         Assert.False(opened.IsSuccess);
     }
 
+    [Fact]
+    public void Stage2a_ADerivationCopiedBesideDifferentEvidenceIsRefused()
+    {
+        var source = NewBundleWithEvidence("source evidence");
+        var destination = NewBundleWithEvidence("destination evidence");
+        var sourceSeal = BundleSealing.ReadSeal(BundleLayout.SealPath(source))!.Hash;
+
+        using (var writer = DerivationWriter.Create(source, sourceSeal, Started))
+        {
+            writer.WriteSids([], []);
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: true,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.None));
+            writer.Complete(Finished);
+        }
+
+        File.Copy(
+            BundleLayout.DerivationPath(source),
+            BundleLayout.DerivationPath(destination));
+        File.Copy(
+            BundleLayout.DerivationSealPath(source),
+            BundleLayout.DerivationSealPath(destination));
+
+        var opened = DerivationReader.Open(destination);
+
+        Assert.False(opened.IsSuccess);
+    }
+
     /// <summary>
     /// A derivation that did not cover everything reads back saying so.
     /// </summary>
@@ -375,6 +407,15 @@ public sealed class DerivationReadingTests
             Path.GetTempPath(), "derivation-read-" + Guid.NewGuid().ToString("N"));
 
         Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    private static string NewBundleWithEvidence(string content)
+    {
+        var directory = NewBundle();
+        var evidencePath = BundleLayout.EvidencePath(directory);
+        File.WriteAllText(evidencePath, content);
+        BundleSealing.Seal(evidencePath, BundleLayout.SealPath(directory));
         return directory;
     }
 }

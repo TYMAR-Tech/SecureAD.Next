@@ -313,6 +313,35 @@ public sealed class NewAuditViewModelTests
         Assert.Contains("4,795", screen.DerivationReport, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ACompletedDerivationDoesNotClaimUnpersistedClosuresWereCompleted()
+    {
+        _deriving.Outcome = new DerivingOutcome(
+            DerivationRunState.Completed,
+            Principals: 4_795,
+            NestingEdges: 12_004,
+            EveryPhaseThatRanSucceeded: true);
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.DoesNotContain("Every closure was completed", screen.DerivationReport, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StoppingDuringDerivationSaysTheEvidenceWasAlreadySealed()
+    {
+        _deriving.Cancels = true;
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("evidence", screen.Report, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sealed", screen.Report, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("recorded why it stopped", screen.Report, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// A derivation where a part could not be completed says so rather than reporting a whole one.
     /// </summary>

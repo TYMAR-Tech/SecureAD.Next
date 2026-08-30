@@ -139,6 +139,14 @@ public sealed class DangerousPermissionClassifierTests
         Assert.All(all, a => Assert.False(string.IsNullOrWhiteSpace(a.Reason)));
     }
 
+    [Fact]
+    public void AGenericBitStoredInAnAceIsNotReportedAsTheMappedRightsItWouldHaveRequested()
+    {
+        var result = Classifier().Classify(AceType.AccessAllowed, GenericAllBit, null);
+
+        Assert.Equal(PermissionVerdict.CannotClassify, result.Verdict);
+    }
+
     // === ACE type ===
 
     [Theory]

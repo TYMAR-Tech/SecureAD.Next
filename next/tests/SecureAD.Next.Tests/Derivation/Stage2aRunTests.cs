@@ -2,6 +2,7 @@ using SecureAD.Kernel;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Derivation;
@@ -199,6 +200,50 @@ public sealed class Stage2aRunTests
         Assert.Equal(
             DerivationRunState.CompletedDegraded.ToString(),
             ScalarOf(directory, "SELECT state FROM derivation"));
+    }
+
+    [Fact]
+    public void Stage2a_MissingDeclaredDomainMakesReturnedAndStoredStateDegraded()
+    {
+        var directory = NewDirectory();
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            writer.Complete(
+                RunCoverage.Of(
+                    CoverageId.ForDomainsExcluding(
+                        "ad.lab", ["ad.lab", "child.ad.lab"], ["child.ad.lab"]),
+                    [
+                        DomainCoverage.Read("ad.lab"),
+                        DomainCoverage.Excluded(
+                            "child.ad.lab",
+                            ExclusionKind.ByChoice,
+                            "Excluded for this reproduction."),
+                    ],
+                    [
+                        ForestPartitionCoverage.Read(
+                            "CN=Configuration,DC=ad,DC=lab", NamingContextKind.Configuration),
+                        ForestPartitionCoverage.Read(
+                            "CN=Schema,CN=Configuration,DC=ad,DC=lab", NamingContextKind.Schema),
+                    ],
+                    SysvolCoverage.Of([])),
+                Started.AddMinutes(1));
+        }
+
+        var result = Stage2aRun.Derive(
+            directory,
+            ExpansionBudget.Bulk,
+            Started.AddMinutes(2),
+            Stage2aRun.Unwatched,
+            RunLog.Discarded,
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        Assert.Equal(DerivationRunState.CompletedDegraded, result.Value);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var stored = reader.Read();
+        Assert.Equal(DerivationRunState.CompletedDegraded, stored.Description.State);
+        Assert.False(stored.Completeness.IsComplete);
     }
 
     /// <summary>

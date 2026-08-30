@@ -760,6 +760,24 @@ public sealed class SecurityDescriptorParserTests
         Assert.Equal(DaclCompleteness.Complete, result.DaclCompleteness);
     }
 
+    [Fact]
+    public void WhenAnAceFallsOutsideTheDeclaredAclSize_ThenItIsNotParsed()
+    {
+        var sd = SdBytes.SelfRelativeSd(
+            SdBytes.LocalSystem,
+            daclAces: [SdBytes.AllowAce(SdBytes.Administrators, 0x000F01FF)]);
+        var daclOffset = (int)BinaryPrimitives.ReadUInt32LittleEndian(sd.AsSpan(16));
+
+        // The ACL declares only its eight-byte header. The following bytes are outside that ACL,
+        // even though they happen to form a valid ACE and AceCount claims one.
+        BinaryPrimitives.WriteUInt16LittleEndian(sd.AsSpan(daclOffset + 2), 8);
+
+        var result = SecurityDescriptorParser.Parse(sd);
+
+        Assert.Empty(result.DaclAces);
+        Assert.NotEqual(DaclCompleteness.Complete, result.DaclCompleteness);
+    }
+
     // --- The order the directory stored, recorded before it is sorted away ---
     //
     // AD examines every ACE in the DACL and adds a deny only for rights it has not already
