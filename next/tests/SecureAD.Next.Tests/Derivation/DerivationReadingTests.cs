@@ -25,8 +25,6 @@ namespace SecureAD.Next.Tests.Derivation;
 /// </remarks>
 public sealed class DerivationReadingTests
 {
-    private const string EvidenceSeal = "0f9c1d2e3a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5";
-
     private static readonly DateTimeOffset Started = new(2026, 8, 28, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = new(2026, 8, 28, 9, 5, 0, TimeSpan.Zero);
 
@@ -50,7 +48,7 @@ public sealed class DerivationReadingTests
         using var reader = opened.Value!;
 
         Assert.Equal(DerivationSchema.Version, reader.Description.SchemaVersion);
-        Assert.Equal(EvidenceSeal, reader.Description.EvidenceSeal);
+        Assert.Equal(EvidenceSealOf(directory), reader.Description.EvidenceSeal);
         Assert.Equal(DerivationRunState.CompletedDegraded, reader.Description.State);
         Assert.NotEqual(Guid.Empty, reader.Description.GenerationId);
     }
@@ -88,7 +86,7 @@ public sealed class DerivationReadingTests
     {
         var directory = NewBundle();
 
-        using (var writer = DerivationWriter.Create(directory, EvidenceSeal, Started))
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
         {
             writer.WriteSids([], []);
             writer.RecordPhase("Ran", DerivationPhaseOutcome.Succeeded, error: null);
@@ -142,7 +140,8 @@ public sealed class DerivationReadingTests
 
         // Rewrite the version in place, then seal it again so the refusal is about the schema
         // rather than about a broken seal.
-        var path = BundleLayout.DerivationPath(directory);
+        var generation = Current(directory);
+        var path = DataPath(directory, generation);
 
         using (var connection = new SqliteConnection($"Data Source={path}"))
         {
@@ -153,7 +152,7 @@ public sealed class DerivationReadingTests
         }
 
         SqliteConnection.ClearAllPools();
-        BundleSealing.Seal(path, BundleLayout.DerivationSealPath(directory));
+        BundleSealing.Seal(path, SealPath(directory, generation));
 
         var opened = DerivationReader.Open(directory);
 
@@ -170,12 +169,33 @@ public sealed class DerivationReadingTests
     {
         var directory = Derived();
 
-        File.AppendAllText(BundleLayout.DerivationPath(directory), "tampered");
+        File.AppendAllText(DataPath(directory, Current(directory)), "tampered");
 
         var opened = DerivationReader.Open(directory);
 
         Assert.False(opened.IsSuccess);
         Assert.Equal("Evidence.DerivationSealNotIntact", opened.Error!.Code);
+    }
+
+    [Fact]
+    public void Stage2a_AMalformedSealedHeaderReturnsATypedFailure()
+    {
+        var directory = Derived();
+        var generation = Current(directory);
+        var path = DataPath(directory, generation);
+        using (var connection = new SqliteConnection($"Data Source={path}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE derivation SET derivation_generation_id = 'not-a-guid'";
+            command.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+        BundleSealing.Seal(path, SealPath(directory, generation));
+
+        var opened = DerivationReader.Open(directory);
+
+        Assert.Equal("Evidence.DerivationUnreadable", opened.Error!.Code);
     }
 
     /// <summary>
@@ -213,17 +233,35 @@ public sealed class DerivationReadingTests
             writer.Complete(Finished);
         }
 
+        var sourceGeneration = Current(source);
+        var destinationGeneration = AnalysisStoreLifecycle.Generation(
+            destination, AnalysisStoreKind.Derivation, sourceGeneration.GenerationId);
         File.Copy(
-            BundleLayout.DerivationPath(source),
-            BundleLayout.DerivationPath(destination));
+            DataPath(source, sourceGeneration),
+            DataPath(destination, destinationGeneration));
         File.Copy(
-            BundleLayout.DerivationSealPath(source),
-            BundleLayout.DerivationSealPath(destination));
+            SealPath(source, sourceGeneration),
+            SealPath(destination, destinationGeneration));
+        File.Copy(
+            AnalysisStoreLifecycle.ManifestPath(source, AnalysisStoreKind.Derivation),
+            AnalysisStoreLifecycle.ManifestPath(destination, AnalysisStoreKind.Derivation));
 
         var opened = DerivationReader.Open(destination);
 
         Assert.False(opened.IsSuccess);
+        Assert.Equal("Evidence.DerivationIsNotForThisEvidence", opened.Error!.Code);
     }
+
+    private static AnalysisStoreGeneration Current(string directory) =>
+        AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation).Value!;
+
+    private static string DataPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationDataPath(
+            directory, generation.Kind, generation.GenerationId);
+
+    private static string SealPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationSealPath(
+            directory, generation.Kind, generation.GenerationId);
 
     /// <summary>
     /// A derivation that did not cover everything reads back saying so.
@@ -356,7 +394,7 @@ public sealed class DerivationReadingTests
     {
         var directory = NewBundle();
 
-        using (var writer = DerivationWriter.Create(directory, EvidenceSeal, Started))
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
         {
             writer.WriteSids(["S-1-5-32-544", "S-1-5-21-1-2-3-512"], ["ad.lab", null]);
 
@@ -407,6 +445,9 @@ public sealed class DerivationReadingTests
             Path.GetTempPath(), "derivation-read-" + Guid.NewGuid().ToString("N"));
 
         Directory.CreateDirectory(directory);
+        var evidencePath = BundleLayout.EvidencePath(directory);
+        File.WriteAllText(evidencePath, "test evidence");
+        BundleSealing.Seal(evidencePath, BundleLayout.SealPath(directory));
         return directory;
     }
 
@@ -418,4 +459,7 @@ public sealed class DerivationReadingTests
         BundleSealing.Seal(evidencePath, BundleLayout.SealPath(directory));
         return directory;
     }
+
+    private static string EvidenceSealOf(string directory) =>
+        BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash;
 }

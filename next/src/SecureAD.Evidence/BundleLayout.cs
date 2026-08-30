@@ -258,6 +258,28 @@ public static class BundleLayout
     public static string DerivationSealPath(string bundleDirectory) =>
         Combine(bundleDirectory, DerivationSealFileName);
 
+    /// <summary>The staging database for a disposable analysis store.</summary>
+    public static string AnalysisStagingPath(string bundleDirectory, AnalysisStoreKind kind) =>
+        Combine(bundleDirectory, AnalysisPrefix(kind) + ".db.partial");
+
+    /// <summary>The manifest selecting the current generation of a disposable analysis store.</summary>
+    public static string AnalysisManifestPath(string bundleDirectory, AnalysisStoreKind kind) =>
+        Combine(bundleDirectory, AnalysisPrefix(kind) + ".current.json");
+
+    /// <summary>The immutable database for one disposable analysis generation.</summary>
+    public static string AnalysisGenerationDataPath(
+        string bundleDirectory,
+        AnalysisStoreKind kind,
+        Guid generationId) =>
+        Combine(bundleDirectory, $"{AnalysisPrefix(kind)}.{generationId:N}.db");
+
+    /// <summary>The seal for one disposable analysis generation.</summary>
+    public static string AnalysisGenerationSealPath(
+        string bundleDirectory,
+        AnalysisStoreKind kind,
+        Guid generationId) =>
+        Combine(bundleDirectory, $"{AnalysisPrefix(kind)}.{generationId:N}.db.seal");
+
     /// <summary>The run-outcome file in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string OutcomePath(string bundleDirectory) =>
@@ -273,4 +295,11 @@ public static class BundleLayout
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         return Path.Combine(bundleDirectory, fileName);
     }
+
+    private static string AnalysisPrefix(AnalysisStoreKind kind) => kind switch
+    {
+        AnalysisStoreKind.Derivation => "derivation",
+        AnalysisStoreKind.Judgement => "judgement",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown analysis store kind."),
+    };
 }

@@ -157,12 +157,14 @@ public static class BundleSealing
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
-        return Verify(
-            BundleLayout.JudgementPath(bundleDirectory),
-            BundleLayout.JudgementSealPath(bundleDirectory),
+        var resolved = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
+        if (!resolved.IsSuccess)
+            return new SealVerdict(SealState.Absent, resolved.Error!.Description);
+
+        return VerifyAnalysisGeneration(
+            bundleDirectory,
+            resolved.Value!,
             "judgement store",
-            "A judgement is sealed before it is given the name a reader asks for, so a store with "
-            + "no seal was assembled by something other than a judging run.",
             "It does not prove every scheduled rule reached a verdict, which is a claim the store "
             + "makes in its own tables.");
     }
@@ -181,14 +183,40 @@ public static class BundleSealing
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
-        return Verify(
-            BundleLayout.DerivationPath(bundleDirectory),
-            BundleLayout.DerivationSealPath(bundleDirectory),
+        var resolved = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
+        if (!resolved.IsSuccess)
+            return new SealVerdict(SealState.Absent, resolved.Error!.Description);
+
+        return VerifyAnalysisGeneration(
+            bundleDirectory,
+            resolved.Value!,
             "derived facts",
-            "Derived facts are sealed before they are given the name a reader asks for, so a "
-            + "store with no seal was assembled by something other than a derivation run.",
-            "It does not prove every closure is complete, which is a claim the store makes in "
-            + "its own tables.");
+            "It does not prove every closure is complete, which is a claim the store makes in its own tables.");
+    }
+
+    /// <summary>Verifies one immutable analysis generation against its matching seal.</summary>
+    /// <param name="generation">The database and seal paths selected by a manifest.</param>
+    /// <param name="artefact">The operator-facing name of the store.</param>
+    /// <param name="intactCaveat">What an intact seal does not establish.</param>
+    public static SealVerdict VerifyAnalysisGeneration(
+        string bundleDirectory,
+        AnalysisStoreGeneration generation,
+        string artefact,
+        string intactCaveat)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        ArgumentNullException.ThrowIfNull(generation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(artefact);
+        ArgumentException.ThrowIfNullOrWhiteSpace(intactCaveat);
+
+        return Verify(
+            BundleLayout.AnalysisGenerationDataPath(
+                bundleDirectory, generation.Kind, generation.GenerationId),
+            BundleLayout.AnalysisGenerationSealPath(
+                bundleDirectory, generation.Kind, generation.GenerationId),
+            artefact,
+            "A manifest-selected generation must always have its matching seal.",
+            intactCaveat);
     }
 
     /// <summary>

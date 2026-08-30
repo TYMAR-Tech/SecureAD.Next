@@ -56,6 +56,33 @@ public sealed class RunStateReaderTests : IDisposable
     }
 
     [Fact]
+    public void ObservingASealedBundleCreatesNoSqliteSidecars()
+    {
+        using (var writer = BundleWriter.Create(_directory, DateTimeOffset.UtcNow))
+        {
+            writer.Complete(
+                RunCoverage.Of(
+                    CoverageId.ForDomains("contoso.com", ["contoso.com"]),
+                    [DomainCoverage.Read("contoso.com")],
+                    [
+                        ForestPartitionCoverage.Read(
+                            "CN=Configuration,DC=contoso,DC=com",
+                            NamingContextKind.Configuration),
+                        ForestPartitionCoverage.Read(
+                            "CN=Schema,CN=Configuration,DC=contoso,DC=com",
+                            NamingContextKind.Schema),
+                    ],
+                    SysvolCoverage.Of([])),
+                DateTimeOffset.UtcNow);
+        }
+
+        Observe();
+
+        Assert.False(File.Exists(BundleLayout.EvidencePath(_directory) + "-wal"));
+        Assert.False(File.Exists(BundleLayout.EvidencePath(_directory) + "-shm"));
+    }
+
+    [Fact]
     public void AnEvidenceFileWithNoSealIsDamaged()
     {
         WriteEvidenceAndSeal();

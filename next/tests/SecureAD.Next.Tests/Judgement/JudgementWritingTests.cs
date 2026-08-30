@@ -45,7 +45,8 @@ public sealed class JudgementWritingTests
         writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
 
         Assert.True(File.Exists(BundleLayout.JudgementPartialPath(directory)));
-        Assert.False(File.Exists(BundleLayout.JudgementPath(directory)));
+        Assert.False(AnalysisStoreLifecycle.Resolve(
+            directory, AnalysisStoreKind.Judgement).IsSuccess);
     }
 
     /// <summary>
@@ -62,8 +63,9 @@ public sealed class JudgementWritingTests
             writer.Complete(Finished);
         }
 
-        Assert.True(File.Exists(BundleLayout.JudgementPath(directory)));
-        Assert.True(File.Exists(BundleLayout.JudgementSealPath(directory)));
+        var generation = Current(directory);
+        Assert.True(File.Exists(DataPath(directory, generation)));
+        Assert.True(File.Exists(SealPath(directory, generation)));
         Assert.False(File.Exists(BundleLayout.JudgementPartialPath(directory)));
     }
 
@@ -86,7 +88,8 @@ public sealed class JudgementWritingTests
             first.Complete(Finished);
         }
 
-        var sealedBytes = File.ReadAllBytes(BundleLayout.JudgementPath(directory));
+        var earlierPath = DataPath(directory, Current(directory));
+        var sealedBytes = File.ReadAllBytes(earlierPath);
 
         using (var abandoned = NewWriter(directory))
         {
@@ -94,7 +97,41 @@ public sealed class JudgementWritingTests
             abandoned.Abandon(Finished);
         }
 
-        Assert.Equal(sealedBytes, File.ReadAllBytes(BundleLayout.JudgementPath(directory)));
+        Assert.Equal(earlierPath, DataPath(directory, Current(directory)));
+        Assert.Equal(sealedBytes, File.ReadAllBytes(earlierPath));
+    }
+
+    [Fact]
+    public void AFailedReplacementCannotMixTheNewSealWithTheEarlierJudgement()
+    {
+        var directory = NewBundle();
+
+        using (var first = NewWriter(directory))
+        {
+            first.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
+            first.Complete(Finished);
+        }
+
+        var earlierPath = DataPath(directory, Current(directory));
+        using (var locked = File.Open(
+            earlierPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read))
+        using (var replacement = JudgementWriter.Create(
+            directory,
+            EvidenceSeal,
+            derivationGenerationId: null,
+            Started.AddHours(1),
+            Started.AddHours(1)))
+        {
+            replacement.Write(RuleExecution.Judged(Sec011, 1, 0, []));
+            replacement.Complete(Finished.AddHours(1));
+        }
+
+        Assert.Equal(SealState.Intact, BundleSealing.VerifyJudgement(directory).State);
+        Assert.NotEqual(earlierPath, DataPath(directory, Current(directory)));
+        Assert.True(File.Exists(earlierPath));
     }
 
     /// <summary>
@@ -111,7 +148,8 @@ public sealed class JudgementWritingTests
             writer.Abandon(Finished);
         }
 
-        Assert.False(File.Exists(BundleLayout.JudgementPath(directory)));
+        Assert.False(AnalysisStoreLifecycle.Resolve(
+            directory, AnalysisStoreKind.Judgement).IsSuccess);
         Assert.True(File.Exists(BundleLayout.JudgementPartialPath(directory)));
     }
 
@@ -341,7 +379,18 @@ public sealed class JudgementWritingTests
                 0x80000, false, new DomainControllerSignals(false, false, false)));
 
     private static JudgementWriter NewWriter(string directory) =>
-        JudgementWriter.Create(directory, EvidenceSeal, Started, Started);
+        JudgementWriter.Create(directory, EvidenceSeal, derivationGenerationId: null, Started, Started);
+
+    private static AnalysisStoreGeneration Current(string directory) =>
+        AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value!;
+
+    private static string DataPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationDataPath(
+            directory, generation.Kind, generation.GenerationId);
+
+    private static string SealPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationSealPath(
+            directory, generation.Kind, generation.GenerationId);
 
     /// <summary>
     /// A fresh bundle directory. Not cleaned up, so a failure can be opened and looked at.
@@ -366,8 +415,9 @@ public sealed class JudgementWritingTests
 
     private static object? Read(string directory, string sql)
     {
-        var path = File.Exists(BundleLayout.JudgementPath(directory))
-            ? BundleLayout.JudgementPath(directory)
+        var current = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement);
+        var path = current.IsSuccess
+            ? DataPath(directory, current.Value!)
             : BundleLayout.JudgementPartialPath(directory);
 
         using var connection = new SqliteConnection(

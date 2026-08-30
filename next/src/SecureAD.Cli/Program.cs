@@ -267,10 +267,19 @@ internal static class Program
             DerivationRunState.CompletedDegraded =>
                 "Derived, and at least one part could not be completed. What was derived says "
                 + "which, and anything resting on it is not working from the whole picture.",
-            _ => "Derived: " + BundleLayout.DerivationPath(bundleDirectory),
+            _ => "Derived: " + CurrentDerivationPath(bundleDirectory),
         });
 
         return Success;
+    }
+
+    private static string CurrentDerivationPath(string bundleDirectory)
+    {
+        var generation = AnalysisStoreLifecycle
+            .Resolve(bundleDirectory, AnalysisStoreKind.Derivation)
+            .Value!;
+        return BundleLayout.AnalysisGenerationDataPath(
+            bundleDirectory, generation.Kind, generation.GenerationId);
     }
 
     /// <summary>

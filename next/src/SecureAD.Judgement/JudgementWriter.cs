@@ -46,6 +46,9 @@ public sealed class JudgementWriter : IDisposable
     private bool _finished;
     private bool _disposed;
 
+    /// <summary>The immutable generation this writer will publish.</summary>
+    public Guid GenerationId { get; } = Guid.NewGuid();
+
     private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection)
     {
         _bundleDirectory = bundleDirectory;
@@ -76,6 +79,7 @@ public sealed class JudgementWriter : IDisposable
     public static JudgementWriter Create(
         string bundleDirectory,
         string evidenceSeal,
+        Guid? derivationGenerationId,
         DateTimeOffset startedUtc,
         DateTimeOffset evaluationAsOf)
     {
@@ -117,7 +121,7 @@ public sealed class JudgementWriter : IDisposable
         JudgementSchema.CreateTables(connection);
 
         var writer = new JudgementWriter(bundleDirectory, partialPath, connection);
-        writer.WriteHeader(evidenceSeal, startedUtc, evaluationAsOf);
+        writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
         return writer;
     }
 
@@ -220,8 +224,10 @@ public sealed class JudgementWriter : IDisposable
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
-        BundleSealing.Seal(_partialPath, BundleLayout.JudgementSealPath(_bundleDirectory));
-        File.Move(_partialPath, BundleLayout.JudgementPath(_bundleDirectory), overwrite: true);
+        AnalysisStoreLifecycle.Publish(
+            _bundleDirectory,
+            AnalysisStoreKind.Judgement,
+            GenerationId);
         _finished = true;
     }
 
@@ -266,19 +272,30 @@ public sealed class JudgementWriter : IDisposable
     /// still says what it was, which is <see cref="JudgementRunState.Running"/> - the one state
     /// whose meaning is *this never finished*.
     /// </remarks>
-    private void WriteHeader(string evidenceSeal, DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf)
+    private void WriteHeader(
+        string evidenceSeal,
+        Guid? derivationGenerationId,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf)
     {
         using var transaction = _connection.BeginTransaction();
 
         Execute(
             transaction,
-            "INSERT INTO judgement (schema_version, evidence_seal, judging_started_utc, "
-            + "judging_completed_utc, state, evaluation_as_of) "
-            + "VALUES ($version, $seal, $started, NULL, $state, $asOf)",
+            "INSERT INTO judgement (schema_version, evidence_seal, judgement_generation_id, "
+            + "derivation_generation_id, judging_started_utc, judging_completed_utc, state, "
+            + "evaluation_as_of) VALUES ($version, $seal, $generation, $derivation, $started, "
+            + "NULL, $state, $asOf)",
             command =>
             {
                 command.Parameters.AddWithValue("$version", JudgementSchema.Version);
                 command.Parameters.AddWithValue("$seal", evidenceSeal);
+                command.Parameters.AddWithValue("$generation", GenerationId.ToString("D"));
+                command.Parameters.AddWithValue(
+                    "$derivation",
+                    derivationGenerationId is { } generation
+                        ? generation.ToString("D")
+                        : DBNull.Value);
                 command.Parameters.AddWithValue("$started", Text(startedUtc));
                 command.Parameters.AddWithValue("$state", JudgementRunState.Running.ToString());
                 command.Parameters.AddWithValue("$asOf", Text(evaluationAsOf));

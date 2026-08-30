@@ -43,7 +43,7 @@ internal static class RunCompletionReader
             using var connection = new SqliteConnection(
                 new SqliteConnectionStringBuilder
                 {
-                    DataSource = evidencePath,
+                    DataSource = BundleReader.ImmutableDataSource(evidencePath),
                     Mode = SqliteOpenMode.ReadOnly,
                     Pooling = false,
                 }.ToString());

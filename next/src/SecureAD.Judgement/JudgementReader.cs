@@ -9,12 +9,16 @@ namespace SecureAD.Judgement;
 /// What one judging concluded, read back.
 /// </summary>
 /// <param name="EvidenceSeal">The capture this was judged against.</param>
+/// <param name="GenerationId">The immutable Judgement generation selected by its manifest.</param>
+/// <param name="DerivationGenerationId">The Derivation generation consumed, or null for Evidence-only judging.</param>
 /// <param name="State">What became of the judging.</param>
 /// <param name="EvaluationAsOf">The reference time temporal rules were evaluated against.</param>
 /// <param name="StartedUtc">When judging started.</param>
 /// <param name="CompletedUtc">When it finished.</param>
 public sealed record JudgementDescription(
     string EvidenceSeal,
+    Guid GenerationId,
+    Guid? DerivationGenerationId,
     JudgementRunState State,
     DateTimeOffset EvaluationAsOf,
     DateTimeOffset StartedUtc,
@@ -132,11 +136,23 @@ public sealed class JudgementReader : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
-        var verdict = BundleSealing.VerifyJudgement(bundleDirectory);
+        var resolved = AnalysisStoreLifecycle.Resolve(
+            bundleDirectory,
+            AnalysisStoreKind.Judgement);
+        if (!resolved.IsSuccess)
+            return Result<JudgementReader>.Failure(resolved.Error!);
+
+        var generation = resolved.Value!;
+        var verdict = BundleSealing.VerifyAnalysisGeneration(
+            bundleDirectory,
+            generation,
+            "judgement store",
+            "It does not prove every scheduled rule reached a verdict, which is a claim the store makes in its own tables.");
         if (!verdict.MayBeOpened)
             return Failure(ReasonFor(verdict.State), verdict.Detail, bundleDirectory);
 
-        var judgementPath = BundleLayout.JudgementPath(bundleDirectory);
+        var judgementPath = BundleLayout.AnalysisGenerationDataPath(
+            bundleDirectory, generation.Kind, generation.GenerationId);
         var connection = new SqliteConnection(
             new SqliteConnectionStringBuilder
             {
@@ -160,6 +176,16 @@ public sealed class JudgementReader : IDisposable
                     judgementPath);
             }
 
+            if (description.GenerationId != generation.GenerationId)
+            {
+                connection.Dispose();
+                return Failure(
+                    "JudgementGenerationMismatch",
+                    $"The judgement manifest selects generation '{generation.GenerationId:D}', but "
+                    + $"the database identifies itself as '{description.GenerationId:D}'.",
+                    judgementPath);
+            }
+
             var mismatch = EvidenceMismatch(bundleDirectory, description.EvidenceSeal);
             if (mismatch is not null)
             {
@@ -167,9 +193,23 @@ public sealed class JudgementReader : IDisposable
                 return Failure("JudgementIsNotForThisEvidence", mismatch, judgementPath);
             }
 
+            var derivationMismatch = DerivationMismatch(
+                bundleDirectory,
+                description.DerivationGenerationId);
+            if (derivationMismatch is not null)
+            {
+                connection.Dispose();
+                return Failure("JudgementIsNotForThisDerivation", derivationMismatch, judgementPath);
+            }
+
             return new JudgementReader(bundleDirectory, connection, description);
         }
-        catch (SqliteException error)
+
+        catch (Exception error) when (
+            error is SqliteException
+            or FormatException
+            or ArgumentException
+            or InvalidOperationException)
         {
             connection.Dispose();
             return Failure(
@@ -533,11 +573,32 @@ public sealed class JudgementReader : IDisposable
             + "about it; judge this bundle rather than moving a judgement into it.";
     }
 
+    private static string? DerivationMismatch(string bundleDirectory, Guid? judgedGeneration)
+    {
+        if (judgedGeneration is null)
+            return null;
+
+        var current = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
+        if (!current.IsSuccess)
+        {
+            return $"The judgement in '{bundleDirectory}' consumed Derivation generation "
+                + $"'{judgedGeneration:D}', and no complete current Derivation generation can be "
+                + "resolved beside it.";
+        }
+
+        return current.Value!.GenerationId == judgedGeneration
+            ? null
+            : $"The judgement in '{bundleDirectory}' consumed Derivation generation "
+                + $"'{judgedGeneration:D}', while the current Derivation generation is "
+                + $"'{current.Value.GenerationId:D}'. Judge the bundle again from its current inputs.";
+    }
+
     private static JudgementDescription? ReadDescription(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText =
-            "SELECT schema_version, evidence_seal, state, evaluation_as_of, judging_started_utc, "
+            "SELECT schema_version, evidence_seal, judgement_generation_id, "
+            + "derivation_generation_id, state, evaluation_as_of, judging_started_utc, "
             + "judging_completed_utc FROM judgement";
 
         using var reader = command.ExecuteReader();
@@ -556,15 +617,17 @@ public sealed class JudgementReader : IDisposable
                 0);
         }
 
-        if (reader.IsDBNull(5))
+        if (reader.IsDBNull(7))
             return null;
 
         return new JudgementDescription(
             reader.GetString(1),
-            Enum.Parse<JudgementRunState>(reader.GetString(2)),
-            DateTimeOffset.Parse(reader.GetString(3), System.Globalization.CultureInfo.InvariantCulture),
-            DateTimeOffset.Parse(reader.GetString(4), System.Globalization.CultureInfo.InvariantCulture),
-            DateTimeOffset.Parse(reader.GetString(5), System.Globalization.CultureInfo.InvariantCulture));
+            Guid.Parse(reader.GetString(2)),
+            reader.IsDBNull(3) ? null : Guid.Parse(reader.GetString(3)),
+            Enum.Parse<JudgementRunState>(reader.GetString(4)),
+            DateTimeOffset.Parse(reader.GetString(5), System.Globalization.CultureInfo.InvariantCulture),
+            DateTimeOffset.Parse(reader.GetString(6), System.Globalization.CultureInfo.InvariantCulture),
+            DateTimeOffset.Parse(reader.GetString(7), System.Globalization.CultureInfo.InvariantCulture));
     }
 
     /// <summary>

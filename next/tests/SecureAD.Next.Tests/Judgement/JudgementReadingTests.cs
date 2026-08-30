@@ -163,6 +163,35 @@ public sealed class JudgementReadingTests
         Assert.Equal(JudgementRunState.Completed, reader.Description.State);
     }
 
+    [Fact]
+    public void EvidenceOnlyJudgingRecordsNoDerivationDependency()
+    {
+        var directory = NewJudgedBundle(_ => { });
+
+        using var reader = Opened(directory);
+
+        Assert.Null(reader.Description.DerivationGenerationId);
+    }
+
+    [Fact]
+    public void AJudgementBoundToAnotherDerivationGenerationIsRefused()
+    {
+        var directory = NewBundle();
+        using (var writer = JudgementWriter.Create(
+            directory,
+            ThisCapture,
+            Guid.NewGuid(),
+            Started,
+            Started))
+        {
+            writer.Complete(Finished);
+        }
+
+        var opened = JudgementReader.Open(directory);
+
+        Assert.Equal("Evidence.JudgementIsNotForThisDerivation", opened.Error!.Code);
+    }
+
     /// <summary>
     /// A judgement made against another capture is refused rather than believed.
     /// </summary>
@@ -212,7 +241,7 @@ public sealed class JudgementReadingTests
     {
         var directory = NewBundle();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
         {
             writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
             writer.Abandon(Finished);
@@ -221,7 +250,7 @@ public sealed class JudgementReadingTests
         var opened = JudgementReader.Open(directory);
 
         Assert.False(opened.IsSuccess);
-        Assert.Equal("Evidence.JudgementSealAbsent", opened.Error!.Code);
+        Assert.Equal("Evidence.judgementManifestAbsent", opened.Error!.Code);
     }
 
     /// <summary>
@@ -233,12 +262,36 @@ public sealed class JudgementReadingTests
         var directory = NewJudgedBundle(
             writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()])));
 
-        File.AppendAllText(BundleLayout.JudgementPath(directory), " ");
+        File.AppendAllText(DataPath(directory, Current(directory)), " ");
 
         var opened = JudgementReader.Open(directory);
 
         Assert.False(opened.IsSuccess);
         Assert.Equal("Evidence.JudgementSealMismatch", opened.Error!.Code);
+    }
+
+    [Fact]
+    public void AMalformedSealedJudgementHeaderReturnsATypedFailure()
+    {
+        var directory = NewJudgedBundle(_ => { });
+        var generation = Current(directory);
+        var path = DataPath(directory, generation);
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE judgement SET judgement_generation_id = 'not-a-guid'";
+            command.ExecuteNonQuery();
+        }
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        BundleSealing.Seal(
+            path,
+            BundleLayout.AnalysisGenerationSealPath(
+                directory, generation.Kind, generation.GenerationId));
+
+        var opened = JudgementReader.Open(directory);
+
+        Assert.Equal("Evidence.JudgementUnreadable", opened.Error!.Code);
     }
 
     private static readonly RuleDefinition Sec010 = new(
@@ -260,6 +313,13 @@ public sealed class JudgementReadingTests
             EvidenceCompleteness.Complete,
             new UnconstrainedDelegationEvidence(
                 0x80000, false, new DomainControllerSignals(false, false, false)));
+
+    private static AnalysisStoreGeneration Current(string directory) =>
+        AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value!;
+
+    private static string DataPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationDataPath(
+            directory, generation.Kind, generation.GenerationId);
 
     /// <summary>
     /// Severity is stored so that the worst can be ordered first.
@@ -314,7 +374,7 @@ public sealed class JudgementReadingTests
     {
         var directory = NewBundle();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
         {
             judging(writer);
             writer.Complete(Finished);

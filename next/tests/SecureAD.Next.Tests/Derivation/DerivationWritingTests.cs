@@ -55,7 +55,8 @@ public sealed class DerivationWritingTests
 
         writer.WriteSids(["S-1-5-21-1-2-3-512"], [null]);
 
-        Assert.False(File.Exists(BundleLayout.DerivationPath(directory)));
+        Assert.False(AnalysisStoreLifecycle.Resolve(
+            directory, AnalysisStoreKind.Derivation).IsSuccess);
     }
 
     /// <summary>
@@ -73,8 +74,9 @@ public sealed class DerivationWritingTests
             writer.Complete(Finished);
         }
 
-        Assert.True(File.Exists(BundleLayout.DerivationPath(directory)));
-        Assert.True(File.Exists(BundleLayout.DerivationSealPath(directory)));
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation).Value!;
+        Assert.True(File.Exists(DataPath(directory, generation)));
+        Assert.True(File.Exists(SealPath(directory, generation)));
         Assert.False(File.Exists(BundleLayout.DerivationPartialPath(directory)));
     }
 
@@ -94,6 +96,38 @@ public sealed class DerivationWritingTests
         }
 
         Assert.Equal(SealState.Intact, BundleSealing.VerifyDerivation(directory).State);
+    }
+
+    [Fact]
+    public void Stage2a_APublishedReplacementDoesNotOverwriteTheEarlierGeneration()
+    {
+        var directory = NewBundle();
+
+        using (var first = DerivationWriter.Create(directory, EvidenceSeal, Started))
+        {
+            first.WriteSids(["S-1-5-21-1-2-3-512"], [null]);
+            first.RecordPhase("MembershipAndNesting", DerivationPhaseOutcome.Succeeded, error: null);
+            first.Complete(Finished);
+        }
+
+        var earlierPath = DataPath(directory, Current(directory));
+        using (var locked = File.Open(
+            earlierPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read))
+        using (var replacement = DerivationWriter.Create(directory, EvidenceSeal, Started.AddHours(1)))
+        {
+            replacement.WriteSids(["S-1-5-21-1-2-3-513"], [null]);
+            replacement.RecordPhase(
+                "MembershipAndNesting", DerivationPhaseOutcome.Succeeded, error: null);
+
+            replacement.Complete(Finished.AddHours(1));
+        }
+
+        Assert.Equal(SealState.Intact, BundleSealing.VerifyDerivation(directory).State);
+        Assert.NotEqual(earlierPath, DataPath(directory, Current(directory)));
+        Assert.True(File.Exists(earlierPath));
     }
 
     /// <summary>
@@ -234,8 +268,8 @@ public sealed class DerivationWritingTests
             writer.Abandon(Finished);
         }
 
-        Assert.False(File.Exists(BundleLayout.DerivationPath(directory)));
-        Assert.False(File.Exists(BundleLayout.DerivationSealPath(directory)));
+        Assert.False(AnalysisStoreLifecycle.Resolve(
+            directory, AnalysisStoreKind.Derivation).IsSuccess);
         Assert.True(File.Exists(BundleLayout.DerivationPartialPath(directory)));
     }
 
@@ -341,8 +375,9 @@ public sealed class DerivationWritingTests
 
     private static object? Read(string directory, string sql)
     {
-        var path = File.Exists(BundleLayout.DerivationPath(directory))
-            ? BundleLayout.DerivationPath(directory)
+        var current = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation);
+        var path = current.IsSuccess
+            ? DataPath(directory, current.Value!)
             : BundleLayout.DerivationPartialPath(directory);
 
         using var connection = new SqliteConnection(
@@ -358,4 +393,15 @@ public sealed class DerivationWritingTests
         command.CommandText = sql;
         return command.ExecuteScalar();
     }
+
+    private static AnalysisStoreGeneration Current(string directory) =>
+        AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation).Value!;
+
+    private static string DataPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationDataPath(
+            directory, generation.Kind, generation.GenerationId);
+
+    private static string SealPath(string directory, AnalysisStoreGeneration generation) =>
+        BundleLayout.AnalysisGenerationSealPath(
+            directory, generation.Kind, generation.GenerationId);
 }

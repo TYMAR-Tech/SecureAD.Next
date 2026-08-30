@@ -153,7 +153,7 @@ public sealed class BundleReader : IDisposable
         var connection = new SqliteConnection(
             new SqliteConnectionStringBuilder
             {
-                DataSource = Immutable(evidencePath),
+                DataSource = ImmutableDataSource(evidencePath),
                 Mode = SqliteOpenMode.ReadOnly,
                 Pooling = false,
             }.ToString());
@@ -537,7 +537,7 @@ public sealed class BundleReader : IDisposable
     /// it as the character the operator typed.
     /// </para>
     /// </remarks>
-    private static string Immutable(string evidencePath) =>
+    internal static string ImmutableDataSource(string evidencePath) =>
         "file:" + Uri.EscapeDataString(evidencePath.Replace('\\', '/')) + "?immutable=1";
 
     /// <summary>

@@ -201,6 +201,9 @@ The table below sits between the two markers around it, so the test parses only 
 | DirectoryTimeFormat | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | GroupTypeWording | SecureAD.Kernel | [naming](../layers/kernel/naming.md) |
 | BundleLayout | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| AnalysisStoreKind | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| AnalysisStoreGeneration | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| AnalysisStoreLifecycle | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | RunLogFile | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
 | BundleSchema | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleWriter | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |

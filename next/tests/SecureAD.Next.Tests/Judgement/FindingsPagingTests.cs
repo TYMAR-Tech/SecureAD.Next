@@ -218,7 +218,7 @@ public sealed class FindingsPagingTests
     {
         var directory = ADirectory();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
         {
             writer.Write(RuleExecution.Judged(Sec010, 1, 0, [AFinding("CN=a,DC=contoso,DC=com")]));
             writer.Write(RuleExecution.Judged(
@@ -245,7 +245,7 @@ public sealed class FindingsPagingTests
     {
         var directory = ADirectory();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
             writer.Complete(Started);
 
         using var reader = Opened(directory);
@@ -267,7 +267,7 @@ public sealed class FindingsPagingTests
     {
         var directory = ADirectory();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
         {
             writer.Write(RuleExecution.Judged(Sec010, 400, 0, []));
             writer.Complete(Started);
@@ -417,7 +417,7 @@ public sealed class FindingsPagingTests
     {
         var directory = ADirectory();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
             writer.Complete(Started);
 
         var values = FilterValues(directory);
@@ -504,7 +504,7 @@ public sealed class FindingsPagingTests
     {
         var directory = ADirectory();
 
-        using (var writer = JudgementWriter.Create(directory, ThisCapture, Started, Started))
+        using (var writer = JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started))
         {
             writer.Write(RuleExecution.Judged(Sec010, findings.Count, 0, findings));
             writer.Complete(Started);

@@ -260,7 +260,7 @@ public sealed class JudgementIdentityTests
     }
 
     private static JudgementWriter NewWriter(string directory) =>
-        JudgementWriter.Create(directory, ThisCapture, Started, Started);
+        JudgementWriter.Create(directory, ThisCapture, derivationGenerationId: null, Started, Started);
 
     private static string NewBundle()
     {

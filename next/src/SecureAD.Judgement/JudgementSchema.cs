@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 3;
+    public const int Version = 4;
 
     private static readonly string[] TableDdl =
     [
@@ -68,6 +68,8 @@ public static class JudgementSchema
         CREATE TABLE judgement (
             schema_version           INTEGER NOT NULL,
             evidence_seal            TEXT    NOT NULL,
+            judgement_generation_id  TEXT    NOT NULL,
+            derivation_generation_id TEXT        NULL,
             judging_started_utc      TEXT    NOT NULL,
             judging_completed_utc    TEXT        NULL,
             state                    TEXT    NOT NULL,

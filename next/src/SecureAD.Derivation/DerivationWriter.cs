@@ -465,8 +465,10 @@ internal sealed class DerivationWriter : IDisposable
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
-        BundleSealing.Seal(_partialPath, BundleLayout.DerivationSealPath(_bundleDirectory));
-        File.Move(_partialPath, BundleLayout.DerivationPath(_bundleDirectory), overwrite: true);
+        AnalysisStoreLifecycle.Publish(
+            _bundleDirectory,
+            AnalysisStoreKind.Derivation,
+            GenerationId);
         _finished = true;
     }
 

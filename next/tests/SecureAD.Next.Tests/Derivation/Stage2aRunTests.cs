@@ -42,7 +42,8 @@ public sealed class Stage2aRunTests
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.False(File.Exists(BundleLayout.DerivationPath(directory)));
+        Assert.False(AnalysisStoreLifecycle.Resolve(
+            directory, AnalysisStoreKind.Derivation).IsSuccess);
     }
 
     /// <summary>
@@ -196,7 +197,8 @@ public sealed class Stage2aRunTests
         writer.Complete(Started);
         writer.Dispose();
 
-        Assert.True(File.Exists(BundleLayout.DerivationPath(directory)));
+        Assert.True(AnalysisStoreLifecycle.Resolve(
+            directory, AnalysisStoreKind.Derivation).IsSuccess);
         Assert.Equal(
             DerivationRunState.CompletedDegraded.ToString(),
             ScalarOf(directory, "SELECT state FROM derivation"));
@@ -281,7 +283,7 @@ public sealed class Stage2aRunTests
         using var connection = new SqliteConnection(
             new SqliteConnectionStringBuilder
             {
-                DataSource = BundleLayout.DerivationPath(directory),
+                DataSource = CurrentDataPath(directory),
                 Mode = SqliteOpenMode.ReadOnly,
                 Pooling = false,
             }.ToString());
@@ -290,5 +292,14 @@ public sealed class Stage2aRunTests
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         return command.ExecuteScalar();
+    }
+
+    private static string CurrentDataPath(string directory)
+    {
+        var generation = AnalysisStoreLifecycle
+            .Resolve(directory, AnalysisStoreKind.Derivation)
+            .Value!;
+        return BundleLayout.AnalysisGenerationDataPath(
+            directory, generation.Kind, generation.GenerationId);
     }
 }

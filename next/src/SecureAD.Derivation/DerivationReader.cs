@@ -128,7 +128,18 @@ public sealed class DerivationReader : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
-        var verdict = BundleSealing.VerifyDerivation(bundleDirectory);
+        var resolved = AnalysisStoreLifecycle.Resolve(
+            bundleDirectory,
+            AnalysisStoreKind.Derivation);
+        if (!resolved.IsSuccess)
+            return Result<DerivationReader>.Failure(resolved.Error!);
+
+        var generation = resolved.Value!;
+        var verdict = BundleSealing.VerifyAnalysisGeneration(
+            bundleDirectory,
+            generation,
+            "derived facts",
+            "It does not prove every closure is complete, which is a claim the store makes in its own tables.");
         if (!verdict.MayBeOpened)
         {
             return Failure(
@@ -137,7 +148,8 @@ public sealed class DerivationReader : IDisposable
                 bundleDirectory);
         }
 
-        var path = BundleLayout.DerivationPath(bundleDirectory);
+        var path = BundleLayout.AnalysisGenerationDataPath(
+            bundleDirectory, generation.Kind, generation.GenerationId);
         var connection = new SqliteConnection(
             new SqliteConnectionStringBuilder
             {
@@ -161,6 +173,24 @@ public sealed class DerivationReader : IDisposable
                     path);
             }
 
+            if (description.GenerationId != generation.GenerationId)
+            {
+                connection.Dispose();
+                return Failure(
+                    "DerivationGenerationMismatch",
+                    $"The derivation manifest selects generation '{generation.GenerationId:D}', "
+                    + $"but the database identifies itself as '{description.GenerationId:D}'. The "
+                    + "database and manifest are not one generation and cannot be read together.",
+                    path);
+            }
+
+            var evidenceMismatch = EvidenceMismatch(bundleDirectory, description.EvidenceSeal);
+            if (evidenceMismatch is not null)
+            {
+                connection.Dispose();
+                return Failure("DerivationIsNotForThisEvidence", evidenceMismatch, path);
+            }
+
             if (description.SchemaVersion != DerivationSchema.Version)
             {
                 connection.Dispose();
@@ -176,9 +206,16 @@ public sealed class DerivationReader : IDisposable
                     path);
             }
 
-            return new DerivationReader(bundleDirectory, connection, description);
+            var opened = new DerivationReader(bundleDirectory, connection, description);
+            _ = opened.Read();
+            return opened;
         }
-        catch (SqliteException error)
+
+        catch (Exception error) when (
+            error is SqliteException
+            or FormatException
+            or ArgumentException
+            or InvalidOperationException)
         {
             connection.Dispose();
             return Failure(
@@ -188,6 +225,27 @@ public sealed class DerivationReader : IDisposable
                 + "is a defect in this build rather than damage to the store.",
                 path);
         }
+    }
+
+    private static string? EvidenceMismatch(string bundleDirectory, string derivedSeal)
+    {
+        var evidenceSealPath = BundleLayout.SealPath(bundleDirectory);
+        var contents = BundleSealing.ReadSeal(evidenceSealPath);
+
+        if (contents is null || string.IsNullOrWhiteSpace(contents.Hash))
+        {
+            return $"The derivation in '{bundleDirectory}' names the Evidence it was derived from "
+                + $"and there is no readable Evidence seal at '{evidenceSealPath}' to check it "
+                + "against. Derived facts are meaningful only beside their source capture.";
+        }
+
+        if (string.Equals(contents.Hash, derivedSeal, StringComparison.Ordinal))
+            return null;
+
+        return $"The derivation in '{bundleDirectory}' was made from Evidence sealed as "
+            + $"{derivedSeal}, and the Evidence in that bundle is sealed as {contents.Hash}. "
+            + "These derived facts belong to a different capture; derive this bundle again rather "
+            + "than moving a derivation into it.";
     }
 
     /// <summary>

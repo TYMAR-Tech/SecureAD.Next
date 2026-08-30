@@ -1,6 +1,6 @@
 # The bundle on disk
 
-**Code:** `next/src/SecureAD.Evidence/BundleLayout.cs`, `BundleSealing.cs`, `Run/RunStateReader.cs`,
+**Code:** `next/src/SecureAD.Evidence/BundleLayout.cs`, `BundleSealing.cs`, `AnalysisStoreLifecycle.cs`, `Run/RunStateReader.cs`,
 `Run/RunOutcomeFile.cs`, `RunLogFile.cs`
 **Layer:** Evidence — the files a bundle is made of, and what their presence proves.
 
@@ -23,6 +23,9 @@ build, and so does a name here and not in the code.
 | Type | What it is |
 |---|---|
 | `BundleLayout` | The one owner of a bundle's file names and the paths built from them |
+| `AnalysisStoreKind` | Which disposable analysis store a generation belongs to |
+| `AnalysisStoreGeneration` | The kind and immutable identifier selected by an analysis manifest |
+| `AnalysisStoreLifecycle` | Stages immutable database/seal generations and atomically publishes the current manifest |
 | `BundleSealing` | Writes the seal over a finished bundle and verifies it again on the way in |
 | `BundleSealContents` | What a seal file holds: the algorithm, named rather than assumed, and the hash |
 | `RunLogFile` | Writes `run.log` beside the evidence: one line per note or failure, flushed as it goes |
@@ -71,6 +74,14 @@ gigabytes of evidence go is a tool that fills the wrong disk.
 `AnnotationsPath`, `JudgementPath`, `JudgementPartialPath`, `JudgementSealPath`, `DerivationPath`,
 `DerivationPartialPath`, `DerivationSealPath`, `OutcomePath`, `PreflightPath` and `RunLogPath` — so that no caller
 composes a bundle path by concatenation and no bundle's file names have a second owner.
+
+Derivation and Judgement are published as immutable generation-specific database/seal pairs. Their
+`*.current.json` manifest is the single visibility switch; `AnalysisStoreLifecycle.Publish` writes
+and seals the new generation before replacing that manifest. `AnalysisStoreLifecycle.Resolve` reads
+the selected identity, while `BundleLayout.AnalysisStagingPath`, `AnalysisManifestPath`,
+`AnalysisGenerationDataPath` and `AnalysisGenerationSealPath` remain the sole source of filenames.
+`BundleSealing.VerifyAnalysisGeneration` verifies the selected pair. A failed publication leaves the
+earlier manifest untouched, so readers continue opening the previous complete generation.
 
 > `S-16` said a bundle was four files. It was written before `run-outcome.json` and `preflight.json`
 > existed and was never revisited, and the count survived because nothing counted it.

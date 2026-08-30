@@ -114,7 +114,11 @@ public static class JudgingRun
 
         using var bundle = opened.Value!;
         using var writer = JudgementWriter.Create(
-            bundleDirectory, seal.Hash, startedUtc, evaluationAsOf);
+            bundleDirectory,
+            seal.Hash,
+            derivationGenerationId: null,
+            startedUtc,
+            evaluationAsOf);
 
         log.Note(
             JudgePhase,
