@@ -113,12 +113,21 @@ public static class JudgingRun
         }
 
         using var bundle = opened.Value!;
+
+        var scope = bundle.ReadScope();
+        if (!scope.IsSuccess)
+        {
+            log.Record(JudgePhase, scope.Error!, []);
+            return Result<JudgementRunState>.Failure(scope.Error!);
+        }
+
         using var writer = JudgementWriter.Create(
             bundleDirectory,
             seal.Hash,
             derivationGenerationId: null,
             startedUtc,
             evaluationAsOf);
+        writer.RecordEvidenceScope(scope.Value!);
 
         log.Note(
             JudgePhase,
@@ -154,7 +163,8 @@ public static class JudgingRun
 
         writer.Complete(DateTimeOffset.UtcNow);
 
-        var state = tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
+        var state = scope.Value!.AllDeclaredDomainsAreComplete
+            && tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
 

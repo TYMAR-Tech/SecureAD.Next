@@ -39,7 +39,7 @@ build, and so does a name here and not in the code.
 
 <!-- TYPES:END -->
 
-This table is the page's claim of ownership over the four source files named above, and it is bound
+This table is the page's claim of ownership over the six source files named above, and it is bound
 in both directions: a public type declared in one of them and missing here fails the build, and so
 does a row naming something none of them declares. `RunState` and `RunStateNames` are described
 below and are **not** claimed — they are declared elsewhere, and a mention is not a claim.
@@ -76,9 +76,12 @@ gigabytes of evidence go is a tool that fills the wrong disk.
 composes a bundle path by concatenation and no bundle's file names have a second owner.
 
 Derivation and Judgement are published as immutable generation-specific database/seal pairs. Their
-`*.current.json` manifest is the single visibility switch; `AnalysisStoreLifecycle.Publish` writes
-and seals the new generation before replacing that manifest. `AnalysisStoreLifecycle.Resolve` reads
-the selected identity, while `BundleLayout.AnalysisStagingPath`, `AnalysisManifestPath`,
+`*.current.json` manifest is the single visibility switch; `AnalysisStoreLifecycle.StagingPath` and
+`AnalysisStoreLifecycle.ManifestPath` name its mutable files, while
+`AnalysisStoreLifecycle.Generation` produces an `AnalysisStoreGeneration` whose
+`AnalysisStoreGeneration.Kind` and `AnalysisStoreGeneration.GenerationId` name the immutable pair.
+`AnalysisStoreLifecycle.Publish` writes and seals the new generation before replacing that manifest,
+and `AnalysisStoreLifecycle.Resolve` reads the selected identity. `BundleLayout.AnalysisStagingPath`, `AnalysisManifestPath`,
 `AnalysisGenerationDataPath` and `AnalysisGenerationSealPath` remain the sole source of filenames.
 `BundleSealing.VerifyAnalysisGeneration` verifies the selected pair. A failed publication leaves the
 earlier manifest untouched, so readers continue opening the previous complete generation.

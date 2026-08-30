@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Evidence.Run;
 
 namespace SecureAD.Judgement;
 
@@ -40,6 +41,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly string _partialPath;
     private readonly SqliteConnection _connection;
     private readonly List<RuleExecutionOutcome> _outcomes = [];
+    private bool _evidenceIsComplete = true;
     private readonly HashSet<string> _rulesWritten = new(StringComparer.Ordinal);
 
     private long _nextFindingId = 1;
@@ -54,6 +56,13 @@ public sealed class JudgementWriter : IDisposable
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
+    }
+
+    internal void RecordEvidenceScope(RunScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ThrowIfFinished();
+        _evidenceIsComplete = scope.AllDeclaredDomainsAreComplete;
     }
 
     /// <summary>
@@ -213,7 +222,8 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
 
-        var state = _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
+        var state = _evidenceIsComplete
+            && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
 

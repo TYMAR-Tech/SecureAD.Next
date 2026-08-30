@@ -54,6 +54,9 @@ public sealed class BundleOnDiskDocumentationTests
     private static readonly Type[] TheComponent =
     [
         typeof(BundleLayout),
+        typeof(AnalysisStoreKind),
+        typeof(AnalysisStoreGeneration),
+        typeof(AnalysisStoreLifecycle),
         typeof(BundleSealing),
         typeof(BundleSealContents),
         typeof(SealState),
@@ -323,7 +326,7 @@ public sealed class BundleOnDiskDocumentationTests
         Assert.Contains(nameof(BundleSealing.Verify), Mentioned());
 
         Assert.NotEmpty(TableRows("TYPES"));
-        Assert.Equal(11, DeclaredPublicTypeNames().Count());
+        Assert.Equal(14, DeclaredPublicTypeNames().Count());
 
         foreach (var file in SourceFiles)
         {
@@ -439,6 +442,7 @@ public sealed class BundleOnDiskDocumentationTests
     private static readonly string[][] SourceFiles =
     [
         ["BundleLayout.cs"],
+        ["AnalysisStoreLifecycle.cs"],
         ["BundleSealing.cs"],
         ["Run", "RunStateReader.cs"],
         ["Run", "RunOutcomeFile.cs"],

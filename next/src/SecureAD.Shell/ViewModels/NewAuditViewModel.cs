@@ -1628,7 +1628,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            Report = "Stopped. The run recorded why it stopped.";
+            Report = BundleDirectory is { } sealedEvidence
+                ? $"Stopped. The evidence was already sealed and is safe at {sealedEvidence}."
+                : "Stopped. The run recorded why it stopped.";
         }
         catch (Exception failure)
         {
@@ -1740,7 +1742,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     {
         DerivationRunState.Completed =>
             $"Derived {derived.Principals:N0} principals and {derived.NestingEdges:N0} nesting "
-            + "relationships. Every closure was completed.",
+            + "relationships.",
         DerivationRunState.CompletedDegraded =>
             $"Derived {derived.Principals:N0} principals and {derived.NestingEdges:N0} nesting "
             + "relationships, and at least one part could not be completed. What was derived says "

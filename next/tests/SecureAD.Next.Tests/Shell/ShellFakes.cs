@@ -565,7 +565,7 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
     /// </remarks>
     public IList<string> Order { get; set; } = [];
 
-    public Task<Result<JudgingOutcome>> RunAsync(
+    public async Task<Result<JudgingOutcome>> RunAsync(
         string bundleDirectory,
         IProgress<JudgingRun.JudgingProgress> progress,
         CancellationToken cancellationToken)
@@ -577,15 +577,17 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
         foreach (var read in Reports)
             progress.Report(new JudgingRun.JudgingProgress(read));
 
+        await Task.Yield();
+
         if (Cancels)
             throw new OperationCanceledException();
 
         if (Throws is { } defect)
             throw defect;
 
-        return Task.FromResult(Fails is { } error
+        return Fails is { } error
             ? Result<JudgingOutcome>.Failure(error)
-            : Result<JudgingOutcome>.Success(Outcome));
+            : Result<JudgingOutcome>.Success(Outcome);
     }
 }
 

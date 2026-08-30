@@ -163,14 +163,14 @@ public static class Stage2aRun
         // What none of the three products covers, recorded beside them rather than left for a
         // reader to infer. Written after the facts because the partial groups it names are sid
         // dictionary ids, and the dictionary is written by WriteFacts.
-        writer.RecordCompleteness(
-            closure is null
-                ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
-                : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId));
+        var completeness = closure is null
+            ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
+            : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId);
+        writer.RecordCompleteness(completeness);
 
         writer.Complete(DateTimeOffset.UtcNow);
 
-        var state = closure is null || !closure.IsComplete || facts.UnresolvedTrustees.Count > 0
+        var state = !completeness.IsComplete
             ? DerivationRunState.CompletedDegraded
             : DerivationRunState.Completed;
 

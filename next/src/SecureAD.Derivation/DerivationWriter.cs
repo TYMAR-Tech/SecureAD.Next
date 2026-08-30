@@ -36,6 +36,7 @@ internal sealed class DerivationWriter : IDisposable
 
     private bool _sidsWritten;
     private bool _completenessWritten;
+    private bool _completenessIsComplete = true;
     private bool _finished;
     private bool _disposed;
 
@@ -381,6 +382,7 @@ internal sealed class DerivationWriter : IDisposable
 
         transaction.Commit();
         _completenessWritten = true;
+        _completenessIsComplete = completeness.IsComplete;
     }
 
     /// <summary>
@@ -454,7 +456,8 @@ internal sealed class DerivationWriter : IDisposable
     {
         ThrowIfFinished();
 
-        var state = _outcomes.All(o => o == DerivationPhaseOutcome.Succeeded)
+        var state = _completenessIsComplete
+            && _outcomes.All(o => o == DerivationPhaseOutcome.Succeeded)
             ? DerivationRunState.Completed
             : DerivationRunState.CompletedDegraded;
 
