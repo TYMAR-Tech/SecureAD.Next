@@ -176,6 +176,8 @@ public sealed class DirectoryHeuristicsMicrosoftAnchorTests
         var mask = DirectoryHeuristics.AdminSdExclusions(WithMask(maskCharacter));
 
         Assert.Empty(mask.Excluded);
+        Assert.Equal(HeuristicReadOutcome.Malformed, mask.Outcome);
+        Assert.False(mask.IsComplete);
     }
 
     /// <summary>

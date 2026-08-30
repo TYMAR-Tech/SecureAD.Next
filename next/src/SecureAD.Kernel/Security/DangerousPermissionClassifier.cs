@@ -44,6 +44,8 @@ public sealed class DangerousPermissionClassifier
     private const int ControlAccess = 0x00000100;    // ADS_RIGHT_DS_CONTROL_ACCESS, extended rights
     private const int WriteDac = 0x00040000;         // ADS_RIGHT_WRITE_DAC
     private const int WriteOwner = 0x00080000;       // ADS_RIGHT_WRITE_OWNER
+    private const int GenericAll = 0x10000000;
+    private const int GenericWrite = 0x40000000;
 
     /// <summary>
     /// Extended rights that hand over an account on their own. Sourced to the rule that detects
@@ -374,15 +376,30 @@ public sealed class DangerousPermissionClassifier
                 + "wherever it appears.", null);
         }
 
-        var mask = GenericRightsExpander.Expand(accessMask);
+        if ((accessMask & GenericAll) != 0)
+        {
+            return PermissionAssessment.Dangerous(
+                "Carries GENERIC_ALL in a stored ACE. Windows maps generic rights when access is "
+                + "requested, but does not map generic bits already stored in an ACE, so this does "
+                + "not establish that the mapped directory rights are granted. It remains "
+                + "takeover-class potential and should be corrected or investigated.", null);
+        }
 
-        var objectIndependent = ClassifyObjectIndependentBits(mask);
+        if ((accessMask & GenericWrite) != 0)
+        {
+            return PermissionAssessment.Dangerous(
+                "Carries GENERIC_WRITE in a stored ACE. Windows does not map a generic bit already "
+                + "stored in an ACE, so this does not establish an unscoped property-write grant. "
+                + "It remains dangerous potential and should be corrected or investigated.", null);
+        }
+
+        var objectIndependent = ClassifyObjectIndependentBits(accessMask);
         if (objectIndependent is not null)
             return objectIndependent;
 
         return string.IsNullOrWhiteSpace(objectTypeGuid)
-            ? ClassifyUnscoped(mask)
-            : ClassifyScoped(mask, objectTypeGuid);
+            ? ClassifyUnscoped(accessMask)
+            : ClassifyScoped(accessMask, objectTypeGuid);
     }
 
     /// <summary>

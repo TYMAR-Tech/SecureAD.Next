@@ -144,7 +144,8 @@ public sealed class DangerousPermissionClassifierTests
     {
         var result = Classifier().Classify(AceType.AccessAllowed, GenericAllBit, null);
 
-        Assert.Equal(PermissionVerdict.CannotClassify, result.Verdict);
+        Assert.Contains("does not establish", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Grants Modify Permissions", result.Reason, StringComparison.Ordinal);
     }
 
     // === ACE type ===
@@ -189,7 +190,6 @@ public sealed class DangerousPermissionClassifierTests
     [Theory]
     [InlineData(WriteDac)]
     [InlineData(WriteOwner)]
-    [InlineData(GenericAllBit)]
     public void TakeoverClassBitsAreDangerousWhateverTheAceIsScopedTo(int mask)
     {
         Assert.Equal(

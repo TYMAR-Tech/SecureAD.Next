@@ -166,6 +166,15 @@ public sealed class DirectoryTimeTests
         Assert.Equal("No logon has been recorded", worded.Worded);
     }
 
+    [Fact]
+    public void TheAccountExpiresMaximumIsNotBorrowedAsALastLogonSentinel()
+    {
+        var worded = DirectoryTime.WordTimestamp(
+            "lastLogonTimestamp", "9223372036854775807", Captured);
+
+        Assert.Null(worded);
+    }
+
     /// <summary>
     /// Nothing else carries a caveat, so the one that does is not lost among decoration.
     /// </summary>

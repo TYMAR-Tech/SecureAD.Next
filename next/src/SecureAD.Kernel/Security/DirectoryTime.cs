@@ -181,7 +181,7 @@ public static class DirectoryTime
                 "Never set. The directory uses this to mean the password must be set at the next "
                 + "logon, unless the account's password is set never to expire.",
 
-            ("lastlogontimestamp", 0 or Forever) => "No logon has been recorded",
+            ("lastlogontimestamp", 0) => "No logon has been recorded",
             _ => null,
         };
 

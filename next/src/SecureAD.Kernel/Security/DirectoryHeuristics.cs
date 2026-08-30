@@ -29,6 +29,9 @@ public enum HeuristicReadOutcome
     /// requested.
     /// </summary>
     NotRead,
+
+    /// <summary>The forest stated a character outside the values the specification defines.</summary>
+    Malformed,
 }
 
 /// <summary>
@@ -47,7 +50,8 @@ public sealed record HeuristicCharacter(int Position, char? Value, HeuristicRead
     /// Named for gate 4: a caller holding a character needs to know whether it is reading the
     /// forest or reading a default, and a bare <c>char</c> cannot say.
     /// </remarks>
-    public bool IsComplete => Outcome != HeuristicReadOutcome.NotRead;
+    public bool IsComplete => Outcome is HeuristicReadOutcome.Stated
+        or HeuristicReadOutcome.DefaultedByAbsence;
 }
 
 /// <summary>
@@ -97,7 +101,8 @@ public sealed record AdminSdExclusionMask(
     /// nothing, or nobody looked - and the second reported as the first tells an operator that four
     /// operator groups are protected when nothing established it.
     /// </remarks>
-    public bool IsComplete => Outcome != HeuristicReadOutcome.NotRead;
+    public bool IsComplete => Outcome is HeuristicReadOutcome.Stated
+        or HeuristicReadOutcome.DefaultedByAbsence;
 }
 
 /// <summary>
@@ -214,7 +219,7 @@ public static class DirectoryHeuristics
         if (mask is null)
         {
             return new AdminSdExclusionMask(
-                [], HeuristicReadOutcome.DefaultedByAbsence, digit);
+                [], HeuristicReadOutcome.Malformed, digit);
         }
 
         var excluded = new List<AdminSdExcludableGroup>();

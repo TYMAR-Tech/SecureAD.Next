@@ -92,6 +92,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\reviews\06-shell-cli-review.md = ..\docs\reviews\06-shell-cli-review.md
 		..\docs\reviews\07-repository-synthesis.md = ..\docs\reviews\07-repository-synthesis.md
 		..\docs\corrections\wave-0-production-proof.md = ..\docs\corrections\wave-0-production-proof.md
+		..\docs\corrections\wave-1-kernel-semantic-safety.md = ..\docs\corrections\wave-1-kernel-semantic-safety.md
 		..\docs\reviews\README.md = ..\docs\reviews\README.md
 		..\docs\reviews\REVIEW-REGISTER.md = ..\docs\reviews\REVIEW-REGISTER.md
 		..\docs\reviews\_template.md = ..\docs\reviews\_template.md

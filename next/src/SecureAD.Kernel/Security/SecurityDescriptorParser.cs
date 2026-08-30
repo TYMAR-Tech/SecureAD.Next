@@ -115,22 +115,37 @@ public static class SecurityDescriptorParser
         const int AclHeaderSize = 8;
         var headerReadable = daclSpan.Length >= AclHeaderSize;
 
-        var declaredAceCount = headerReadable
-            ? BinaryPrimitives.ReadUInt16LittleEndian(daclSpan[4..])
-            : 0;
+        if (!headerReadable)
+        {
+            errors.Add($"ACL too short: {daclSpan.Length} bytes, minimum {AclHeaderSize}");
+            return new ParsedSecurityDescriptor(
+                ownerSid, groupSid, DaclState.Unreadable, isDaclProtected, [], control, errors,
+                DaclCompleteness: DaclCompleteness.Unknown, DaclWasCanonical: false);
+        }
 
-        var aces = ParseAcl(daclSpan, errors);
+        var declaredAclSize = BinaryPrimitives.ReadUInt16LittleEndian(daclSpan[2..]);
+        if (declaredAclSize < AclHeaderSize || declaredAclSize > daclSpan.Length)
+        {
+            errors.Add(
+                $"ACL declares size {declaredAclSize} bytes, but {daclSpan.Length} bytes are "
+                + "available from its offset.");
+            return new ParsedSecurityDescriptor(
+                ownerSid, groupSid, DaclState.Unreadable, isDaclProtected, [], control, errors,
+                DaclCompleteness: DaclCompleteness.Unknown, DaclWasCanonical: false);
+        }
+
+        var declaredAceCount = BinaryPrimitives.ReadUInt16LittleEndian(daclSpan[4..]);
+
+        var aces = ParseAcl(daclSpan[..declaredAclSize], errors);
 
         // Judged here because this is the last moment the entries are in the order the directory
         // stored them. AceNormalizer sorts them next, and after that nothing can tell. See
         // docs/decisions/0038.
         var daclWasCanonical = AceCanonicalization.IsCanonicalOrder(aces);
 
-        var completeness = !headerReadable
-            ? DaclCompleteness.Unknown
-            : aces.Count == declaredAceCount
-                ? DaclCompleteness.Complete
-                : DaclCompleteness.Incomplete;
+        var completeness = aces.Count == declaredAceCount
+            ? DaclCompleteness.Complete
+            : DaclCompleteness.Incomplete;
 
         var daclState = DecideDaclState(headerReadable, declaredAceCount, aces.Count);
 
