@@ -128,8 +128,9 @@ both and `JudgementReader.ReadPage` already applies the domain, so each is a pro
 behind. Coverage beside a finding is skipped and recorded below.
 
 *Still owed:* what an operator is shown when the evidence verifies and the judgement is degraded is
-still undecided. The command line still only captures, which is deliberate for now — the owner
-intends it to judge as well, so a long run can happen unattended.
+still undecided. The command line currently captures and derives but does not judge; the accepted
+target is the shared workflow in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md), so a long run can complete
+unattended without preserving separate host orchestration.
 
 *Also owed, found by asking:* nothing in the product prints what a bundle covered. Which naming
 contexts were read, from which controller, and which were known about but never read are all

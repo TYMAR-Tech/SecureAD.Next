@@ -64,7 +64,7 @@ here and would send anyone who read it looking for files that are not there.
 **What this product did at the 2026-08-26 amendment.** A rule was an `IRule` in
 `SecureAD.Evidence/Findings`, carrying
 its own `RuleDefinition` — identity, severity, version, the classes it judges and the attributes it
-reads. The set that runs is a literal list in `JudgingLauncher.Rules()`, which is deliberate:
+reads. The set that runs is a literal list in `RuleCatalogue.All`, which is deliberate:
 `0082` keeps the rule set out of the customer's hands, and a set assembled by reflection is a set
 nobody can read off the page. There is no catalogue file of any kind.
 

@@ -64,6 +64,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0000-0000-0000-00000000E787}"
 	ProjectSection(SolutionItems) = preProject
 		..\docs\next\ARCHITECTURE.md = ..\docs\next\ARCHITECTURE.md
+		..\docs\next\WORKFLOW.md = ..\docs\next\WORKFLOW.md
+		..\docs\next\WORKFLOW-PATHS.md = ..\docs\next\WORKFLOW-PATHS.md
 		..\docs\next\CONCEPT-REGISTRY.md = ..\docs\next\CONCEPT-REGISTRY.md
 		..\docs\next\README.md = ..\docs\next\README.md
 		..\docs\layers\audit\limits-and-failures.md = ..\docs\layers\audit\limits-and-failures.md
@@ -94,6 +96,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\corrections\wave-0-production-proof.md = ..\docs\corrections\wave-0-production-proof.md
 		..\docs\corrections\wave-1-kernel-semantic-safety.md = ..\docs\corrections\wave-1-kernel-semantic-safety.md
 		..\docs\corrections\wave-2-capture-evidence-integrity.md = ..\docs\corrections\wave-2-capture-evidence-integrity.md
+		..\docs\corrections\wave-2a-workflow-stabilization.md = ..\docs\corrections\wave-2a-workflow-stabilization.md
 		..\docs\reviews\README.md = ..\docs\reviews\README.md
 		..\docs\reviews\REVIEW-REGISTER.md = ..\docs\reviews\REVIEW-REGISTER.md
 		..\docs\reviews\_template.md = ..\docs\reviews\_template.md

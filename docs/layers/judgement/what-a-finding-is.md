@@ -245,10 +245,10 @@ now been run end to end against a capture of a live forest — see the capabilit
 
 ---
 
-## What is not built
+## How findings reach the product
 
-**A finding is stored; none is shown.** `SecureAD.Judgement` holds the store and the coordinator
-that streams a bundle and offers every object to every scheduled rule — see
-[`the-judgement-store.md`](the-judgement-store.md). What is missing is a way in from the product:
-judging is reachable only through `next/tools/judge-bundle.ps1`, a developer script, and no screen
-presents a finding.
+`SecureAD.Judgement` holds the store and the coordinator that streams a bundle and offers every
+object to every scheduled rule — see [`the-judgement-store.md`](the-judgement-store.md). The Shell
+runs judging after derivation and presents findings on the Assets screen. The CLI does not yet invoke
+judging; the current and target host paths are stated in
+[`../../next/WORKFLOW.md`](../../next/WORKFLOW.md).

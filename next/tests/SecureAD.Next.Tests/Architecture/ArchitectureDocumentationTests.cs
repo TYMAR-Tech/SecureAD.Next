@@ -167,30 +167,25 @@ public sealed class ArchitectureDocumentationTests
     }
 
     /// <summary>
-    /// The stages are the part a reader comes here for, and the part most likely to be left behind
-    /// as branches land. Each must say what state it is in, so a stage nobody has started is
-    /// visibly not started rather than merely undescribed.
+    /// The workflow document is the one source of stage status. Every numbered stage must state its
+    /// current state so a component cannot become reachable while the documentation still calls it
+    /// absent, or remain promised after its path was deleted.
     /// </summary>
     [Fact]
     public void EveryStageDeclaresItsState()
     {
-        var rows = Read().Split('\n')
+        var rows = ReadWorkflow().Split('\n')
             .Where(l => l.TrimStart().StartsWith("| ", StringComparison.Ordinal))
-            .Where(l => l.Contains("| A |", StringComparison.Ordinal)
-                        || l.Contains("| B |", StringComparison.Ordinal)
-                        || l.Contains("| C |", StringComparison.Ordinal)
-                        || l.Contains("| D |", StringComparison.Ordinal)
-                        || l.Contains("| E |", StringComparison.Ordinal)
-                        || l.Contains("| G |", StringComparison.Ordinal)
-                        || l.Contains("| I, J |", StringComparison.Ordinal))
+            .Where(l => Enumerable.Range(1, 9).Any(stage =>
+                l.TrimStart().StartsWith($"| {stage}. ", StringComparison.Ordinal)))
             .ToList();
 
-        Assert.True(rows.Count >= 7, $"Found {rows.Count} stage rows in {Document}; expected seven.");
+        Assert.Equal(9, rows.Count);
 
         Assert.All(rows, row => Assert.True(
-            row.Contains("Not built", StringComparison.OrdinalIgnoreCase)
-            || row.Contains("Building", StringComparison.OrdinalIgnoreCase)
-            || row.Contains("Done", StringComparison.OrdinalIgnoreCase),
+            row.Contains("Built", StringComparison.OrdinalIgnoreCase)
+            || row.Contains("incomplete", StringComparison.OrdinalIgnoreCase)
+            || row.Contains("Not built", StringComparison.OrdinalIgnoreCase),
             "A stage row states no state: " + row.Trim()));
     }
 
@@ -318,6 +313,13 @@ public sealed class ArchitectureDocumentationTests
             + "not the new product's documentation until a test binds it to the code, so an absent "
             + "document fails rather than being skipped.");
 
+        return File.ReadAllText(path);
+    }
+
+    private static string ReadWorkflow()
+    {
+        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", "WORKFLOW.md");
+        Assert.True(File.Exists(path), $"Expected the authoritative workflow document at {path}.");
         return File.ReadAllText(path);
     }
 }

@@ -20,10 +20,11 @@ the record wins and this file is wrong.
 | Connect | Find the forest itself; climb an ordered ladder of protection and record which rung each controller answered on | built |
 | Preflight | Prove a controller can serve what it will be asked, before the run commits | built |
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
-| Seal | Fingerprint the evidence. Coverage and any deliberate exclusion recorded inside it | built |
+| Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
+| Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built foundation; binding and persisted products incomplete |
 | Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, two rules |
-| Read back | Run library, directory tree, object detail | built |
-| Findings, dashboard, reports | — | not built |
+| Read back | Run library, directory tree, object detail and findings | built |
+| Dashboard, reports, compare and export | — | not built |
 
 `0008` fixes the boundary: **the only component that touches a domain controller is capture.** A
 screen showing a permission is reading a file, not asking the directory.
@@ -49,8 +50,10 @@ Decided, built and measured — see [`layers/judgement/`](layers/judgement/).
   discarded, because a partial verdict would read as a complete one.
 - **Findings live outside the seal** (`0085`), in a store that is disposable and rebuildable.
 
-**The one acknowledged gap:** a rule resting on group membership needs a wider shape than this, and
-that shape does not exist yet. It is the only architectural question left open.
+**The acknowledged rule-input gap:** rules that depend on cross-object facts need persisted,
+Evidence-bound Derivation products and typed missing/degraded input handling. The accepted correction
+order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longer treated as an unbounded
+architectural question.
 
 ## The five commitments
 

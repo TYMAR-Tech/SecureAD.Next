@@ -13,9 +13,9 @@ here; documents that mention it are recording history.
 
 ## What is built, and what is not
 
-**[`WHAT-THE-PRODUCT-IS.md`](../WHAT-THE-PRODUCT-IS.md) is the shorter answer** — the stages a run
-passes through, which are built, how judging works, and what the product deliberately is not. This
-section is the longer one.
+**[`WORKFLOW.md`](WORKFLOW.md) is the authoritative answer** for the stages a run passes through,
+their current reachability, artefact lifetimes and the target shared workflow.
+[`WHAT-THE-PRODUCT-IS.md`](../WHAT-THE-PRODUCT-IS.md) is the shorter product orientation.
 
 Measured 2026-08-24: 28 layer documents carrying 392 capability rows, each naming a test that
 proves it.
@@ -27,24 +27,23 @@ sealed when the run completes, with its coverage and any deliberate exclusion re
 and reading that bundle back offline through the run library, a captured directory tree and one
 object's detail.
 
-**Built, since the above was written.** Judging: `SecureAD.Judgement` streams a bundle once, offers
+**Built.** Derivation computes offline cross-object facts into a store beside Evidence. Judging:
+`SecureAD.Judgement` streams a bundle once, offers
 every object to every scheduled rule, and writes findings to a store beside the evidence and never
 into it. Two rules, SEC-010 and SEC-011, confirmed against a real forest on 2026-08-26.
 [`docs/layers/judgement/the-judgement-store.md`](../layers/judgement/the-judgement-store.md)
-describes it.
+describes it. The Shell runs capture, derivation and judging in that order and can open the resulting
+objects and findings.
 
-**Not built.** Any way into judging from the product — it is reachable only through
-`next/tools/judge-bundle.ps1`, a developer script, so the application cannot judge a bundle or open
-one. Per [`0045`](../decisions/0045-the-shell-is-built-before-the-judgement-half.md) screens bound
-to findings are left unbuilt rather than stubbed, so a customer is never shown an empty result that
-reads as *nothing is wrong*. Also unbuilt: effective access evaluation, reports and export, and any
-judgement about Group Policy — the parsers read `Registry.pol`, security templates and Group Policy
-Preferences, but nothing decides what any of it means.
+**Not built or incomplete.** The CLI captures and derives but does not yet judge. Derivation and
+Judgement generation binding, unified uncertainty, persisted AdminSDHolder products, the shared
+Shell/CLI orchestrator, comparison, reports and export remain correction-roadmap work. Effective
+access evaluation and judgement about Group Policy are also unbuilt; the parsers read `Registry.pol`,
+security templates and Group Policy Preferences, but nothing decides what all of it means.
 
-**Start at [`ARCHITECTURE.md`](ARCHITECTURE.md)** if the question is *how is this put together* —
-the stages a run passes through, the projects they live in, and which project may use which. It is
-bound to the real project references in both directions, so a stage that says *not built* says so.
-This file is about how the work is done; that one is about what is being made.
+Start at [`WORKFLOW.md`](WORKFLOW.md) for how a run proceeds. Use
+[`ARCHITECTURE.md`](ARCHITECTURE.md) for project layering and dependency direction. This file is about
+how repository work is governed rather than another source of stage status.
 
 ## Where to look, and what each place is allowed to say
 
@@ -55,6 +54,8 @@ READMEs were folded into this file. See §`One fact, one home` below for what wa
 | Question | Where | What it may contain |
 |---|---|---|
 | What does this component do? | [`docs/layers/`](../layers/) | One document per component, written from the code and bound to it by a test. **This is the description** |
+| How does the product run end to end? | [`WORKFLOW.md`](WORKFLOW.md) | The one current and target stage flow, host reachability, artefact lifetime and migration/deletion rules |
+| Which workflow paths still exist and when are they deleted? | [`WORKFLOW-PATHS.md`](WORKFLOW-PATHS.md) | Production/developer path inventory with retain/replace/delete disposition and exact retirement event |
 | How will something unbuilt work? | [`docs/layers/specs/`](../layers/specs/) | One document per unbuilt subsystem, carrying the design and the research behind it. **Discussion, never a decision** — it says so in writing, and `SpecDocumentGateTests` fails the build if it does not. Consumed and deleted into the layer document as the code is built |
 | What can an operator do? | a capability row on the layer document that owns the subject | A sentence naming the test that proves it. The test is the evidence; the row is the index |
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |

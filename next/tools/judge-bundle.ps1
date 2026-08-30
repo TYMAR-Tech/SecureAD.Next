@@ -1,8 +1,8 @@
 # Judges a sealed bundle and reports what the rules concluded.
 #
-# WHAT THIS IS FOR. Judging has no entry point in the product yet - no command, no button. This is
-# the way to run it against a real bundle on a real machine, which is the only place the rules meet
-# objects nobody invented.
+# WHAT THIS IS FOR. The Shell runs judging as part of an audit. This remains a developer-only way to
+# judge or explain an existing bundle without opening the application. It retires when the shared CLI
+# workflow provides equivalent judge-existing and explain diagnostics.
 #
 # It writes judgement.db and judgement.db.seal beside the evidence and never touches evidence.db.
 # Running it again replaces the judgement.
@@ -274,6 +274,7 @@ try {
         $now,
         $now,
         [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
+        [SecureAD.Kernel.RunLog]::Discarded,
         [System.Threading.CancellationToken]::None)
 
     $watch.Stop()

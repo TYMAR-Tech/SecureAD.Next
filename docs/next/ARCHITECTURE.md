@@ -3,11 +3,9 @@
 How the rebuilt product is put together: the stages a run passes through, the projects those stages
 live in, and which project is allowed to use which.
 
-**This document is written as the product is built, not afterwards.** Each stage below gains its
-detail when the inventory rows behind it land. A stage that says *not built* says so; it is not a gap
-someone forgot to fill. Writing it at the end would mean writing it from memory at the moment memory
-is worst, and the previous product's architecture document is the evidence — it was true when
-written and describes six things that are no longer so.
+This document owns project layering and dependency direction. The authoritative current and target
+stage flow is [`WORKFLOW.md`](WORKFLOW.md); stage reachability is stated there once rather than being
+repeated here and allowed to drift. Layer documents own behavior inside each stage.
 
 `ArchitectureDocumentationTests` binds it: this document must name every project that exists and no
 project that does not, and the dependency rule below is enforced against the project files rather
@@ -25,25 +23,26 @@ is load-bearing. A screen showing a permission is not asking the directory. It i
 a finding can be reproduced a year later, on a machine that has never seen the forest, and will say
 the same thing — which is what makes it evidence rather than an opinion.
 
-| # | Stage | What happens | Branch | State |
-|---|---|---|---|---|
-| 1 | **Connect and discover** | Find the forest's domains, choose a domain controller for each unit, and check before starting that each one can serve what it will be asked for | A | Building. All ten rows decided, A1 and A2 done: a connection can now be opened, over the most protected transport a controller will accept. What is missing is discovery — nothing yet works out which partitions a forest has |
-| 2 | **Capture** | Read every naming context in the forest — objects, their permissions, group memberships — plus the schema and extended-rights containers once per forest | B | Building. B2, B4, B6, B7 and B8 done: a single partition can now be read whole, and with A2 it can be read over a real connection. What is missing is a run — nothing drives the loop, which is B20 |
-| 3 | **Store** | Write what capture read into the bundle, and seal it | C | Building. The write half is decided and built: C1, C3, C10, C11 and C15, plus capture's two writers B9 and B10. A bundle can now be created, written to, sealed and refused. What is missing is a caller — nothing joins the partition capture can read to the bundle that can store it, which is B20 |
-| 4 | **Derive and analyse** | Build the control graph — who can take over what, and by which step — from the permissions captured | D | Not built |
-| 5 | **Rules and findings** | Apply the rule catalogue to the derived graph and record what it finds, with the evidence behind each | E | Not built |
-| 6 | **Read back** | Grids, dashboards and reports, all reading the bundle | I, J | Not built |
-| 7 | **Compare** | Two bundles, and what changed between them | G | Not built |
+| # | Stage | What happens | Current state |
+|---|---|---|---|
+| 1 | **Discover and preflight** | Find the forest's domains and partitions, choose controllers, negotiate security and prove each planned unit before committing a run | Built |
+| 2 | **Review and authorize scope** | Show included and unread scope and collect exact per-run exclusion attestations | Built in Shell; CLI has no interactive exclusion path |
+| 3 | **Capture** | Read Configuration, Schema, included domains, objects, permissions, memberships and relevant SYSVOL data | Built |
+| 4 | **Reconcile and seal Evidence** | Compare referrals with the authorized plan, persist uncertainty, refuse confirmed unplanned scope, and seal immutable Evidence | Built; Evidence schema 9 |
+| 5 | **Derive reusable facts** | Compute offline cross-object facts into a disposable store beside Evidence | Built foundation; persisted products and binding are incomplete |
+| 6 | **Judge** | Apply scheduled rules to declared Evidence/Derivation inputs and write a disposable judgement store | Built and reached by Shell; CLI orchestration does not yet invoke it |
+| 7 | **Read and present** | Read the run library, coverage, objects, permissions and findings without contacting the directory | Built foundation; dashboards/reports remain incomplete |
+| 8 | **Compare and export** | Compare compatible captures and produce durable reports or machine-readable output | Not built |
 
-Stage 2 is the one that cannot be redone. A forest is only readable as it is today, so anything
+Capture is the stage that cannot be redone. A forest is only readable as it is today, so anything
 capture does not collect is not a defect to fix in the next release — it is a forest that has to be
 captured again. That is why capture's decisions get the scrutiny they do, and why
 [`S-8`](../layers/audit/the-attribute-catalogue.md) exists.
 
 ## The projects, and which may use which
 
-`SecureAD.App`, the window a user sees, is phase 3 and does not exist yet. It appears below with no
-row of its own for the same reason nothing else absent does.
+`SecureAD.Shell` is the WPF application an operator uses. `SecureAD.Cli` is the unattended host.
+Their current and target orchestration are described in [`WORKFLOW.md`](WORKFLOW.md).
 
 <!-- DEPENDENCIES:BEGIN -->
 
@@ -51,7 +50,7 @@ row of its own for the same reason nothing else absent does.
 |---|---|---|---|
 | SecureAD.Kernel | 1 | - | What is true about Active Directory regardless of this product: security descriptors, permission canonicalisation, distinguished names, schema identifiers, and the single answer to whether a right is dangerous. Plus the two contracts everything else must adopt, `Result` and `AuditError` |
 | SecureAD.Evidence | 2 | SecureAD.Kernel | The bundle: its schema, and reading and writing it |
-| SecureAD.Audit | 3 | SecureAD.Kernel, SecureAD.Evidence | Capture, derived analysis, and the rule catalogue. The only project permitted to open a connection to a directory |
+| SecureAD.Audit | 3 | SecureAD.Kernel, SecureAD.Evidence | Capture and forest discovery. The only project permitted to open a connection to a directory |
 | SecureAD.Derivation | 4 | SecureAD.Kernel, SecureAD.Evidence | The derivation store: what was worked out from a sealed bundle before any rule ran — group nesting, membership closures, and the identities a principal carries — written beside the evidence and never into it. It is a separate project from SecureAD.Judgement, and below it, because derived facts are an input to judging rather than a product of it: a rule will read this, and nothing here may read a rule, or a phase could quietly derive what one rule wanted rather than what the directory said. It is a separate *file* from the judgement store because the two have different lifetimes — a judgement is rebuilt whenever a bundle is judged, while deriving is the most expensive thing the product does and does not change when a rule does, so a bundle is derived once and judged many times |
 | SecureAD.Judgement | 5 | SecureAD.Kernel, SecureAD.Evidence, SecureAD.Derivation | Executable rules and the judgement store: Judgement coordinates captured objects and reusable derived facts, then records what the rules concluded beside the sealed evidence. Evidence and Derivation do not reference it: capture must work with no judging present, and derivation must never see a rule or it could compute what one rule wanted rather than what the directory said. Judgement never references Audit and never contacts a directory |
 | SecureAD.Cli | 6 | SecureAD.Kernel, SecureAD.Evidence, SecureAD.Derivation, SecureAD.Audit | The command that starts a capture and derives from what it seals. It reads a command line and calls `CaptureSession`, then `Stage2aRun.Derive`; every decision a run makes is made below it, per [`0039`](../decisions/0039-one-way-to-start-a-capture.md), so that a window added later is a second caller rather than a second capture. It references SecureAD.Derivation and not SecureAD.Judgement, which is the shape of what it does rather than an omission: deriving follows a capture without an operator, and judging here has nobody to offer the findings to. It exports no public types — its surface is three options and four exit codes — which is why it sits outside the assemblies the architecture gates reflect over, held there by `CommandLineSurfaceGateTests` |
@@ -74,9 +73,8 @@ irreversible by the time anyone minds: the previous product's domain project tar
 reason its own contents needed, and presentation-shaped types moved in through the gap over years.
 Nobody decided that either.
 
-This is stated **now**, at three projects and three connections, because it is a decision that gets
-more expensive every week it waits. At three edges the rule is obvious and free. At thirty it is a
-month of untangling, and by then something depends on the tangle.
+This was stated before the higher layers existed because it is a decision that gets more expensive
+every week it waits. It now constrains seven production projects and every reference among them.
 
 ### What the rule does not do
 
@@ -86,23 +84,13 @@ And it sees only project references: a dependency expressed through a shared fil
 or a configuration convention is out of its reach, which is the same limit the concept registry
 records about itself.
 
-### The downward rule is not yet doing any work, and that is worth saying
+### The downward rule is active
 
-With three projects and three connections, **every** upward reference is also a circular one — the
-kernel cannot reference the bundle without the bundle already referencing it — so the compiler
-refuses it before any test runs. That was found by trying it: adding the reference produced a build
-failure, not a test failure.
-
-So today the downward rule catches nothing the compiler does not already catch. It is not therefore
-a check that measures nothing — the other five checks in `ArchitectureDocumentationTests` all fire
-against real mutations, and they are the ones holding the document to the projects. But the
-direction rule specifically is **prospective**, and it starts working the moment there is a fourth
-project: a sideways reference between two projects on the same layer is not circular, and neither is
-an upward one to a project that does not reference back. `SecureAD.App` is coming, which is when
-that stops being hypothetical.
-
-This is recorded rather than left implied, because a rule that appears to be guarding something and
-is not is the failure this repository has committed three times.
+The rule now governs seven production projects. Several wrong-way references would not be circular:
+for example, Evidence could otherwise acquire a dependency on Derivation, or Audit on Judgement.
+Those references would compile while reversing the ownership of permanent observations and
+disposable conclusions. `EveryProjectReferencePointsDownward` prevents that architecture from
+changing merely because a convenient project reference was added.
 
 ### The gate was mutation-tested
 
@@ -161,9 +149,8 @@ replaceable.
   connection or decides a security level.
 
   **What was missing was not a component but a run, and it is no longer missing.** `CaptureSession`
-  is the composition root decision `0039` requires, `Program.cs` builds the channel factory directly,
-  and the shell reaches a capture through `CaptureLauncher`. Whether gate 5b can now be turned on is
-  P-84; it was deferred against an entry point that exists.
+  is the capture entry point decision `0039` requires, and both current hosts reach it. The target
+  composition and deletion of duplicate host sequencing are fixed in [`WORKFLOW.md`](WORKFLOW.md).
 
   One thing about the seam is worth naming here because it is a property of the whole product rather
   than of one component. **Capture never asks for a SACL.** The audit half of a security descriptor
