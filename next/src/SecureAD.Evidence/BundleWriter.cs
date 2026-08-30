@@ -4,6 +4,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
+using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 
 namespace SecureAD.Evidence;
@@ -89,6 +90,13 @@ public sealed class BundleWriter : IDisposable
     private long _nextTrusteeId = 1;
     private bool _completed;
     private bool _disposed;
+    private AttemptCheckpoint? _attempt;
+
+    private sealed record AttemptCheckpoint(
+        long ObjectId,
+        long CoverageId,
+        long DescriptorId,
+        long TrusteeId);
 
     private BundleWriter(
         string bundleDirectory, string partialPath, SqliteConnection connection, DateTimeOffset startedUtc)
@@ -209,6 +217,9 @@ public sealed class BundleWriter : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(controller);
         ThrowIfFinished();
 
+        if (_attempt is not null)
+            throw new InvalidOperationException("A partition attempt is already open.");
+
         var key = (namingContextDn, controller);
         if (_coverageIds.ContainsKey(key))
         {
@@ -217,6 +228,11 @@ public sealed class BundleWriter : IDisposable
                 + "one partition on one controller, and a second row for the same pair would be a "
                 + "second account of what was read.");
         }
+
+        var checkpoint = new AttemptCheckpoint(
+            _nextObjectId, _nextCoverageId, _nextDescriptorId, _nextTrusteeId);
+        Execute("SAVEPOINT partition_attempt");
+        _attempt = checkpoint;
 
         var coverageId = _nextCoverageId++;
 
@@ -292,6 +308,39 @@ public sealed class BundleWriter : IDisposable
                     command.Parameters.AddWithValue("$referral", referral);
                 });
         }
+
+        Execute("RELEASE SAVEPOINT partition_attempt");
+        _attempt = null;
+    }
+
+    /// <summary>Rolls back every durable and cached value allocated by the open partition attempt.</summary>
+    public void AbortPartition()
+    {
+        ThrowIfFinished();
+
+        if (_attempt is not { } checkpoint)
+            throw new InvalidOperationException("There is no partition attempt to abort.");
+
+        try
+        {
+            Execute("ROLLBACK TO SAVEPOINT partition_attempt");
+            Execute("RELEASE SAVEPOINT partition_attempt");
+        }
+        finally
+        {
+            RemoveValuesAllocatedAtOrAfter(_coverageIds, checkpoint.CoverageId);
+            RemoveValuesAllocatedAtOrAfter(_descriptors, checkpoint.DescriptorId);
+            RemoveValuesAllocatedAtOrAfter(_trustees, checkpoint.TrusteeId);
+            RemoveKeysAllocatedAtOrAfter(_objectCoverage, checkpoint.ObjectId);
+            RemoveKeysAllocatedAtOrAfter(_objectGuids, checkpoint.ObjectId);
+            RemoveKeysAllocatedAtOrAfter(_unreadableDescriptors, checkpoint.CoverageId);
+
+            _nextObjectId = checkpoint.ObjectId;
+            _nextCoverageId = checkpoint.CoverageId;
+            _nextDescriptorId = checkpoint.DescriptorId;
+            _nextTrusteeId = checkpoint.TrusteeId;
+            _attempt = null;
+        }
     }
 
     /// <summary>
@@ -322,6 +371,21 @@ public sealed class BundleWriter : IDisposable
         Execute(
             "INSERT INTO unread_partition (naming_context_dn) VALUES ($dn)",
             command => command.Parameters.AddWithValue("$dn", namingContextDn));
+    }
+
+    private static void RemoveValuesAllocatedAtOrAfter<TKey>(
+        Dictionary<TKey, long> values, long firstAllocated)
+        where TKey : notnull
+    {
+        foreach (var key in values.Where(pair => pair.Value >= firstAllocated).Select(pair => pair.Key).ToArray())
+            values.Remove(key);
+    }
+
+    private static void RemoveKeysAllocatedAtOrAfter<TValue>(
+        Dictionary<long, TValue> values, long firstAllocated)
+    {
+        foreach (var key in values.Keys.Where(key => key >= firstAllocated).ToArray())
+            values.Remove(key);
     }
 
     /// <summary>
@@ -1083,9 +1147,21 @@ public sealed class BundleWriter : IDisposable
     /// </remarks>
     /// <param name="coverage">What the run declared and what became of each part of it.</param>
     /// <param name="completedUtc">When the run finished.</param>
-    public void Complete(RunCoverage coverage, DateTimeOffset completedUtc)
+    /// <summary>Finishes a bundle from a producer that did not perform continuation reconciliation.</summary>
+    public void Complete(RunCoverage coverage, DateTimeOffset completedUtc) =>
+        Complete(coverage, completedUtc, ContinuationReconciliation.NotPerformed);
+
+    /// <summary>Finishes a bundle with the capture's continuation-reference reconciliation.</summary>
+    /// <param name="coverage">What the run declared and what became of each part of it.</param>
+    /// <param name="completedUtc">When the run finished.</param>
+    /// <param name="reconciliation">The comparison of received referrals with authorized scope.</param>
+    public void Complete(
+        RunCoverage coverage,
+        DateTimeOffset completedUtc,
+        ContinuationReconciliation reconciliation)
     {
         ArgumentNullException.ThrowIfNull(coverage);
+        ArgumentNullException.ThrowIfNull(reconciliation);
         ThrowIfFinished();
 
         WriteUnreadableDescriptorCounts();
@@ -1093,20 +1169,33 @@ public sealed class BundleWriter : IDisposable
         Execute(
             """
             INSERT INTO bundle (
-                schema_version, forest_fqdn, capture_started_utc, capture_completed_utc,
-                coverage_id, every_declared_unit_recorded_as_read)
-            VALUES ($version, $forest, $started, $completed, $coverage, $complete)
+                schema_version, captured_attribute_catalog_version,
+                schema_guid_catalog_version, security_descriptor_parser_version,
+                forest_fqdn, capture_started_utc, capture_completed_utc,
+                coverage_id, every_declared_unit_recorded_as_read,
+                continuation_reconciliation_outcome)
+            VALUES ($version, $attributes, $schemaGuids, $parser, $forest, $started, $completed,
+                    $coverage, $complete, $reconciliation)
             """,
             command =>
             {
                 command.Parameters.AddWithValue("$version", BundleSchema.Version);
+                command.Parameters.AddWithValue("$attributes", CapturedAttributeCatalog.Version);
+                command.Parameters.AddWithValue("$schemaGuids", SchemaGuidCatalog.Version);
+                command.Parameters.AddWithValue("$parser", SecurityDescriptorParser.Version);
                 command.Parameters.AddWithValue("$forest", coverage.Declared.ForestFqdn);
                 command.Parameters.AddWithValue("$started", _startedUtc.UtcDateTime.ToString("O"));
                 command.Parameters.AddWithValue("$completed", completedUtc.UtcDateTime.ToString("O"));
                 command.Parameters.AddWithValue("$coverage", coverage.Declared.Value);
                 command.Parameters.AddWithValue(
                     "$complete", coverage.AllDeclaredUnitsAreComplete ? 1 : 0);
+                command.Parameters.AddWithValue("$reconciliation", reconciliation.Outcome.ToString());
             });
+
+        WriteReconciliationItems(
+            "UnplannedNamingContext", reconciliation.UnplannedNamingContexts);
+        WriteReconciliationItems("UnreadableReference", reconciliation.UnreadableReferences);
+        WriteReconciliationItems("SuppressedUnit", reconciliation.UnitsWithSuppressedReferrals);
 
         foreach (var domain in coverage.Domains)
         {
@@ -1183,6 +1272,22 @@ public sealed class BundleWriter : IDisposable
 
         File.Move(_partialPath, BundleLayout.EvidencePath(_bundleDirectory));
         _completed = true;
+    }
+
+    private void WriteReconciliationItems(string kind, IReadOnlyList<string> values)
+    {
+        for (var ordinal = 0; ordinal < values.Count; ordinal++)
+        {
+            Execute(
+                "INSERT INTO continuation_reconciliation_item (kind, ordinal, value) "
+                + "VALUES ($kind, $ordinal, $value)",
+                command =>
+                {
+                    command.Parameters.AddWithValue("$kind", kind);
+                    command.Parameters.AddWithValue("$ordinal", ordinal);
+                    command.Parameters.AddWithValue("$value", values[ordinal]);
+                });
+        }
     }
 
     /// <summary>

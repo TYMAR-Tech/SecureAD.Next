@@ -138,6 +138,19 @@ public sealed class ForestDiscoveryTests
         Assert.Equal(["DC=DomainDnsZones,DC=example,DC=com"], plan.Value!.NotRead);
     }
 
+    [Fact]
+    public async Task ACrossReferenceThatIsNotALocalNamingContextIsNotAnUnreadPartition()
+    {
+        var controller = new ControllerModel();
+        controller.CrossReferences.Add(
+            new CrossReference("DC=external,DC=example", "external.example", "0"));
+
+        var plan = await PlanAsync(controller);
+
+        Assert.True(plan.IsSuccess, plan.Error?.Description);
+        Assert.DoesNotContain("DC=external,DC=example", plan.Value!.NotRead);
+    }
+
     /// <summary>
     /// The cross-references are asked for in the Partitions container beneath the configuration
     /// partition the controller named, and not somewhere else. A search of the wrong container

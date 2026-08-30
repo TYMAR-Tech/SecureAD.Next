@@ -289,6 +289,9 @@ public sealed class CaptureSession
 
         var report = preflight.Value!;
 
+        if (report.Plan.ValidateExclusions(exclusions) is { } invalidExclusion)
+            return Result<CaptureRunResult>.Failure(invalidExclusion);
+
         // Said before the reading starts, not after: a run that took its warning to the end and
         // printed it beside "Sealed" has told an operator about a choice he could no longer change.
         reportPreflight?.Invoke(report);

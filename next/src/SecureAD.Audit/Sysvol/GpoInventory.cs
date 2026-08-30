@@ -34,6 +34,20 @@ public sealed class GpoInventory
     private readonly List<GpoTarget> _policies = [];
     private readonly List<GpoCoverage> _unlocatable = [];
 
+    internal readonly record struct Checkpoint(int Policies, int Unlocatable);
+
+    internal Checkpoint Mark() => new(_policies.Count, _unlocatable.Count);
+
+    internal void Restore(Checkpoint checkpoint)
+    {
+        if (_policies.Count > checkpoint.Policies)
+            _policies.RemoveRange(checkpoint.Policies, _policies.Count - checkpoint.Policies);
+
+        if (_unlocatable.Count > checkpoint.Unlocatable)
+            _unlocatable.RemoveRange(
+                checkpoint.Unlocatable, _unlocatable.Count - checkpoint.Unlocatable);
+    }
+
     /// <summary>
     /// The policies whose files can be read, in the order the directory returned them.
     /// </summary>

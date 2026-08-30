@@ -73,6 +73,33 @@ public sealed class CaptureRunEndToEndTests : IDisposable
         Assert.False(File.Exists(BundleLayout.OutcomePath(run.BundleDirectory)));
     }
 
+    [Fact]
+    public async Task ACompleteReconciliationThatFindsUnplannedScopeFailsBeforeSealing()
+    {
+        var controller = ForestOfThreeObjects();
+        controller.SupportedControls.Remove("1.2.840.113556.1.4.1339");
+        controller.References.Add("ldap://dc02.example.com/DC=child,DC=example,DC=com");
+
+        var run = await RunAsync(controller);
+
+        Assert.Equal(RunCompletion.Ended, run.Outcome);
+        Assert.False(File.Exists(BundleLayout.EvidencePath(run.BundleDirectory)));
+        Assert.True(File.Exists(BundleLayout.OutcomePath(run.BundleDirectory)));
+    }
+
+    [Fact]
+    public async Task AnIncompleteReconciliationIsPersistedWithoutClaimingNoUnplannedScope()
+    {
+        var run = await RunAsync(ForestOfThreeObjects());
+
+        var opening = BundleReader.Open(run.BundleDirectory);
+        using var reader = opening.Value!;
+
+        Assert.Equal(
+            ContinuationReconciliationOutcome.Incomplete,
+            reader.ContinuationReconciliation.Outcome);
+    }
+
     /// <summary>
     /// The objects the controller served are in the bundle, under the names it served them by.
     /// </summary>

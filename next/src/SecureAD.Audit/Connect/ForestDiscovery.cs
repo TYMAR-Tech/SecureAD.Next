@@ -302,7 +302,14 @@ public static class ForestDiscovery
             .ToList();
 
         return Result<ForestPlan>.Success(new ForestPlan(
-            capture.Value! with { DeclaredDomains = declared },
+            capture.Value! with
+            {
+                DeclaredDomains = declared,
+                DomainDnsNames = forest.Value.Domains.ToDictionary(
+                    domain => domain.NamingContext,
+                    domain => domain.DnsName,
+                    StringComparer.OrdinalIgnoreCase),
+            },
             topology.Value!,
             roles.Value!,
             selection.Value!));

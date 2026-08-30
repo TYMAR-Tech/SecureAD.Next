@@ -129,6 +129,42 @@ public sealed class CapturePlanTests
         Assert.Same(plan, plan.Excluding([]));
     }
 
+    [Fact]
+    public void AnExclusionDictionaryKeyMustMatchItsAttestation()
+    {
+        var plan = Plan().Value;
+        var exclusion = Exclusion(Domain, "example.com");
+
+        var error = plan.ValidateExclusions(
+            new Dictionary<string, AttestedExclusion> { ["DC=other,DC=com"] = exclusion });
+
+        Assert.Equal("Capture.ExclusionDoesNotMatchDeclaredDomain", error!.Code);
+    }
+
+    [Fact]
+    public void AnExclusionDnsNameMustMatchTheForestsPairing()
+    {
+        var plan = Plan().Value;
+
+        var error = plan.ValidateExclusions(
+            new Dictionary<string, AttestedExclusion>
+            {
+                [Domain] = Exclusion(Domain, "other.example.com"),
+            });
+
+        Assert.Equal("Capture.ExclusionDoesNotMatchDeclaredDomain", error!.Code);
+    }
+
+    private static AttestedExclusion Exclusion(string namingContext, string domainFqdn) => new(
+        namingContext,
+        domainFqdn,
+        ExclusionKind.ByChoice,
+        "outside-remit",
+        Note: null,
+        RunBy: @"EXAMPLE\operator",
+        AuthorisedBy: "R. Zamus",
+        AttestedUtc: DateTimeOffset.UnixEpoch);
+
     /// <summary>
     /// The two forest-wide partitions are read from the controller the operator named, because that
     /// is the one controller the run is known to be able to reach.

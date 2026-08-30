@@ -193,6 +193,9 @@ internal sealed class ForestPartitions
                     channel.DomainController));
             }
 
+            if (!IsNamingContextInDirectory(systemFlags))
+                continue;
+
             if (!IsDomain(systemFlags))
             {
                 notRead.Add(namingContext);
@@ -247,6 +250,9 @@ internal sealed class ForestPartitions
     private static bool IsDomain(int systemFlags) =>
         (systemFlags & (NamingContextIsInDirectory | NamingContextIsADomain))
             == (NamingContextIsInDirectory | NamingContextIsADomain);
+
+    private static bool IsNamingContextInDirectory(int systemFlags) =>
+        (systemFlags & NamingContextIsInDirectory) != 0;
 
     /// <summary>
     /// One text value of an attribute, or null where the entry did not carry one.

@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 
@@ -36,11 +37,15 @@ namespace SecureAD.Evidence;
 /// </param>
 public sealed record BundleDescription(
     int SchemaVersion,
+    int CapturedAttributeCatalogVersion,
+    int SchemaGuidCatalogVersion,
+    int SecurityDescriptorParserVersion,
     string ForestFqdn,
     DateTimeOffset CaptureStartedUtc,
     DateTimeOffset CaptureCompletedUtc,
     string CoverageId,
-    bool EveryDeclaredUnitRecordedAsRead);
+    bool EveryDeclaredUnitRecordedAsRead,
+    ContinuationReconciliationOutcome ContinuationReconciliationOutcome);
 
 /// <summary>
 /// The one way a bundle gets read.
@@ -108,6 +113,9 @@ public sealed class BundleReader : IDisposable
     /// <summary>What the run recorded about itself.</summary>
     public BundleDescription Description { get; }
 
+    /// <summary>The capture's persisted continuation-reference reconciliation.</summary>
+    public ContinuationReconciliation ContinuationReconciliation => ReadReconciliation(_connection);
+
     /// <summary>
     /// The open evidence database, for the readers built on top of this one.
     /// </summary>
@@ -164,6 +172,42 @@ public sealed class BundleReader : IDisposable
                     + $"and this build reads version {BundleSchema.Version}. Nothing in this "
                     + "product is kept backward compatible, so a bundle from another build is "
                     + "captured again rather than migrated.",
+                    evidencePath);
+            }
+
+            if (description.CapturedAttributeCatalogVersion != CapturedAttributeCatalog.Version)
+            {
+                connection.Dispose();
+                return Failure(
+                    "CapturedAttributeCatalogVersionUnsupported",
+                    $"The bundle captured attribute catalogue version "
+                    + $"{description.CapturedAttributeCatalogVersion} and this build uses version "
+                    + $"{CapturedAttributeCatalog.Version}. The bundle cannot establish that its "
+                    + "attribute scope matches this build, so the forest must be captured again.",
+                    evidencePath);
+            }
+
+            if (description.SchemaGuidCatalogVersion != SchemaGuidCatalog.Version)
+            {
+                connection.Dispose();
+                return Failure(
+                    "SchemaGuidCatalogVersionUnsupported",
+                    $"The bundle used shipped schema GUID catalogue version "
+                    + $"{description.SchemaGuidCatalogVersion} and this build uses version "
+                    + $"{SchemaGuidCatalog.Version}. Stored permission projections cannot be "
+                    + "attributed to this build's catalogue, so the forest must be captured again.",
+                    evidencePath);
+            }
+
+            if (description.SecurityDescriptorParserVersion != SecurityDescriptorParser.Version)
+            {
+                connection.Dispose();
+                return Failure(
+                    "SecurityDescriptorParserVersionUnsupported",
+                    $"The bundle parsed security descriptors with semantic version "
+                    + $"{description.SecurityDescriptorParserVersion} and this build implements "
+                    + $"version {SecurityDescriptorParser.Version}. The stored interpretation is "
+                    + "not compatible with this build, so the forest must be captured again.",
                     evidencePath);
             }
 
@@ -523,7 +567,9 @@ public sealed class BundleReader : IDisposable
         command.CommandText =
             """
             SELECT schema_version, forest_fqdn, capture_started_utc, capture_completed_utc,
-                   coverage_id, every_declared_unit_recorded_as_read
+                   coverage_id, every_declared_unit_recorded_as_read,
+                   captured_attribute_catalog_version, schema_guid_catalog_version,
+                   security_descriptor_parser_version, continuation_reconciliation_outcome
             FROM bundle
             """;
 
@@ -540,11 +586,43 @@ public sealed class BundleReader : IDisposable
 
         return new BundleDescription(
             reader.GetInt32(0),
+            reader.GetInt32(6),
+            reader.GetInt32(7),
+            reader.GetInt32(8),
             reader.GetString(1),
             ParseUtc(reader.GetString(2)),
             ParseUtc(reader.GetString(3)),
             reader.GetString(4),
-            reader.GetInt64(5) != 0);
+            reader.GetInt64(5) != 0,
+            Enum.Parse<ContinuationReconciliationOutcome>(reader.GetString(9)));
+    }
+
+    private static ContinuationReconciliation ReadReconciliation(SqliteConnection connection)
+    {
+        using var outcomeCommand = connection.CreateCommand();
+        outcomeCommand.CommandText = "SELECT continuation_reconciliation_outcome FROM bundle";
+        var outcome = Enum.Parse<ContinuationReconciliationOutcome>((string)outcomeCommand.ExecuteScalar()!);
+
+        IReadOnlyList<string> Items(string kind)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT value FROM continuation_reconciliation_item WHERE kind = $kind ORDER BY ordinal";
+            command.Parameters.AddWithValue("$kind", kind);
+
+            var values = new List<string>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                values.Add(reader.GetString(0));
+
+            return values;
+        }
+
+        return new ContinuationReconciliation(
+            outcome,
+            Items("UnplannedNamingContext"),
+            Items("UnreadableReference"),
+            Items("SuppressedUnit"));
     }
 
     /// <summary>

@@ -231,6 +231,45 @@ public sealed class CaptureRun
             recorded.Add(read.Value!);
         }
 
+        var reconciled = ContinuationReferenceReconciliation.Reconcile(
+            plan.Units,
+            recorded.SelectMany(coverage => coverage.ContinuationReferences),
+            recorded
+                .Where(coverage => coverage.ReferralsSuppressed)
+                .Select(coverage => plan.Units.Single(unit =>
+                    string.Equals(
+                        unit.NamingContext,
+                        coverage.NamingContextDn,
+                        StringComparison.OrdinalIgnoreCase))));
+
+        if (reconciled.IsComplete && reconciled.Unplanned.Count > 0)
+        {
+            return End(
+                bundleDirectory,
+                RunOutcome.Failed,
+                "The directory referred this run to naming context(s) absent from its authorized "
+                + $"capture plan: {string.Join(", ", reconciled.Unplanned)}. No bundle was sealed. "
+                + "Run discovery and capture again so the new scope is either captured or "
+                + "explicitly accounted for.",
+                AuditError.Create(
+                    ErrorCategory.Capture,
+                    "UnplannedNamingContext",
+                    ErrorSeverity.Failed,
+                    "A complete continuation-reference reconciliation found directory scope "
+                    + "absent from the authorized capture plan.",
+                    string.Join(", ", reconciled.Unplanned)));
+        }
+
+        var reconciliation = new ContinuationReconciliation(
+            reconciled.IsComplete
+                ? ContinuationReconciliationOutcome.Complete
+                : ContinuationReconciliationOutcome.Incomplete,
+            reconciled.Unplanned,
+            reconciled.UnreadableReferences,
+            reconciled.UnitsWithSuppressedReferrals
+                .Select(unit => unit.NamingContext)
+                .ToList());
+
         // SYSVOL is read after the directory and before the seal, and it is the one read in this
         // method that does not end the run when it fails. Per docs/decisions/0044 a policy folder
         // that could not be opened is recorded and the bundle is still sealed - because SYSVOL is a
@@ -273,7 +312,8 @@ public sealed class CaptureRun
                     .Where(c => c.Kind != NamingContextKind.Domain)
                     .Select(c => ForestPartitionCoverage.Read(c.NamingContextDn, c.Kind)),
                 sysvol),
-            _time.GetUtcNow());
+            _time.GetUtcNow(),
+            reconciliation);
 
         return new CaptureRunResult(RunCompletion.Sealed, bundleDirectory, Error: null);
     }

@@ -151,16 +151,19 @@ public sealed class PartitionCapture
         // announces the partition again; a sink that has already seen it refuses, which is the
         // guard that stops a restarted unit being recorded twice.
         _sink.BeginPartition(unit, channel.SecurityLevel, referralsSuppressed);
+        var completed = false;
 
-        var references = new List<string>();
-        var cookie = Array.Empty<byte>();
-        var pages = 0;
-        var objects = 0;
-        var blocks = 0;
-
-        while (true)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            var references = new List<string>();
+            var cookie = Array.Empty<byte>();
+            var pages = 0;
+            var objects = 0;
+            var blocks = 0;
+
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
             var request = pages == 0
                 ? CaptureSearchRequestFactory.ForUnit(unit, channel.SupportedControls)
@@ -206,8 +209,8 @@ public sealed class PartitionCapture
 
             references.AddRange(page.ContinuationReferences);
 
-            if (page.Completeness == PageCompleteness.LastPage)
-            {
+                if (page.Completeness == PageCompleteness.LastPage)
+                {
                 var coverage = new PartitionCoverage(
                     unit.NamingContext,
                     unit.Kind,
@@ -219,10 +222,11 @@ public sealed class PartitionCapture
                     references,
                     referralsSuppressed);
 
-                _sink.CompletePartition(coverage);
+                    _sink.CompletePartition(coverage);
+                    completed = true;
 
-                return new Outcome<PartitionCoverage>(coverage, RestartWanted: false);
-            }
+                    return new Outcome<PartitionCoverage>(coverage, RestartWanted: false);
+                }
 
             // An empty page is legitimate: Microsoft records that a controller may return one and
             // still report success, meaning it could not build a page this time and has not
@@ -238,7 +242,13 @@ public sealed class PartitionCapture
                     unit);
             }
 
-            cookie = page.PagingCookie;
+                cookie = page.PagingCookie;
+            }
+        }
+        finally
+        {
+            if (!completed)
+                _sink.AbortPartition();
         }
     }
 

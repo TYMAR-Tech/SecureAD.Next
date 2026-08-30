@@ -68,7 +68,12 @@ public static class BundleSchema
     /// of the sealed evidence - which is the arrangement the decision exists to end.
     /// </para>
     /// </remarks>
-    public const int Version = 8;
+    /// <para>
+    /// <b>Raised to 9 for capture provenance and continuation reconciliation.</b> Version 8 cannot
+    /// state which catalogue and parser semantics produced it, or whether its continuation
+    /// references were reconciled against the authorized plan.
+    /// </para>
+    public const int Version = 9;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -105,6 +110,7 @@ public static class BundleSchema
         "domain_coverage",
         "forest_partition_coverage",
         "continuation_reference",
+        "continuation_reconciliation_item",
         "unread_partition",
         "excluded_domain",
         "captured_object",
@@ -220,14 +226,32 @@ public static class BundleSchema
         """
         CREATE TABLE bundle (
             schema_version           INTEGER NOT NULL,
+            captured_attribute_catalog_version INTEGER NOT NULL,
+            schema_guid_catalog_version INTEGER NOT NULL,
+            security_descriptor_parser_version INTEGER NOT NULL,
             forest_fqdn              TEXT    NOT NULL,
             capture_started_utc      TEXT    NOT NULL,
             capture_completed_utc    TEXT    NOT NULL,
             coverage_id              TEXT    NOT NULL,
             every_declared_unit_recorded_as_read INTEGER NOT NULL,
+            continuation_reconciliation_outcome TEXT NOT NULL
+                                     CHECK (continuation_reconciliation_outcome IN
+                                            ('NotPerformed', 'Complete', 'Incomplete')),
             only_one_row             INTEGER NOT NULL DEFAULT 1
                                      CHECK (only_one_row = 1),
             PRIMARY KEY (only_one_row)
+        )
+        """,
+
+        """
+        CREATE TABLE continuation_reconciliation_item (
+            kind                     TEXT    NOT NULL
+                                     CHECK (kind IN
+                                            ('UnplannedNamingContext', 'UnreadableReference',
+                                             'SuppressedUnit')),
+            ordinal                  INTEGER NOT NULL,
+            value                    TEXT    NOT NULL,
+            PRIMARY KEY (kind, ordinal)
         )
         """,
 

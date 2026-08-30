@@ -623,6 +623,8 @@ internal sealed class ControllerModel
 /// <summary>Collects what the loop hands on, so a test can count it and look at it.</summary>
 internal sealed class RecordingSink : ICapturedObjectSink
 {
+    private int? _receivedCheckpoint;
+
     public List<CapturedObject> Received { get; } = [];
 
     /// <summary>The partitions the loop announced, in the order it announced them.</summary>
@@ -632,10 +634,24 @@ internal sealed class RecordingSink : ICapturedObjectSink
     public List<PartitionCoverage> Completed { get; } = [];
 
     public void BeginPartition(
-        CaptureUnit unit, ConnectionSecurityLevel connectionSecurity, bool referralsSuppressed) =>
+        CaptureUnit unit, ConnectionSecurityLevel connectionSecurity, bool referralsSuppressed)
+    {
+        _receivedCheckpoint = Received.Count;
         Opened.Add((unit, connectionSecurity, referralsSuppressed));
+    }
 
     public void Receive(CapturedObject capturedObject) => Received.Add(capturedObject);
 
-    public void CompletePartition(PartitionCoverage coverage) => Completed.Add(coverage);
+    public void AbortPartition()
+    {
+        Opened.RemoveAt(Opened.Count - 1);
+        Received.RemoveRange(_receivedCheckpoint!.Value, Received.Count - _receivedCheckpoint.Value);
+        _receivedCheckpoint = null;
+    }
+
+    public void CompletePartition(PartitionCoverage coverage)
+    {
+        Completed.Add(coverage);
+        _receivedCheckpoint = null;
+    }
 }

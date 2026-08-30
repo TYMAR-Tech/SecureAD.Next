@@ -207,6 +207,8 @@ The table below sits between the two markers around it, so the test parses only 
 | BundleObjects | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | BundleReader | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleDescription | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| ContinuationReconciliation | SecureAD.Evidence | [what-a-bundle-holds](../layers/evidence/what-a-bundle-holds.md) |
+| ContinuationReconciliationOutcome | SecureAD.Evidence | [what-a-bundle-holds](../layers/evidence/what-a-bundle-holds.md) |
 | DirectoryTree | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | TreeNode | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | TreeNodeOrigin | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |

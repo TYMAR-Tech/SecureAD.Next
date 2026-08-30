@@ -10,6 +10,9 @@ namespace SecureAD.Kernel.Security;
 /// </summary>
 public static class SecurityDescriptorParser
 {
+    /// <summary>The version of the parsing semantics applied to stored security descriptors.</summary>
+    public const int Version = 1;
+
     // SD header offsets (self-relative format)
     private const int HeaderSize = 20;
     private const int RevisionOffset = 0;

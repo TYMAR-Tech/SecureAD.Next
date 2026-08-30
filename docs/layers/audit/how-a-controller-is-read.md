@@ -146,6 +146,7 @@ code with no row fails the build, and a row naming no code fails it too.
 | PagedSearchRepeatedItsCookie | The controller handed back the same bookmark it was given | The next request would be the request just made, forever. The read stops rather than looping or settling for what it has |
 | DirectoryRequestFailed | A request failed, and the retry policy ran out of answers | The policy in [limits and failures](limits-and-failures.md) has already tried what it is allowed to try: three attempts at a request, one restart of the naming context |
 | CapturePlanReadsNoDomain | A plan was built that names no domain partition | Every forest has at least one domain. A plan holding only the configuration and schema partitions would seal a bundle with no principals, no permissions and nothing to audit, while looking like a capture that worked |
+| ExclusionDoesNotMatchDeclaredDomain | An exclusion key, attested naming context or attested DNS name does not match the exact domain pairing discovered for this forest | An exclusion authorizes omission of one exact domain. Applying it to another domain, or accepting a reconstructed pairing, would seal evidence whose declared scope and attestation contradict each other |
 
 <!-- ENDINGS:END -->
 

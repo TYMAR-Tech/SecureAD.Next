@@ -85,6 +85,10 @@ public sealed class CoverageIdRecipeTests
         // rule's verdict was never one of its inputs - so a differing value here would have meant
         // the recipe moved while nobody was looking at it.
         [8] = "57cf8ba5a9e7fb10",
+
+        // Version 9 records capture semantic provenance and continuation reconciliation. Neither
+        // changes the forest, declared-domain or exclusion inputs to the coverage identity recipe.
+        [9] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

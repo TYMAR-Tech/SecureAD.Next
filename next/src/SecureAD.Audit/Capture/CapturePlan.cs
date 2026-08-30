@@ -63,6 +63,12 @@ public sealed record CapturePlan(
     string ForestFqdn)
 {
     /// <summary>
+    /// The DNS name the forest declared for each domain naming context.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> DomainDnsNames { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Whether this plan reads every domain the forest declared.
     /// </summary>
     /// <remarks>
@@ -88,6 +94,48 @@ public sealed record CapturePlan(
     /// </remarks>
     public bool IsComplete =>
         DeclaredDomains.Count == Units.Count(u => u.Kind == NamingContextKind.Domain);
+
+    /// <summary>Validates that each exclusion identifies one domain exactly as the forest declared it.</summary>
+    public AuditError? ValidateExclusions(
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions)
+    {
+        ArgumentNullException.ThrowIfNull(exclusions);
+
+        foreach (var (key, exclusion) in exclusions)
+        {
+            if (!string.Equals(key, exclusion.NamingContext, StringComparison.OrdinalIgnoreCase))
+            {
+                return InvalidExclusion(
+                    $"The exclusion dictionary names '{key}' while its attestation names "
+                    + $"'{exclusion.NamingContext}'.");
+            }
+
+            if (!DomainDnsNames.TryGetValue(key, out var declaredDnsName))
+            {
+                return InvalidExclusion(
+                    $"The exclusion names '{key}', which is not a domain naming context this "
+                    + "forest declared.");
+            }
+
+            if (!string.Equals(
+                    declaredDnsName, exclusion.DomainFqdn, StringComparison.OrdinalIgnoreCase))
+            {
+                return InvalidExclusion(
+                    $"The forest pairs '{key}' with '{declaredDnsName}', while the attestation "
+                    + $"pairs it with '{exclusion.DomainFqdn}'.");
+            }
+        }
+
+        return null;
+    }
+
+    private static AuditError InvalidExclusion(string detail) => AuditError.Create(
+        ErrorCategory.Capture,
+        "ExclusionDoesNotMatchDeclaredDomain",
+        ErrorSeverity.Failed,
+        detail + " No run was created because an exclusion must identify exactly one domain as "
+            + "the forest declared it.",
+        context: null);
 
     /// <summary>
     /// The same plan with the named domain partitions taken out of it.
@@ -273,6 +321,12 @@ public sealed record CapturePlan(
                 .Select(nc => nc.Trim())
                 .ToList(),
             declared,
-            forestFqdn.Trim());
+            forestFqdn.Trim())
+        {
+            DomainDnsNames = forestDomains.ToDictionary(
+                domain => domain.NamingContext,
+                domain => domain.DnsName,
+                StringComparer.OrdinalIgnoreCase),
+        };
     }
 }

@@ -155,6 +155,9 @@ public interface ICapturedObjectSink
     /// <param name="capturedObject">The object, with every attribute complete.</param>
     void Receive(CapturedObject capturedObject);
 
+    /// <summary>Discards everything received for the partition attempt currently open.</summary>
+    void AbortPartition();
+
     /// <summary>
     /// Says the pass finished, and what it read.
     /// </summary>

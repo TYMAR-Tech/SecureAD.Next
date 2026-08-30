@@ -176,6 +176,42 @@ public sealed class BundleWriterTests : IDisposable
     }
 
     [Fact]
+    public void ASealThatCannotBeOpenedIsUnreadable()
+    {
+        CompleteAnEmptyBundle();
+        using var locked = File.Open(
+            BundleLayout.SealPath(_directory), FileMode.Open, FileAccess.Read, FileShare.None);
+
+        var verdict = BundleSealing.Verify(_directory);
+
+        Assert.Equal(SealState.Unreadable, verdict.State);
+    }
+
+    [Fact]
+    public void ReadingASealThatCannotBeOpenedReturnsNoContents()
+    {
+        CompleteAnEmptyBundle();
+        var sealPath = BundleLayout.SealPath(_directory);
+        using var locked = File.Open(sealPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        var contents = BundleSealing.ReadSeal(sealPath);
+
+        Assert.Null(contents);
+    }
+
+    [Fact]
+    public void EvidenceThatCannotBeHashedIsUnreadable()
+    {
+        CompleteAnEmptyBundle();
+        using var locked = File.Open(
+            BundleLayout.EvidencePath(_directory), FileMode.Open, FileAccess.Read, FileShare.None);
+
+        var verdict = BundleSealing.Verify(_directory);
+
+        Assert.Equal(SealState.Unreadable, verdict.State);
+    }
+
+    [Fact]
     public void ARemovedSealIsAbsent()
     {
         CompleteAnEmptyBundle();

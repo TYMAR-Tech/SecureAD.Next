@@ -43,6 +43,7 @@ public sealed class HistoricalRecordDocumentationTests
         "domain_coverage",
         "forest_partition_coverage",
         "continuation_reference",
+        "continuation_reconciliation_item",
         "unread_partition",
         "excluded_domain",
         "unresolved_reference",

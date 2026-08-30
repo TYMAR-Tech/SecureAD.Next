@@ -2,6 +2,8 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 using Xunit;
 
@@ -92,6 +94,62 @@ public sealed class BundleReaderTests : IDisposable
         using var opening = Open();
 
         Assert.True(opening.Value.Description.EveryDeclaredUnitRecordedAsRead);
+    }
+
+    [Fact]
+    public void AnOpenedBundleCarriesTheCaptureSemanticVersions()
+    {
+        WriteABundle();
+
+        using var opening = Open();
+
+        Assert.Equal(
+            (CapturedAttributeCatalog.Version, SchemaGuidCatalog.Version, SecurityDescriptorParser.Version),
+            (opening.Value.Description.CapturedAttributeCatalogVersion,
+             opening.Value.Description.SchemaGuidCatalogVersion,
+             opening.Value.Description.SecurityDescriptorParserVersion));
+    }
+
+    [Theory]
+    [InlineData("captured_attribute_catalog_version", "Evidence.CapturedAttributeCatalogVersionUnsupported")]
+    [InlineData("schema_guid_catalog_version", "Evidence.SchemaGuidCatalogVersionUnsupported")]
+    [InlineData("security_descriptor_parser_version", "Evidence.SecurityDescriptorParserVersionUnsupported")]
+    public void ABundleWithDifferentCaptureSemanticsIsRefused(string column, string reason)
+    {
+        WriteABundle();
+        WithTheEvidenceOpen($"UPDATE bundle SET {column} = 0");
+        BundleSealing.Seal(
+            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+
+        using var opening = Open();
+
+        Assert.Equal(reason, opening.Error.Code);
+    }
+
+    [Fact]
+    public void AnOpenedBundleRoundTripsTheContinuationReconciliation()
+    {
+        using (var writer = BundleWriter.Create(_directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            writer.Complete(
+                OneDomainRead(),
+                Finished,
+                new ContinuationReconciliation(
+                    ContinuationReconciliationOutcome.Incomplete,
+                    ["DC=child,DC=contoso,DC=com"],
+                    ["not an LDAP URL"],
+                    ["DC=contoso,DC=com"]));
+        }
+
+        using var opening = Open();
+
+        var reconciliation = opening.Value.ContinuationReconciliation;
+        Assert.Equal(
+            "Incomplete|DC=child,DC=contoso,DC=com|not an LDAP URL|DC=contoso,DC=com",
+            $"{reconciliation.Outcome}|{string.Join(';', reconciliation.UnplannedNamingContexts)}|"
+            + $"{string.Join(';', reconciliation.UnreadableReferences)}|"
+            + string.Join(';', reconciliation.UnitsWithSuppressedReferrals));
     }
 
     [Fact]

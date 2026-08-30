@@ -42,6 +42,7 @@ public sealed class BundleCaptureSink : ICapturedObjectSink
     private readonly TimeProvider _time;
 
     private PartitionCoverage? _openPartition;
+    private GpoInventory.Checkpoint? _policyCheckpoint;
 
     /// <summary>
     /// Creates a sink writing into <paramref name="writer"/>.
@@ -107,6 +108,8 @@ public sealed class BundleCaptureSink : ICapturedObjectSink
             ContinuationReferences: [],
             referralsSuppressed);
 
+        _policyCheckpoint = Policies.Mark();
+
         _writer.BeginPartition(
             unit.NamingContext, unit.Kind, unit.DomainController, connectionSecurity);
     }
@@ -169,6 +172,19 @@ public sealed class BundleCaptureSink : ICapturedObjectSink
 
         _writer.CompletePartition(coverage);
         _openPartition = null;
+        _policyCheckpoint = null;
+    }
+
+    /// <inheritdoc/>
+    public void AbortPartition()
+    {
+        if (_openPartition is null || _policyCheckpoint is not { } checkpoint)
+            throw new InvalidOperationException("There is no partition attempt to abort.");
+
+        _writer.AbortPartition();
+        Policies.Restore(checkpoint);
+        _openPartition = null;
+        _policyCheckpoint = null;
     }
 
     /// <summary>

@@ -212,7 +212,7 @@ public static class BundleSealing
         {
             return JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealFilePath));
         }
-        catch (JsonException)
+        catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
         {
             return null;
         }
@@ -241,7 +241,7 @@ public static class BundleSealing
         {
             contents = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealPath));
         }
-        catch (JsonException error)
+        catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
         {
             return new SealVerdict(
                 SealState.Unreadable,
@@ -266,7 +266,18 @@ public static class BundleSealing
                 + "absent, and not as a mismatch either, because nothing was compared.");
         }
 
-        var actual = HashFile(dataPath);
+        string actual;
+        try
+        {
+            actual = HashFile(dataPath);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return new SealVerdict(
+                SealState.Unreadable,
+                $"The {artefact} at '{dataPath}' could not be hashed: {error.Message}. The seal "
+                + "cannot be called intact or mismatched because no comparison was completed.");
+        }
 
         return string.Equals(actual, contents.Hash, StringComparison.Ordinal)
             ? new SealVerdict(
