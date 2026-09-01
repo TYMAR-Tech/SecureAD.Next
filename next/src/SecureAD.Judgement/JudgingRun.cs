@@ -125,8 +125,8 @@ public static class JudgingRun
         // What the scheduled rules say they read beyond the captured object. Gathered before any
         // object is offered, because the answer decides whether this judging can run at all.
         var wanted = rules
-            .SelectMany(r => r.RequiresDerivedFacts)
-            .Distinct()
+            .SelectMany(r => r.Definition.RequiredDerivedFacts)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         DerivationReader? derivation = null;
@@ -163,7 +163,8 @@ public static class JudgingRun
 
             var product = stored.ProtectedPrincipals;
 
-            if (wanted.Contains(DerivedFactKind.ProtectedPrincipals)
+            if (wanted.Contains(
+                    nameof(DerivedFactKind.ProtectedPrincipals), StringComparer.OrdinalIgnoreCase)
                 && product.Availability != ProtectedPrincipalProductAvailability.Available)
             {
                 derivation.Dispose();

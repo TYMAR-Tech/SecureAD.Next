@@ -18,9 +18,17 @@ namespace SecureAD.Judgement;
 public static class RuleCatalogue
 {
     /// <summary>Every executable rule a judging schedules, in no significant order.</summary>
+    /// <remarks>
+    /// <b>Adding a rule that reads derived facts changes what a judging requires.</b>
+    /// <see cref="AdminCountWithoutProtection"/> declares
+    /// <see cref="DerivedFactKind.ProtectedPrincipals"/>, so from here on a scheduled judging needs
+    /// a derivation bound to the same evidence, and refuses without one per
+    /// <c>docs/decisions/0091</c>. The Shell derives before it judges, so an audit is unaffected.
+    /// </remarks>
     public static IReadOnlyList<IRule> All { get; } =
     [
         new UnconstrainedDelegationOnAccount(),
         new UnconstrainedDelegationOnNonDomainController(),
+        new AdminCountWithoutProtection(),
     ];
 }

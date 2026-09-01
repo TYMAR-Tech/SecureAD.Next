@@ -401,6 +401,18 @@ public sealed class JudgementWriter : IDisposable
                     });
                 return;
 
+            case AdminCountWithoutProtectionEvidence marker:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_admincount_without_protection (finding_id, sid) "
+                    + "VALUES ($id, $sid)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue("$sid", marker.Sid);
+                    });
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

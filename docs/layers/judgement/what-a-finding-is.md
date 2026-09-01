@@ -38,6 +38,8 @@ they are durable data rather than executable policy.
 | `DerivedFacts` | The derived facts offered to a rule beside the object it is judging |
 | `UnresolvedInput` | One reason a derived fact left a rule unable to decide |
 | `UnresolvedReason` | Why it fell short — never derived, disputed, unverified, or unreadable |
+| `AdminCountWithoutProtection` | SEC-030 — a protected-account marker with a blocked DACL that nothing protects |
+| `AdminCountWithoutProtectionEvidence` | The identity SEC-030 asked the derivation about |
 | `UnconstrainedDelegationOnAccount` | SEC-010 — a user or service account trusted for unconstrained delegation |
 | `UnconstrainedDelegationOnNonDomainController` | SEC-011 — a member computer trusted for it |
 | `UnconstrainedDelegationEvidence` | What an unconstrained delegation finding rests on |

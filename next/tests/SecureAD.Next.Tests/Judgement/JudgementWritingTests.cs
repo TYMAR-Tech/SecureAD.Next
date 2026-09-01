@@ -356,12 +356,14 @@ public sealed class JudgementWritingTests
     private static readonly RuleDefinition Sec010 = new(
         "SEC-010", "Unconstrained delegation on an account", Severity.High, 1,
         ["user", "computer"],
-        ["userAccountControl", "objectClass", "primaryGroupID"]);
+        ["userAccountControl", "objectClass", "primaryGroupID"],
+        RequiredDerivedFacts: []);
 
     private static readonly RuleDefinition Sec011 = new(
         "SEC-011", "Unconstrained delegation on a member computer", Severity.High, 1,
         ["user", "computer"],
-        ["userAccountControl", "objectClass", "primaryGroupID"]);
+        ["userAccountControl", "objectClass", "primaryGroupID"],
+        RequiredDerivedFacts: []);
 
     private static Finding SomeFinding(string ruleId = "SEC-010") =>
         new(

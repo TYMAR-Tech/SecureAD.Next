@@ -97,7 +97,8 @@ public sealed class UnconstrainedDelegationOnAccount : IRule
         Severity.High,
         Version: 1,
         UnconstrainedDelegation.SubjectClasses,
-        UnconstrainedDelegation.RequiredAttributes);
+        UnconstrainedDelegation.RequiredAttributes,
+        RequiredDerivedFacts: []);
 
     /// <inheritdoc />
     public RuleVerdict Judge(ObjectAttributes subject) =>
@@ -121,7 +122,8 @@ public sealed class UnconstrainedDelegationOnNonDomainController : IRule
         Severity.High,
         Version: 1,
         UnconstrainedDelegation.SubjectClasses,
-        UnconstrainedDelegation.RequiredAttributes);
+        UnconstrainedDelegation.RequiredAttributes,
+        RequiredDerivedFacts: []);
 
     /// <inheritdoc />
     public RuleVerdict Judge(ObjectAttributes subject) =>

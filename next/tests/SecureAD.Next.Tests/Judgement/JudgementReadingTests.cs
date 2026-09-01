@@ -297,7 +297,8 @@ public sealed class JudgementReadingTests
     private static readonly RuleDefinition Sec010 = new(
         "SEC-010", "Unconstrained delegation on an account", Severity.High, 1,
         ["user", "computer"],
-        ["userAccountControl", "objectClass", "primaryGroupID"]);
+        ["userAccountControl", "objectClass", "primaryGroupID"],
+        RequiredDerivedFacts: []);
 
     private static Finding SomeFinding() =>
         new(

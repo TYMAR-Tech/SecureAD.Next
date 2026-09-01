@@ -212,6 +212,25 @@ public static class JudgementSchema
             PRIMARY KEY (finding_id)
         )
         """,
+
+        // What SEC-030 rested on, per the rule above.
+        //
+        // ONE COLUMN, AND IT IS THE IDENTITY THE DERIVATION WAS ASKED ABOUT. The rule's other two
+        // inputs are already elsewhere: adminCount had to be 1 or there would be no finding, and
+        // the blocked DACL is in the evidence beside this bundle. Copying either here would create
+        // a second account of the same fact that can disagree with the first.
+        //
+        // THERE IS NO DELETED COLUMN. Capture does not read isDeleted (F-S20-1), so every object a
+        // bundle carries is live, and a column recording that would be false on every row forever -
+        // which is the fault that had the flag removed from the evidence schema in the first place.
+        // docs/decisions/0091 puts tombstones outside this rule; P-108 tracks capturing them.
+        """
+        CREATE TABLE finding_admincount_without_protection (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            sid                                 TEXT    NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
     ];
 
     // Built after writing rather than during it, for the reason the evidence schema gives: an index

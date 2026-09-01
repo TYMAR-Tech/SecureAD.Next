@@ -52,7 +52,12 @@ The consequence is accepted deliberately: SEC-030 may report very little on a fo
 is incomplete. Reporting little and saying why is the intended behaviour, not a defect to be tuned
 away.
 
-### A deleted object is reported, and named as deleted
+### A deleted object is out of scope, because the evidence does not carry one
+
+*This section replaced its original wording on 2026-08-31, the same day. The record first decided
+that a deleted object would be reported and marked as deleted. That could not be built: capture does
+not read `isDeleted`, and the decision was written without checking. The reasoning that follows is
+what the check produced.*
 
 Microsoft states in
 [Creating and Deleting Objects in Active Directory Domain Services](https://learn.microsoft.com/windows/win32/ad/creating-and-deleting-objects-in-active-directory-domain-services#deleting-an-object):
@@ -60,21 +65,32 @@ Microsoft states in
 > The security descriptor of the deleted object is retained and inheritable access control entries are
 > not propagated. The security descriptor is retained as-is at the time the object is deleted.
 
-**Every tombstone therefore has a non-inheriting DACL.** That is what deletion does, not a
-misconfiguration, so a deleted object satisfies SEC-030's DACL condition automatically. Mixing them
-into the ordinary population would produce a body of positives that mean nothing and bury the ones
-that do. The same page lists the attributes deletion retains - `objectSid`, `objectClass`,
-`userAccountControl` among them - and `adminCount` is **not** among them, so most deleted objects will
-not meet the first condition either.
+**Every tombstone therefore has a non-inheriting DACL**, so a deleted object satisfies SEC-030's ACL
+condition automatically. The same page lists what deletion retains - `objectSid`, `objectClass` and
+`userAccountControl` among them - and **`adminCount` is not among them**, so most tombstones fail the
+first condition as well. A rule reporting them would produce a body of positives whose ACL state
+means nothing, and would still miss most of the population it was aiming at.
 
-They are still worth reporting, for a different reason than a live object. Microsoft warns in
+**The evidence does not carry them at all.** Capture never reads `isDeleted`; the flag was removed on
+2026-08-12 as `F-S20-1` because it would have been false on every row of every bundle. Reaching a
+tombstone needs the Deleted Objects container, an LDAP control, and read access a capture account is
+not granted by default. That is a capture-stage capability and a decision about what permissions this
+product asks a customer for - not a rule.
+
+**The escalation path behind the question is real, and a different rule catches it.** Microsoft warns
+in
 [Restoring Deleted Objects](https://learn.microsoft.com/windows/win32/ad/restoring-deleted-objects#permissions-required-to-restore-a-deleted-object)
-that reanimation lets the restorer set the initial password and thereby gain control of the account.
-A deleted object that was privileged is a restore away from being a privileged account somebody else
-owns.
+that granting *Reanimate Tombstone* is a security risk, because restoring an account means setting its
+first password and thereby controlling it. With
+[AD Recycle Bin](https://learn.microsoft.com/windows-server/identity/ad-ds/get-started/adac/active-directory-recycle-bin)
+enabled - the norm at 2008 R2 and above - a restored account *"automatically regain[s] all group
+memberships and corresponding access rights ... within and across domains"*, so the restorer inherits
+a working privileged account rather than a hollow one.
 
-So: a deleted object matching the condition is reported and **marked as deleted**, never counted with
-the live findings. `isDeleted` is the discriminator.
+**That risk is held by whoever holds the right, not by which objects are in the bin.** It is a
+control-edge question, answerable from ACLs on the naming-context root that capture already collects,
+and it belongs to stage 6. Recorded as `P-109`. Tombstone capture is recorded separately as `P-108`
+and is deferred until the rule catalogue is built; it adds visibility, and is not the control.
 
 ### Judging refuses rather than reporting nothing
 

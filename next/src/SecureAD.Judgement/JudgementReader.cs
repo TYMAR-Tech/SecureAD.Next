@@ -477,9 +477,10 @@ public sealed class JudgementReader : IDisposable
                    f.severity, f.distinguished_name, f.detail, f.coverage,
                    d.user_account_control, d.is_computer, d.server_trust_account_bit,
                    d.primary_group_is_domain_controller, d.under_domain_controllers_ou,
-                   f.domain_fqdn, f.object_class
+                   f.domain_fqdn, f.object_class, a.sid
             FROM finding f
             LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
+            LEFT JOIN finding_admincount_without_protection a ON a.finding_id = f.finding_id
             ORDER BY f.finding_id
             """;
 
@@ -506,21 +507,32 @@ public sealed class JudgementReader : IDisposable
     {
         var ruleId = reader.GetString(1);
 
-        if (reader.IsDBNull(9))
+        // Which table answered decides the kind. Checked before anything is read out of either,
+        // because a finding whose evidence row is missing everywhere has lost what it rests on -
+        // and presenting it anyway would show an operator a conclusion with nothing behind it.
+        FindingEvidence evidence;
+
+        if (!reader.IsDBNull(9))
+        {
+            evidence = new UnconstrainedDelegationEvidence(
+                (uint)reader.GetInt64(9),
+                reader.GetInt64(10) != 0,
+                new DomainControllerSignals(
+                    reader.GetInt64(11) != 0,
+                    reader.GetInt64(12) != 0,
+                    reader.GetInt64(13) != 0));
+        }
+        else if (!reader.IsDBNull(16))
+        {
+            evidence = new AdminCountWithoutProtectionEvidence(reader.GetString(16));
+        }
+        else
         {
             throw new InvalidOperationException(
                 $"Finding {reader.GetInt64(0)} ({ruleId}) is stored with no evidence row, so "
                 + "what it rests on has been lost. A finding that cannot say what it rests on "
                 + "must not be presented as one.");
         }
-
-        var evidence = new UnconstrainedDelegationEvidence(
-            (uint)reader.GetInt64(9),
-            reader.GetInt64(10) != 0,
-            new DomainControllerSignals(
-                reader.GetInt64(11) != 0,
-                reader.GetInt64(12) != 0,
-                reader.GetInt64(13) != 0));
 
         return new Finding(
             ruleId,

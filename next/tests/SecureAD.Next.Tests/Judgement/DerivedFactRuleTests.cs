@@ -41,10 +41,8 @@ public sealed class DerivedFactRuleTests
             Severity.Medium,
             1,
             ["user"],
-            ["objectSid"]);
-
-        public IReadOnlyList<DerivedFactKind> RequiresDerivedFacts { get; } =
-            [DerivedFactKind.ProtectedPrincipals];
+            ["objectSid"],
+            [nameof(DerivedFactKind.ProtectedPrincipals)]);
 
         /// <summary>What it saw, so a test can prove the package actually arrived.</summary>
         public StoredProtectedPrincipalDerivation? Seen { get; private set; }
@@ -69,7 +67,8 @@ public sealed class DerivedFactRuleTests
             Severity.Low,
             1,
             ["user"],
-            ["objectSid"]);
+            ["objectSid"],
+            RequiredDerivedFacts: []);
 
         public int Judged { get; private set; }
 
@@ -78,6 +77,30 @@ public sealed class DerivedFactRuleTests
             Judged++;
             return RuleVerdict.Judged([]);
         }
+    }
+
+    /// <summary>
+    /// A rule that reaches the derived facts and finds them undecided, the way SEC-030 will for a
+    /// principal whose only route runs through a disputed catalogue entry.
+    /// </summary>
+    private sealed class CannotResolve : IRule
+    {
+        public RuleDefinition Definition { get; } = new(
+            "TEST-UNRESOLVED",
+            "Cannot resolve",
+            Severity.Medium,
+            1,
+            ["user"],
+            ["objectSid"],
+            [nameof(DerivedFactKind.ProtectedPrincipals)]);
+
+        public RuleVerdict Judge(ObjectAttributes subject) =>
+            throw new InvalidOperationException("Offered the wrong overload.");
+
+        public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived) =>
+            RuleVerdict.CouldNotResolve(
+                [new UnresolvedInput(
+                    DerivedFactKind.ProtectedPrincipals, UnresolvedReason.ClaimDisputed)]);
     }
 
     [Fact]
@@ -227,6 +250,57 @@ public sealed class DerivedFactRuleTests
 
         using var judgement = JudgementReader.Open(directory).Value!;
         Assert.Null(judgement.Read().Description.DerivationGenerationId);
+    }
+
+    /// <summary>
+    /// An unresolved derived fact reaches the store under its own name, and is not reported as a
+    /// missing attribute.
+    /// </summary>
+    /// <remarks>
+    /// <b>The distinction is the whole point of the vocabulary.</b> Telling an operator that
+    /// <c>objectSid</c> was not captured, when what actually happened is that Microsoft's pages
+    /// disagree about a group, sends him to re-run a capture that will change nothing.
+    /// <c>docs/decisions/0091</c> requires the two to stay apart, and this is where that is
+    /// observed rather than asserted in prose.
+    /// </remarks>
+    [Fact]
+    public void Judging_StoresAnUnresolvedDerivedFactUnderItsOwnNameAndNotAsAnAttribute()
+    {
+        var directory = CapturedButNotDerived();
+
+        Assert.True(
+            Stage2aRun.Derive(
+                directory,
+                ExpansionBudget.Bulk,
+                Started,
+                Stage2aRun.Unwatched,
+                RunLog.Discarded,
+                CancellationToken.None).IsSuccess);
+
+        Assert.True(
+            JudgingRun.Judge(
+                directory,
+                [new CannotResolve()],
+                Started,
+                Started,
+                JudgingRun.NobodyIsWatching,
+                RunLog.Discarded,
+                CancellationToken.None).IsSuccess);
+
+        using var judgement = JudgementReader.Open(directory).Value!;
+        var run = Assert.Single(judgement.Read().RulesRun);
+
+        Assert.Equal(RuleExecutionOutcome.Indeterminate, run.Outcome);
+        Assert.Equal(0, run.ObjectsJudged);
+        Assert.Equal(1, run.ObjectsNotJudged);
+
+        var recorded = Assert.Single(run.MissingInputs);
+        Assert.Equal("ProtectedPrincipals.ClaimDisputed", recorded.Attribute);
+        Assert.Equal(1, recorded.ObjectsAffected);
+
+        // The negative control: nothing here may look like an LDAP attribute name, because that is
+        // exactly the confusion this vocabulary exists to prevent.
+        Assert.DoesNotContain(run.MissingInputs, m => m.Attribute == "objectSid");
     }
 
     /// <summary>

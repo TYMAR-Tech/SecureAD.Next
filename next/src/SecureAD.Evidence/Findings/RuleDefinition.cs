@@ -37,13 +37,30 @@ namespace SecureAD.Evidence.Findings;
 /// <param name="RequiredAttributes">
 /// Every attribute this rule reads, by LDAP display name. Declaring none fails the build.
 /// </param>
+/// <param name="RequiredDerivedFacts">
+/// Every kind of derived fact this rule reads, by name. Empty for a rule that reads only the
+/// captured object, which is most of them.
+/// <para>
+/// <b>Named here rather than on the executable rule</b> so it travels with the rest of what a rule
+/// declares, and so a stored judgement can say what its rules needed. Held as text because Evidence
+/// owns durable rule data and must not reference the component above it that names the kinds.
+/// </para>
+/// <para>
+/// <b>Required rather than defaulted</b>, per gate 1. Writing an empty list is a rule author saying
+/// this rule reads only the captured object; a default would let one be added that quietly says
+/// nothing, and a rule whose derived inputs nobody wrote down is the failure
+/// <c>docs/decisions/0083</c> exists to prevent - stamped coverage-complete on a bundle that never
+/// carried what it needed.
+/// </para>
+/// </param>
 public sealed record RuleDefinition(
     string Id,
     string Name,
     Severity Severity,
     int Version,
     IReadOnlyList<string> SubjectClasses,
-    IReadOnlyList<string> RequiredAttributes)
+    IReadOnlyList<string> RequiredAttributes,
+    IReadOnlyList<string> RequiredDerivedFacts)
 {
     /// <summary>
     /// Whether this definition says what the rule is about and what it reads.

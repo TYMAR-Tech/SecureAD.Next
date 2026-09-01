@@ -75,26 +75,17 @@ public sealed record RuleVerdict(
 /// </para>
 /// <para>
 /// <b>A rule declares the derived facts it reads, and is never handed less than it declared.</b>
-/// <see cref="RequiresDerivedFacts"/> is empty for a rule that reads only the captured object, and
-/// such a rule is unaffected by any of this. A rule that names a kind is not offered a judging whose
-/// derivation is absent or belongs to different evidence - <c>JudgingRun</c> refuses the run
-/// instead, per <c>docs/decisions/0091</c>, because a per-object "could not judge" repeated across a
-/// forest is a wall of nothing an operator has to decode.
+/// <see cref="RuleDefinition.RequiredDerivedFacts"/> is empty for a rule that reads only the
+/// captured object, and such a rule is unaffected by any of this. A rule that names a kind is not
+/// offered a judging whose derivation is absent or belongs to different evidence - <c>JudgingRun</c>
+/// refuses the run instead, per <c>docs/decisions/0091</c>, because a per-object "could not judge"
+/// repeated across a forest is a wall of nothing an operator has to decode.
 /// </para>
 /// </remarks>
 public interface IRule
 {
     /// <summary>What this rule is, as durable data.</summary>
     RuleDefinition Definition { get; }
-
-    /// <summary>
-    /// The derived facts this rule reads. Empty means it reads only the captured object.
-    /// </summary>
-    /// <remarks>
-    /// Defaulted to empty so a rule that needs nothing derived says nothing about it. The two
-    /// delegation rules predate derived facts entirely and are correct as they stand.
-    /// </remarks>
-    IReadOnlyList<DerivedFactKind> RequiresDerivedFacts => [];
 
     /// <summary>What this rule makes of one object, and what it could not read to decide.</summary>
     /// <param name="subject">The object to judge.</param>
