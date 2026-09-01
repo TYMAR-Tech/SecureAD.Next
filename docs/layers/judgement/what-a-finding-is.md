@@ -34,6 +34,10 @@ they are durable data rather than executable policy.
 | `RuleCatalogue` | Every rule this product runs, as one written-out list |
 | `RuleDefinition` | What a rule is as data — its identity, wording and declared inputs |
 | `RuleVerdict` | What one rule made of one object, and what it could not read |
+| `DerivedFactKind` | A kind of derived fact a rule can declare it reads |
+| `DerivedFacts` | The derived facts offered to a rule beside the object it is judging |
+| `UnresolvedInput` | One reason a derived fact left a rule unable to decide |
+| `UnresolvedReason` | Why it fell short — never derived, disputed, unverified, or unreadable |
 | `UnconstrainedDelegationOnAccount` | SEC-010 — a user or service account trusted for unconstrained delegation |
 | `UnconstrainedDelegationOnNonDomainController` | SEC-011 — a member computer trusted for it |
 | `UnconstrainedDelegationEvidence` | What an unconstrained delegation finding rests on |

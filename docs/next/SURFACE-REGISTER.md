@@ -290,10 +290,14 @@ The table below sits between the two markers around it, so the test parses only 
 | FindingEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | FindingSubject | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | FindingSubjectKind | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| DerivedFactKind | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| DerivedFacts | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | IRule | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleDefinition | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleVerdict | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnresolvedInput | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UnresolvedReason | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | Severity | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | UnconstrainedDelegationEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | UnconstrainedDelegationOnAccount | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

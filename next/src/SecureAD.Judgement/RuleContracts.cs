@@ -25,23 +25,42 @@ namespace SecureAD.Judgement;
 /// Declared attributes this object did not carry, so the rule could not reach a verdict on it.
 /// Empty when everything the rule needed was present.
 /// </param>
+/// <param name="Unresolved">
+/// Why a derived fact could not settle the question, when that is what stopped the rule. Empty
+/// where nothing derived was in doubt.
+/// </param>
 public sealed record RuleVerdict(
     IReadOnlyList<Finding> Findings,
-    IReadOnlyList<string> InputsNotCaptured)
+    IReadOnlyList<string> InputsNotCaptured,
+    IReadOnlyList<UnresolvedInput> Unresolved)
 {
     /// <summary>A verdict reached with everything the rule asked for.</summary>
     /// <param name="findings">What was found, if anything.</param>
-    public static RuleVerdict Judged(IReadOnlyList<Finding> findings) => new(findings, []);
+    public static RuleVerdict Judged(IReadOnlyList<Finding> findings) => new(findings, [], []);
 
     /// <summary>No verdict, because the object did not carry what the rule declared it reads.</summary>
     /// <param name="missing">The declared attributes that were absent.</param>
-    public static RuleVerdict CouldNotJudge(IReadOnlyList<string> missing) => new([], missing);
+    public static RuleVerdict CouldNotJudge(IReadOnlyList<string> missing) => new([], missing, []);
+
+    /// <summary>
+    /// No verdict, because a derived fact did not settle the question - it was never derived, or
+    /// Microsoft's own documentation does not agree about it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Kept apart from an uncaptured attribute deliberately.</b> Reporting a disputed catalogue
+    /// claim as a missing attribute would tell an operator the capture failed, and send him to look
+    /// at his forest for a defect that is in Microsoft's documentation. <c>docs/decisions/0091</c>
+    /// requires the two to stay distinct.
+    /// </remarks>
+    /// <param name="unresolved">What was undecided, and why.</param>
+    public static RuleVerdict CouldNotResolve(IReadOnlyList<UnresolvedInput> unresolved) =>
+        new([], [], unresolved);
 
     /// <summary>
     /// Whether the rule had everything it declared it needed. False means silence here is not a
     /// statement that the object is clean.
     /// </summary>
-    public bool IsComplete => InputsNotCaptured.Count == 0;
+    public bool IsComplete => InputsNotCaptured.Count == 0 && Unresolved.Count == 0;
 }
 
 /// <summary>
@@ -55,8 +74,12 @@ public sealed record RuleVerdict(
 /// rule.
 /// </para>
 /// <para>
-/// The single-object method is retained unchanged in this seam-only move. A wider declared-input
-/// package is a later decision and must not be smuggled into this ownership correction.
+/// <b>A rule declares the derived facts it reads, and is never handed less than it declared.</b>
+/// <see cref="RequiresDerivedFacts"/> is empty for a rule that reads only the captured object, and
+/// such a rule is unaffected by any of this. A rule that names a kind is not offered a judging whose
+/// derivation is absent or belongs to different evidence - <c>JudgingRun</c> refuses the run
+/// instead, per <c>docs/decisions/0091</c>, because a per-object "could not judge" repeated across a
+/// forest is a wall of nothing an operator has to decode.
 /// </para>
 /// </remarks>
 public interface IRule
@@ -64,7 +87,27 @@ public interface IRule
     /// <summary>What this rule is, as durable data.</summary>
     RuleDefinition Definition { get; }
 
+    /// <summary>
+    /// The derived facts this rule reads. Empty means it reads only the captured object.
+    /// </summary>
+    /// <remarks>
+    /// Defaulted to empty so a rule that needs nothing derived says nothing about it. The two
+    /// delegation rules predate derived facts entirely and are correct as they stand.
+    /// </remarks>
+    IReadOnlyList<DerivedFactKind> RequiresDerivedFacts => [];
+
     /// <summary>What this rule makes of one object, and what it could not read to decide.</summary>
     /// <param name="subject">The object to judge.</param>
     RuleVerdict Judge(ObjectAttributes subject);
+
+    /// <summary>
+    /// What this rule makes of one object, given the derived facts it declared.
+    /// </summary>
+    /// <remarks>
+    /// Defaulted to the single-object method, so a rule reading only captured attributes implements
+    /// one method and is offered the package it never asked for without noticing it.
+    /// </remarks>
+    /// <param name="subject">The object to judge.</param>
+    /// <param name="derived">The derived facts, empty for an Evidence-only judging.</param>
+    RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived) => Judge(subject);
 }

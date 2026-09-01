@@ -90,3 +90,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0088](decisions/0088-a-run-writes-a-log.md) | 2026-08-28 | Accepted | A run writes a log, beside the evidence and outside the seal |
 | [0089](decisions/0089-principal-protection-and-member-propagation-are-separate-claims.md) | 2026-08-28 | Accepted | Principal protection and member propagation are separate claims |
 | [0090](decisions/0090-adminsdholder-facts-are-a-persisted-derivation-product.md) | 2026-08-30 | Accepted | AdminSDHolder facts are a persisted Derivation product |
+| [0091](decisions/0091-sec-030-reports-a-marker-without-protection.md) | 2026-08-31 | Accepted | SEC-030 reports a marker without protection, and names a deleted object as deleted |

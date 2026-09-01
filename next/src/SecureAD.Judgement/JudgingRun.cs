@@ -1,4 +1,5 @@
 using System.Globalization;
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
@@ -121,10 +122,73 @@ public static class JudgingRun
             return Result<JudgementRunState>.Failure(scope.Error!);
         }
 
+        // What the scheduled rules say they read beyond the captured object. Gathered before any
+        // object is offered, because the answer decides whether this judging can run at all.
+        var wanted = rules
+            .SelectMany(r => r.RequiresDerivedFacts)
+            .Distinct()
+            .ToList();
+
+        DerivationReader? derivation = null;
+        DerivedFacts derived = DerivedFacts.None;
+        Guid? derivationGeneration = null;
+
+        if (wanted.Count > 0)
+        {
+            // Opened rather than merely checked for. DerivationReader.Open is what enforces the
+            // binding - it refuses a store whose generation does not match the manifest, and one
+            // whose evidence seal is not this bundle's - so asking it to open is a stronger question
+            // than asking whether a file is present. A derivation belonging to different evidence
+            // would produce confidently wrong findings, which docs/decisions/0091 names as the one
+            // thing this product must not do.
+            var openedDerivation = DerivationReader.Open(bundleDirectory);
+
+            if (!openedDerivation.IsSuccess)
+            {
+                var refusal = Failure(
+                    "DerivationUnavailable",
+                    $"{string.Join(", ", wanted)} was declared by a scheduled rule, and this bundle's "
+                    + $"derivation could not be opened: {openedDerivation.Error!.Description} A rule "
+                    + "that reads derived facts is not run against evidence alone, because silence "
+                    + "from it would read as nothing found. Derive this bundle and judge it again.",
+                    bundleDirectory);
+
+                log.Record(JudgePhase, refusal.Error!, []);
+                return refusal;
+            }
+
+            derivation = openedDerivation.Value!;
+            var stored = derivation.Read();
+            derivationGeneration = stored.Description.GenerationId;
+
+            var product = stored.ProtectedPrincipals;
+
+            if (wanted.Contains(DerivedFactKind.ProtectedPrincipals)
+                && product.Availability != ProtectedPrincipalProductAvailability.Available)
+            {
+                derivation.Dispose();
+
+                var refusal = Failure(
+                    "DerivedFactsAbsent",
+                    $"A scheduled rule reads {DerivedFactKind.ProtectedPrincipals}, and this "
+                    + $"bundle's derivation does not carry it ({product.Availability}). The phase "
+                    + "not having run is not the same as nothing being protected, so this judging "
+                    + "stops rather than reporting an answer it does not have.",
+                    bundleDirectory);
+
+                log.Record(JudgePhase, refusal.Error!, []);
+                return refusal;
+            }
+
+            derived = new DerivedFacts(product.Value, bundle.ReadPermissions);
+        }
+
+        using var _ = derivation;
+
         using var writer = JudgementWriter.Create(
             bundleDirectory,
             seal.Hash,
-            derivationGenerationId: null,
+            derivationGeneration,
             startedUtc,
             evaluationAsOf);
         writer.RecordEvidenceScope(scope.Value!);
@@ -146,7 +210,7 @@ public static class JudgingRun
             cancellationToken.ThrowIfCancellationRequested();
 
             foreach (var tally in tallies)
-                tally.Offer(subject);
+                tally.Offer(subject, derived);
 
             objectsRead++;
 
@@ -266,7 +330,8 @@ public static class JudgingRun
         /// of a real forest were unreadable.
         /// </remarks>
         /// <param name="subject">The object to judge.</param>
-        public void Offer(ObjectAttributes subject)
+        /// <param name="derived">The derived facts, empty for an Evidence-only judging.</param>
+        public void Offer(ObjectAttributes subject, DerivedFacts derived)
         {
             if (_error is not null)
                 return;
@@ -281,7 +346,7 @@ public static class JudgingRun
 
             try
             {
-                verdict = rule.Judge(subject);
+                verdict = rule.Judge(subject, derived);
             }
             catch (Exception error) when (error is not OutOfMemoryException
                                               and not StackOverflowException)
@@ -310,6 +375,12 @@ public static class JudgingRun
 
             foreach (var attribute in verdict.InputsNotCaptured)
                 _missing[attribute] = _missing.GetValueOrDefault(attribute) + 1;
+
+            // Counted in the same table as a missing attribute, under a token that names the kind
+            // and the reason. The store already groups these by name, and a second table would let
+            // one report a judging as complete while the other disagreed.
+            foreach (var unresolved in verdict.Unresolved)
+                _missing[unresolved.Token] = _missing.GetValueOrDefault(unresolved.Token) + 1;
         }
 
         public RuleExecution ToExecution() =>
