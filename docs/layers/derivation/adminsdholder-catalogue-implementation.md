@@ -604,6 +604,34 @@ protected in fact, so none of them is a finding; nothing else carries `adminCoun
 DACL. The lab is a clean forest for this condition, which is the expected answer for one that has
 not had accounts demoted out of privileged groups.
 
-**What this does not show.** No positive finding has been observed on real evidence - only in tests.
-Until a forest carrying the condition is judged, the negative half of SEC-030 is verified in the lab
-and the positive half is verified only by fixture.
+### The positive case, observed 2026-09-01
+
+Two accounts were made to carry the condition, and the sequence is worth recording because the first
+attempt did not produce a finding and the reason was the rule behaving correctly.
+
+**`kdavis` - the marker set by hand.** `adminCount` was set to 1 without touching inheritance.
+SEC-030 judged the object and reported nothing, which is case `N9`: the marker is inconsistent, but
+the condition this rule reports is the *non-inheriting ACL* and it was absent. **This is the
+correction over the predecessor demonstrating itself** - `10.1` records that it inferred current DACL
+state from `adminCount`, and this build refuses to. Disabling inheritance produced the finding.
+
+**`blopez` - the marker earned, then the privilege removed.** Added to Domain Admins, SDProp stamped
+the marker and blocked inheritance, then removed. Still no finding, because she was **also a direct
+member of Account Operators**, RID 548, which the catalogue holds as an established protection root -
+so her marker and blocked DACL were consistent and there was nothing to report. That is case `N5`,
+and it exists because `10.4` records the predecessor omitting the operator groups from its closure
+and producing false positives for exactly this shape of account. Removing her from Account Operators
+produced the finding.
+
+Both then appeared:
+
+| Rule | Judged | Not about | Could not judge | Findings |
+|---|---|---|---|---|
+| SEC-010 | 2,082 | 6,279 | 0 | 1 |
+| SEC-011 | 2,082 | 6,279 | 0 | 0 |
+| SEC-030 | 4,236 | 4,125 | 0 | **2** |
+
+The derivation moved with them: 43 protected principals became 42, and the accounts protected through
+membership fell from 4 to 3 as `blopez` left the set. **The positive and negative halves of this rule
+are now both verified against a real forest**, and the two near-misses are stronger evidence than the
+findings, because each was a documented predecessor defect declining to reproduce itself.
