@@ -408,7 +408,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | See which principals AdminSDHolder covers | `ProtectedPrincipalDeriverTests` | |
 | See `Unknown` rather than `NotProtected` where the traversal is unevidenced | `ProtectedPrincipalDeriverTests` | |
 | Have one gated edge not turn the whole forest into a shrug | `ProtectedPrincipalDeriverTests` | |
-| Have principal protection and member propagation kept as independent sourced claims | `AdminSdHolderCatalogueSemanticTests` | |
+| Have principal protection and member propagation kept as independent sourced claims | `AdminSdHolderCatalogueSemanticTests` | 2026-08-31 |
 | See which distribution groups are one conversion from conferring privilege | `LatentPrivilegeDeriverTests` | |
 | Not be shown a latent path that would change nothing for anybody | `LatentPrivilegeDeriverTests` | |
 | Read a derived answer beside what it does not cover | `DerivationCompletenessTests` | |
@@ -439,5 +439,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Not meet two methods called `Expand` that answer unrelated questions | `ConceptRegistryTests` | 2026-08-28 |
 | Have a forest mask change member propagation without changing principal protection | `AdminSdHolderCatalogueSemanticTests.ACompleteMaskDisablesOnlyEffectiveMemberPropagation` | |
 | Be told a mask-dependent root is unverified when the mask was unread or malformed | `AdminSdHolderCatalogueSemanticTests.AnUnreadOrMalformedMaskMakesAnExcludableRootUnverified` | |
-| Keep forest-root-only RIDs from matching child-domain principals | `ProtectedPrincipalDeriverTests.Stage2a_AForestRootRidInAChildDomainIsNotTheForestRootPrincipal` | |
-| Read persisted evaluations, reasons, bases and deterministic paths | `ProtectedPrincipalPersistenceTests.Stage2a_AllEvaluationsReasonsBasesAndPathsRoundTrip` | |
+| Keep forest-root-only RIDs from matching child-domain principals | `ProtectedPrincipalDeriverTests.Stage2a_AForestRootRidInAChildDomainIsNotTheForestRootPrincipal` | 2026-08-31 |
+| Read persisted evaluations, reasons, bases and deterministic paths | `ProtectedPrincipalPersistenceTests.Stage2a_AllEvaluationsReasonsBasesAndPathsRoundTrip` | 2026-08-31 |
+| Not be told a doubt is about primary groups when the route was ordinary nesting | `ProtectedPrincipalDeriverTests.Stage2a_AnOrdinaryRouteToAPossibleRootDoesNotBlameThePrimaryGroup` | 2026-08-31 |
+| Be refused a stored product whose rows contradict each other | `ProtectedPrincipalPersistenceTests.Stage2a_AnIncoherentProductIsRefusedRatherThanStored` | |

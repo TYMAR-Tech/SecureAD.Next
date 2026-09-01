@@ -535,3 +535,30 @@ Decision `0090` settles the open questions: keep the current dependency seam, us
 ## 16. Validation
 
 Wave 5 requires focused catalogue, traversal, writer/reader and architecture tests, the full solution build and test suite, and a separately recorded real-forest verification. A lab observation can corroborate implementation behavior but cannot promote a disputed or unverified catalogue claim.
+
+### Real-forest verification, `ad.lab`, 2026-08-31
+
+Run offline against a copy of the sealed bundle `ad.lab-20260831-151422` (Evidence schema 9, capture
+complete, three domains). No controller was contacted.
+
+| What | Observed |
+|---|---|
+| Forest root resolved | `forest_fqdn` `ad.lab` matched the captured `DomainFqdn` of root-domain objects exactly; `ba.ad.lab` and `ph.ad.lab` correctly did not |
+| Derivation | schema 4, state `Completed`, completeness `IsComplete`, product `Available` |
+| Catalogue | version 2, 18 entries persisted and read back |
+| Forest mask | `DefaultedByAbsence`, character `0`, nothing excluded, so no doubt was stated |
+| Population | 4,273 principals: 43 `Protected`, 4 `Unknown`, 4,226 `NotProtected` |
+| Direct protection | 39, being six builtin and six per-domain entries across three domains plus three forest-root entries - the exact count the catalogue predicts |
+| Member propagation | 4, each carrying a path that starts at the principal and ends at the decisive root, including cross-domain members of the root's Enterprise Admins |
+| Primary-group gate | 3 `Unknown`, being the forest's three domain controllers, which reach `Domain Controllers` only through `primaryGroupID` |
+| Disputed claim | 1 `Unknown`, being RID 498 in the root domain, held `Disputed` by `0089` |
+
+**What this establishes.** The forest-root resolution works against real captured evidence, which unit
+tests could not show because they supply both sides of the match. Clean negatives are reachable rather
+than the conservative gate being stuck on. The unknown counts correspond exactly to the forest's real
+shape rather than to an arbitrary population.
+
+**What it does not establish.** Nothing here promotes a `Disputed` or `Unverified` claim: RID 498 is
+still disputed and the primary-group route is still unverified. The run also surfaced `P-105` - the
+reported decisive root is the last one walked rather than the nearest, so three accounts that are
+direct members of Enterprise Admins report `BUILTIN\Administrators` instead.
