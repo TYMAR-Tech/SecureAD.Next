@@ -16,10 +16,26 @@ namespace SecureAD.Shell.Services;
 /// <param name="State">What became of the judging.</param>
 /// <param name="ObjectsJudged">How many objects the rules reached a verdict on.</param>
 /// <param name="Findings">How many findings there were, by severity.</param>
+/// <param name="CouldNotDecide">
+/// What stopped a rule reaching a verdict, and on how many objects, worst first.
+/// <para>
+/// <b>Carried rather than counted into one number.</b> "At least one rule could not reach a
+/// verdict" tells an operator that something is missing and nothing about what to do; the same
+/// screen saying <i>Microsoft's documentation disagrees about this group</i> tells him to stop
+/// looking at his forest. The distinction only became expressible when rules gained a vocabulary
+/// for an unresolved derived fact, per <c>docs/decisions/0091</c>.
+/// </para>
+/// </param>
 internal sealed record JudgingOutcome(
     JudgementRunState State,
     long ObjectsJudged,
-    IReadOnlyDictionary<Severity, int> Findings);
+    IReadOnlyDictionary<Severity, int> Findings,
+    IReadOnlyList<UnresolvedCount> CouldNotDecide);
+
+/// <summary>One thing that stopped a rule deciding, and how far it reached.</summary>
+/// <param name="Reason">What was missing or undecided, in the operator's words.</param>
+/// <param name="ObjectsAffected">How many objects it left unjudged.</param>
+internal sealed record UnresolvedCount(string Reason, int ObjectsAffected);
 
 /// <summary>
 /// Judging a sealed bundle, from a window.

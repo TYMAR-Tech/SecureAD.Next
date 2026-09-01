@@ -1805,9 +1805,17 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// What a finished judging produced, in the words the completion screen uses.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>A degraded judging says so rather than reporting its findings as if they were all of
     /// them.</b> A rule that could not read what it declared has established nothing, and a count
     /// that omits what it missed reads as a clean result.
+    /// </para>
+    /// <para>
+    /// <b>And it says what stopped it.</b> "At least one rule could not reach a verdict" leaves an
+    /// administrator with nowhere to go; the reasons name what to capture, or say plainly that the
+    /// answer is unavailable and no re-run will produce it. Only the largest few are listed, because
+    /// a completion screen that scrolls is one nobody reads to the end of.
+    /// </para>
     /// </remarks>
     private static string Describe(JudgingOutcome judged) => judged.State switch
     {
@@ -1819,10 +1827,30 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         JudgementRunState.CompletedDegraded =>
             $"Judged {judged.ObjectsJudged:N0} objects, and at least one rule could not reach a "
             + "verdict. The findings below are what the rules that did finish found, and are not "
-            + "the whole picture.",
+            + "the whole picture."
+            + Why(judged.CouldNotDecide),
         _ =>
             "The judging did not finish. The evidence is sealed and can be judged again.",
     };
+
+    /// <summary>
+    /// What stopped the rules deciding, worst first, as sentences beneath the summary.
+    /// </summary>
+    /// <param name="reasons">What the judging recorded, already ordered by how far it reached.</param>
+    private static string Why(IReadOnlyList<UnresolvedCount> reasons)
+    {
+        if (reasons.Count == 0)
+            return string.Empty;
+
+        var shown = reasons.Take(4).Select(
+            r => $"{Environment.NewLine}  - {r.Reason} ({r.ObjectsAffected:N0} objects)");
+
+        var rest = reasons.Count > 4
+            ? $"{Environment.NewLine}  - and {reasons.Count - 4:N0} other reasons."
+            : string.Empty;
+
+        return Environment.NewLine + string.Concat(shown) + rest;
+    }
 
     /// <summary>
     /// Stops whatever is running: a capture, or the pass the window began when it opened.

@@ -81,10 +81,23 @@ internal sealed class JudgingLauncher : IJudgingLauncher
             .GroupBy(f => f.Severity)
             .ToDictionary(g => g.Key, g => g.Count());
 
+        // Gathered across rules rather than per rule. An operator reading a completion screen is
+        // asking what stopped the audit seeing everything, not which rule stopped first, and two
+        // rules blocked by the same missing thing are one problem to fix.
+        var couldNotDecide = stored.RulesRun
+            .SelectMany(r => r.MissingInputs)
+            .GroupBy(m => m.Attribute, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new UnresolvedCount(
+                UnresolvedWording.For(g.Key), g.Sum(m => m.ObjectsAffected)))
+            .OrderByDescending(u => u.ObjectsAffected)
+            .ThenBy(u => u.Reason, StringComparer.Ordinal)
+            .ToList();
+
         return Result<JudgingOutcome>.Success(
             new JudgingOutcome(
                 judged.Value,
                 stored.RulesRun.Sum(r => (long)r.ObjectsJudged),
-                bySeverity));
+                bySeverity,
+                couldNotDecide));
     }
 }

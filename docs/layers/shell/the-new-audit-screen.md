@@ -53,6 +53,7 @@ describes `Audit`. Where the run library is chosen is [`the home screen`](the-ho
 | `IJudgingLauncher` | Judging a sealed bundle, from a window |
 | `JudgingLauncher` | Judges a bundle by driving `JudgingRun`, off the interface thread |
 | `JudgingOutcome` | What a judging produced, in the shell's own words |
+| `UnresolvedCount` | One thing that stopped a rule deciding, and how many objects it left unjudged |
 | `IDerivationLauncher` | Deriving from a sealed bundle, from a window |
 | `DerivationLauncher` | Derives from a bundle by driving `Stage2aRun`, off the interface thread |
 | `DerivingOutcome` | What a derivation produced, in the shell's own words |

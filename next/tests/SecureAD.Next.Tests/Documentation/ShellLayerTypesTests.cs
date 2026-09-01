@@ -225,7 +225,7 @@ public sealed class ShellLayerTypesTests
     [Fact]
     public void TheCheckReadsBothDocumentsAndBothComponents()
     {
-        Assert.Equal(30, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(31, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(29, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
 

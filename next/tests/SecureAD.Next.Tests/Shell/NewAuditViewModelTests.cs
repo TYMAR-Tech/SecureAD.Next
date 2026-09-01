@@ -454,7 +454,8 @@ public sealed class NewAuditViewModelTests
         _judging.Outcome = new JudgingOutcome(
             JudgementRunState.Completed,
             ObjectsJudged: 4_795,
-            new Dictionary<Severity, int> { [Severity.High] = 13 });
+            new Dictionary<Severity, int> { [Severity.High] = 13 },
+            CouldNotDecide: []);
 
         var screen = await Opened();
 
@@ -479,13 +480,45 @@ public sealed class NewAuditViewModelTests
         _judging.Outcome = new JudgingOutcome(
             JudgementRunState.CompletedDegraded,
             ObjectsJudged: 100,
-            new Dictionary<Severity, int>());
+            new Dictionary<Severity, int>(),
+            CouldNotDecide: []);
 
         var screen = await Opened();
 
         await screen.StartAsync();
 
         Assert.Contains("not the whole picture", screen.JudgingReport, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A degraded judging names what stopped it, not merely that something did.
+    /// </summary>
+    /// <remarks>
+    /// <b>"At least one rule could not reach a verdict" leaves an administrator nowhere to go.</b>
+    /// The reasons say what to capture, or say plainly that Microsoft's own documentation is the
+    /// obstacle and re-running will not help - which is the difference between an afternoon spent
+    /// usefully and one spent re-reading a forest that was fine.
+    /// </remarks>
+    [Fact]
+    public async Task ADegradedJudgingNamesWhatStoppedIt()
+    {
+        _judging.Outcome = new JudgingOutcome(
+            JudgementRunState.CompletedDegraded,
+            ObjectsJudged: 100,
+            new Dictionary<Severity, int>(),
+            CouldNotDecide:
+            [
+                new UnresolvedCount("Microsoft's own documentation contradicts itself.", 41),
+                new UnresolvedCount("Permissions could not be read.", 7),
+            ]);
+
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Contains("contradicts itself", screen.JudgingReport, StringComparison.Ordinal);
+        Assert.Contains("41", screen.JudgingReport, StringComparison.Ordinal);
+        Assert.Contains("Permissions could not be read", screen.JudgingReport, StringComparison.Ordinal);
     }
 
     /// <summary>

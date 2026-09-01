@@ -533,7 +533,7 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
 {
     /// <summary>What a judging concludes. Completed, nothing found, unless a test says otherwise.</summary>
     public JudgingOutcome Outcome { get; set; } =
-        new(JudgementRunState.Completed, ObjectsJudged: 0, new Dictionary<Severity, int>());
+        new(JudgementRunState.Completed, ObjectsJudged: 0, new Dictionary<Severity, int>(), []);
 
     /// <summary>Why the judging could not be done, when a test wants that.</summary>
     public AuditError? Fails { get; set; }

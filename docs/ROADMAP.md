@@ -35,7 +35,7 @@ merged, its documents are updated and its row here says so. The owner's standing
 | 1 | Findings move out of the sealed evidence | **built** |
 | 2 | Dashboard: coverage and inventory | not started |
 | 3 | One rule, end to end | **built** |
-| 4 | The simple posture rules | not started |
+| 4 | The simple posture rules | **started** |
 | 5 | Group expansion | not started |
 | 6 | Control edges | not started |
 | 7 | Paths to Tier 0 | not started |
@@ -43,10 +43,18 @@ merged, its documents are updated and its row here says so. The owner's standing
 | 9 | Reports and export | not started |
 | 10 | Comparing runs | not started |
 
-The correction sequence that precedes further rule rollout has completed Wave 5: AdminSDHolder
-principal and member-propagation claims are separated, and the resulting evaluations, reasons, bases
-and deterministic paths are persisted in Derivation and readable. Wave 6 is next; it introduces the
-declared Judgement input package and consumes these facts without recomputation.
+The correction sequence that precedes further rule rollout has completed Wave 6. Wave 5 separated the
+AdminSDHolder principal and member-propagation claims and persisted the resulting evaluations,
+reasons, bases and paths in Derivation. Wave 6 built the seam above them: a rule declares the derived
+facts it reads, judging refuses a bundle whose derivation is absent or belongs to different evidence,
+an unresolved derived fact is recorded and shown apart from an uncaptured attribute, and **SEC-030 is
+the first rule to consume derived facts without recomputing them**. Verified against `ad.lab` on
+2026-08-31, where the generation refusal fired against a stale schema 3 derivation and SEC-030 then
+reached a verdict on all 4,236 objects it was about with nothing unresolved.
+
+**Stage 4 is now open with one of its rules built.** The remaining simple posture rules follow the
+same shape; those needing only captured attributes need no derived facts and are unaffected by the
+Wave 6 seam.
 
 **A useful product exists at stage 4.** Stages 5 to 8 are the hard half, and stage 8 is where the
 predecessor went wrong.
@@ -184,6 +192,13 @@ they stay once this file is deleted.
 Rules that read attributes already captured and need no graph: LAPS, stale accounts, SID history,
 AdminSDHolder, Kerberos delegation, ownership, broad write access. Each is small, each has a card,
 each restores something the predecessor reported.
+
+**`SEC-030` is built**, 2026-08-31, under
+[`0091`](decisions/0091-sec-030-reports-a-marker-without-protection.md). It reports an object
+carrying the AdminSDHolder marker with a non-inheriting DACL that nothing establishes as protected,
+and it is the first rule to read derived facts rather than only captured attributes. Its
+implementation is described in
+[`adminsdholder-catalogue-implementation.md`](layers/derivation/adminsdholder-catalogue-implementation.md).
 
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
