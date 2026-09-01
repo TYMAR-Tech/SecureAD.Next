@@ -274,7 +274,18 @@ try {
                     continue
                 }
 
-                $verdict = $rule.Judge($subject, $derived)
+                # Invoked through the interface method by reflection, because PowerShell will not
+                # dispatch a default interface method - neither on the concrete type nor through a
+                # cast. Judge(subject, derived) is defaulted so a rule reading only captured
+                # attributes need not implement it, which is most of them, so this is the ordinary
+                # case rather than the exception.
+                $method = [SecureAD.Judgement.IRule].GetMethod(
+                    'Judge',
+                    [Type[]] @(
+                        [SecureAD.Evidence.ObjectAttributes],
+                        [SecureAD.Judgement.DerivedFacts]))
+
+                $verdict = $method.Invoke($rule, @($subject, $derived))
 
                 if ($verdict.Unresolved.Count -gt 0) {
                     Write-Host ("  {0,-10} could not decide - {1}" -f
