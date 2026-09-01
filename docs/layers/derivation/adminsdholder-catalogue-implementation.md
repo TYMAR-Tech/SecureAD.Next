@@ -563,9 +563,12 @@ still disputed and the primary-group route is still unverified. The run also sur
 reported decisive root is the last one walked rather than the nearest, so three accounts that are
 direct members of Enterprise Admins report `BUILTIN\Administrators` instead.
 
-**How it was run, and why that is a gap.** The check was made with a temporary xUnit class holding
-hardcoded paths, which was deleted once the report was read. It used only public entry points -
-`BundleReader`, `Stage2aRun.Derive` and `DerivationReader` - so it proved the shipping code rather
-than a parallel implementation, but it left nothing behind. Repeating this verification against
-another forest currently means writing that class again. `P-106` records the missing derive-side
-explain tool; `next/tools/judge-bundle.ps1` is the precedent for what it should look like.
+**How it was run.** The check was first made with a temporary xUnit class holding hardcoded paths,
+which was deleted once the report was read. It has since been reproduced by
+`next/tools/explain-derivation.ps1`, which reports the same figures over the public
+`DerivationReader` read model and is the repeatable form of this verification:
+
+```text
+pwsh -File next/tools/explain-derivation.ps1 -BundlePath <bundle> -Derive
+pwsh -File next/tools/explain-derivation.ps1 -BundlePath <bundle> -Sid S-1-5-21-...-31608
+```
