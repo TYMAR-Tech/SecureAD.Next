@@ -572,3 +572,38 @@ which was deleted once the report was read. It has since been reproduced by
 pwsh -File next/tools/explain-derivation.ps1 -BundlePath <bundle> -Derive
 pwsh -File next/tools/explain-derivation.ps1 -BundlePath <bundle> -Sid S-1-5-21-...-31608
 ```
+
+### SEC-030 against the same forest, 2026-08-31
+
+The first consumer of these facts was run over the same bundle once Wave 6 landed.
+
+**The binding refused before it ran, which is the result that mattered most.** The bundle carried a
+schema 3 derivation from an earlier build, and judging stopped rather than proceeding:
+
+```text
+Evidence.DerivationUnavailable - ProtectedPrincipals was declared by a scheduled rule, and this
+bundle's derivation could not be opened: ... is schema version 3 and this build reads version 4.
+```
+
+That is `0091` working on real evidence. A rule reading derived facts was not run against a
+derivation that did not match, and the refusal named the version, the reason and the remedy. It had
+not been observed outside a test until this run.
+
+After re-deriving, all three rules ran:
+
+| Rule | Judged | Not about | Could not judge | Findings |
+|---|---|---|---|---|
+| SEC-010 | 2,082 | 6,279 | 0 | 1 |
+| SEC-011 | 2,082 | 6,279 | 0 | 0 |
+| SEC-030 | 4,236 | 4,125 | 0 | 0 |
+
+**SEC-030 reported nothing, and the silence is accounted for.** It reached a verdict on every one of
+the 4,236 objects it was about - no unresolved cases at all, because the forest states its
+`dSHeuristics` and its membership evidence is complete. The forest's 43 protected principals are
+protected in fact, so none of them is a finding; nothing else carries `adminCount=1` with a blocked
+DACL. The lab is a clean forest for this condition, which is the expected answer for one that has
+not had accounts demoted out of privileged groups.
+
+**What this does not show.** No positive finding has been observed on real evidence - only in tests.
+Until a forest carrying the condition is judged, the negative half of SEC-030 is verified in the lab
+and the positive half is verified only by fixture.

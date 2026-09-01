@@ -35,6 +35,7 @@ $ErrorActionPreference = 'Stop'
 $required = @(
     'SecureAD.Kernel.dll',
     'SecureAD.Evidence.dll',
+    'SecureAD.Derivation.dll',
     'SecureAD.Judgement.dll',
     'Microsoft.Data.Sqlite.dll',
     'SQLitePCLRaw.core.dll',
@@ -97,6 +98,7 @@ pointing at it.
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidence.dll'))
+$null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Derivation.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Judgement.dll'))
 
 # The native SQLite library, loaded by absolute path rather than left to PATH.
@@ -187,9 +189,14 @@ $BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
 Push-Location $bin
 
 try {
-    $rules = [System.Collections.Generic.List[SecureAD.Evidence.Findings.IRule]]::new()
-    $rules.Add([SecureAD.Evidence.Findings.UnconstrainedDelegationOnAccount]::new())
-    $rules.Add([SecureAD.Evidence.Findings.UnconstrainedDelegationOnNonDomainController]::new())
+    # The product's own list, rather than one written out here.
+    #
+    # This script used to construct two rules by name, which went stale twice: once when IRule moved
+    # from SecureAD.Evidence.Findings to SecureAD.Judgement, and again when a third rule was added
+    # that this would not have run. A hand-written list makes the script quietly disagree with the
+    # product about what an audit is, which is worse than failing - it reports a clean bundle that
+    # the application would have found something in.
+    $rules = [SecureAD.Judgement.RuleCatalogue]::All
 
     if ($Explain) {
         $opened = [SecureAD.Evidence.BundleReader]::Open($BundlePath)
@@ -235,6 +242,24 @@ try {
             Write-Host 'What each rule makes of it'
             Write-Host '--------------------------'
 
+            # A rule that reads derived facts has to be offered them, and refuses the bare
+            # overload rather than answering without them - so this reads the bundle's derivation
+            # and hands it over. If there is none, that rule says so instead of being skipped
+            # quietly, because silence from a rule reads as nothing found.
+            $derived = [SecureAD.Judgement.DerivedFacts]::None
+            $openedDerivation = [SecureAD.Derivation.DerivationReader]::Open($BundlePath)
+
+            if ($openedDerivation.IsSuccess) {
+                $storedDerivation = $openedDerivation.Value.Read()
+                $product = $storedDerivation.ProtectedPrincipals
+
+                if ($product.Availability -eq 'Available') {
+                    $derived = [SecureAD.Judgement.DerivedFacts]::new(
+                        $product.Value, [Func[string, SecureAD.Evidence.ObjectPermissions]] {
+                            param($dn) $bundle.ReadPermissions($dn) })
+                }
+            }
+
             foreach ($rule in $rules) {
                 $definition = $rule.Definition
 
@@ -243,9 +268,19 @@ try {
                     continue
                 }
 
-                $verdict = $rule.Judge($subject)
+                if ($definition.RequiredDerivedFacts.Count -gt 0 -and $null -eq $derived.ProtectedPrincipals) {
+                    Write-Host ("  {0,-10} needs {1}, which this bundle has not derived" -f
+                        $definition.Id, ($definition.RequiredDerivedFacts -join ', '))
+                    continue
+                }
 
-                if (-not $verdict.IsComplete) {
+                $verdict = $rule.Judge($subject, $derived)
+
+                if ($verdict.Unresolved.Count -gt 0) {
+                    Write-Host ("  {0,-10} could not decide - {1}" -f
+                        $definition.Id, (($verdict.Unresolved | ForEach-Object { $_.Token }) -join ', '))
+                }
+                elseif (-not $verdict.IsComplete) {
                     Write-Host ("  {0,-10} could not judge - not captured: {1}" -f
                         $definition.Id, ($verdict.InputsNotCaptured -join ', '))
                 }
@@ -256,6 +291,8 @@ try {
                     Write-Host ("  {0,-10} judged, nothing to report" -f $definition.Id)
                 }
             }
+
+            if ($openedDerivation.IsSuccess) { $openedDerivation.Value.Dispose() }
 
             Write-Host ''
             return
