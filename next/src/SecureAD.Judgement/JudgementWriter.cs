@@ -413,6 +413,19 @@ public sealed class JudgementWriter : IDisposable
                     });
                 return;
 
+            case KerberosPreauthenticationEvidence preauth:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_no_kerberos_preauthentication (finding_id, "
+                    + "user_account_control) VALUES ($id, $uac)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue(
+                            "$uac", (long)preauth.UserAccountControl);
+                    });
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

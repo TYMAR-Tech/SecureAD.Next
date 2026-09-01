@@ -200,6 +200,28 @@ and it is the first rule to read derived facts rather than only captured attribu
 implementation is described in
 [`adminsdholder-catalogue-implementation.md`](layers/derivation/adminsdholder-catalogue-implementation.md).
 
+**`SEC-022` is built**, 2026-09-01, described in
+[`SEC-022-no-kerberos-preauthentication.md`](layers/judgement/rules/SEC-022-no-kerberos-preauthentication.md).
+It reports any account whose `userAccountControl` carries `ADS_UF_DONT_REQUIRE_PREAUTH`, so a domain
+controller will hand out material derived from that account's password to anybody who asks. It reads
+only captured attributes and declares no derived facts, so it is the first rule to show that the
+Wave 6 seam costs an attribute-only rule nothing. It departs from the predecessor twice, both
+recorded in its document: **nothing is excluded** — disabled accounts and `krbtgt` are reported,
+because no Microsoft source supports excluding them — and the severity is High rather than Medium,
+because the attack needs no credentials at all.
+
+**Building it found a defect in the findings grid, now fixed.** `JudgementReader` read a finding's
+columns by position while its two queries selected different column lists, so any finding whose
+evidence was not the unconstrained-delegation kind had **a severity rank returned as its security
+identifier** — the rank 2 came back as the SID `"2"`. It did not throw. Every paging test wrote
+SEC-010 findings, so the suite passed over it. Recorded as `P-112`.
+
+**Both verified against `ad.lab` on 2026-09-01.** `lab.nopreauth` was planted in `ba.ad.lab` at
+`userAccountControl` 4194818, and SEC-022 fired once, on that account, attributed to that domain,
+with the stored evidence matching the directory. The same bundle carries findings of three evidence
+kinds, and reading it back through the grid's paging path returned each with its own evidence intact
+— which is the `P-112` fix confirmed on real data rather than only on a synthetic bundle.
+
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
 

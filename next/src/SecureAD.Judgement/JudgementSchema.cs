@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 4;
+    public const int Version = 5;
 
     private static readonly string[] TableDdl =
     [
@@ -228,6 +228,25 @@ public static class JudgementSchema
         CREATE TABLE finding_admincount_without_protection (
             finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
             sid                                 TEXT    NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // What SEC-022 rested on: the whole userAccountControl value the pre-authentication flag
+        // was read from.
+        //
+        // THE WHOLE VALUE, NOT THE ONE BIT. A column saying only "the flag was set" would be true
+        // of every row in the table and would therefore record nothing. The rest of the integer is
+        // what lets a reader tell a disabled account from a live one without going back to the
+        // evidence file, which a judgement must never write to and may not be beside.
+        //
+        // NO DISABLED COLUMN. ADS_UF_ACCOUNTDISABLE is 0x2 of the value already here, so a column
+        // would be a second account of one fact and the two could disagree. The reader re-derives
+        // it, exactly as the delegation table leaves its two computed answers out.
+        """
+        CREATE TABLE finding_no_kerberos_preauthentication (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            user_account_control                INTEGER NOT NULL,
             PRIMARY KEY (finding_id)
         )
         """,

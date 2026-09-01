@@ -9,10 +9,12 @@ The capture half reads a forest and seals it. Judgement is the other half: execu
 declared inputs and write findings outside the seal, keeping *nothing is wrong* apart from *nobody
 could look*.
 
-Two rules exist, both about unconstrained delegation. `JudgingRun` executes them over sealed bundles,
-stores their findings, and the Shell reads those findings back. The executable contracts and rules
-live in `SecureAD.Judgement`; passive finding and rule-definition records stay in Evidence because
-they are durable data rather than executable policy.
+Four rules exist: two about unconstrained delegation, `SEC-030` about a protected-account marker
+nothing protects, and `SEC-022` about an account that does not require Kerberos pre-authentication.
+Three of the four read only captured attributes; only `SEC-030` declares a derived fact. `JudgingRun`
+executes them over sealed bundles, stores their findings, and the Shell reads those findings back.
+The executable contracts and rules live in `SecureAD.Judgement`; passive finding and rule-definition
+records stay in Evidence because they are durable data rather than executable policy.
 
 ---
 
@@ -40,6 +42,8 @@ they are durable data rather than executable policy.
 | `UnresolvedReason` | Why it fell short — never derived, disputed, unverified, or unreadable |
 | `AdminCountWithoutProtection` | SEC-030 — a protected-account marker with a blocked DACL that nothing protects |
 | `AdminCountWithoutProtectionEvidence` | The identity SEC-030 asked the derivation about |
+| `NoKerberosPreauthentication` | SEC-022 — an account a domain controller will answer for without the asker proving anything |
+| `KerberosPreauthenticationEvidence` | The `userAccountControl` value SEC-022 read the flag from |
 | `UnconstrainedDelegationOnAccount` | SEC-010 — a user or service account trusted for unconstrained delegation |
 | `UnconstrainedDelegationOnNonDomainController` | SEC-011 — a member computer trusted for it |
 | `UnconstrainedDelegationEvidence` | What an unconstrained delegation finding rests on |
@@ -95,7 +99,8 @@ complete rather than a forest with nothing wrong with it.
 `RuleDefinition.IsComplete` is false when that list is empty, and `RuleDeclarationTests` fails the
 build on it.
 
-Both delegation rules declare `userAccountControl`, `objectClass` and `primaryGroupID`.
+Both delegation rules declare `userAccountControl`, `objectClass` and `primaryGroupID`. `SEC-022`
+declares the first two and no more, which is why it can judge a bundle that was never derived.
 
 The declaration is what makes the next section possible: because the rule has named its inputs, it
 can say exactly which of them an object did not carry, instead of falling silent.

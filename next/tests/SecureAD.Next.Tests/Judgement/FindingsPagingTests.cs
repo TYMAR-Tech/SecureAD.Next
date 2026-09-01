@@ -39,6 +39,46 @@ public sealed class FindingsPagingTests
         ["userAccountControl", "objectClass", "primaryGroupID"],
         RequiredDerivedFacts: []);
 
+    private static readonly RuleDefinition Sec030 = new(
+        "SEC-030", "AdminCount without protection", Severity.High, 1,
+        ["user", "computer", "group"],
+        ["adminCount", "nTSecurityDescriptor", "objectSid"],
+        RequiredDerivedFacts: [nameof(DerivedFactKind.ProtectedPrincipals)]);
+
+    private static readonly RuleDefinition Sec022 = new(
+        "SEC-022", "Kerberos pre-authentication not required", Severity.High, 1,
+        ["user", "computer"],
+        ["userAccountControl", "objectClass"],
+        RequiredDerivedFacts: []);
+
+    private static Finding AMarkerFinding() =>
+        new(
+            "SEC-030",
+            1,
+            Severity.High,
+            new FindingSubject(FindingSubjectKind.Account, "svc-legacy"),
+            Guid.NewGuid(),
+            "CN=svc-legacy,OU=Service Accounts,DC=contoso,DC=com",
+            "contoso.com",
+            "user",
+            "Carries the AdminSDHolder marker with nothing establishing protection.",
+            EvidenceCompleteness.Complete,
+            new AdminCountWithoutProtectionEvidence("S-1-5-21-1-2-3-1104"));
+
+    private static Finding APreauthFinding() =>
+        new(
+            "SEC-022",
+            1,
+            Severity.High,
+            new FindingSubject(FindingSubjectKind.Account, "svc-nopreauth"),
+            Guid.NewGuid(),
+            "CN=svc-nopreauth,OU=Service Accounts,DC=contoso,DC=com",
+            "contoso.com",
+            "user",
+            "Does not require Kerberos pre-authentication.",
+            EvidenceCompleteness.Complete,
+            new KerberosPreauthenticationEvidence(0x400202));
+
     /// <summary>
     /// A page holds what it was asked for and says there is more.
     /// </summary>
@@ -457,6 +497,46 @@ public sealed class FindingsPagingTests
 
         Assert.True(page.IsSuccess, page.Error?.Description);
         return page.Value!;
+    }
+
+    /// <summary>
+    /// A page carries the evidence of every kind of finding, not only the first kind written.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Every other test in this file writes SEC-010 findings</b>, whose evidence is the
+    /// unconstrained-delegation kind, so the whole suite could pass while a page mangled every other
+    /// kind - which is what it did. The paged query and the whole read share one mapper and did not
+    /// share one column list, so column 16 was <c>a.sid</c> in one and <c>f.severity_rank</c> in the
+    /// other. A severity rank is never null, so a non-delegation finding took the SID branch and a
+    /// number was read as a security identifier.
+    /// </para>
+    /// <para>
+    /// <b>Observed failing before it was fixed</b>, on the findings grid path an operator uses.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void APageCarriesTheEvidenceOfEveryKindOfFinding()
+    {
+        var directory = ADirectory();
+
+        using (var writer = JudgementWriter.Create(
+            directory, ThisCapture, derivationGenerationId: null, Started, Started))
+        {
+            writer.Write(RuleExecution.Judged(Sec030, 1, 0, [AMarkerFinding()]));
+            writer.Write(RuleExecution.Judged(Sec022, 1, 0, [APreauthFinding()]));
+            writer.Complete(Started);
+        }
+
+        var page = Page(directory, Query());
+
+        var marker = Assert.Single(page.Findings, f => f.RuleId == "SEC-030");
+        Assert.Equal("S-1-5-21-1-2-3-1104", Assert.IsType<AdminCountWithoutProtectionEvidence>(
+            marker.Evidence).Sid);
+
+        var preauth = Assert.Single(page.Findings, f => f.RuleId == "SEC-022");
+        Assert.Equal(0x400202u, Assert.IsType<KerberosPreauthenticationEvidence>(
+            preauth.Evidence).UserAccountControl);
     }
 
     private static JudgementReader Opened(string directory)

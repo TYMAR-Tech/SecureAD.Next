@@ -303,14 +303,10 @@ public sealed class JudgementReader : IDisposable
 
         using var command = _connection.CreateCommand();
         command.CommandText =
-            """
-            SELECT f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
-                   f.severity, f.distinguished_name, f.detail, f.coverage,
-                   d.user_account_control, d.is_computer, d.server_trust_account_bit,
-                   d.primary_group_is_domain_controller, d.under_domain_controllers_ou,
-                   f.domain_fqdn, f.object_class, f.severity_rank
+            $"""
+            SELECT {FindingColumns}
             FROM finding f
-            LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
+            {EvidenceJoins}
             WHERE ($severity IS NULL OR f.severity = $severity)
               AND ($rule IS NULL OR f.rule_id = $rule)
               AND ($domain IS NULL OR f.domain_fqdn = $domain)
@@ -472,15 +468,10 @@ public sealed class JudgementReader : IDisposable
 
         using var command = _connection.CreateCommand();
         command.CommandText =
-            """
-            SELECT f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
-                   f.severity, f.distinguished_name, f.detail, f.coverage,
-                   d.user_account_control, d.is_computer, d.server_trust_account_bit,
-                   d.primary_group_is_domain_controller, d.under_domain_controllers_ou,
-                   f.domain_fqdn, f.object_class, a.sid
+            $"""
+            SELECT {FindingColumns}
             FROM finding f
-            LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
-            LEFT JOIN finding_admincount_without_protection a ON a.finding_id = f.finding_id
+            {EvidenceJoins}
             ORDER BY f.finding_id
             """;
 
@@ -493,60 +484,111 @@ public sealed class JudgementReader : IDisposable
     }
 
     /// <summary>
+    /// Every column <see cref="ReadFinding"/> reads, aliased so the name is the same whichever
+    /// query selected it.
+    /// </summary>
+    /// <remarks>
+    /// <b>One list, used by both queries.</b> They had two, and they disagreed - see the remarks on
+    /// <see cref="ReadFinding"/> for what that showed an operator. A single list cannot disagree
+    /// with itself, and adding a kind of evidence is then one edit here rather than two that must
+    /// be kept in step by whoever remembers.
+    /// </remarks>
+    private const string FindingColumns =
+        """
+        f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
+        f.severity, f.distinguished_name, f.detail, f.coverage,
+        f.domain_fqdn, f.object_class,
+        d.user_account_control              AS d_user_account_control,
+        d.is_computer                       AS d_is_computer,
+        d.server_trust_account_bit          AS d_server_trust_account_bit,
+        d.primary_group_is_domain_controller AS d_primary_group_is_domain_controller,
+        d.under_domain_controllers_ou       AS d_under_domain_controllers_ou,
+        a.sid                               AS a_sid,
+        p.user_account_control              AS p_user_account_control
+        """;
+
+    /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
+    private const string EvidenceJoins =
+        """
+        LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
+        LEFT JOIN finding_admincount_without_protection a ON a.finding_id = f.finding_id
+        LEFT JOIN finding_no_kerberos_preauthentication p ON p.finding_id = f.finding_id
+        """;
+
+    /// <summary>
     /// Reads one finding, with the evidence it rests on.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>One mapping, shared by the whole read and by a page.</b> Two would be two accounts of the
     /// same row, and the day one of them gained a column the other would quietly keep answering
     /// without it.
+    /// </para>
+    /// <para>
+    /// <b>Columns are found by name, and that is not a style preference.</b> Until 2026-09-01 this
+    /// read by position while the two queries selecting into it had different column lists: position
+    /// 16 was <c>a.sid</c> in one and <c>f.severity_rank</c> in the other. A severity rank is never
+    /// null, so on a page every non-delegation finding took the SID branch and <b>a severity rank
+    /// was shown to an operator as a security identifier</b> - the High rank 2 came back as the SID
+    /// "2". It did not throw and it did not look wrong. Names cannot drift silently: a query missing
+    /// a column fails here, naming it.
+    /// </para>
     /// </remarks>
     /// <exception cref="InvalidOperationException">
     /// The finding has no evidence row, so what it rests on has been lost.
     /// </exception>
     private static Finding ReadFinding(SqliteDataReader reader, IReadOnlyDictionary<string, int> versions)
     {
-        var ruleId = reader.GetString(1);
+        var ruleId = reader.GetString(reader.GetOrdinal("rule_id"));
 
-        // Which table answered decides the kind. Checked before anything is read out of either,
-        // because a finding whose evidence row is missing everywhere has lost what it rests on -
-        // and presenting it anyway would show an operator a conclusion with nothing behind it.
+        // Which table answered decides the kind. Checked before anything is read out of any of
+        // them, because a finding whose evidence row is missing everywhere has lost what it rests
+        // on - and presenting it anyway would show an operator a conclusion with nothing behind it.
+        var delegationUac = reader.GetOrdinal("d_user_account_control");
+        var markerSid = reader.GetOrdinal("a_sid");
+        var preauthUac = reader.GetOrdinal("p_user_account_control");
+
         FindingEvidence evidence;
 
-        if (!reader.IsDBNull(9))
+        if (!reader.IsDBNull(delegationUac))
         {
             evidence = new UnconstrainedDelegationEvidence(
-                (uint)reader.GetInt64(9),
-                reader.GetInt64(10) != 0,
+                (uint)reader.GetInt64(delegationUac),
+                reader.GetInt64(reader.GetOrdinal("d_is_computer")) != 0,
                 new DomainControllerSignals(
-                    reader.GetInt64(11) != 0,
-                    reader.GetInt64(12) != 0,
-                    reader.GetInt64(13) != 0));
+                    reader.GetInt64(reader.GetOrdinal("d_server_trust_account_bit")) != 0,
+                    reader.GetInt64(reader.GetOrdinal("d_primary_group_is_domain_controller")) != 0,
+                    reader.GetInt64(reader.GetOrdinal("d_under_domain_controllers_ou")) != 0));
         }
-        else if (!reader.IsDBNull(16))
+        else if (!reader.IsDBNull(markerSid))
         {
-            evidence = new AdminCountWithoutProtectionEvidence(reader.GetString(16));
+            evidence = new AdminCountWithoutProtectionEvidence(reader.GetString(markerSid));
+        }
+        else if (!reader.IsDBNull(preauthUac))
+        {
+            evidence = new KerberosPreauthenticationEvidence((uint)reader.GetInt64(preauthUac));
         }
         else
         {
             throw new InvalidOperationException(
-                $"Finding {reader.GetInt64(0)} ({ruleId}) is stored with no evidence row, so "
-                + "what it rests on has been lost. A finding that cannot say what it rests on "
-                + "must not be presented as one.");
+                $"Finding {reader.GetInt64(reader.GetOrdinal("finding_id"))} ({ruleId}) is stored "
+                + "with no evidence row, so what it rests on has been lost. A finding that cannot "
+                + "say what it rests on must not be presented as one.");
         }
 
         return new Finding(
             ruleId,
             versions[ruleId],
-            Enum.Parse<Severity>(reader.GetString(5)),
+            Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))),
             new FindingSubject(
-                Enum.Parse<FindingSubjectKind>(reader.GetString(2)),
-                reader.GetString(3)),
-            Guid.Parse(reader.GetString(4)),
-            reader.GetString(6),
-            reader.GetString(14),
-            reader.GetString(15),
-            reader.GetString(7),
-            Enum.Parse<EvidenceCompleteness>(reader.GetString(8)),
+                Enum.Parse<FindingSubjectKind>(reader.GetString(reader.GetOrdinal("subject_kind"))),
+                reader.GetString(reader.GetOrdinal("subject_key"))),
+            Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+            reader.GetString(reader.GetOrdinal("distinguished_name")),
+            reader.GetString(reader.GetOrdinal("domain_fqdn")),
+            reader.GetString(reader.GetOrdinal("object_class")),
+            reader.GetString(reader.GetOrdinal("detail")),
+            Enum.Parse<EvidenceCompleteness>(reader.GetString(reader.GetOrdinal("coverage"))),
             evidence);
     }
 
