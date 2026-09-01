@@ -21,7 +21,7 @@ the record wins and this file is wrong.
 | Preflight | Prove a controller can serve what it will be asked, before the run commits | built |
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
-| Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built foundation; binding and persisted products incomplete |
+| Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; AdminSDHolder products persisted and readable |
 | Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, two rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard, reports, compare and export | — | not built |

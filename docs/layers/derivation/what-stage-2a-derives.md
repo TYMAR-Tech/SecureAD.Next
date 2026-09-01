@@ -7,7 +7,8 @@ Group nesting, read once out of a sealed bundle and turned into three separate a
 first phase of the derive stage, and the first thing in this product that answers a question about
 more than one object.
 
-**Status: built, 2026-08-27. Wired in 2026-08-28.** Runs end to end over a sealed bundle through
+**Status: built, 2026-08-27. Wired in 2026-08-28; persisted AdminSDHolder product built
+2026-08-30.** Runs end to end over a sealed bundle through
 `Stage2aRun.Derive`, which both the window and the command line call once a capture has sealed
 evidence. No rule consumes what it produces yet.
 
@@ -31,6 +32,15 @@ evidence. No rule consumes what it produces yet.
 | `DerivationDescription` | What one derive run recorded about itself |
 | `StoredDerivationPhase` | One phase, read back, with why it failed if it did |
 | `DerivationSize` | How much the store holds |
+| `ProtectedPrincipalEvaluation` | Whether AdminSDHolder protection is established, disproved or unknown |
+| `ProtectionUnknownReason` | Typed reasons a protected-principal answer is unknown |
+| `ProtectedPrincipalBasisKind` | Whether direct protection or a membership root established protection |
+| `ProtectedPrincipalBasis` | The decisive catalogue entry behind an established result |
+| `ProtectedPrincipalProductAvailability` | Whether the persisted product is available, absent, failed or did not run |
+| `StoredAdminSdCatalogueEntry` | One persisted independent principal/propagation claim |
+| `StoredProtectedPrincipalFact` | One persisted principal evaluation with basis, reasons and path |
+| `StoredProtectedPrincipalDerivation` | The readable catalogue, mask and principal facts from one generation |
+| `StoredProtectedPrincipalProduct` | Availability carried beside the readable product |
 
 <!-- TYPES:END -->
 
@@ -357,20 +367,18 @@ beside it asks for two things at once, and guessing which was meant is how an op
 capture he did not ask for. A missing derivation is a failure here rather than the tolerated outcome
 it is after a capture: a run asked only to derive has produced nothing if it did not.
 
-**Closures are written and not read back.** `DerivationReader` reads the header, the phases and how
-much the store holds, which is what the window needed: `DerivingOutcome` now reports the principals
-and nesting relationships a derivation produced instead of how far its pass read. It deliberately
-offers no way to ask *who is in this group* — nothing consumes a closure yet, and an interface shaped
-against no caller is how the predecessor's `GetPrecomputedClosure` came to have none. That part waits
-for the rule that needs it.
+**The protected-principal product is persisted and read back.** `DerivationReader` returns typed
+availability, the versioned catalogue and mask, and each principal's evaluation, reasons, decisive
+basis and deterministic membership path. It offers a scoped SID lookup and does not expose the graph
+or a general group-membership query. Rule acquisition remains Wave 6 work.
 
 **A store from another schema is refused rather than read.** Version 2 gave the SID dictionary a
 scope; a version 1 store keys principals by SID alone, so every domain's built-in groups are one
 principal in it with their memberships merged. Reading one would hand back the fabricated
 cross-domain privilege path [`0087`](../../decisions/0087-a-sid-is-unique-within-its-scope.md) was
-written to remove. Version 3 added completeness, and a version 2 store records none - reading one
-would report a derivation of unknown coverage as a whole one. Either way the refusal names what
-differs and says the evidence is untouched.
+written to remove. Version 3 added completeness, and version 4 added the persisted AdminSDHolder
+product. Older stores are disposable and are refused rather than interpreted under newer semantics;
+the Evidence is untouched and can be derived again.
 
 **No rule reads any of this.** The rule interface over declared derived facts is a judge-stage
 change and has not been made. `IRule` still takes one object. The right moment to design its
@@ -400,7 +408,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | See which principals AdminSDHolder covers | `ProtectedPrincipalDeriverTests` | |
 | See `Unknown` rather than `NotProtected` where the traversal is unevidenced | `ProtectedPrincipalDeriverTests` | |
 | Have one gated edge not turn the whole forest into a shrug | `ProtectedPrincipalDeriverTests` | |
-| Have the protected set match what Microsoft publishes | `ProtectedGroupCatalogueMicrosoftAnchorTests` | |
+| Have principal protection and member propagation kept as independent sourced claims | `AdminSdHolderCatalogueSemanticTests` | |
 | See which distribution groups are one conversion from conferring privilege | `LatentPrivilegeDeriverTests` | |
 | Not be shown a latent path that would change nothing for anybody | `LatentPrivilegeDeriverTests` | |
 | Read a derived answer beside what it does not cover | `DerivationCompletenessTests` | |
@@ -429,7 +437,7 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Not get a capture he did not ask for by mistyping a derive | `CommandLineTests.DerivingIsNotCombinedWithARunLibrary` | 2026-08-28 |
 | Have every type this stage publishes held to the same rules as the rest of the product | `SurfaceRegisterTests` | 2026-08-28 |
 | Not meet two methods called `Expand` that answer unrelated questions | `ConceptRegistryTests` | 2026-08-28 |
-| See the protected set his own forest enforces, not the one Microsoft publishes | `ProtectedCatalogueExclusionTests.Stage2a_AnExcludedGroupIsNotProtected` | 2026-08-28 |
-| Tell a group his forest excluded from one that was never protected | `ProtectedCatalogueExclusionTests.Stage2a_ThePublishedSetIsStillAnswerableAfterNarrowing` | 2026-08-28 |
-| Not be told the protected set is in doubt when his forest answered clearly | `ProtectedCatalogueExclusionTests.Stage2a_AForestThatExcludedNothingSaysItWasAsked` | 2026-08-28 |
-| Keep every published protection where a bundle cannot say what the forest set | `ProtectedCatalogueExclusionTests.Stage2a_ABundleWithoutTheValueKeepsThePublishedSet` | |
+| Have a forest mask change member propagation without changing principal protection | `AdminSdHolderCatalogueSemanticTests.ACompleteMaskDisablesOnlyEffectiveMemberPropagation` | |
+| Be told a mask-dependent root is unverified when the mask was unread or malformed | `AdminSdHolderCatalogueSemanticTests.AnUnreadOrMalformedMaskMakesAnExcludableRootUnverified` | |
+| Keep forest-root-only RIDs from matching child-domain principals | `ProtectedPrincipalDeriverTests.Stage2a_AForestRootRidInAChildDomainIsNotTheForestRootPrincipal` | |
+| Read persisted evaluations, reasons, bases and deterministic paths | `ProtectedPrincipalPersistenceTests.Stage2a_AllEvaluationsReasonsBasesAndPathsRoundTrip` | |

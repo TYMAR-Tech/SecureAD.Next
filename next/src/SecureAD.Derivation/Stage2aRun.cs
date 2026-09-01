@@ -145,6 +145,10 @@ public static class Stage2aRun
 
         var graph = NestingGraph.Build(facts);
 
+        // Every derived product names principals by this dictionary, so it is persisted before any
+        // phase can write a product that references it.
+        WriteFacts(writer, facts);
+
         var closure = Run(
             writer,
             nameof(ExpansionPhase),
@@ -157,8 +161,6 @@ public static class Stage2aRun
 
         RunProtection(writer, graph, facts, closure, progress, log, cancellationToken);
         RunLatent(writer, graph, closure, progress, log, cancellationToken);
-
-        WriteFacts(writer, facts);
 
         // What none of the three products covers, recorded beside them rather than left for a
         // reader to infer. Written after the facts because the partial groups it names are sid
@@ -217,7 +219,10 @@ public static class Stage2aRun
                     progress.Report(new DerivationProgress(MembershipNestingPass.PhaseName, objectsRead));
             });
 
-            var facts = MembershipNestingPass.Read(counted, cancellationToken);
+            var facts = MembershipNestingPass.Read(
+                counted,
+                bundle.Description.ForestFqdn,
+                cancellationToken);
 
             progress.Report(new DerivationProgress(MembershipNestingPass.PhaseName, objectsRead));
 
@@ -280,16 +285,24 @@ public static class Stage2aRun
         // set and says nobody looked.
         var catalogue = ProtectedGroupCatalogue.NarrowedBy(facts.ForestHeuristics);
 
-        Run(
+        var product = Run(
             writer,
             ProtectedPrincipalDeriver.PhaseName,
             progress,
             log,
             () => ProtectedPrincipalDeriver.Derive(
-                graph, facts.Sids, catalogue, evidenceIsPartial, cancellationToken),
+                graph,
+                facts.Sids,
+                catalogue,
+                evidenceIsPartial,
+                cancellationToken,
+                facts.ForestRootDomainSid),
             _ => evidenceIsPartial
                 ? DerivationPhaseOutcome.Degraded
                 : DerivationPhaseOutcome.Succeeded);
+
+        if (product is not null)
+            writer.WriteProtectedPrincipals(product);
     }
 
     private static void RunLatent(

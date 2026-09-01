@@ -237,7 +237,7 @@ satisfied by the catalogue flag it already anticipated.
 authorization's honouring of it, and still says nothing about SDProp.
 
 Recorded in `docs/MICROSOFT-VERIFICATION.md`, anchored by
-`ProtectedGroupCatalogueMicrosoftAnchorTests`, and built as described in
+`AdminSdHolderCatalogueSemanticTests`, and built as described in
 `docs/layers/derivation/what-stage-2a-derives.md`.
 
 **A gated edge does not mean the principal is unprotected, and this is where an earlier draft would

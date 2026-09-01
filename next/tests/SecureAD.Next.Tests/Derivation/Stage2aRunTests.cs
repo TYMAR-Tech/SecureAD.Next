@@ -121,7 +121,7 @@ public sealed class Stage2aRunTests
 
         writer.RecordPhase(MembershipNestingPass.PhaseName, DerivationPhaseOutcome.Succeeded, error: null);
         writer.RecordPhase("AuthorizationMembership", DerivationPhaseOutcome.Succeeded, error: null);
-        writer.RecordPhase(ProtectedPrincipalDeriver.PhaseName, DerivationPhaseOutcome.Succeeded, error: null);
+        writer.RecordPhase(ProtectedPrincipalDeriver.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
         writer.RecordPhase(LatentPrivilegeDeriver.PhaseName, DerivationPhaseOutcome.Succeeded, error: null);
         writer.WriteSids([], []);
         writer.Complete(Started);

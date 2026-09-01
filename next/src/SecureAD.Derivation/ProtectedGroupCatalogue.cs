@@ -2,33 +2,47 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Derivation;
 
-/// <summary>
-/// How well established it is that a kind of edge takes part in protected-principal evaluation.
-/// </summary>
-/// <remarks>
-/// <b>Kept because "Microsoft says so" covers three different strengths of claim.</b> A protocol
-/// specification describes what a domain controller does; product documentation describes what
-/// administrators are told it does; a lab observation describes what one directory did once. All
-/// three beat inference, and collapsing them would lose the ability to revisit the weakest one
-/// when something better turns up.
-/// </remarks>
-internal enum ProtectedEdgeProvenance
+internal enum CatalogueClaimStatus
 {
-    /// <summary>Nothing establishes it. The edge is not followed.</summary>
-    NotEstablished,
-
-    /// <summary>Microsoft product documentation states it.</summary>
-    Documented,
-
-    /// <summary>A Microsoft protocol specification states it.</summary>
-    Specified,
-
-    /// <summary>Observed in a lab and recorded as such, rather than specified anywhere.</summary>
-    LabVerified,
+    Established,
+    EstablishedNo,
+    Disputed,
+    Unverified,
+    DoesNotApply,
 }
 
+internal enum CatalogueClaimProvenance
+{
+    None,
+    ProtocolSpecification,
+    MicrosoftProductDocumentation,
+    MicrosoftSupport,
+    ControlledLabObservation,
+}
+
+internal enum CataloguePrincipalScope
+{
+    PerDomainRid,
+    ForestRootRid,
+    BuiltinPerDomain,
+}
+
+internal sealed record CatalogueClaim(
+    CatalogueClaimStatus Status,
+    CatalogueClaimProvenance Provenance,
+    string SourceId);
+
+internal sealed record AdminSdHolderCatalogueEntry(
+    int Id,
+    string Name,
+    CataloguePrincipalScope Scope,
+    int Rid,
+    CatalogueClaim PrincipalProtection,
+    CatalogueClaim MemberPropagation,
+    bool CanBeDisabledByAdminSdExMask);
+
 /// <summary>
-/// Which principals Active Directory protects, and which kinds of nesting reach them.
+/// The independently evidenced AdminSDHolder principal and member-propagation catalogue.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -51,80 +65,72 @@ internal enum ProtectedEdgeProvenance
 /// </para>
 /// </remarks>
 /// <param name="Version">Which revision of the catalogue this is.</param>
-/// <param name="DistributionNestingProvenance">
-/// What establishes that nesting through a distribution group reaches a protected principal.
-/// </param>
-/// <param name="PrimaryGroupProvenance">
-/// What establishes that primary-group membership reaches a protected principal.
-/// </param>
 /// <param name="Exclusions">
 /// What the forest's own <c>dSHeuristics</c> says about which operator groups it has stopped
 /// protecting, and whether that was read at all.
 /// </param>
 internal sealed record ProtectedGroupCatalogue(
-    string Version,
-    ProtectedEdgeProvenance DistributionNestingProvenance,
-    ProtectedEdgeProvenance PrimaryGroupProvenance,
+    int Version,
+    IReadOnlyList<AdminSdHolderCatalogueEntry> Entries,
     AdminSdExclusionMask Exclusions)
 {
-    /// <summary>
-    /// Whether this catalogue's exclusions name the builtin group <paramref name="sid"/> is.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Computed each time rather than cached, and the two attempts before this one are why.</b>
-    /// A field initialiser is copied verbatim by a <c>with</c> expression rather than recomputed,
-    /// so <see cref="NarrowedBy"/> produced a catalogue holding a new mask beside the old empty
-    /// set. Replacing it with a lazily populated field was worse: <see cref="Default"/> is a static
-    /// singleton, so whichever caller reached it first decided what every later copy inherited, and
-    /// the tests passed alone and failed together.
-    /// </para>
-    /// <para>
-    /// The mask names at most four groups, so this is four comparisons against a list that is
-    /// almost always empty - cheaper than the allocation the cache was avoiding.
-    /// </para>
-    /// </remarks>
-    /// <param name="sid">The SID in its canonical text form.</param>
-    private bool IsExcludedByTheForest(string sid) =>
-        Exclusions.Excluded.Any(
-            g => string.Equals(sid, $"S-1-5-32-{(int)g}", StringComparison.Ordinal));
-    /// <summary>
-    /// Relative identifiers protected within their own domain.
-    /// </summary>
-    /// <remarks>
-    /// Two of these are accounts rather than groups - 500 is the built-in Administrator and 502 is
-    /// krbtgt - and they are protected in their own right, so they seed the closure like any group.
-    /// <para>
-    /// Cert Publishers is deliberately absent. It was protected between Windows 2000 SP4 and
-    /// Windows Server 2003 and was removed afterwards, and the same source's version table is what
-    /// says so.
-    /// </para>
-    /// </remarks>
-    public static IReadOnlySet<int> DomainRelativeIdentifiers { get; } = new HashSet<int>
-    {
-        500, // Administrator
-        502, // krbtgt
-        512, // Domain Admins
-        516, // Domain Controllers
-        518, // Schema Admins - root domain only
-        519, // Enterprise Admins - root domain only
-        521, // Read-only Domain Controllers
-        526, // Key Admins
-        527, // Enterprise Key Admins
-    };
+    private static readonly CatalogueClaim EstablishedPrincipal = new(
+        CatalogueClaimStatus.Established,
+        CatalogueClaimProvenance.MicrosoftProductDocumentation,
+        "MS-APPENDIX-C-2026-08");
 
-    /// <summary>
-    /// Whole SIDs of the protected builtin groups, which are the same in every domain.
-    /// </summary>
-    public static IReadOnlySet<string> BuiltinSids { get; } = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "S-1-5-32-544", // Administrators
-        "S-1-5-32-548", // Account Operators
-        "S-1-5-32-549", // Server Operators
-        "S-1-5-32-550", // Print Operators
-        "S-1-5-32-551", // Backup Operators
-        "S-1-5-32-552", // Replicator
-    };
+    private static readonly CatalogueClaim EstablishedPropagation = new(
+        CatalogueClaimStatus.Established,
+        CatalogueClaimProvenance.MicrosoftProductDocumentation,
+        "MS-ATTACK-SURFACE-2026-08");
+
+    private static readonly CatalogueClaim UnverifiedPropagation = new(
+        CatalogueClaimStatus.Unverified,
+        CatalogueClaimProvenance.MicrosoftProductDocumentation,
+        "MS-ADTS-UNVERIFIED-2026-08");
+
+    private static readonly IReadOnlyList<AdminSdHolderCatalogueEntry> VersionTwoEntries =
+    [
+        Entry(1, "Administrator", CataloguePrincipalScope.PerDomainRid, 500, EstablishedPrincipal,
+            Claim(CatalogueClaimStatus.DoesNotApply, "OBJECT-CLASS-NOT-GROUP")),
+        Entry(2, "krbtgt", CataloguePrincipalScope.PerDomainRid, 502, EstablishedPrincipal,
+            Claim(CatalogueClaimStatus.DoesNotApply, "OBJECT-CLASS-NOT-GROUP")),
+        Entry(3, "Domain Admins", CataloguePrincipalScope.PerDomainRid, 512, EstablishedPrincipal,
+            EstablishedPropagation),
+        Entry(4, "Domain Controllers", CataloguePrincipalScope.PerDomainRid, 516, EstablishedPrincipal,
+            UnverifiedPropagation),
+        Entry(5, "Cert Publishers", CataloguePrincipalScope.PerDomainRid, 517,
+            Claim(CatalogueClaimStatus.EstablishedNo, "MS-GROUP-PAGES-2026-08"),
+            Claim(CatalogueClaimStatus.EstablishedNo, "MS-GROUP-PAGES-2026-08")),
+        Entry(6, "Group Policy Creator Owners", CataloguePrincipalScope.PerDomainRid, 520,
+            Claim(CatalogueClaimStatus.EstablishedNo, "MS-GROUP-PAGES-2026-08"),
+            Claim(CatalogueClaimStatus.EstablishedNo, "MS-GROUP-PAGES-2026-08")),
+        Entry(7, "Read-only Domain Controllers", CataloguePrincipalScope.PerDomainRid, 521,
+            EstablishedPrincipal, UnverifiedPropagation),
+        Entry(8, "Key Admins", CataloguePrincipalScope.PerDomainRid, 526, EstablishedPrincipal,
+            UnverifiedPropagation),
+        Entry(9, "Enterprise Read-only Domain Controllers", CataloguePrincipalScope.ForestRootRid, 498,
+            Claim(CatalogueClaimStatus.Disputed, "MS-APPENDIX-C-VS-GROUP-PAGE-2026-08"),
+            UnverifiedPropagation),
+        Entry(10, "Schema Admins", CataloguePrincipalScope.ForestRootRid, 518, EstablishedPrincipal,
+            EstablishedPropagation),
+        Entry(11, "Enterprise Admins", CataloguePrincipalScope.ForestRootRid, 519, EstablishedPrincipal,
+            EstablishedPropagation),
+        Entry(12, "Enterprise Key Admins", CataloguePrincipalScope.ForestRootRid, 527,
+            EstablishedPrincipal, UnverifiedPropagation),
+        Entry(13, "Administrators", CataloguePrincipalScope.BuiltinPerDomain, 544, EstablishedPrincipal,
+            EstablishedPropagation),
+        Entry(14, "Account Operators", CataloguePrincipalScope.BuiltinPerDomain, 548, EstablishedPrincipal,
+            EstablishedPropagation, true),
+        Entry(15, "Server Operators", CataloguePrincipalScope.BuiltinPerDomain, 549, EstablishedPrincipal,
+            EstablishedPropagation, true),
+        Entry(16, "Print Operators", CataloguePrincipalScope.BuiltinPerDomain, 550, EstablishedPrincipal,
+            EstablishedPropagation, true),
+        Entry(17, "Backup Operators", CataloguePrincipalScope.BuiltinPerDomain, 551, EstablishedPrincipal,
+            EstablishedPropagation, true),
+        Entry(18, "Replicator", CataloguePrincipalScope.BuiltinPerDomain, 552, EstablishedPrincipal,
+            EstablishedPropagation),
+    ];
 
     /// <summary>
     /// The catalogue this product ships.
@@ -161,9 +167,8 @@ internal sealed record ProtectedGroupCatalogue(
     /// </para>
     /// </remarks>
     public static ProtectedGroupCatalogue Default { get; } = new(
-        Version: "appendix-c-2026-08",
-        DistributionNestingProvenance: ProtectedEdgeProvenance.Documented,
-        PrimaryGroupProvenance: ProtectedEdgeProvenance.NotEstablished,
+        Version: 2,
+        Entries: VersionTwoEntries,
         Exclusions: new AdminSdExclusionMask(
             [], HeuristicReadOutcome.NotRead, Character: null));
 
@@ -191,68 +196,40 @@ internal sealed record ProtectedGroupCatalogue(
     public static ProtectedGroupCatalogue NarrowedBy(string? dsHeuristics) =>
         Default with { Exclusions = DirectoryHeuristics.AdminSdExclusions(dsHeuristics) };
 
-    /// <summary>Whether nesting through a distribution group is followed.</summary>
-    public bool FollowsDistributionNesting =>
-        DistributionNestingProvenance != ProtectedEdgeProvenance.NotEstablished;
-
-    /// <summary>Whether primary-group membership is followed.</summary>
-    public bool FollowsPrimaryGroup =>
-        PrimaryGroupProvenance != ProtectedEdgeProvenance.NotEstablished;
-
-    /// <summary>
-    /// Whether a SID names a principal this catalogue protects.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>An instance member rather than a static one, because the answer depends on the forest.</b>
-    /// <c>dwAdminSDExMask</c> can remove four operator groups from AdminSDHolder's protection, so
-    /// <i>is this principal protected</i> has no answer that holds everywhere. A static method
-    /// would have to ignore the mask, which is how this product came to state
-    /// <c>ProtectedCatalogueIncomplete</c> on every derivation.
-    /// </para>
-    /// <para>
-    /// <b>An excluded group is still in the published catalogue.</b> It is removed here rather than
-    /// deleted from <see cref="BuiltinSids"/>, so what Microsoft publishes and what this forest
-    /// does are two facts a reader can still tell apart.
-    /// </para>
-    /// </remarks>
-    /// <param name="sid">The SID in its canonical text form.</param>
-    public bool IsProtected(string sid)
+    public CatalogueClaim EffectiveMemberPropagation(AdminSdHolderCatalogueEntry entry)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+        ArgumentNullException.ThrowIfNull(entry);
+        if (!Entries.Any(candidate => candidate.Id == entry.Id))
+            throw new ArgumentException("The catalogue entry does not belong to this catalogue.", nameof(entry));
 
-        if (IsExcludedByTheForest(sid))
-            return false;
+        if (!entry.CanBeDisabledByAdminSdExMask
+            || entry.MemberPropagation.Status != CatalogueClaimStatus.Established)
+            return entry.MemberPropagation;
 
-        return IsInThePublishedCatalogue(sid);
+        if (!Exclusions.IsComplete)
+            return new CatalogueClaim(
+                CatalogueClaimStatus.Unverified,
+                CatalogueClaimProvenance.ProtocolSpecification,
+                "DSHEURISTICS-NOT-AVAILABLE");
+
+        return Exclusions.Excluded.Any(group => (int)group == entry.Rid)
+            ? new CatalogueClaim(
+                CatalogueClaimStatus.EstablishedNo,
+                CatalogueClaimProvenance.ProtocolSpecification,
+                "DSHEURISTICS-DWADMINSD-EX-MASK")
+            : entry.MemberPropagation;
     }
 
-    /// <summary>
-    /// Whether a SID names a principal Microsoft publishes as protected, before any forest-specific
-    /// exclusion is applied.
-    /// </summary>
-    /// <remarks>
-    /// Kept separate from <see cref="IsProtected"/> so the published set stays answerable on its
-    /// own: an operator asking why a group is not protected needs to know whether it was never in
-    /// the catalogue or was taken out by this forest, and those are different remedies.
-    /// </remarks>
-    /// <param name="sid">The SID in its canonical text form.</param>
-    public static bool IsInThePublishedCatalogue(string sid)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+    private static AdminSdHolderCatalogueEntry Entry(
+        int id,
+        string name,
+        CataloguePrincipalScope scope,
+        int rid,
+        CatalogueClaim principalProtection,
+        CatalogueClaim memberPropagation,
+        bool maskExcludable = false) =>
+        new(id, name, scope, rid, principalProtection, memberPropagation, maskExcludable);
 
-        if (BuiltinSids.Contains(sid))
-            return true;
-
-        // Only an ordinary domain SID carries a protected relative identifier. Without this a
-        // well-known SID whose last part happens to be 500 would be read as somebody's built-in
-        // Administrator.
-        if (!sid.StartsWith("S-1-5-21-", StringComparison.Ordinal))
-            return false;
-
-        var lastSeparator = sid.LastIndexOf('-');
-        return lastSeparator > 0
-            && int.TryParse(sid[(lastSeparator + 1)..], out var rid)
-            && DomainRelativeIdentifiers.Contains(rid);
-    }
+    private static CatalogueClaim Claim(CatalogueClaimStatus status, string sourceId) =>
+        new(status, CatalogueClaimProvenance.MicrosoftProductDocumentation, sourceId);
 }

@@ -645,8 +645,8 @@ Rewrite the lab note to distinguish:
 - `next/src/SecureAD.Evidence/Findings/RuleDefinition.cs`
 - `next/src/SecureAD.Judgement/JudgingRun.cs`
 - `next/src/SecureAD.Judgement/RuleExecution.cs`
-- `next/tests/SecureAD.Next.Tests/Derivation/ProtectedGroupCatalogueMicrosoftAnchorTests.cs`
-- `next/tests/SecureAD.Next.Tests/Derivation/ProtectedCatalogueExclusionTests.cs`
+- next/tests/SecureAD.Next.Tests/Derivation/ProtectedGroupCatalogueMicrosoftAnchorTests.cs *(deleted when Decision 0089 replaced the flat catalogue)*
+- next/tests/SecureAD.Next.Tests/Derivation/ProtectedCatalogueExclusionTests.cs *(deleted when mask behavior split by semantic)*
 - `next/tests/SecureAD.Next.Tests/Derivation/ProtectedPrincipalDeriverTests.cs`
 - `next/tests/SecureAD.Next.Tests/Kernel/Security/DirectoryHeuristicsMicrosoftAnchorTests.cs`
 

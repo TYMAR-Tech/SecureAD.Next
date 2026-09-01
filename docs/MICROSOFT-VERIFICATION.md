@@ -34,8 +34,8 @@ beside it. The two are separate facts and the column carries the first.
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
 | `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
-| `ProtectedGroupCatalogue` principal-object list | 15 | Appendix C: Protected Accounts and Groups in Active Directory | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests` |
-| Protected-member distribution traversal | 1 semantic claim | Reducing the Active Directory Attack Surface, protected accounts and groups section | 2026-08-27 | `ProtectedGroupCatalogueMicrosoftAnchorTests.TheProvenanceOfEachEdgeKindIsRecorded` |
+| `ProtectedGroupCatalogue` independent claims | 18 entries | Appendix C and Active Directory security groups | 2026-08-30 | `AdminSdHolderCatalogueSemanticTests` |
+| Protected-member distribution traversal | 1 semantic claim | Reducing the Active Directory Attack Surface, protected accounts and groups section | 2026-08-30 | `AdminSdHolderCatalogueSemanticTests` |
 | `DirectoryHeuristics` mask encoding and bit assignments | 4 bits | MS-ADTS 6.1.1.2.4.1.2, and KB 56a70fa8 for the bit assignments | 2026-08-28 | `DirectoryHeuristicsMicrosoftAnchorTests` |
 
 **Defects found: 12 of 238.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
@@ -86,9 +86,9 @@ fetch away*. What this register adds is that the finding is now written down wit
 next reader does not re-open the question or, worse, implement the edge from inference.
 
 It is recorded as documentation rather than specification. Appendix C and the attack-surface guidance
-are product documentation, not Open Specifications, and `ProtectedEdgeProvenance` keeps the three
-strengths of claim apart so the weakest can be revisited when something better turns up. The primary
-group half of the same gate, `AC-64`, remains unevidenced and unfollowed.
+are product documentation, not Open Specifications, and `CatalogueClaimProvenance` keeps the source
+of each independent claim visible. The primary-group half of the same gate, `AC-64`, remains
+unevidenced and unfollowed.
 
 **What is not verified by the rows above:** member propagation for RIDs 498, 516, 521, 526 or 527;
 principal protection for RID 498; primary-group-only traversal; malformed character-16 fallback; or

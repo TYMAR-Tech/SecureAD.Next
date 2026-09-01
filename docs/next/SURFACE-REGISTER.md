@@ -312,6 +312,15 @@ The table below sits between the two markers around it, so the test parses only 
 | DerivationDescription | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | StoredDerivationPhase | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | DerivationSize | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| ProtectedPrincipalEvaluation | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| ProtectionUnknownReason | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| ProtectedPrincipalBasisKind | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| ProtectedPrincipalBasis | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| ProtectedPrincipalProductAvailability | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| StoredAdminSdCatalogueEntry | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| StoredProtectedPrincipalFact | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| StoredProtectedPrincipalDerivation | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| StoredProtectedPrincipalProduct | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | DirectoryHeuristics | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | HeuristicCharacter | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | HeuristicReadOutcome | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |

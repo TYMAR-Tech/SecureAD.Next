@@ -309,7 +309,7 @@ public sealed class MembershipNestingPassTests
             domainFqdn);
 
     private static NestingFacts Read(params ObjectAttributes[] objects) =>
-        MembershipNestingPass.Read(objects, CancellationToken.None);
+        MembershipNestingPass.Read(objects, "example.com", CancellationToken.None);
 
     private static string SidOf(NestingFacts facts, int rid) =>
         DomainSid + "-" + rid;

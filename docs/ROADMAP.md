@@ -43,6 +43,11 @@ merged, its documents are updated and its row here says so. The owner's standing
 | 9 | Reports and export | not started |
 | 10 | Comparing runs | not started |
 
+The correction sequence that precedes further rule rollout has completed Wave 5: AdminSDHolder
+principal and member-propagation claims are separated, and the resulting evaluations, reasons, bases
+and deterministic paths are persisted in Derivation and readable. Wave 6 is next; it introduces the
+declared Judgement input package and consumes these facts without recomputation.
+
 **A useful product exists at stage 4.** Stages 5 to 8 are the hard half, and stage 8 is where the
 predecessor went wrong.
 

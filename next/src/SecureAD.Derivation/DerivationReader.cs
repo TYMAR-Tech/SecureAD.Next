@@ -48,6 +48,61 @@ public sealed record StoredDerivationPhase(
 /// <param name="NestingEdges">Direct nesting relationships, each held once.</param>
 public sealed record DerivationSize(long Principals, long Identities, long NestingEdges);
 
+public enum ProtectedPrincipalProductAvailability
+{
+    Available,
+    DidNotRun,
+    Failed,
+    Missing,
+}
+
+public sealed record StoredAdminSdCatalogueEntry(
+    int Id,
+    string Name,
+    string Scope,
+    int Rid,
+    string PrincipalStatus,
+    string PrincipalProvenance,
+    string PrincipalSourceId,
+    string PropagationStatus,
+    string PropagationProvenance,
+    string PropagationSourceId,
+    bool MaskExcludable);
+
+public sealed record StoredProtectedPrincipalFact(
+    int SidId,
+    string Sid,
+    string? Scope,
+    ProtectedPrincipalEvaluation Evaluation,
+    ProtectedPrincipalBasis? Basis,
+    ProtectionUnknownReason UnknownReasons,
+    IReadOnlyList<int> Path)
+{
+    public bool IsComplete => Evaluation != ProtectedPrincipalEvaluation.Unknown;
+}
+
+public sealed record StoredProtectedPrincipalDerivation(
+    int CatalogueVersion,
+    SecureAD.Kernel.Security.AdminSdExclusionMask Mask,
+    IReadOnlyList<StoredAdminSdCatalogueEntry> Catalogue,
+    IReadOnlyList<StoredProtectedPrincipalFact> Principals,
+    ProtectionUnknownReason StatedLimits)
+{
+    public bool IsComplete => StatedLimits == ProtectionUnknownReason.None;
+
+    public StoredProtectedPrincipalFact? Lookup(string sid, string? scope)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+        return Principals.FirstOrDefault(fact =>
+            string.Equals(fact.Sid, sid, StringComparison.Ordinal)
+            && string.Equals(fact.Scope, scope, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+public sealed record StoredProtectedPrincipalProduct(
+    ProtectedPrincipalProductAvailability Availability,
+    StoredProtectedPrincipalDerivation? Value);
+
 /// <summary>
 /// Everything a derivation store holds about the run that wrote it.
 /// </summary>
@@ -69,7 +124,8 @@ public sealed record StoredDerivation(
     DerivationDescription Description,
     IReadOnlyList<StoredDerivationPhase> Phases,
     DerivationSize Size,
-    DerivationCompleteness Completeness)
+    DerivationCompleteness Completeness,
+    StoredProtectedPrincipalProduct ProtectedPrincipals)
 {
     /// <summary>Whether every phase that ran succeeded.</summary>
     /// <remarks>
@@ -255,7 +311,118 @@ public sealed class DerivationReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        return new StoredDerivation(Description, ReadPhases(), ReadSize(), ReadCompleteness());
+        var phases = ReadPhases();
+        return new StoredDerivation(
+            Description,
+            phases,
+            ReadSize(),
+            ReadCompleteness(),
+            ReadProtectedPrincipals(phases));
+    }
+
+    private StoredProtectedPrincipalProduct ReadProtectedPrincipals(
+        IReadOnlyList<StoredDerivationPhase> phases)
+    {
+        using var metadata = _connection.CreateCommand();
+        metadata.CommandText =
+            "SELECT catalogue_version, mask_outcome, mask_character, stated_limits "
+            + "FROM adminsd_derivation";
+        using var metadataReader = metadata.ExecuteReader();
+        if (!metadataReader.Read())
+        {
+            var phase = phases.FirstOrDefault(p => p.Phase == ProtectedPrincipalDeriver.PhaseName);
+            var availability = phase?.Outcome switch
+            {
+                DerivationPhaseOutcome.DidNotRun => ProtectedPrincipalProductAvailability.DidNotRun,
+                DerivationPhaseOutcome.Failed => ProtectedPrincipalProductAvailability.Failed,
+                _ => ProtectedPrincipalProductAvailability.Missing,
+            };
+            return new StoredProtectedPrincipalProduct(availability, null);
+        }
+
+        var version = metadataReader.GetInt32(0);
+        var maskOutcome = Enum.Parse<SecureAD.Kernel.Security.HeuristicReadOutcome>(metadataReader.GetString(1));
+        char? character = metadataReader.IsDBNull(2) ? null : metadataReader.GetString(2)[0];
+        var statedLimits = (ProtectionUnknownReason)metadataReader.GetInt32(3);
+        metadataReader.Close();
+
+        var catalogue = ReadAdminSdCatalogue();
+        var paths = ReadProtectedPrincipalPaths();
+        var principals = new List<StoredProtectedPrincipalFact>();
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT p.sid_id, s.sid, s.scope, p.evaluation, p.basis_kind, "
+            + "p.basis_catalogue_entry_id, c.rid, p.unknown_reasons "
+            + "FROM protected_principal p JOIN sid s ON s.sid_id = p.sid_id "
+            + "LEFT JOIN adminsd_catalogue_entry c "
+            + "ON c.catalogue_entry_id = p.basis_catalogue_entry_id ORDER BY p.sid_id";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var sidId = reader.GetInt32(0);
+            ProtectedPrincipalBasis? basis = reader.IsDBNull(4)
+                ? null
+                : new ProtectedPrincipalBasis(
+                    Enum.Parse<ProtectedPrincipalBasisKind>(reader.GetString(4)),
+                    reader.GetInt32(5),
+                    reader.GetInt32(6));
+            principals.Add(new StoredProtectedPrincipalFact(
+                sidId,
+                reader.GetString(1),
+                string.IsNullOrEmpty(reader.GetString(2)) ? null : reader.GetString(2),
+                Enum.Parse<ProtectedPrincipalEvaluation>(reader.GetString(3)),
+                basis,
+                (ProtectionUnknownReason)reader.GetInt32(7),
+                paths.GetValueOrDefault(sidId, [])));
+        }
+
+        var mask = new SecureAD.Kernel.Security.AdminSdExclusionMask(
+            character is { } value && Uri.IsHexDigit(value)
+                ? SecureAD.Kernel.Security.DirectoryHeuristics.AdminSdExclusions(
+                    "000000000100000" + value).Excluded
+                : [],
+            maskOutcome,
+            character);
+        return new StoredProtectedPrincipalProduct(
+            ProtectedPrincipalProductAvailability.Available,
+            new StoredProtectedPrincipalDerivation(version, mask, catalogue, principals, statedLimits));
+    }
+
+    private IReadOnlyList<StoredAdminSdCatalogueEntry> ReadAdminSdCatalogue()
+    {
+        var entries = new List<StoredAdminSdCatalogueEntry>();
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT catalogue_entry_id, name, scope, rid, principal_status, principal_provenance, "
+            + "principal_source_id, propagation_status, propagation_provenance, "
+            + "propagation_source_id, mask_excludable FROM adminsd_catalogue_entry "
+            + "ORDER BY catalogue_entry_id";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            entries.Add(new StoredAdminSdCatalogueEntry(
+                reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3),
+                reader.GetString(4), reader.GetString(5), reader.GetString(6), reader.GetString(7),
+                reader.GetString(8), reader.GetString(9), reader.GetInt32(10) != 0));
+        }
+        return entries;
+    }
+
+    private Dictionary<int, IReadOnlyList<int>> ReadProtectedPrincipalPaths()
+    {
+        var paths = new Dictionary<int, List<int>>();
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT sid_id, path_sid_id FROM protected_principal_path ORDER BY sid_id, ordinal";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var sidId = reader.GetInt32(0);
+            if (!paths.TryGetValue(sidId, out var path))
+                paths.Add(sidId, path = []);
+            path.Add(reader.GetInt32(1));
+        }
+        return paths.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<int>)pair.Value);
     }
 
     /// <summary>Closes the store.</summary>

@@ -29,7 +29,7 @@ the same thing — which is what makes it evidence rather than an opinion.
 | 2 | **Review and authorize scope** | Show included and unread scope and collect exact per-run exclusion attestations | Built in Shell; CLI has no interactive exclusion path |
 | 3 | **Capture** | Read Configuration, Schema, included domains, objects, permissions, memberships and relevant SYSVOL data | Built |
 | 4 | **Reconcile and seal Evidence** | Compare referrals with the authorized plan, persist uncertainty, refuse confirmed unplanned scope, and seal immutable Evidence | Built; Evidence schema 9 |
-| 5 | **Derive reusable facts** | Compute offline cross-object facts into a disposable store beside Evidence | Built foundation; persisted products and binding are incomplete |
+| 5 | **Derive reusable facts** | Compute offline cross-object facts into a disposable store beside Evidence | Built; AdminSDHolder products are bound, persisted and readable |
 | 6 | **Judge** | Apply scheduled rules to declared Evidence/Derivation inputs and write a disposable judgement store | Built and reached by Shell; CLI orchestration does not yet invoke it |
 | 7 | **Read and present** | Read the run library, coverage, objects, permissions and findings without contacting the directory | Built foundation; dashboards/reports remain incomplete |
 | 8 | **Compare and export** | Compare compatible captures and produce durable reports or machine-readable output | Not built |

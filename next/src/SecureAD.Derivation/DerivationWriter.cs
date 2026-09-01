@@ -37,6 +37,8 @@ internal sealed class DerivationWriter : IDisposable
     private bool _sidsWritten;
     private bool _completenessWritten;
     private bool _completenessIsComplete = true;
+    private bool _protectedPrincipalsWritten;
+    private bool _protectedPrincipalsRequired;
     private bool _finished;
     private bool _disposed;
 
@@ -208,6 +210,110 @@ internal sealed class DerivationWriter : IDisposable
         }
 
         transaction.Commit();
+    }
+
+    public void WriteProtectedPrincipals(ProtectedPrincipalClosure product)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ThrowIfFinished();
+        ThrowIfSidsNotWritten(nameof(WriteProtectedPrincipals));
+        if (_protectedPrincipalsWritten)
+            throw new InvalidOperationException("Protected-principal facts have already been written.");
+
+        if (product.EvaluationBySid.Count != product.ReasonsBySid.Count
+            || product.EvaluationBySid.Count != product.BasisBySid.Count
+            || product.EvaluationBySid.Count != product.PathsBySid.Count)
+        {
+            throw new ArgumentException(
+                "Protected-principal evaluations, reasons, bases and paths must describe the same principals.",
+                nameof(product));
+        }
+
+        ThrowIfProductIsIncoherent(product);
+
+        using var transaction = _connection.BeginTransaction();
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                "INSERT INTO adminsd_catalogue_entry "
+                + "(catalogue_entry_id, name, scope, rid, principal_status, principal_provenance, "
+                + "principal_source_id, propagation_status, propagation_provenance, "
+                + "propagation_source_id, mask_excludable) VALUES "
+                + "($id, $name, $scope, $rid, $principalStatus, $principalProvenance, "
+                + "$principalSource, $propagationStatus, $propagationProvenance, "
+                + "$propagationSource, $maskExcludable)";
+            foreach (var entry in product.Catalogue.Entries.OrderBy(entry => entry.Id))
+            {
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("$id", entry.Id);
+                command.Parameters.AddWithValue("$name", entry.Name);
+                command.Parameters.AddWithValue("$scope", entry.Scope.ToString());
+                command.Parameters.AddWithValue("$rid", entry.Rid);
+                command.Parameters.AddWithValue("$principalStatus", entry.PrincipalProtection.Status.ToString());
+                command.Parameters.AddWithValue("$principalProvenance", entry.PrincipalProtection.Provenance.ToString());
+                command.Parameters.AddWithValue("$principalSource", entry.PrincipalProtection.SourceId);
+                command.Parameters.AddWithValue("$propagationStatus", entry.MemberPropagation.Status.ToString());
+                command.Parameters.AddWithValue("$propagationProvenance", entry.MemberPropagation.Provenance.ToString());
+                command.Parameters.AddWithValue("$propagationSource", entry.MemberPropagation.SourceId);
+                command.Parameters.AddWithValue("$maskExcludable", entry.CanBeDisabledByAdminSdExMask ? 1 : 0);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText =
+                "INSERT INTO adminsd_derivation "
+                + "(catalogue_version, mask_outcome, mask_character, stated_limits) "
+                + "VALUES ($version, $outcome, $character, $limits)";
+            command.Parameters.AddWithValue("$version", product.Catalogue.Version);
+            command.Parameters.AddWithValue("$outcome", product.Catalogue.Exclusions.Outcome.ToString());
+            command.Parameters.AddWithValue(
+                "$character", (object?)product.Catalogue.Exclusions.Character?.ToString() ?? DBNull.Value);
+            command.Parameters.AddWithValue("$limits", (int)product.StatedLimits);
+            command.ExecuteNonQuery();
+        }
+
+        using (var principal = _connection.CreateCommand())
+        using (var path = _connection.CreateCommand())
+        {
+            principal.Transaction = transaction;
+            path.Transaction = transaction;
+            principal.CommandText =
+                "INSERT INTO protected_principal "
+                + "(sid_id, evaluation, basis_kind, basis_catalogue_entry_id, unknown_reasons) "
+                + "VALUES ($sid, $evaluation, $basisKind, $basisEntry, $reasons)";
+            path.CommandText =
+                "INSERT INTO protected_principal_path (sid_id, ordinal, path_sid_id) "
+                + "VALUES ($sid, $ordinal, $pathSid)";
+
+            for (var sidId = 0; sidId < product.EvaluationBySid.Count; sidId++)
+            {
+                var basis = product.BasisBySid[sidId];
+                principal.Parameters.Clear();
+                principal.Parameters.AddWithValue("$sid", sidId);
+                principal.Parameters.AddWithValue("$evaluation", product.EvaluationBySid[sidId].ToString());
+                principal.Parameters.AddWithValue("$basisKind", (object?)basis?.Kind.ToString() ?? DBNull.Value);
+                principal.Parameters.AddWithValue("$basisEntry", (object?)basis?.CatalogueEntryId ?? DBNull.Value);
+                principal.Parameters.AddWithValue("$reasons", (int)product.ReasonsBySid[sidId]);
+                principal.ExecuteNonQuery();
+
+                for (var ordinal = 0; ordinal < product.PathsBySid[sidId].Count; ordinal++)
+                {
+                    path.Parameters.Clear();
+                    path.Parameters.AddWithValue("$sid", sidId);
+                    path.Parameters.AddWithValue("$ordinal", ordinal);
+                    path.Parameters.AddWithValue("$pathSid", product.PathsBySid[sidId][ordinal]);
+                    path.ExecuteNonQuery();
+                }
+            }
+        }
+
+        transaction.Commit();
+        _protectedPrincipalsWritten = true;
     }
 
     /// <summary>
@@ -386,6 +492,71 @@ internal sealed class DerivationWriter : IDisposable
     }
 
     /// <summary>
+    /// Refuses a protected-principal product whose rows contradict each other.
+    /// </summary>
+    /// <remarks>
+    /// <b>The store cannot express these as <c>CHECK</c> constraints without restating the enum in
+    /// SQL</b>, which would be a second copy of the rule free to disagree with the first. They are
+    /// therefore enforced here, on the way in. The one that matters most is the clean negative: a
+    /// <c>NotProtected</c> row carrying an unknown reason is a principal whose answer was in doubt
+    /// being stored as settled, which is the conversion every part of this stage is shaped to
+    /// prevent.
+    /// </remarks>
+    private static void ThrowIfProductIsIncoherent(ProtectedPrincipalClosure product)
+    {
+        for (var sidId = 0; sidId < product.EvaluationBySid.Count; sidId++)
+        {
+            var evaluation = product.EvaluationBySid[sidId];
+            var reasons = product.ReasonsBySid[sidId];
+            var basis = product.BasisBySid[sidId];
+            var path = product.PathsBySid[sidId];
+
+            switch (evaluation)
+            {
+                case ProtectedPrincipalEvaluation.Protected when basis is null:
+                    throw new ArgumentException(
+                        $"Principal {sidId} is Protected with no basis. A protected principal that "
+                        + "cannot say what established it is an answer nobody can check.",
+                        nameof(product));
+
+                case ProtectedPrincipalEvaluation.NotProtected
+                    when basis is not null || reasons != ProtectionUnknownReason.None:
+                    throw new ArgumentException(
+                        $"Principal {sidId} is NotProtected while carrying a basis or an unknown "
+                        + "reason. A clean negative requires complete negative evidence, so a "
+                        + "doubt recorded beside one makes it Unknown rather than decorated.",
+                        nameof(product));
+
+                case ProtectedPrincipalEvaluation.Unknown
+                    when reasons == ProtectionUnknownReason.None || basis is not null:
+                    throw new ArgumentException(
+                        $"Principal {sidId} is Unknown with no reason, or with an established "
+                        + "basis. Every Unknown is explainable, and one that is not reads as a "
+                        + "shrug the operator cannot act on.",
+                        nameof(product));
+            }
+
+            if (basis?.Kind == ProtectedPrincipalBasisKind.DirectPrincipalClaim && path.Count > 0)
+            {
+                throw new ArgumentException(
+                    $"Principal {sidId} is protected in its own right and carries a membership "
+                    + "path. The path would suggest a route that did not decide the answer.",
+                    nameof(product));
+            }
+
+            if (basis?.Kind == ProtectedPrincipalBasisKind.MembershipRoot
+                && (path.Count == 0 || path[0] != sidId))
+            {
+                throw new ArgumentException(
+                    $"Principal {sidId} is protected through membership and its stored path is "
+                    + "empty or does not start at it. The path is what lets a later reader retrace "
+                    + "the route rather than trust the verdict.",
+                    nameof(product));
+            }
+        }
+    }
+
+    /// <summary>
     /// Records what became of one phase.
     /// </summary>
     /// <remarks>
@@ -431,6 +602,11 @@ internal sealed class DerivationWriter : IDisposable
         transaction.Commit();
 
         _outcomes.Add(outcome);
+        if (phase == ProtectedPrincipalDeriver.PhaseName
+            && outcome is DerivationPhaseOutcome.Succeeded or DerivationPhaseOutcome.Degraded)
+        {
+            _protectedPrincipalsRequired = true;
+        }
     }
 
     /// <summary>
@@ -455,6 +631,13 @@ internal sealed class DerivationWriter : IDisposable
     public void Complete(DateTimeOffset completedUtc)
     {
         ThrowIfFinished();
+
+        if (_protectedPrincipalsRequired && !_protectedPrincipalsWritten)
+        {
+            throw new InvalidOperationException(
+                "The protected-principal phase completed without writing its product. Publishing "
+                + "that store would turn a missing derived input into an empty answer.");
+        }
 
         var state = _completenessIsComplete
             && _outcomes.All(o => o == DerivationPhaseOutcome.Succeeded)

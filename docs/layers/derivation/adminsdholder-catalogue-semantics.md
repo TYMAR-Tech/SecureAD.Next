@@ -2,7 +2,7 @@
 
 **Status:** canonical semantic model under decision
 [`0089`](../../decisions/0089-principal-protection-and-member-propagation-are-separate-claims.md);
-not yet implemented.
+implemented by Wave 5 under decision `0090`.
 **Layer:** Derivation.
 **Consumers:** `ProtectedPrincipalClosure`, SEC-030, and any later rule asking whether an object is currently subject to AdminSDHolder/SDProp protection.
 

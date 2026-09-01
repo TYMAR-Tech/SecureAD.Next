@@ -50,7 +50,7 @@ internal static class DerivationSchema
     /// that.
     /// </para>
     /// </remarks>
-    public const int Version = 3;
+    public const int Version = 4;
 
     private static readonly string[] TableDdl =
     [
@@ -309,6 +309,54 @@ internal static class DerivationSchema
             outcome     TEXT NOT NULL,
             reason      TEXT NOT NULL,
             PRIMARY KEY (domain_fqdn)
+        )
+        """,
+
+        """
+        CREATE TABLE adminsd_catalogue_entry (
+            catalogue_entry_id       INTEGER NOT NULL,
+            name                     TEXT    NOT NULL,
+            scope                    TEXT    NOT NULL,
+            rid                      INTEGER NOT NULL,
+            principal_status         TEXT    NOT NULL,
+            principal_provenance     TEXT    NOT NULL,
+            principal_source_id      TEXT    NOT NULL,
+            propagation_status       TEXT    NOT NULL,
+            propagation_provenance   TEXT    NOT NULL,
+            propagation_source_id    TEXT    NOT NULL,
+            mask_excludable          INTEGER NOT NULL,
+            PRIMARY KEY (catalogue_entry_id)
+        )
+        """,
+
+        """
+        CREATE TABLE adminsd_derivation (
+            catalogue_version INTEGER NOT NULL,
+            mask_outcome      TEXT    NOT NULL,
+            mask_character    TEXT        NULL,
+            stated_limits     INTEGER NOT NULL,
+            only_one_row      INTEGER NOT NULL DEFAULT 1 CHECK (only_one_row = 1),
+            PRIMARY KEY (only_one_row)
+        )
+        """,
+
+        """
+        CREATE TABLE protected_principal (
+            sid_id                   INTEGER NOT NULL REFERENCES sid(sid_id),
+            evaluation               TEXT    NOT NULL,
+            basis_kind               TEXT        NULL,
+            basis_catalogue_entry_id INTEGER     NULL REFERENCES adminsd_catalogue_entry(catalogue_entry_id),
+            unknown_reasons          INTEGER NOT NULL,
+            PRIMARY KEY (sid_id)
+        )
+        """,
+
+        """
+        CREATE TABLE protected_principal_path (
+            sid_id      INTEGER NOT NULL REFERENCES protected_principal(sid_id),
+            ordinal     INTEGER NOT NULL,
+            path_sid_id INTEGER NOT NULL REFERENCES sid(sid_id),
+            PRIMARY KEY (sid_id, ordinal)
         )
         """,
     ];

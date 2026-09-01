@@ -40,7 +40,11 @@ internal sealed record NestingFacts(
     IReadOnlyList<string> UnresolvedTrustees,
     int ObjectsWithoutSid,
     int CollapsedStubs,
-    string? ForestHeuristics);
+    string? ForestHeuristics)
+{
+    /// <summary>The SID prefix of the forest-root domain, derived from sealed Evidence.</summary>
+    public string? ForestRootDomainSid { get; init; }
+}
 
 /// <summary>
 /// Reads a sealed bundle once and works out the directory's nesting: who is in what, what each
@@ -91,9 +95,11 @@ internal static class MembershipNestingPass
     /// <returns>What the pass found.</returns>
     public static NestingFacts Read(
         IEnumerable<ObjectAttributes> objects,
+        string forestFqdn,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(objects);
+        ArgumentException.ThrowIfNullOrWhiteSpace(forestFqdn);
 
         var sids = new SidInterner();
         var names = new DistinguishedNameIndex();
@@ -122,6 +128,7 @@ internal static class MembershipNestingPass
         // attribute carries no value because nobody asked, which is not the same as a forest that
         // set none. Only the first stays null.
         string? forestHeuristics = null;
+        string? forestRootDomainSid = null;
 
         foreach (var subject in objects)
         {
@@ -143,6 +150,22 @@ internal static class MembershipNestingPass
                 objectsWithoutSid++;
                 CollectEdges(subject, ownNameId, names, pendingEdges);
                 continue;
+            }
+
+            if (string.Equals(subject.DomainFqdn, forestFqdn, StringComparison.OrdinalIgnoreCase))
+            {
+                var candidate = DomainSidOf(ownSid);
+                if (candidate is not null)
+                {
+                    if (forestRootDomainSid is not null
+                        && !string.Equals(forestRootDomainSid, candidate, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Forest root domain '{forestFqdn}' produced conflicting domain SIDs.");
+                    }
+
+                    forestRootDomainSid = candidate;
+                }
             }
 
             var classes = ClassesOf(subject);
@@ -228,7 +251,26 @@ internal static class MembershipNestingPass
             [.. unresolved.Distinct(StringComparer.OrdinalIgnoreCase)],
             objectsWithoutSid,
             collapsedStubs,
-            forestHeuristics);
+            forestHeuristics)
+        {
+            ForestRootDomainSid = forestRootDomainSid,
+        };
+    }
+
+    private static string? DomainSidOf(string sid)
+    {
+        var parts = sid.Split('-');
+        if (parts.Length != 8
+            || !string.Equals(parts[0], "S", StringComparison.OrdinalIgnoreCase)
+            || parts[1] != "1"
+            || parts[2] != "5"
+            || parts[3] != "21"
+            || parts.Skip(4).Any(part => !uint.TryParse(part, out _)))
+        {
+            return null;
+        }
+
+        return string.Join('-', parts[..^1]);
     }
 
     /// <summary>

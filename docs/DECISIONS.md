@@ -89,3 +89,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0087](decisions/0087-a-sid-is-unique-within-its-scope.md) | 2026-08-28 | Accepted | A SID is unique within its scope, not within the forest |
 | [0088](decisions/0088-a-run-writes-a-log.md) | 2026-08-28 | Accepted | A run writes a log, beside the evidence and outside the seal |
 | [0089](decisions/0089-principal-protection-and-member-propagation-are-separate-claims.md) | 2026-08-28 | Accepted | Principal protection and member propagation are separate claims |
+| [0090](decisions/0090-adminsdholder-facts-are-a-persisted-derivation-product.md) | 2026-08-30 | Accepted | AdminSDHolder facts are a persisted Derivation product |

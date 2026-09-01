@@ -1,6 +1,7 @@
 # Implementing the shared AdminSDHolder catalogue
 
-**Status:** implementation specification for review; not accepted and not implemented.
+**Status:** accepted implementation specification under decision 0090
+[`../../decisions/0090-adminsdholder-facts-are-a-persisted-derivation-product.md`]; built 2026-08-30.
 **Governing semantics:**
 [Shared AdminSDHolder catalogue semantics](adminsdholder-catalogue-semantics.md), accepted by
 [`0089`](../../decisions/0089-principal-protection-and-member-propagation-are-separate-claims.md).
@@ -9,20 +10,12 @@
 
 ---
 
-## For an independent reviewer
+## Accepted boundary
 
-This document specifies how to implement an already accepted semantic model. Review it for:
-
-1. whether any unresolved Microsoft behavior is accidentally converted into Yes or No;
-2. whether the proposed project dependencies preserve the layer direction;
-3. whether stored results contain enough evidence for a later rule to explain its conclusion;
-4. whether incomplete membership can ever become a clean `NotProtected` result;
-5. whether typed uncertainty reaches the operator rather than disappearing into an aggregate count;
-6. whether the schema is deterministic and versioned; and
-7. whether the proposed implementation is larger or more abstract than its first consumer requires.
-
-**Do not review this as permission to implement SEC-030 immediately.** The shared derivation and its
-read model land first. SEC-030 is implemented only after those results round-trip through the store.
+Decision 0090 settles:
+persisted Derivation product, conservative global Unknown for every unproven principal when membership evidence is incomplete,
+one deterministic stored membership path, and Wave 5 ending at persistence/read-back.
+Rule inputs, judgement uncertainty, Shell presentation, and SEC-030 are Wave 6.
 
 ---
 
@@ -38,9 +31,8 @@ The implementation must:
 - make every `Unknown` explainable;
 - persist the result beside the evidence;
 - expose a narrow rule-facing read model;
-- let SEC-030 consume current DACL state and protected-principal facts without recomputing either;
 - keep Derivation independent of rules; and
-- surface uncertainty under decision `0086`.
+- preserve the existing Evidence binding, atomic replacement and completeness contracts.
 
 ## 2. Non-goals
 
@@ -54,74 +46,24 @@ This work does not:
 - infer historical protected membership from `adminCount`;
 - compare an object's ACL byte-for-byte with AdminSDHolder;
 - implement a customer-editable catalogue; or
-- redesign every future rule input before a caller exists.
+- implement Wave 6 rule inputs, judgement uncertainty storage, Shell presentation or SEC-030.
 
 ## 3. Project and dependency boundary
 
-### 3.1 Current problem
+### 3.1 Current architecture
 
-`IRule`, `RuleVerdict`, the two existing rules and `RuleCatalogue` currently live in
-`SecureAD.Evidence`. `SecureAD.Derivation` depends on Evidence, so Evidence cannot reference
-Derivation without a cycle. A derived-fact rule cannot remain implemented in Evidence and directly
-consume Derivation.
-
-### 3.2 Proposed boundary
-
-Move rule **execution contracts and implementations** into `SecureAD.Judgement`:
-
-- `IRule`;
-- `RuleVerdict`;
-- `RuleCatalogue`;
-- existing unconstrained-delegation rule implementations; and
-- future SEC-030 implementation.
-
-Keep the immutable finding data contracts in `SecureAD.Evidence.Findings`:
-
-- `RuleDefinition`;
-- `Finding`;
-- `FindingSubject`;
-- `FindingEvidence` and evidence records;
-- `Severity`; and
-- stable rule/finding identity vocabulary.
-
-Add a project reference:
-
-```text
-SecureAD.Judgement -> SecureAD.Derivation
-```
-
-The resulting direction is:
-
-```text
-Kernel
-  ^
-Evidence
-  ^       ^
-Derivation |
-  ^       |
-  +--- Judgement
-```
-
-More plainly:
+Wave 2a already established the dependency seam the draft proposed:
 
 ```text
 Judgement -> Derivation -> Evidence -> Kernel
 Judgement -------------> Evidence -> Kernel
 ```
 
-Derivation never references Judgement or a rule. Capture/Evidence never references Derivation.
+Executable rule contracts and implementations live in Judgement. Immutable finding data contracts remain in Evidence. Derivation never references Judgement or a rule, and Evidence never references Derivation.
 
-### 3.3 Why not add an interface to Evidence
+### 3.2 Why not add an interface to Evidence
 
-Do not place an `IProtectedPrincipalFacts` abstraction in Evidence merely to invert the dependency.
-Protected-principal semantics are derived facts, not captured-evidence vocabulary. Doing so would make
-Evidence own a question it deliberately does not answer and would let future derived concepts leak
-through lower-layer interfaces one by one.
-
-### 3.4 Architecture decision required
-
-This dependency and ownership change requires an accepted implementation decision before code moves.
-Decision `0089` deliberately left the seam open.
+Do not place an `IProtectedPrincipalFacts` abstraction in Evidence merely to invert the dependency. Protected-principal semantics are derived facts, not captured-evidence vocabulary. Doing so would make Evidence own a question it deliberately does not answer and would let future derived concepts leak through lower-layer interfaces one by one. Decision `0090` accepts the current project boundary.
 
 ## 4. Catalogue types
 
@@ -203,7 +145,7 @@ public enum HeuristicReadOutcome
     Stated,
     DefaultedByAbsence,
     NotRead,
-    UnsupportedValue,
+    Malformed,
 }
 ```
 
@@ -214,7 +156,7 @@ Rules:
 | valid hex character | `Stated` | yes |
 | object read, character absent | `DefaultedByAbsence` | yes |
 | object/attribute not captured | `NotRead` | no |
-| present non-hex character | `UnsupportedValue` | no |
+| present non-hex character | `Malformed` | no |
 
 The raw character is always preserved when present.
 
@@ -228,7 +170,7 @@ if MemberPropagation != Established
 else if entry is selected by a complete valid mask
     EffectiveMemberPropagation = EstablishedNo
     Basis = ForestMask
-else if mask is NotRead or UnsupportedValue and entry is mask-excludable
+else if mask is NotRead or Malformed and entry is mask-excludable
     EffectiveMemberPropagation = Unverified
     Basis = MissingOrUnsupportedForestMask
 else
@@ -495,150 +437,24 @@ StoredProtectedPrincipalFact? FindBySid(int sidId)
 SEC-030 additionally needs to map an evidence object's scoped SID to a derivation SID id. Provide a
 reader-owned lookup accepting canonical SID text and domain scope; do not expose dictionary internals.
 
-## 11. Rule execution seam
+## 11. Wave 6 boundary
 
-### 11.1 Move rule contracts and implementations
+The read model is deliberately sufficient for a later rule to obtain a scoped principal fact and its explanation without opening or recomputing the graph. Wave 6 owns:
 
-Move `IRule`, `RuleVerdict`, `RuleCatalogue`, and existing rule implementations from
-`SecureAD.Evidence` to `SecureAD.Judgement`.
+- declared derived-input packages;
+- typed rule-input issues and judgement uncertainty storage;
+- operator presentation of those issues; and
+- SEC-030 evaluation.
 
-Keep stable finding data contracts in Evidence.
+Those concerns do not alter this store's catalogue, evaluation, basis, path or completeness model.
 
-Add:
+## 12. Delivery phases
 
-```xml
-<ProjectReference Include="..\SecureAD.Derivation\SecureAD.Derivation.csproj" />
-```
+### Phase A — mask correctness (already built)
 
-to `SecureAD.Judgement.csproj`.
-
-### 11.2 Rule definition declarations
-
-Extend `RuleDefinition` data with declared non-attribute inputs:
-
-```csharp
-IReadOnlyList<RuleInputKind> RequiredInputs
-```
-
-Initial values:
-
-```csharp
-public enum RuleInputKind
-{
-    ObjectAttributes,
-    ObjectPermissions,
-    ProtectedPrincipalFacts,
-}
-```
-
-Existing rules declare `ObjectAttributes`. SEC-030 declares all three.
-
-### 11.3 Rule input package
-
-Judgement builds only declared inputs:
-
-```csharp
-internal sealed record RuleInputs(
-    ObjectAttributes Subject,
-    ObjectPermissions? Permissions,
-    StoredProtectedPrincipalFact? Protection,
-    IReadOnlyList<RuleInputIssue> Issues);
-```
-
-A rule cannot query the bundle or derivation reader directly. Judgement owns I/O and constructs the
-package. This preserves one execution path and declared dependencies.
-
-## 12. Typed uncertainty
-
-### 12.1 Rule verdict
-
-Replace missing-attribute-only uncertainty with typed issues:
-
-```csharp
-public enum RuleInputIssueKind
-{
-    AttributeNotCaptured,
-    PermissionsNotCaptured,
-    DerivationDidNotRun,
-    DerivationIncomplete,
-    PrincipalNotInDerivation,
-    ProtectionDisputed,
-    ProtectionUnverified,
-    PrimaryGroupTraversalUnverified,
-    ForestMaskNotRead,
-    ForestMaskUnsupported,
-}
-
-public sealed record RuleInputIssue(
-    RuleInputIssueKind Kind,
-    string Subject,
-    string Detail);
-```
-
-`RuleVerdict` returns findings and issues. Missing LDAP attributes are one issue kind, not the entire
-uncertainty model.
-
-### 12.2 Customer-visible uncertainty
-
-Decision `0086` requires named uncertainty to reach the operator. Judgement stores object-level
-indeterminate results separately from positive security findings:
-
-```text
-rule_uncertainty
-    rule_id
-    rule_version
-    object_guid
-    subject_kind/key
-    issue_kind
-    detail
-```
-
-These rows are not Medium/High security findings and do not acquire acceptance lifecycle. The Shell
-shows them as coverage/uncertainty for the rule and object.
-
-This avoids two wrong alternatives:
-
-- calling an uncertain object stale; or
-- showing only an aggregate count with no object or reason.
-
-### 12.3 Rule execution outcome
-
-Any object-level issue increments `ObjectsNotJudged` and makes the rule execution `Indeterminate`.
-Positive findings from objects judged completely remain atomic and stored. This preserves current
-per-rule failure isolation.
-
-## 13. SEC-030 input and evaluation contract
-
-The shared foundation is accepted before SEC-030, but the first consumer constrains the read model.
-SEC-030 requires:
-
-- `adminCount` from object attributes;
-- current `IsDaclProtected` from object permissions;
-- scoped SID lookup;
-- stored protected-principal fact; and
-- complete/typed issue state.
-
-Evaluation order remains the reviewed candidate's order:
-
-1. no `adminCount=1` → not applicable;
-2. missing SID/permissions → indeterminate issue;
-3. inheriting DACL → judged clean for SEC-030;
-4. missing/incomplete protected fact → indeterminate issue;
-5. `Protected` → judged clean;
-6. `Unknown` → customer-visible uncertainty;
-7. `NotProtected` + non-inheriting DACL → Medium finding.
-
-Deleted/tombstoned object behavior remains an explicit SEC-030 product decision and is not settled by
-this foundation specification.
-
-## 14. Delivery phases
-
-### Phase A — mask correctness
-
-- add `UnsupportedValue`;
-- update completeness semantics;
-- update anchor/unit tests;
-- no catalogue behavior change yet.
+- `Malformed` is distinct from absence and is incomplete;
+- the raw character is preserved; and
+- anchor and unit tests hold the behavior.
 
 ### Phase B — catalogue model
 
@@ -651,8 +467,7 @@ this foundation specification.
 
 - separate direct principal claims, established roots and possible roots;
 - implement conservative global completeness;
-- preserve deterministic basis/path;
-- no persistence yet only within this phase branch.
+- preserve deterministic basis/path.
 
 ### Phase D — persistence/read-back
 
@@ -661,27 +476,9 @@ this foundation specification.
 - reader model and scoped SID lookup;
 - round-trip and mismatch tests.
 
-### Phase E — rule boundary
+Each phase is separately buildable and testable. No phase may leave the old flat behavior presented as canonical.
 
-- move rule execution contracts/implementations to Judgement;
-- add Judgement → Derivation reference;
-- declarations and typed input package;
-- migrate two existing rules unchanged semantically.
-
-### Phase F — uncertainty storage/UI
-
-- add object-level rule uncertainty storage/read-back;
-- Shell coverage/uncertainty presentation;
-- preserve aggregate counts.
-
-### Phase G — SEC-030
-
-Only after A–F pass does SEC-030 implement against the persisted shared result.
-
-Each phase is separately buildable, testable and commit-worthy. No phase may leave the tree with the
-old flat behavior presented as canonical.
-
-## 15. Acceptance criteria
+## 13. Acceptance criteria
 
 ### Catalogue and mask
 
@@ -709,60 +506,32 @@ old flat behavior presented as canonical.
 - mask and catalogue version round-trip;
 - unknown reasons round-trip;
 - evidence seal/generation binding remains intact;
-- schema 3 refused by schema 4 reader;
+- schema 3 is refused by a schema 4 reader;
 - no partial store is named complete.
 
-### Rule seam
+### Read model and boundary
 
-- existing two rules produce unchanged findings;
-- undeclared input cannot be accessed;
-- SEC-030 can receive attributes, permissions and protection fact;
-- no rule opens Evidence or Derivation stores itself;
-- dependency direction passes architecture gates.
+- a caller can resolve a fact by canonical SID text and explicit scope;
+- graph internals are not public;
+- Derivation has no dependency on Judgement;
+- missing or incompatible products return a typed unavailable state; and
+- Wave 6 concerns are not introduced into the Derivation product.
 
-### Uncertainty
+## 14. Settled review questions
 
-- object and reason stored;
-- shown to operator;
-- distinct from security finding and missing attribute;
-- rule outcome Indeterminate;
-- no empty finding list is presented as clean.
+Decision `0090` settles the open questions: keep the current dependency seam, use conservative global `Unknown`, persist one deterministic path, and defer judgement uncertainty rows to Wave 6. Tests include negative controls that swap principal and propagation claims, vary SID scope, and prove that a mask never changes principal protection.
 
-## 16. Review questions
+## 15. Files expected to change
 
-An external review should answer:
-
-1. Is moving rule contracts/implementations to Judgement the narrowest clean dependency seam?
-2. Is conservative global `Unknown` acceptable until uncertainty can be localized?
-3. Does the schema preserve enough evidence without over-storing the graph?
-4. Should deterministic paths be stored now or reconstructed from stored direct edges?
-5. Should typed uncertainties be separate rows rather than findings with an indeterminate evaluation?
-6. Are any enum/status values redundant or unable to represent a required state?
-7. Can any delivery phase accidentally expose old flat semantics as canonical?
-8. What negative controls are missing?
-
-## 17. Files expected to change after acceptance
-
-- `next/src/SecureAD.Kernel/Security/DirectoryHeuristics.cs`
 - `next/src/SecureAD.Derivation/ProtectedGroupCatalogue.cs`
 - `next/src/SecureAD.Derivation/ProtectedPrincipalClosure.cs`
 - `next/src/SecureAD.Derivation/DerivationSchema.cs`
 - `next/src/SecureAD.Derivation/DerivationWriter.cs`
 - `next/src/SecureAD.Derivation/DerivationReader.cs`
 - `next/src/SecureAD.Derivation/Stage2aRun.cs`
-- `next/src/SecureAD.Evidence/Findings/*` for data-contract retention/removal of rule execution types
-- `next/src/SecureAD.Judgement/*` for moved rule execution and derived inputs
-- `next/src/SecureAD.Shell/*` for uncertainty presentation
-- architecture, surface-register, Microsoft-verification and derivation/judgement documentation
-- focused unit, architecture, writer/reader, integration and Shell tests
+- architecture, surface-register, Microsoft-verification and derivation documentation
+- focused unit, architecture, writer/reader and integration tests
 
-No production file should change until this implementation specification and its dependency seam are
-reviewed and accepted.
+## 16. Validation
 
-## 18. Draft validation
-
-- Workspace build after adding this document: **succeeded**.
-- Full test run: **2,642 passed, 1 failed**.
-- The failure was the known unrelated timing flake
-  `NewAuditViewModelTests.HowFarTheJudgingHasGotIsShown`; it passed immediately in isolation.
-- No production code was changed by this draft.
+Wave 5 requires focused catalogue, traversal, writer/reader and architecture tests, the full solution build and test suite, and a separately recorded real-forest verification. A lab observation can corroborate implementation behavior but cannot promote a disputed or unverified catalogue claim.

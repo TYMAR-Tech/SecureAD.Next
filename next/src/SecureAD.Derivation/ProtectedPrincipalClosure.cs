@@ -1,295 +1,318 @@
 namespace SecureAD.Derivation;
 
-/// <summary>
-/// Whether AdminSDHolder and SDProp cover a principal.
-/// </summary>
-/// <remarks>
-/// <b>Three answers, because two would be a lie.</b> A principal that reaches a protected group only
-/// through an edge nobody has established is not thereby unprotected - saying so would report a
-/// genuinely protected account as unprotected, which is the direction this stage exists to avoid.
-/// </remarks>
-internal enum ProtectedPrincipalEvaluation
+public enum ProtectedPrincipalEvaluation
 {
-    /// <summary>Covered, on evidence.</summary>
     Protected,
-
-    /// <summary>Not covered, and nothing about the question is in doubt for this principal.</summary>
     NotProtected,
-
-    /// <summary>
-    /// Reaches a protected group only through an edge whose behaviour is not established, so
-    /// whether it is covered cannot be said either way.
-    /// </summary>
     Unknown,
 }
 
-/// <summary>
-/// Why a principal's protection could not be settled.
-/// </summary>
-/// <remarks>
-/// A set rather than one value: a principal can sit behind more than one unestablished thing at
-/// once, and reporting only the first found would understate the doubt.
-/// </remarks>
 [Flags]
-internal enum ProtectionUnknownReason
+public enum ProtectionUnknownReason
 {
-    /// <summary>Nothing is in doubt.</summary>
     None = 0,
+    PrimaryGroupTraversalResearchBlocked = 1,
+    MembershipEvidenceIncomplete = 2,
+    PossibleRootReached = 4,
+    PrincipalClaimDisputed = 8,
+    PrincipalClaimUnverified = 16,
+    ForestMaskNotRead = 32,
+    ForestMaskMalformed = 64,
+    ForestRootDomainUnknown = 128,
 
-    /// <summary>
-    /// It reaches a protected group only through a distribution group, and whether the protection
-    /// process follows those is not established.
-    /// </summary>
-    /// <remarks>
-    /// Not raised while the catalogue follows distribution nesting, which it does by default on
-    /// Microsoft's documented statement. Kept because the catalogue can be built without it, and
-    /// because a store written under such a catalogue has to be able to say why.
-    /// </remarks>
-    DistributionTraversalResearchBlocked = 1,
-
-    /// <summary>
-    /// It reaches a protected group only by naming it as its primary group, and whether the
-    /// protection process follows that is not established.
-    /// </summary>
-    PrimaryGroupTraversalResearchBlocked = 2,
-
-    /// <summary>
-    /// The membership evidence underneath is incomplete, so the paths that were searched are not
-    /// all the paths there are.
-    /// </summary>
-    PartialMembershipEvidence = 4,
-
-    /// <summary>
-    /// The set of protected principals could not be confirmed for this domain.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <c>dSHeuristics</c> can remove four operator groups from the protected set, and this bundle
-    /// does not carry it - either because nothing read the forest's configuration object, or
-    /// because the bundle was captured before the attribute was requested. Removal can only shrink
-    /// the set, so the effect is to report protection that may have been turned off rather than to
-    /// miss protection that is on - the safer of the two directions, and the reason this does not
-    /// make every principal <see cref="ProtectedPrincipalEvaluation.Unknown"/>.
-    /// </para>
-    /// <para>
-    /// <b>Not raised where the forest was asked and answered.</b> A forest holding no value has a
-    /// documented answer - every character defaults to zero, so nothing is excluded - and reporting
-    /// that as a limit would state doubt nobody has.
-    /// </para>
-    /// </remarks>
-    ProtectedCatalogueIncomplete = 8,
-
-    /// <summary>
-    /// The forest has removed one or more operator groups from AdminSDHolder's protection.
-    /// </summary>
-    /// <remarks>
-    /// <b>Not a doubt, and recorded beside them because a smaller answer needs an explanation.</b>
-    /// Everything else here says something could not be established; this says something was
-    /// established and the answer was narrower than the published catalogue. Without it an operator
-    /// sees four groups missing from the protected set with nothing to say why, which reads as the
-    /// product having lost them.
-    /// </remarks>
-    ProtectedCatalogueNarrowedByForest = 16,
+    // Temporary names retained until all existing callers have moved to the Decision 0089 vocabulary.
+    DistributionTraversalResearchBlocked = 256,
+    PartialMembershipEvidence = MembershipEvidenceIncomplete,
+    ProtectedCatalogueIncomplete = ForestMaskNotRead,
+    ProtectedCatalogueNarrowedByForest = 512,
 }
 
-/// <summary>
-/// Which principals AdminSDHolder covers, and what could not be established about the rest.
-/// </summary>
-/// <param name="EvaluationBySid">One answer per SID dictionary id.</param>
-/// <param name="ReasonsBySid">Why, for the ones that came back unknown.</param>
-/// <param name="Seeds">The protected principals the closure started from.</param>
-/// <param name="Catalogue">Which catalogue, and which edges it followed, produced this.</param>
-/// <param name="StatedLimits">
-/// What is in doubt about the whole derivation rather than about one principal.
-/// </param>
+public enum ProtectedPrincipalBasisKind
+{
+    DirectPrincipalClaim,
+    MembershipRoot,
+}
+
+public sealed record ProtectedPrincipalBasis(
+    ProtectedPrincipalBasisKind Kind,
+    int CatalogueEntryId,
+    int CatalogueRid);
+
 internal sealed record ProtectedPrincipalClosure(
     IReadOnlyList<ProtectedPrincipalEvaluation> EvaluationBySid,
     IReadOnlyList<ProtectionUnknownReason> ReasonsBySid,
+    IReadOnlyList<ProtectedPrincipalBasis?> BasisBySid,
+    IReadOnlyList<IReadOnlyList<int>> PathsBySid,
     IReadOnlyList<int> Seeds,
     ProtectedGroupCatalogue Catalogue,
     ProtectionUnknownReason StatedLimits)
 {
-    /// <summary>What is true of one principal.</summary>
-    /// <param name="sidId">The principal.</param>
     public ProtectedPrincipalEvaluation EvaluationOf(int sidId) => EvaluationBySid[sidId];
 
-    /// <summary>Why it could not be settled, when it could not.</summary>
-    /// <param name="sidId">The principal.</param>
     public ProtectionUnknownReason ReasonsFor(int sidId) => ReasonsBySid[sidId];
+
+    public ProtectedPrincipalBasis? BasisFor(int sidId) => BasisBySid[sidId];
+
+    public IReadOnlyList<int> PathFor(int sidId) => PathsBySid[sidId];
 }
 
-/// <summary>
-/// Works out which principals AdminSDHolder and SDProp cover.
-/// </summary>
-/// <remarks>
-/// <para>
-/// <b>A different question from authorization, over the same graph, and the answers differ.</b> An
-/// account nested through a distribution group beneath Domain Admins is not a Domain Admin - it
-/// receives none of the group's authority - and is nonetheless a protected account, with
-/// inheritance disabled and AdminSDHolder's permissions applied to it. Both statements come from
-/// the same Microsoft guidance, and a single closure answering both would have to be wrong about
-/// one of them.
-/// </para>
-/// <para>
-/// <b>It searches downward from the protected principals, not upward from everybody.</b> The seeds
-/// are the fifteen entries of the catalogue, so the search is over the part of the graph beneath
-/// them rather than over the forest. That is why this is cheap where the authorization closure is
-/// not.
-/// </para>
-/// <para>
-/// <b>Only a principal that actually meets a gated edge becomes unknown.</b> A gated edge kind must
-/// not turn the whole directory into a shrug: an account that reaches a protected group by ordinary
-/// nesting is protected however many other accounts sit behind something unestablished, and an
-/// account that reaches nothing protected at all is simply not protected.
-/// </para>
-/// </remarks>
 internal static class ProtectedPrincipalDeriver
 {
-    /// <summary>The name this phase is recorded under.</summary>
     public const string PhaseName = "ProtectedPrincipals";
 
-    /// <summary>
-    /// Evaluates every principal in the graph.
-    /// </summary>
-    /// <param name="graph">The nesting graph.</param>
-    /// <param name="sids">The SID dictionary, for recognising the protected principals.</param>
-    /// <param name="catalogue">Which principals are protected and which edges may be followed.</param>
-    /// <param name="membershipEvidenceIsPartial">
-    /// Whether the nesting underneath is known to be incomplete - an unresolved member, or an
-    /// expansion that reached its budget.
-    /// </param>
-    /// <param name="cancellationToken">Stops the derivation.</param>
-    /// <returns>What is true of each principal, and what could not be established.</returns>
     public static ProtectedPrincipalClosure Derive(
         NestingGraph graph,
         SidInterner sids,
         ProtectedGroupCatalogue catalogue,
         bool membershipEvidenceIsPartial,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? forestRootDomainSid)
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(sids);
         ArgumentNullException.ThrowIfNull(catalogue);
 
         var count = graph.Count;
+        var evaluations = Enumerable.Repeat(ProtectedPrincipalEvaluation.NotProtected, count).ToArray();
+        var reasons = new ProtectionUnknownReason[count];
+        var bases = new ProtectedPrincipalBasis?[count];
+        var paths = Enumerable.Range(0, count).Select(_ => (IReadOnlyList<int>)Array.Empty<int>()).ToArray();
+        var establishedRoots = new List<Root>();
+        var possibleRoots = new List<Root>();
         var seeds = new List<int>();
 
         for (var sidId = 0; sidId < count; sidId++)
         {
-            if (catalogue.IsProtected(sids.TextOf(sidId)))
-                seeds.Add(sidId);
-        }
-
-        // Everything reachable by nesting the catalogue is willing to follow. Distribution groups
-        // are included here rather than excluded: nesting_edge holds member and memberOf without
-        // regard to group type, which is exactly the enumeration Microsoft describes.
-        var established = Reach(graph, seeds, followPrimaryGroups: false, cancellationToken);
-
-        // Everything reachable if primary-group membership were followed as well. Whatever is in
-        // here and not in the set above is reachable only through the gated edge.
-        var withGatedEdge = catalogue.FollowsPrimaryGroup
-            ? established
-            : Reach(graph, seeds, followPrimaryGroups: true, cancellationToken);
-
-        var evaluations = new ProtectedPrincipalEvaluation[count];
-        var reasons = new ProtectionUnknownReason[count];
-
-        // What the forest said about its own protected set, rather than a caveat stated whatever
-        // the evidence. An unread dSHeuristics leaves the published catalogue in force and says so;
-        // a read one either confirms it or narrows it, and both are answers rather than doubts.
-        var statedLimits = catalogue.Exclusions.IsComplete
-            ? ProtectionUnknownReason.None
-            : ProtectionUnknownReason.ProtectedCatalogueIncomplete;
-
-        if (catalogue.Exclusions.Excluded.Count > 0)
-            statedLimits |= ProtectionUnknownReason.ProtectedCatalogueNarrowedByForest;
-
-        if (membershipEvidenceIsPartial)
-            statedLimits |= ProtectionUnknownReason.PartialMembershipEvidence;
-
-        if (!catalogue.FollowsDistributionNesting)
-            statedLimits |= ProtectionUnknownReason.DistributionTraversalResearchBlocked;
-
-        for (var sidId = 0; sidId < count; sidId++)
-        {
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (established.Contains(sidId))
-            {
-                evaluations[sidId] = ProtectedPrincipalEvaluation.Protected;
+            var entry = Match(catalogue, sids.TextOf(sidId), forestRootDomainSid);
+            if (entry is null)
                 continue;
+
+            switch (entry.PrincipalProtection.Status)
+            {
+                case CatalogueClaimStatus.Established:
+                    ProtectDirect(sidId, entry, evaluations, bases);
+                    break;
+                case CatalogueClaimStatus.Disputed:
+                    MakeUnknown(sidId, ProtectionUnknownReason.PrincipalClaimDisputed, evaluations, reasons);
+                    break;
+                case CatalogueClaimStatus.Unverified:
+                    MakeUnknown(sidId, ProtectionUnknownReason.PrincipalClaimUnverified, evaluations, reasons);
+                    break;
+                case CatalogueClaimStatus.EstablishedNo:
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Principal protection cannot be {entry.PrincipalProtection.Status} for {entry.Name}.");
             }
 
-            if (withGatedEdge.Contains(sidId))
-            {
-                // Reached only through primary-group membership. Microsoft's specifications make
-                // that real membership and make authorization honour it; none of them says the
-                // protection process follows it. Answering NotProtected here would be a boolean
-                // answer to a question nobody has settled, pointing the dangerous way.
-                evaluations[sidId] = ProtectedPrincipalEvaluation.Unknown;
-                reasons[sidId] = ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked;
+            if (!graph.IsGroup(sidId))
                 continue;
-            }
 
-            // Partial membership evidence does NOT make this principal unknown, and resisting that
-            // is the point. One member of one group failing to resolve would otherwise turn every
-            // principal in the forest into a shrug, which is the failure this whole derivation is
-            // shaped to avoid - and a closure that answers Unknown about everybody has told a
-            // reader nothing while sounding careful. The doubt is real but unbounded: an unresolved
-            // member could hide anything beneath it, so there is no set of principals to attach it
-            // to. It is stated once about the derivation, in StatedLimits, and a rule reading a
-            // NotProtected out of a closure carrying that limit has not established a clean result.
-            evaluations[sidId] = ProtectedPrincipalEvaluation.NotProtected;
+            var propagation = catalogue.EffectiveMemberPropagation(entry).Status;
+            if (propagation == CatalogueClaimStatus.Established)
+            {
+                establishedRoots.Add(new Root(sidId, entry));
+                seeds.Add(sidId);
+            }
+            else if (propagation is CatalogueClaimStatus.Disputed or CatalogueClaimStatus.Unverified)
+            {
+                possibleRoots.Add(new Root(sidId, entry));
+            }
         }
 
-        return new ProtectedPrincipalClosure(
-            evaluations, reasons, seeds, catalogue, statedLimits);
+        Walk(graph, establishedRoots, isEstablished: true, evaluations, reasons, bases, paths, cancellationToken);
+        Walk(graph, possibleRoots, isEstablished: false, evaluations, reasons, bases, paths, cancellationToken);
+        WalkPrimaryGroups(graph, [.. establishedRoots, .. possibleRoots], evaluations, reasons, cancellationToken);
+
+        var globalReason = ProtectionUnknownReason.None;
+        if (membershipEvidenceIsPartial)
+            globalReason |= ProtectionUnknownReason.MembershipEvidenceIncomplete;
+        if (forestRootDomainSid is null)
+            globalReason |= ProtectionUnknownReason.ForestRootDomainUnknown;
+        if (!catalogue.Exclusions.IsComplete)
+            globalReason |= catalogue.Exclusions.Outcome == SecureAD.Kernel.Security.HeuristicReadOutcome.Malformed
+                ? ProtectionUnknownReason.ForestMaskMalformed
+                : ProtectionUnknownReason.ForestMaskNotRead;
+        if (catalogue.Exclusions.Excluded.Count > 0)
+            globalReason |= ProtectionUnknownReason.ProtectedCatalogueNarrowedByForest;
+
+        if (globalReason != ProtectionUnknownReason.None)
+        {
+            for (var sidId = 0; sidId < count; sidId++)
+            {
+                if (evaluations[sidId] != ProtectedPrincipalEvaluation.Protected)
+                    MakeUnknown(sidId, globalReason, evaluations, reasons);
+            }
+        }
+
+        return new ProtectedPrincipalClosure(evaluations, reasons, bases, paths, seeds, catalogue, globalReason);
+    }
+
+    private static void ProtectDirect(
+        int sidId,
+        AdminSdHolderCatalogueEntry entry,
+        ProtectedPrincipalEvaluation[] evaluations,
+        ProtectedPrincipalBasis?[] bases)
+    {
+        evaluations[sidId] = ProtectedPrincipalEvaluation.Protected;
+        bases[sidId] = new ProtectedPrincipalBasis(
+            ProtectedPrincipalBasisKind.DirectPrincipalClaim, entry.Id, entry.Rid);
+    }
+
+    private static void Walk(
+        NestingGraph graph,
+        IEnumerable<Root> roots,
+        bool isEstablished,
+        ProtectedPrincipalEvaluation[] evaluations,
+        ProtectionUnknownReason[] reasons,
+        ProtectedPrincipalBasis?[] bases,
+        IReadOnlyList<int>[] paths,
+        CancellationToken cancellationToken)
+    {
+        foreach (var root in roots.OrderBy(r => r.Entry.Id).ThenBy(r => r.SidId))
+        {
+            var queue = new Queue<(int SidId, int[] Path)>();
+            queue.Enqueue((root.SidId, [root.SidId]));
+            var seen = new HashSet<int> { root.SidId };
+
+            while (queue.Count > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var current = queue.Dequeue();
+                foreach (var member in graph.MembersOf(current.SidId).ToArray().Order())
+                {
+                    if (!seen.Add(member))
+                        continue;
+
+                    var path = new[] { member }.Concat(current.Path).ToArray();
+                    queue.Enqueue((member, path));
+
+                    if (isEstablished)
+                    {
+                        if (evaluations[member] != ProtectedPrincipalEvaluation.Protected
+                            || bases[member]?.Kind != ProtectedPrincipalBasisKind.DirectPrincipalClaim)
+                        {
+                            evaluations[member] = ProtectedPrincipalEvaluation.Protected;
+                            reasons[member] = ProtectionUnknownReason.None;
+                            bases[member] = new ProtectedPrincipalBasis(
+                                ProtectedPrincipalBasisKind.MembershipRoot, root.Entry.Id, root.Entry.Rid);
+                            paths[member] = path;
+                        }
+                    }
+                    else if (evaluations[member] != ProtectedPrincipalEvaluation.Protected)
+                    {
+                        MakeUnknown(member, ProtectionUnknownReason.PossibleRootReached, evaluations, reasons);
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>
-    /// Everything beneath the seeds, following the kinds of edge asked for.
+    /// Flags the principals whose only route to a root runs through a primary-group edge.
     /// </summary>
     /// <remarks>
-    /// Iterative for the reason the membership expansion is: the depth of a walk is bounded by the
-    /// number of principals rather than by how deeply anyone nests groups.
+    /// <b>The difference between the two reachable sets is the whole point.</b> Walking both edge
+    /// kinds together and blaming everything it reaches would stamp this reason on principals whose
+    /// route is ordinary nesting, which is a reason that does not apply - and under <c>0086</c> an
+    /// unknown reason is customer-visible, so a wrong one sends an operator to look at
+    /// <c>primaryGroupID</c> on an account whose answer has nothing to do with it.
     /// </remarks>
-    private static HashSet<int> Reach(
+    private static void WalkPrimaryGroups(
         NestingGraph graph,
-        IReadOnlyList<int> seeds,
+        IReadOnlyCollection<Root> roots,
+        ProtectedPrincipalEvaluation[] evaluations,
+        ProtectionUnknownReason[] reasons,
+        CancellationToken cancellationToken)
+    {
+        var ordinary = Reachable(graph, roots, followPrimaryGroups: false, cancellationToken);
+        var withPrimary = Reachable(graph, roots, followPrimaryGroups: true, cancellationToken);
+
+        foreach (var sidId in withPrimary.Order())
+        {
+            if (ordinary.Contains(sidId))
+                continue;
+
+            if (evaluations[sidId] != ProtectedPrincipalEvaluation.Protected)
+            {
+                MakeUnknown(
+                    sidId,
+                    ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked,
+                    evaluations,
+                    reasons);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Everything beneath the roots, by the edge kinds the caller allows.
+    /// </summary>
+    private static HashSet<int> Reachable(
+        NestingGraph graph,
+        IReadOnlyCollection<Root> roots,
         bool followPrimaryGroups,
         CancellationToken cancellationToken)
     {
-        var reached = new HashSet<int>();
-        var pending = new Stack<int>();
+        var seen = new HashSet<int>();
+        var queue = new Queue<int>();
 
-        foreach (var seed in seeds)
+        foreach (var root in roots.OrderBy(r => r.Entry.Id).ThenBy(r => r.SidId))
         {
-            if (reached.Add(seed))
-                pending.Push(seed);
+            if (seen.Add(root.SidId))
+                queue.Enqueue(root.SidId);
         }
 
-        while (pending.Count > 0)
+        while (queue.Count > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var current = queue.Dequeue();
 
-            var group = pending.Pop();
+            var members = followPrimaryGroups
+                ? [.. graph.MembersOf(current).ToArray(), .. graph.PrimaryMembersOf(current).ToArray()]
+                : graph.MembersOf(current).ToArray();
 
-            foreach (var member in graph.MembersOf(group))
+            foreach (var member in members)
             {
-                if (reached.Add(member))
-                    pending.Push(member);
-            }
-
-            if (!followPrimaryGroups)
-                continue;
-
-            foreach (var member in graph.PrimaryMembersOf(group))
-            {
-                if (reached.Add(member))
-                    pending.Push(member);
+                if (seen.Add(member))
+                    queue.Enqueue(member);
             }
         }
 
-        return reached;
+        return seen;
     }
+
+    private static AdminSdHolderCatalogueEntry? Match(
+        ProtectedGroupCatalogue catalogue,
+        string sid,
+        string? forestRootDomainSid)
+    {
+        var separator = sid.LastIndexOf('-');
+        if (separator < 0 || !int.TryParse(sid[(separator + 1)..], out var rid))
+            return null;
+
+        return catalogue.Entries.FirstOrDefault(entry => entry.Rid == rid && entry.Scope switch
+        {
+            CataloguePrincipalScope.BuiltinPerDomain =>
+                string.Equals(sid, $"S-1-5-32-{rid}", StringComparison.Ordinal),
+            CataloguePrincipalScope.PerDomainRid => sid.StartsWith("S-1-5-21-", StringComparison.Ordinal),
+            CataloguePrincipalScope.ForestRootRid => forestRootDomainSid is not null
+                && string.Equals(sid[..separator], forestRootDomainSid, StringComparison.Ordinal),
+            _ => false,
+        });
+    }
+
+    private static void MakeUnknown(
+        int sidId,
+        ProtectionUnknownReason reason,
+        ProtectedPrincipalEvaluation[] evaluations,
+        ProtectionUnknownReason[] reasons)
+    {
+        if (evaluations[sidId] == ProtectedPrincipalEvaluation.Protected)
+            return;
+        evaluations[sidId] = ProtectedPrincipalEvaluation.Unknown;
+        reasons[sidId] |= reason;
+    }
+
+    private sealed record Root(int SidId, AdminSdHolderCatalogueEntry Entry);
 }

@@ -87,7 +87,7 @@ around these stages without an accepted decision changing this document first.
 | 3. Capture | Authorized plan | Objects, descriptors, memberships, schema and SYSVOL observations in a partial Evidence database | Built | Yes | A partition is either completed or rolled back; unrecoverable failure seals nothing |
 | 4. Reconcile | Plan and completed `PartitionCoverage` referrals | Typed continuation reconciliation | Built | No | Complete reconciliation with unplanned local scope seals nothing; incomplete visibility is persisted as incomplete |
 | 5. Seal Evidence | Completed capture, reconciliation and coverage | Immutable `evidence.db`, seal and annotations sidecar | Built | No | The readable filename appears only after database completion and sealing |
-| 6. Derive | Intact compatible Evidence | Replaceable derivation store bound to that Evidence | Built foundation; binding and products incomplete | Never | Evidence remains usable; derivation failure/degradation is recorded and can be rebuilt |
+| 6. Derive | Intact compatible Evidence | Replaceable derivation store bound to that Evidence | Built; AdminSDHolder products persisted and readable | Never | Evidence remains usable; derivation failure/degradation is recorded and can be rebuilt |
 | 7. Judge | Intact compatible Evidence and available declared derived inputs | Replaceable judgement store and findings | Built in Shell; CLI integration incomplete | Never | Independent rules may run when unrelated inputs are missing; affected rules and whole-audit state remain explicit |
 | 8. Read and present | Intact compatible artefacts | Operator views and API/CLI output | Built foundation; reports incomplete | Never | Missing, stale, malformed or inaccessible products render as typed unavailable/degraded states, never empty success |
 | 9. Compare or export | Intact compatible completed artefacts | Differences or reports | Not built | Never | Refuse incompatible scope/identity rather than compare unlike runs |
@@ -161,7 +161,7 @@ The workflow remains fixed while its contracts are repaired:
 1. Wave 2a froze this workflow, inventoried every current path and added deletion/reachability gates.
 2. Wave 3 binds and atomically replaces Derivation/Judgement generations.
 3. Wave 4 introduces one completeness and uncertainty vocabulary across all stages.
-4. Wave 5 persists the corrected reusable AdminSDHolder derivation products.
+4. Wave 5 persisted the corrected reusable AdminSDHolder derivation products. **Built 2026-08-30.**
 5. Wave 6 makes Judgement consume validated declared input packages and implements current rules.
 6. Wave 7 introduces the single production orchestrator and deletes host-specific sequencing.
 7. Wave 8 validates the complete workflow against disposable forests and production-shaped scale.
