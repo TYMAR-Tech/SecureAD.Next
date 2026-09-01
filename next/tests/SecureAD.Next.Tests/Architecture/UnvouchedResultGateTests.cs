@@ -141,8 +141,26 @@ public sealed class UnvouchedResultGateTests
         [
             "SchemaGuidCatalog", "CapturedAttributeCatalog", "ConnectionSecurityLadder",
             "BundleSchema", "GpoClientSideExtensionCatalog", "DirectoryTime",
-            "WellKnownSidCatalog", "RuleCatalogue",
+            "WellKnownSidCatalog", "RuleCatalogue", "RuleGuidanceCatalogue",
         ];
+
+    /// <summary>
+    /// <b>The ninth entry, added 2026-09-01 with the operator guidance</b>, on the same reason as
+    /// <c>RuleCatalogue</c> beside it. <c>RuleGuidanceCatalogue.All</c> is written out in the
+    /// source: it constructs the entries and returns them, reading nothing and opening nothing.
+    ///
+    /// <para>
+    /// <b>An empty answer is not a state this can reach</b>, so it cannot hand back nothing while
+    /// meaning <i>I could not tell</i>. And an entry that is genuinely absent is caught by
+    /// <c>RuleGuidanceTests.EveryRuleHasGuidance</c> rather than being rendered as a finding with no
+    /// advice, which is the consequence gate 4 exists to prevent.
+    /// </para>
+    /// <para>
+    /// <b>The exemption expires on the same condition</b>: if the guidance is ever loaded from a
+    /// file or assembled by reflection, an empty list can mean a failed load, and that ambiguity is
+    /// what this gate refuses. <see cref="TheCatalogueExemptionsHaveNotComeDue"/> holds it.
+    /// </para>
+    /// </summary>
 
     /// <summary>
     /// <b>The eighth entry, added 2026-08-26 when the rule set moved out of the shell</b>, on the

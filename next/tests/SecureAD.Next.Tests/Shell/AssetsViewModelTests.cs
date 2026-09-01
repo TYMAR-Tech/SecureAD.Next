@@ -848,9 +848,62 @@ public sealed class AssetsViewModelTests
     private static FindingsPage APageOfFindings() =>
         new([AFinding()], null, RulesRan: 2);
 
-    private static Finding AFinding() =>
+    /// <summary>
+    /// A selected finding carries the guidance written for its rule.
+    /// </summary>
+    /// <remarks>
+    /// <b>The screen is a working surface, not a list.</b> A grid that says what is wrong and
+    /// leaves an operator to work out what to do is half a product, and this is the half that was
+    /// missing. Bound to a real property rather than the collection's current item, so
+    /// <c>ViewBindingGateTests</c> can hold it.
+    /// </remarks>
+    [Fact]
+    public void ASelectedFindingCarriesTheGuidanceForItsRule()
+    {
+        var screen = ShowingFindings(APageOfFindings());
+
+        Assert.False(screen.HasSelectedFinding);
+
+        screen.SelectedFinding = screen.Findings[0];
+
+        Assert.True(screen.HasSelectedFinding);
+        Assert.Equal("SEC-010", screen.SelectedFinding!.Rule);
+        Assert.True(screen.SelectedFinding.HasGuidance);
+        Assert.Contains("impersonate", screen.SelectedFinding.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains(
+            "resource-based constrained delegation",
+            screen.SelectedFinding.WhatToDo,
+            StringComparison.Ordinal);
+        Assert.True(screen.SelectedFinding.HasMicrosoftReference);
+    }
+
+    /// <summary>
+    /// A finding from a rule this build no longer carries says so, rather than showing nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>A stored judgement outlives the build that made it.</b> An empty explanation would read as
+    /// "there is nothing to say about this", which is a different claim from "this build has no
+    /// guidance for that rule" - and <c>docs/decisions/0002</c> forbids rendering the second as the
+    /// first.
+    /// </remarks>
+    [Fact]
+    public void AFindingWhoseRuleHasNoGuidanceSaysSoRatherThanShowingNothing()
+    {
+        var screen = ShowingFindings(new FindingsPage([AFindingFrom("SEC-999")], null, RulesRan: 1));
+
+        screen.SelectedFinding = screen.Findings[0];
+
+        Assert.False(screen.SelectedFinding!.HasGuidance);
+        Assert.False(string.IsNullOrWhiteSpace(screen.SelectedFinding.WhyItMatters));
+        Assert.Contains("SEC-999", screen.SelectedFinding.WhyItMatters, StringComparison.Ordinal);
+        Assert.False(screen.SelectedFinding.HasMicrosoftReference);
+    }
+
+    private static Finding AFinding() => AFindingFrom("SEC-010");
+
+    private static Finding AFindingFrom(string ruleId) =>
         new(
-            "SEC-010",
+            ruleId,
             1,
             Severity.High,
             new FindingSubject(FindingSubjectKind.Account, "svc-web"),

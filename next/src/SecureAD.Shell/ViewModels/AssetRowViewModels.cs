@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Kernel.Naming;
 
 namespace SecureAD.Shell.ViewModels;
@@ -290,4 +291,52 @@ internal sealed class FindingRowViewModel
     public FactState State => _finding.Coverage == EvidenceCompleteness.Complete
         ? FactState.EstablishedGood
         : FactState.NotEstablished;
+
+    /// <summary>
+    /// The guidance written for the rule that produced this, or null where none is recorded.
+    /// </summary>
+    /// <remarks>
+    /// <b>Looked up rather than stored on the finding.</b> Guidance is current advice, not part of
+    /// what the judging established, so an operator reopening an older run gets today's wording
+    /// rather than the wording that shipped that month. See <c>RuleGuidance</c> for why.
+    /// </remarks>
+    private RuleGuidance? Guidance => RuleGuidanceCatalogue.For(_finding.RuleId);
+
+    /// <summary>Whether there is guidance to show for this finding's rule.</summary>
+    /// <remarks>
+    /// <b>It can be false, even though every catalogue rule has guidance.</b> A stored judgement
+    /// outlives the build that made it, so a bundle can carry a finding from a rule this build no
+    /// longer runs. The screen says so rather than showing an empty panel.
+    /// </remarks>
+    public bool HasGuidance => Guidance is not null;
+
+    /// <summary>What an attacker gains from this, and what it costs the organisation.</summary>
+    /// <remarks>
+    /// <b>An absent answer says it is absent</b>, per <c>docs/decisions/0002</c>. Blank space where
+    /// an explanation belongs reads as "there is nothing to say about this", which is a different
+    /// claim from "this build has no guidance for that rule" and would be the wrong one.
+    /// </remarks>
+    public string WhyItMatters => Guidance?.WhyItMatters
+        ?? $"No guidance is recorded for {_finding.RuleId} in this build. The finding stands; the "
+            + "explanation beside it does not exist here.";
+
+    /// <summary>The action to take, and what taking it may break.</summary>
+    /// <remarks>
+    /// <b>This never says the finding is then resolved.</b> That is a claim about every route to the
+    /// object, which the judgement half must prove rather than assert - so the copy states an action
+    /// and its cost, and <c>RuleGuidanceTests</c> fails the build on wording that goes further.
+    /// </remarks>
+    public string WhatToDo => Guidance?.WhatToDo
+        ?? "Nothing is recorded for this rule in this build.";
+
+    /// <summary>
+    /// The family this belongs to, such as <c>Kerberos</c>, or an empty string where none is known.
+    /// </summary>
+    public string Category => Guidance?.Category ?? string.Empty;
+
+    /// <summary>The Microsoft page the reasoning rests on, or null where none is recorded.</summary>
+    public string? MicrosoftReference => Guidance?.MicrosoftReference;
+
+    /// <summary>Whether a Microsoft source can be offered for this finding's reasoning.</summary>
+    public bool HasMicrosoftReference => Guidance?.MicrosoftReference is not null;
 }

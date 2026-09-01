@@ -35,6 +35,8 @@ records stay in Evidence because they are durable data rather than executable po
 | `IRule` | A rule: what it is, and what it makes of one object |
 | `RuleCatalogue` | Every rule this product runs, as one written-out list |
 | `RuleDefinition` | What a rule is as data — its identity, wording and declared inputs |
+| `RuleGuidance` | What an operator is told about a rule — why it matters, and what to do |
+| `RuleGuidanceCatalogue` | That guidance, one entry per rule, written out beside the rule list |
 | `RuleVerdict` | What one rule made of one object, and what it could not read |
 | `DerivedFactKind` | A kind of derived fact a rule can declare it reads |
 | `DerivedFacts` | The derived facts offered to a rule beside the object it is judging |
@@ -104,6 +106,44 @@ declares the first two and no more, which is why it can judge a bundle that was 
 
 The declaration is what makes the next section possible: because the rule has named its inputs, it
 can say exactly which of them an object did not carry, instead of falling silent.
+
+---
+
+## Guidance sits beside a rule, not inside it
+
+A finding tells an operator that something is true about one object. `RuleGuidance` tells him what
+that means and what to do about it: a category, an optional MITRE technique, *why it matters*, *what
+to do*, and the Microsoft page the reasoning rests on. `RuleGuidanceCatalogue.All` holds one entry
+per rule, and `RuleGuidanceTests` binds the two lists in both directions — a rule with no guidance is
+a finding nobody can act on, and guidance naming no rule is copy that quietly rots.
+
+**It is a separate type and a separate file because [`0010`](../../decisions/0010-the-rule-catalogue-is-data-the-rule-logic-is-code.md)
+is Accepted and says so.** Its objection was concrete: in the predecessor, changing a severity and
+fixing a typo in remediation text were the same edit to the same file and arrived at review
+indistinguishable. Asking a reviewer to treat the behavioural list as security-relevant only works if
+the prose that changes weekly is somewhere else.
+
+**Written when the rule is built, not afterwards.** The Microsoft research behind a rule is done once,
+at the moment the rule is written. Recorded then, it costs almost nothing; reconstructed later across
+sixty-two rules by somebody without the sources open, it is a project. Before this existed, the three
+Microsoft pages read for `SEC-022` reached a customer as half a sentence.
+
+**It is current advice, and deliberately not stored on the finding.** A finding records what was true
+about an object and is reproducible from the rule version and its inputs, which is what `AC-19` asks.
+The advice beside it should improve as we learn more, and an operator reopening last month's run
+wants today's best advice rather than last month's.
+
+**`WhatToDo` states an action and what it may break. It must never state that the customer is then
+safe** — that is a claim about every route to the object, which `AC-15` and `AC-21` require to be
+proven and which belongs to stage 8. `RuleGuidanceTests` refuses the wording, and carries a self-test
+so a pattern that stopped matching could not go on reporting nothing. The danger is not that somebody
+decides to over-claim; it is that *"this resolves the issue"* reads like ordinary helpful writing.
+
+**A null MITRE technique is an answer.** `SEC-022` carries `T1558.004` because Microsoft's own
+Defender for Identity page states that mapping. The other three carry null, because no first-party
+source establishes one and an invented mapping would be an unverified claim printed beside verified
+ones. The predecessor mapped a resource-based delegation rule to `T1558.001`, which is Golden Ticket
+— a different thing.
 
 ---
 

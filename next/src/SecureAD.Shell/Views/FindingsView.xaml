@@ -84,7 +84,47 @@
                        Visibility="{Binding HasFindings, Converter={StaticResource Shown}}" />
         </StackPanel>
 
+        <!-- WHAT IT MEANS AND WHAT TO DO ABOUT IT, for whichever finding is selected.
+
+             A grid of findings tells an operator what is wrong and leaves him to work out what to
+             do, which is the difference between a list and a working screen. These are the two
+             blocks the predecessor's finding window carried, and which a duplicated evidence table
+             above them pushed off the first screen on a laptop.
+
+             Bound to a SelectedFinding on the view model rather than to the collection's current
+             item, because a binding a gate cannot resolve is a binding nobody is holding: the
+             current-item path reads as a property name to ViewBindingGateTests, and a view naming
+             something no view model publishes is how this shell crashed once with a green build. -->
+        <Border DockPanel.Dock="Bottom"
+                Style="{StaticResource Card}"
+                Margin="0,8,0,0"
+                Visibility="{Binding HasSelectedFinding, Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="WHY IT MATTERS"
+                           Style="{StaticResource FieldLabel}" />
+                <TextBlock Text="{Binding SelectedFinding.WhyItMatters}"
+                           TextWrapping="Wrap"
+                           Margin="0,2,0,10" />
+
+                <TextBlock Text="WHAT TO DO"
+                           Style="{StaticResource FieldLabel}" />
+                <TextBlock Text="{Binding SelectedFinding.WhatToDo}"
+                           TextWrapping="Wrap"
+                           Margin="0,2,0,0" />
+
+                <!-- The source, so a customer can check the reasoning rather than take it. Shown
+                     only when one is recorded: an empty line where a citation belongs suggests the
+                     claim has one and it was lost. -->
+                <TextBlock Text="{Binding SelectedFinding.MicrosoftReference}"
+                           TextWrapping="Wrap"
+                           Margin="0,10,0,0"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Visibility="{Binding SelectedFinding.HasMicrosoftReference, Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </Border>
+
         <DataGrid ItemsSource="{Binding Findings}"
+                  SelectedItem="{Binding SelectedFinding, Mode=TwoWay}"
                   ColumnHeaderStyle="{StaticResource TableColumnHeader}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"

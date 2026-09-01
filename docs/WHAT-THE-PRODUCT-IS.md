@@ -143,5 +143,55 @@ order on the text. This judgement store writes `severity` as the enum name, so `
 gives Critical, High, Low, Medium — alphabetical, putting Low above Medium. A rank is stored beside
 the name to fix it.
 
+### What its finding detail view showed, and what of it is worth having
+
+Read 2026-09-01 from three screenshots the owner supplied of the predecessor's finding window
+(`SEC-014`, `SEC-024`). This is the screen an administrator actually works from, so what it did well
+matters more than most of the old code.
+
+**Its blocks, in order:** a header carrying rule identifier, title, category (`Delegation`,
+`CredentialTheft`), a MITRE technique link and a severity badge; **What was found**; **Evidence
+context**; **Why it matters**; **How to fix**; a strip reading `Coverage: Complete  Suppressed: No
+Tags: …`; and the buttons *View evidence*, *Accept risk*, *Copy finding key*.
+
+**Worth having, and settled 2026-09-01:** the category, the MITRE link, **Why it matters**, **How to
+fix**, and the coverage signal. The owner's decision on where they belong: **in the product, not only
+in an exported report** — *"I can see server admins using this as a working app on what to clean up,
+and seeing it on screen in a UI is sometimes easier to consume than a report if done right."* So the
+finding view is a working surface, not a preview of a document.
+
+**The one thing to change is duplication, not volume.** Of the eleven rows in *Evidence context*,
+seven repeat the panel directly above them — rule id, source SID, subject name, target DN, target
+name, control type and classification are all already on screen. Of the remaining four, three
+(`Source Is Well Known Admin`, `Source Is Privileged By Membership`, `Source Is Broad Principal`) are
+the *working behind* the classification line rather than an answer, and the fourth is an internal
+edge identifier. The `Detail` sentence then states the same facts a third time, using a raw SID where
+the name is two lines above.
+
+**This is not a matter of taste, and the screenshots prove it.** On the owner's laptop the duplicated
+block pushed **Why it matters** and **How to fix** below the fold, so the two things he most needed
+were the two he could not see. Removing what is printed twice is what brings them onto the first
+screen.
+
+**The agreed shape, 2026-09-01:** four blocks — header, *What was found*, *Why it matters*, *What to
+do* — with everything raw (identifiers, GUIDs, ACE hashes, the classification working) behind *View
+evidence*, which the predecessor already did well. The rule to apply when deciding where something
+goes: **the finding page answers what, how bad, why and what do I do; the evidence view answers prove
+it.**
+
+**Not worth having:** `Suppressed`, which [`0066`](decisions/) and [`0082`](decisions/) reversed, and
+the *Evidence context* table on the front page.
+
+**What must not creep in.** *How to fix* states an action and what it may break. It must never state
+that the action makes the customer safe — that is a claim about every path to the object, which
+`AC-15` and `AC-21` require to be proven, and it is stage 8 work. Guidance copy is where that line
+gets crossed by accident.
+
+**Content is stage 4; presentation is stage 9.** The guidance is written as each rule is built, while
+the Microsoft research behind it is in hand; the screen that displays it is designed later, around
+content that already exists.
+
+---
+
 **A question the owner has already answered is a defect in this repository.** When he answers one,
 it belongs here, in the same turn.

@@ -299,6 +299,8 @@ The table below sits between the two markers around it, so the test parses only 
 | IRule | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleDefinition | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleGuidance | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| RuleGuidanceCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | RuleVerdict | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | UnresolvedInput | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | UnresolvedReason | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

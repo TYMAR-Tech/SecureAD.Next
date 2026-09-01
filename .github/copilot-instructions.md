@@ -162,3 +162,7 @@ Three habits follow, and they are cheap:
 
 ## Repository Reviews
 - For repository reviews, prefer full reads of relevant source and documentation files when necessary, verify claims against primary sources, and create a results document in the repository containing findings, evidence, severity, and recommended actions.
+
+## Security Guidelines
+- Never put the names of well-known hacking/offensive-security tools (Mimikatz, Rubeus, Impacket, BloodHound/SharpHound, PowerSploit, Cobalt Strike, CrackMapExec, secretsdump, hashcat, etc.) — or anything else likely to trigger Microsoft Defender — into SecureAD source that gets compiled into a shipped artefact, especially string literals in a DLL. Prefer neutral descriptions of the technique over naming tools. Note that XML documentation files (SecureAD.*.xml) are emitted beside the DLLs and also ship, so doc comments are in scope too.
+- **Attack *technique* names that Microsoft itself publishes are allowed, and this was settled on 2026-09-01.** "AS-REP Roasting" is the title of a Defender for Identity alert and "Kerberoastable" appears in Microsoft's own guidance; both stay. The rule above is about *tool* names, not about being unable to describe what an attacker does. Scanned on the same day: no trigger term appears in any string literal under `next/src`, and none appears in any built `SecureAD.*.dll`.

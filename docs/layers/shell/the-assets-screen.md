@@ -188,6 +188,35 @@ curation cannot hide a value the capture actually collected.
 
 ---
 
+## A selected finding says what it means and what to do about it
+
+Below the findings grid sits a panel carrying two blocks for the selected row: **why it matters** and
+**what to do**, with the Microsoft page the reasoning rests on when one is recorded. They come from
+`RuleGuidanceCatalogue`, looked up by rule identifier, and are described in
+[`what a finding is`](../judgement/what-a-finding-is.md).
+
+**A grid that says what is wrong and leaves the operator to work out what to do is half a product.**
+The owner's decision of 2026-09-01: this is a working surface administrators clean up from, not a
+preview of a report.
+
+**It binds to a `SelectedFinding` property, not to the collection's current item.** The current-item
+path reads as a property name to `ViewBindingGateTests`, so a binding through it is one no gate can
+resolve — and a view naming something no view model publishes is how this shell crashed once with the
+build green, which is why `ViewResourceGateTests` exists. The same shape is already used by the run
+library and the object sections.
+
+**A rule with no guidance says so.** A stored judgement outlives the build that made it, so a bundle
+can carry a finding from a rule this build no longer runs. The panel then states that no guidance is
+recorded rather than showing an empty box, because blank space where an explanation belongs reads as
+*there is nothing to say about this* — a different claim, and the wrong one, per
+[`0002`](../../decisions/).
+
+**What it must never say is that the finding is now resolved.** That is a claim about every route to
+the object, which the judgement half must prove rather than assert. The wording is held by
+`RuleGuidanceTests`, which fails the build on copy that goes further.
+
+---
+
 ## What this page does not decide
 
 The three-state visual language, what the product calls a finding, and whether an accepted finding

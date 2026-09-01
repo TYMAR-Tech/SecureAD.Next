@@ -61,6 +61,19 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [ObservableProperty]
     private TreeNodeViewModel? _selected;
 
+    /// <summary>
+    /// The finding whose explanation and guidance the screen is showing.
+    /// </summary>
+    /// <remarks>
+    /// <b>A property rather than the collection's current item.</b> A view binding through the
+    /// current-item path is a binding <c>ViewBindingGateTests</c> cannot resolve, and an unheld
+    /// binding is how this shell once crashed with the build green. This is the same shape the run
+    /// library and the object sections already use for a selected row.
+    /// </remarks>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedFinding))]
+    private FindingRowViewModel? _selectedFinding;
+
     [ObservableProperty]
     private ListingScope _scope = ListingScope.OneLevel;
 
@@ -224,6 +237,15 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>The findings on the page being shown.</summary>
     public ObservableCollection<FindingRowViewModel> Findings { get; } = [];
+
+    /// <summary>
+    /// Whether a finding is selected, so there is an explanation to show beneath the grid.
+    /// </summary>
+    /// <remarks>
+    /// Its own answer rather than a negation at the point of use, for the reason
+    /// <see cref="HasNoRun"/> gives.
+    /// </remarks>
+    public bool HasSelectedFinding => SelectedFinding is not null;
 
     /// <summary>Whether a run has been chosen to look at.</summary>
     public bool HasRun => BundlePath is not null;
