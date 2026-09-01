@@ -189,9 +189,19 @@ they stay once this file is deleted.
 
 ## Stage 4 — the simple posture rules
 
-Rules that read attributes already captured and need no graph: LAPS, stale accounts, SID history,
-AdminSDHolder, Kerberos delegation, ownership, broad write access. Each is small, each has a card,
-each restores something the predecessor reported.
+Rules that read attributes already captured and need no graph: LAPS, SID history, AdminSDHolder,
+Kerberos delegation, ownership, broad write access. Each is small, each restores something the
+predecessor reported.
+
+**Stale accounts is deliberately not among them, decided 2026-09-01.** Doing it accurately means
+consolidating `lastLogon` from every domain controller, because that attribute is per-controller and
+never replicated; the replicated `lastLogonTimestamp` is documented by Microsoft as updating only
+when it is already 9 to 14 days old, and as capable of holding a future value when a controller's
+clock skews or Kerberos S4U touches the account. A threshold anywhere near that margin would report
+an estimate as a fact. The owner's customer has Defender for Identity, which answers this from
+sign-in data rather than from a directory attribute. `P-113` holds the two things worth revisiting:
+carrying the timestamp as *information* on an asset rather than as a finding, and a separately named
+rough-estimate rule for customers without that telemetry.
 
 **`SEC-030` is built**, 2026-08-31, under
 [`0091`](decisions/0091-sec-030-reports-a-marker-without-protection.md). It reports an object
@@ -224,6 +234,21 @@ kinds, and reading it back through the grid's paging path returned each with its
 
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
+
+**Next, decided 2026-09-01: a rule reporting accounts that carry SID history.** `sIDHistory` is
+captured, so it needs no new capture work, and there is no card for it — `SEC-123` covers who can
+*grant* SID history, not who *has* it. It has to be researched and written before any code, anchored
+to Microsoft's *Unsecure SID History attributes* guidance, because nothing was ported: the
+predecessor never had this rule. It matters because a non-privileged account carrying a privileged
+SID from another domain is effectively privileged and appears in no group membership listing.
+
+**`SEC-020` follows, and carries an open question.** It reports a user account with a service name
+registered on it, which any authenticated member of the domain can request a ticket for and crack
+offline. `servicePrincipalName` is captured, so it is buildable — but Microsoft's *Unsecure account
+attributes* assessment recommends removing a service name **only for sensitive accounts**, since
+service accounts legitimately hold them. Whether this product reports every such account or only
+privileged ones is undecided and changes both the noise and the derived facts the rule must declare.
+More research is owed before it is built.
 
 ## Stage 5 — group expansion
 

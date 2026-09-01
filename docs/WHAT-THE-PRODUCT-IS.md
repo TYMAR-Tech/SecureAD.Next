@@ -77,6 +77,16 @@ architectural question.
   Plenty of software measures password strength.
 - **Not tunable.** No assessment modes (`0031`), no customer-editable catalogue (`0082`).
 - **Not an auditor of audit configuration.** The SACL is never requested (`0036`).
+- **Not a reporter of account activity, decided 2026-09-01.** Whether an account is really in use
+  cannot be answered from one controller: `lastLogon` is per-controller and never replicated, and the
+  replicated `lastLogonTimestamp` is documented by Microsoft as updating only once it is already 9 to
+  14 days old, and as capable of holding a future value after a clock skew or a Kerberos S4U2Self
+  request. Reporting a stale-account threshold from that would print an estimate as a finding, and it
+  would under-report as readily as over-report. Sign-in telemetry — Defender for Identity — answers
+  this properly and a directory attribute does not. `P-113` keeps two possibilities open: the
+  timestamp shown as *information* on an asset rather than as an indicator of activity, and a
+  separately named *rough estimate* rule, for customers without that telemetry, whose own wording
+  would have to say it is an estimate.
 
 ## Where it departs from the predecessor
 
