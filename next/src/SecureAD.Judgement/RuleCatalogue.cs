@@ -32,5 +32,8 @@ public static class RuleCatalogue
         new AdminCountWithoutProtection(),
         new NoKerberosPreauthentication(),
         new PrivilegedSidHistory(),
+        new PasswordNotRequired(),
+        new ReversiblePasswordEncryption(),
+        new DesEncryptionOnly(),
     ];
 }

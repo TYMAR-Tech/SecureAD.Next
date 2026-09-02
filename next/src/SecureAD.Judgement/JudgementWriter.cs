@@ -413,10 +413,10 @@ public sealed class JudgementWriter : IDisposable
                     });
                 return;
 
-            case KerberosPreauthenticationEvidence preauth:
+            case UserAccountControlEvidence preauth:
                 Execute(
                     transaction,
-                    "INSERT INTO finding_no_kerberos_preauthentication (finding_id, "
+                    "INSERT INTO finding_user_account_control (finding_id, "
                     + "user_account_control) VALUES ($id, $uac)",
                     command =>
                     {

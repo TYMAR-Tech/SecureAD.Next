@@ -516,7 +516,7 @@ public sealed class JudgementReader : IDisposable
         """
         LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
         LEFT JOIN finding_admincount_without_protection a ON a.finding_id = f.finding_id
-        LEFT JOIN finding_no_kerberos_preauthentication p ON p.finding_id = f.finding_id
+        LEFT JOIN finding_user_account_control p ON p.finding_id = f.finding_id
         LEFT JOIN finding_privileged_sid_history h ON h.finding_id = f.finding_id
         """;
 
@@ -572,7 +572,7 @@ public sealed class JudgementReader : IDisposable
         }
         else if (!reader.IsDBNull(preauthUac))
         {
-            evidence = new KerberosPreauthenticationEvidence((uint)reader.GetInt64(preauthUac));
+            evidence = new UserAccountControlEvidence((uint)reader.GetInt64(preauthUac));
         }
         else if (!reader.IsDBNull(sidHistory))
         {

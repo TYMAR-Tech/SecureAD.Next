@@ -86,7 +86,7 @@ public sealed class NoKerberosPreauthentication : IRule
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
         var objectClass = AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
-        var evidence = new KerberosPreauthenticationEvidence(control);
+        var evidence = new UserAccountControlEvidence(control);
 
         // The disabled state changes what an operator should do first, so it belongs in the sentence
         // rather than only in the stored evidence, which no one reads at a glance.

@@ -115,6 +115,60 @@ public static class RuleGuidanceCatalogue
                 + "are shown on the object itself.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-sid-history-attributes"),
+
+        new RuleGuidance(
+            "SEC-028",
+            "Credentials",
+            MitreTechnique: null,
+            WhyItMatters:
+                "This account is exempt from the domain's minimum password length, so it may have "
+                + "no password at all. Anyone who can reach authentication could sign in as it "
+                + "without knowing anything - no cracking, no interception, no foothold first. The "
+                + "password policy screen still shows the policy, and does not show that this "
+                + "account is not subject to part of it.",
+            WhatToDo:
+                "Clear \"Password not required\" on the account, then set a password on it. "
+                + "Clearing the flag alone does not give the account a password - if it currently "
+                + "has none, it still has none until one is set. Establish what uses the account "
+                + "first: something that was created without a password may not survive being "
+                + "given one.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
+
+        new RuleGuidance(
+            "SEC-029",
+            "Credentials",
+            MitreTechnique: null,
+            WhyItMatters:
+                "The directory holds this account's password in a form that can be decrypted back "
+                + "to the password itself, rather than a hash that an attacker would have to work "
+                + "on. Whoever reaches the stored value gets a working credential immediately, and "
+                + "people reuse passwords, so the reach of it is rarely limited to this account.",
+            WhatToDo:
+                "Clear \"Store password using reversible encryption\" on the account and then "
+                + "change its password. The order matters and the second step is not optional: "
+                + "clearing the setting stops a new reversible copy being stored, but the existing "
+                + "one stays until the password changes. Find out why it was set - it is usually "
+                + "an application that required it, and that application may stop working.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
+
+        new RuleGuidance(
+            "SEC-033",
+            "Credentials",
+            MitreTechnique: null,
+            WhyItMatters:
+                "This account is restricted to DES, a cipher broken long ago, so Kerberos tickets "
+                + "encrypted for it are far cheaper to attack than tickets for any other account. "
+                + "It also drags the account back from whatever stronger encryption the rest of "
+                + "the domain has moved to.",
+            WhatToDo:
+                "Clear \"Use Kerberos DES encryption types for this account\". The setting is "
+                + "almost always present because something authenticating as this account could "
+                + "not do better - a legacy appliance or an old integration - so establish what "
+                + "that is before clearing it, or that thing stops authenticating.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
     ];
 
     /// <summary>The guidance for one rule, or null where none is written.</summary>

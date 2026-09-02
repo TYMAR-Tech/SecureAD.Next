@@ -77,7 +77,7 @@ public sealed class FindingsPagingTests
             "user",
             "Does not require Kerberos pre-authentication.",
             EvidenceCompleteness.Complete,
-            new KerberosPreauthenticationEvidence(0x400202));
+            new UserAccountControlEvidence(0x400202));
 
     private static readonly RuleDefinition Sec027 = new(
         "SEC-027", "Privileged identifier carried in SID history", Severity.High, 1,
@@ -569,7 +569,7 @@ public sealed class FindingsPagingTests
             marker.Evidence).Sid);
 
         var preauth = Assert.Single(page.Findings, f => f.RuleId == "SEC-022");
-        Assert.Equal(0x400202u, Assert.IsType<KerberosPreauthenticationEvidence>(
+        Assert.Equal(0x400202u, Assert.IsType<UserAccountControlEvidence>(
             preauth.Evidence).UserAccountControl);
 
         // SEC-027 is the first evidence kind stored across two tables, so a page must reassemble it

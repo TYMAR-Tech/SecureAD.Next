@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 6;
+    public const int Version = 7;
 
     private static readonly string[] TableDdl =
     [
@@ -244,7 +244,7 @@ public static class JudgementSchema
         // would be a second account of one fact and the two could disagree. The reader re-derives
         // it, exactly as the delegation table leaves its two computed answers out.
         """
-        CREATE TABLE finding_no_kerberos_preauthentication (
+        CREATE TABLE finding_user_account_control (
             finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
             user_account_control                INTEGER NOT NULL,
             PRIMARY KEY (finding_id)

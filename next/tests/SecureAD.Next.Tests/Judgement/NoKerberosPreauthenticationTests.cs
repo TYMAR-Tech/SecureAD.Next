@@ -53,7 +53,7 @@ public sealed class NoKerberosPreauthenticationTests
         Assert.Equal(Severity.High, finding.Severity);
         Assert.Equal("svc-legacy", finding.Subject.Key);
 
-        var evidence = Assert.IsType<KerberosPreauthenticationEvidence>(finding.Evidence);
+        var evidence = Assert.IsType<UserAccountControlEvidence>(finding.Evidence);
         Assert.Equal(WithoutPreauth, evidence.UserAccountControl);
         Assert.False(evidence.IsDisabled);
     }
@@ -111,7 +111,7 @@ public sealed class NoKerberosPreauthenticationTests
         var finding = Assert.Single(verdict.Findings);
         Assert.Contains("disabled", finding.Detail, StringComparison.Ordinal);
 
-        var evidence = Assert.IsType<KerberosPreauthenticationEvidence>(finding.Evidence);
+        var evidence = Assert.IsType<UserAccountControlEvidence>(finding.Evidence);
         Assert.True(evidence.IsDisabled);
     }
 

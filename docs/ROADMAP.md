@@ -277,6 +277,51 @@ identifier that *was* read is now reported beside a note that other values were 
 single unreadable sibling silenced the whole object. Absent still means clean and unreadable still
 means unknown, and there are negative controls for both.
 
+**`SEC-028`, `SEC-029` and `SEC-033` are built**, 2026-09-02, described together in
+[`SEC-028-029-033-unsecure-account-flags.md`](layers/judgement/rules/SEC-028-029-033-unsecure-account-flags.md).
+They report an account not required to have a password, one whose password is stored reversibly, and
+one restricted to DES — three rows of Microsoft's one *Unsecure account attributes* table. High, High
+and Medium.
+
+**They are the first batch built to the checklist**, and it worked: the seam cost almost nothing.
+`KerberosPreauthenticationEvidence` became `UserAccountControlEvidence` and now serves all four
+`userAccountControl` rules, so three new rules needed **no** new table, writer case, reader case or
+coverage sample — one shared kind instead of four near-identical ones differing only in which bit
+their rule cared about. `EvidenceKindCoverageTests` covers them automatically because it keys on the
+evidence kind.
+
+**Three rules rather than one combined finding, deliberately.** Microsoft groups these as a single
+assessment. This product does not, because acceptance is per finding: an operator must be able to
+accept *"this legacy device genuinely needs DES"* without also accepting *"this account has no
+password."*
+
+**`SEC-028` excludes interdomain trust accounts, reversing `SEC-022`'s *nothing is excluded*
+position — because here there is a Microsoft source and there was not.** Microsoft states that a
+trust account "is exempt from having a password through PASSWD_NOTREQD… because trust objects don't
+use the traditional password policy", and that the flag is set on them **by default**. Every trust in
+the forest would otherwise be reported, all by design and all false. Decided by the owner
+2026-09-02; the exclusion reads the object's own `INTERDOMAIN_TRUST_ACCOUNT` bit rather than its name
+or container.
+
+**A mutation lesson worth keeping.** Two mutations run together hid one another: with the flag
+constant mutated, the trust-exclusion test passed, because the mutated flag never matched the fixture
+so the exclusion was never reached. Run separately, each was caught. **Mutations are run one at a
+time from here.**
+
+**Next in stage 4:** `SEC-021` (a *privileged* user account with a service name registered on it).
+The owner chose the privileged-only scope on 2026-09-02, which maps onto the predecessor's existing
+partition — `SEC-020` is the all-accounts version and stays unbuilt — so unlike `SEC-027` there is a
+card to port from. It needs derived facts for the privileged classification, so it is the first
+attribute rule of stage 4 that cannot judge an underived bundle.
+
+**Also decided 2026-09-02: the Kerberos AES rule reports only an explicit weak value.**
+`msDS-SupportedEncryptionTypes` being unset does **not** mean AES is unavailable — Microsoft
+documents the KDC falling back to `DefaultDomainSupportedEncTypes`, which defaults to `0x18`
+(AES-SHA1), and states that a value need not be set at all for user accounts without a service name.
+That fallback is a registry value on the controller, which capture never reads, so a bundle cannot
+know what an unset attribute resolves to. The rule will fire only when the attribute is present and
+explicitly excludes AES — Microsoft's own example being `0x4`, RC4 only.
+
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
 

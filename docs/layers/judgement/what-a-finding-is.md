@@ -46,8 +46,11 @@ records stay in Evidence because they are durable data rather than executable po
 | `AdminCountWithoutProtection` | SEC-030 — a protected-account marker with a blocked DACL that nothing protects |
 | `AdminCountWithoutProtectionEvidence` | The identity SEC-030 asked the derivation about |
 | `NoKerberosPreauthentication` | SEC-022 — an account a domain controller will answer for without the asker proving anything |
-| `KerberosPreauthenticationEvidence` | The `userAccountControl` value SEC-022 read the flag from |
+| `UserAccountControlEvidence` | The whole `userAccountControl` value a flag rule read its bit from, shared by every such rule |
 | `PrivilegedSidHistory` | SEC-027 — a principal carrying a privileged identifier in its SID history, which no group membership listing shows |
+| `PasswordNotRequired` | SEC-028 — an account exempt from the domain's minimum password length, so it may have none |
+| `ReversiblePasswordEncryption` | SEC-029 — an account whose password the directory stores in a form that decrypts back to the password |
+| `DesEncryptionOnly` | SEC-033 — an account restricted to DES, so its Kerberos tickets are cheap to attack |
 | `PrivilegedSidCatalogue` | Which of Microsoft's identifiers this product treats as privileged, as one written-out table |
 | `PrivilegedSidHistoryEvidence` | Every SID history value SEC-027 read, which of them are privileged, and whether any could not be read |
 | `PrivilegedSidHistoryMatch` | One history value that names a privileged principal, with Microsoft's name for it |

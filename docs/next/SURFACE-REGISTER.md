@@ -295,8 +295,11 @@ The table below sits between the two markers around it, so the test parses only 
 | AdminCountWithoutProtection | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | AdminCountWithoutProtectionEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | NoKerberosPreauthentication | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| KerberosPreauthenticationEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| UserAccountControlEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidHistory | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| PasswordNotRequired | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| ReversiblePasswordEncryption | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| DesEncryptionOnly | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidHistoryEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidHistoryMatch | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

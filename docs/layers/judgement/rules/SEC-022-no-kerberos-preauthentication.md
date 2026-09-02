@@ -124,8 +124,8 @@ unaffected by the refusal in `docs/decisions/0091`. It can judge a bundle that w
 
 ## 10. What it rests on
 
-`KerberosPreauthenticationEvidence`, holding the whole `userAccountControl` value the flag was read
-from, stored in `finding_no_kerberos_preauthentication`. `IsDisabled` is derived from that value
+`UserAccountControlEvidence`, holding the whole `userAccountControl` value the flag was read
+from, stored in `finding_user_account_control`. `IsDisabled` is derived from that value
 rather than stored beside it, so there is no second copy to disagree with the first.
 
 ## 11. Tests

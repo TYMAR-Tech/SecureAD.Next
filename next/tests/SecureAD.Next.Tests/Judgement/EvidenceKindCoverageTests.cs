@@ -76,10 +76,10 @@ public sealed class EvidenceKindCoverageTests
         new Sample(
             Definition("SEC-022", "Kerberos pre-authentication not required"),
             "CN=svc-nopreauth,OU=Service Accounts,DC=contoso,DC=com",
-            new KerberosPreauthenticationEvidence(0x400202),
+            new UserAccountControlEvidence(0x400202),
             read =>
             {
-                var e = Assert.IsType<KerberosPreauthenticationEvidence>(read);
+                var e = Assert.IsType<UserAccountControlEvidence>(read);
                 Assert.Equal(0x400202u, e.UserAccountControl);
                 Assert.True(e.IsDisabled);
             }),
@@ -148,7 +148,7 @@ public sealed class EvidenceKindCoverageTests
     {
         var declared = EvidenceKinds();
 
-        Assert.Contains(typeof(KerberosPreauthenticationEvidence), declared);
+        Assert.Contains(typeof(UserAccountControlEvidence), declared);
         Assert.Contains(typeof(PrivilegedSidHistoryEvidence), declared);
         Assert.True(declared.Count >= Samples.Count);
     }
