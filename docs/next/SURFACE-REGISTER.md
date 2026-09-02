@@ -361,6 +361,10 @@ The table below sits between the two markers around it, so the test parses only 
 | LapsAttributes | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsDeploymentEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsTimestampReading | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsTimestamp | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsComputer | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
+| LapsManagement | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
+| LapsPage | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | DirectoryHeuristics | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | HeuristicCharacter | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | HeuristicReadOutcome | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |

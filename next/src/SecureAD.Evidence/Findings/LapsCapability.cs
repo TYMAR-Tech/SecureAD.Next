@@ -98,9 +98,24 @@ public sealed record LapsCapability(
     {
         ArgumentNullException.ThrowIfNull(subject);
 
-        var name = AttributeReading.Text(subject, "operatingSystem");
-        var version = AttributeReading.Text(subject, "operatingSystemVersion");
+        return Of(
+            AttributeReading.Text(subject, "operatingSystem"),
+            AttributeReading.Text(subject, "operatingSystemVersion"));
+    }
 
+    /// <summary>
+    /// Reads the capability from values already in hand.
+    /// </summary>
+    /// <remarks>
+    /// <b>Here so that the LAPS inventory and SEC-094 cannot disagree about one machine.</b> The
+    /// inventory reads its rows straight out of the evidence database and has only the two strings;
+    /// a second classifier there would let the grid call a machine capable while the rule called it
+    /// legacy-only, and an operator would have no way to tell which was right.
+    /// </remarks>
+    /// <param name="name">The <c>operatingSystem</c> value, or null.</param>
+    /// <param name="version">The <c>operatingSystemVersion</c> value, or null.</param>
+    public static LapsCapability Of(string? name, string? version)
+    {
         var isServer = string.IsNullOrWhiteSpace(name)
             ? (bool?) null
             : name.Contains(LapsPlatformCatalog.ServerNameMarker, StringComparison.OrdinalIgnoreCase);

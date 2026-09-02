@@ -555,7 +555,7 @@ public sealed class AssetsViewModelTests
 
         var screen = new AssetsViewModel(assets);
         screen.Show(BundlePath, aCaptureIsRunning: false);
-        screen.ShowsFindings = true;
+        screen.Pane = AssetsPane.Findings;
 
         var announced = new List<string>();
         screen.PropertyChanged += (_, e) => announced.Add(e.PropertyName!);

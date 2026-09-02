@@ -83,11 +83,32 @@ public sealed record DomainControllerSignals(
         var control = AttributeReading.UnsignedInteger(subject, "userAccountControl");
         var primaryGroup = AttributeReading.SignedInteger(subject, "primaryGroupID");
 
+        return Of(control, primaryGroup, subject.DistinguishedName);
+    }
+
+    /// <summary>
+    /// Reads the three signals from values already in hand.
+    /// </summary>
+    /// <remarks>
+    /// <b>Here so that a caller without an <see cref="ObjectAttributes"/> cannot re-derive the
+    /// test.</b> The LAPS inventory reads its rows straight out of the evidence database and has
+    /// only the raw columns; without this it would have to repeat the three comparisons, and the
+    /// predecessor's LAPS feature tested for a domain controller three different ways in one
+    /// screen. One definition, two ways in.
+    /// </remarks>
+    /// <param name="userAccountControl">The account's flags, or null where none was captured.</param>
+    /// <param name="primaryGroupId">Its <c>primaryGroupID</c>, or null where none was captured.</param>
+    /// <param name="distinguishedName">Its distinguished name.</param>
+    public static DomainControllerSignals Of(
+        uint? userAccountControl, int? primaryGroupId, string distinguishedName)
+    {
+        ArgumentNullException.ThrowIfNull(distinguishedName);
+
         return new DomainControllerSignals(
-            ServerTrustAccountBit: control is { } bits && (bits & ServerTrustAccount) != 0,
-            PrimaryGroupIsDomainController: primaryGroup is DomainControllersGroup
+            ServerTrustAccountBit: userAccountControl is { } bits && (bits & ServerTrustAccount) != 0,
+            PrimaryGroupIsDomainController: primaryGroupId is DomainControllersGroup
                 or ReadOnlyDomainControllersGroup,
-            UnderDomainControllersOu: subject.DistinguishedName.Contains(
+            UnderDomainControllersOu: distinguishedName.Contains(
                 ",OU=Domain Controllers,", StringComparison.OrdinalIgnoreCase));
     }
 }

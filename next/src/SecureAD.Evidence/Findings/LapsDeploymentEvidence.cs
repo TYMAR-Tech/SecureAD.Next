@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace SecureAD.Evidence.Findings;
 
 /// <summary>
@@ -75,60 +73,14 @@ public sealed record LapsDeploymentEvidence(
     LapsCapability Capability) : FindingEvidence
 {
     /// <summary>What the Windows LAPS timestamp amounted to.</summary>
-    public LapsTimestampReading WindowsLaps => ReadingOf(WindowsLapsExpiration);
+    public LapsTimestampReading WindowsLaps => LapsTimestamp.Of(WindowsLapsExpiration).Reading;
 
     /// <summary>What the legacy Microsoft LAPS timestamp amounted to.</summary>
-    public LapsTimestampReading LegacyLaps => ReadingOf(LegacyLapsExpiration);
+    public LapsTimestampReading LegacyLaps => LapsTimestamp.Of(LegacyLapsExpiration).Reading;
 
     /// <summary>When Windows LAPS next expects to rotate, where that could be decoded.</summary>
-    public DateTimeOffset? WindowsLapsExpiresUtc => Decode(WindowsLapsExpiration);
+    public DateTimeOffset? WindowsLapsExpiresUtc => LapsTimestamp.Of(WindowsLapsExpiration).ExpiresUtc;
 
     /// <summary>When legacy LAPS next expected to rotate, where that could be decoded.</summary>
-    public DateTimeOffset? LegacyLapsExpiresUtc => Decode(LegacyLapsExpiration);
-
-    /// <summary>
-    /// Whether a raw value is absent, unreadable, or a date.
-    /// </summary>
-    /// <remarks>
-    /// <b>A whitespace value counts as absent rather than unreadable.</b> It carries no date and
-    /// naming it as an undecodable value would put a gap in front of an operator that no attribute
-    /// really has.
-    /// </remarks>
-    private static LapsTimestampReading ReadingOf(string? raw) =>
-        string.IsNullOrWhiteSpace(raw)
-            ? LapsTimestampReading.Absent
-            : Decode(raw) is null
-                ? LapsTimestampReading.Unreadable
-                : LapsTimestampReading.Present;
-
-    /// <summary>
-    /// Decodes a Windows FILETIME, which is what both products write.
-    /// </summary>
-    /// <remarks>
-    /// <b>Zero is not a date and is refused.</b> A FILETIME of 0 is the start of the epoch in 1601,
-    /// which as a password expiration time means the value was written empty rather than that the
-    /// password expired four centuries ago. Reporting it as a date would put an absurdity in front
-    /// of an operator; reporting it as unreadable says what is true, that nothing usable is there.
-    /// </remarks>
-    private static DateTimeOffset? Decode(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)
-            || !long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var fileTime)
-            || fileTime <= 0)
-        {
-            return null;
-        }
-
-        try
-        {
-            return DateTimeOffset.FromFileTime(fileTime);
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            // A value outside the range a FILETIME can express. It came from the directory, so it
-            // is reported as unreadable rather than thrown - one strange attribute must not lose a
-            // finding about the machine carrying it.
-            return null;
-        }
-    }
+    public DateTimeOffset? LegacyLapsExpiresUtc => LapsTimestamp.Of(LegacyLapsExpiration).ExpiresUtc;
 }

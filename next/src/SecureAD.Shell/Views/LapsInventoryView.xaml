@@ -1,0 +1,105 @@
+<UserControl x:Class="SecureAD.Shell.Views.LapsInventoryView" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <DockPanel>
+
+        <!-- THE COUNTS ARE THE FEATURE. An operator watching a rollout is reading "412 not managed"
+             far more often than any row, and a page of a hundred machines says nothing about an
+             estate. Every state appears, including the ones at zero: a list that omits what it did
+             not find reads as a shorter question than the one that was asked. -->
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding LapsCounts}" Margin="0,0,0,8">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,24,0">
+                        <TextBlock Text="{Binding Label}"
+                                   Style="{StaticResource FieldLabel}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,6,0" />
+                        <TextBlock Text="{Binding Count}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- WHY A REFUSAL IS A SENTENCE RATHER THAN AN EMPTY TABLE, as the findings grid says: a
+             container with no computers and a bundle that would not open draw the same blank grid,
+             and an operator reads a blank grid as an answer. -->
+        <Border DockPanel.Dock="Top"
+                Style="{StaticResource Card}"
+                Margin="0,0,0,8"
+                Visibility="{Binding HasLapsRefusal, Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="{Binding LapsRefusal.Title}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,4" />
+                <TextBox Text="{Binding LapsRefusal.Detail, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+        </Border>
+
+        <!-- A listing short by an unknown number of machines says so, per 0002. Without it, a
+             rollout looks further along than it is: the machines nobody could read are exactly the
+             ones nobody has deployed to. -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{Binding LapsShortfall}"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,8"
+                   Visibility="{Binding HasLapsShortfall, Converter={StaticResource Shown}}" />
+
+        <TextBlock DockPanel.Dock="Bottom"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Margin="0,8,0,0">
+            <Run Text="{Binding LapsTotal, Mode=OneWay}" />
+            <Run Text="computers in this container" />
+        </TextBlock>
+
+        <DataGrid ItemsSource="{Binding LapsComputers}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal">
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+
+                <!-- The state, and the mark beside it. Unexpected is not coloured as bad: the
+                     machine is managed and there is no exposure - what is wrong is that Microsoft
+                     says the combination cannot occur. -->
+                <DataGridTextColumn Header="LAPS" Binding="{Binding Management}" Width="Auto" />
+
+                <DataGridTextColumn Header="Windows LAPS expiry"
+                                    Binding="{Binding WindowsLapsExpiry}" Width="Auto" />
+
+                <!-- BOTH TIMESTAMPS, NOT THE ONE THAT SUITS THE TIER. The predecessor showed
+                     whichever matched the tier it had assigned, so a migrated machine looked modern
+                     and the legacy value it still carried was invisible. -->
+                <DataGridTextColumn Header="Legacy LAPS expiry"
+                                    Binding="{Binding LegacyLapsExpiry}" Width="Auto" />
+
+                <DataGridTextColumn Header="Operating system"
+                                    Binding="{Binding OperatingSystem}" Width="*" />
+
+                <DataGridTextColumn Header="Capable of" Binding="{Binding Capability}"
+                                    Width="Auto" />
+
+                <!-- WHY THIS COLUMN EXISTS. Both rules are silent about a domain controller and
+                     about a disabled account, and an operator who could not see them here would
+                     have no way to tell a machine the product deliberately ignored from one it
+                     never captured. The first ad.lab run reported two excluded machines as
+                     findings because there was nowhere else for them to appear. -->
+                <DataGridTextColumn Header="Rules skip it because"
+                                    Binding="{Binding NotJudgedBecause}" Width="Auto" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

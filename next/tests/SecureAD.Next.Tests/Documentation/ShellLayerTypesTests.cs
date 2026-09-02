@@ -227,7 +227,9 @@ public sealed class ShellLayerTypesTests
     {
         Assert.Equal(31, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(29, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        // 29 to 31 on 2026-09-03, when the LAPS inventory added LapsComputerViewModel and
+        // LapsCountViewModel to the assets component.
+        Assert.Equal(31, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
 
         foreach (var (document, _) in Pages())
         {

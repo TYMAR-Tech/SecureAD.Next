@@ -253,8 +253,13 @@ internal static class ObjectListingReader
     /// <b>Only a widened scope can be short.</b> At <see cref="ListingScope.Base"/> the object is
     /// either in the evidence or it is not, and nothing about a domain's coverage changes that.
     /// </para>
+    /// <para>
+    /// <b>Shared with the LAPS inventory rather than copied.</b> Whether a listing is short is a
+    /// question about the run, not about the kind of row being listed, and two copies of this would
+    /// let one grid call a container complete while another called it short.
+    /// </para>
     /// </remarks>
-    private static (bool Complete, string? Shortfall) CoverageOf(
+    internal static (bool Complete, string? Shortfall) CoverageOf(
         SqliteConnection connection, string containerDn, ListingScope scope)
     {
         if (scope == ListingScope.Base)

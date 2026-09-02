@@ -110,23 +110,37 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private bool _nothingWasFound;
 
     /// <summary>
-    /// Whether the findings are the view showing, rather than the objects.
+    /// Which of this screen's views is showing.
     /// </summary>
     /// <remarks>
-    /// <b>Told by the window rather than discovered here.</b> Both views are this one screen, and
-    /// which of them is showing is a fact about the tabs - which belong to the shell. A view model
-    /// that reached for the shell's selected tab would be a screen deciding the application's
+    /// <para>
+    /// <b>Told by the window rather than discovered here.</b> All three views are this one screen,
+    /// and which of them is showing is a fact about the tabs - which belong to the shell. A view
+    /// model that reached for the shell's selected tab would be a screen deciding the application's
     /// navigation, which is what <c>IRunOpener</c> exists to avoid one level up.
+    /// </para>
+    /// <para>
+    /// <b>An enum where there were two booleans, because there are now three views.</b> The pair
+    /// worked while one was the negation of the other; a third would have made the two flags able
+    /// to describe a state that is not a view - both false, or both true - and nothing would have
+    /// said which was on screen.
+    /// </para>
     /// </remarks>
     [ObservableProperty]
-    private bool _showsFindings;
+    private AssetsPane _pane;
+
+    /// <summary>Whether the findings are the view showing.</summary>
+    public bool ShowsFindings => Pane is AssetsPane.Findings;
 
     /// <summary>Whether the object listing is the view showing.</summary>
     /// <remarks>
-    /// Its own answer rather than the negation of <see cref="ShowsFindings"/>, for the reason
+    /// Its own answer rather than the negation of anything, for the reason
     /// <see cref="HasNoRun"/> gives: a view cannot negate a binding without a converter.
     /// </remarks>
-    public bool ShowsObjects => !ShowsFindings;
+    public bool ShowsObjects => Pane is AssetsPane.Objects;
+
+    /// <summary>Whether the LAPS inventory is the view showing.</summary>
+    public bool ShowsLaps => Pane is AssetsPane.Laps;
 
     /// <summary>
     /// Whether the object grid should be on screen: the objects tab, and no object opened from it.
@@ -140,6 +154,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>Whether the findings grid should be on screen.</summary>
     public bool ShowsFindingsListing => ShowsFindings && ShowsListing;
+
+    /// <summary>Whether the LAPS inventory grid should be on screen.</summary>
+    public bool ShowsLapsListing => ShowsLaps && ShowsListing;
 
     /// <summary>The severities a finding on this run actually has, worst first.</summary>
     /// <remarks>
@@ -238,6 +255,37 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>The findings on the page being shown.</summary>
     public ObservableCollection<FindingRowViewModel> Findings { get; } = [];
 
+    /// <summary>The computers on the page of the LAPS inventory being shown.</summary>
+    public ObservableCollection<LapsComputerViewModel> LapsComputers { get; } = [];
+
+    /// <summary>
+    /// How many computers are in each LAPS state across the whole listing, not this page.
+    /// </summary>
+    /// <remarks>
+    /// <b>The counts are what an operator watching a rollout actually reads.</b> A page of a
+    /// hundred rows says little about an estate; <i>412 not managed against 1,908 managed</i> says
+    /// whether the deployment is working.
+    /// </remarks>
+    public ObservableCollection<LapsCountViewModel> LapsCounts { get; } = [];
+
+    /// <summary>How many computers the whole LAPS listing holds.</summary>
+    [ObservableProperty]
+    private int _lapsTotal;
+
+    /// <summary>What the LAPS listing could not cover, or null when it is whole.</summary>
+    [ObservableProperty]
+    private string? _lapsShortfall;
+
+    /// <summary>Why the computers could not be read, or null when they were.</summary>
+    [ObservableProperty]
+    private Notice? _lapsRefusal;
+
+    /// <summary>Whether the LAPS listing has something to say about why it is empty.</summary>
+    public bool HasLapsRefusal => LapsRefusal is not null;
+
+    /// <summary>Whether the LAPS listing is short by an unknown number of machines.</summary>
+    public bool HasLapsShortfall => LapsShortfall is not null;
+
     /// <summary>
     /// Whether a finding is selected, so there is an explanation to show beneath the grid.
     /// </summary>
@@ -303,11 +351,20 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// Whether the listing shows the selected object alone.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The three levels are offered as three plain answers rather than as one value a view has to
     /// convert. A converter that turns an enumeration into a tick is a place presentation logic
     /// accumulates, and it would sit outside the one layer that has tests.
+    /// </para>
+    /// <para>
+    /// <b>Named as the directory names them</b>, on the owner's instruction of 2026-09-03. They read
+    /// <i>this object</i>, <i>one level</i> and <i>everything beneath</i> until the LAPS inventory
+    /// gave the same control a second grid to govern: an administrator already knows base, one
+    /// level and subtree from every search he runs, and a screen that renames them makes him
+    /// translate.
+    /// </para>
     /// </remarks>
-    public bool ShowsThisObject
+    public bool ShowsBase
     {
         get => Scope == ListingScope.Base;
         set
@@ -328,8 +385,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         }
     }
 
-    /// <summary>Whether the listing shows everything beneath the selected object.</summary>
-    public bool ShowsEverythingBeneath
+    /// <summary>Whether the listing shows the selected object and everything beneath it.</summary>
+    public bool ShowsSubtree
     {
         get => Scope == ListingScope.Subtree;
         set
@@ -710,6 +767,61 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Lists the LAPS state of the computers in the selected container at the chosen level.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Only when the inventory is the view showing.</b> The listing counts every computer in
+    /// scope to produce its totals, so running it beside the object listing would pay for a scan on
+    /// every container an operator clicks while looking at something else.
+    /// </para>
+    /// <para>
+    /// <b>It reads sealed evidence, so it says nothing about whether the run was judged.</b> The
+    /// findings grid has to explain an empty result - no rules run and a clean forest look the same
+    /// - and this one does not: an empty inventory means this container holds no computers.
+    /// </para>
+    /// </remarks>
+    private void ListLapsComputers()
+    {
+        LapsComputers.Clear();
+        LapsShortfall = null;
+        LapsCounts.Clear();
+
+        if (BundlePath is null || Selected is null)
+        {
+            LapsTotal = 0;
+            Announce();
+            return;
+        }
+
+        var listed = _assets.ListLapsComputers(
+            BundlePath, Selected.DistinguishedName, Scope, PageNumber);
+
+        if (!listed.IsSuccess)
+        {
+            LapsTotal = 0;
+            LapsRefusal = new Notice(
+                "This run's computers were not read", listed.Error.Description);
+
+            Announce();
+            return;
+        }
+
+        foreach (var computer in listed.Value.Computers)
+            LapsComputers.Add(new LapsComputerViewModel(computer));
+
+        // Every state, in the enum's own order, including the ones nothing is in. A rollout report
+        // that stops saying "Not managed" once it reaches zero has stopped saying the thing an
+        // operator was watching for.
+        foreach (var state in Enum.GetValues<LapsManagement>())
+            LapsCounts.Add(new LapsCountViewModel(state, listed.Value.CountOf(state)));
+
+        LapsTotal = listed.Value.Total;
+        LapsShortfall = listed.Value.ComputersAreComplete ? null : listed.Value.Shortfall;
+        Announce();
+    }
+
+    /// <summary>
     /// Fills the filter lists from the findings this run holds.
     /// </summary>
     /// <remarks>
@@ -885,12 +997,22 @@ internal sealed partial class AssetsViewModel : ObservableObject
         PreviousFindingsCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Keeps the two halves of the screen from both claiming to be showing.</summary>
-    partial void OnShowsFindingsChanged(bool value)
+    /// <summary>Keeps the three views of the screen from both claiming to be showing.</summary>
+    /// <remarks>
+    /// The inventory is listed on arrival rather than with the objects, because a listing nobody is
+    /// looking at is a scan of every computer in the forest paid for on every container click.
+    /// </remarks>
+    partial void OnPaneChanged(AssetsPane value)
     {
         OnPropertyChanged(nameof(ShowsObjects));
+        OnPropertyChanged(nameof(ShowsFindings));
+        OnPropertyChanged(nameof(ShowsLaps));
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
+        OnPropertyChanged(nameof(ShowsLapsListing));
+
+        if (value is AssetsPane.Laps)
+            ListLapsComputers();
     }
 
     /// <summary>
@@ -925,17 +1047,40 @@ internal sealed partial class AssetsViewModel : ObservableObject
         _findingsFrom = null;
         ListObjects();
         ListFindings();
+        RelistLapsIfShowing();
     }
 
     /// <summary>Changing the level changes the listing, and it starts again at its first page.</summary>
+    /// <remarks>
+    /// <b>The level belongs to the tree, not to one grid.</b> It sits beside the tree on screen and
+    /// governs whichever view is showing, so an operator narrowing to an organisational unit during
+    /// a LAPS rollout does not have to go back to the objects tab to change it and then return.
+    /// Until 2026-09-03 the control lived in the object listing and only re-listed the objects,
+    /// which is exactly what that cost.
+    /// </remarks>
     partial void OnScopeChanged(ListingScope value)
     {
         PageNumber = 1;
         OnPropertyChanged(nameof(ParentIsWorthShowing));
-        OnPropertyChanged(nameof(ShowsThisObject));
+        OnPropertyChanged(nameof(ShowsBase));
         OnPropertyChanged(nameof(ShowsOneLevel));
-        OnPropertyChanged(nameof(ShowsEverythingBeneath));
+        OnPropertyChanged(nameof(ShowsSubtree));
         ListObjects();
+        RelistLapsIfShowing();
+    }
+
+    /// <summary>
+    /// Re-reads the LAPS inventory, but only when it is the view showing.
+    /// </summary>
+    /// <remarks>
+    /// <b>The guard is the point.</b> The inventory counts every computer in scope to produce its
+    /// totals, so re-reading it on every tree click while an operator is looking at the objects
+    /// would pay for that scan over and over for a grid nobody is watching.
+    /// </remarks>
+    private void RelistLapsIfShowing()
+    {
+        if (Pane is AssetsPane.Laps)
+            ListLapsComputers();
     }
 
     /// <summary>

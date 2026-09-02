@@ -459,8 +459,49 @@ defect in the same shape, one step earlier.
   trusted: forced off, three tests failed naming `Confidential` against `Readable`; with Microsoft's
   base-schema exception dropped, two failed the other way.
 
-**What remains:** the LAPS inventory grid, and the About surface — `RuleGuidance` carries no About
-field yet, so both rules state their boundaries in `WhyItMatters`, `WhatToDo` and the finding detail.
+**What remains:** the About surface — `RuleGuidance` carries no About field yet, so both rules state
+their boundaries in `WhyItMatters`, `WhatToDo` and the finding detail — and the inventory's export.
+
+**The LAPS inventory grid was built on 2026-09-03**, as a third view under Assets beside Objects and
+Findings, scoped by the same tree selection so one organisational unit can be watched during a
+rollout. It reads **sealed evidence**, which is why it cannot be built out of the findings store:
+*which machines have modern, which have legacy, which have none* includes the healthy ones, and a
+findings store holds only what a rule reported.
+
+It lists **every** computer, including the domain controllers and disabled accounts both rules leave
+alone, with a column naming which exclusion applies. That column is the direct answer to the first
+`ad.lab` run: two disabled leftover accounts became findings because there was nowhere else in the
+product for them to appear.
+
+The four fixes this port owed the predecessor's `v_grid_laps_status` are all in:
+
+- **Both timestamps are shown**, not the one matching the tier the grid assigned — so a migrated
+  machine no longer looks like a modern one with nothing else on it.
+- **Capability is classified by build number**, through the same `LapsCapability` the rules use, with
+  its basis shown beside it, so a bundle sealed before `operatingSystemVersion` was captured says it
+  was judged from a name.
+- **`DomainControllerSignals` is used once** rather than the predecessor's three different tests in
+  one feature.
+- The export is deferred until the columns settle, and will state its filter and counts under
+  [`0093`](decisions/0093-an-export-states-what-it-contains.md).
+
+**One test is the whole guard against the grid and the rules drifting apart.**
+`TheGridAndTheRuleAgreeAboutOneMachine` classifies a Server 2016 machine in the grid, then derives
+and judges the same bundle and asserts `SEC-094` stays silent about it. Both answers rest on one
+classifier: `LapsCapability` and `DomainControllerSignals` gained raw-value overloads precisely so
+the inventory could not re-derive either, and the FILETIME decoder moved into a shared
+`LapsTimestamp`.
+
+**A gate was found defective while building it.** The voucher reachability driver called
+`SingleOrDefault` on a type's generic arguments and threw *"Sequence contains more than one
+element"* on the first read-only dictionary the product declared — failing with a stack trace rather
+than a verdict. A gate that crashes on a shape it does not know cannot say *I could not build this*.
+It now declines, and builds a keyed collection.
+
+**Gate 4 also refused the first shape of the counts**, which is worth recording because the refusal
+was right: a `LapsStateCount` record carrying a bare `int` cannot say whether the listing behind it
+was complete. The counts moved onto `LapsPage`, which vouches, and are asked for per state so a
+state nothing is in answers zero rather than being absent from a list.
 
 **Step 18 found what 2,866 green tests did not, for the third rule running.** The first `ad.lab` run
 produced exactly the predicted counts — 2 `SEC-091` in `ad.lab`, 1 `SEC-094` in `ph.ad.lab`, both

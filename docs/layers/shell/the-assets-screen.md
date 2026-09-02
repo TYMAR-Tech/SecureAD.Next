@@ -31,6 +31,8 @@ As with every shell page, the types below are `internal` — the window exports 
 | `TreeGapViewModel` | Something the tree does not show, and why |
 | `ListedObjectViewModel` | One object in the listing, as a grid row |
 | `FindingRowViewModel` | One finding in the grid, as the judging stored it |
+| `LapsComputerViewModel` | One computer in the LAPS inventory: both expiration dates, what it is capable of running, and — where a rule leaves it alone — which exclusion did it |
+| `LapsCountViewModel` | How many computers are in one LAPS state across the whole container, including the states nothing is in |
 | `ObjectPaging` | Where one page of a listing starts and how large it is |
 | `FactState` | The three states every fact on this screen is drawn in |
 | `ObjectViewModel` | One object opened in full: its sections, and which is showing |

@@ -70,6 +70,7 @@ records stay in Evidence because they are durable data rather than executable po
 | `LapsAttributes` | The attribute names, class test and schema-answer reading the two LAPS rules share, kept in their own type so gate 4's exemption covers the table and not the judging |
 | `LapsDeploymentEvidence` | Both LAPS timestamps as the directory stored them, with what the machine was capable of running |
 | `LapsTimestampReading` | Whether a timestamp was absent, present, or present and undecodable — three states the two rules must never collapse |
+| `LapsTimestamp` | One LAPS expiration timestamp as the directory stored it, with the single decoder the rules and the inventory both use |
 
 <!-- TYPES:END -->
 

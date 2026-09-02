@@ -482,6 +482,21 @@ public sealed class BundleReader : IDisposable
     public SchemaAttributeReading ReadSchemaAttributes() =>
         CapturedSchemaAttributeReader.Read(Connection);
 
+    /// <summary>
+    /// Lists the computers beneath one container with their LAPS state, for the inventory.
+    /// </summary>
+    /// <remarks>
+    /// <b>Every computer, including the ones the LAPS rules exclude.</b> The rules are silent about
+    /// a domain controller and about a disabled account; an operator who could not see them here
+    /// would have no way to tell a machine the product deliberately ignored from one it never
+    /// captured.
+    /// </remarks>
+    /// <param name="containerDn">The container the operator selected.</param>
+    /// <param name="scope">How much of what is beneath it to include.</param>
+    /// <param name="pageNumber">The page to fetch, counting from one.</param>
+    public LapsPage ListLapsComputers(string containerDn, ListingScope scope, int pageNumber) =>
+        LapsInventoryReader.Read(Connection, containerDn, scope, pageNumber);
+
     /// <inheritdoc/>
     public void Dispose()
     {

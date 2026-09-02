@@ -63,6 +63,21 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
     }
 
     /// <inheritdoc/>
+    public Result<LapsPage> ListLapsComputers(
+        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
+
+        var opened = Open(bundleDirectory);
+
+        return opened.IsSuccess
+            ? Guarded(
+                () => opened.Value.ListLapsComputers(containerDn, scope, pageNumber),
+                bundleDirectory)
+            : Result<LapsPage>.Failure(opened.Error);
+    }
+
+    /// <inheritdoc/>
     public Result<ObjectPermissions?> ReadPermissions(
         string bundleDirectory, string distinguishedName)
     {

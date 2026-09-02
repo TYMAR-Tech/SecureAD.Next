@@ -99,15 +99,29 @@ public sealed class ShellViewModelTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Choosing the LAPS tab shows the assets screen rather than a placeholder.
+    /// </summary>
+    /// <remarks>
+    /// <b>This test used to assert the opposite.</b> The LAPS tab was added on 2026-08-18 as a
+    /// <c>NotBuilt</c> placeholder, so the shape of the navigation could be judged before the screen
+    /// behind it existed, and this asserted that selecting it showed something saying so. The
+    /// inventory was built on 2026-09-03 and the placeholder is gone, so the assertion is inverted
+    /// rather than deleted: what matters either way is that the tab and the screen agree.
+    /// <c>ASectionThatIsNotBuiltSaysItReportsNothingAboutTheDirectory</c> still covers the
+    /// placeholder wording, at the section level where a placeholder still exists.
+    /// </remarks>
     [Fact]
-    public void AViewThatIsNotBuiltShowsSomethingSayingSoRatherThanTheScreenBesideIt()
+    public void ChoosingTheLapsTabShowsTheAssetsScreen()
     {
         var shell = AShell();
         shell.Show(ShellSection.Assets);
 
         shell.Views.Single(v => v.Name == "LAPS").IsSelected = true;
 
-        Assert.IsType<SectionView>(shell.Current);
+        var assets = Assert.IsType<AssetsViewModel>(shell.Current);
+        Assert.True(assets.ShowsLaps);
+        Assert.False(assets.ShowsObjects);
     }
 
     /// <summary>

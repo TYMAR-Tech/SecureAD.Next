@@ -126,6 +126,70 @@ internal static class LapsBundle
     }
 
     /// <summary>
+    /// Writes a bundle holding several computers, for the inventory rather than for a rule.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same builder, because the grid and the rules must be tested against one forest.</b>
+    /// Two builders would let the inventory be exercised against a directory the rules never see,
+    /// and the boundary between them is exactly where a disagreement would sit.
+    /// </remarks>
+    /// <param name="computers">
+    /// One entry per machine: its distinguished name, operating system and version, the modern and
+    /// legacy timestamps, and its <c>userAccountControl</c>.
+    /// </param>
+    /// <param name="started">When the capture ran.</param>
+    public static string BuildMany(
+        IReadOnlyList<(string Dn, string? Os, string? Version, string? Modern, string? Legacy, uint Uac)> computers,
+        DateTimeOffset started)
+    {
+        ArgumentNullException.ThrowIfNull(computers);
+
+        var directory = Path.Combine(
+            Path.GetTempPath(), "securead-laps-tests", Guid.NewGuid().ToString("N"));
+
+        Directory.CreateDirectory(directory);
+
+        using (var writer = BundleWriter.Create(directory, started))
+        {
+            writer.WriteCoverage(Partition);
+            writer.WriteCoverage(SchemaPartition);
+
+            foreach (var computer in computers)
+            {
+                var attributes = new List<EvidenceAttribute>
+                {
+                    Multi("objectClass", ["top", "person", "organizationalPerson", "user", "computer"]),
+                    Text("userAccountControl", computer.Uac.ToString(CultureInfo.InvariantCulture)),
+                    Text("sAMAccountName", NameOf(computer.Dn)),
+                };
+
+                if (computer.Os is not null)
+                    attributes.Add(Text("operatingSystem", computer.Os));
+
+                if (computer.Version is not null)
+                    attributes.Add(Text("operatingSystemVersion", computer.Version));
+
+                if (computer.Modern is not null)
+                    attributes.Add(Text(ModernAttribute, computer.Modern));
+
+                if (computer.Legacy is not null)
+                    attributes.Add(Text(LegacyAttribute, computer.Legacy));
+
+                writer.WriteObject(
+                    new EvidenceObject(
+                        Partition, computer.Dn, Guid.NewGuid(), attributes, started));
+            }
+
+            WriteSchemaAttribute(writer, ModernAttribute, 0, started);
+            WriteSchemaAttribute(writer, LegacyAttribute, 0, started);
+
+            writer.Complete(Coverage, started.AddMinutes(1));
+        }
+
+        return directory;
+    }
+
+    /// <summary>
     /// Writes one <c>attributeSchema</c> object, as capture stores it.
     /// </summary>
     /// <remarks>

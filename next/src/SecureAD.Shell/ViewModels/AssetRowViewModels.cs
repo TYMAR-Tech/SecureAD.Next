@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
@@ -339,4 +340,175 @@ internal sealed class FindingRowViewModel
 
     /// <summary>Whether a Microsoft source can be offered for this finding's reasoning.</summary>
     public bool HasMicrosoftReference => Guidance?.MicrosoftReference is not null;
+}
+
+/// <summary>
+/// One computer, as the LAPS inventory shows it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Every column comes off the stored computer, and every judgement off the shared types.</b>
+/// The row asks <see cref="LapsComputer"/> rather than deciding anything itself, so the grid cannot
+/// call a machine capable while <c>SEC-094</c> calls it legacy-only.
+/// </para>
+/// <para>
+/// <b>Both timestamps are shown, not the one that suits the machine's tier.</b> The predecessor
+/// showed whichever matched the tier it had assigned, so a migrated machine looked like a modern
+/// one and the legacy value it still carried was invisible.
+/// </para>
+/// </remarks>
+internal sealed class LapsComputerViewModel
+{
+    private readonly LapsComputer _computer;
+
+    /// <summary>Creates a screen's view of one computer.</summary>
+    /// <param name="computer">The computer as the evidence holds it.</param>
+    public LapsComputerViewModel(LapsComputer computer)
+    {
+        ArgumentNullException.ThrowIfNull(computer);
+
+        _computer = computer;
+    }
+
+    /// <summary>The machine's name.</summary>
+    public string Name => _computer.Name;
+
+    /// <summary>Where it sits, so two machines of one name in two domains are told apart.</summary>
+    public string Domain => _computer.DomainFqdn ?? string.Empty;
+
+    /// <summary>The full name, for an operator who needs to find the object.</summary>
+    public string DistinguishedName => _computer.DistinguishedName;
+
+    /// <summary>What the directory shows about its password management.</summary>
+    public string Management => _computer.Management switch
+    {
+        LapsManagement.WindowsLaps => "Windows LAPS",
+        LapsManagement.LegacyLaps => "Legacy LAPS",
+        LapsManagement.Migrated => "Migrated",
+        LapsManagement.Unexpected => "Unexpected",
+        _ => "Not managed",
+    };
+
+    /// <summary>
+    /// How that reads as a state a view can colour.
+    /// </summary>
+    /// <remarks>
+    /// <b>Unexpected is not established-bad.</b> The machine is managed and there is no exposure -
+    /// what is wrong is that Microsoft says the combination cannot occur, which is a fact about the
+    /// forest rather than a risk. <see cref="FactState.NotEstablished"/> is the honest mark: the
+    /// product cannot say what is going on.
+    /// </remarks>
+    public FactState State => _computer.Management switch
+    {
+        LapsManagement.WindowsLaps or LapsManagement.Migrated => FactState.EstablishedGood,
+        LapsManagement.NotManaged => FactState.EstablishedBad,
+        _ => FactState.NotEstablished,
+    };
+
+    /// <summary>The operating system, or a statement that none was captured.</summary>
+    public string OperatingSystem => _computer.OperatingSystem ?? "Not captured";
+
+    /// <summary>What the machine could run, in the words of the classification.</summary>
+    public string Capability => _computer.Capability.Kind switch
+    {
+        LapsCapabilityKind.WindowsLapsCapable => "Windows LAPS capable",
+        LapsCapabilityKind.LegacyLapsOnly => "Legacy LAPS only",
+        _ => "Unknown",
+    };
+
+    /// <summary>
+    /// Whether the capability rests on the build number, the operating system name, or nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>Shown, because the two are not equally good.</b> A bundle sealed before the build number
+    /// was captured can only be classified from a name, and an operator reading the grid is
+    /// entitled to know which answer he is looking at.
+    /// </remarks>
+    public string CapabilityBasis => _computer.Capability.Basis switch
+    {
+        LapsCapabilityBasis.OperatingSystemVersion => "build number",
+        LapsCapabilityBasis.OperatingSystemName => "operating system name",
+        _ => "nothing to read",
+    };
+
+    /// <summary>When Windows LAPS next expects to rotate, or why there is no date.</summary>
+    public string WindowsLapsExpiry => Expiry(_computer.WindowsLaps);
+
+    /// <summary>When legacy LAPS next expected to rotate, or why there is no date.</summary>
+    public string LegacyLapsExpiry => Expiry(_computer.LegacyLaps);
+
+    /// <summary>Whether this is a domain controller, which both LAPS rules leave alone.</summary>
+    public bool IsDomainController => _computer.DomainController.IsDomainController;
+
+    /// <summary>Whether the account is disabled, which both LAPS rules leave alone.</summary>
+    public bool IsDisabled => _computer.IsDisabled;
+
+    /// <summary>
+    /// Why the rules say nothing about this machine, or an empty string where they do.
+    /// </summary>
+    /// <remarks>
+    /// <b>This column is the reason the grid lists what the rules exclude.</b> An operator who
+    /// cannot see a machine has no way to tell one the product deliberately ignored from one it
+    /// never captured, and the first <c>ad.lab</c> run turned two excluded machines into findings
+    /// precisely because there was nowhere else for them to appear.
+    /// </remarks>
+    public string NotJudgedBecause =>
+        IsDomainController && IsDisabled ? "Domain controller, disabled"
+        : IsDomainController ? "Domain controller"
+        : IsDisabled ? "Disabled"
+        : string.Empty;
+
+    /// <summary>Whether either rule is in scope for this machine.</summary>
+    public bool IsJudged => _computer.IsJudged;
+
+    /// <summary>
+    /// Reads one timestamp for showing, keeping absent and unreadable apart.
+    /// </summary>
+    /// <remarks>
+    /// <b>An unreadable value is not shown as an absent one.</b> A machine whose timestamp is
+    /// present but undecodable is managed, and a blank cell would say the opposite.
+    /// </remarks>
+    private static string Expiry(LapsTimestamp timestamp) => timestamp.Reading switch
+    {
+        LapsTimestampReading.Present =>
+            timestamp.ExpiresUtc!.Value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        LapsTimestampReading.Unreadable => "Present, unreadable",
+        _ => string.Empty,
+    };
+}
+
+/// <summary>
+/// How many computers are in one LAPS state, across the whole listing.
+/// </summary>
+/// <remarks>
+/// <b>A row per state, including the states at zero.</b> A count list that omits what it did not
+/// find reads as a shorter question than the one that was asked: an operator who cannot see
+/// <i>Not managed 0</i> has to work out whether it was measured at all.
+/// </remarks>
+internal sealed class LapsCountViewModel
+{
+    /// <summary>Creates one count.</summary>
+    /// <param name="state">The state being counted.</param>
+    /// <param name="count">How many computers are in it.</param>
+    public LapsCountViewModel(LapsManagement state, int count)
+    {
+        State = state;
+        Count = count;
+    }
+
+    /// <summary>The state being counted.</summary>
+    public LapsManagement State { get; }
+
+    /// <summary>How many computers are in it.</summary>
+    public int Count { get; }
+
+    /// <summary>The state in the words an operator reads.</summary>
+    public string Label => State switch
+    {
+        LapsManagement.WindowsLaps => "Windows LAPS",
+        LapsManagement.LegacyLaps => "Legacy LAPS",
+        LapsManagement.Migrated => "Migrated",
+        LapsManagement.Unexpected => "Unexpected",
+        _ => "Not managed",
+    };
 }

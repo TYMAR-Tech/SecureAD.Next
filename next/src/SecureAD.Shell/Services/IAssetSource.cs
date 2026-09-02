@@ -37,6 +37,19 @@ internal interface IAssetSource
     Result<ObjectPage> ListObjects(
         string bundleDirectory, string containerDn, ListingScope scope, int pageNumber);
 
+    /// <summary>Lists one page of the LAPS inventory for a container.</summary>
+    /// <remarks>
+    /// Separate from <see cref="ListObjects"/> because it answers a different question: it lists
+    /// computers only, and carries what the directory says about each machine's password
+    /// management rather than its class and parent.
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    /// <param name="containerDn">The container the operator selected.</param>
+    /// <param name="scope">How much of what is beneath it to include.</param>
+    /// <param name="pageNumber">The page to fetch, counting from one.</param>
+    Result<LapsPage> ListLapsComputers(
+        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber);
+
     /// <summary>Reads the permissions on one object.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     /// <param name="distinguishedName">The object the operator opened.</param>

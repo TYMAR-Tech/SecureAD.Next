@@ -35,8 +35,10 @@
     </UserControl.Resources>
 
     <DockPanel Margin="{StaticResource ScreenPadding}">
-        <TextBlock DockPanel.Dock="Top" Text="Assets"
-                   Style="{StaticResource ScreenTitle}" Margin="0,0,0,12" />
+
+        <!-- NO SCREEN TITLE. The rail says Assets and the tab says which view, so a heading
+             repeating the word a third time spent a line of vertical space on nothing. Removed on
+             the owner's instruction, 2026-09-03. -->
 
         <!-- No run chosen is a question the operator has not answered, and is not a claim that
              the run captured nothing. -->
@@ -72,6 +74,8 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
             <TreeView Grid.Row="0" ItemsSource="{Binding Roots}"
@@ -86,35 +90,47 @@
                 </TreeView.ItemContainerStyle>
             </TreeView>
 
-                <views:GapsCard Grid.Row="1" />
+                <!-- THE LEVEL BELONGS TO THE TREE, NOT TO ONE GRID. It sits under the tree it
+                     qualifies and governs whichever view is showing, so an operator narrowing to an
+                     organisational unit during a LAPS rollout does not have to cross to the objects
+                     tab to change it and come back. Until 2026-09-03 it lived in the object listing
+                     and that is exactly what it cost.
+
+                     THE WORDS ARE THE DIRECTORY'S OWN. Base, one level and subtree are what an
+                     administrator types into every search he runs; the screen used to say "this
+                     object", "one level" and "everything beneath", which made him translate.
+
+                     STACKED, NOT IN A ROW. Three pills across a 300-pixel column clipped the
+                     third off the screen entirely - seen 2026-09-03. One per line also reads as
+                     "pick exactly one" without the operator having to hover to find out. -->
+                <StackPanel Grid.Row="1" Margin="0,12,0,0">
+                    <TextBlock Text="Level" Style="{StaticResource FieldLabel}" />
+                    <RadioButton Style="{StaticResource ChoiceRadio}" Content="Base" GroupName="Scope"
+                                 IsChecked="{Binding ShowsBase, Mode=TwoWay}" />
+                    <RadioButton Style="{StaticResource ChoiceRadio}" Content="One level" GroupName="Scope"
+                                 IsChecked="{Binding ShowsOneLevel, Mode=TwoWay}" />
+                    <RadioButton Style="{StaticResource ChoiceRadio}" Content="Subtree" GroupName="Scope"
+                                 IsChecked="{Binding ShowsSubtree, Mode=TwoWay}" />
+                </StackPanel>
+
+                <!-- Where you are, said once beside the tree rather than once per view. -->
+                <TextBlock Grid.Row="2"
+                           Text="{Binding Selected.DistinguishedName}"
+                           Style="{StaticResource Identifier}"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,0" />
+
+                <views:GapsCard Grid.Row="3" />
             </Grid>
 
             <DockPanel Grid.Column="2" Visibility="{Binding ShowsObjectListing, Converter={StaticResource Shown}}">
 
-                <!-- Where you are, said once here rather than repeated on every row of the grid. -->
+                <!-- A gesture nothing announces is a gesture nobody finds. -->
                 <TextBlock DockPanel.Dock="Top"
-                           Text="{Binding Selected.DistinguishedName}"
-                           Style="{StaticResource Identifier}"
-                           TextTrimming="CharacterEllipsis"
-                           Margin="0,0,0,8" />
-
-                <!-- The three scopes the directory itself defines, under the names an
-                     administrator already uses. -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Show" Style="{StaticResource FieldLabel}"
-                               VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <RadioButton Style="{StaticResource ChoiceButton}" Content="This object" GroupName="Scope" Margin="0,0,16,0"
-                                 IsChecked="{Binding ShowsThisObject, Mode=TwoWay}" />
-                    <RadioButton Style="{StaticResource ChoiceButton}" Content="One level" GroupName="Scope" Margin="0,0,16,0"
-                                 IsChecked="{Binding ShowsOneLevel, Mode=TwoWay}" />
-                    <RadioButton Style="{StaticResource ChoiceButton}" Content="Everything beneath" GroupName="Scope"
-                                 IsChecked="{Binding ShowsEverythingBeneath, Mode=TwoWay}" />
-
-                    <!-- A gesture nothing announces is a gesture nobody finds. -->
-                    <TextBlock Text="Double-click a row to open an object" Margin="24,0,0,0"
-                               VerticalAlignment="Center"
-                               Foreground="{StaticResource SecondaryTextBrush}" />
-                </StackPanel>
+                           Text="Double-click a row to open an object"
+                           VerticalAlignment="Center"
+                           Margin="0,0,0,8"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
 
                 <!-- The pager. Says which objects of how many, so a page can never be mistaken
                      for the whole listing. -->
@@ -183,6 +199,12 @@
                  somewhere in the directory and will look at the object next. -->
             <views:FindingsView Grid.Column="2"
                                 Visibility="{Binding ShowsFindingsListing, Converter={StaticResource Shown}}" />
+
+            <!-- Which machines are managing their local administrator password, and by what.
+                 Beside the objects for the same reason the findings are: an operator narrowing to
+                 an organisational unit during a rollout keeps the tree while he does it. -->
+            <views:LapsInventoryView Grid.Column="2"
+                                     Visibility="{Binding ShowsLapsListing, Converter={StaticResource Shown}}" />
 
             <!-- One object, opened from a row. It replaces the listing and the tree stays: an
                  operator reading one object is still somewhere in the directory. -->

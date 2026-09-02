@@ -180,6 +180,29 @@ internal sealed class FakeAssetSource : IAssetSource
             : Result<ObjectPage>.Success(Page);
     }
 
+    public LapsPage LapsPage { get; set; } =
+        new([], 0, new Dictionary<LapsManagement, int>(), true, null);
+
+    public AuditError? LapsListingFails { get; set; }
+
+    public string? LapsListedContainer { get; private set; }
+
+    public ListingScope LapsListedScope { get; private set; }
+
+    public int LapsListings { get; private set; }
+
+    public Result<LapsPage> ListLapsComputers(
+        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
+    {
+        LapsListedContainer = containerDn;
+        LapsListedScope = scope;
+        LapsListings++;
+
+        return LapsListingFails is { } error
+            ? Result<LapsPage>.Failure(error)
+            : Result<LapsPage>.Success(LapsPage);
+    }
+
     public Result<ObjectPermissions?> ReadPermissions(
         string bundleDirectory, string distinguishedName)
     {

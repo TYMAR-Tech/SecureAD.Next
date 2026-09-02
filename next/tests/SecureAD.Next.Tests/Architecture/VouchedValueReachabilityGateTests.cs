@@ -366,6 +366,12 @@ public sealed class VouchedValueReachabilityGateTests
     /// attributes</i> - impossible - or <i>nobody read the schema partition</i>. Read false from a
     /// capture with no schema partition and true from one with it, so the flag is reached both
     /// ways rather than pinned at the value that happens to make the suite pass.
+    /// 40 from 2026-09-03 with <c>LapsPage.ComputersAreComplete</c>, which the LAPS inventory needs
+    /// for the reason <c>ObjectPage.ObjectsAreComplete</c> needs its own: widen the scope over a
+    /// branch the run could not read and the list is short by an unknown number of machines, and a
+    /// shorter list of unmanaged computers is indistinguishable from a rollout that is further
+    /// along than it is. Read true from a whole listing and false from one whose domain coverage
+    /// says a domain was not read.
     /// </para>
     /// </summary>
     [Fact]
@@ -373,7 +379,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(39, found.Count);
+        Assert.Equal(40, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");
@@ -713,6 +719,26 @@ public sealed class VouchedValueReachabilityGateTests
                 System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        if (KeyedElementsOf(type) is var (key, value))
+        {
+            // A keyed collection, which the product asks for where a count is held per state.
+            // Built rather than left null: a type constructed with a null argument is not the
+            // product's type, and a voucher read off one is a value the product cannot produce.
+            var dictionary = (IDictionary)Activator.CreateInstance(
+                typeof(Dictionary<,>).MakeGenericType(key, value))!;
+
+            if (variant is not Variant.Low)
+            {
+                var synthesizedKey = Synthesize(key, Variant.High, depth + 1);
+                var synthesizedValue = Synthesize(value, Variant.High, depth + 1);
+
+                if (synthesizedKey is not null)
+                    dictionary[synthesizedKey] = synthesizedValue;
+            }
+
+            return dictionary;
+        }
+
         if (SequenceElementOf(type) is { } element)
         {
             // Low is empty; the populated forms are a spread rather than a single item. A
@@ -799,14 +825,45 @@ public sealed class VouchedValueReachabilityGateTests
             return type.GetElementType();
         }
 
-        // An array satisfies IReadOnlyList<T>, IReadOnlyCollection<T>, IEnumerable<T> and IList<T>,
-        // which is every sequence shape the product's constructors ask for.
+        // An array satisfies IReadOnlyList&lt;T&gt;, IReadOnlyCollection&lt;T&gt;, IEnumerable&lt;T&gt;
+        // and IList&lt;T&gt;, which is every ungrouped sequence shape the product's constructors ask
+        // for. A keyed collection is not one of them and is built by KeyedElementsOf instead.
+        //
+        // THIS WAS SingleOrDefault() AND IT THREW. Asked for the element type of a read-only
+        // dictionary it found two generic arguments and raised "Sequence contains more than one
+        // element", so the gate failed with a stack trace rather than a verdict - and a gate that
+        // crashes on a shape it does not know cannot say "I could not build this". Found 2026-09-03
+        // when LapsPage became the first type to hold a count per state.
         if (type.IsInterface && type.IsGenericType)
         {
-            return type.GetGenericArguments().SingleOrDefault();
+            var arguments = type.GetGenericArguments();
+
+            return arguments.Length == 1 ? arguments[0] : null;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// The key and value types of a keyed collection the driver can build, or null if it is not one.
+    /// </summary>
+    private static (Type Key, Type Value)? KeyedElementsOf(Type type)
+    {
+        if (!type.IsInterface || !type.IsGenericType)
+        {
+            return null;
+        }
+
+        var definition = type.GetGenericTypeDefinition();
+
+        if (definition != typeof(IReadOnlyDictionary<,>) && definition != typeof(IDictionary<,>))
+        {
+            return null;
+        }
+
+        var arguments = type.GetGenericArguments();
+
+        return (arguments[0], arguments[1]);
     }
 
     /// <summary>
