@@ -512,7 +512,13 @@ public sealed class JudgementReader : IDisposable
         k.finding_id                        AS k_finding_id,
         k.object_sid                        AS k_object_sid,
         k.user_account_control              AS k_user_account_control,
-        k.unreadable_service_names          AS k_unreadable_service_names
+        k.unreadable_service_names          AS k_unreadable_service_names,
+        l.windows_laps_expiration           AS l_windows_laps_expiration,
+        l.legacy_laps_expiration            AS l_legacy_laps_expiration,
+        l.capability_kind                   AS l_capability_kind,
+        l.capability_basis                  AS l_capability_basis,
+        l.operating_system                  AS l_operating_system,
+        l.operating_system_version          AS l_operating_system_version
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -523,6 +529,7 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_user_account_control p ON p.finding_id = f.finding_id
         LEFT JOIN finding_privileged_sid_history h ON h.finding_id = f.finding_id
         LEFT JOIN finding_kerberoastable_account k ON k.finding_id = f.finding_id
+        LEFT JOIN finding_laps_deployment l ON l.finding_id = f.finding_id
         """;
 
     /// <summary>
@@ -559,6 +566,12 @@ public sealed class JudgementReader : IDisposable
         var preauthUac = reader.GetOrdinal("p_user_account_control");
         var sidHistory = reader.GetOrdinal("h_finding_id");
         var kerberoastable = reader.GetOrdinal("k_finding_id");
+
+        // Discriminated on capability_kind, which is never null on a row that exists. Both
+        // timestamp columns are legitimately null - that pair of absences is exactly what a SEC-091
+        // finding says - so either of them as the discriminator would drop every SEC-091 finding
+        // into the "no evidence" branch below and throw on a finding that is intact.
+        var lapsCapability = reader.GetOrdinal("l_capability_kind");
 
         FindingEvidence evidence;
 
@@ -606,6 +619,23 @@ public sealed class JudgementReader : IDisposable
                 ServicePrincipalNames.TryGetValue(findingId, out var spns) ? spns : [],
                 (uint)reader.GetInt64(reader.GetOrdinal("k_user_account_control")),
                 (int)reader.GetInt64(reader.GetOrdinal("k_unreadable_service_names")));
+        }
+        else if (!reader.IsDBNull(lapsCapability))
+        {
+            var modern = reader.GetOrdinal("l_windows_laps_expiration");
+            var legacy = reader.GetOrdinal("l_legacy_laps_expiration");
+            var name = reader.GetOrdinal("l_operating_system");
+            var version = reader.GetOrdinal("l_operating_system_version");
+
+            evidence = new LapsDeploymentEvidence(
+                reader.IsDBNull(modern) ? null : reader.GetString(modern),
+                reader.IsDBNull(legacy) ? null : reader.GetString(legacy),
+                new LapsCapability(
+                    Enum.Parse<LapsCapabilityKind>(reader.GetString(lapsCapability)),
+                    Enum.Parse<LapsCapabilityBasis>(
+                        reader.GetString(reader.GetOrdinal("l_capability_basis"))),
+                    reader.IsDBNull(name) ? null : reader.GetString(name),
+                    reader.IsDBNull(version) ? null : reader.GetString(version)));
         }
         else
         {

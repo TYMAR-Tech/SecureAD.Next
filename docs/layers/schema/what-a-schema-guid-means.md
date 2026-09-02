@@ -52,6 +52,7 @@ unit-tested but not yet exercised against Active Directory.
 | `SchemaGuidEntry` | One row: `Guid`, `LdapName`, `Kind`, `Source`, and nothing else |
 | `SchemaGuidKind` | What a GUID names — and it is a property of the row, not of the GUID |
 | `SchemaGuidSource` | Whether the name was shipped or read from a forest |
+| `SchemaAttributeFlags` | The `searchFlags` bit that marks an attribute confidential and the `systemFlags` bit that makes the directory ignore it, transcribed from Microsoft's Search-Flags page |
 
 <!-- TYPES:END -->
 
@@ -91,6 +92,9 @@ convention a member follows is a caller that will read an absent answer as a pre
 | `LdapName` | On a row: the name Microsoft's AD schema gives it | — |
 | `Kind` | On a row: what this GUID names | — |
 | `Source` | On a row: whether the name was shipped or read from a forest | — |
+| `Confidential` | The `searchFlags` bit that marks an attribute confidential, so the directory withholds it silently from an unprivileged caller: Microsoft's 128 | — |
+| `BaseSchemaObject` | The `systemFlags` bit marking a base schema object, on which Microsoft says the confidential bit is ignored | — |
+| `IsConfidential` | Whether this forest withholds an attribute, given its two flags | `false` only where `searchFlags` was read and does not carry the bit. A `searchFlags` nobody captured answers `false` too, so a caller that needs *not known* apart from *not withheld* must ask before it asks this — `AttributeVisibilityAnswer` is where those two are kept apart |
 
 <!-- MEMBERS:END -->
 

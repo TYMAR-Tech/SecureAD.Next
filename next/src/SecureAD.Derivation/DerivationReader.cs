@@ -120,12 +120,16 @@ public sealed record StoredProtectedPrincipalProduct(
 /// caller that had to check for its absence before trusting the size beside it would eventually
 /// forget to, and the reading it would then give is the clean one.
 /// </param>
+/// <param name="AttributeVisibility">
+/// Which attributes this forest withholds, so a rule can tell an absent value from a withheld one.
+/// </param>
 public sealed record StoredDerivation(
     DerivationDescription Description,
     IReadOnlyList<StoredDerivationPhase> Phases,
     DerivationSize Size,
     DerivationCompleteness Completeness,
-    StoredProtectedPrincipalProduct ProtectedPrincipals)
+    StoredProtectedPrincipalProduct ProtectedPrincipals,
+    StoredAttributeVisibilityProduct AttributeVisibility)
 {
     /// <summary>Whether every phase that ran succeeded.</summary>
     /// <remarks>
@@ -317,7 +321,62 @@ public sealed class DerivationReader : IDisposable
             phases,
             ReadSize(),
             ReadCompleteness(),
-            ReadProtectedPrincipals(phases));
+            ReadProtectedPrincipals(phases),
+            ReadSchemaVisibility(phases));
+    }
+
+    /// <summary>
+    /// Reads the attribute-visibility product, or says why there is none.
+    /// </summary>
+    /// <remarks>
+    /// <b>Discriminated on the metadata row rather than on the table being empty</b>, for the
+    /// reason the schema gives: a capture refused the schema partition produces a product with no
+    /// rows, and that is not the same as no product at all.
+    /// </remarks>
+    private StoredAttributeVisibilityProduct ReadSchemaVisibility(
+        IReadOnlyList<StoredDerivationPhase> phases)
+    {
+        using (var metadata = _connection.CreateCommand())
+        {
+            metadata.CommandText = "SELECT attributes_read FROM attribute_visibility_derivation";
+            using var metadataReader = metadata.ExecuteReader();
+
+            if (!metadataReader.Read())
+            {
+                var phase = phases.FirstOrDefault(
+                    p => p.Phase == AttributeVisibilityDeriver.PhaseName);
+
+                var availability = phase?.Outcome switch
+                {
+                    DerivationPhaseOutcome.DidNotRun => AttributeVisibilityAvailability.DidNotRun,
+                    DerivationPhaseOutcome.Failed => AttributeVisibilityAvailability.Failed,
+                    _ => AttributeVisibilityAvailability.Missing,
+                };
+
+                return new StoredAttributeVisibilityProduct(availability, null);
+            }
+        }
+
+        var attributes = new List<AttributeVisibilityFact>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT ldap_display_name, search_flags, system_flags FROM attribute_visibility "
+            + "ORDER BY ldap_display_name";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            attributes.Add(new AttributeVisibilityFact(
+                reader.GetString(0),
+                reader.IsDBNull(1) ? null : reader.GetInt32(1),
+                reader.IsDBNull(2) ? null : reader.GetInt32(2)));
+        }
+
+        return new StoredAttributeVisibilityProduct(
+            AttributeVisibilityAvailability.Available,
+            new StoredAttributeVisibility(attributes));
     }
 
     private StoredProtectedPrincipalProduct ReadProtectedPrincipals(

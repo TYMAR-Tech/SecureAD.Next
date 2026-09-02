@@ -192,6 +192,52 @@ public static class RuleGuidanceCatalogue
                 + "name closes this route to the account and says nothing about any other.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#credential-access-alerts"),
+
+        new RuleGuidance(
+            "SEC-091",
+            "Credentials",
+            MitreTechnique: null,
+            WhyItMatters:
+                "Nothing visible in this directory is rotating this machine's local administrator "
+                + "password. Where that password came from an image, a build script or a "
+                + "technician, every machine built the same way shares it, so one compromised "
+                + "machine yields a credential that works on all of them. That access is local, so "
+                + "no domain authentication is involved and nothing is logged centrally - which is "
+                + "the step that lets an intrusion spread sideways across an estate without "
+                + "touching a domain controller.",
+            WhatToDo:
+                "Deploy Windows LAPS to this machine, and confirm it by looking for "
+                + "msLAPS-PasswordExpirationTime appearing on this computer object - the check "
+                + "Microsoft names for a successful deployment. Applications or scripts that sign "
+                + "in with a shared local administrator password will stop working once it starts "
+                + "rotating, so find those before you deploy. This rule reads Active Directory "
+                + "only: a machine whose password is backed up to Microsoft Entra ID carries no "
+                + "directory attribute and cannot be told apart from an unmanaged one here.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/windows-server/identity/laps/laps-overview"),
+
+        new RuleGuidance(
+            "SEC-094",
+            "Credentials",
+            MitreTechnique: null,
+            WhyItMatters:
+                "This machine could be managed by the current version of LAPS and the directory "
+                + "shows no sign that it is. What it does show is a timestamp from the old "
+                + "product, and that attribute is never cleared - migrating away from legacy LAPS "
+                + "removes the policy and the software and leaves the value behind. So an "
+                + "administrator reading it as proof the machine is managed may be reading a "
+                + "fossil, and false assurance stops an investigation that should have happened.",
+            WhatToDo:
+                "Check the machine itself before changing anything, because the directory cannot "
+                + "tell the three causes apart: a Windows LAPS policy that is not reaching it, a "
+                + "deliberate legacy emulation-mode configuration, or a machine that has not taken "
+                + "the April 2023 update. Event 10023 in the Windows LAPS log records emulation "
+                + "mode. Where emulation mode is deliberate, note that it stores passwords in "
+                + "clear text and cannot encrypt them or back them up to Microsoft Entra ID, so "
+                + "moving to native Windows LAPS gains those - and will change which attribute the "
+                + "password is read from, which any tooling reading ms-Mcs-AdmPwd depends on.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/windows-server/identity/laps/laps-scenarios-migration"),
     ];
 
     /// <summary>The guidance for one rule, or null where none is written.</summary>

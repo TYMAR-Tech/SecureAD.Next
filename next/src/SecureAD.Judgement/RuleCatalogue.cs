@@ -36,5 +36,7 @@ public static class RuleCatalogue
         new ReversiblePasswordEncryption(),
         new DesEncryptionOnly(),
         new KerberoastablePrivilegedAccount(),
+        new WindowsLapsNotAppliedOnCapableComputer(),
+        new LapsMissingOnComputer(),
     ];
 }

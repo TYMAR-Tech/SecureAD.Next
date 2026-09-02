@@ -41,6 +41,15 @@ evidence. No rule consumes what it produces yet.
 | `StoredProtectedPrincipalFact` | One persisted principal evaluation with basis, reasons and path |
 | `StoredProtectedPrincipalDerivation` | The readable catalogue, mask and principal facts from one generation |
 | `StoredProtectedPrincipalProduct` | Availability carried beside the readable product |
+| `AttributeVisibilityDeriver` | The phase that reads the schema partition and records which attributes this forest withholds |
+| `AttributeVisibilityAnswer` | What the schema says about one attribute: readable, withheld, not in this schema, flags never captured, or schema never read |
+| `AttributeVisibilityFact` | One attribute's raw `searchFlags` and `systemFlags`, with the answer recomputed from them rather than stored beside them |
+| `StoredAttributeVisibility` | The persisted lookup a rule consults before treating an absent value as a fact about an object |
+| `AttributeVisibilityAvailability` | Whether that product is available, absent, failed or did not run |
+| `StoredAttributeVisibilityProduct` | Availability carried beside the readable product |
+| `CapturedSchemaAttributeReader` | Reads the schema partition's attribute definitions out of sealed evidence, so the phase contacts no directory |
+| `SchemaAttributeDefinition` | One attribute definition as capture stored it |
+| `SchemaAttributeReading` | Those definitions with whether the schema partition was read at all, so emptiness cannot be mistaken for a forest that withholds nothing |
 
 <!-- TYPES:END -->
 

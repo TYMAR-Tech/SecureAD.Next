@@ -383,7 +383,7 @@ store rather than a person.
 sealed, and the finding count went 9 to 6 without re-reading a single object —
 [`0085`](decisions/0085-judgement-writes-beside-the-evidence.md) as intended.
 
-**Next: `SEC-091` and `SEC-094`, LAPS deployment state. Specified 2026-09-03, not yet built.**
+**`SEC-091` and `SEC-094`, LAPS deployment state. Specified 2026-09-03, built 2026-09-03.**
 
 The two rules were split on 2026-09-03, and the reason is not tidiness:
 
@@ -437,8 +437,66 @@ defect in the same shape, one step earlier.
   only a predecessor card. As written they forbade the rebuild from ever naming a new rule. A bogus
   `SEC-999` was fed to the gate to confirm it still fails.
 
-**What remains:** both rules through the 18-step checklist, the `AttributeVisibility` input that
-carries the schema answer to a rule, and the LAPS inventory grid.
+**What was built on 2026-09-03, after the above:**
+
+- **Both rules through the 18-step checklist.** `LapsMissingOnComputer` and
+  `WindowsLapsNotAppliedOnCapableComputer`, sharing one `LapsDeploymentEvidence` kind and one
+  `LapsAttributes` constants table so the two cannot disagree about the population they divide.
+  Twenty-two tests between them, each rule mutated in both directions one mutation at a time.
+- **`AttributeVisibility` is a real Derivation phase with a persisted product**, chosen by the owner
+  over the cheaper lookup-delegate precedent that `DerivedFacts.Permissions` sets. What declaring a
+  `DerivedFactKind` buys is the `0091` whole-run refusal when the answer is absent; what it costs is
+  a phase, a store table, `DerivationSchema.Version` 4 to 5, and a re-derive for every sealed
+  bundle — and the last of those was free because nothing has shipped. It reads the schema partition
+  that is already inside the seal, so it contacts no directory and costs one pass over rows capture
+  already took.
+- **The visibility answer has four states and none may collapse into another**: readable, withheld,
+  not in this forest's schema, and *the schema was never read*. The fourth is not hypothetical —
+  `SchemaGuidCatalog.HasCapturedEntries` exists because a run refused the schema partition happens.
+- **The confidential branch is unreachable in production and is tested anyway.** Both expiration
+  attributes read `searchFlags` 0 in every real forest, so no lab run will ever exercise it. Its
+  fixture sets bit 128, and the check was **observed failing** in both directions before it was
+  trusted: forced off, three tests failed naming `Confidential` against `Readable`; with Microsoft's
+  base-schema exception dropped, two failed the other way.
+
+**What remains:** the LAPS inventory grid, and the About surface — `RuleGuidance` carries no About
+field yet, so both rules state their boundaries in `WhyItMatters`, `WhatToDo` and the finding detail.
+
+**Step 18 found what 2,866 green tests did not, for the third rule running.** The first `ad.lab` run
+produced exactly the predicted counts — 2 `SEC-091` in `ad.lab`, 1 `SEC-094` in `ph.ad.lab`, both
+Server 2016 machines silent — and the two `SEC-091` objects were not the machines the specification
+predicted. `CN=BADC,CN=Computers,DC=ad,DC=lab` and `CN=PHDC,CN=Computers,DC=ad,DC=lab` carry
+`userAccountControl` 4098: workstation trust accounts that are **disabled**, left behind when those
+machines were promoted into the child domains. The finding told an operator to deploy Windows LAPS
+to machines that do not exist under those accounts.
+
+**The count was right and the reasoning was not**, which is `F-S44-2` in its plainest form and is
+the reason step 18 is not optional. Three things followed:
+
+- **The owner excluded disabled computer accounts from both rules**, 2026-09-03. A disabled account
+  has no running machine, so there is no local administrator password to rotate and the advice
+  cannot be followed. It departs from `SEC-021`, which reports a disabled *user* account, and the
+  difference is real: re-enabling a user restores the exposure exactly, while this exposure lives on
+  a machine's local security database. Cost, recorded: a machine switched off for a month is
+  genuinely unmanaged and is now silent.
+- **A claim this repository had made three times was false and is corrected.** `DomainControllerSignals`
+  does **not** solve the child-domain trap. It reads three signals off the object in hand, and a
+  child controller's parent-domain account carries none of them. What it does solve is the
+  predecessor's distinguished-name bug — a controller moved out of its default container — which is
+  a narrower claim than the one made here and in both rule documents.
+- **`P-120`** — the stale accounts themselves are a real finding of a different kind, and belong to a
+  rule that does not exist.
+
+**After the fix, re-judged against the same sealed evidence:** 7 findings where there were 9,
+`SEC-091` silent, `SEC-094` still reporting `PHMS1`, both rules judging 14 objects with none
+unjudged and nothing unresolved — so the new derivation ran against a real forest. **`SEC-091` now
+has no positive case in `ad.lab`**, and a green run there must not be read as confirming it fires;
+seeing that needs a planted enabled machine carrying neither timestamp.
+
+**A detail worth keeping.** The rules were offered 14 objects against 11 computers in the forest.
+The three extra are group managed service accounts, whose `objectClass` chain contains `computer`.
+Both rules test the **most derived** class, so they were excluded — had either asked whether
+`computer` was merely present, that would have been three more false findings.
 
 **The inventory grid is the owner's actual goal and it is not a rule.** *Which machines have legacy,
 which have modern, which have none* includes the healthy ones, so it cannot come from the findings
@@ -460,7 +518,7 @@ and one Server 2022 in `ph.ad.lab` carrying only the legacy timestamp. Nothing n
 
 | Need | What already answers it |
 |---|---|
-| Excluding domain controllers, which the owner chose on 2026-09-02 | `DomainControllerSignals` — three independent signals with their disagreement recorded, used by `SEC-010` and `SEC-011`. The predecessor's bug, where a child-domain controller fired because it also has a member-server computer account in the parent domain, is a solved problem there. The predecessor tested for a domain controller **three different ways** in one feature — a UAC bit in its grid, a `sAMAccountName` list in the same query, and a distinguished-name match in its rule — which is the drift this type exists to end |
+| Excluding domain controllers, which the owner chose on 2026-09-02 | `DomainControllerSignals` — three independent signals with their disagreement recorded, used by `SEC-010` and `SEC-011`. It catches a controller moved out of its default container, which is the predecessor's distinguished-name bug. **It does not catch the child-domain case, and this row said it did until the lab run of 2026-09-03 disproved it** — a child domain's controller also holds a computer account in the parent domain, that account carries none of the three signals, and a rule judging one object cannot know the name belongs to a controller elsewhere. What excludes those objects is that they are disabled |
 | Seeing what the rules do to a real forest | `securead-cli --library <dir>` then `show-findings.ps1`, one command each |
 
 **Scope, settled by the owner 2026-09-03:** all computers except domain controllers, **clients and

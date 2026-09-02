@@ -498,6 +498,31 @@ public sealed class JudgementWriter : IDisposable
 
                 return;
 
+            case LapsDeploymentEvidence laps:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_laps_deployment (finding_id, "
+                    + "windows_laps_expiration, legacy_laps_expiration, capability_kind, "
+                    + "capability_basis, operating_system, operating_system_version) "
+                    + "VALUES ($id, $modern, $legacy, $kind, $basis, $os, $version)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue(
+                            "$modern", (object?)laps.WindowsLapsExpiration ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$legacy", (object?)laps.LegacyLapsExpiration ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$kind", laps.Capability.Kind.ToString());
+                        command.Parameters.AddWithValue(
+                            "$basis", laps.Capability.Basis.ToString());
+                        command.Parameters.AddWithValue(
+                            "$os", (object?)laps.Capability.Name ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$version", (object?)laps.Capability.Version ?? DBNull.Value);
+                    });
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

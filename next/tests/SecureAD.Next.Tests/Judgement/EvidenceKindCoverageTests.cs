@@ -123,6 +123,37 @@ public sealed class EvidenceKindCoverageTests
                 Assert.Equal(1, e.UnreadableServiceNames);
                 Assert.False(e.IsComplete);
             }),
+
+        // Deliberately awkward, per the remarks above: a machine carrying one timestamp and not the
+        // other, whose capability was decided from a build number, and whose legacy value is a
+        // FILETIME rather than a date. A reader that dropped a column, or that stored a decoded
+        // date instead of the raw value, gives a different answer to at least one of these.
+        new Sample(
+            Definition("SEC-094", "Windows LAPS expected, but only a legacy timestamp present"),
+            "CN=FS01,OU=Servers,DC=contoso,DC=com",
+            new LapsDeploymentEvidence(
+                WindowsLapsExpiration: null,
+                LegacyLapsExpiration: "133700000000000000",
+                new LapsCapability(
+                    LapsCapabilityKind.WindowsLapsCapable,
+                    LapsCapabilityBasis.OperatingSystemVersion,
+                    "Windows Server 2022 Datacenter",
+                    "10.0 (20348)")),
+            read =>
+            {
+                var e = Assert.IsType<LapsDeploymentEvidence>(read);
+                Assert.Null(e.WindowsLapsExpiration);
+                Assert.Equal("133700000000000000", e.LegacyLapsExpiration);
+                Assert.Equal(LapsTimestampReading.Absent, e.WindowsLaps);
+                Assert.Equal(LapsTimestampReading.Present, e.LegacyLaps);
+                Assert.NotNull(e.LegacyLapsExpiresUtc);
+                Assert.Null(e.WindowsLapsExpiresUtc);
+                Assert.Equal(LapsCapabilityKind.WindowsLapsCapable, e.Capability.Kind);
+                Assert.Equal(LapsCapabilityBasis.OperatingSystemVersion, e.Capability.Basis);
+                Assert.Equal("Windows Server 2022 Datacenter", e.Capability.Name);
+                Assert.Equal("10.0 (20348)", e.Capability.Version);
+                Assert.True(e.Capability.IsServer);
+            }),
     ];
 
     /// <summary>

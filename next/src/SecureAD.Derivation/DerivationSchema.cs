@@ -49,8 +49,15 @@ internal static class DerivationSchema
     /// answer is never serialized as a complete closure"; until version 3 this store did exactly
     /// that.
     /// </para>
+    /// <para>
+    /// <b>5 - attribute visibility is recorded.</b> SEC-091 and SEC-094 read a LAPS timestamp, and
+    /// an absent value means either <i>this machine is unmanaged</i> or <i>this forest withheld the
+    /// attribute</i>. Those are opposite answers and only the schema partition tells them apart, so
+    /// the answer is derived once and handed to the rules rather than assumed from what Microsoft
+    /// ships.
+    /// </para>
     /// </remarks>
-    public const int Version = 4;
+    public const int Version = 5;
 
     private static readonly string[] TableDdl =
     [
@@ -357,6 +364,47 @@ internal static class DerivationSchema
             ordinal     INTEGER NOT NULL,
             path_sid_id INTEGER NOT NULL REFERENCES sid(sid_id),
             PRIMARY KEY (sid_id, ordinal)
+        )
+        """,
+
+        // One row, written when the attribute-visibility phase produces a product at all.
+        //
+        // THIS ROW IS WHAT MAKES AN EMPTY attribute_visibility TABLE READABLE, exactly as
+        // rule_execution does for an empty finding table in a judgement. No rows and no row here
+        // means the phase never ran; no rows beside this row means the phase ran and the capture
+        // held no schema partition. Those lead a rule to opposite behaviour - the first refuses the
+        // whole judging, the second makes every rule reading a schema answer stay silent - so a
+        // reader must be able to tell them apart without inferring it.
+        //
+        // attributes_read IS NOT A CACHED COUNT OF THE TABLE BELOW. It is what the phase says it
+        // read, and the table is what was stored. They agree in every run that worked, and a run
+        // where they disagree is one this product wants to be able to notice rather than one it has
+        // arranged to look tidy.
+        """
+        CREATE TABLE attribute_visibility_derivation (
+            attributes_read INTEGER NOT NULL,
+            only_one_row    INTEGER NOT NULL DEFAULT 1 CHECK (only_one_row = 1),
+            PRIMARY KEY (only_one_row)
+        )
+        """,
+
+        // What the forest's schema says about each attribute's visibility.
+        //
+        // THE TWO FLAGS ARE STORED RAW AND THE ANSWER IS NOT, which is the rule the delegation,
+        // pre-authentication and SID history tables all follow. Whether an attribute is withheld is
+        // searchFlags bit 128 unless systemFlags marks a base schema object, and a stored answer
+        // would be a second copy of that computation able to disagree with the values beside it.
+        //
+        // BOTH ARE NULLABLE AND NULL IS NOT ZERO. Zero means this forest withholds nothing, which
+        // is a real statement about the schema. Null means nobody read the value, and a rule
+        // treating that as zero would report an attribute as readable on no evidence at all - the
+        // one direction that turns a gap in the capture into a claim about the forest.
+        """
+        CREATE TABLE attribute_visibility (
+            ldap_display_name TEXT    NOT NULL,
+            search_flags      INTEGER     NULL,
+            system_flags      INTEGER     NULL,
+            PRIMARY KEY (ldap_display_name)
         )
         """,
     ];

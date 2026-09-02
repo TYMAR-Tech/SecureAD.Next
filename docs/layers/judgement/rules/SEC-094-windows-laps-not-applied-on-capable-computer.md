@@ -125,6 +125,7 @@ auditor is entitled to see it.
 | Excluded | Why |
 |---|---|
 | **Domain controllers** | The owner's decision of 2026-09-02, and the same exclusion `SEC-091` makes. Excluded through `DomainControllerSignals`, never by distinguished name |
+| **Disabled computer accounts** | The owner's decision of 2026-09-03, and the same exclusion `SEC-091` makes for the same reason: a disabled account has no running machine, so there is nothing for a Windows LAPS policy to reach and nothing to migrate |
 | **Machines carrying the modern timestamp** | The confirmation Microsoft names is present. Whether it is *stale* is `SEC-092` |
 | **Machines carrying neither timestamp** | That is `SEC-091`, and it is the more serious finding |
 | **Machines not capable of Windows LAPS** | Server 2016 and earlier. Microsoft never backported it, so its absence says nothing about the machine's configuration |
@@ -239,11 +240,54 @@ successfully — which is the largest population in exactly the estates this rul
 
 Each mutated in both directions, **one mutation at a time**.
 
-## 11. Verified against `ad.lab`
+## 11. Verified against `ad.lab`, 2026-09-03
 
-*Pending — step 18. Not yet run, because the rule is not yet built.*
+**This rule was right on its first real run, including the case it was most likely to get wrong.**
+The prediction below was written before the rule existed and held in every row.
 
-**Read on 2026-09-03, so the expected result is known before the rule exists:**
+| Question | How it was answered | Answer |
+|---|---|---|
+| Was the rule scheduled and did it complete? | `rule_execution` in the judgement store | `Succeeded`, 14 objects judged, **0 not judged, 0 unresolved** |
+| Did it fire, and on what? | `show-findings.ps1` | **1 finding, Low** — `CN=PHMS1,OU=Servers,OU=PH Lab,DC=ph,DC=ad,DC=lab` |
+| Were the two Server 2016 machines excluded? | the same run, and they carry exactly this rule's attribute pattern | **both silent** — the capability test is what held |
+| Was the healthy population silent? | the same run | every machine carrying the modern timestamp, silent |
+| Did the finding state a cause? | read the finding text | it names all three candidates and asserts none |
+
+**The Server 2016 machines are the result worth having.** `BA2016` and `PH2016` each carry the
+legacy timestamp and no modern one — precisely what this rule looks for — and are excluded on
+capability alone, because Microsoft never shipped Windows LAPS for that operating system. Reporting
+them would have been reporting a machine for not running software that does not exist for it. The
+mutation that narrows the capability test to `Unknown` fails exactly one test,
+`AServer2016MachineWithOnlyTheLegacyTimestampIsNotReported`, so the control and the forest agree.
+
+**The finding's decoded date came back sensible**, which is worth saying because it is computed from
+a raw FILETIME rather than stored: `PHMS1`'s legacy expiry decoded to a date about three weeks after
+the run — a live legacy rotation rather than a fossil. The date itself is not quoted here, because a
+document stating a date in the future is indistinguishable from a document nobody checked, which is
+what `DocumentationDateGateTests` exists to catch. Note that this rule cannot use that fact and does
+not try to: whether the rotation is stale is `SEC-092`'s question, and *legacy present, modern
+absent* is reported either way.
+
+**One correction came out of the same run, and it belongs to `SEC-091`.** Two disabled leftover
+computer accounts were reported by that rule; the owner excluded disabled accounts from **both**
+rules on 2026-09-03, and `SEC-094`'s count was unaffected because `PHMS1` is enabled
+(`userAccountControl` 4096).
+
+### What this run did **not** establish
+
+**Emulation mode was not present and could not be.** Both causes this rule refuses to choose between
+produce the same directory state, and nothing in `ad.lab` distinguishes them — which is the rule's
+own point, and why the finding names candidates rather than a cause. What the lab confirms is the
+*state*, not which cause produced it.
+
+**The confidential branch was not exercised**, and never will be on a real forest: both expiration
+attributes read `searchFlags` 0 here. It is covered by a fixture that sets bit 128, and that check
+was observed failing before it was trusted — which matters more for this rule than for `SEC-091`, as
+[§8](#8-what-the-rule-reads) explains.
+
+### What was predicted, before the rule existed
+
+**Read on 2026-09-03**, and every row held:
 
 | Domain | `operatingSystem` | Legacy | Modern | Expected |
 |---|---|---|---|---|
@@ -254,8 +298,10 @@ Each mutated in both directions, **one mutation at a time**.
 | both clients | Windows 11 Enterprise | absent | present | silent — healthy |
 | `ad.lab` × 2 | Windows Server 2022 Datacenter | absent | absent | silent — `SEC-091`'s case |
 
-**Exactly one finding expected, on the Server 2022 member server in `ph.ad.lab`.**
+**Exactly one finding expected, on the Server 2022 member server in `ph.ad.lab`.** One was produced,
+on that machine.
 
-**The two Server 2016 machines are the test that matters here**, because they carry precisely the
-attribute pattern the rule looks for and must be excluded by capability alone. If the capability
-classifier is wrong, they fire — and they are the machines Microsoft never shipped Windows LAPS for.
+**The last row is the one that turned out to be wrong about *why*.** Those two `ad.lab` machines are
+not member servers: they are disabled accounts left behind by domain promotions, and `SEC-091` §11
+records what that cost. This rule was silent about them for the right reason either way — neither
+carries a legacy timestamp.

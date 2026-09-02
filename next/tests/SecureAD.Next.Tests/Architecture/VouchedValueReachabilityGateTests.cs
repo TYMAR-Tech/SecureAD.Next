@@ -358,6 +358,14 @@ public sealed class VouchedValueReachabilityGateTests
     /// better rule than the one first written - a privileged account with one readable service name
     /// is now reported beside a count of what was not read, where the rule had refused the whole
     /// object and lost a Critical finding over an unreadable sibling.
+    /// 39 from 2026-09-03 with <c>SchemaAttributeReading.SchemaAttributesWereAsked</c> and
+    /// <c>StoredAttributeVisibility.SchemaAttributesWereAsked</c>, which SEC-091 and SEC-094 needed
+    /// because both treat an <i>absent</i> LAPS timestamp as a fact about a machine. That is only
+    /// safe once the forest is known not to be withholding the attribute, and a list of schema
+    /// definitions is a collection whose emptiness means either <i>this forest defines no
+    /// attributes</i> - impossible - or <i>nobody read the schema partition</i>. Read false from a
+    /// capture with no schema partition and true from one with it, so the flag is reached both
+    /// ways rather than pinned at the value that happens to make the suite pass.
     /// </para>
     /// </summary>
     [Fact]
@@ -365,7 +373,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(37, found.Count);
+        Assert.Equal(39, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");

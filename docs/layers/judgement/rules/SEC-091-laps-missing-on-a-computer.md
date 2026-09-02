@@ -210,6 +210,7 @@ wrongly.
 | Excluded | Why |
 |---|---|
 | **Domain controllers** | The owner's decision of 2026-09-02. See the note below: this is a scope choice, not a technical impossibility |
+| **Disabled computer accounts** | The owner's decision of 2026-09-03, taken after the first lab run reported two of them. A disabled account has no running machine behind it, so there is no local administrator password for anything to rotate and the finding's advice cannot be followed. **This departs from `SEC-021`, which reports a disabled user account, and the difference is real**: a disabled user still carries a password and a service name, so re-enabling restores the exposure exactly, while the exposure here lives on a machine's local security database and a stale account has no machine attached. **What it costs**: a machine switched off for a month is genuinely unmanaged and is now silent. Stale accounts are a real finding of a different kind and are `P-120` |
 | **Non-computer objects** | LAPS attributes live on the computer class. Microsoft: the `Update-LapsADSchema` cmdlet "adds the schema attributes to the directory and to the `mayContain` list on the computer schema class" |
 | **Computers already managed by either product** | An expiration timestamp from either LAPS product means something is rotating the password. Which product is doing it is a migration question, not a security one — see [§6](#6-what-is-not-reported-and-why) |
 
@@ -225,9 +226,23 @@ non-default OU."*
 `primaryGroupID` of 516 or 521, and the Domain Controllers container — treats **any** of them as
 enough, and reports disagreement rather than resolving it. `SEC-010` and `SEC-011` already use it.
 
-**The child-domain trap it exists to avoid.** A child domain's controller also has a member-server
-computer account in the parent domain, and a name-based or container-based test gets that wrong. That
-is a solved problem in `DomainControllerSignals` and this rule reuses it rather than re-deriving it.
+**The child-domain trap, and this document was wrong about it until the forest said so.** A child
+domain's controller also has a member-server computer account in the parent domain, and this section
+claimed that was *"a solved problem in `DomainControllerSignals`"*. **It is not, and it cannot be.**
+That type reads the three signals off *the object in hand*, and the parent-domain account carries
+none of them: read from `ad.lab` on 2026-09-03, `CN=BADC,CN=Computers,DC=ad,DC=lab` and
+`CN=PHDC,CN=Computers,DC=ad,DC=lab` each carry `userAccountControl` 4098 — a workstation trust
+account — with `primaryGroupID` 515, sitting in `CN=Computers`. A rule judging one object cannot know
+that those names belong to controllers in another domain.
+
+**What `DomainControllerSignals` does solve** is the *predecessor's* bug, which was a
+distinguished-name match: a real controller moved out of the Domain Controllers container is still
+caught here by its trust bit or its primary group. That is worth having and this rule uses it. It is
+a narrower claim than the one this section made.
+
+**What actually excludes those two objects is that they are disabled** — see
+[§5](#5-what-is-excluded-and-why). Both were reported at Medium by the first `ad.lab` run, advising
+an operator to deploy Windows LAPS to machines that no longer exist under those accounts.
 
 **Worth recording, because the exclusion is a choice and not a fact:** domain controllers *can* be
 LAPS-managed. Windows LAPS manages the DSRM account password on domain controllers — Microsoft:
@@ -414,12 +429,71 @@ published value rather than against another copy of itself.
 
 Each mutated in both directions, **one mutation at a time**.
 
-## 11. Verified against `ad.lab`
+## 11. Verified against `ad.lab`, 2026-09-03
 
-*Pending — step 18. Not yet run, because the rule is not yet built.*
+**The rule was wrong on its first real run, and the forest is what caught it — again.** The counts
+matched this document's prediction exactly, and the reasoning behind them did not. That is
+`F-S44-2` in its plainest form: a prediction right by luck reads exactly like a prediction right by
+understanding, and only opening the forest tells them apart.
 
-**What the forest already contains, read on 2026-09-03**, so the expected result is known before the
-rule exists rather than after:
+**What the first run reported:** two findings in `ad.lab`, at Medium, which is what the table below
+forecast. The objects were not the two member servers this document expected. Read from `ad.lab`'s
+PDC emulator on 2026-09-03:
+
+```
+CN=BADC,CN=Computers,DC=ad,DC=lab   userAccountControl=4098  primaryGroupID=515  dNSHostName=BADC.ad.lab
+CN=PHDC,CN=Computers,DC=ad,DC=lab   userAccountControl=4098  primaryGroupID=515  dNSHostName=PHDC.ad.lab
+```
+
+`4098` is `WORKSTATION_TRUST_ACCOUNT` **with `ACCOUNTDISABLE`**. Both are leftovers of joining a
+machine to the parent domain and then promoting it into a child; the machines those names belong to
+are now the controllers of `ba.ad.lab` and `ph.ad.lab`, whose real accounts were correctly excluded.
+The finding told an operator to deploy Windows LAPS to machines that do not exist under those
+accounts — the `SEC-021` `krbtgt` shape, one rule later: advice that cannot be followed.
+
+**Two things came out of it, and neither was a quiet repair.** The owner excluded disabled computer
+accounts from both rules ([§5](#5-what-is-excluded-and-why)), and this document's claim that
+`DomainControllerSignals` solves the child-domain trap was corrected — it cannot, because it reads
+one object and the parent-domain account carries none of its three signals. The stale accounts
+themselves are `P-120`.
+
+### After the fix
+
+| Question | How it was answered | Answer |
+|---|---|---|
+| Was the rule scheduled and did it complete? | `rule_execution` in the judgement store | `Succeeded`, 14 objects judged, **0 not judged, 0 unresolved** |
+| Did the new derivation reach it? | the same row — an absent `AttributeVisibility` refuses the whole run | it ran, so the phase produced its product against a real forest |
+| Does it still report the disabled leftovers? | re-judged the **same sealed evidence** with the fixed rule | **0 findings**, down from 2 |
+| Were the domain controllers excluded? | all three appear among the 14 judged and none among the findings | 3 excluded |
+| Were the group managed service accounts excluded? | see below | 3 excluded |
+| Total findings across the forest | `show-findings.ps1` | 9 before, **7 after** |
+
+**Fourteen objects judged against eleven computers in the forest, and the difference matters.**
+`laps-census.ps1` reads the live directory and counts 11 computers; the rule was offered 14. The
+three extra are `TestgMSA`, `gMSAlegacy` and `gmsaBlah` in `ba.ad.lab`, whose `objectClass` chain
+**contains** `computer`. They are excluded because the rule tests the *most derived* class — had it
+asked whether `computer` was present, those would have been three more false findings, on objects
+with no local administrator password at all.
+
+### What this run did **not** establish
+
+**`SEC-091` now has no positive case in `ad.lab`.** The only two objects it reported were the
+disabled leftovers, and every remaining computer in the forest is either LAPS-managed, a domain
+controller, or a group managed service account. **Its positive path is exercised by tests and by
+nothing in the lab**, and a green run against this forest must not be read as confirming the rule
+fires — that is the same mistake in a quieter form. Seeing it fire needs a planted enabled machine
+with neither timestamp, alongside the planted unmanaged **client** [§3](#3-scope-which-computers-are-in-scope)
+already needs and which this lab also cannot supply.
+
+**The confidential branch was not exercised either, and never will be here.** Both expiration
+attributes read `searchFlags` 0 in this forest, as [§4](#4-the-absence-problem-and-why-it-is-smaller-than-we-thought)
+records. It is covered by a fixture that sets bit 128, and that check was **observed failing** in
+both directions before it was trusted.
+
+### What the forest held, read on 2026-09-03
+
+**Fourteen computer-class objects, eleven of them computers.** The expected result stated below was
+written before the rule existed; the *counts* held and the *identities* did not.
 
 | Domain | Machine kind | `operatingSystem` | LAPS state | Expected |
 |---|---|---|---|---|

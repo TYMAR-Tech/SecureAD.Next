@@ -100,6 +100,12 @@ public static class Stage2aRun
 
         using var writer = DerivationWriter.Create(bundleDirectory, seal.Hash, startedUtc);
 
+        // Run first, and independently of everything below it. It reads the schema partition out of
+        // the seal and needs no graph, no closure and no budget, so a nesting pass that produces
+        // nothing must not take it down with it - a rule asking whether an attribute is withheld
+        // has the same question whatever became of the membership.
+        RunAttributeVisibility(bundle, writer, progress, log);
+
         var facts = ReadNesting(bundle, writer, progress, log, cancellationToken);
 
         if (facts is null)
@@ -260,6 +266,31 @@ public static class Stage2aRun
 
             return null;
         }
+    }
+
+    private static void RunAttributeVisibility(
+        BundleReader bundle,
+        DerivationWriter writer,
+        IProgress<DerivationProgress> progress,
+        IRunLog log)
+    {
+        var product = Run(
+            writer,
+            AttributeVisibilityDeriver.PhaseName,
+            progress,
+            log,
+            () => AttributeVisibilityDeriver.Derive(bundle.ReadSchemaAttributes()),
+
+            // Degraded rather than Succeeded when nothing came back, because no forest has zero
+            // attribute definitions: an empty answer means this capture was refused the schema
+            // partition, and a phase reporting success on it would tell every reader downstream
+            // that the question had been answered.
+            result => result.SchemaAttributesWereAsked
+                ? DerivationPhaseOutcome.Succeeded
+                : DerivationPhaseOutcome.Degraded);
+
+        if (product is not null)
+            writer.WriteAttributeVisibility(product);
     }
 
     private static void RunProtection(

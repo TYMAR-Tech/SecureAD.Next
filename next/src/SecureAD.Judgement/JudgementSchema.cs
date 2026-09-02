@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 8;
+    public const int Version = 9;
 
     private static readonly string[] TableDdl =
     [
@@ -320,6 +320,46 @@ public static class JudgementSchema
             ordinal                             INTEGER NOT NULL,
             service_principal_name              TEXT    NOT NULL,
             PRIMARY KEY (finding_id, ordinal)
+        )
+        """,
+
+        // What SEC-091 and SEC-094 rested on: both LAPS expiration timestamps and what the machine
+        // could run.
+        //
+        // ONE TABLE FOR TWO RULES. The rules are separate so that an estate running legacy
+        // emulation mode can silence one without silencing the other, but the evidence an operator
+        // needs is identical: which timestamps this machine carries and what it was capable of.
+        // finding_user_account_control is already shared the same way.
+        //
+        // BOTH TIMESTAMPS ARE STORED WHATEVER THE FINDING WAS. A SEC-091 finding stores two nulls
+        // and says something by doing so: this machine carries neither. Storing only the attribute
+        // that decided the finding would leave a reader to guess at the other, and the pair is the
+        // question he is actually asking.
+        //
+        // THE RAW FILETIME, NOT A DATE. The directory stores these as a Windows FILETIME in a text
+        // attribute, and the decoded date is recomputed by the reader. A stored date would be a
+        // second copy of the value beside it, able to disagree - and it would also throw away the
+        // difference between an attribute that was absent and one whose value could not be decoded,
+        // which is the distinction those rules turn on.
+        //
+        // CAPABILITY_KIND IS NOT NULL AND IS THE DISCRIMINATOR. The reader tells this evidence kind
+        // from the others by a column that is never null on a row that exists, which is what P-112
+        // was about: evidence read by column position from two queries with different column lists.
+        //
+        // CAPABILITY_BASIS IS STORED BESIDE IT AND IS NOT DECORATION. A capability decided from a
+        // build number and the same answer guessed from an operating system name are not equally
+        // good, and a bundle sealed before operatingSystemVersion was captured can only be judged
+        // the second way. The finding records which it was.
+        """
+        CREATE TABLE finding_laps_deployment (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            windows_laps_expiration             TEXT        NULL,
+            legacy_laps_expiration              TEXT        NULL,
+            capability_kind                     TEXT    NOT NULL,
+            capability_basis                    TEXT    NOT NULL,
+            operating_system                    TEXT        NULL,
+            operating_system_version            TEXT        NULL,
+            PRIMARY KEY (finding_id)
         )
         """,
     ];

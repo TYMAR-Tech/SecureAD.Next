@@ -181,7 +181,37 @@ public static class JudgingRun
                 return refusal;
             }
 
-            derived = new DerivedFacts(product.Value, bundle.ReadPermissions);
+            derived = new DerivedFacts(product.Value, bundle.ReadPermissions, null);
+
+            // The same refusal for the same reason, and the consequence of skipping it is worse
+            // here than for the protected principals. A rule that reads a LAPS timestamp treats an
+            // absent value as a fact about a machine; without this answer it cannot know the forest
+            // was not withholding the attribute, and SEC-094 would report every modern-capable
+            // machine in the estate.
+            if (wanted.Contains(
+                nameof(DerivedFactKind.AttributeVisibility), StringComparer.OrdinalIgnoreCase))
+            {
+                var visibility = stored.AttributeVisibility;
+
+                if (visibility.Availability != AttributeVisibilityAvailability.Available)
+                {
+                    derivation.Dispose();
+
+                    var refusal = Failure(
+                        "DerivedFactsAbsent",
+                        $"A scheduled rule reads {DerivedFactKind.AttributeVisibility}, and this "
+                        + $"bundle's derivation does not carry it ({visibility.Availability}). "
+                        + "Whether this forest withholds an attribute is what separates a machine "
+                        + "that is unmanaged from one this run was not allowed to see, so this "
+                        + "judging stops rather than reporting an answer it does not have.",
+                        bundleDirectory);
+
+                    log.Record(JudgePhase, refusal.Error!, []);
+                    return refusal;
+                }
+
+                derived = derived with { AttributeVisibility = visibility.Value };
+            }
         }
 
         using var _ = derivation;

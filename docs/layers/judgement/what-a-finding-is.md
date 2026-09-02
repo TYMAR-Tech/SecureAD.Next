@@ -65,6 +65,11 @@ records stay in Evidence because they are durable data rather than executable po
 | `LapsCapabilityKind` | The answer: Windows LAPS capable, legacy LAPS only, or unknown |
 | `LapsCapabilityBasis` | What the answer rests on, so a finding can say how it was decided rather than only what was decided |
 | `LapsPlatformCatalog` | The Microsoft build numbers that place a machine on one side of the Windows LAPS boundary, kept in their own type so gate 4's exemption covers the table and not the classifying |
+| `LapsMissingOnComputer` | SEC-091 — a computer carrying neither LAPS expiration timestamp, so nothing visible is rotating its local administrator password |
+| `WindowsLapsNotAppliedOnCapableComputer` | SEC-094 — a Windows LAPS-capable computer carrying only the legacy timestamp, which is residue rather than proof of management |
+| `LapsAttributes` | The attribute names, class test and schema-answer reading the two LAPS rules share, kept in their own type so gate 4's exemption covers the table and not the judging |
+| `LapsDeploymentEvidence` | Both LAPS timestamps as the directory stored them, with what the machine was capable of running |
+| `LapsTimestampReading` | Whether a timestamp was absent, present, or present and undecodable — three states the two rules must never collapse |
 
 <!-- TYPES:END -->
 

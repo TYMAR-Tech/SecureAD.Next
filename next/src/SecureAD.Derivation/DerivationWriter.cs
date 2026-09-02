@@ -182,6 +182,59 @@ internal sealed class DerivationWriter : IDisposable
     }
 
     /// <summary>
+    /// Writes which attributes this forest withholds.
+    /// </summary>
+    /// <remarks>
+    /// <b>The metadata row is written even when there is nothing to store beneath it.</b> A capture
+    /// refused the schema partition produces an empty product, and that is a different answer from
+    /// a phase that never ran - the first makes a rule stay silent, the second refuses the whole
+    /// judging. Writing the row is what lets a reader tell them apart.
+    /// </remarks>
+    /// <param name="product">What the schema partition said.</param>
+    public void WriteAttributeVisibility(StoredAttributeVisibility product)
+    {
+        ArgumentNullException.ThrowIfNull(product);
+        ThrowIfFinished();
+
+        using var transaction = _connection.BeginTransaction();
+
+        using (var metadata = _connection.CreateCommand())
+        {
+            metadata.Transaction = transaction;
+            metadata.CommandText =
+                "INSERT INTO attribute_visibility_derivation (attributes_read) VALUES ($read)";
+            metadata.Parameters.AddWithValue("$read", product.Attributes.Count);
+            metadata.ExecuteNonQuery();
+        }
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+
+            // The schema is keyed by lDAPDisplayName and the directory enforces that it is unique,
+            // so a duplicate here is a defect in the capture rather than something to absorb
+            // quietly. OR IGNORE would turn that into a store that silently holds one of the two.
+            command.CommandText =
+                "INSERT INTO attribute_visibility "
+                + "(ldap_display_name, search_flags, system_flags) "
+                + "VALUES ($name, $search, $system)";
+            var name = command.Parameters.Add("$name", SqliteType.Text);
+            var search = command.Parameters.Add("$search", SqliteType.Integer);
+            var system = command.Parameters.Add("$system", SqliteType.Integer);
+
+            foreach (var attribute in product.Attributes)
+            {
+                name.Value = attribute.LdapDisplayName;
+                search.Value = (object?)attribute.SearchFlags ?? DBNull.Value;
+                system.Value = (object?)attribute.SystemFlags ?? DBNull.Value;
+                command.ExecuteNonQuery();
+            }
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>
     /// Writes which principal each SID identifies, and how.
     /// </summary>
     /// <param name="identities">One row per SID, current and historical alike.</param>

@@ -466,6 +466,22 @@ public sealed class BundleReader : IDisposable
             captured.Entries, SchemaGuidCatalog.Embedded, captured.PropertySetMembers);
     }
 
+    /// <summary>
+    /// Reads the schema partition's attribute definitions, so a caller can tell an attribute this
+    /// forest withholds from one a machine simply does not carry.
+    /// </summary>
+    /// <remarks>
+    /// <b>Read once for a bundle, exactly as <see cref="ReadSchemaGuids"/> is.</b> The answer is the
+    /// same for every object in the forest, so asking it per object would re-read the whole schema
+    /// for each computer judged.
+    /// </remarks>
+    /// <returns>
+    /// Every schema definition captured, with whether the schema partition was read at all - which
+    /// is a different answer from a forest that withholds nothing.
+    /// </returns>
+    public SchemaAttributeReading ReadSchemaAttributes() =>
+        CapturedSchemaAttributeReader.Read(Connection);
+
     /// <inheritdoc/>
     public void Dispose()
     {
