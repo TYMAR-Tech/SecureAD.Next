@@ -61,6 +61,10 @@ records stay in Evidence because they are durable data rather than executable po
 | `UnconstrainedDelegationOnNonDomainController` | SEC-011 — a member computer trusted for it |
 | `UnconstrainedDelegationEvidence` | What an unconstrained delegation finding rests on |
 | `DomainControllerSignals` | Whether an object is a domain controller, and whether the three ways of asking agree |
+| `LapsCapability` | Which LAPS product a computer is capable of running, and whether that rests on the build number, the operating system name, or nothing at all |
+| `LapsCapabilityKind` | The answer: Windows LAPS capable, legacy LAPS only, or unknown |
+| `LapsCapabilityBasis` | What the answer rests on, so a finding can say how it was decided rather than only what was decided |
+| `LapsPlatformCatalog` | The Microsoft build numbers that place a machine on one side of the Windows LAPS boundary, kept in their own type so gate 4's exemption covers the table and not the classifying |
 
 <!-- TYPES:END -->
 

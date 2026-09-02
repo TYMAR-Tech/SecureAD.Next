@@ -383,46 +383,97 @@ store rather than a person.
 sealed, and the finding count went 9 to 6 without re-reading a single object —
 [`0085`](decisions/0085-judgement-writes-beside-the-evidence.md) as intended.
 
-**Next: `SEC-091`, LAPS missing on a computer. Its starting position, written 2026-09-02 so the next
-sitting does not rediscover it.**
+**Next: `SEC-091` and `SEC-094`, LAPS deployment state. Specified 2026-09-03, not yet built.**
 
-The card is [`SEC-091`](rules/SEC-091.md), *LAPS Missing on Computer*. Everything it reads is already
-captured: `operatingSystem`, `ms-Mcs-AdmPwdExpirationTime` and `msLAPS-PasswordExpirationTime` on
-computers, plus `searchFlags` and `systemFlags` from the schema partition. **No capture work.**
+The two rules were split on 2026-09-03, and the reason is not tidiness:
 
-**It is not a small rule, and the reason is the absence problem.** A LAPS attribute that is absent
-means either *LAPS is not deployed on this machine* or *this run was not allowed to see it* — and
-those render identically, because a confidential attribute is withheld **silently**, exactly as
-though it had never been set. Getting it wrong means reporting a protected estate as unprotected,
-which is the one thing an audit tool must not do.
+| Rule | Fires when | Severity |
+|---|---|---|
+| `SEC-091` | a computer carries **neither** LAPS expiration timestamp | Medium |
+| `SEC-094` | a **Windows LAPS-capable** computer carries the legacy timestamp and **not** the modern one | Low |
 
-**That is already solvable and must not be guessed at.** `CapturedAttribute`'s own remarks give the
-mechanism and the sources: [Search-Flags](https://learn.microsoft.com/windows/win32/adschema/a-searchflags)
-bit 128 marks an attribute confidential, and
-[Mark an attribute as confidential](https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential)
-describes the withholding. Both LAPS attributes are schema extensions, so the bit applies to them —
-bit 128 is ignored for base-schema attributes, which are the ones carrying `systemFlags` `0x10`.
-Capture already reads both flags from that forest's own schema, **so the answer is derivable per
-forest rather than assumed**, per [`0002`](decisions/0002-absent-view-means-degraded-run.md).
+Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md) and
+[`SEC-094`](layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md).
 
-**Three things already exist and should be reused rather than rewritten:**
+**Acceptance is per finding and suppression in the interface is per rule**, so an estate running
+Windows LAPS in legacy emulation mode deliberately must be able to silence the second without
+silencing the first. One rule carrying a state field makes that impossible. Same reasoning that kept
+`SEC-028`, `SEC-029` and `SEC-033` apart.
+
+**The handoff written here on 2026-09-02 was wrong about the absence problem, and the forest said
+so.** It recorded that both LAPS attributes may be withheld silently as confidential. Microsoft's
+schema reference gives `msLAPS-PasswordExpirationTime` a `SearchFlags` of **0**, while every
+attribute carrying a *password* carries **904**, which includes `fCONFIDENTIAL`. Read from `ad.lab`
+on 2026-09-03, both expiration attributes returned 0 and both password attributes 904. **Whether a
+machine is managed is not a secret; what the password is, is.** The runtime check is kept anyway,
+because the default is what Microsoft ships rather than what a given forest is — but the absence
+problem is far narrower than this section claimed.
+
+**A second correction, and this one nearly shipped.** The first draft of `SEC-091` argued that a
+modern machine carrying only a legacy timestamp should be silent, because *"its password is being
+rotated."* **The legacy attribute is never cleared** — Microsoft's migration procedure removes the
+policy and then the software and touches no directory attribute — so a legacy timestamp proves
+nothing about whether anything is still rotating. The owner caught it. That is `SEC-021`'s `krbtgt`
+defect in the same shape, one step earlier.
+
+**What is built, 2026-09-03:**
+
+- **Catalogue version 6**: `operatingSystemVersion` captured, and shown on the computer object view.
+  The predecessor classified by matching the OS *name*, which under-reported twice — Windows 10 and
+  Server 2012 both classed *not applicable* when LAPS applies to both. The name is still captured
+  because Windows 10 1607 and Server 2016 are **both build 14393**, so the build alone cannot tell a
+  client from a server.
+- **`LapsPlatformCatalog` and `LapsCapability`**, with fixtures read from `ad.lab` rather than
+  invented, so the parser is checked against the format Active Directory actually stores.
+  `LapsCapability` carries **how** it decided, so a bundle sealed before version 6 still yields
+  findings and the finding records that the answer came from a name.
+- **[`0092`](decisions/0092-a-view-filter-is-not-a-change-to-the-catalogue.md)** — a view filter is
+  presentation, not the tuning `0082` forbids. Without it a future session deletes the grid filters
+  as a violation.
+- **[`0093`](decisions/0093-an-export-states-what-it-contains.md)** — an export states its filter and
+  its counts. The predecessor's LAPS export ignored the active filter *and* was named for a subset it
+  did not contain.
+- **The rule-identifier gates now accept a specification under `docs/layers/judgement/rules/`**, not
+  only a predecessor card. As written they forbade the rebuild from ever naming a new rule. A bogus
+  `SEC-999` was fed to the gate to confirm it still fails.
+
+**What remains:** both rules through the 18-step checklist, the `AttributeVisibility` input that
+carries the schema answer to a rule, and the LAPS inventory grid.
+
+**The inventory grid is the owner's actual goal and it is not a rule.** *Which machines have legacy,
+which have modern, which have none* includes the healthy ones, so it cannot come from the findings
+store. It reads sealed evidence, which already holds every computer with both timestamps and the OS.
+The predecessor had one — `v_grid_laps_status`, with tier, status and expiry health — and it is worth
+porting with four fixes: show **both** timestamps rather than only the tier-appropriate one, classify
+by build number, use `DomainControllerSignals` once instead of three different domain-controller
+tests, and honour the export filter under `0093`.
+
+**A Server 2016 machine carrying a modern timestamp** is an anomaly Microsoft says cannot happen. The
+owner asked for it as information not implying risk; `0081` carries no `Info` severity and says
+instead that *"the product has other ways to tell an operator a fact about the forest."* It is a grid
+state, not a finding.
+
+**The lab holds an untouched positive for both rules** — two unmanaged member servers in `ad.lab`,
+and one Server 2022 in `ph.ad.lab` carrying only the legacy timestamp. Nothing needs planting.
+
+**Two things already exist and must be reused rather than rewritten:**
 
 | Need | What already answers it |
 |---|---|
-| Excluding domain controllers, which the owner chose on 2026-09-02 | `DomainControllerSignals` — three independent signals with their disagreement recorded, used by `SEC-010` and `SEC-011`. The predecessor's bug, where a child-domain controller fired because it also has a member-server computer account in the parent domain, is a solved problem there and must not be re-solved badly here |
-| Telling *not deployed* from *withheld* | `searchFlags` and `systemFlags`, captured from the schema partition |
-| Seeing what the rule does to a real forest | `securead-cli --library <dir>` then `show-findings.ps1`, one command each |
+| Excluding domain controllers, which the owner chose on 2026-09-02 | `DomainControllerSignals` — three independent signals with their disagreement recorded, used by `SEC-010` and `SEC-011`. The predecessor's bug, where a child-domain controller fired because it also has a member-server computer account in the parent domain, is a solved problem there. The predecessor tested for a domain controller **three different ways** in one feature — a UAC bit in its grid, a `sAMAccountName` list in the same query, and a distinguished-name match in its rule — which is the drift this type exists to end |
+| Seeing what the rules do to a real forest | `securead-cli --library <dir>` then `show-findings.ps1`, one command each |
 
-**The open product question, surfaced now so it does not stall the build:** should a computer running
-a **client** operating system be reported the same as a server? LAPS matters most on workstations,
-but plenty of estates deploy it only there — or only on servers — and a rule that reports the whole
-of one class produces a finding per machine. This is the same shape as the `SEC-020`/`SEC-021`
-question and needs the owner's answer before any code.
+**Scope, settled by the owner 2026-09-03:** all computers except domain controllers, **clients and
+servers reported identically, one severity**. There is no client/server split and no separate rule
+for workstations. One consequence: on a real estate the finding count is the count of unmanaged
+machines, which during a rollout is most of them — which is why `SEC-091` stays Medium rather than
+rising, and why the About text must name what the rule cannot see, particularly passwords backed up
+to Microsoft Entra ID, which leave no directory attribute at all.
 
 **`SEC-092` and `SEC-093` are the rest of the family** — rotation stale, and a broad principal able
 to decrypt — but `SEC-093` needs the permission graph and belongs after stage 5.
 
-*Detail:* the cards in [`docs/rules/`](rules/).
+*Detail:* the two specifications under [`docs/layers/judgement/rules/`](layers/judgement/rules/).
 *Needs first:* stage 3.
 
 **`SEC-020` follows, and carries an open question.** It reports a user account with a service name

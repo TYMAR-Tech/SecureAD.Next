@@ -374,24 +374,53 @@ public sealed class CapturedAttributeCatalogDocumentationTests
     private static Regex RuleId() => new(@"^SEC-[0-9]{3}$", RegexOptions.Compiled);
 
     /// <summary>
-    /// Every rule the product has a card for, read from <c>docs/rules/</c> rather than listed, so
-    /// that a card added or renamed moves this set without anybody editing the test.
+    /// Every rule the product has a specification for, read from disk rather than listed, so that a
+    /// rule added or renamed moves this set without anybody editing the test.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Two directories, because a rule can arrive two ways.</b> <c>docs/rules/</c> holds the
+    /// predecessor's cards, which are frozen and being consumed as each rule is built.
+    /// <c>docs/layers/judgement/rules/</c> holds this product's own specifications, and a rule the
+    /// rebuild invents will never have a card in the first folder.
+    /// </para>
+    /// <para>
+    /// <b>Reading only the cards forbade the rebuild from naming a new rule at all</b>, found on
+    /// 2026-09-03 when SEC-094 - which has no predecessor equivalent - failed this gate for existing.
+    /// The gate's purpose is unchanged and undiminished: a mistyped identifier has a document in
+    /// neither place and still fails, which was confirmed by pointing it at one.
+    /// </para>
+    /// </remarks>
     private static HashSet<string> RuleCardIds()
     {
-        var directory = Path.Combine(RepositoryLocation.Root(), "docs", "rules");
+        var cards = Path.Combine(RepositoryLocation.Root(), "docs", "rules");
 
-        if (!Directory.Exists(directory))
+        if (!Directory.Exists(cards))
         {
             throw new DirectoryNotFoundException(
-                "Expected the rule cards at " + directory + ". A consumer named as a rule is "
-                + "checked against the cards on disk, so an absent folder must fail rather than "
-                + "let every rule identifier through unchecked.");
+                "Expected the rule cards at " + cards + ". A consumer named as a rule is "
+                + "checked against the specifications on disk, so an absent folder must fail "
+                + "rather than let every rule identifier through unchecked.");
+        }
+
+        var specifications = Path.Combine(
+            RepositoryLocation.Root(), "docs", "layers", "judgement", "rules");
+
+        if (!Directory.Exists(specifications))
+        {
+            throw new DirectoryNotFoundException(
+                "Expected this product's rule specifications at " + specifications + ". An absent "
+                + "folder must fail rather than silently narrow what counts as a real rule.");
         }
 
         return Directory
-            .GetFiles(directory, "SEC-*.md")
+            .GetFiles(cards, "SEC-*.md")
             .Select(f => Path.GetFileNameWithoutExtension(f))
+            .Concat(Directory
+                .GetFiles(specifications, "SEC-*.md")
+                .Select(f => Path.GetFileNameWithoutExtension(f)!.Split('-') is [var s, var n, ..]
+                    ? s + "-" + n
+                    : Path.GetFileNameWithoutExtension(f)))
             .Where(id => RuleId().IsMatch(id))
             .ToHashSet(StringComparer.Ordinal);
     }

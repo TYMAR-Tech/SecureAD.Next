@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.8.12023.21
@@ -107,6 +107,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\judgement\rules\SEC-027-privileged-sid-history.md = ..\docs\layers\judgement\rules\SEC-027-privileged-sid-history.md
 		..\docs\layers\judgement\rules\SEC-028-029-033-unsecure-account-flags.md = ..\docs\layers\judgement\rules\SEC-028-029-033-unsecure-account-flags.md
 		..\docs\layers\judgement\rules\SEC-021-kerberoastable-privileged-account.md = ..\docs\layers\judgement\rules\SEC-021-kerberoastable-privileged-account.md
+		..\docs\layers\judgement\rules\SEC-091-laps-missing-on-a-computer.md = ..\docs\layers\judgement\rules\SEC-091-laps-missing-on-a-computer.md
+		..\docs\layers\judgement\rules\SEC-094-windows-laps-not-applied-on-capable-computer.md = ..\docs\layers\judgement\rules\SEC-094-windows-laps-not-applied-on-capable-computer.md
 		..\docs\layers\evidence\how-a-bundle-is-read.md = ..\docs\layers\evidence\how-a-bundle-is-read.md
 		..\docs\layers\evidence\what-an-object-holds.md = ..\docs\layers\evidence\what-an-object-holds.md
 		..\docs\layers\evidence\what-an-objects-permissions-hold.md = ..\docs\layers\evidence\what-an-objects-permissions-hold.md
@@ -123,6 +125,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\audit\the-search-capture-issues.md = ..\docs\layers\audit\the-search-capture-issues.md
 		..\docs\layers\shell\the-new-audit-screen.md = ..\docs\layers\shell\the-new-audit-screen.md
 		..\docs\layers\shell\the-home-screen.md = ..\docs\layers\shell\the-home-screen.md
+		..\docs\layers\shell\the-laps-inventory-grid.md = ..\docs\layers\shell\the-laps-inventory-grid.md
 		..\docs\layers\shell\the-assets-screen.md = ..\docs\layers\shell\the-assets-screen.md
 		..\docs\next\SURFACE-REGISTER.md = ..\docs\next\SURFACE-REGISTER.md
 	EndProjectSection

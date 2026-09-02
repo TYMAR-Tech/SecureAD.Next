@@ -194,22 +194,36 @@ public sealed class CapturedAttributeDerivationDocumentationTests
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Every rule the product has a card for, read from <c>docs/rules/</c> rather than listed.
+    /// Every rule the product has a specification for: the predecessor's cards in
+    /// <c>docs/rules/</c>, and this product's own under <c>docs/layers/judgement/rules/</c>.
     /// </summary>
+    /// <remarks>
+    /// A rule the rebuild invents has no predecessor card and never will, so reading only the cards
+    /// forbade naming one. Found 2026-09-03 by SEC-094. A mistyped identifier still appears in
+    /// neither folder and still fails.
+    /// </remarks>
     private static HashSet<string> RuleCardIds()
     {
-        var directory = Path.Combine(RepositoryLocation.Root(), "docs", "rules");
+        var cards = Path.Combine(RepositoryLocation.Root(), "docs", "rules");
+        var specifications = Path.Combine(
+            RepositoryLocation.Root(), "docs", "layers", "judgement", "rules");
 
-        if (!Directory.Exists(directory))
+        if (!Directory.Exists(cards) || !Directory.Exists(specifications))
         {
             throw new DirectoryNotFoundException(
-                "Expected the rule cards at " + directory + ". An absent folder must fail rather "
-                + "than let every rule identifier through unchecked.");
+                "Expected rule specifications at " + cards + " and " + specifications
+                + ". An absent folder must fail rather than let every rule identifier through "
+                + "unchecked.");
         }
 
         return Directory
-            .GetFiles(directory, "SEC-*.md")
+            .GetFiles(cards, "SEC-*.md")
             .Select(Path.GetFileNameWithoutExtension)
+            .Concat(Directory
+                .GetFiles(specifications, "SEC-*.md")
+                .Select(f => Path.GetFileNameWithoutExtension(f)!.Split('-') is [var s, var n, ..]
+                    ? s + "-" + n
+                    : Path.GetFileNameWithoutExtension(f)))
             .Where(id => id is not null && Regex.IsMatch(id, @"^SEC-[0-9]{3}$"))
             .ToHashSet(StringComparer.Ordinal)!;
     }

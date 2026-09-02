@@ -151,6 +151,7 @@ internal static class ObjectSectionCatalog
             "lastLogonTimestamp",
             "primaryGroupID",
             "operatingSystem",
+            "operatingSystemVersion",
         ]);
 
     /// <summary>
@@ -398,6 +399,7 @@ internal static class ObjectSectionCatalog
             ["pwdLastSet"] = "Password last set",
             ["primaryGroupID"] = "Primary group",
             ["operatingSystem"] = "Operating system",
+            ["operatingSystemVersion"] = "Operating system version",
             ["servicePrincipalName"] = "Service principal names",
             ["msDS-AllowedToDelegateTo"] = "May delegate to",
             ["msDS-AllowedToActOnBehalfOfOtherIdentity"] = "May be acted for by",

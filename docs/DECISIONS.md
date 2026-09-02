@@ -91,3 +91,5 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0089](decisions/0089-principal-protection-and-member-propagation-are-separate-claims.md) | 2026-08-28 | Accepted | Principal protection and member propagation are separate claims |
 | [0090](decisions/0090-adminsdholder-facts-are-a-persisted-derivation-product.md) | 2026-08-30 | Accepted | AdminSDHolder facts are a persisted Derivation product |
 | [0091](decisions/0091-sec-030-reports-a-marker-without-protection.md) | 2026-08-31 | Accepted | SEC-030 reports a marker without protection, and names a deleted object as deleted |
+| [0092](decisions/0092-a-view-filter-is-not-a-change-to-the-catalogue.md) | 2026-09-03 | Accepted | A view filter is not a change to the catalogue |
+| [0093](decisions/0093-an-export-states-what-it-contains.md) | 2026-09-03 | Accepted | An export states what it contains |

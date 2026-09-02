@@ -95,7 +95,7 @@ is aiming at. **Its architecture is not this one's, and nothing below is a desig
 inventory and component map were archived and are deliberately absent from this repository, so that
 nobody treats it as a specification.
 
-**The code, however, is on disk at `C:\Users\jistrand\source\repos\razamus\SecureAD`, and the owner
+**The code, however, is on disk at `C:\Users\ba.admin\source\repos\razamus\SecureAD`, and the owner
 has said to read it** — *"treat this as a source not a answer, look at what it did but also consider
 if there is a better way"*, 2026-08-26. It is the only place a working findings screen for a real
 forest exists. Read it for **how something performed**; never for **what the product permits**,

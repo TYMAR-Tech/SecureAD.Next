@@ -81,8 +81,27 @@ public static class CapturedAttributeCatalog
     /// derivation reading one can only state that its protected catalogue might not apply. The
     /// object was already captured; only the value was not asked for.
     /// </para>
+    /// <para>
+    /// <b>6 - 2026-09-03.</b> <c>operatingSystemVersion</c> added to
+    /// <see cref="ComputerAttributes"/>. SEC-091 and SEC-094 decide which LAPS product a machine is
+    /// capable of running, and the predecessor decided it by matching the operating system
+    /// <i>name</i> - <c>LIKE '%2019%'</c>, <c>LIKE '%2016%'</c> - which its own backlog flagged as
+    /// brittle and which under-reported twice: it classed Windows 10 as not applicable when
+    /// Microsoft supports Windows LAPS on it, and Server 2012 as not applicable when legacy LAPS
+    /// runs on it. The build number is numeric and locale-independent and has neither fault.
+    /// <para>
+    /// <b>The name is still captured, because the version alone is ambiguous.</b> Windows 10 1607
+    /// and Windows Server 2016 are both build 14393, so the build cannot tell a client from a
+    /// server. The family comes from the name and the generation from the version; either alone
+    /// gives a wrong answer.
+    /// </para>
+    /// <para>
+    /// A bundle stamped 5 can still be judged - the capability classifier falls back to the name,
+    /// and the finding records that it did so, per <c>docs/decisions/0086</c>.
+    /// </para>
+    /// </para>
     /// </remarks>
-    public const int Version = 5;
+    public const int Version = 6;
 
     /// <summary>
     /// Requested for every object, of every class, in every naming context capture reads.
@@ -132,8 +151,9 @@ public static class CapturedAttributeCatalog
     ];
 
     /// <summary>
-    /// A computer is an account plus the three things that decide whether its local administrator
-    /// password is being managed, and by which of the two LAPS products.
+    /// A computer is an account plus the things that decide whether its local administrator
+    /// password is being managed, by which of the two LAPS products, and which of them it is
+    /// capable of running.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -151,16 +171,35 @@ public static class CapturedAttributeCatalog
     /// the computer's access control list, which arrives with every object.
     /// </para>
     /// <para>
-    /// Both LAPS attributes are schema extensions rather than base-schema attributes, so either can
-    /// be marked confidential and withheld without an error. Telling that apart from <i>not
-    /// deployed</i> is the absence work <c>docs/decisions/0002</c> requires, and it is answered per
-    /// forest from <c>searchFlags</c> in <see cref="SchemaPartition"/> rather than guessed.
+    /// <b>Microsoft ships both expiration timestamps non-confidential, and this was checked rather
+    /// than assumed.</b> The Windows LAPS schema reference gives <c>msLAPS-PasswordExpirationTime</c>
+    /// a <c>SearchFlags</c> of <b>0</b>, while every attribute carrying a password -
+    /// <c>msLAPS-Password</c> and the encrypted forms - carries <b>904</b>, which Microsoft
+    /// decomposes as including <c>fCONFIDENTIAL</c>. Read from the <c>ad.lab</c> schema partition on
+    /// 2026-09-03, both expiration attributes returned 0 and both password attributes 904. That is a
+    /// coherent split: <i>whether</i> a machine is managed is not a secret, and <i>what the
+    /// password is</i> is.
+    /// </para>
+    /// <para>
+    /// <b>The rule still asks, because either can be marked confidential by a forest that chooses
+    /// to.</b> Both are schema extensions rather than base-schema attributes, so bit 128 is honoured
+    /// on them - it is ignored only where <c>systemFlags</c> is <c>0x10</c>. A confidential attribute
+    /// is withheld silently, so an unprivileged run cannot tell <i>not deployed</i> from <i>not
+    /// allowed to see it</i>. Telling those apart is the absence work <c>docs/decisions/0002</c>
+    /// requires, and it is answered per forest from <c>searchFlags</c> in
+    /// <see cref="SchemaPartition"/> rather than guessed.
+    /// </para>
+    /// <para>
+    /// <b>The ROADMAP handoff of 2026-09-02 assumed the opposite</b> - that the attributes this rule
+    /// reads may be withheld - and building SEC-091 corrected it. The check is kept because the
+    /// default is what Microsoft ships, not what a given forest is.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<CapturedAttribute> ComputerAttributes { get; } =
     [
         .. AccountAttributes,
         new("operatingSystem", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("operatingSystemVersion", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("ms-Mcs-AdmPwdExpirationTime", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("msLAPS-PasswordExpirationTime", AttributeCardinality.SingleValued, AttributeStorage.Text),
     ];

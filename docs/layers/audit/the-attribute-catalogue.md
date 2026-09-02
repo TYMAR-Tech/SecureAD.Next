@@ -155,11 +155,21 @@ from [`docs/rules/`](../../rules/) — and a named rule must be a card that exis
 `Text` or `Binary`, and `Binary` means the value is an octet string that must never be round-tripped
 through a string.
 
-This catalogue is **version 5**, and every bundle records it, so a bundle read years later can still
+This catalogue is **version 6**, and every bundle records it, so a bundle read years later can still
 say what it was allowed to see. It started at 1 rather than continuing the previous product's
 sequence, which had reached 10: per [`0001`](../../decisions/0001-no-backward-compatibility.md) there
 is no compatibility to preserve, and a continuing number would imply that a bundle stamped 10 and
 one stamped 11 hold comparable evidence.
+
+**Version 6 added the operating system build number, because the name was the wrong thing to judge
+on.** `operatingSystemVersion` decides whether a machine can run Windows LAPS at all. The predecessor
+answered that by matching the operating system *name*, which its own backlog recorded as brittle and
+which under-reported twice: it classed Windows 10 as *not applicable* when Microsoft supports Windows
+LAPS on it, and Server 2012 as *not applicable* when legacy LAPS runs on it perfectly well. The build
+number is numeric and locale-independent. **The name is still captured**, because Windows 10 1607 and
+Windows Server 2016 are both build 14393, so the build alone cannot tell a client from a server. A
+bundle stamped 5 can still be judged: the capability answer falls back to the name, and the finding
+records that it did so.
 
 **Version 5 added the forest's own heuristics, and it is the first entry captured to qualify an
 answer rather than to state a fact.** `dSHeuristics` decides whether the protected-principal
@@ -222,13 +232,15 @@ previous product kept four near-identical lists for them and they had drifted ap
 | accountExpires | SingleValued | Text | J34 | Whether the account has a lifetime at all. An expired account cannot be used and a never-expiring contractor account is the one nobody revoked. Two stored values mean *never* — `0` and `9223372036854775807` — and Microsoft's own page explains why: the maximum on an account never configured to expire, zero on one whose expiry was removed |
 | lastLogonTimestamp | SingleValued | Text | J34 | Whether anybody still uses the account. Replicated, unlike `lastLogon`, which is why this is the one captured — but **deliberately coarse**: a controller only updates it when its own value is older than `msDS-LogonTimeSyncInterval`, which defaults to between 9 and 14 days. Anything worded from it says so on the row |
 
-`computer` adds the three that decide whether its local administrator password is managed:
+`computer` adds the four that decide whether its local administrator password is managed, and which
+LAPS product it is capable of running:
 
 | Attribute | Cardinality | Storage | Read by | Why |
 |---|---|---|---|---|
-| operatingSystem | SingleValued | Text | SEC-091 | Which LAPS product a machine *should* have. SEC-091 requires Windows LAPS on Server 2019 and later and legacy LAPS on Server 2016, so without this the rule cannot tell a correctly managed machine from an unmanaged one |
-| ms-Mcs-AdmPwdExpirationTime | SingleValued | Text | SEC-091, SEC-092 | Legacy LAPS. Its presence is how SEC-091 knows LAPS is deployed, and its value is how SEC-092 knows the password has stopped rotating. Never the password itself, which `CredentialAttributeGuardTests` forbids |
-| msLAPS-PasswordExpirationTime | SingleValued | Text | SEC-091, SEC-092 | Windows LAPS, the same two questions. Both are schema extensions rather than base-schema attributes, so either can be marked confidential and withheld — which is why `searchFlags` is read per forest rather than the absence being guessed |
+| operatingSystem | SingleValued | Text | SEC-091, SEC-094 | The operating system *family* — whether the name says Server. Half the capability answer; the other half is the build number below |
+| operatingSystemVersion | SingleValued | Text | SEC-091, SEC-094 | The build number, which decides whether a machine can run Windows LAPS at all. Numeric and locale-independent, unlike the name. **Both are needed**: Windows 10 1607 and Windows Server 2016 are both build 14393, so the build alone cannot tell a client from a server |
+| ms-Mcs-AdmPwdExpirationTime | SingleValued | Text | SEC-091, SEC-092, SEC-094 | Legacy LAPS. Its presence is how SEC-091 knows LAPS is deployed, and its value is how SEC-092 knows the password has stopped rotating. Never the password itself, which `CredentialAttributeGuardTests` forbids |
+| msLAPS-PasswordExpirationTime | SingleValued | Text | SEC-091, SEC-092, SEC-094 | Windows LAPS, the same two questions. Microsoft ships both expiration timestamps at `searchFlags` **0** while every password attribute carries **904**, which includes `fCONFIDENTIAL` — confirmed against `ad.lab`'s schema on 2026-09-03. They are schema extensions, so a forest *could* mark them confidential, which is why `searchFlags` is read per forest rather than the absence being guessed |
 
 `msDS-GroupManagedServiceAccount` adds one more:
 
@@ -437,9 +449,10 @@ an attribute into a stored column, which is the half where a silent mismatch wou
 | lastLogonTimestamp | yes (added at S-51) | — | the object view, for whether anybody still uses the account. `lastLogon` is refused: it is not replicated |
 | msDS-GroupMSAMembership | yes | SEC-102 | — |
 | groupType | yes | — | B11, E20 |
-| operatingSystem | yes (added here) | SEC-091 | — |
-| ms-Mcs-AdmPwdExpirationTime | yes (added here) | SEC-091, SEC-092 | — |
-| msLAPS-PasswordExpirationTime | yes (added here) | SEC-091, SEC-092 | — |
+| operatingSystem | yes (added here) | SEC-091, SEC-094 | — |
+| operatingSystemVersion | yes (added at version 6) | SEC-091, SEC-094 | — |
+| ms-Mcs-AdmPwdExpirationTime | yes (added here) | SEC-091, SEC-092, SEC-094 | — |
+| msLAPS-PasswordExpirationTime | yes (added here) | SEC-091, SEC-092, SEC-094 | — |
 | gPLink | yes | — | E21 |
 | gPOptions | yes | — | E21 |
 | displayName | yes | — | D3, E21 |
