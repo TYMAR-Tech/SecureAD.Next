@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 7;
+    public const int Version = 8;
 
     private static readonly string[] TableDdl =
     [
@@ -287,6 +287,38 @@ public static class JudgementSchema
             finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
             ordinal                             INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
+            PRIMARY KEY (finding_id, ordinal)
+        )
+        """,
+
+        // What SEC-021 rested on: the identity the derivation was asked about, and the whole
+        // userAccountControl the disabled state is read from.
+        //
+        // THE UAC VALUE DECIDES NOTHING AND IS STORED ANYWAY. SEC-021 reports a disabled account,
+        // because no Microsoft source establishes that a key distribution centre refuses a service
+        // ticket for one. The value is here so the finding can say the account is disabled and so a
+        // reader can see its other flags without a second finding in front of him. IsDisabled is
+        // recomputed from it rather than stored beside it.
+        """
+        CREATE TABLE finding_kerberoastable_account (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            object_sid                          TEXT    NOT NULL,
+            user_account_control                INTEGER NOT NULL,
+            unreadable_service_names            INTEGER NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // Every service name the account carried, one row each, in the order captured.
+        //
+        // ALL OF THEM, BECAUSE THE OPERATOR'S QUESTION IS WHETHER THE ACCOUNT REALLY RUNS A SERVICE.
+        // The commonest real case is a stale name left over from a test, and that is the only case
+        // whose remedy is simply to remove it - which he cannot judge from one name out of four.
+        """
+        CREATE TABLE finding_kerberoastable_account_spn (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            ordinal                             INTEGER NOT NULL,
+            service_principal_name              TEXT    NOT NULL,
             PRIMARY KEY (finding_id, ordinal)
         )
         """,

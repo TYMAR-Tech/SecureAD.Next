@@ -94,6 +94,32 @@ public static class AttributeReading
             : null;
 
     /// <summary>
+    /// Every text value of an attribute, with a count of any the object carried without text.
+    /// </summary>
+    /// <remarks>
+    /// The public counterpart of <see cref="AllText"/>, carrying the count so a caller can tell a
+    /// complete answer from a partial one - the same reason <see cref="SidsOf"/> returns
+    /// <see cref="SidReading"/> rather than a bare list.
+    /// </remarks>
+    /// <param name="subject">The object to read.</param>
+    /// <param name="ldapDisplayName">The attribute to read.</param>
+    public static TextReading TextValuesOf(ObjectAttributes subject, string ldapDisplayName)
+    {
+        var values = subject.Attributes
+            .Where(a => string.Equals(
+                a.LdapDisplayName, ldapDisplayName, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(a => a.Values)
+            .ToList();
+
+        if (values.Count == 0)
+            return TextReading.Absent;
+
+        return new TextReading(
+            [.. values.Where(v => v.Text is not null).Select(v => v.Text!)],
+            values.Count(v => v.Text is null));
+    }
+
+    /// <summary>
     /// Every value of an attribute the directory stores as a SID, with a count of any that could
     /// not be decoded.
     /// </summary>

@@ -461,6 +461,43 @@ public sealed class JudgementWriter : IDisposable
 
                 return;
 
+            case KerberoastableAccountEvidence kerberoastable:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_kerberoastable_account (finding_id, object_sid, "
+                    + "user_account_control, unreadable_service_names) "
+                    + "VALUES ($id, $sid, $uac, $unreadable)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue("$sid", kerberoastable.ObjectSid);
+                        command.Parameters.AddWithValue(
+                            "$uac", (long)kerberoastable.UserAccountControl);
+                        command.Parameters.AddWithValue(
+                            "$unreadable", kerberoastable.UnreadableServiceNames);
+                    });
+
+                for (var ordinal = 0;
+                     ordinal < kerberoastable.ServicePrincipalNames.Count;
+                     ordinal++)
+                {
+                    var spn = kerberoastable.ServicePrincipalNames[ordinal];
+                    var position = ordinal;
+
+                    Execute(
+                        transaction,
+                        "INSERT INTO finding_kerberoastable_account_spn (finding_id, ordinal, "
+                        + "service_principal_name) VALUES ($id, $ordinal, $spn)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$ordinal", position);
+                            command.Parameters.AddWithValue("$spn", spn);
+                        });
+                }
+
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

@@ -508,7 +508,11 @@ public sealed class JudgementReader : IDisposable
         p.user_account_control              AS p_user_account_control,
         h.finding_id                        AS h_finding_id,
         h.object_sid                        AS h_object_sid,
-        h.unreadable_values                 AS h_unreadable_values
+        h.unreadable_values                 AS h_unreadable_values,
+        k.finding_id                        AS k_finding_id,
+        k.object_sid                        AS k_object_sid,
+        k.user_account_control              AS k_user_account_control,
+        k.unreadable_service_names          AS k_unreadable_service_names
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -518,6 +522,7 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_admincount_without_protection a ON a.finding_id = f.finding_id
         LEFT JOIN finding_user_account_control p ON p.finding_id = f.finding_id
         LEFT JOIN finding_privileged_sid_history h ON h.finding_id = f.finding_id
+        LEFT JOIN finding_kerberoastable_account k ON k.finding_id = f.finding_id
         """;
 
     /// <summary>
@@ -553,6 +558,7 @@ public sealed class JudgementReader : IDisposable
         var markerSid = reader.GetOrdinal("a_sid");
         var preauthUac = reader.GetOrdinal("p_user_account_control");
         var sidHistory = reader.GetOrdinal("h_finding_id");
+        var kerberoastable = reader.GetOrdinal("k_finding_id");
 
         FindingEvidence evidence;
 
@@ -590,6 +596,16 @@ public sealed class JudgementReader : IDisposable
                 values,
                 PrivilegedSidHistoryMatches(values),
                 (int)reader.GetInt64(reader.GetOrdinal("h_unreadable_values")));
+        }
+        else if (!reader.IsDBNull(kerberoastable))
+        {
+            var findingId = reader.GetInt64(kerberoastable);
+
+            evidence = new KerberoastableAccountEvidence(
+                reader.GetString(reader.GetOrdinal("k_object_sid")),
+                ServicePrincipalNames.TryGetValue(findingId, out var spns) ? spns : [],
+                (uint)reader.GetInt64(reader.GetOrdinal("k_user_account_control")),
+                (int)reader.GetInt64(reader.GetOrdinal("k_unreadable_service_names")));
         }
         else
         {
@@ -633,18 +649,32 @@ public sealed class JudgementReader : IDisposable
     /// </para>
     /// </remarks>
     private Dictionary<long, List<string>> SidHistoryValues =>
-        _sidHistoryValues ??= ReadSidHistoryValues();
+        _sidHistoryValues ??= ReadChildValues("SELECT finding_id, sid FROM finding_privileged_sid_history_value ORDER BY finding_id, ordinal");
 
     private Dictionary<long, List<string>>? _sidHistoryValues;
 
-    private Dictionary<long, List<string>> ReadSidHistoryValues()
+    /// <summary>
+    /// Every stored service name, by the finding it belongs to.
+    /// </summary>
+    /// <remarks>
+    /// Read once for the store and sorted by ordinal, for the reasons
+    /// <see cref="SidHistoryValues"/> gives: joining a child table into the finding query would
+    /// multiply a finding by its number of service names, so one account with four of them would
+    /// appear four times in the grid.
+    /// </remarks>
+    private Dictionary<long, List<string>> ServicePrincipalNames =>
+        _servicePrincipalNames ??= ReadChildValues(
+            "SELECT finding_id, service_principal_name FROM finding_kerberoastable_account_spn "
+            + "ORDER BY finding_id, ordinal");
+
+    private Dictionary<long, List<string>>? _servicePrincipalNames;
+
+    private Dictionary<long, List<string>> ReadChildValues(string sql)
     {
         var values = new Dictionary<long, List<string>>();
 
         using var command = _connection.CreateCommand();
-        command.CommandText =
-            "SELECT finding_id, sid FROM finding_privileged_sid_history_value "
-            + "ORDER BY finding_id, ordinal";
+        command.CommandText = sql;
 
         using var reader = command.ExecuteReader();
 

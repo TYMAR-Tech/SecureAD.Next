@@ -300,6 +300,9 @@ The table below sits between the two markers around it, so the test parses only 
 | PasswordNotRequired | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | ReversiblePasswordEncryption | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | DesEncryptionOnly | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| KerberoastablePrivilegedAccount | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| KerberoastableAccountEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| TextReading | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidHistoryEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PrivilegedSidHistoryMatch | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

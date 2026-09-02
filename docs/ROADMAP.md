@@ -322,6 +322,36 @@ That fallback is a registry value on the controller, which capture never reads, 
 know what an unset attribute resolves to. The rule will fire only when the attribute is present and
 explicitly excludes AES — Microsoft's own example being `0x4`, RC4 only.
 
+**`SEC-021` is built**, 2026-09-02, described in
+[`SEC-021-kerberoastable-privileged-account.md`](layers/judgement/rules/SEC-021-kerberoastable-privileged-account.md).
+It reports a **privileged** user account with a service name registered on it — any authenticated
+member of the domain can ask for a ticket encrypted with that account's password and crack it
+offline, and because the account is privileged that is a single step from ordinary member to domain
+administration. **Critical**, the first rule in this product to carry that severity.
+
+**It is the first stage-4 rule that cannot judge an underived bundle.** It declares
+`DerivedFactKind.ProtectedPrincipals` — the AdminSDHolder-derived catalogue `SEC-030` already reads —
+so `0091` applies and a judging without a matching derivation is refused for the whole run. Using
+that product means *privileged* is Microsoft's own designation rather than a list this product
+invented.
+
+**The owner chose the privileged-only scope on 2026-09-02, which maps onto the predecessor's own
+partition:** `SEC-020` is the every-account version and stays unbuilt. Microsoft scopes its
+recommendation the same way — of removing a service principal name it says *"This recommendation
+only showed for sensitive accounts."*
+
+**It departs from its card on disabled accounts.** The card excluded them, stating a key distribution
+centre will not issue a ticket for a disabled account. Microsoft's Kerberos material was searched for
+that statement and it was not found, so the exclusion would rest on a belief this product cannot
+evidence — the position `SEC-022` reached about AS-REP. The state travels in the evidence and the
+wording instead.
+
+**A trap worth recording, caught by mutation.** A computer's `objectClass` is
+`top, person, organizationalPerson, user, computer`, so testing *is `user` in the chain* reports
+every domain controller in the forest — each with service names, each in a protected group, each with
+a machine-generated 120-character password that rotates. The rule tests the **most derived** class
+instead, and the fixtures use the real chain so the mutation fails rather than passing.
+
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
 

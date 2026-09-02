@@ -100,16 +100,16 @@ public sealed class AdminCountWithoutProtection : IRule
             return RuleVerdict.Judged([]);
 
         if (derived.ProtectedPrincipals is not { } protection)
-            return Unresolved(UnresolvedReason.NotDerived);
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
 
         // U3. A partial closure can make a protected object look unprotected, which is the failure
         // 10.7 names. Checked before the object's own facts, because no per-object answer can be
         // trusted while the graph behind it is incomplete.
         if (!protection.IsComplete)
-            return Unresolved(ReasonFor(protection.StatedLimits));
+            return ProtectedPrincipalReading.Unresolved(ProtectedPrincipalReading.ReasonFor(protection.StatedLimits));
 
         if (SidTextOf(subject) is not { } sid)
-            return Unresolved(UnresolvedReason.IdentityUnreadable);
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.IdentityUnreadable);
 
         // Scoped the way the derivation keyed it: a built-in SID belongs to its domain, everything
         // else is already unique. Getting this wrong would merge every domain's BUILTIN groups into
@@ -117,7 +117,7 @@ public sealed class AdminCountWithoutProtection : IRule
         var scope = Sid.IsBuiltinDomain(sid) ? subject.DomainFqdn : null;
 
         if (protection.Lookup(sid, scope) is not { } fact)
-            return Unresolved(UnresolvedReason.NotDerived);
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
 
         switch (fact.Evaluation)
         {
@@ -133,18 +133,18 @@ public sealed class AdminCountWithoutProtection : IRule
             // U5 to U9. The derivation declined to call it either way and said why; that reason is
             // carried through rather than being flattened into a verdict.
             default:
-                return Unresolved(ReasonFor(fact.UnknownReasons));
+                return ProtectedPrincipalReading.Unresolved(ProtectedPrincipalReading.ReasonFor(fact.UnknownReasons));
         }
 
         // U2. Read only once the protection question is settled, because an unreadable descriptor
         // on an object that turns out to be protected is not a doubt about anything.
         if (derived.Permissions is null)
-            return Unresolved(UnresolvedReason.SecurityDescriptorUnreadable);
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.SecurityDescriptorUnreadable);
 
         var permissions = derived.Permissions(subject.DistinguishedName);
 
         if (permissions is null || permissions.DaclState is DaclState.Unreadable)
-            return Unresolved(UnresolvedReason.SecurityDescriptorUnreadable);
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.SecurityDescriptorUnreadable);
 
         // N9. The marker is inconsistent, but the condition this rule reports is the non-inheriting
         // ACL, and that is absent. Section 3 keeps it out of SEC-030 rather than reporting a
@@ -153,7 +153,7 @@ public sealed class AdminCountWithoutProtection : IRule
             return RuleVerdict.Judged([]);
 
         if (subject.ObjectGuid is not { } objectGuid)
-            return Unresolved(UnresolvedReason.IdentityUnreadable);
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.IdentityUnreadable);
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
         var objectClass = AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
@@ -190,36 +190,6 @@ public sealed class AdminCountWithoutProtection : IRule
         + "permissions first.";
 
     /// <summary>
-    /// Turns the derivation's reason into the vocabulary a rule reports, so the doubt an operator
-    /// reads is the doubt the derivation actually recorded.
-    /// </summary>
-    /// <remarks>
-    /// <b>Order matters where several apply.</b> The most specific and least recoverable is
-    /// reported: a dispute is Microsoft contradicting itself and no amount of re-capturing will
-    /// settle it, while incomplete membership is a fact about this run that another run may fix.
-    /// Telling an operator to capture again over a documentation conflict wastes his afternoon.
-    /// </remarks>
-    private static UnresolvedReason ReasonFor(ProtectionUnknownReason reasons)
-    {
-        if (reasons.HasFlag(ProtectionUnknownReason.PrincipalClaimDisputed))
-            return UnresolvedReason.ClaimDisputed;
-
-        if (reasons.HasFlag(ProtectionUnknownReason.PrincipalClaimUnverified))
-            return UnresolvedReason.ClaimUnverified;
-
-        if (reasons.HasFlag(ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked))
-            return UnresolvedReason.PrimaryGroupRoute;
-
-        if (reasons.HasFlag(ProtectionUnknownReason.ForestMaskNotRead)
-            || reasons.HasFlag(ProtectionUnknownReason.ForestMaskMalformed))
-            return UnresolvedReason.ForestMaskUnknown;
-
-        // Everything left - incomplete membership evidence, a possible root reached, an unknown
-        // forest root - is the graph being short of what the answer needed.
-        return UnresolvedReason.MembershipIncomplete;
-    }
-
-    /// <summary>
     /// The object's SID in canonical text, or null where it carried none this build can decode.
     /// </summary>
     /// <remarks>
@@ -235,7 +205,4 @@ public sealed class AdminCountWithoutProtection : IRule
             .Select(v => v.Bytes is null ? null : Sid.ToText(v.Bytes))
             .FirstOrDefault(s => s is not null);
 
-    private static RuleVerdict Unresolved(UnresolvedReason reason) =>
-        RuleVerdict.CouldNotResolve(
-            [new UnresolvedInput(DerivedFactKind.ProtectedPrincipals, reason)]);
 }

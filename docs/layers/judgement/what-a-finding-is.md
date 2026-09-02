@@ -31,6 +31,7 @@ records stay in Evidence because they are durable data rather than executable po
 | `FindingEvidence` | The values a finding rests on, in a shape its kind declares |
 | `AttributeReading` | The one Evidence-owned interpretation of captured attribute values, used by rule definitions, signals and executable rules |
 | `SidReading` | The security identifiers read off one attribute, and whether every value was readable |
+| `TextReading` | The text values read off one attribute, and whether every value was readable |
 | `StoredFindings` | Findings beside the rules that were run to produce them |
 | `EvaluatedRule` | One rule that was run, at the version of its logic that ran |
 | `IRule` | A rule: what it is, and what it makes of one object |
@@ -51,6 +52,8 @@ records stay in Evidence because they are durable data rather than executable po
 | `PasswordNotRequired` | SEC-028 — an account exempt from the domain's minimum password length, so it may have none |
 | `ReversiblePasswordEncryption` | SEC-029 — an account whose password the directory stores in a form that decrypts back to the password |
 | `DesEncryptionOnly` | SEC-033 — an account restricted to DES, so its Kerberos tickets are cheap to attack |
+| `KerberoastablePrivilegedAccount` | SEC-021 — a privileged account any domain member can request a crackable ticket for |
+| `KerberoastableAccountEvidence` | The service names SEC-021 found on the account, and the value its disabled state is read from |
 | `PrivilegedSidCatalogue` | Which of Microsoft's identifiers this product treats as privileged, as one written-out table |
 | `PrivilegedSidHistoryEvidence` | Every SID history value SEC-027 read, which of them are privileged, and whether any could not be read |
 | `PrivilegedSidHistoryMatch` | One history value that names a privileged principal, with Microsoft's name for it |

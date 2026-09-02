@@ -1,0 +1,225 @@
+using SecureAD.Derivation;
+using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
+using SecureAD.Kernel.Naming;
+using SecureAD.Kernel.Security;
+
+namespace SecureAD.Judgement;
+
+/// <summary>
+/// SEC-021 - a privileged account with a service name registered on it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>What the exposure is.</b> When any client asks a domain controller for a ticket to a service,
+/// the controller returns one encrypted with the key derived from the password of the account that
+/// service name is registered on. The request is ordinary protocol traffic that any authenticated
+/// member of the domain may make, the account being attacked is never contacted, and the cracking
+/// happens offline - no lockout, no failed logons, no further trace.
+/// </para>
+/// <para>
+/// <b>Microsoft's words</b>, from <i>Suspected Kerberos SPN exposure</i> (external ID 2410, MITRE
+/// T1558.003): attackers "enumerate service accounts and their respective SPNs, request a Kerberos
+/// service ticket for the services, capture the Ticket Granting Service (TGS) tickets from memory
+/// and extract their hashes, and save them for later use in an offline brute force attack."
+/// </para>
+/// <para>
+/// <b>Why only privileged accounts, and why that is the whole rule.</b> A service name on an
+/// ordinary account is what a service account <i>is</i> - reporting every one would report the
+/// normal operation of every application in the estate. Microsoft scopes its own recommendation the
+/// same way: of removing a service principal name it says "This recommendation only showed for
+/// sensitive accounts." What makes the privileged case different in kind is that a single ordinary
+/// domain member obtains material that turns into domain administration by offline guessing, with no
+/// lateral movement in between.
+/// </para>
+/// <para>
+/// <b>Privilege means AdminSDHolder-protected</b>, which is Microsoft's own designation of the
+/// accounts that matter rather than a list this product invented. It is why this rule declares
+/// <see cref="DerivedFactKind.ProtectedPrincipals"/> and is the first stage-4 rule that cannot judge
+/// a bundle nobody derived.
+/// </para>
+/// <para>
+/// <b>Disabled accounts are reported, departing from the predecessor's card.</b> The card excluded
+/// them, stating the key distribution centre will not issue a ticket for a disabled account.
+/// Microsoft's Kerberos material was searched for that statement and it was not found, so the
+/// exclusion would rest on a belief this product cannot evidence - the identical position
+/// <see cref="NoKerberosPreauthentication"/> reached. The disabled state travels in the evidence and
+/// is named in the wording instead.
+/// </para>
+/// <para>
+/// Specified in <c>docs/layers/judgement/rules/SEC-021-kerberoastable-privileged-account.md</c>.
+/// </para>
+/// </remarks>
+public sealed class KerberoastablePrivilegedAccount : IRule
+{
+    /// <summary>
+    /// The class this rule judges, and it is checked as the object's <i>most derived</i> class.
+    /// </summary>
+    /// <remarks>
+    /// <b>A computer's <c>objectClass</c> contains "user".</b> The chain is
+    /// <c>top, person, organizationalPerson, user, computer</c>, so a rule asking whether "user" is
+    /// present would report every computer in the forest - whose password the operating system
+    /// generates at 120 characters and rotates every thirty days, and which is therefore not worth
+    /// attacking offline. The last value is the class an operator would name, and it is the one that
+    /// distinguishes a user from a computer and from a group managed service account.
+    /// </remarks>
+    private const string JudgedClass = "user";
+
+    /// <inheritdoc />
+    public RuleDefinition Definition { get; } = new(
+        "SEC-021",
+        "Privileged account with a service name registered on it",
+        Severity.Critical,
+        Version: 1,
+        SubjectClasses: ["user"],
+        RequiredAttributes:
+            ["servicePrincipalName", "objectSid", "objectClass", "userAccountControl"],
+        RequiredDerivedFacts: [nameof(DerivedFactKind.ProtectedPrincipals)]);
+
+    /// <inheritdoc />
+    public RuleVerdict Judge(ObjectAttributes subject) =>
+        throw new InvalidOperationException(
+            "SEC-021 reads derived facts and must be offered them. Judging refuses a bundle that "
+            + "cannot supply them, so reaching this is a defect rather than a missing derivation.");
+
+    /// <inheritdoc />
+    public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived)
+    {
+        ArgumentNullException.ThrowIfNull(subject);
+        ArgumentNullException.ThrowIfNull(derived);
+
+        // Cheapest discriminator first, and the one that ends most objects. An account with no
+        // service name is not kerberoastable at all - there is no ticket to ask for - so this is a
+        // fact about the account rather than a gap in the evidence, and must not be reported as an
+        // unread input.
+        var services = AttributeReading.TextValuesOf(subject, "servicePrincipalName");
+        if (services.IsAbsent)
+            return RuleVerdict.Judged([]);
+
+        // Present but every value unreadable is the opposite case: the account has service names
+        // and this build could not read any of them, so it cannot say the account is clean.
+        // A partial read is not refused - one readable name is enough to make the account
+        // kerberoastable, and losing a Critical finding over an unreadable sibling would be the
+        // product staying quiet about something it knows. The count travels in the evidence.
+        if (services.Values.Count == 0)
+            return RuleVerdict.CouldNotJudge(["servicePrincipalName"]);
+
+        // A computer's password is machine-generated and rotated; a group managed service account's
+        // is Microsoft's own recommended remedy for this very finding. Reporting either would report
+        // the fix as the defect.
+        var objectClass = AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
+        if (!string.Equals(objectClass, JudgedClass, StringComparison.OrdinalIgnoreCase))
+            return RuleVerdict.Judged([]);
+
+        if (derived.ProtectedPrincipals is not { } protection)
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
+
+        // Checked before the object's own facts, because no per-object answer can be trusted while
+        // the graph behind it is incomplete - and a partial closure makes a privileged account look
+        // ordinary, which is the direction that loses a finding rather than inventing one.
+        if (!protection.IsComplete)
+            return ProtectedPrincipalReading.Unresolved(
+                ProtectedPrincipalReading.ReasonFor(protection.StatedLimits));
+
+        if (SidTextOf(subject) is not { } sid)
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.IdentityUnreadable);
+
+        // Scoped the way the derivation keyed it: a built-in SID belongs to its domain, everything
+        // else is already unique forest-wide. Getting this wrong would merge every domain's BUILTIN
+        // groups into one, which is the defect docs/decisions/0087 exists to prevent.
+        var scope = Sid.IsBuiltinDomain(sid) ? subject.DomainFqdn : null;
+
+        if (protection.Lookup(sid, scope) is not { } fact)
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
+
+        switch (fact.Evaluation)
+        {
+            case ProtectedPrincipalEvaluation.Protected:
+                break;
+
+            // The account is kerberoastable and ordinary. That is SEC-020, which is not built, and
+            // section 10 of the rule document says so where an operator will read it.
+            case ProtectedPrincipalEvaluation.NotProtected:
+                return RuleVerdict.Judged([]);
+
+            // The derivation declined to call it either way and said why. Carried through rather
+            // than flattened, and never quietly read as "not privileged".
+            default:
+                return ProtectedPrincipalReading.Unresolved(
+                    ProtectedPrincipalReading.ReasonFor(fact.UnknownReasons));
+        }
+
+        if (subject.ObjectGuid is not { } objectGuid)
+            return ProtectedPrincipalReading.Unresolved(UnresolvedReason.IdentityUnreadable);
+
+        // Decides nothing. It is read so the finding can say the account is disabled, and so a
+        // reader can see the account's other flags without a second finding in front of him.
+        var control = AttributeReading.UnsignedInteger(subject, "userAccountControl") ?? 0;
+        var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
+        var evidence = new KerberoastableAccountEvidence(
+            sid, services.Values, control, services.UnreadableValues);
+
+        return RuleVerdict.Judged(
+        [
+            new Finding(
+                Definition.Id,
+                Definition.Version,
+                Definition.Severity,
+                new FindingSubject(FindingSubjectKind.Account, name),
+                objectGuid,
+                subject.DistinguishedName,
+                DnHelper.DnToFqdn(subject.DistinguishedName),
+                objectClass,
+                Detail(name, evidence),
+                subject.Completeness,
+                evidence),
+        ]);
+    }
+
+    /// <summary>What the operator is told.</summary>
+    /// <remarks>
+    /// <b>Three remedies, in Microsoft's order of preference, and none of them claims safety.</b>
+    /// Microsoft's prevention advice for kerberoasting is a long complex password or replacement by
+    /// a group managed service account. The third - remove the service name if the account does not
+    /// run a service - is not in Microsoft's list and is the commonest real case, a stale name left
+    /// over from a test. It is the only one that removes the exposure rather than raising its cost.
+    /// </remarks>
+    private static string Detail(string name, KerberoastableAccountEvidence evidence)
+    {
+        var services = string.Join(", ", evidence.ServicePrincipalNames);
+
+        var disabled = evidence.IsDisabled
+            ? " The account is currently disabled, which lowers the urgency but not the need to act,"
+                + " because re-enabling it would restore the exposure and the service name is still"
+                + " registered in the meantime."
+            : string.Empty;
+
+        var unreadable = evidence.IsComplete
+            ? string.Empty
+            : $" A further {evidence.UnreadableServiceNames} service "
+                + $"{(evidence.UnreadableServiceNames == 1 ? "name was" : "names were")} present but"
+                + " could not be read, so this account may claim to run more than is listed here.";
+
+        return $"{name} is a privileged account and has a service name registered on it "
+            + $"({services}), so any authenticated member of the domain can ask a domain controller "
+            + "for a ticket encrypted with this account's password and attack it offline - without "
+            + "touching the account, without any privilege, and without leaving a failed logon. "
+            + "If the account does not actually run a service, remove the service name. If it does, "
+            + "replace it with a group managed service account, whose password Windows generates "
+            + "and rotates itself; failing that, give it a long random password. Removing the "
+            + "service name closes this route to the account and says nothing about any other."
+            + disabled
+            + unreadable;
+    }
+
+    /// <summary>
+    /// The object's SID in canonical text, or null where it carried none this build can decode.
+    /// </summary>
+    /// <remarks>
+    /// Read from bytes rather than text because that is how the directory stores it and how the
+    /// derivation keyed itself. Taking a text value here would fail to match and the object would
+    /// look absent rather than unmatched.
+    /// </remarks>
+    private static string? SidTextOf(ObjectAttributes subject) =>
+        AttributeReading.SidsOf(subject, "objectSid").Sids.FirstOrDefault();
+}

@@ -169,6 +169,29 @@ public static class RuleGuidanceCatalogue
                 + "that is before clearing it, or that thing stops authenticating.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
+
+        new RuleGuidance(
+            "SEC-021",
+            "Credentials",
+            "T1558.003",
+            WhyItMatters:
+                "Any authenticated member of the domain can ask a domain controller for a ticket to "
+                + "this account's service, and that ticket is encrypted with this account's "
+                + "password. Because the account is privileged, cracking it offline hands over "
+                + "administration of the domain in a single step - with no foothold on a privileged "
+                + "machine first. The request is ordinary protocol traffic, the account is never "
+                + "contacted, and the cracking leaves no failed logons, so nothing about it looks "
+                + "like an attack while it is happening.",
+            WhatToDo:
+                "If the account does not actually run a service, remove the service name - a stale "
+                + "name left from a test is the commonest case and the only one where the exposure "
+                + "goes away rather than getting more expensive. If it does run a service, replace "
+                + "it with a group managed service account, whose password Windows generates and "
+                + "rotates itself; where that is not possible, give it a long random password. "
+                + "Consider whether the account needs its privilege at all. Removing the service "
+                + "name closes this route to the account and says nothing about any other.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#credential-access-alerts"),
     ];
 
     /// <summary>The guidance for one rule, or null where none is written.</summary>

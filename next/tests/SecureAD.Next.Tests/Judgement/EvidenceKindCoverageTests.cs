@@ -102,6 +102,27 @@ public sealed class EvidenceKindCoverageTests
                 Assert.Equal(1, e.UnreadableValues);
                 Assert.False(e.IsComplete);
             }),
+
+        new Sample(
+            Definition("SEC-021", "Privileged account with a service name registered on it"),
+            "CN=svc-sql,OU=Service Accounts,DC=contoso,DC=com",
+            new KerberoastableAccountEvidence(
+                "S-1-5-21-1-2-3-1106",
+                ["MSSQLSvc/db01.contoso.com:1433", "HOST/db01.contoso.com"],
+                0x400202,
+                UnreadableServiceNames: 1),
+            read =>
+            {
+                var e = Assert.IsType<KerberoastableAccountEvidence>(read);
+                Assert.Equal("S-1-5-21-1-2-3-1106", e.ObjectSid);
+                Assert.Equal(
+                    ["MSSQLSvc/db01.contoso.com:1433", "HOST/db01.contoso.com"],
+                    e.ServicePrincipalNames);
+                Assert.Equal(0x400202u, e.UserAccountControl);
+                Assert.True(e.IsDisabled);
+                Assert.Equal(1, e.UnreadableServiceNames);
+                Assert.False(e.IsComplete);
+            }),
     ];
 
     /// <summary>

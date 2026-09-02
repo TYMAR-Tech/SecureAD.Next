@@ -351,6 +351,13 @@ public sealed class VouchedValueReachabilityGateTests
     /// could be decoded</i>, and those are opposite facts. Both pass on merit - the SEC-027 tests
     /// read each one true and false, from an account whose history decoded whole and one carrying a
     /// value that did not.
+    /// 37 from 2026-09-02 with <c>TextReading.IsComplete</c> and
+    /// <c>KerberoastableAccountEvidence.IsComplete</c>, which SEC-021 needed for the same reason:
+    /// a list of service names read off an attribute is a collection whose emptiness means either
+    /// <i>the account claims to run nothing</i> or <i>nothing could be read</i>. The second forced a
+    /// better rule than the one first written - a privileged account with one readable service name
+    /// is now reported beside a count of what was not read, where the rule had refused the whole
+    /// object and lost a Critical finding over an unreadable sibling.
     /// </para>
     /// </summary>
     [Fact]
@@ -358,7 +365,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(35, found.Count);
+        Assert.Equal(37, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");
