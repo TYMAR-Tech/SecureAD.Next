@@ -2,7 +2,9 @@ using System.Collections.Immutable;
 using SecureAD.Audit.Connect;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 
 namespace SecureAD.Cli;
@@ -101,6 +103,9 @@ internal static class Program
         if (options.DeriveOnly is not null)
             return Derive(options.DeriveOnly, afterCapture: false, cancellationToken);
 
+        if (options.JudgeOnly is not null)
+            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken);
+
         // A machine whose own addresses cannot be read has no site, and every domain then reports
         // as chosen without full knowledge rather than the run pretending it was sited.
         var addresses = MachineAddresses.OfThisMachine();
@@ -171,7 +176,15 @@ internal static class Program
 
         Console.Out.WriteLine("Sealed: " + run.Value.BundleDirectory);
 
-        return Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken);
+        // Capture, derive, judge - the whole audit, so a scheduled run finishes with findings rather
+        // than stopping one stage short of an answer. Judging only runs if deriving succeeded: the
+        // rules that read derived facts would otherwise refuse the run, per docs/decisions/0091,
+        // and reporting that as a judging failure would blame the wrong stage.
+        var derived = Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken);
+
+        return derived is Success
+            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken)
+            : derived;
     }
 
     /// <summary>
@@ -271,6 +284,116 @@ internal static class Program
         });
 
         return Success;
+    }
+
+    /// <summary>
+    /// Runs every rule over a bundle and writes the findings beside the evidence.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>What this makes possible.</b> Until now the command line captured and derived, and judging
+    /// happened only in the application - so a scheduled overnight run stopped one stage short of an
+    /// answer, and a lab check could not be repeated without somebody opening the GUI. The owner
+    /// asked for this on 2026-08-26: <i>"i will be making it so the user can run the audit and it
+    /// complete the judging via CLI, so it can run overnight."</i>
+    /// </para>
+    /// <para>
+    /// <b>The whole catalogue, never a chosen subset.</b> <see cref="RuleCatalogue.All"/> is what an
+    /// audit is, per <c>docs/decisions/0082</c>. A command line that let a caller pick rules would
+    /// be a second definition of the audit and a way to produce a judgement quietly missing one.
+    /// </para>
+    /// <para>
+    /// <b>Refusing is a real outcome and is reported as one.</b> A bundle nobody derived cannot
+    /// satisfy the rules that read derived facts, and <c>docs/decisions/0091</c> refuses the run
+    /// rather than reporting every object as unjudgeable. That refusal is a failure here, because
+    /// the operator asked for findings and has none.
+    /// </para>
+    /// </remarks>
+    private static int Judge(
+        string bundleDirectory, bool afterCapture, CancellationToken cancellationToken)
+    {
+        if (!afterCapture && !Directory.Exists(bundleDirectory))
+        {
+            Console.Error.WriteLine("There is no bundle at " + bundleDirectory + ".");
+            return Failed;
+        }
+
+        // Appends to the same file the capture and the derivation wrote, so one bundle's log reads
+        // top to bottom whatever produced each part of it.
+        using var file = RunLogFile.Open(bundleDirectory, "judging", TimeProvider.System)
+            is { IsSuccess: true } opened
+            ? opened.Value
+            : null;
+
+        IRunLog log = file ?? RunLog.Discarded;
+
+        Result<JudgementRunState> judged;
+        var started = DateTimeOffset.UtcNow;
+
+        try
+        {
+            judged = JudgingRun.Judge(
+                bundleDirectory,
+                RuleCatalogue.All,
+                started,
+                started,
+                JudgingRun.NobodyIsWatching,
+                log,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine(
+                "Stopped while judging. The evidence is sealed and safe at "
+                + bundleDirectory
+                + ". Nothing was judged from it.");
+
+            return Cancelled;
+        }
+
+        if (!judged.IsSuccess)
+        {
+            Console.Error.WriteLine(
+                "The evidence is sealed and safe. Nothing could be judged from it: "
+                + judged.Error!.Description);
+
+            // After a capture this is still a success: the run was asked to read a forest and it
+            // did. Asked only to judge, it is a failure - the operator wanted findings and has none.
+            return afterCapture ? Success : Failed;
+        }
+
+        Console.Out.WriteLine(Summarise(bundleDirectory));
+        return Success;
+    }
+
+    /// <summary>
+    /// One line an operator can read in the morning: how many rules ran, and what they found.
+    /// </summary>
+    /// <remarks>
+    /// <b>The rule count is there because a finding count on its own does not mean what it looks
+    /// like.</b> "0 findings" from nine rules is a quiet forest; "0 findings" from two rules is a
+    /// judging that mostly did not happen, and the two must not print identically -
+    /// <c>docs/decisions/0002</c>.
+    /// </remarks>
+    private static string Summarise(string bundleDirectory)
+    {
+        var opened = JudgementReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return "Judged: " + bundleDirectory;
+
+        using var reader = opened.Value!;
+        var stored = reader.Read();
+
+        var failed = stored.RulesRun
+            .Count(r => r.Outcome is not RuleExecutionOutcome.Succeeded);
+
+        var faults = failed == 0
+            ? string.Empty
+            : $", {failed} did not complete";
+
+        return $"Judged: {stored.RulesRun.Count} rules ran{faults}, "
+            + $"{stored.Findings.Count} findings.";
     }
 
     private static string CurrentDerivationPath(string bundleDirectory)

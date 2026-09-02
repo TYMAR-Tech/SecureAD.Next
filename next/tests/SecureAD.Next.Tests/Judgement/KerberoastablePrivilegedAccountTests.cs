@@ -207,6 +207,74 @@ public sealed class KerberoastablePrivilegedAccountTests
                 DomainFqdn: Forest)));
     }
 
+    /// <summary>
+    /// The key distribution centre's own account is not reported.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This test exists because the product got it wrong against a real forest.</b> On 2026-09-02
+    /// the first `ad.lab` run reported `krbtgt` in all three domains at **Critical**, telling the
+    /// operator to remove its service name or replace it with a group managed service account.
+    /// Neither is possible, and either would break Kerberos for the domain.
+    /// </para>
+    /// <para>
+    /// <b>The values here are the ones the directory actually held</b>: relative identifier 502,
+    /// service name <c>kadmin/changepw</c>, disabled. Nothing about them was invented to suit the
+    /// fix, which is why this fails if the exclusion is removed.
+    /// </para>
+    /// <para>
+    /// <b>Excluded by relative identifier, not by name</b>, so renaming the account does not bring
+    /// the finding back.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheKeyDistributionCentreAccountIsNotReported()
+    {
+        var findings = Judge(Svc() with
+        {
+            Privileged = true,
+            Dn = "CN=krbtgt,CN=Users,DC=ad,DC=lab",
+            Sid = DomainSid + "-502",
+            ServicePrincipalNames = ["kadmin/changepw"],
+            UserAccountControl = 0x202,
+        });
+
+        Assert.Empty(findings);
+    }
+
+    /// <summary>
+    /// Renaming the key distribution centre account does not bring the finding back.
+    /// </summary>
+    /// <remarks>
+    /// The other half of "by identifier and not by name". Without it an exclusion keyed on the
+    /// string "krbtgt" would satisfy the test above.
+    /// </remarks>
+    [Fact]
+    public void TheKeyDistributionCentreAccountIsExcludedEvenWhenRenamed()
+    {
+        var findings = Judge(Svc() with
+        {
+            Privileged = true,
+            Dn = "CN=kerberos-service,CN=Users,DC=ad,DC=lab",
+            Sid = DomainSid + "-502",
+            ServicePrincipalNames = ["kadmin/changepw"],
+        });
+
+        Assert.Empty(findings);
+    }
+
+    /// <summary>
+    /// An ordinary privileged account is still reported, so the exclusion is not a blanket one.
+    /// </summary>
+    /// <remarks>
+    /// A rule that excluded everything would pass both tests above. This is what stops that.
+    /// </remarks>
+    [Fact]
+    public void AnAccountBesideTheKeyDistributionCentreIdentifierIsStillReported()
+    {
+        Assert.Single(Judge(Svc() with { Privileged = true, Sid = DomainSid + "-503" }));
+    }
+
     /// <summary>One object's shape, so each test states only what it changes.</summary>
     private sealed record Subject
     {

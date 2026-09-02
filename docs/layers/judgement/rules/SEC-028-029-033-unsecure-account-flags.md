@@ -205,15 +205,34 @@ longer matched the fixture at all, so the exclusion was never reached. A mutatio
 another mutation proves nothing about the test, and two mutations run at once can hide each other's
 survivors.
 
-## 11. Verifying against `ad.lab`
+## 11. Verified against `ad.lab`, 2026-09-02
 
-Not yet run. Same order as `SEC-027`: prove the forest's own state from sealed evidence first with
-`next/tools/count-uac-flag.ps1 -Flag 0x20` (and `0x80`, `0x200000`), which already exists and already
-carries its own control; then plant a positive case with a script following
-`Set-LabNoPreauthAccount.ps1`.
+**`SEC-028`'s exclusion is the one that mattered, and a real forest proved it.**
+`count-uac-flag.ps1 -Flag 0x20`, reading sealed evidence directly, found **7** accounts carrying
+`PASSWD_NOTREQD`. The rule reported **3**.
 
-**Unlike `SEC-027`, a positive case is plantable here**: all three flags are ordinary
-`userAccountControl` bits an administrator can set with `Set-ADAccountControl`, with no second forest
-and no trust required. **The `ad.lab` forest is expected to contain real trust accounts carrying
-`PASSWD_NOTREQD` already**, which makes §5's exclusion testable against a real directory rather than
-only a fixture — the strongest control this family has.
+| Accounts carrying the flag | `userAccountControl` | Reported |
+|---|---|---|
+| `AD$` ×2, `BA$`, `PH$` — the four interdomain trust accounts | **2080** (`0x820`) = `INTERDOMAIN_TRUST_ACCOUNT` + `PASSWD_NOTREQD` | no |
+| `Guest` in each of the three domains | 66082 = `PASSWD_NOTREQD` + `DONT_EXPIRE_PASSWORD` + `NORMAL_ACCOUNT` + `ACCOUNTDISABLE` | yes |
+
+**`0x820` is precisely the value Microsoft documents a trust account as carrying by default**, and
+the directory produced exactly that, four times. **Without the exclusion this rule would have
+reported seven accounts and four would have been false** — on every forest with a trust, not just
+this one. That is [§5](#5-what-is-excluded-and-why) proven against a directory rather than a fixture.
+
+**The `Guest` findings are true and worth having.** Each is disabled and the finding says so, which
+is the disabled-state wording doing its job on real data.
+
+### `SEC-029` and `SEC-033`
+
+| Question | How it was answered | Answer |
+|---|---|---|
+| Does the forest hold anything to find? | `count-uac-flag.ps1 -Flag 0x80` and `-Flag 0x200000` | **0 of 2,082** for each — the silence is the forest's |
+| Is the reading script itself trustworthy? | the same script at `-Flag 0x20` | 7 accounts, named — so its zero means something |
+| Does each rule fire on a genuine case? | `Set-LabAccountFlags.ps1` planted `lab.reversible` (`0x282`) and `lab.desonly` (`0x200202`) | **1 finding each**, High and Medium |
+| On the right object and domain? | `show-findings.ps1` | `CN=lab.reversible` and `CN=lab.desonly`, both `ba.ad.lab` |
+
+**The whole run was headless**, using `securead-cli --library …`, which now captures, derives and
+judges in one command. The lab was returned to its prior state with
+`Set-LabAccountFlags.ps1 -Remove`, confirmed by re-reading the directory.

@@ -352,6 +352,37 @@ every domain controller in the forest — each with service names, each in a pro
 a machine-generated 120-character password that rotates. The rule tests the **most derived** class
 instead, and the fixtures use the real chain so the mutation fails rather than passing.
 
+**Five rules verified against `ad.lab` on 2026-09-02, and the forest found a defect nine rules and
+2,819 green tests had not.** `SEC-021` reported all three domains' `krbtgt` accounts at **Critical**,
+telling the operator to remove the service name or replace the account with a group managed service
+account — **both impossible, and either would break Kerberos for the domain.** The rule document had
+claimed `krbtgt` "holds no `servicePrincipalName`, so it never reaches the test"; it carries
+`kadmin/changepw` by default. Every test agreed with the rule because both were built from the same
+wrong belief about Active Directory. **Only the directory disagreed.** Fixed by excluding relative
+identifier 502 — which is what the predecessor's card did, and on this the card was right.
+
+**What the lab proved that fixtures could not:**
+
+| Rule | On the untouched forest | Planted |
+|---|---|---|
+| `SEC-028` | **3 findings** — the built-in `Guest` of each domain, genuinely carrying `PASSWD_NOTREQD` | — |
+| `SEC-028` exclusion | sealed evidence holds **7** accounts with the flag; the rule reported **3**. The four not reported are trust accounts at `userAccountControl` **2080** — exactly the `0x820` Microsoft documents as their default. **Without the exclusion, four of seven findings would have been false, on every forest with a trust** | — |
+| `SEC-021` | 0 after the fix (3 before) | `lab.kerberoast` → 1, Critical, right domain |
+| `SEC-029` | 0 of 2,082 carry `0x80` | `lab.reversible` → 1, High |
+| `SEC-033` | 0 of 2,082 carry `0x200000` | `lab.desonly` → 1, Medium |
+| `SEC-027` | 0, and **0 objects carry any SID history at all** — so the negative is real, but its reading script has never been seen reporting something, and the positive stays unplantable in one forest | — |
+
+**The command line now runs the whole audit.** `securead-cli --library <dir>` captures, derives and
+judges; `--judge <bundle>` re-judges sealed evidence without re-reading the forest. That is what the
+owner asked for on 2026-08-26 — *"so it can run overnight"* — and it is what made this verification
+possible without opening the application. `ARCHITECTURE.md` previously reasoned that judging in the
+command line "has nobody to offer the findings to"; that was wrong twice, since findings go to a
+store rather than a person.
+
+**The re-judge is the split working.** The corrected `SEC-021` was run against evidence already
+sealed, and the finding count went 9 to 6 without re-reading a single object —
+[`0085`](decisions/0085-judgement-writes-beside-the-evidence.md) as intended.
+
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
 

@@ -33,13 +33,16 @@ namespace SecureAD.Cli;
 /// </param>
 /// <param name="ValidateOnly">Check the run would work, without reading any object.</param>
 /// <param name="PreviewOnly">Print what would be read and from where, contacting no domain.</param>
+/// <param name="DeriveOnly">Derive from a bundle already captured, capturing nothing.</param>
+/// <param name="JudgeOnly">Judge a bundle already captured and derived, capturing nothing.</param>
 internal sealed record CommandLine(
     string? LibraryRoot,
     string? Forest,
     IReadOnlyDictionary<string, string> Overrides,
     bool ValidateOnly,
     bool PreviewOnly,
-    string? DeriveOnly)
+    string? DeriveOnly,
+    string? JudgeOnly)
 {
     /// <summary>
     /// What to print when the arguments were not understood.
@@ -56,6 +59,7 @@ internal sealed record CommandLine(
             "  securead --library <directory> [--forest <name>]",
             "           [--controller <domain>=<host>]... [--validate | --preview]",
             "  securead --derive <bundle directory>",
+            "  securead --judge <bundle directory>",
             string.Empty,
             "  --library     Where runs are kept. Created if absent. Required for a run or a",
             "                validate: this tool does not choose where several gigabytes of",
@@ -107,6 +111,7 @@ internal sealed record CommandLine(
         var validateOnly = false;
         var previewOnly = false;
         string? deriveOnly = null;
+        string? judgeOnly = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -140,27 +145,36 @@ internal sealed record CommandLine(
                     deriveOnly = args[++i];
                     break;
 
+                case "--judge" when i + 1 < args.Length:
+                    judgeOnly = args[++i];
+                    break;
+
                 default:
                     return null;
             }
         }
 
-        // --derive reads a bundle that already exists, so it needs neither a library to write runs
-        // into nor a forest to contact. Naming one alongside it asks for two different things at
-        // once, and guessing which was meant is how an operator ends up with a capture he did not
-        // ask for.
-        if (deriveOnly is not null)
+        // --derive and --judge each read a bundle that already exists, so neither needs a library to
+        // write runs into nor a forest to contact. Naming one alongside them asks for two different
+        // things at once, and guessing which was meant is how an operator ends up with a capture he
+        // did not ask for. They are also mutually exclusive: a bundle is derived and then judged, in
+        // that order, and one command doing both silently would hide which half failed.
+        if (deriveOnly is not null || judgeOnly is not null)
         {
             var contradicted =
                 validateOnly
                 || previewOnly
                 || library is not null
                 || forest is not null
-                || overrides.Count > 0;
+                || overrides.Count > 0
+                || (deriveOnly is not null && judgeOnly is not null);
 
-            return contradicted || string.IsNullOrWhiteSpace(deriveOnly)
+            var named = deriveOnly ?? judgeOnly;
+
+            return contradicted || string.IsNullOrWhiteSpace(named)
                 ? null
-                : new CommandLine(library, forest, overrides, validateOnly, previewOnly, deriveOnly);
+                : new CommandLine(
+                    library, forest, overrides, validateOnly, previewOnly, deriveOnly, judgeOnly);
         }
 
         // --preview writes nothing, so it does not need somewhere to write to. Requiring a library
@@ -170,7 +184,9 @@ internal sealed record CommandLine(
             return null;
         }
 
-        return new CommandLine(library, forest, overrides, validateOnly, previewOnly, DeriveOnly: null);
+        return new CommandLine(
+            library, forest, overrides, validateOnly, previewOnly, DeriveOnly: null,
+            JudgeOnly: null);
     }
 
     /// <summary>

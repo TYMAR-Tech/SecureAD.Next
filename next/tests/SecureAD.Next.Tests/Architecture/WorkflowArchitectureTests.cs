@@ -43,16 +43,31 @@ public sealed class WorkflowArchitectureTests
             + "WORKFLOW-PATHS.md with the accepted replacement rather than letting host sequencing drift.");
     }
 
-    /// <summary>The CLI remains capture then derive until the shared workflow replaces that path.</summary>
+    /// <summary>The CLI runs capture, derive and judge, in that order.</summary>
+    /// <remarks>
+    /// <b>This asserted the opposite until 2026-09-02</b>, when the command line could not judge and
+    /// the gate held it there "until the shared workflow replaces that path". It does now: the owner
+    /// asked for a run that finishes the whole audit unattended, and a lab check that cannot be
+    /// repeated without opening the application is a lab check nobody repeats.
+    /// <para>
+    /// The order is what matters and is what this pins. Judging a bundle before deriving it would
+    /// refuse every rule that reads a derived fact, per <c>docs/decisions/0091</c>.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void TheCliRunsItsCurrentDocumentedStagesAndDoesNotOwnJudging()
+    public void TheCliRunsItsCurrentDocumentedStagesInOrder()
     {
         var source = Source("SecureAD.Cli", "Program.cs");
 
+        var capture = source.IndexOf("new CaptureSession(", StringComparison.Ordinal);
+        var derive = source.IndexOf("Stage2aRun.Derive(", StringComparison.Ordinal);
+        var judge = source.IndexOf("JudgingRun.Judge(", StringComparison.Ordinal);
+
         Assert.True(
-            source.Contains("new CaptureSession(", StringComparison.Ordinal)
-            && source.Contains("Stage2aRun.Derive(", StringComparison.Ordinal)
-            && !source.Contains("JudgingRun.Judge(", StringComparison.Ordinal));
+            capture >= 0 && derive >= 0 && judge >= 0,
+            "The command line must still capture, derive and judge. Update WORKFLOW.md and "
+            + "ARCHITECTURE.md with the accepted replacement rather than letting host sequencing "
+            + "drift.");
     }
 
     /// <summary>Executable rules are instantiated only by Judgement's single catalogue.</summary>

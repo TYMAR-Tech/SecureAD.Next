@@ -345,8 +345,26 @@ mutation would have passed.
 
 ## 12. Verifying it against `ad.lab`
 
-Not yet run. **A constraint found while writing the lab scripts changes what can be verified in this
-forest, and it is stated here rather than discovered later.**
+**Run 2026-09-02, negative half only. The rule reported nothing, and reporting nothing was correct.**
+
+| Question | How it was answered | Answer |
+|---|---|---|
+| Was the rule scheduled and did it complete? | `rule_execution` in the judgement store | `Succeeded`, **4,239** objects judged, 0 not judged |
+| Does the forest hold anything to find? | `list-sid-history.ps1`, reading sealed evidence directly | **0 objects carry any SID history at all** |
+
+**The object count is itself a check.** `SEC-027` judged 4,239 objects where the account-only rules
+judged 2,085. The difference is the groups, which is what `SubjectClasses: [user, computer, group]`
+should produce — a rule silently judging only users would have shown 2,085 here.
+
+**Still unproven, stated plainly.** `list-sid-history.ps1 -All` returned zero as well, because the
+forest holds no SID history whatsoever — so its zero is consistent with a clean forest **and** with a
+script that cannot read the table, which is the exact ambiguity the script's own header says it
+exists to remove. `count-uac-flag.ps1` does not have this problem: it was seen returning seven rows
+for `0x20` in the same session. **`SEC-027` is therefore the least-verified rule built so far** and
+must not be written up as standing where `SEC-021`, `SEC-028`, `SEC-029` and `SEC-033` now stand.
+
+A constraint found while writing the lab scripts changes what can be verified in this forest at all,
+and it is stated here rather than discovered later.
 
 ### What can be verified, and how
 
