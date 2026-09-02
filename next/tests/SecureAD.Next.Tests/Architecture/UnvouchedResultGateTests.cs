@@ -142,7 +142,32 @@ public sealed class UnvouchedResultGateTests
             "SchemaGuidCatalog", "CapturedAttributeCatalog", "ConnectionSecurityLadder",
             "BundleSchema", "GpoClientSideExtensionCatalog", "DirectoryTime",
             "WellKnownSidCatalog", "RuleCatalogue", "RuleGuidanceCatalogue",
+            "PrivilegedSidCatalogue",
         ];
+
+    /// <summary>
+    /// <b>The tenth entry, added 2026-09-02 with SEC-027</b>, on the identical reason.
+    /// <c>PrivilegedSidCatalogue</c> is the two tables of security identifiers this product treats
+    /// as privileged when it finds one in an account's SID history. Both are written out in the
+    /// source, they read nothing and open nothing, and neither can fail: an empty answer would mean
+    /// the product treats no identifier as privileged, which is not a state any query produces.
+    ///
+    /// <para>
+    /// <b>It is a type of its own precisely because of this gate.</b> The tables were first fields
+    /// on <c>PrivilegedSidHistory</c>, which also judges an object and can decline to - so exempting
+    /// the type would have exempted the judging, which is exactly what gate 4 is for. Splitting the
+    /// tables out was the alternative to an exemption that covered the thing the gate was pointing
+    /// at, and it follows the precedent <c>GpoClientSideExtensionCatalog</c> set in August.
+    /// </para>
+    /// <para>
+    /// <b>The claim that the tables are right is held elsewhere</b>, which matters because an
+    /// exemption from this gate must not become an exemption from being checked at all.
+    /// <c>PrivilegedSidHistoryTests.EveryPrivilegedIdentifierIsOneMicrosoftDocuments</c> requires
+    /// every value in both tables to resolve in <see cref="WellKnownSidCatalog"/>, which is itself
+    /// pinned to Microsoft's published table. That check has already fired once in earnest, on the
+    /// day the rule was written.
+    /// </para>
+    /// </summary>
 
     /// <summary>
     /// <b>The ninth entry, added 2026-09-01 with the operator guidance</b>, on the same reason as

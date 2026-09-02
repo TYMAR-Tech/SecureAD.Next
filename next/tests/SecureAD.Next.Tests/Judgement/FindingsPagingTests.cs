@@ -79,6 +79,39 @@ public sealed class FindingsPagingTests
             EvidenceCompleteness.Complete,
             new KerberosPreauthenticationEvidence(0x400202));
 
+    private static readonly RuleDefinition Sec027 = new(
+        "SEC-027", "Privileged identifier carried in SID history", Severity.High, 1,
+        ["user", "computer", "group"],
+        ["sIDHistory", "objectSid", "objectClass"],
+        RequiredDerivedFacts: []);
+
+    /// <summary>
+    /// A SEC-027 finding, whose evidence is the first kind stored across two tables.
+    /// </summary>
+    /// <remarks>
+    /// <b>It carries an unranked value and an unreadable one on purpose.</b> A finding whose history
+    /// held only its single match would round-trip correctly even if the reader dropped every row
+    /// but the first, and would say nothing about whether the unreadable count survived storage. The
+    /// two are what the child table and its column exist for.
+    /// </remarks>
+    private static Finding ASidHistoryFinding() =>
+        new(
+            "SEC-027",
+            1,
+            Severity.High,
+            new FindingSubject(FindingSubjectKind.Account, "svc-migrated"),
+            Guid.NewGuid(),
+            "CN=svc-migrated,OU=Service Accounts,DC=contoso,DC=com",
+            "contoso.com",
+            "user",
+            "Carries Enterprise Admins of another domain in its SID history.",
+            EvidenceCompleteness.Complete,
+            new PrivilegedSidHistoryEvidence(
+                "S-1-5-21-9-9-9-1105",
+                ["S-1-5-21-1-2-3-519", "S-1-5-21-1-2-3-1157"],
+                [new PrivilegedSidHistoryMatch("S-1-5-21-1-2-3-519", 519, "Enterprise Admins")],
+                UnreadableValues: 1));
+
     /// <summary>
     /// A page holds what it was asked for and says there is more.
     /// </summary>
@@ -525,6 +558,7 @@ public sealed class FindingsPagingTests
         {
             writer.Write(RuleExecution.Judged(Sec030, 1, 0, [AMarkerFinding()]));
             writer.Write(RuleExecution.Judged(Sec022, 1, 0, [APreauthFinding()]));
+            writer.Write(RuleExecution.Judged(Sec027, 1, 0, [ASidHistoryFinding()]));
             writer.Complete(Started);
         }
 
@@ -537,6 +571,23 @@ public sealed class FindingsPagingTests
         var preauth = Assert.Single(page.Findings, f => f.RuleId == "SEC-022");
         Assert.Equal(0x400202u, Assert.IsType<KerberosPreauthenticationEvidence>(
             preauth.Evidence).UserAccountControl);
+
+        // SEC-027 is the first evidence kind stored across two tables, so a page must reassemble it
+        // rather than merely find a row. Every value is checked, not only the match: the child rows
+        // are what carry the account's whole history, and a reader that returned only the first of
+        // them would satisfy a weaker assertion while losing what section 6 of the rule document
+        // says must never be lost.
+        var history = Assert.Single(page.Findings, f => f.RuleId == "SEC-027");
+        var evidence = Assert.IsType<PrivilegedSidHistoryEvidence>(history.Evidence);
+
+        Assert.Equal("S-1-5-21-9-9-9-1105", evidence.ObjectSid);
+        Assert.Equal(
+            ["S-1-5-21-1-2-3-519", "S-1-5-21-1-2-3-1157"],
+            evidence.HistoryValues);
+        Assert.Equal("Enterprise Admins", Assert.Single(evidence.Matches).Name);
+        Assert.Equal(["S-1-5-21-1-2-3-1157"], evidence.UnrankedValues);
+        Assert.Equal(1, evidence.UnreadableValues);
+        Assert.False(evidence.IsComplete);
     }
 
     private static JudgementReader Opened(string directory)

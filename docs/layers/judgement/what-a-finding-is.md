@@ -30,6 +30,7 @@ records stay in Evidence because they are durable data rather than executable po
 | `Severity` | How serious a finding is |
 | `FindingEvidence` | The values a finding rests on, in a shape its kind declares |
 | `AttributeReading` | The one Evidence-owned interpretation of captured attribute values, used by rule definitions, signals and executable rules |
+| `SidReading` | The security identifiers read off one attribute, and whether every value was readable |
 | `StoredFindings` | Findings beside the rules that were run to produce them |
 | `EvaluatedRule` | One rule that was run, at the version of its logic that ran |
 | `IRule` | A rule: what it is, and what it makes of one object |
@@ -46,6 +47,10 @@ records stay in Evidence because they are durable data rather than executable po
 | `AdminCountWithoutProtectionEvidence` | The identity SEC-030 asked the derivation about |
 | `NoKerberosPreauthentication` | SEC-022 — an account a domain controller will answer for without the asker proving anything |
 | `KerberosPreauthenticationEvidence` | The `userAccountControl` value SEC-022 read the flag from |
+| `PrivilegedSidHistory` | SEC-027 — a principal carrying a privileged identifier in its SID history, which no group membership listing shows |
+| `PrivilegedSidCatalogue` | Which of Microsoft's identifiers this product treats as privileged, as one written-out table |
+| `PrivilegedSidHistoryEvidence` | Every SID history value SEC-027 read, which of them are privileged, and whether any could not be read |
+| `PrivilegedSidHistoryMatch` | One history value that names a privileged principal, with Microsoft's name for it |
 | `UnconstrainedDelegationOnAccount` | SEC-010 — a user or service account trusted for unconstrained delegation |
 | `UnconstrainedDelegationOnNonDomainController` | SEC-011 — a member computer trusted for it |
 | `UnconstrainedDelegationEvidence` | What an unconstrained delegation finding rests on |

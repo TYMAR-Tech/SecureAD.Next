@@ -342,11 +342,26 @@ public sealed class PreflightTests
     /// It is deterministic rather than timed: each connection waits for the second to arrive, so a
     /// sequential pass reaches the deadline and reports one at a time instead of two.
     /// </para>
+    /// <para>
+    /// <b>The deadline is thirty seconds, and that costs nothing when the product is right.</b> A
+    /// correct run satisfies the rendezvous the moment the second connection opens and never waits.
+    /// The deadline is only reached by a build that has gone sequential, which is the failure this
+    /// exists to report. It was one second until 2026-09-02, when the test failed in a full-suite
+    /// run and passed in isolation twice (`P-115`): under parallel load the second connection had
+    /// not arrived within the second, so the harness reported sequential behaviour that had not
+    /// happened. A test that cries wolf about a real defect is worse than no test, because the next
+    /// person to see it red assumes the machine was busy.
+    /// </para>
+    /// <para>
+    /// The same-controller test above keeps its short deadline deliberately: there the deadline is
+    /// always reached, because company never comes, so it is paid on every run.
+    /// </para>
     /// </remarks>
     [Fact]
     public async Task DomainsOnDifferentControllersAreAskedAtTheSameTime()
     {
-        var watch = new OverlapWatch(AForestWithSeveralFaults(), waitingFor: 2);
+        var watch = new OverlapWatch(
+            AForestWithSeveralFaults(), waitingFor: 2, deadlineMilliseconds: 30_000);
 
         await Preflight.RunAsync(watch, APlanOf(Root, Reachable), CancellationToken.None);
 

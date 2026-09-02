@@ -426,6 +426,41 @@ public sealed class JudgementWriter : IDisposable
                     });
                 return;
 
+            case PrivilegedSidHistoryEvidence history:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_privileged_sid_history (finding_id, object_sid, "
+                    + "unreadable_values) VALUES ($id, $sid, $unreadable)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue(
+                            "$sid", (object?)history.ObjectSid ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$unreadable", history.UnreadableValues);
+                    });
+
+                // Every value, not only the matches. A row here for a value the rule could not rank
+                // is what stops the stored evidence saying the account carried nothing else.
+                for (var ordinal = 0; ordinal < history.HistoryValues.Count; ordinal++)
+                {
+                    var value = history.HistoryValues[ordinal];
+                    var position = ordinal;
+
+                    Execute(
+                        transaction,
+                        "INSERT INTO finding_privileged_sid_history_value (finding_id, ordinal, "
+                        + "sid) VALUES ($id, $ordinal, $sid)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$ordinal", position);
+                            command.Parameters.AddWithValue("$sid", value);
+                        });
+                }
+
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

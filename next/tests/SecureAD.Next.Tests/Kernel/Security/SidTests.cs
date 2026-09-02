@@ -231,4 +231,77 @@ public sealed class SidTests
 
         Assert.Null(Sid.ToBytes(text));
     }
+
+    /// <summary>
+    /// The last sub-authority is returned as the relative identifier, which is the part of a SID
+    /// that means the same thing in every domain.
+    /// </summary>
+    /// <remarks>
+    /// Microsoft, <i>Security identifiers</i>: "the last value in the series, the RID, identifies a
+    /// particular account or group relative to a domain." Reading any other position would rank a
+    /// principal by a number that identifies its domain instead of itself.
+    /// </remarks>
+    /// <param name="sid">A SID.</param>
+    /// <param name="expected">The relative identifier it carries.</param>
+    [Theory]
+    [InlineData(DomainAdmins, 512)]
+    [InlineData("S-1-5-32-544", 544)]
+    [InlineData("S-1-5-21-1834058357-2590327168-2246012571-1157", 1157)]
+    [InlineData("S-1-5-21-1834058357-2590327168-2246012571-500", 500)]
+    public void TheRelativeIdentifierIsTheLastSubAuthority(string sid, int expected) =>
+        Assert.Equal(expected, Sid.RelativeIdentifier(sid));
+
+    /// <summary>
+    /// A SID with no sub-authorities has no relative identifier, and is not reported as zero.
+    /// </summary>
+    /// <remarks>
+    /// <b>Zero is a value, not an absence.</b> <c>SECURITY_NULL_RID</c> is 0, so returning it for
+    /// "there wasn't one" would hand a caller a relative identifier Microsoft defines and let it
+    /// act on it.
+    /// </remarks>
+    /// <param name="sid">A SID carrying no sub-authority, or text that is not a SID at all.</param>
+    [Theory]
+    [InlineData("S-1-5")]
+    [InlineData("S-1-1")]
+    [InlineData("")]
+    [InlineData("not a sid")]
+    [InlineData("S-2-5-21-1-2-3")]
+    public void TextCarryingNoRelativeIdentifierReturnsNullRatherThanZero(string sid) =>
+        Assert.Null(Sid.RelativeIdentifier(sid));
+
+    /// <summary>
+    /// The issuing domain is the SID without its relative identifier, so two principals of one
+    /// domain share it and two of different domains do not.
+    /// </summary>
+    /// <remarks>
+    /// Microsoft, <i>Security identifiers</i>: "no two domains in an enterprise share the same
+    /// domain identifier." This is what lets a rule say a SID history value came from somewhere
+    /// other than the account's own domain without asking the directory anything.
+    /// </remarks>
+    [Fact]
+    public void TwoPrincipalsOfOneDomainShareAnIssuingDomainAndTwoOfDifferentDomainsDoNot()
+    {
+        const string otherDomainAdmins = "S-1-5-21-99887766-55443322-11009988-512";
+
+        Assert.Equal("S-1-5-21-1834058357-2590327168-2246012571", Sid.IssuingDomain(DomainAdmins));
+        Assert.Equal(
+            Sid.IssuingDomain(DomainAdmins),
+            Sid.IssuingDomain("S-1-5-21-1834058357-2590327168-2246012571-1157"));
+        Assert.NotEqual(Sid.IssuingDomain(DomainAdmins), Sid.IssuingDomain(otherDomainAdmins));
+    }
+
+    /// <summary>
+    /// Text the byte writer would refuse yields no relative identifier and no issuing domain, so
+    /// this type cannot be talked into ranking a principal off a shape nothing else believes.
+    /// </summary>
+    /// <param name="text">Text that is not a SID.</param>
+    [Theory]
+    [InlineData("S-1-5-21-not-a-number-512")]
+    [InlineData("X-1-5-21-1-2-3-512")]
+    [InlineData("S-1-99999999999999999999-512")]
+    public void TextTheByteWriterRefusesIsRefusedHereToo(string text)
+    {
+        Assert.Null(Sid.RelativeIdentifier(text));
+        Assert.Null(Sid.IssuingDomain(text));
+    }
 }

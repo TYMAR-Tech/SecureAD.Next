@@ -162,6 +162,70 @@ public static class Sid
     private const string BuiltinDomainPrefix = "S-1-5-32-";
 
     /// <summary>
+    /// The last sub-authority of a SID - its relative identifier - or null when it has none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>What this is for.</b> Microsoft: "the SID of a security principal is created by
+    /// concatenating the SID of the domain with a relative identifier (RID) for the account", and
+    /// "the last value in the series, the RID, identifies a particular account or group relative to
+    /// a domain." So the RID is the part of a SID that says <i>which</i> principal, and it is the
+    /// only part that means the same thing in every domain - which is what lets
+    /// <see cref="WellKnownSidCatalog.FindByRid"/> name one.
+    /// </para>
+    /// <para>
+    /// <b>Null rather than a guess, for the same reason as <see cref="ToText"/>.</b> Text this
+    /// method cannot read is not reported as RID zero, because zero is
+    /// <c>SECURITY_NULL_RID</c> and a caller would act on it.
+    /// </para>
+    /// </remarks>
+    /// <param name="text">A SID in <c>S-1-5-…</c> form.</param>
+    /// <seealso href="https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers"/>
+    public static int? RelativeIdentifier(string? text)
+    {
+        var parts = SubAuthorityParts(text);
+
+        // A SID with no sub-authorities has no RID. S-1-1 is legal and identifies an authority
+        // rather than a principal, so there is nothing here to return.
+        if (parts is not { Length: > 3 })
+            return null;
+
+        return int.TryParse(parts[^1], CultureInfo.InvariantCulture, out var rid) ? rid : null;
+    }
+
+    /// <summary>
+    /// A SID with its relative identifier removed - the domain that issued it - or null when it
+    /// has none.
+    /// </summary>
+    /// <remarks>
+    /// <b>Why a caller wants this.</b> Microsoft: "no two domains in an enterprise share the same
+    /// domain identifier." So two SIDs sharing this prefix were issued by one domain, and two that
+    /// do not were not. That is the only way to tell, from a SID alone, that a value in
+    /// <c>sIDHistory</c> came from somewhere other than the account's own domain.
+    /// </remarks>
+    /// <param name="text">A SID in <c>S-1-5-…</c> form.</param>
+    /// <seealso href="https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers"/>
+    public static string? IssuingDomain(string? text)
+    {
+        var parts = SubAuthorityParts(text);
+
+        return parts is not { Length: > 3 }
+            ? null
+            : string.Join('-', parts[..^1]);
+    }
+
+    /// <summary>
+    /// The dash-separated parts of a SID, or null when the text is not one.
+    /// </summary>
+    /// <remarks>
+    /// Validated through <see cref="ToBytes"/> rather than by a second parser, so this agrees with
+    /// the rest of this type about what a SID is. A shape the byte writer would refuse must not be
+    /// one this reader accepts, or a caller could rank a RID off text no other component believes.
+    /// </remarks>
+    private static string[]? SubAuthorityParts(string? text) =>
+        ToBytes(text) is null ? null : text!.Split('-');
+
+    /// <summary>
     /// Whether this SID belongs to the built-in domain, and so names a different principal in every
     /// domain that has one.
     /// </summary>

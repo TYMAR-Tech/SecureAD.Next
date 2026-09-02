@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
@@ -504,7 +505,10 @@ public sealed class JudgementReader : IDisposable
         d.primary_group_is_domain_controller AS d_primary_group_is_domain_controller,
         d.under_domain_controllers_ou       AS d_under_domain_controllers_ou,
         a.sid                               AS a_sid,
-        p.user_account_control              AS p_user_account_control
+        p.user_account_control              AS p_user_account_control,
+        h.finding_id                        AS h_finding_id,
+        h.object_sid                        AS h_object_sid,
+        h.unreadable_values                 AS h_unreadable_values
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -513,6 +517,7 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_unconstrained_delegation d ON d.finding_id = f.finding_id
         LEFT JOIN finding_admincount_without_protection a ON a.finding_id = f.finding_id
         LEFT JOIN finding_no_kerberos_preauthentication p ON p.finding_id = f.finding_id
+        LEFT JOIN finding_privileged_sid_history h ON h.finding_id = f.finding_id
         """;
 
     /// <summary>
@@ -537,7 +542,7 @@ public sealed class JudgementReader : IDisposable
     /// <exception cref="InvalidOperationException">
     /// The finding has no evidence row, so what it rests on has been lost.
     /// </exception>
-    private static Finding ReadFinding(SqliteDataReader reader, IReadOnlyDictionary<string, int> versions)
+    private Finding ReadFinding(SqliteDataReader reader, IReadOnlyDictionary<string, int> versions)
     {
         var ruleId = reader.GetString(reader.GetOrdinal("rule_id"));
 
@@ -547,6 +552,7 @@ public sealed class JudgementReader : IDisposable
         var delegationUac = reader.GetOrdinal("d_user_account_control");
         var markerSid = reader.GetOrdinal("a_sid");
         var preauthUac = reader.GetOrdinal("p_user_account_control");
+        var sidHistory = reader.GetOrdinal("h_finding_id");
 
         FindingEvidence evidence;
 
@@ -567,6 +573,23 @@ public sealed class JudgementReader : IDisposable
         else if (!reader.IsDBNull(preauthUac))
         {
             evidence = new KerberosPreauthenticationEvidence((uint)reader.GetInt64(preauthUac));
+        }
+        else if (!reader.IsDBNull(sidHistory))
+        {
+            // The discriminator is the finding_id and not object_sid, because object_sid is
+            // legitimately null - an account whose own identifier could not be read still carries
+            // the history that was read. Keying off a nullable column would silently drop those
+            // findings into the "no evidence" branch below and throw on a finding that is intact.
+            var findingId = reader.GetInt64(sidHistory);
+            var objectSidColumn = reader.GetOrdinal("h_object_sid");
+
+            var values = SidHistoryValues.TryGetValue(findingId, out var stored) ? stored : [];
+
+            evidence = new PrivilegedSidHistoryEvidence(
+                reader.IsDBNull(objectSidColumn) ? null : reader.GetString(objectSidColumn),
+                values,
+                PrivilegedSidHistoryMatches(values),
+                (int)reader.GetInt64(reader.GetOrdinal("h_unreadable_values")));
         }
         else
         {
@@ -592,10 +615,77 @@ public sealed class JudgementReader : IDisposable
             evidence);
     }
 
+    /// <summary>
+    /// Every stored SID history value, by the finding it belongs to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Read once for the store rather than once per finding.</b> SEC-027 is the first evidence
+    /// kind with more than one row per finding, and joining it into the finding query would
+    /// multiply every finding by its number of history values - so a single account with four of
+    /// them would appear four times in the grid. A page of fifty findings must also not become
+    /// fifty-one queries.
+    /// </para>
+    /// <para>
+    /// <b>Ordinal is what preserves the order the directory gave.</b> Without the sort this comes
+    /// back in whatever order the table yields, and evidence that reorders itself between two reads
+    /// of one store is evidence a reader cannot compare.
+    /// </para>
+    /// </remarks>
+    private Dictionary<long, List<string>> SidHistoryValues =>
+        _sidHistoryValues ??= ReadSidHistoryValues();
+
+    private Dictionary<long, List<string>>? _sidHistoryValues;
+
+    private Dictionary<long, List<string>> ReadSidHistoryValues()
+    {
+        var values = new Dictionary<long, List<string>>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT finding_id, sid FROM finding_privileged_sid_history_value "
+            + "ORDER BY finding_id, ordinal";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var findingId = reader.GetInt64(0);
+
+            if (!values.TryGetValue(findingId, out var stored))
+                values[findingId] = stored = [];
+
+            stored.Add(reader.GetString(1));
+        }
+
+        return values;
+    }
+
+    /// <summary>
+    /// Which of a finding's stored SID history values name a privileged principal.
+    /// </summary>
+    /// <remarks>
+    /// <b>Recomputed rather than stored, like the delegation table's two answers.</b> Whether a
+    /// value is privileged, and what Microsoft calls it, are both asked of
+    /// <see cref="PrivilegedSidHistory.PrivilegedName"/> - the same decision the rule made when it
+    /// wrote the row. Storing either would create a copy that can disagree with the value it came
+    /// from, and a second copy of the decision could disagree with the rule itself.
+    /// </remarks>
+    private static IReadOnlyList<PrivilegedSidHistoryMatch> PrivilegedSidHistoryMatches(
+        IReadOnlyList<string> values) =>
+    [
+        .. values
+            .Select(value => (Value: value, Name: PrivilegedSidCatalogue.PrivilegedName(value)))
+            .Where(v => v.Name is not null)
+            .Select(v => new PrivilegedSidHistoryMatch(
+                v.Value,
+                Sid.RelativeIdentifier(v.Value) ?? 0,
+                v.Name!)),
+    ];
+
     /// <inheritdoc />
     public void Dispose()
     {
-        if (_disposed)
             return;
 
         _connection.Dispose();

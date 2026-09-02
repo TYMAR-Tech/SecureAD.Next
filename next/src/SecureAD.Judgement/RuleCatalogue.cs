@@ -31,5 +31,6 @@ public static class RuleCatalogue
         new UnconstrainedDelegationOnNonDomainController(),
         new AdminCountWithoutProtection(),
         new NoKerberosPreauthentication(),
+        new PrivilegedSidHistory(),
     ];
 }

@@ -232,15 +232,53 @@ with the stored evidence matching the directory. The same bundle carries finding
 kinds, and reading it back through the grid's paging path returned each with its own evidence intact
 — which is the `P-112` fix confirmed on real data rather than only on a synthetic bundle.
 
-*Detail:* the cards in [`docs/rules/`](rules/).
-*Needs first:* stage 3.
-
 **Next, decided 2026-09-01: a rule reporting accounts that carry SID history.** `sIDHistory` is
 captured, so it needs no new capture work, and there is no card for it — `SEC-123` covers who can
 *grant* SID history, not who *has* it. It has to be researched and written before any code, anchored
 to Microsoft's *Unsecure SID History attributes* guidance, because nothing was ported: the
 predecessor never had this rule. It matters because a non-privileged account carrying a privileged
 SID from another domain is effectively privileged and appears in no group membership listing.
+
+**`SEC-027` is built**, 2026-09-02, described in
+[`SEC-027-privileged-sid-history.md`](layers/judgement/rules/SEC-027-privileged-sid-history.md). It
+reports any security principal — user, computer or group — whose `sIDHistory` contains a SID whose
+identifier Microsoft documents as privileged. Severity **High**, and all three classes are reported
+identically; both decided by the owner on 2026-09-02. It reads only captured attributes and declares
+no derived facts, so it is the second rule to judge a bundle that was never derived.
+
+**The product decision was which accounts to report, and the owner chose the narrow one.** Reporting
+*every* account with any SID history is simpler and, after a real migration, thousands of rows of the
+benign case Microsoft describes as the attribute's purpose. Reporting only those carrying a
+privileged identifier is Microsoft's own worked example and needs no derivation, because the
+identifier is in the SID itself. The third option — ranking a value by what it is actually granted in
+this forest — was rejected on the evidence: a migrated-from domain usually no longer exists in the
+capture, so a derivation would resolve nothing in exactly the case the rule exists for. That
+boundary is `P-114`, and it is stated to the operator rather than only to a reviewer.
+
+**It was the first rule to need an About section, and that is now a product commitment.** A rule that
+reports a subset is not free to let its silence read as *nothing else is wrong*. The owner, 2026-09-02:
+*"we will have an about section that describes each rule and what its looks for so we will have the
+ability to surface the limitations to the user."* Recorded in
+[`WHAT-THE-PRODUCT-IS.md`](WHAT-THE-PRODUCT-IS.md); content is written with each rule, presentation
+is stage 9.
+
+**The anchor test caught a real defect on its first run, which is why it exists.** The six built-in
+groups were written as *relative identifiers*, so `S-1-5-21-<any domain>-544` — an ordinary object in
+a migrated domain — would have been reported as the built-in Administrators group. Every positive
+test passed, because the rule and the tests shared the mistake; only the check that leaves this
+repository, against MS-DTYP as transcribed into `WellKnownSidCatalog`, disagreed. This is the
+`F-S44-2` shape answered rather than repeated: there was no card and nothing to port, so nothing
+internal could have anchored it.
+
+**Gate 4 forced a better rule than the one first written.** It refused a bare list of decoded SIDs,
+which cannot say whether every value was readable. The fix — `SidReading`, carrying the count of
+values that failed to decode — turned a suppressed finding into a reported one: a privileged
+identifier that *was* read is now reported beside a note that other values were not, where before a
+single unreadable sibling silenced the whole object. Absent still means clean and unreadable still
+means unknown, and there are negative controls for both.
+
+*Detail:* the cards in [`docs/rules/`](rules/).
+*Needs first:* stage 3.
 
 **`SEC-020` follows, and carries an open question.** It reports a user account with a service name
 registered on it, which any authenticated member of the domain can request a ticket for and crack

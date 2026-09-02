@@ -1,4 +1,5 @@
 using System.Globalization;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Evidence.Findings;
 
@@ -91,4 +92,45 @@ public static class AttributeReading
             out var value)
             ? value
             : null;
+
+    /// <summary>
+    /// Every value of an attribute the directory stores as a SID, with a count of any that could
+    /// not be decoded.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this is here and not in a rule.</b> <c>objectSid</c> and <c>sIDHistory</c> are
+    /// captured as bytes, so anything wanting to name them must decode them, and a second decoder
+    /// is a second opinion about what a value says. <c>MembershipNestingPass</c> already reads
+    /// <c>sIDHistory</c> this way in Derivation; putting the reading here means a rule and a
+    /// derivation cannot disagree about which principal a bundle names.
+    /// </para>
+    /// <para>
+    /// <b>The failures are counted rather than dropped.</b> Returning only the values that decoded
+    /// would let a caller report an object as clean on the strength of bytes nobody could read.
+    /// <see cref="SidReading"/> carries the count so the caller can tell a complete answer from a
+    /// partial one.
+    /// </para>
+    /// </remarks>
+    /// <param name="subject">The object to read.</param>
+    /// <param name="ldapDisplayName">The attribute to read.</param>
+    public static SidReading SidsOf(ObjectAttributes subject, string ldapDisplayName)
+    {
+        var values = subject.Attributes
+            .Where(a => string.Equals(
+                a.LdapDisplayName, ldapDisplayName, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(a => a.Values)
+            .ToList();
+
+        if (values.Count == 0)
+            return SidReading.Absent;
+
+        var read = values
+            .Select(v => v.Bytes is null ? null : Sid.ToText(v.Bytes))
+            .ToList();
+
+        return new SidReading(
+            [.. read.Where(s => s is not null).Select(s => s!)],
+            read.Count(s => s is null));
+    }
 }

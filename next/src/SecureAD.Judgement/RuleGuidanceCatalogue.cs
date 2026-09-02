@@ -93,6 +93,28 @@ public static class RuleGuidanceCatalogue
                 + "stamped, and something may be relying on it.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface#privileged-accounts-and-groups-in-active-directory"),
+
+        new RuleGuidance(
+            "SEC-027",
+            "Privileged access",
+            "T1134.005",
+            WhyItMatters:
+                "Every value in an account's SID history is placed in its access token when it "
+                + "signs in, and grants access exactly as membership of that group would. This "
+                + "account carries an identifier Microsoft documents as privileged, so it has that "
+                + "privilege - but it appears in no group membership listing, because nothing was "
+                + "ever added to a group. An administrator reviewing who is in Domain Admins will "
+                + "not see this account, and the account has the access anyway.",
+            WhatToDo:
+                "Establish why the account carries the value, then remove it with "
+                + "Set-ADUser -Remove @{SIDHistory='S-1-5-21-…'}. Removing it may take away access "
+                + "the account still depends on: permissions left behind by the migration may name "
+                + "only the old identifier, and nothing will have re-stamped them. This rule ranks "
+                + "only the identifiers Microsoft documents, so an account carrying a custom group "
+                + "from a domain that no longer exists is not reported here - the values it holds "
+                + "are shown on the object itself.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-sid-history-attributes"),
     ];
 
     /// <summary>The guidance for one rule, or null where none is written.</summary>

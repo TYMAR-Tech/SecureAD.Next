@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 5;
+    public const int Version = 6;
 
     private static readonly string[] TableDdl =
     [
@@ -248,6 +248,46 @@ public static class JudgementSchema
             finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
             user_account_control                INTEGER NOT NULL,
             PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // What SEC-027 rested on: the account's own identifier, with its SID history in the child
+        // table below.
+        //
+        // OBJECT_SID IS NULLABLE AND THAT IS NOT SLOPPINESS. An account whose own identifier could
+        // not be read still carries the history that was read. Refusing to record the finding, or
+        // storing an empty string as though it were a SID, would either suppress a true escalation
+        // or invent a principal - and the second is worse, because S-1-5-21-... prefixes are
+        // compared against this column to say the privilege came from another domain.
+        """
+        CREATE TABLE finding_privileged_sid_history (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            object_sid                          TEXT    NULL,
+            unreadable_values                   INTEGER NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // Every value of sIDHistory the object carried, one row each, in the order captured.
+        //
+        // THE UNMATCHED VALUES ARE STORED TOO, AND THAT IS THE POINT OF THIS TABLE. SEC-027 ranks a
+        // value by its relative identifier, which it can only do for the identifiers Microsoft
+        // documents. Storing only the matches would show an operator a filtered view of the account
+        // he is being told about and leave him believing it carries nothing else. The rule document,
+        // section 6, is the argument.
+        //
+        // ONLY THE SID IS STORED. The relative identifier is the last sub-authority of the text in
+        // this column, whether the value is privileged is that identifier against the rule's set,
+        // and the name is that identifier against WellKnownSidCatalog. Three answers, all of them
+        // recomputed by the reader, none of them able to disagree with the value they came from.
+        // The delegation and pre-authentication tables leave their computed answers out for exactly
+        // this reason.
+        """
+        CREATE TABLE finding_privileged_sid_history_value (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            ordinal                             INTEGER NOT NULL,
+            sid                                 TEXT    NOT NULL,
+            PRIMARY KEY (finding_id, ordinal)
         )
         """,
     ];

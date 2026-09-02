@@ -201,6 +201,27 @@ gets crossed by accident.
 the Microsoft research behind it is in hand; the screen that displays it is designed later, around
 content that already exists.
 
+**Every rule gets an About section, and it is where a limitation is stated, decided 2026-09-02.** The
+owner: *"we will have an about section that describes each rule and what its looks for so we will have
+the ability to surface the limitations to the user in that capacity."* So a rule has three kinds of
+copy, and they answer different questions:
+
+| | Answers | Scope |
+|---|---|---|
+| A finding | what is true about **this object** | one object |
+| Guidance (\`RuleGuidance\`) | why that matters and what to do about it | the rule |
+| About | **what this rule looks for, and what it does not** | the rule |
+
+**This is what makes a bounded rule honest.** A rule that reports a subset is not free to let its
+silence read as *nothing else is wrong*; About is where the boundary is stated to the operator rather
+than only to a reviewer reading the rule document. \`SEC-027\` is the first rule to need it: it reports
+SID history containing a **well-known** privileged identifier and cannot rank a custom group from a
+domain that no longer exists, and an operator must be able to read that without opening this
+repository.
+
+It is content, so it is written as each rule is built, alongside the guidance. Where it is displayed
+is stage 9 with the rest of the presentation.
+
 ---
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,
