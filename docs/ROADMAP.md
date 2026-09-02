@@ -383,6 +383,45 @@ store rather than a person.
 sealed, and the finding count went 9 to 6 without re-reading a single object —
 [`0085`](decisions/0085-judgement-writes-beside-the-evidence.md) as intended.
 
+**Next: `SEC-091`, LAPS missing on a computer. Its starting position, written 2026-09-02 so the next
+sitting does not rediscover it.**
+
+The card is [`SEC-091`](rules/SEC-091.md), *LAPS Missing on Computer*. Everything it reads is already
+captured: `operatingSystem`, `ms-Mcs-AdmPwdExpirationTime` and `msLAPS-PasswordExpirationTime` on
+computers, plus `searchFlags` and `systemFlags` from the schema partition. **No capture work.**
+
+**It is not a small rule, and the reason is the absence problem.** A LAPS attribute that is absent
+means either *LAPS is not deployed on this machine* or *this run was not allowed to see it* — and
+those render identically, because a confidential attribute is withheld **silently**, exactly as
+though it had never been set. Getting it wrong means reporting a protected estate as unprotected,
+which is the one thing an audit tool must not do.
+
+**That is already solvable and must not be guessed at.** `CapturedAttribute`'s own remarks give the
+mechanism and the sources: [Search-Flags](https://learn.microsoft.com/windows/win32/adschema/a-searchflags)
+bit 128 marks an attribute confidential, and
+[Mark an attribute as confidential](https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential)
+describes the withholding. Both LAPS attributes are schema extensions, so the bit applies to them —
+bit 128 is ignored for base-schema attributes, which are the ones carrying `systemFlags` `0x10`.
+Capture already reads both flags from that forest's own schema, **so the answer is derivable per
+forest rather than assumed**, per [`0002`](decisions/0002-absent-view-means-degraded-run.md).
+
+**Three things already exist and should be reused rather than rewritten:**
+
+| Need | What already answers it |
+|---|---|
+| Excluding domain controllers, which the owner chose on 2026-09-02 | `DomainControllerSignals` — three independent signals with their disagreement recorded, used by `SEC-010` and `SEC-011`. The predecessor's bug, where a child-domain controller fired because it also has a member-server computer account in the parent domain, is a solved problem there and must not be re-solved badly here |
+| Telling *not deployed* from *withheld* | `searchFlags` and `systemFlags`, captured from the schema partition |
+| Seeing what the rule does to a real forest | `securead-cli --library <dir>` then `show-findings.ps1`, one command each |
+
+**The open product question, surfaced now so it does not stall the build:** should a computer running
+a **client** operating system be reported the same as a server? LAPS matters most on workstations,
+but plenty of estates deploy it only there — or only on servers — and a rule that reports the whole
+of one class produces a finding per machine. This is the same shape as the `SEC-020`/`SEC-021`
+question and needs the owner's answer before any code.
+
+**`SEC-092` and `SEC-093` are the rest of the family** — rotation stale, and a broad principal able
+to decrypt — but `SEC-093` needs the permission graph and belongs after stage 5.
+
 *Detail:* the cards in [`docs/rules/`](rules/).
 *Needs first:* stage 3.
 

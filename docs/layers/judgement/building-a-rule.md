@@ -30,6 +30,58 @@ This is a working document, not a product position. Nothing here overrides a rec
 | 15 | If you added a layer document, list it in `SecureAD.Next.sln` | `LayerDocumentGateTests` |
 | 16 | Update `docs/ROADMAP.md`; add anything deferred to `PUNCH-LIST.md` | `PunchListIdentifierTests` |
 | 17 | Full suite, and `next/tools/check-document-encoding.ps1` — the count must not rise | — |
+| 18 | **Run it against `ad.lab` before calling it done** | nothing, and it is the step that catches what the tests cannot |
+
+## Running it against a real forest
+
+**One command does the whole audit**, added 2026-09-02:
+
+```
+securead-cli --library C:\Users\ba.admin\SecureAD-Runs      # capture, derive, judge
+securead-cli --judge <bundle>                               # re-judge sealed evidence, no re-capture
+pwsh -File next\tools\show-findings.ps1 -BundlePath <bundle>
+```
+
+`--judge` is the one to reach for after fixing a rule: it runs the corrected logic against evidence
+already sealed, so a verification loop costs seconds rather than a re-read of the forest.
+
+**Read the forest's own state as well as the findings.** `count-uac-flag.ps1` and
+`list-sid-history.ps1` open sealed evidence directly, so *the forest is clean* can be told from *the
+rule is broken*. **A reading script that has only ever returned zero proves nothing** — point it at
+something known to be present first. `count-uac-flag.ps1` has been seen returning seven rows;
+`list-sid-history.ps1` has not, and `SEC-027` §12 says so.
+
+**Plant with `Set-LabAccountFlags.ps1` and remove with `-Remove`**, then confirm the removal by
+re-reading the directory. One of the accounts it creates is a real Domain Admins member while it
+exists.
+
+---
+
+## Why step 18 is not optional
+
+**On 2026-09-02 the forest found a Critical false finding that 2,819 green tests did not.** `SEC-021`
+reported every domain's `krbtgt` at Critical, advising the operator to remove its service name or
+replace it with a group managed service account — both impossible, and either would break Kerberos
+for the domain.
+
+The rule document had asserted that `krbtgt` carries no `servicePrincipalName`. It carries
+`kadmin/changepw` by default. **Twelve tests passed because the tests and the rule were written from
+the same wrong belief about Active Directory.** No amount of internal coverage could have caught it;
+this is `F-S44-2` again, in the form that survives having an external anchor for the *values* while
+the *premise* goes unchecked.
+
+**The lesson, stated as a rule: any claim a document makes about what Active Directory contains is a
+claim to check against Active Directory, not against the code.** "This attribute is never present
+on X" is exactly the shape that hides.
+
+---
+
+## Mutations are run one at a time
+
+Recorded 2026-09-02 after two simultaneous mutations masked one another while building `SEC-028`:
+with the flag constant wrong, the trust-exclusion test passed, because the mutated flag never matched
+the fixture so the exclusion was never reached. **A mutation that another mutation makes unreachable
+proves nothing about the test.**
 
 **Step 8 is the one that used to be missed, and it is the expensive one to miss.** `P-112` was a
 finding's evidence read by column position from two queries with different column lists, and it
