@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.8.12023.21
@@ -82,6 +82,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\evidence\a-domain-left-out-on-purpose.md = ..\docs\layers\evidence\a-domain-left-out-on-purpose.md
 		..\docs\layers\judgement\what-a-finding-is.md = ..\docs\layers\judgement\what-a-finding-is.md
 		..\docs\layers\judgement\the-judgement-store.md = ..\docs\layers\judgement\the-judgement-store.md
+		..\docs\layers\judgement\building-a-rule.md = ..\docs\layers\judgement\building-a-rule.md
 		..\docs\layers\derivation\what-stage-2a-derives.md = ..\docs\layers\derivation\what-stage-2a-derives.md
 		..\docs\layers\derivation\adminsdholder-catalogue-semantics.md = ..\docs\layers\derivation\adminsdholder-catalogue-semantics.md
 		..\docs\layers\derivation\adminsdholder-catalogue-implementation.md = ..\docs\layers\derivation\adminsdholder-catalogue-implementation.md
