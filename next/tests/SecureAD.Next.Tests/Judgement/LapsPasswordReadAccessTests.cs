@@ -242,6 +242,129 @@ public sealed class LapsPasswordReadAccessTests
     }
 
     /// <summary>
+    /// A well-known trustee that is keyed forest-wide, not under the domain it was captured from,
+    /// is still expanded — and does not poison the whole object.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The forest found this and the rest of this file did not.</b> The first run against
+    /// <c>ad.lab</c> asked for the expansion only at the trustee's captured domain. Well-known
+    /// principals are real objects under <c>CN=WellKnown Security Principals</c> in the forest root,
+    /// so they carry a domain — but the expansion keys them under the empty scope, so
+    /// <c>SYSTEM</c> answered <c>PrincipalNotFound</c> on nearly every computer and SEC-090 reported
+    /// <i>Indeterminate</i> across half the estate, hiding two real findings behind a rule that
+    /// looked broken.
+    /// </para>
+    /// <para>
+    /// Measured on 2026-09-03 against the derivation: <c>S-1-5-18</c>, <c>S-1-5-11</c>,
+    /// <c>S-1-1-0</c>, <c>S-1-5-9</c> and <c>S-1-5-10</c> expand only at the empty scope;
+    /// <c>S-1-5-32-544</c> and <c>S-1-5-32-548</c> only at a domain scope. Both directions have to
+    /// work, which is why this test answers on scope rather than on SID.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AForestWideTrusteeIsExpandedAtTheForestScope()
+    {
+        var verdict = new LapsPasswordReadAccess().Judge(
+            Computer(),
+            Context(
+                _ => Permissions(
+                    DescriptorAvailability.Read,
+                    [Allow("S-1-5-18", ReadProperty | ControlAccess, PasswordGuid)]),
+
+                // Exactly what the derivation does: this SID is keyed forest-wide, so asking
+                // under the domain the trustee was captured from finds nothing.
+                (sid, scope) => scope.Length == 0
+                    ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded, [])
+                    : new PrincipalExpansion(
+                        sid, PrincipalExpansionOutcome.PrincipalNotFound, null)));
+
+        Assert.Empty(verdict.Findings);
+
+        // The point of the test: SYSTEM contains nothing, and saying so is an answer. Leaving it
+        // unresolved marks the whole object unjudged and the whole rule Indeterminate.
+        Assert.Empty(verdict.Unresolved);
+    }
+
+    /// <summary>
+    /// A BUILTIN trustee, which carries no domain of its own, is expanded under the domain of the
+    /// object being judged.
+    /// </summary>
+    /// <remarks>
+    /// <b>The second half of the same defect, and it survived the first fix.</b> `S-1-5-32-544`
+    /// exists in every domain and means a different group in each, so the expansion keys it under a
+    /// domain — but the trustee has none, because the SID names no single captured object. What
+    /// settles it is that `BUILTIN\Administrators` in a computer's access control list is that
+    /// computer's domain's group. Measured against `ad.lab` on 2026-09-03: `S-1-5-32-544` expands
+    /// at `ba.ad.lab` and at no other scope.
+    /// </remarks>
+    [Fact]
+    public void ABuiltinTrusteeIsExpandedUnderTheJudgedObjectsDomain()
+    {
+        var verdict = new LapsPasswordReadAccess().Judge(
+            Computer(),
+            Context(
+                _ => Permissions(
+                    DescriptorAvailability.Read,
+                    [AllowWithoutDomain("S-1-5-32-544", ReadProperty | ControlAccess, PasswordGuid)]),
+                (sid, scope) => scope == Forest
+                    ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded, [])
+                    : new PrincipalExpansion(
+                        sid, PrincipalExpansionOutcome.PrincipalNotFound, null)));
+
+        Assert.Empty(verdict.Findings);
+        Assert.Empty(verdict.Unresolved);
+    }
+
+    /// <summary>
+    /// An object that yields a finding <i>and</i> a trustee that could not be expanded reports the
+    /// finding, and the finding says the answer is incomplete.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Losing either half is a real failure, and the forest showed both.</b> One access control
+    /// list can name a group that expands cleanly and, beside it, a principal this bundle never
+    /// captured. Reporting the finding alone presents a partial answer as a whole one — an operator
+    /// would fix the broad principal named and never know another may sit behind the trustee nobody
+    /// could expand.
+    /// </para>
+    /// <para>
+    /// <b>But returning both on the verdict costs the findings entirely.</b> The judging counts an
+    /// object carrying unresolved inputs as <i>not judged</i> and discards what it found: measured
+    /// against <c>ad.lab</c> on 2026-09-03, doing that turned two real findings into zero. So the
+    /// incompleteness travels on the finding, which is what
+    /// <c>LapsPasswordReaderEvidence.IsComplete</c> is for.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AFindingCarriesTheIncompletenessOfATrusteeThatCouldNotBeExpanded()
+    {
+        var verdict = new LapsPasswordReadAccess().Judge(
+            Computer(),
+            Context(
+                _ => Permissions(
+                    DescriptorAvailability.Read,
+                    [
+                        Allow(AuthenticatedUsers, ReadProperty | ControlAccess, PasswordGuid),
+                        Allow("S-1-5-21-9-9-9-4242", ReadProperty | ControlAccess, PasswordGuid),
+                    ]),
+                sid => sid == AuthenticatedUsers
+                    ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded, [])
+                    : new PrincipalExpansion(
+                        sid, PrincipalExpansionOutcome.PrincipalNotFound, null)));
+
+        var finding = Assert.Single(verdict.Findings);
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+
+        // The finding survives - and says its own answer may not be the whole one.
+        Assert.False(evidence.IsComplete);
+        Assert.Contains(
+            "Not every principal holding this access could be expanded",
+            finding.Detail,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A trustee from a trusted forest, which this bundle never captured, is unresolved rather than
     /// silently treated as not broad.
     /// </summary>
@@ -376,10 +499,19 @@ public sealed class LapsPasswordReadAccessTests
         Func<string, ObjectPermissions?> permissions,
         Func<string, PrincipalExpansion> expand,
         SchemaGuidCatalog? schema = null) =>
+        Context(permissions, (sid, _) => expand(sid), schema);
+
+    /// <summary>
+    /// The scope-aware form, for the tests that care which scope a principal is keyed under.
+    /// </summary>
+    private static JudgingContext Context(
+        Func<string, ObjectPermissions?> permissions,
+        Func<string, string, PrincipalExpansion> expand,
+        SchemaGuidCatalog? schema = null) =>
         JudgingContext.At(Started) with
         {
             Permissions = permissions,
-            MembersOfPrincipal = (sid, _) => expand(sid),
+            MembersOfPrincipal = (sid, scope) => expand(sid, scope),
             SchemaGuids = schema ?? Schema(),
         };
 
@@ -414,19 +546,27 @@ public sealed class LapsPasswordReadAccessTests
             Errors: []);
 
     private static PermissionEntry Allow(string sid, int mask, string? objectTypeGuid) =>
-        Entry("AccessAllowedObject", sid, mask, objectTypeGuid);
+        Entry("AccessAllowedObject", sid, mask, objectTypeGuid, Forest);
+
+    /// <summary>
+    /// An entry whose trustee has no domain, which is what a BUILTIN SID really looks like: it
+    /// names no single captured object, so nothing resolves a domain for it.
+    /// </summary>
+    private static PermissionEntry AllowWithoutDomain(
+        string sid, int mask, string? objectTypeGuid) =>
+        Entry("AccessAllowedObject", sid, mask, objectTypeGuid, domainFqdn: null);
 
     private static PermissionEntry Deny(string sid, int mask, string? objectTypeGuid) =>
-        Entry("AccessDeniedObject", sid, mask, objectTypeGuid);
+        Entry("AccessDeniedObject", sid, mask, objectTypeGuid, Forest);
 
     private static int _ordinal;
 
     private static PermissionEntry Entry(
-        string aceType, string sid, int mask, string? objectTypeGuid) =>
+        string aceType, string sid, int mask, string? objectTypeGuid, string? domainFqdn) =>
         new(
             _ordinal++,
             aceType,
-            new PermissionTrustee(sid, null, null, Forest, null, null, null),
+            new PermissionTrustee(sid, null, null, domainFqdn, null, null, null),
             mask,
             objectTypeGuid,
             InheritedObjectTypeGuid: null,

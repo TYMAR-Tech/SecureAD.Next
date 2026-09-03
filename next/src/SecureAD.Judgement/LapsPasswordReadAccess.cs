@@ -123,7 +123,7 @@ public sealed class LapsPasswordReadAccess : IRule
         if (subject.ObjectGuid is not { } objectGuid)
             return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
-        var findings = new List<Finding>();
+        var pending = new List<PendingFinding>();
         var unresolved = new List<UnresolvedInput>();
         var reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -131,16 +131,30 @@ public sealed class LapsPasswordReadAccess : IRule
         {
             foreach (var grant in EffectiveGrants(permissions, attribute.Guid!))
             {
-                Report(
-                    subject, objectGuid, expand, attribute.Name, grant, findings, unresolved,
-                    reported);
+                Collect(
+                    subject, expand, attribute.Name, grant, pending, unresolved, reported);
             }
         }
 
-        // Findings and an unresolved input are not exclusive: one trustee may expand cleanly while
-        // another is a principal from a trusted forest this bundle never captured. Reporting what
-        // was found while saying what could not be reached is the honest pair.
-        return unresolved.Count > 0 && findings.Count == 0
+        // WHETHER ANOTHER BROAD PRINCIPAL COULD BE HIDING IS A PROPERTY OF THE WHOLE OBJECT, not of
+        // the one expansion that produced a finding. A list naming a group that expands cleanly and,
+        // beside it, a principal this bundle never captured yields a true finding and an incomplete
+        // answer at the same time, and an operator who fixed only what was named would believe he
+        // was done.
+        //
+        // IT TRAVELS ON THE FINDING RATHER THAN AS AN UNRESOLVED INPUT because a verdict cannot
+        // carry both: the judging counts an object with unresolved inputs as not judged and
+        // discards its findings. Measured against ad.lab on 2026-09-03 - returning both turned two
+        // real findings into none. LapsPasswordReaderEvidence.IsComplete exists for exactly this.
+        var objectIsComplete = unresolved.Count == 0;
+
+        var findings = pending
+            .Select(p => Build(subject, objectGuid, p, p.Complete && objectIsComplete))
+            .ToList();
+
+        // Unresolved only where there is nothing to report. Where there is, the incompleteness has
+        // already been said on every finding, and saying it twice would cost the findings.
+        return findings.Count == 0 && unresolved.Count > 0
             ? RuleVerdict.CouldNotResolve(unresolved)
             : RuleVerdict.Judged(findings);
     }
@@ -237,15 +251,18 @@ public sealed class LapsPasswordReadAccess : IRule
     };
 
     /// <summary>
-    /// Expands one grant and records a finding for every broad principal it reaches.
+    /// Expands one grant and notes a pending finding for every broad principal it reaches.
     /// </summary>
-    private static void Report(
+    /// <remarks>
+    /// Nothing is built here, because whether the object's answer is complete is not known until
+    /// every grant on it has been walked.
+    /// </remarks>
+    private static void Collect(
         ObjectAttributes subject,
-        Guid objectGuid,
         Func<string, string, PrincipalExpansion> expand,
         string attribute,
         EffectiveGrant grant,
-        List<Finding> findings,
+        List<PendingFinding> pending,
         List<UnresolvedInput> unresolved,
         HashSet<string> reported)
     {
@@ -254,11 +271,11 @@ public sealed class LapsPasswordReadAccess : IRule
         if (grant.Rights is not LapsReadRights.Both)
             return;
 
-        var scope = grant.Trustee.DomainFqdn ?? string.Empty;
-        var expansion = expand(grant.Trustee.Sid, scope);
+        var expansion = MembersOfTrustee(expand, grant.Trustee, subject.DomainFqdn);
 
-        // A principal from a trusted external forest is not in this bundle, so nothing can be said
-        // about what is inside it. Not found is not "not broad".
+        // A principal from a trusted external forest, or one left behind by a deleted object, is not
+        // in this bundle, so nothing can be said about what is inside it. Not found is not
+        // "not broad".
         if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalNotFound)
         {
             unresolved.Add(new UnresolvedInput(
@@ -266,8 +283,7 @@ public sealed class LapsPasswordReadAccess : IRule
         }
         else if (expansion.Outcome is PrincipalExpansionOutcome.StoppedAtBudget)
         {
-            // Everything found is genuinely inside; the absence of anything else is not a fact. The
-            // findings below are still reported, and each records that the walk thinned out.
+            // Everything found is genuinely inside; the absence of anything else is not a fact.
             unresolved.Add(new UnresolvedInput(
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.MembershipIncomplete));
         }
@@ -277,26 +293,91 @@ public sealed class LapsPasswordReadAccess : IRule
         // this finding and would otherwise be the one case missed.
         if (BroadPrincipalCatalogue.IsBroad(grant.Trustee.Sid))
         {
-            Add(subject, objectGuid, attribute, grant, grant.Trustee.Sid, [grant.Trustee.Sid],
-                expansion.IsComplete, findings, reported);
+            Note(attribute, grant, grant.Trustee.Sid, [grant.Trustee.Sid],
+                expansion.IsComplete, pending, reported);
         }
 
         foreach (var member in expansion.BroadMembers)
         {
-            Add(subject, objectGuid, attribute, grant, member.Sid, member.PathFromRoot,
-                expansion.IsComplete && member.IsComplete, findings, reported);
+            Note(attribute, grant, member.Sid, member.PathFromRoot,
+                expansion.IsComplete && member.IsComplete, pending, reported);
         }
     }
 
-    private static void Add(
-        ObjectAttributes subject,
-        Guid objectGuid,
+    /// <summary>
+    /// Expands a trustee, asking at each scope a principal can be keyed under before concluding it
+    /// is absent.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A SID is unique within its scope, not within the forest</b>, so the expansion is keyed by
+    /// the pair — and which scope a given trustee lives under cannot be read off the trustee.
+    /// Measured against <c>ad.lab</c> on 2026-09-03: a domain-relative SID (<c>S-1-5-21-…</c>) is
+    /// keyed under the <i>empty</i> scope, because it is already unique across the forest; a
+    /// <c>BUILTIN</c> SID such as <c>S-1-5-32-544</c> is keyed under a <i>domain</i>, because that
+    /// same SID exists in every domain and means a different group in each.
+    /// </para>
+    /// <para>
+    /// <b>And a BUILTIN trustee carries no domain of its own</b>, because the SID names no single
+    /// captured object. What settles it is the object being judged: <c>BUILTIN\Administrators</c>
+    /// in a computer's access control list is that computer's domain's group, which is why the
+    /// subject's domain is one of the scopes tried.
+    /// </para>
+    /// <para>
+    /// <b>The forest found this and 2,973 green tests did not.</b> The first run against
+    /// <c>ad.lab</c> asked only at the trustee's captured domain, so every computer whose list named
+    /// <c>SYSTEM</c> or a domain group answered <c>PrincipalNotFound</c>: SEC-090 reported
+    /// <i>Indeterminate</i> over half the estate and buried two real findings behind a rule that
+    /// looked broken. This is what step 18 of <c>building-a-rule.md</c> exists for.
+    /// </para>
+    /// <para>
+    /// <b>Asking more than once can only turn "not found" into an answer</b>, never the reverse, so
+    /// it cannot manufacture a finding. What survives every scope is a principal this bundle does
+    /// not hold — a trustee from a trusted external forest, or one left behind by a deleted object —
+    /// and that stays unresolved, as it must.
+    /// </para>
+    /// </remarks>
+    private static PrincipalExpansion MembersOfTrustee(
+        Func<string, string, PrincipalExpansion> expand,
+        PermissionTrustee trustee,
+        string? subjectDomain)
+    {
+        // Most specific first. Nothing here can produce a wrong match: a domain-relative SID is
+        // unique across the forest, so asking under a domain it does not belong to simply answers
+        // not found. The only thing an extra scope can do is turn a false absence into an answer.
+        var scopes = new List<string>();
+
+        if (!string.IsNullOrEmpty(trustee.DomainFqdn))
+            scopes.Add(trustee.DomainFqdn);
+
+        if (!string.IsNullOrEmpty(subjectDomain) && !scopes.Contains(subjectDomain))
+            scopes.Add(subjectDomain);
+
+        scopes.Add(string.Empty);
+
+        PrincipalExpansion last = null!;
+
+        foreach (var scope in scopes)
+        {
+            last = expand(trustee.Sid, scope);
+
+            if (last.Outcome is not PrincipalExpansionOutcome.PrincipalNotFound)
+                return last;
+        }
+
+        return last;
+    }
+
+    /// <summary>
+    /// Notes one broad principal reached by one grant, deduplicated.
+    /// </summary>
+    private static void Note(
         string attribute,
         EffectiveGrant grant,
         string broadSid,
         IReadOnlyList<string> path,
         bool complete,
-        List<Finding> findings,
+        List<PendingFinding> pending,
         HashSet<string> reported)
     {
         // One finding per broad principal reached, not per attribute. Where an administrator used
@@ -305,21 +386,30 @@ public sealed class LapsPasswordReadAccess : IRule
         if (!reported.Add($"{grant.Trustee.Sid}|{broadSid}"))
             return;
 
-            var name =
-                AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
+        pending.Add(new PendingFinding(attribute, grant, broadSid, path, complete));
+    }
+
+    /// <summary>
+    /// Builds the finding, once the object's overall completeness is known.
+    /// </summary>
+    private static Finding Build(
+        ObjectAttributes subject, Guid objectGuid, PendingFinding p, bool complete)
+    {
+        var name =
+            AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
 
         var evidence = new LapsPasswordReaderEvidence(
-            grant.Trustee.Sid,
-            grant.Trustee.Name,
-            broadSid,
-            path,
-            attribute,
-            grant.Rights,
-            grant.Reach,
-            grant.InheritedFrom,
+            p.Grant.Trustee.Sid,
+            p.Grant.Trustee.Name,
+            p.BroadSid,
+            p.Path,
+            p.Attribute,
+            p.Grant.Rights,
+            p.Grant.Reach,
+            p.Grant.InheritedFrom,
             complete);
 
-        findings.Add(new Finding(
+        return new Finding(
             RuleId,
             RuleVersion,
             Severity.High,
@@ -330,8 +420,18 @@ public sealed class LapsPasswordReadAccess : IRule
             LapsAttributes.ClassOf(subject),
             Detail(name, evidence),
             subject.Completeness,
-            evidence));
+            evidence);
     }
+
+    /// <summary>
+    /// One broad principal reached, held until the object's overall completeness is known.
+    /// </summary>
+    private sealed record PendingFinding(
+        string Attribute,
+        EffectiveGrant Grant,
+        string BroadSid,
+        IReadOnlyList<string> Path,
+        bool Complete);
 
     /// <summary>What the operator is told.</summary>
     /// <remarks>
@@ -360,10 +460,15 @@ public sealed class LapsPasswordReadAccess : IRule
                 + "container high in the tree that may be deliberate, and is reported here as a "
                 + "fact rather than as an error.";
 
+        // Worded for both causes, because the evidence carries one flag and the finding must not
+        // name the wrong one. It is set either when this principal's own walk stopped at a budget,
+        // or when some other trustee holding the same access could not be expanded at all - and on
+        // ad.lab it was the second, so a sentence blaming the delegated principal's walk would have
+        // been false on the only two findings the forest produced.
         var thinned = evidence.IsComplete
             ? string.Empty
-            : " The membership walk did not reach everything nested inside the delegated "
-                + "principal, so further broad principals may also be inside and are not listed.";
+            : " Not every principal holding this access could be expanded, so further broad "
+                + "principals may also hold it and are not listed here.";
 
         return $"{name}'s LAPS password attribute {evidence.Attribute} can be read by "
             + $"{evidence.BroadPrincipalSid}, a principal that is broad in every organisation, "
