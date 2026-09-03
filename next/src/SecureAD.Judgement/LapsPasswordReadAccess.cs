@@ -123,16 +123,15 @@ public sealed class LapsPasswordReadAccess : IRule
         if (subject.ObjectGuid is not { } objectGuid)
             return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
-        var pending = new List<PendingFinding>();
+        var pending = new Dictionary<string, PendingFinding>(StringComparer.OrdinalIgnoreCase);
         var unresolved = new List<UnresolvedInput>();
-        var reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var attribute in attributes)
         {
             foreach (var grant in EffectiveGrants(permissions, attribute.Guid!))
             {
                 Collect(
-                    subject, expand, attribute.Name, grant, pending, unresolved, reported);
+                    subject, expand, attribute.Name, grant, pending, unresolved);
             }
         }
 
@@ -148,7 +147,7 @@ public sealed class LapsPasswordReadAccess : IRule
         // real findings into none. LapsPasswordReaderEvidence.IsComplete exists for exactly this.
         var objectIsComplete = unresolved.Count == 0;
 
-        var findings = pending
+        var findings = pending.Values
             .Select(p => Build(subject, objectGuid, p, p.Complete && objectIsComplete))
             .ToList();
 
@@ -262,9 +261,8 @@ public sealed class LapsPasswordReadAccess : IRule
         Func<string, string, PrincipalExpansion> expand,
         string attribute,
         EffectiveGrant grant,
-        List<PendingFinding> pending,
-        List<UnresolvedInput> unresolved,
-        HashSet<string> reported)
+        Dictionary<string, PendingFinding> pending,
+        List<UnresolvedInput> unresolved)
     {
         // A CONTROL_ACCESS-only grant is a fact and not a finding, per the owner's decision: it is
         // sensitive, and on its own it does not yield the password.
@@ -294,13 +292,13 @@ public sealed class LapsPasswordReadAccess : IRule
         if (BroadPrincipalCatalogue.IsBroad(grant.Trustee.Sid))
         {
             Note(attribute, grant, grant.Trustee.Sid, [grant.Trustee.Sid],
-                expansion.IsComplete, pending, reported);
+                expansion.IsComplete, pending);
         }
 
         foreach (var member in expansion.BroadMembers)
         {
             Note(attribute, grant, member.Sid, member.PathFromRoot,
-                expansion.IsComplete && member.IsComplete, pending, reported);
+                expansion.IsComplete && member.IsComplete, pending);
         }
     }
 
@@ -369,24 +367,41 @@ public sealed class LapsPasswordReadAccess : IRule
     }
 
     /// <summary>
-    /// Notes one broad principal reached by one grant, deduplicated.
+    /// Notes one broad principal reached, keeping the shortest route to it.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Keyed on the broad principal alone, and that is what the judgement store requires.</b> A
+    /// finding is identified by its rule, its subject and its object, so that an acceptance made
+    /// against it stays attached months later - and the subject here is the broad principal. Two
+    /// routes to the same principal on the same computer are therefore one finding, not two, and
+    /// emitting both aborts the whole judging on a uniqueness violation. That is not hypothetical:
+    /// it killed a full run of <c>ba.ad.lab</c> on 2026-09-03.
+    /// </para>
+    /// <para>
+    /// <b>The shortest route wins</b>, for the reason the expansion walks breadth first in the
+    /// first place: a shortest route is the link an operator would cut. Where two delegated groups
+    /// both reach <i>Domain Users</i>, showing the longer chain would send him to the wrong one.
+    /// </para>
+    /// </remarks>
     private static void Note(
         string attribute,
         EffectiveGrant grant,
         string broadSid,
         IReadOnlyList<string> path,
         bool complete,
-        List<PendingFinding> pending,
-        HashSet<string> reported)
+        Dictionary<string, PendingFinding> pending)
     {
-        // One finding per broad principal reached, not per attribute. Where an administrator used
-        // Set-LapsADReadPasswordPermission the same principal holds an entry on each attribute, and
-        // reporting the same exposure three times would treat one delegation as three problems.
-        if (!reported.Add($"{grant.Trustee.Sid}|{broadSid}"))
-            return;
+        var candidate = new PendingFinding(attribute, grant, broadSid, path, complete);
 
-        pending.Add(new PendingFinding(attribute, grant, broadSid, path, complete));
+        if (!pending.TryGetValue(broadSid, out var held))
+        {
+            pending[broadSid] = candidate;
+            return;
+        }
+
+        if (path.Count < held.Path.Count)
+            pending[broadSid] = candidate;
     }
 
     /// <summary>
@@ -413,7 +428,19 @@ public sealed class LapsPasswordReadAccess : IRule
             RuleId,
             RuleVersion,
             Severity.High,
-            new FindingSubject(FindingSubjectKind.Account, name),
+
+            // THE SUBJECT IS THE BROAD PRINCIPAL AND THE OBJECT IS THE MACHINE, settled by the
+            // owner on 2026-09-03. The grid then reads "Domain Users can read BAWK1", and - because
+            // a finding's identity is its rule, its subject and its object - each route is accepted
+            // on its own, so accepting one does not silently accept a different broad principal
+            // that appears later. It is also what makes several broad principals on one machine
+            // storable at all.
+            //
+            // THE SID IS IN THE KEY AND NOT ONLY THE NAME. "Domain Users" is not unique in a
+            // forest - this lab has three domains, each with its own - and two of them delegated on
+            // one machine would collide into one finding and lose the second. The name is first
+            // because that is what an administrator recognises.
+            new FindingSubject(FindingSubjectKind.Account, SubjectKeyFor(p.BroadSid)),
             objectGuid,
             subject.DistinguishedName,
             DnHelper.DnToFqdn(subject.DistinguishedName),
@@ -422,6 +449,15 @@ public sealed class LapsPasswordReadAccess : IRule
             subject.Completeness,
             evidence);
     }
+
+    /// <summary>
+    /// How a broad principal is named as the subject of a finding: the name it is known by, with
+    /// its security identifier, which is what makes the key unique and stable.
+    /// </summary>
+    private static string SubjectKeyFor(string sid) =>
+        BroadPrincipalCatalogue.NameOf(sid) is { } known
+            ? $"{known} ({sid})"
+            : sid;
 
     /// <summary>
     /// One broad principal reached, held until the object's overall completeness is known.
@@ -447,7 +483,6 @@ public sealed class LapsPasswordReadAccess : IRule
             ? "directly"
             : $"through {evidence.NestingDepth} nested group(s): "
                 + string.Join(" -> ", evidence.MembershipPath);
-
         var reach = evidence.Reach is LapsGrantReach.EveryAttribute
             ? "The entry carries no object type, so it reaches every attribute on this object "
                 + "rather than only the password - which is the blanket extended-rights grant "
@@ -471,7 +506,8 @@ public sealed class LapsPasswordReadAccess : IRule
                 + "principals may also hold it and are not listed here.";
 
         return $"{name}'s LAPS password attribute {evidence.Attribute} can be read by "
-            + $"{evidence.BroadPrincipalSid}, a principal that is broad in every organisation, "
+            + $"{BroadPrincipalCatalogue.NameOf(evidence.BroadPrincipalSid) ?? evidence.BroadPrincipalSid} "
+            + $"({evidence.BroadPrincipalSid}), a principal that is broad in every organisation, "
             + $"reached {route}. Reading it yields the machine's local administrator password, "
             + "which grants administrative control of the machine locally - with no domain "
             + $"authentication and nothing logged centrally. {reach} {scope} Cut the link in the "

@@ -43,9 +43,84 @@ public sealed class LapsPasswordReadAccessTests
     private const string Delegated = "S-1-5-21-1-2-3-1123";
     private const string Intermediate = "S-1-5-21-1-2-3-1145";
     private const string AuthenticatedUsers = "S-1-5-11";
+    private const string Everyone = "S-1-1-0";
 
     private const int ReadProperty = 0x10;
     private const int ControlAccess = 0x100;
+
+    /// <summary>
+    /// Two delegated groups that both reach the same broad principal produce one finding, by the
+    /// shortest route.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This aborted a whole audit of <c>ba.ad.lab</c> on 2026-09-03.</b> A finding is identified
+    /// by its rule, its subject and its object so that an acceptance stays attached across runs, and
+    /// the subject here is the broad principal. Two findings naming the same principal on the same
+    /// computer violate that identity, and the judging died on a uniqueness constraint rather than
+    /// reporting anything at all - so a defect in one rule took every other rule's results with it.
+    /// </para>
+    /// <para>
+    /// <b>The shortest route is kept</b>, for the reason the walk is breadth first: it is the link
+    /// an operator would cut, and showing the longer chain would send him to the wrong one.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TwoRoutesToTheSameBroadPrincipalAreOneFindingByTheShortestPath()
+    {
+        var finding = Assert.Single(Judge(
+            [
+                Allow("S-1-5-21-9-9-9-1000", ReadProperty | ControlAccess, PasswordGuid),
+                Allow("S-1-5-21-9-9-9-2000", ReadProperty | ControlAccess, PasswordGuid),
+            ],
+            sid => sid == "S-1-5-21-9-9-9-1000"
+
+                // The long way round: two hops.
+                ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded,
+                    [new ExpandedPrincipal(
+                        AuthenticatedUsers, Forest, [sid, Intermediate, AuthenticatedUsers], true)])
+
+                // The short way: one hop, and the one to report.
+                : new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded,
+                    [new ExpandedPrincipal(
+                        AuthenticatedUsers, Forest, [sid, AuthenticatedUsers], true)])));
+
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(2, evidence.MembershipPath.Count);
+        Assert.Equal("S-1-5-21-9-9-9-2000", evidence.TrusteeSid);
+    }
+
+    /// <summary>
+    /// Two <i>different</i> broad principals on one computer are two findings, and the subject of
+    /// each is the principal rather than the machine.
+    /// </summary>
+    /// <remarks>
+    /// Settled by the owner on 2026-09-03: each route is accepted separately, so accepting one does
+    /// not silence another that arrives later. The grid reads "Domain Users can read BAWK1".
+    /// </remarks>
+    [Fact]
+    public void TwoBroadPrincipalsOnOneComputerAreTwoFindingsSubjectedToThePrincipal()
+    {
+        var findings = Judge(
+            [
+                Allow(Everyone, ReadProperty | ControlAccess, PasswordGuid),
+                Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid),
+            ],
+            sid => sid == Everyone
+                ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded, [])
+                : new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded,
+                    [new ExpandedPrincipal(
+                        AuthenticatedUsers, Forest, [sid, AuthenticatedUsers], true)]));
+
+        Assert.Equal(2, findings.Count);
+
+        // The subject is the broad principal, not the computer - which is what makes both storable
+        // under the judgement store's identity for a finding.
+        Assert.Equal(2, findings.Select(f => f.Subject.Key).Distinct().Count());
+        Assert.All(findings, f => Assert.DoesNotContain("WS01", f.Subject.Key, StringComparison.Ordinal));
+        Assert.Contains(findings, f => f.Subject.Key.Contains("Everyone", StringComparison.Ordinal));
+    }
 
     /// <summary>
     /// A delegated group holding both rights, with a broad principal nested inside it, is reported -
