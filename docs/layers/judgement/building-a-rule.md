@@ -57,6 +57,31 @@ exists.
 
 ---
 
+## What is deliberately planted in `ad.lab` right now
+
+**Read this before treating anything below as a defect.** The owner's decision of 2026-09-03 is that
+these stay in place until the rules are built, so that one large verification can be run over all of
+them at the end rather than planting and unplanting per rule. **A capture of `ad.lab` therefore
+contains findings that are supposed to be there**, and a session that does not know this will read
+them as a broken rule, a broken capture, or a compromised forest.
+
+| Planted | By | What it is for |
+|---|---|---|
+| `SecureADLapsReaders` → `SecureADLapsMid` → `Domain Users`, with a scoped LAPS read delegation on `OU=Workstations,OU=BA Lab` | `Set-LabLapsDelegation.ps1` | SEC-090's nested path. Expect a High finding on every computer in that unit naming `Domain Users` at depth two |
+| `SecureADCycleTest-A` containing itself | `Test-LabOpenQuestions.ps1` | Active Directory permits a direct self-loop, measured 2026-09-03. It is **not** reported as a cycle, because the expander keeps a component only when it holds more than one principal |
+| `SecureADCycleTest-A → B → C → A`, with `SecureADCycleTest-U` in `C` | `Test-LabOpenQuestions.ps1` | A real membership cycle for the unbuilt cycle rule, and the measurement that a member of one group in a loop carries every group's SID |
+
+**Everything planted carries a `SecureAD` prefix**, and both scripts refuse to delete anything
+without it. `-Remove` on each returns the lab to clean.
+
+**Two findings in `ad.lab` are *not* planted and are real**: `BAWK1` and `BAMS1` grant `Everyone`
+read of the LAPS password through an entry carrying no object type. Those were there before any of
+this and are the estate's own.
+
+---
+
+---
+
 ## Why step 18 is not optional
 
 **On 2026-09-02 the forest found a Critical false finding that 2,819 green tests did not.** `SEC-021`
