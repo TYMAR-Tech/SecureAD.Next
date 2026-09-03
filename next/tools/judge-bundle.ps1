@@ -228,6 +228,25 @@ try {
             Write-Host ("objectClass          {0}" -f ($classes -join ', '))
             Write-Host ("userAccountControl   {0}" -f $(if ($control) { $control } else { '(not captured)' }))
 
+            # BOTH LAPS TIMESTAMPS, RAW AND DECODED. Added 2026-09-03 because a question about
+            # SEC-092 could not be settled without them: whether a machine carries one timestamp or
+            # two decides what its overdue span even means, and no other tool prints it. A rule's
+            # own finding text shows the value it chose, which is the one thing that cannot be used
+            # to check whether it chose correctly.
+            foreach ($laps in @('msLAPS-PasswordExpirationTime', 'ms-Mcs-AdmPwdExpirationTime')) {
+                $raw = ($subject.Attributes | Where-Object { $_.LdapDisplayName -eq $laps }).Values.Text
+
+                if (-not $raw) {
+                    Write-Host ("{0,-32} (absent)" -f $laps)
+                    continue
+                }
+
+                $decoded = [SecureAD.Evidence.Findings.LapsTimestamp]::Of($raw).ExpiresUtc
+
+                Write-Host ("{0,-32} {1}  =>  {2}" -f
+                    $laps, $raw, $(if ($null -ne $decoded) { $decoded.ToString('u') } else { '(undecodable)' }))
+            }
+
             $signals = [SecureAD.Evidence.Findings.DomainControllerSignals]::Of($subject)
 
             Write-Host ''
@@ -246,7 +265,16 @@ try {
             # overload rather than answering without them - so this reads the bundle's derivation
             # and hands it over. If there is none, that rule says so instead of being skipped
             # quietly, because silence from a rule reads as nothing found.
-            $derived = [SecureAD.Judgement.DerivedFacts]::None
+            #
+            # The reference time is the clock HERE and not in the judging, because this path
+            # explains one object rather than writing a judgement. Nothing records it, so nothing
+            # can later disagree with it. A rule judged through the -BundlePath path above takes
+            # its reference time from the run and is reproducible; this one is a diagnostic.
+            $asOf = [DateTimeOffset]::UtcNow
+            $protectedPrincipals = $null
+            $permissions = $null
+            $attributeVisibility = $null
+
             $openedDerivation = [SecureAD.Derivation.DerivationReader]::Open($BundlePath)
 
             if ($openedDerivation.IsSuccess) {
@@ -254,11 +282,24 @@ try {
                 $product = $storedDerivation.ProtectedPrincipals
 
                 if ($product.Availability -eq 'Available') {
-                    $derived = [SecureAD.Judgement.DerivedFacts]::new(
-                        $product.Value, [Func[string, SecureAD.Evidence.ObjectPermissions]] {
-                            param($dn) $bundle.ReadPermissions($dn) })
+                    $protectedPrincipals = $product.Value
+                    $permissions = [Func[string, SecureAD.Evidence.ObjectPermissions]] {
+                        param($dn) $bundle.ReadPermissions($dn) }
+                }
+
+                # Carried too, or every LAPS rule reports that it was handed nothing. This was
+                # missing until 2026-09-03 and made -Explain useless for SEC-091, SEC-092 and
+                # SEC-094 - the three rules whose whole question is what the schema permits.
+                $visibility = $storedDerivation.AttributeVisibility
+
+                if ($visibility.Availability -eq 'Available') {
+                    $attributeVisibility = $visibility.Value
                 }
             }
+
+            # Built in one call rather than with a `with` expression, which PowerShell cannot use.
+            $context = [SecureAD.Judgement.JudgingContext]::new(
+                $asOf, $protectedPrincipals, $permissions, $attributeVisibility)
 
             foreach ($rule in $rules) {
                 $definition = $rule.Definition
@@ -268,24 +309,32 @@ try {
                     continue
                 }
 
-                if ($definition.RequiredDerivedFacts.Count -gt 0 -and $null -eq $derived.ProtectedPrincipals) {
+                # Checked against what this rule actually declared. Testing only the protected
+                # principals said "not derived" for a LAPS rule on a bundle that had everything
+                # that rule needed, and said nothing for a protected-principals rule on a bundle
+                # that had only the visibility.
+                $missing = @($definition.RequiredDerivedFacts | Where-Object {
+                    ($_ -eq 'ProtectedPrincipals' -and $null -eq $context.ProtectedPrincipals) -or
+                    ($_ -eq 'AttributeVisibility' -and $null -eq $context.AttributeVisibility) })
+
+                if ($missing.Count -gt 0) {
                     Write-Host ("  {0,-10} needs {1}, which this bundle has not derived" -f
-                        $definition.Id, ($definition.RequiredDerivedFacts -join ', '))
+                        $definition.Id, ($missing -join ', '))
                     continue
                 }
 
                 # Invoked through the interface method by reflection, because PowerShell will not
                 # dispatch a default interface method - neither on the concrete type nor through a
-                # cast. Judge(subject, derived) is defaulted so a rule reading only captured
+                # cast. Judge(subject, context) is defaulted so a rule reading only captured
                 # attributes need not implement it, which is most of them, so this is the ordinary
                 # case rather than the exception.
                 $method = [SecureAD.Judgement.IRule].GetMethod(
                     'Judge',
                     [Type[]] @(
                         [SecureAD.Evidence.ObjectAttributes],
-                        [SecureAD.Judgement.DerivedFacts]))
+                        [SecureAD.Judgement.JudgingContext]))
 
-                $verdict = $method.Invoke($rule, @($subject, $derived))
+                $verdict = $method.Invoke($rule, @($subject, $context))
 
                 if ($verdict.Unresolved.Count -gt 0) {
                     Write-Host ("  {0,-10} could not decide - {1}" -f

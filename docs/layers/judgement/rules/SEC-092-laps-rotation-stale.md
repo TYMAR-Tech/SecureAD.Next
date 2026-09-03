@@ -18,7 +18,7 @@ an answer**. Three things were taken from it and one was rejected:
 | Fire when the stored expiration is at or before the reference time | Yes — this is the intent |
 | Sentinel values (null, zero, negative) are *never set*, not *stale* | Yes — §6 |
 | Its domain-controller exclusion matched `OU=Domain Controllers` in the DN | **No** — §5 |
-| Severity `High` | **No** — Medium, the owner's decision of 2026-09-04, §7 |
+| Severity `High` | **No** — Medium, the owner's decision of 2026-09-03, §7 |
 
 ## 1. What it finds
 
@@ -136,7 +136,7 @@ each of null, zero and negative (§10).
 
 ## 7. Severity
 
-**Decision: Medium.** The owner's, 2026-09-04.
+**Decision: Medium.** The owner's, 2026-09-03.
 
 The predecessor said `High`. That was not inherited, because severity should follow from what this
 rule establishes and this rule establishes less than SEC-091 does.
@@ -153,7 +153,7 @@ has stopped receiving policy.
 
 ## 8. How far past is stale
 
-**Decision: a 24-hour grace.** The owner's, 2026-09-04. A machine is reported when its expiration is
+**Decision: a 24-hour grace.** The owner's, 2026-09-03. A machine is reported when its expiration is
 more than 24 hours before the reference time.
 
 The predecessor fired the instant the expiration was at or before capture time, with no tolerance.
@@ -212,6 +212,8 @@ Negative controls, one per exclusion and one per boundary:
 - A timestamp lapsed by less than 24 hours is not reported.
 - A timestamp lapsed by exactly 24 hours is not reported, and one lapsed by a minute more is.
 - A null, a zero and a negative FILETIME are each not reported (three separate cases).
+- Where both timestamps have lapsed, the age is measured from the **newer** — see §11, which is
+  where that was learned.
 - An unreadable non-numeric value is not reported.
 - A disabled computer with a lapsed timestamp is not reported.
 - A domain controller with a lapsed timestamp is not reported.
@@ -220,7 +222,40 @@ Negative controls, one per exclusion and one per boundary:
 - Two judgings of the same bundle at different wall-clock times, with the same recorded reference
   time, produce identical findings.
 
-## 11. Verified against `ad.lab`
+## 11. Verified against `ad.lab`, 2026-09-03 — and it changed the rule
 
-Not yet. Step 18 of [building-a-rule](../building-a-rule.md) is not optional and this rule has not
-had it.
+Judging the sealed bundle `ad.lab-20260902-175041` ran all three LAPS rules over 14 computers with
+none unjudgeable, and `SEC-092` reported one machine. The exclusions held on the real objects that
+prompted them: `BADC` and `PHDC` (both `userAccountControl` 4098) silent, and `PHMS1` silent here
+while `SEC-094` reported it — its legacy expiry falls three weeks *after* the run, so nothing about
+it is stale.
+
+**But the finding carried a wrong number, and only the forest could have shown it.** `PHWK1` carries
+both timestamps:
+
+| Attribute | Raw FILETIME | Decoded | Age at 2026-09-03 |
+| --- | --- | --- | --- |
+| `msLAPS-PasswordExpirationTime` | 134126598388875149 | 2026-01-12 02:50:38Z | 234 days |
+| `ms-Mcs-AdmPwdExpirationTime` | 133894007684390633 | 2025-04-17 21:59:28Z | 503 days |
+
+The rule reported **503 days overdue**, having been written to report the older of two lapsed
+timestamps on the reasoning that it was the longer outage. That reasoning was wrong, and it is wrong
+for the reason `SEC-094` exists to state: **the legacy attribute is residue.** Microsoft's migration
+procedure removes the policy and the software and never clears the value, so `PHWK1`'s legacy
+timestamp stopped moving the day the machine migrated to Windows LAPS. The password went on rotating
+until January.
+
+**The newest lapsed expiration is the last moment anything was due to rotate this password**, so it
+is the only one an overdue span can honestly be measured from. Reporting the oldest overstated the
+outage by more than double. An overstated age is not a safe error: an operator triaging by age would
+put this machine above genuinely worse ones, and the number would not survive him checking it.
+
+**The tests did not catch this and could not have.** The rule and its test were written from the
+same belief, so `AMachineWhereBothTimestampsLapsedIsReportedOnce` asserted 400 days for exactly the
+reason the rule produced it. The mutation swapping oldest for newest *did* fail that test, which
+made the check look sound while it was measuring only its own premise — `F-S44-2` in
+[`.github/copilot-instructions.md`](../../../../.github/copilot-instructions.md), and the reason
+step 18 is not optional.
+
+Corrected the same day: the rule now measures from `dates.Max()`, and the test asserts 30 days and
+explicitly denies 400.

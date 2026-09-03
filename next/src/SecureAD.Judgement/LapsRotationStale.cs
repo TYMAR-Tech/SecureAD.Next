@@ -66,7 +66,7 @@ public sealed class LapsRotationStale : IRule
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>The owner's decision of 2026-09-04, and it is not zero for two documented reasons.</b>
+    /// <b>The owner's decision of 2026-09-03, and it is not zero for two documented reasons.</b>
     /// Microsoft's own procedure for forcing an early rotation, <c>Set-LapsADPasswordExpirationTime</c>,
     /// sets the expiration to the current time and lets the next policy cycle do the work - so a
     /// healthy machine is legitimately past due between those two moments. And a policy cycle is
@@ -170,8 +170,16 @@ public sealed class LapsRotationStale : IRule
         if (dates.Exists(d => d >= deadline))
             return RuleVerdict.Judged([]);
 
-        // The older of the two is the longer outage, and the one an operator should be told about.
-        var expired = dates.Min();
+        // THE NEWEST LAPSED EXPIRATION IS THE TRUE ONE, AND ad.lab PROVED IT ON 2026-09-03. PHWK1
+        // carried a modern timestamp 234 days past and a legacy one 503 days past, and reporting
+        // the older told the operator the password had not rotated in 503 days. It had: the legacy
+        // value is residue that stopped moving the day the machine migrated to Windows LAPS, which
+        // is the same fact SEC-094 exists to state. The newest expiration is the last moment
+        // anything was due to rotate this password, so it is the only one from which an overdue
+        // span can honestly be measured. Reporting the oldest overstated the outage by more than
+        // double, and an overstated age is not a conservative error - it is a wrong number an
+        // operator would act on.
+        var expired = dates.Max();
 
         if (subject.ObjectGuid is not { } objectGuid)
             return RuleVerdict.CouldNotJudge(["objectGUID"]);

@@ -101,7 +101,7 @@ public sealed class LapsRotationStaleTests
     /// A machine one hour past its expiration is not reported.
     /// </summary>
     /// <remarks>
-    /// <b>This is the grace, and it is the owner's decision of 2026-09-04.</b> Microsoft's own way
+    /// <b>This is the grace, and it is the owner's decision of 2026-09-03.</b> Microsoft's own way
     /// of forcing an early rotation sets the expiration to the current time and lets the next policy
     /// cycle act, and a Group Policy cycle can take two hours - so a healthy machine is legitimately
     /// past due for a short window. A rule with no tolerance reports every one of them.
@@ -165,10 +165,20 @@ public sealed class LapsRotationStaleTests
         }));
 
     /// <summary>
-    /// A machine where both timestamps have lapsed is reported once, naming the older.
+    /// A machine where both timestamps have lapsed is reported once, and the age is measured from
+    /// the newer.
     /// </summary>
+    /// <remarks>
+    /// <b>This test asserted the opposite until <c>ad.lab</c> corrected it on 2026-09-03.</b>
+    /// <c>PHWK1</c> carried a modern timestamp 234 days past and a legacy one 503 days past, and the
+    /// rule reported 503 - telling the operator the password had not rotated in over a year when it
+    /// had been rotating until January. The legacy value is residue that stopped moving when the
+    /// machine migrated, so only the newer expiration says when anything was last due to rotate.
+    /// The first version of this test encoded the same wrong belief as the rule, which is exactly
+    /// why a mutation swapping the two appeared to be caught.
+    /// </remarks>
     [Fact]
-    public void AMachineWhereBothTimestampsLapsedIsReportedOnce()
+    public void AMachineWhereBothTimestampsLapsedIsMeasuredFromTheNewer()
     {
         var finding = Assert.Single(Judge(Machine() with
         {
@@ -176,8 +186,8 @@ public sealed class LapsRotationStaleTests
             LegacyLapsExpiration = At(TimeSpan.FromDays(-400)),
         }));
 
-        // The older is the longer outage and the one worth telling an operator about.
-        Assert.Contains("400 days overdue", finding.Detail, StringComparison.Ordinal);
+        Assert.Contains("30 days overdue", finding.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("400 days overdue", finding.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>

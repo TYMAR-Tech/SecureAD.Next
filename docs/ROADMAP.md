@@ -395,7 +395,7 @@ The two rules were split on 2026-09-03, and the reason is not tidiness:
 Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md) and
 [`SEC-094`](layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md).
 
-**`SEC-092`, LAPS rotation stale. Specified 2026-09-04, built 2026-09-04. Not yet run against
+**`SEC-092`, LAPS rotation stale. Specified 2026-09-03, built 2026-09-03. Not yet run against
 `ad.lab`.**
 
 | Rule | Fires when | Severity |
@@ -409,7 +409,7 @@ stopped rotating passes both in silence: its timestamp is present, so `SEC-091` 
 is the right timestamp, so `SEC-094` says nothing. The local administrator password has become a
 static shared secret and the product reported a clean bill.
 
-**The 24-hour grace is the owner's decision of 2026-09-04**, and it is not caution. Microsoft's own
+**The 24-hour grace is the owner's decision of 2026-09-03**, and it is not caution. Microsoft's own
 way of forcing an early rotation, `Set-LapsADPasswordExpirationTime`, sets the expiration to the
 current time and lets the next policy cycle act — and a Group Policy cycle takes up to two hours. A
 rule with no tolerance reports every healthy machine caught in either window. Severity is Medium for

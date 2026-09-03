@@ -110,7 +110,7 @@ public sealed record JudgingContext(
     /// judging hands over.
     /// </summary>
     /// <remarks>
-    /// <b>This replaced a property named <c>None</c> on 2026-09-04.</b> A parameterless "nothing
+    /// <b>This replaced a property named <c>None</c> on 2026-09-03.</b> A parameterless "nothing
     /// here" could be written by a caller that had not thought about time, and a staleness rule
     /// handed one would have had to invent a reference point. Requiring the time to name itself
     /// means there is no such thing as a judging without one.

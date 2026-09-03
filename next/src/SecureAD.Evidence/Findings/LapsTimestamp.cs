@@ -52,7 +52,7 @@ public sealed record LapsTimestamp(string? Raw)
     /// so a caller that formats this value and labels the result UTC - which the LAPS rules and the
     /// inventory all do - prints a time that is wrong by the offset of whatever machine ran the
     /// audit. The instant was always right and the label was not, which is the kind of defect an
-    /// operator has no way to notice. Found 2026-09-04 while building SEC-092.
+    /// operator has no way to notice. Found 2026-09-03 while building SEC-092.
     /// <para>
     /// <b>No test on the development machine can observe this</b>, because that machine's local
     /// zone is UTC and the offset is therefore zero either way. The conversion is stated here
