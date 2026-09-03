@@ -395,6 +395,33 @@ The two rules were split on 2026-09-03, and the reason is not tidiness:
 Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md) and
 [`SEC-094`](layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md).
 
+**`SEC-092`, LAPS rotation stale. Specified 2026-09-04, built 2026-09-04. Not yet run against
+`ad.lab`.**
+
+| Rule | Fires when | Severity |
+|---|---|---|
+| `SEC-092` | a computer's LAPS expiration lapsed **more than 24 hours** before the reference time | Medium |
+
+Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
+
+**It closes a hole the other two leave open.** A machine that was onboarded correctly and has since
+stopped rotating passes both in silence: its timestamp is present, so `SEC-091` says nothing, and it
+is the right timestamp, so `SEC-094` says nothing. The local administrator password has become a
+static shared secret and the product reported a clean bill.
+
+**The 24-hour grace is the owner's decision of 2026-09-04**, and it is not caution. Microsoft's own
+way of forcing an early rotation, `Set-LapsADPasswordExpirationTime`, sets the expiration to the
+current time and lets the next policy cycle act — and a Group Policy cycle takes up to two hours. A
+rule with no tolerance reports every healthy machine caught in either window. Severity is Medium for
+the reason `SEC-091` is: the password is still unique to the machine, and only its freshness has
+lapsed.
+
+**This is the product's first temporal rule**, and it forced a decision that every later staleness
+rule inherits: `DerivedFacts` was renamed `JudgingContext` and given a non-nullable `AsOf`, so a rule
+is handed the same reference time the judgement records in `evaluation_as_of` and can no longer read
+the clock. Re-judging a sealed bundle next year therefore reproduces exactly these findings. That
+column had existed since the judgement store was written and nothing had ever used it.
+
 **Acceptance is per finding and suppression in the interface is per rule**, so an estate running
 Windows LAPS in legacy emulation mode deliberately must be able to silence the second without
 silencing the first. One rule carrying a state field makes that impossible. Same reasoning that kept

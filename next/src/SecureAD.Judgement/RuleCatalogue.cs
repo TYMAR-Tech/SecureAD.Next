@@ -38,5 +38,6 @@ public static class RuleCatalogue
         new KerberoastablePrivilegedAccount(),
         new WindowsLapsNotAppliedOnCapableComputer(),
         new LapsMissingOnComputer(),
+        new LapsRotationStale(),
     ];
 }

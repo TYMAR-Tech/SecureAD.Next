@@ -46,7 +46,20 @@ public sealed record LapsTimestamp(string? Raw)
     public bool IsPresent => Reading is not LapsTimestampReading.Absent;
 
     /// <summary>When the password is next expected to rotate, where that could be decoded.</summary>
-    public DateTimeOffset? ExpiresUtc => Decode(Raw);
+    /// <remarks>
+    /// <b>Converted to UTC, because <see cref="DateTimeOffset.FromFileTime"/> does not return
+    /// it.</b> That method yields the correct instant carried at the machine's <i>local</i> offset,
+    /// so a caller that formats this value and labels the result UTC - which the LAPS rules and the
+    /// inventory all do - prints a time that is wrong by the offset of whatever machine ran the
+    /// audit. The instant was always right and the label was not, which is the kind of defect an
+    /// operator has no way to notice. Found 2026-09-04 while building SEC-092.
+    /// <para>
+    /// <b>No test on the development machine can observe this</b>, because that machine's local
+    /// zone is UTC and the offset is therefore zero either way. The conversion is stated here
+    /// rather than left to each caller so that there is one place to be right.
+    /// </para>
+    /// </remarks>
+    public DateTimeOffset? ExpiresUtc => Decode(Raw)?.ToUniversalTime();
 
     /// <summary>Reads one raw attribute value.</summary>
     /// <param name="raw">The value as captured, or null.</param>

@@ -358,6 +358,7 @@ The table below sits between the two markers around it, so the test parses only 
 | SchemaAttributeReading | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | SchemaAttributeFlags | SecureAD.Kernel | [what-a-schema-guid-means](../layers/schema/what-a-schema-guid-means.md) |
 | LapsMissingOnComputer | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsRotationStale | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | WindowsLapsNotAppliedOnCapableComputer | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsAttributes | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsDeploymentEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |

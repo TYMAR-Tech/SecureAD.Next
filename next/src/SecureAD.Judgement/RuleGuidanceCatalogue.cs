@@ -332,9 +332,51 @@ public static class RuleGuidanceCatalogue
                 + "reaching it, a deliberate legacy emulation-mode configuration, or a machine "
                 + "that never took the April 2023 update. Machines too old for Windows LAPS are "
                 + "excluded on capability, since Microsoft never shipped it for them. Whether the "
-                + "legacy timestamp is recent or years stale is not judged here.",
+                + "legacy timestamp is recent or years stale is judged by SEC-092 rather than "
+                + "here.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/laps/laps-scenarios-migration"),
+
+        new RuleGuidance(
+            "SEC-092",
+            "Credentials",
+            MitreTechnique: null,
+            WhyItMatters:
+                "This machine's local administrator password should have been replaced by now and "
+                + "was not. Windows LAPS reads the expiration time from the directory on every "
+                + "policy cycle and rotates the password the moment it has passed, so a time still "
+                + "in the past means no cycle has completed since then. The password is still "
+                + "unique to this machine, which is worth something, but it has become a fixed "
+                + "secret: whatever exposure it has had since it was last set, it keeps. That is "
+                + "the half of LAPS that limits how long a recovered password stays useful, and it "
+                + "has stopped working here while the directory still looks as though it is "
+                + "managed.",
+            WhatToDo:
+                "Check that the LAPS policy still applies to this computer, that the machine can "
+                + "reach a domain controller, and that the LAPS agent is running - then read the "
+                + "LAPS event log on the machine itself, which is the only place the causes are "
+                + "distinguishable. If the machine has simply been switched off or is out of "
+                + "service, no action is needed and the finding will clear on its own once it "
+                + "comes back and completes one policy cycle. To force a rotation once the machine "
+                + "is healthy, Microsoft's Set-LapsADPasswordExpirationTime sets the expiration to "
+                + "now and the next cycle does the rest.",
+            About:
+                "Reports a computer whose stored LAPS expiration time passed more than a day ago, "
+                + "so the password it governs has not rotated. The one-day grace is deliberate: "
+                + "Microsoft's own way of forcing an early rotation sets the expiration to the "
+                + "current time and lets the next policy cycle act, and a policy cycle can take "
+                + "two hours, so a healthy machine is briefly past due by design. It never asserts "
+                + "a cause, because a policy that stopped reaching the machine, a failed agent, a "
+                + "machine that cannot reach a controller and a machine switched off for a month "
+                + "are identical in the directory - the finding gives the date and how far overdue "
+                + "it is so that a transient fault can be told from a machine nobody has managed "
+                + "in years. A machine carrying both timestamps is reported only if neither has "
+                + "rotated, since a fresh value proves something is still doing the job. Domain "
+                + "controllers and disabled accounts are out of scope for the reasons SEC-091 "
+                + "gives, and a machine carrying no timestamp at all is SEC-091's rather than this "
+                + "rule's. A timestamp dated far in the future is not judged here.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/windows-server/identity/laps/laps-concepts-overview"),
     ];
 
     /// <summary>The guidance for one rule, or null where none is written.</summary>
