@@ -190,6 +190,11 @@ public static class JudgingRun
             {
                 ProtectedPrincipals = product.Value,
                 Permissions = bundle.ReadPermissions,
+
+                // Not a derived fact and so not gated by a declaration: every bundle carries the
+                // schema rows, and a rule reading an object-specific access control entry cannot
+                // tell which attribute the entry names without them.
+                SchemaGuids = bundle.ReadSchemaGuids(),
             };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse

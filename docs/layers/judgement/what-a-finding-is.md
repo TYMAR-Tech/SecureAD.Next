@@ -72,6 +72,11 @@ records stay in Evidence because they are durable data rather than executable po
 | `LapsDeploymentEvidence` | Both LAPS timestamps as the directory stored them, with what the machine was capable of running |
 | `LapsTimestampReading` | Whether a timestamp was absent, present, or present and undecodable — three states the two rules must never collapse |
 | `LapsTimestamp` | One LAPS expiration timestamp as the directory stored it, with the single decoder the rules and the inventory both use |
+| `LapsPasswordReadAccess` | SEC-090 — a principal broad in every organisation that can read a machine's LAPS password, found by expanding whichever principal the delegation actually names |
+| `LapsPasswordAttributeCatalogue` | The three attributes that carry a LAPS password, in their own type so gate 4's exemption covers the table and not `LapsAttributes.Judgeability` |
+| `LapsPasswordReaderEvidence` | The broad principal, the membership path that reached it, the rights the entry carried and the scope it was inherited from |
+| `LapsReadRights` | Which of the two rights a confidential attribute needs the entry actually held — the distinction the predecessor's rule collapsed |
+| `LapsGrantReach` | Whether the entry names this attribute or reaches every attribute on the object, read from `ACE_OBJECT_TYPE_PRESENT` and not from a null GUID |
 
 <!-- TYPES:END -->
 

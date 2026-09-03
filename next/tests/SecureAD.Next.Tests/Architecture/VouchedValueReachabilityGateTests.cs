@@ -392,6 +392,12 @@ public sealed class VouchedValueReachabilityGateTests
     /// statements about the group. The per-member flag marks where a stopped walk left an
     /// unexplored subtree, so a reader can see the edge of the answer rather than infer it. Read
     /// true from a whole expansion and false from one stopped at a budget.
+    /// 45 from 2026-09-03 with <c>LapsPasswordReaderEvidence.IsComplete</c>, which SEC-090 needs
+    /// because the exposure it reports is found by walking group nesting. A walk that stopped at a
+    /// budget can find no broad principal while one is still inside, so a finding must be able to
+    /// say that the answer thinned out - and, just as importantly, a stored finding must carry that
+    /// statement forward, since the nesting lives in the derivation and cannot be re-walked from
+    /// the judgement store. Read true from a completed expansion and false from a truncated one.
     /// </para>
     /// </summary>
     [Fact]
@@ -399,7 +405,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(44, found.Count);
+        Assert.Equal(45, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");

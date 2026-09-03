@@ -154,6 +154,47 @@ public sealed class EvidenceKindCoverageTests
                 Assert.Equal("10.0 (20348)", e.Capability.Version);
                 Assert.True(e.Capability.IsServer);
             }),
+
+        // Deliberately awkward for the same reason: a broad principal reached at depth three, an
+        // entry that was inherited, and a walk that did not complete. A reader that dropped the
+        // path child table, that keyed the evidence off the nullable inherited_from column, or that
+        // stored the completeness as anything other than what was written, gives a different answer
+        // to at least one of these. The path is the part most worth pinning - it is the whole of
+        // what makes the finding actionable, and it is stored in a separate table.
+        new Sample(
+            Definition("SEC-090", "A broad principal can read LAPS passwords"),
+            "CN=WS01,OU=Workstations,DC=contoso,DC=com",
+            new LapsPasswordReaderEvidence(
+                TrusteeSid: "S-1-5-21-1004336348-1177238915-682003330-1123",
+                TrusteeName: "LAPS-Readers",
+                BroadPrincipalSid: "S-1-5-11",
+                MembershipPath:
+                [
+                    "S-1-5-21-1004336348-1177238915-682003330-1123",
+                    "S-1-5-21-1004336348-1177238915-682003330-1145",
+                    "S-1-5-11",
+                ],
+                Attribute: "msLAPS-Password",
+                Rights: LapsReadRights.Both,
+                Reach: LapsGrantReach.EveryAttribute,
+                InheritedFrom: "DC=contoso,DC=com",
+                ExpansionWasComplete: false),
+            read =>
+            {
+                var e = Assert.IsType<LapsPasswordReaderEvidence>(read);
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1123", e.TrusteeSid);
+                Assert.Equal("LAPS-Readers", e.TrusteeName);
+                Assert.Equal("S-1-5-11", e.BroadPrincipalSid);
+                Assert.Equal(3, e.MembershipPath.Count);
+                Assert.Equal("S-1-5-11", e.MembershipPath[^1]);
+                Assert.Equal(2, e.NestingDepth);
+                Assert.Equal("msLAPS-Password", e.Attribute);
+                Assert.Equal(LapsReadRights.Both, e.Rights);
+                Assert.True(e.CanReadThePassword);
+                Assert.Equal(LapsGrantReach.EveryAttribute, e.Reach);
+                Assert.Equal("DC=contoso,DC=com", e.InheritedFrom);
+                Assert.False(e.IsComplete);
+            }),
     ];
 
     /// <summary>

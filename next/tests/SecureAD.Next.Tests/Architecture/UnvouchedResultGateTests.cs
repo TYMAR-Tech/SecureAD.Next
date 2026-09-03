@@ -142,7 +142,7 @@ public sealed class UnvouchedResultGateTests
             "SchemaGuidCatalog", "CapturedAttributeCatalog", "ConnectionSecurityLadder",
             "BundleSchema", "GpoClientSideExtensionCatalog", "DirectoryTime",
             "WellKnownSidCatalog", "RuleCatalogue", "RuleGuidanceCatalogue",
-            "PrivilegedSidCatalogue",
+            "PrivilegedSidCatalogue", "LapsPasswordAttributeCatalogue",
         ];
 
     /// <summary>

@@ -38,6 +38,36 @@ public static class LapsAttributes
     public const string LegacyLapsExpiration = "ms-Mcs-AdmPwdExpirationTime";
 
     /// <summary>
+    /// <c>msLAPS-Password</c>: the Windows LAPS password in clear text, written only when
+    /// <c>ADPasswordEncryptionEnabled</c> is off.
+    /// </summary>
+    /// <remarks>
+    /// Microsoft's schema reference gives this attribute a <c>SearchFlags</c> value of 904, whose
+    /// constituent bits include <c>fCONFIDENTIAL</c> - which is what makes reading it need
+    /// <c>CONTROL_ACCESS</c> as well as <c>READ_PROPERTY</c>.
+    /// </remarks>
+    public const string WindowsLapsPassword = "msLAPS-Password";
+
+    /// <summary>
+    /// <c>msLAPS-EncryptedPassword</c>: where Windows LAPS writes the password instead when
+    /// encryption is on, which Microsoft both recommends and defaults to.
+    /// </summary>
+    /// <remarks>
+    /// <b>Watched because omitting it would report a well-configured estate as clean.</b> The
+    /// password is in one attribute or the other and never both, so a rule matching only
+    /// <see cref="WindowsLapsPassword"/> finds nothing on a forest following Microsoft's advice -
+    /// while a broad principal holds read access to the attribute actually carrying the secret.
+    /// Reading it is not the same as reading the password: decryption is governed by the
+    /// <c>ADPasswordEncryptionPrincipal</c> policy setting and never by the access control list.
+    /// </remarks>
+    public const string WindowsLapsEncryptedPassword = "msLAPS-EncryptedPassword";
+
+    /// <summary>
+    /// <c>ms-Mcs-AdmPwd</c>: the legacy Microsoft LAPS password, always in clear text.
+    /// </summary>
+    public const string LegacyLapsPassword = "ms-Mcs-AdmPwd";
+
+    /// <summary>
     /// The class both rules judge, tested as the object's <i>most derived</i> class.
     /// </summary>
     /// <remarks>

@@ -523,6 +523,51 @@ public sealed class JudgementWriter : IDisposable
                     });
                 return;
 
+            case LapsPasswordReaderEvidence readers:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_laps_password_reader (finding_id, trustee_sid, "
+                    + "trustee_name, broad_principal_sid, attribute, rights, reach, "
+                    + "inherited_from, expansion_was_complete) "
+                    + "VALUES ($id, $trustee, $name, $broad, $attribute, $rights, $reach, "
+                    + "$inherited, $complete)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue("$trustee", readers.TrusteeSid);
+                        command.Parameters.AddWithValue(
+                            "$name", (object?)readers.TrusteeName ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$broad", readers.BroadPrincipalSid);
+                        command.Parameters.AddWithValue("$attribute", readers.Attribute);
+                        command.Parameters.AddWithValue("$rights", readers.Rights.ToString());
+                        command.Parameters.AddWithValue("$reach", readers.Reach.ToString());
+                        command.Parameters.AddWithValue(
+                            "$inherited", (object?)readers.InheritedFrom ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$complete", readers.ExpansionWasComplete ? 1L : 0L);
+                    });
+
+                // The path, in order. Without it the finding names a broad principal and cannot say
+                // which link an operator would cut, which is the whole of P-123's third condition.
+                for (var ordinal = 0; ordinal < readers.MembershipPath.Count; ordinal++)
+                {
+                    var sid = readers.MembershipPath[ordinal];
+                    var position = ordinal;
+
+                    Execute(
+                        transaction,
+                        "INSERT INTO finding_laps_password_reader_path (finding_id, ordinal, sid) "
+                        + "VALUES ($id, $ordinal, $sid)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$ordinal", position);
+                            command.Parameters.AddWithValue("$sid", sid);
+                        });
+                }
+
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

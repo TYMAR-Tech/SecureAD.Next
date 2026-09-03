@@ -1,5 +1,6 @@
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Kernel.Schema;
 
 namespace SecureAD.Judgement;
 
@@ -116,12 +117,29 @@ public enum DerivedFactKind
 /// Expands one principal, given its SID and the scope that SID is unique within, to everything
 /// nested inside it. Null where the judging was not given a derivation to walk.
 /// </param>
+/// <param name="SchemaGuids">
+/// This forest's schema GUID catalogue, over the shipped one, or null where no bundle was opened.
+///
+/// <para>
+/// <b>A rule needs this to read an object-specific access control entry at all.</b> Such an entry
+/// names the attribute it is scoped to by <i>schema GUID</i> and never by name, so without the
+/// catalogue a rule cannot tell an entry limited to one attribute from an entry over another. It is
+/// not a derived fact and is therefore not a <see cref="DerivedFactKind"/>: every bundle carries the
+/// rows, and <c>docs/decisions/0014</c> settles that the answer states which layer it came from.
+/// </para>
+/// <para>
+/// <b>The captured layer is the one that matters here.</b> A forest that never ran
+/// <c>Update-LapsADSchema</c> has no LAPS attribute at all, and an answer from the shipped table
+/// would claim otherwise - which is the same mistake as reading a value out of a schema nobody read.
+/// </para>
+/// </param>
 public sealed record JudgingContext(
     DateTimeOffset AsOf,
     StoredProtectedPrincipalDerivation? ProtectedPrincipals,
     Func<string, ObjectPermissions?>? Permissions,
     StoredAttributeVisibility? AttributeVisibility,
-    Func<string, string, PrincipalExpansion>? MembersOfPrincipal)
+    Func<string, string, PrincipalExpansion>? MembersOfPrincipal,
+    SchemaGuidCatalog? SchemaGuids)
 {
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
@@ -134,5 +152,6 @@ public sealed record JudgingContext(
     /// means there is no such thing as a judging without one.
     /// </remarks>
     /// <param name="asOf">The reference time this judging is evaluated against.</param>
-    public static JudgingContext At(DateTimeOffset asOf) => new(asOf, null, null, null, null);
+    public static JudgingContext At(DateTimeOffset asOf) =>
+        new(asOf, null, null, null, null, null);
 }

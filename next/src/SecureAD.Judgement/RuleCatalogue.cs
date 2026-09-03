@@ -39,5 +39,6 @@ public static class RuleCatalogue
         new WindowsLapsNotAppliedOnCapableComputer(),
         new LapsMissingOnComputer(),
         new LapsRotationStale(),
+        new LapsPasswordReadAccess(),
     ];
 }

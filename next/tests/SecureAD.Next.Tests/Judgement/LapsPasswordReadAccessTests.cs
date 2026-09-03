@@ -1,0 +1,466 @@
+using SecureAD.Derivation;
+using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
+using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.Naming;
+using SecureAD.Kernel.Schema;
+using SecureAD.Kernel.Security;
+using Xunit;
+
+namespace SecureAD.Next.Tests.Judgement;
+
+/// <summary>
+/// SEC-090 against the cases its specification names.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>The negative controls are the rule.</b> A rule that reported every delegated principal would
+/// satisfy the positive test below and would report an entire estate - which is exactly what the
+/// predecessor's card did, and is the thing <c>P-123</c> exists to stop. Six of the tests here exist
+/// to fail if the rule ever starts claiming to know what an organisation intended.
+/// </para>
+/// <para>
+/// <b>These drive the rule directly rather than through a bundle</b>, because what is under test is
+/// the reading of a security descriptor against a group expansion, and both are handed over through
+/// <see cref="JudgingContext"/>. The whole-stage path is exercised by the shared evidence sample in
+/// <c>EvidenceKindCoverageTests</c>, which writes and reads this evidence kind through the store.
+/// </para>
+/// </remarks>
+public sealed class LapsPasswordReadAccessTests
+{
+    private static readonly DateTimeOffset Started = new(2026, 9, 3, 9, 0, 0, TimeSpan.Zero);
+
+    private const string Machine = "CN=WS01,OU=Workstations,DC=ad,DC=lab";
+    private const string Forest = "ad.lab";
+
+    private const string PasswordGuid = "53c5be7e-5403-4013-a04b-b22e05d0e3c1";
+    private const string EncryptedGuid = "f3531ec6-6330-4f8e-8d39-7a671fbac605";
+    private const string LegacyGuid = "2e0e4a88-f5fa-11df-b3af-001fc000a000";
+    private const string UnrelatedGuid = "bf967a0e-0de6-11d0-a285-00aa003049e2";
+
+    private const string Delegated = "S-1-5-21-1-2-3-1123";
+    private const string Intermediate = "S-1-5-21-1-2-3-1145";
+    private const string AuthenticatedUsers = "S-1-5-11";
+
+    private const int ReadProperty = 0x10;
+    private const int ControlAccess = 0x100;
+
+    /// <summary>
+    /// A delegated group holding both rights, with a broad principal nested inside it, is reported -
+    /// and the finding carries the path.
+    /// </summary>
+    [Fact]
+    public void ABroadPrincipalNestedInsideADelegatedGroupIsReported()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            Nested(Delegated, Intermediate, AuthenticatedUsers)));
+
+        Assert.Equal("SEC-090", finding.RuleId);
+        Assert.Equal(Severity.High, finding.Severity);
+
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+        Assert.Equal(Delegated, evidence.TrusteeSid);
+        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(LapsReadRights.Both, evidence.Rights);
+        Assert.True(evidence.IsComplete);
+
+        // P-123: naming the broad principal without the route does not tell an operator which link
+        // to cut. The path is the finding, so it is pinned here and in the detail text.
+        Assert.Equal([Delegated, Intermediate, AuthenticatedUsers], evidence.MembershipPath);
+        Assert.Equal(2, evidence.NestingDepth);
+        Assert.Contains(Intermediate, finding.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A delegation to a group containing only named administrators is silent.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the whole of <c>P-123</c> expressed as a test.</b> The predecessor's rule fired on
+    /// any principal outside a hard-coded administrator list, so this delegation would have been
+    /// reported as an "unexpected principal". Nothing in the directory says whether it is correct,
+    /// and only the organisation running the audit knows - so the product says nothing.
+    /// </remarks>
+    [Fact]
+    public void ANarrowDelegationToOrdinaryAdministratorsIsNotReported() =>
+        Assert.Empty(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            Nested(Delegated, "S-1-5-21-1-2-3-1500", "S-1-5-21-1-2-3-1501")));
+
+    /// <summary>
+    /// A grant of Read Property without Control Access is not reported.
+    /// </summary>
+    /// <remarks>
+    /// Microsoft: where Read Property is set on a confidential attribute, Active Directory
+    /// <i>also</i> requires Control Access. Without it the directory withholds the value, so
+    /// reporting this principal would say it can read a password it cannot.
+    /// </remarks>
+    [Fact]
+    public void ReadPropertyWithoutControlAccessIsNotReported() =>
+        Assert.Empty(Judge(
+            [Allow(Delegated, ReadProperty, PasswordGuid)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+    /// <summary>
+    /// A grant of Control Access without Read Property is not reported either.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the predecessor's defect, pinned.</b> Its query was
+    /// <c>(access_mask &amp; 256) != 0</c> and checked nothing else, so it reported exactly this
+    /// case. The owner's decision of 2026-09-03 is that such a grant is a stated fact and never a
+    /// finding.
+    /// </remarks>
+    [Fact]
+    public void ControlAccessWithoutReadPropertyIsNotReported() =>
+        Assert.Empty(Judge(
+            [Allow(Delegated, ControlAccess, PasswordGuid)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+    /// <summary>
+    /// An entry naming a different attribute's GUID is not reported.
+    /// </summary>
+    [Fact]
+    public void AnEntryScopedToAnotherAttributeIsNotReported() =>
+        Assert.Empty(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, UnrelatedGuid)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+    /// <summary>
+    /// An object entry carrying no object type reaches the attribute, and is reported as reaching
+    /// every attribute.
+    /// </summary>
+    /// <remarks>
+    /// <b>Read from <c>ACE_OBJECT_TYPE_PRESENT</c> and not from whether the GUID is null.</b> This
+    /// is the blanket extended-rights grant Microsoft tells administrators to hunt for on an
+    /// organizational unit, because holders of it can read every confidential attribute - and all
+    /// the LAPS password attributes are confidential.
+    /// </remarks>
+    [Fact]
+    public void AnEntryWithNoObjectTypeReachesTheAttribute()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, objectTypeGuid: null)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+        Assert.Equal(LapsGrantReach.EveryAttribute, evidence.Reach);
+    }
+
+    /// <summary>
+    /// A deny entry preceding the allow cancels it, and nothing is reported.
+    /// </summary>
+    /// <remarks>
+    /// Over-reporting here would tell a customer an exposure exists where the directory refuses the
+    /// read, which is the direction that must never happen.
+    /// </remarks>
+    [Fact]
+    public void ADenyBeforeTheAllowCancelsIt() =>
+        Assert.Empty(Judge(
+            [
+                Deny(Delegated, ReadProperty | ControlAccess, PasswordGuid),
+                Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid),
+            ],
+            Nested(Delegated, AuthenticatedUsers)));
+
+    /// <summary>
+    /// A deny <i>after</i> the allow does not cancel it, because Active Directory adds a deny only
+    /// for rights it has not already granted.
+    /// </summary>
+    /// <remarks>
+    /// <b>The opposite of the test above, and the reason <c>DaclWasCanonical</c> exists.</b> A
+    /// non-canonical DACL is more open than its entries read, and a rule that treated any deny as
+    /// cancelling would report this object as safe when the directory grants the read.
+    /// </remarks>
+    [Fact]
+    public void ADenyAfterTheAllowDoesNotCancelIt() =>
+        Assert.Single(Judge(
+            [
+                Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid),
+                Deny(Delegated, ReadProperty | ControlAccess, PasswordGuid),
+            ],
+            Nested(Delegated, AuthenticatedUsers)));
+
+    /// <summary>
+    /// A direct grant to a broad principal is reported, with a path of one.
+    /// </summary>
+    /// <remarks>
+    /// The expansion returns what is <i>inside</i> a principal, so the plainest form of this finding
+    /// is the one case a rule reading only the expansion would miss.
+    /// </remarks>
+    [Fact]
+    public void ADirectGrantToABroadPrincipalIsReported()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(AuthenticatedUsers, ReadProperty | ControlAccess, PasswordGuid)],
+            Nested(AuthenticatedUsers)));
+
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+        Assert.Equal([AuthenticatedUsers], evidence.MembershipPath);
+        Assert.Equal(0, evidence.NestingDepth);
+    }
+
+    /// <summary>
+    /// A truncated expansion that found a broad principal reports it, and says the answer thinned
+    /// out.
+    /// </summary>
+    [Fact]
+    public void ATruncatedExpansionSaysSo()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            _ => new PrincipalExpansion(
+                Delegated,
+                PrincipalExpansionOutcome.StoppedAtBudget,
+                [new ExpandedPrincipal(AuthenticatedUsers, Forest, [Delegated, AuthenticatedUsers], true)])));
+
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+        Assert.False(evidence.IsComplete);
+    }
+
+    /// <summary>
+    /// A truncated expansion that found no broad principal must not report the object clean.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty is not the same as safe unless the walk completed.</b> This is the case where a
+    /// silent rule would be actively misleading, so the verdict is that the input could not be
+    /// resolved rather than that nothing was found.
+    /// </remarks>
+    [Fact]
+    public void ATruncatedExpansionFindingNothingDoesNotReportClean()
+    {
+        var verdict = Verdict(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            _ => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.StoppedAtBudget, []));
+
+        Assert.Empty(verdict.Findings);
+        Assert.Contains(
+            verdict.Unresolved,
+            u => u.Reason == UnresolvedReason.MembershipIncomplete);
+    }
+
+    /// <summary>
+    /// A trustee from a trusted forest, which this bundle never captured, is unresolved rather than
+    /// silently treated as not broad.
+    /// </summary>
+    [Fact]
+    public void AnUncapturedTrusteeIsUnresolved()
+    {
+        var verdict = Verdict(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            _ => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.PrincipalNotFound, null));
+
+        Assert.Empty(verdict.Findings);
+        Assert.NotEmpty(verdict.Unresolved);
+    }
+
+    /// <summary>
+    /// An object whose security descriptor was never read is unresolved, not clean.
+    /// </summary>
+    /// <remarks>
+    /// A production domain returned 19,927 of 100,000 objects with no readable descriptor. Reporting
+    /// those as granting nothing would say an object is safe when nobody knows whether it is.
+    /// </remarks>
+    [Fact]
+    public void AnUnreadableDescriptorIsUnresolved()
+    {
+        var verdict = new LapsPasswordReadAccess().Judge(
+            Computer(),
+            Context(
+                _ => Permissions(DescriptorAvailability.Unreadable, []),
+                Nested(Delegated, AuthenticatedUsers)));
+
+        Assert.Empty(verdict.Findings);
+        Assert.Contains(
+            verdict.Unresolved,
+            u => u.Reason == UnresolvedReason.SecurityDescriptorUnreadable);
+    }
+
+    /// <summary>
+    /// A forest whose schema carries no LAPS attribute is not reported, machine by machine.
+    /// </summary>
+    /// <remarks>
+    /// No object in such a forest can carry a password, so there is nothing to be delegated read of.
+    /// That is a fact about the forest, and reporting every computer would report the estate for the
+    /// state of its schema.
+    /// </remarks>
+    [Fact]
+    public void AForestWithoutTheLapsSchemaIsNotReported()
+    {
+        var verdict = new LapsPasswordReadAccess().Judge(
+            Computer(),
+            Context(
+                _ => Permissions(
+                    DescriptorAvailability.Read,
+                    [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)]),
+                Nested(Delegated, AuthenticatedUsers),
+                schema: new SchemaGuidCatalog([])));
+
+        Assert.Empty(verdict.Findings);
+        Assert.Empty(verdict.Unresolved);
+    }
+
+    /// <summary>
+    /// A disabled computer account is not reported.
+    /// </summary>
+    [Fact]
+    public void ADisabledComputerIsNotReported() =>
+        Assert.Empty(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            Nested(Delegated, AuthenticatedUsers),
+            userAccountControl: 4098));
+
+    /// <summary>
+    /// One delegation reaching one broad principal across all three attributes is one finding.
+    /// </summary>
+    /// <remarks>
+    /// <c>Set-LapsADReadPasswordPermission</c> grants across the LAPS password attributes as a set,
+    /// so the same principal holds an entry on each. Reporting three findings would present one
+    /// delegation as three problems.
+    /// </remarks>
+    [Fact]
+    public void OneDelegationAcrossThreeAttributesIsOneFinding() =>
+        Assert.Single(Judge(
+            [
+                Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid),
+                Allow(Delegated, ReadProperty | ControlAccess, EncryptedGuid),
+                Allow(Delegated, ReadProperty | ControlAccess, LegacyGuid),
+            ],
+            Nested(Delegated, AuthenticatedUsers)));
+
+    /// <summary>
+    /// The rule declares the expansion it reads, so a judging without it is refused before it
+    /// starts rather than reporting per-object silence.
+    /// </summary>
+    [Fact]
+    public void TheRuleDeclaresTheExpansionAndRefusesWithoutIt()
+    {
+        var rule = new LapsPasswordReadAccess();
+
+        Assert.Contains(
+            nameof(DerivedFactKind.PrincipalExpansion), rule.Definition.RequiredDerivedFacts);
+
+        Assert.Throws<InvalidOperationException>(() => rule.Judge(Computer()));
+    }
+
+    private static IReadOnlyList<Finding> Judge(
+        IReadOnlyList<PermissionEntry> entries,
+        Func<string, PrincipalExpansion> expand,
+        uint userAccountControl = 4096) =>
+        Verdict(entries, expand, userAccountControl).Findings;
+
+    private static RuleVerdict Verdict(
+        IReadOnlyList<PermissionEntry> entries,
+        Func<string, PrincipalExpansion> expand,
+        uint userAccountControl = 4096) =>
+        new LapsPasswordReadAccess().Judge(
+            Computer(userAccountControl),
+            Context(_ => Permissions(DescriptorAvailability.Read, entries), expand));
+
+    /// <summary>
+    /// An expansion that puts everything after the first named principal inside the first.
+    /// </summary>
+    private static Func<string, PrincipalExpansion> Nested(string root, params string[] members) =>
+        _ => new PrincipalExpansion(
+            root,
+            PrincipalExpansionOutcome.Expanded,
+            [
+                .. members.Select((sid, i) => new ExpandedPrincipal(
+                    sid, Forest, [root, .. members.Take(i + 1)], true)),
+            ]);
+
+    private static JudgingContext Context(
+        Func<string, ObjectPermissions?> permissions,
+        Func<string, PrincipalExpansion> expand,
+        SchemaGuidCatalog? schema = null) =>
+        JudgingContext.At(Started) with
+        {
+            Permissions = permissions,
+            MembersOfPrincipal = (sid, _) => expand(sid),
+            SchemaGuids = schema ?? Schema(),
+        };
+
+    /// <summary>
+    /// The three LAPS password attributes as this forest's own schema would name them.
+    /// </summary>
+    private static SchemaGuidCatalog Schema() => new(
+    [
+        new SchemaGuidEntry(
+            PasswordGuid, "msLAPS-Password", SchemaGuidKind.Attribute, SchemaGuidSource.Captured),
+        new SchemaGuidEntry(
+            EncryptedGuid,
+            "msLAPS-EncryptedPassword",
+            SchemaGuidKind.Attribute,
+            SchemaGuidSource.Captured),
+        new SchemaGuidEntry(
+            LegacyGuid, "ms-Mcs-AdmPwd", SchemaGuidKind.Attribute, SchemaGuidSource.Captured),
+    ]);
+
+    private static ObjectPermissions Permissions(
+        DescriptorAvailability availability, IReadOnlyList<PermissionEntry> entries) =>
+        new(
+            Machine,
+            availability,
+            availability is DescriptorAvailability.Unreadable ? "access denied" : null,
+            Owner: null,
+            availability is DescriptorAvailability.Read ? DaclState.Present : DaclState.Unreadable,
+            DaclCompleteness.Complete,
+            DaclWasCanonical: true,
+            IsDaclProtected: false,
+            entries,
+            Errors: []);
+
+    private static PermissionEntry Allow(string sid, int mask, string? objectTypeGuid) =>
+        Entry("AccessAllowedObject", sid, mask, objectTypeGuid);
+
+    private static PermissionEntry Deny(string sid, int mask, string? objectTypeGuid) =>
+        Entry("AccessDeniedObject", sid, mask, objectTypeGuid);
+
+    private static int _ordinal;
+
+    private static PermissionEntry Entry(
+        string aceType, string sid, int mask, string? objectTypeGuid) =>
+        new(
+            _ordinal++,
+            aceType,
+            new PermissionTrustee(sid, null, null, Forest, null, null, null),
+            mask,
+            objectTypeGuid,
+            InheritedObjectTypeGuid: null,
+            IsInherited: false,
+            InheritanceFlags: 0,
+            PropagationFlags: 0,
+            HasObjectType: objectTypeGuid is not null,
+            HasInheritedObjectType: false,
+            ApplicationData: []);
+
+    private static ObjectAttributes Computer(uint userAccountControl = 4096) => new(
+        Machine,
+        Guid.NewGuid(),
+        Started,
+        EvidenceCompleteness.Complete,
+        [
+            new ObjectAttribute(
+                "objectClass",
+                AttributeCardinality.MultiValued,
+                [
+                    new AttributeValue(0, "top", null),
+                    new AttributeValue(1, "person", null),
+                    new AttributeValue(2, "organizationalPerson", null),
+                    new AttributeValue(3, "user", null),
+                    new AttributeValue(4, "computer", null),
+                ]),
+            new ObjectAttribute(
+                "userAccountControl",
+                AttributeCardinality.SingleValued,
+                [new AttributeValue(0, userAccountControl.ToString(), null)]),
+            new ObjectAttribute(
+                "sAMAccountName",
+                AttributeCardinality.SingleValued,
+                [new AttributeValue(0, "WS01$", null)]),
+        ],
+        Forest);
+}

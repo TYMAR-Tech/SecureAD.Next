@@ -587,7 +587,16 @@ public sealed class JudgementReader : IDisposable
         l.capability_kind                   AS l_capability_kind,
         l.capability_basis                  AS l_capability_basis,
         l.operating_system                  AS l_operating_system,
-        l.operating_system_version          AS l_operating_system_version
+        l.operating_system_version          AS l_operating_system_version,
+        r.trustee_sid                       AS r_trustee_sid,
+        r.trustee_name                      AS r_trustee_name,
+        r.broad_principal_sid               AS r_broad_principal_sid,
+        r.attribute                         AS r_attribute,
+        r.rights                            AS r_rights,
+        r.reach                             AS r_reach,
+        r.inherited_from                    AS r_inherited_from,
+        r.expansion_was_complete            AS r_expansion_was_complete,
+        r.finding_id                        AS r_finding_id
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -599,6 +608,7 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_privileged_sid_history h ON h.finding_id = f.finding_id
         LEFT JOIN finding_kerberoastable_account k ON k.finding_id = f.finding_id
         LEFT JOIN finding_laps_deployment l ON l.finding_id = f.finding_id
+        LEFT JOIN finding_laps_password_reader r ON r.finding_id = f.finding_id
         """;
 
     /// <summary>
@@ -641,6 +651,12 @@ public sealed class JudgementReader : IDisposable
         // finding says - so either of them as the discriminator would drop every SEC-091 finding
         // into the "no evidence" branch below and throw on a finding that is intact.
         var lapsCapability = reader.GetOrdinal("l_capability_kind");
+
+        // trustee_sid, because it is NOT NULL on any row that exists. inherited_from and
+        // trustee_name are both legitimately null - an entry set directly on the object has no
+        // inherited scope, and a well-known or foreign-forest trustee has no name in this bundle -
+        // so either would drop an intact finding into the "no evidence" branch. This is P-112.
+        var lapsReaderTrustee = reader.GetOrdinal("r_trustee_sid");
 
         FindingEvidence evidence;
 
@@ -706,6 +722,23 @@ public sealed class JudgementReader : IDisposable
                     reader.IsDBNull(name) ? null : reader.GetString(name),
                     reader.IsDBNull(version) ? null : reader.GetString(version)));
         }
+        else if (!reader.IsDBNull(lapsReaderTrustee))
+        {
+            var findingId = reader.GetInt64(reader.GetOrdinal("r_finding_id"));
+            var trusteeName = reader.GetOrdinal("r_trustee_name");
+            var inheritedFrom = reader.GetOrdinal("r_inherited_from");
+
+            evidence = new LapsPasswordReaderEvidence(
+                reader.GetString(lapsReaderTrustee),
+                reader.IsDBNull(trusteeName) ? null : reader.GetString(trusteeName),
+                reader.GetString(reader.GetOrdinal("r_broad_principal_sid")),
+                MembershipPaths.TryGetValue(findingId, out var path) ? path : [],
+                reader.GetString(reader.GetOrdinal("r_attribute")),
+                Enum.Parse<LapsReadRights>(reader.GetString(reader.GetOrdinal("r_rights"))),
+                Enum.Parse<LapsGrantReach>(reader.GetString(reader.GetOrdinal("r_reach"))),
+                reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
+                reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete")) != 0);
+        }
         else
         {
             throw new InvalidOperationException(
@@ -713,7 +746,6 @@ public sealed class JudgementReader : IDisposable
                 + "with no evidence row, so what it rests on has been lost. A finding that cannot "
                 + "say what it rests on must not be presented as one.");
         }
-
         return new Finding(
             ruleId,
             versions[ruleId],
@@ -767,6 +799,21 @@ public sealed class JudgementReader : IDisposable
             + "ORDER BY finding_id, ordinal");
 
     private Dictionary<long, List<string>>? _servicePrincipalNames;
+
+    /// <summary>
+    /// Every stored membership path, by the finding it belongs to, in path order.
+    /// </summary>
+    /// <remarks>
+    /// Read once for the store and sorted by ordinal, for the reason the other child tables are: a
+    /// join would multiply the finding by the length of its path, so a broad principal reached at
+    /// depth six would appear six times in the grid.
+    /// </remarks>
+    private Dictionary<long, List<string>> MembershipPaths =>
+        _membershipPaths ??= ReadChildValues(
+            "SELECT finding_id, sid FROM finding_laps_password_reader_path "
+            + "ORDER BY finding_id, ordinal");
+
+    private Dictionary<long, List<string>>? _membershipPaths;
 
     private Dictionary<long, List<string>> ReadChildValues(string sql)
     {

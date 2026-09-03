@@ -370,6 +370,11 @@ The table below sits between the two markers around it, so the test parses only 
 | LapsDeploymentEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsTimestampReading | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsTimestamp | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsPasswordReadAccess | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsPasswordAttributeCatalogue | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsPasswordReaderEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsReadRights | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsGrantReach | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsComputer | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | LapsManagement | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | LapsPage | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |

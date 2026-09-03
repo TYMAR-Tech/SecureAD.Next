@@ -404,6 +404,27 @@ Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-comput
 
 Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
 
+**`SEC-090`, who can read LAPS passwords. Specified 2026-09-03, built 2026-09-03. Not yet run
+against `ad.lab`.**
+
+| Rule | Fires when | Severity |
+|---|---|---|
+| `SEC-090` | a principal **broad in every organisation** appears in the fully expanded set of principals holding read access to a LAPS password attribute | High |
+
+Specified in [`SEC-090`](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).
+
+**It is the first rule to read a security descriptor against the group expansion**, and it is the
+first of the four consumers `P-124` names to be built. What it asserts is deliberately narrow: the
+product cannot know which principals an organisation intended to hold LAPS read access, so it
+reports only broadness — which needs no local knowledge — states the inherited scope as a fact, and
+carries the membership path so an operator can see which link to cut.
+
+**Two places it departs from the predecessor's card, both on Microsoft's authority.** Reading a
+confidential attribute requires `READ_PROPERTY` *and* `CONTROL_ACCESS`, and the old evaluator tested
+the second alone, so it named principals who cannot retrieve the password. And its `T1003.003` tag
+describes credential dumping from the domain database, which reading a LAPS password is not; no
+technique is claimed rather than a wrong one asserted.
+
 **It closes a hole the other two leave open.** A machine that was onboarded correctly and has since
 stopped rotating passes both in silence: its timestamp is present, so `SEC-091` says nothing, and it
 is the right timestamp, so `SEC-094` says nothing. The local administrator password has become a

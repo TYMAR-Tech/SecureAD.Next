@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 9;
+    public const int Version = 10;
 
     private static readonly string[] TableDdl =
     [
@@ -360,6 +360,62 @@ public static class JudgementSchema
             operating_system                    TEXT        NULL,
             operating_system_version            TEXT        NULL,
             PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // What SEC-090 rested on: a principal broad in every organisation that can read a machine's
+        // LAPS password, and the access control entry that let it.
+        //
+        // ONE ROW PER BROAD PRINCIPAL REACHED, NOT PER ENTRY. An operator's question is "who can
+        // read this password", and one delegation can reach two broad principals by two routes.
+        // Collapsing them to the entry would hide one of the answers.
+        //
+        // RIGHTS IS NOT A BOOLEAN, BECAUSE THREE OF ITS FOUR STATES ARE NOT FINDINGS. Microsoft
+        // requires READ_PROPERTY *and* CONTROL_ACCESS to read a confidential attribute, and all the
+        // LAPS password attributes are confidential. The predecessor tested the second alone and so
+        // named principals who cannot retrieve the password. Storing which rights were actually
+        // held is what lets a reader see that distinction rather than trust it.
+        //
+        // REACH DISTINGUISHES AN ENTRY NAMING THIS ATTRIBUTE FROM ONE OVER EVERY ATTRIBUTE, and it
+        // comes from ACE_OBJECT_TYPE_PRESENT rather than from whether the GUID is null. Those are
+        // different questions; conflating them reports the wrong population in both directions.
+        //
+        // INHERITED_FROM IS A FACT AND NOT A VERDICT. A grant inherited from the domain root may be
+        // deliberate - the customer configuration that prompted P-123 is exactly that - so the
+        // scope is recorded and left for the operator to recognise.
+        //
+        // EXPANSION_WAS_COMPLETE IS WHY AN EMPTY RESULT IS NOT REASSURANCE. A walk that stopped at a
+        // budget can find no broad principal while one is still inside.
+        //
+        // TRUSTEE_SID IS NOT NULL AND IS THE DISCRIMINATOR, per P-112: a row that exists always has
+        // one, so the reader never keys this evidence kind off a legitimately null column.
+        """
+        CREATE TABLE finding_laps_password_reader (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            trustee_sid                         TEXT    NOT NULL,
+            trustee_name                        TEXT        NULL,
+            broad_principal_sid                 TEXT    NOT NULL,
+            attribute                           TEXT    NOT NULL,
+            rights                              TEXT    NOT NULL,
+            reach                               TEXT    NOT NULL,
+            inherited_from                      TEXT        NULL,
+            expansion_was_complete              INTEGER NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // The membership path, one SID per row, from the delegated principal down to the broad one.
+        //
+        // THE PATH IS THE FINDING AND NOT AN ORNAMENT. At depth six, naming the broad principal does
+        // not tell an operator which link to cut, which is why P-123 requires the path outright. A
+        // stored conclusion without it would be unactionable, and the expansion is not repeatable
+        // from the judgement store alone - the nesting lives in the derivation.
+        """
+        CREATE TABLE finding_laps_password_reader_path (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            ordinal                             INTEGER NOT NULL,
+            sid                                 TEXT    NOT NULL,
+            PRIMARY KEY (finding_id, ordinal)
         )
         """,
     ];
