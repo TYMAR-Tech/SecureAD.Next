@@ -49,6 +49,7 @@ evidence. No rule consumes what it produces yet.
 | `StoredAttributeVisibilityProduct` | Availability carried beside the readable product |
 | `NestingCycleAvailability` | Whether the store has an answer about membership cycles, and if not, why not |
 | `StoredNestingCycleProduct` | Groups that contain one another, with the availability that says whether the list is all of them |
+| `BroadPrincipalCatalogue` | Which principals are too broad to hold a sensitive right, by SID rather than by name |
 | `CapturedSchemaAttributeReader` | Reads the schema partition's attribute definitions out of sealed evidence, so the phase contacts no directory |
 | `SchemaAttributeDefinition` | One attribute definition as capture stored it |
 | `SchemaAttributeReading` | Those definitions with whether the schema partition was read at all, so emptiness cannot be mistaken for a forest that withholds nothing |
