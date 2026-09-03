@@ -15,15 +15,25 @@ an answer**. Three things were taken from it and one was rejected:
 
 | From the card | Taken? |
 | --- | --- |
-| Fire when the stored expiration is at or before the reference time | Yes — this is the intent |
+| Fire when the stored expiration is at or before the reference time | **Partly** — the intent, but with a 24-hour grace (§8) and measured from the *newest* lapsed timestamp, which `ad.lab` forced (§11) |
 | Sentinel values (null, zero, negative) are *never set*, not *stale* | Yes — §6 |
 | Its domain-controller exclusion matched `OU=Domain Controllers` in the DN | **No** — §5 |
 | Severity `High` | **No** — Medium, the owner's decision of 2026-09-03, §7 |
 
 ## 1. What it finds
 
-A computer account that carries a LAPS password-expiration timestamp which decodes to an instant
-**at or before the judging's reference time**, and which is still there at capture.
+A computer account carrying a LAPS password-expiration timestamp that decodes to an instant **more
+than 24 hours before the judging's reference time**, where no other timestamp on that object is
+still in the future.
+
+Two qualifications are load-bearing and each has its own section, because the plain reading of that
+sentence is wrong in a way that produces false or overstated findings:
+
+- **The 24-hour grace** (§8), without which a healthy machine mid-rotation is reported.
+- **Where a machine carries both timestamps**, any fresh one clears it, and the overdue span is
+  measured from the **newest** lapsed value (§11). The legacy attribute is residue that stops moving
+  at migration, so measuring from the oldest overstates the outage — on `ad.lab` by more than
+  double.
 
 Microsoft states the mechanism plainly:
 
