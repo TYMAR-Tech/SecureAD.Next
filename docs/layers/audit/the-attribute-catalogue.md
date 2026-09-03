@@ -275,6 +275,24 @@ LAPS product it is capable of running:
 | flags | SingleValued | Text | E21 | Whether the computer or user half of the policy is disabled, so a setting that is present but never applied is not reported as applied |
 | versionNumber | SingleValued | Text | E21 | Whether the directory half and the SYSVOL half of the policy agree. They can disagree, and when they do the policy's effect is not what either half says |
 | gPCMachineExtensionNames | MultiValued | Text | B20, SEC-083 | Which kinds of setting the policy declares it contains, read by `GpoClientSideExtensions.ParseCseGuids`. The SYSVOL read does not narrow by it: what a workstation applies is the files on the share, so `S-33` lists those instead. Kept because a policy whose declared extensions and actual files disagree is worth being able to ask about |
+| gPCWQLFilter | SingleValued | Text | E21 | The WMI filter this policy requires a machine to satisfy, held as the filter's GUID and namespace path. Without it a bundle cannot distinguish a policy with no filter from one nobody looked at, so a GPO-scoped finding could only warn that some filter might exist ([`0094`](../../decisions/0094-a-wmi-filter-is-captured-and-named-never-evaluated.md)) |
+
+### `msWMI-Som`
+
+A WMI filter. Microsoft describes the class as refining *"a Group Policy Object's Scope of
+Management"* by adding *"a list of rules, expressed as WQL queries that are executed on the target
+computer. All queries must return results for this SOM to be applicable to the target."*
+
+**Captured and never evaluated**, per
+[`0094`](../../decisions/0094-a-wmi-filter-is-captured-and-named-never-evaluated.md). The query runs
+on the machine against live WMI and can ask about facts no domain controller holds. What capture
+buys is that a finding can name the filter and show its query rather than warn that one might exist.
+
+| Attribute | Cardinality | Storage | Read by | Why |
+|---|---|---|---|---|
+| msWMI-Name | SingleValued | Text | E21 | The name an administrator knows the filter by. Its distinguished name is a GUID, and a finding that named the GUID would send a reader to look the filter up |
+| msWMI-ID | SingleValued | Text | E21 | The GUID `gPCWQLFilter` refers to, which is what joins a policy to its filter |
+| msWMI-Parm2 | SingleValued | Text | E21 | The WQL query text, shown on a finding so an operator can settle in seconds whether the filter excluded the machine in front of them |
 
 ### `domainDNS`
 
@@ -460,6 +478,10 @@ an attribute into a stored column, which is the half where a silent mismatch wou
 | flags | yes | — | E21 |
 | versionNumber | yes | — | E21 |
 | gPCMachineExtensionNames | yes | — | B14 |
+| gPCWQLFilter | yes (added at version 7) | — | E21 |
+| msWMI-Name | yes (added at version 7) | — | E21 |
+| msWMI-ID | yes (added at version 7) | — | E21 |
+| msWMI-Parm2 | yes (added at version 7) | — | E21 |
 | lDAPDisplayName | yes | — | D3 |
 | cn | yes | — | D3 |
 | schemaIDGUID | yes | none directly; every rule matching an `object_type_guid` resolves through it | D3, J33 |

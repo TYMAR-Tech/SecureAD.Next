@@ -108,6 +108,9 @@ internal static class ObjectSectionCatalog
     /// <summary>What this policy is and what it carries.</summary>
     public const string Policy = "Policy";
 
+    /// <summary>The WQL query a machine must satisfy before a policy carrying this filter applies.</summary>
+    public const string WmiFilter = "WmiFilter";
+
     /// <summary>The domain's own password and lockout policy.</summary>
     public const string PasswordPolicy = "PasswordPolicy";
 
@@ -204,7 +207,26 @@ internal static class ObjectSectionCatalog
     private static readonly ObjectSectionDefinition PolicySection = new(
         Policy,
         "Policy",
-        ["displayName", "gPCFileSysPath", "flags", "versionNumber", "gPCMachineExtensionNames"]);
+        [
+            "displayName",
+            "gPCFileSysPath",
+            "flags",
+            "versionNumber",
+            "gPCMachineExtensionNames",
+            "gPCWQLFilter",
+        ]);
+
+    /// <summary>
+    /// A WMI filter, which narrows the machines a policy linked to a container actually reaches.
+    /// </summary>
+    /// <remarks>
+    /// <b>Shown, never evaluated</b> - <c>docs/decisions/0094</c>. The query executes on the target
+    /// machine against live WMI and can ask about facts no domain controller holds, so SecureAD
+    /// cannot say whether it passed. Showing the query is what lets an operator answer that for
+    /// themselves in seconds, instead of leaving the tree to look the filter up.
+    /// </remarks>
+    private static readonly ObjectSectionDefinition WmiFilterSection = new(
+        WmiFilter, "WMI filter", ["msWMI-Name", "msWMI-ID", "msWMI-Parm2"]);
 
     /// <summary>
     /// The domain's own password and lockout policy, as the directory holds it.
@@ -325,6 +347,7 @@ internal static class ObjectSectionCatalog
             ["group"] = [OverviewSection, GroupSection, MembershipSection, PermissionsSection],
             ["organizationalUnit"] = [OverviewSection, PolicyLinksSection, PermissionsSection],
             ["groupPolicyContainer"] = [OverviewSection, PolicySection, PermissionsSection],
+            ["msWMI-Som"] = [OverviewSection, WmiFilterSection, PermissionsSection],
             ["domainDNS"] = [OverviewSection, PasswordPolicySection, PermissionsSection],
             ["msDS-PasswordSettings"] = [OverviewSection, PasswordSettingsSection, PermissionsSection],
         };
@@ -437,6 +460,10 @@ internal static class ObjectSectionCatalog
             ["flags"] = "Policy flags",
             ["versionNumber"] = "Version",
             ["gPCMachineExtensionNames"] = "Client-side extensions",
+            ["gPCWQLFilter"] = "WMI filter",
+            ["msWMI-Name"] = "Filter name",
+            ["msWMI-ID"] = "Filter identifier",
+            ["msWMI-Parm2"] = "Query",
             ["nTSecurityDescriptor"] = "Security descriptor",
         };
 

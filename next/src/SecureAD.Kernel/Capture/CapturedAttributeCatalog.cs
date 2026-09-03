@@ -100,8 +100,22 @@ public static class CapturedAttributeCatalog
     /// and the finding records that it did so, per <c>docs/decisions/0086</c>.
     /// </para>
     /// </para>
+    /// <para>
+    /// <b>7 - 2026-09-03.</b> <c>gPCWQLFilter</c> added to
+    /// <see cref="GroupPolicyContainerAttributes"/> and <see cref="WmiFilterAttributes"/> added,
+    /// carrying the WMI filters a policy requires a machine to satisfy. A bundle stamped 6 cannot
+    /// say whether a policy was filtered at all, so a rule reading one can only offer a warning
+    /// that some filter might exist - which an operator learns to skip, and a skipped warning
+    /// protects nobody. With them the warning names the filter and shows its query.
+    /// <para>
+    /// <b>Captured, never evaluated</b>, and what that constrains is recorded in
+    /// <c>docs/decisions/0094</c>: a rule may use linked scope to raise a finding and never to
+    /// suppress one, because a WMI filter can only narrow a policy's reach, so relying on linked
+    /// scope to conclude a machine is covered can say <i>safe</i> about something that is not.
+    /// </para>
+    /// </para>
     /// </remarks>
-    public const int Version = 6;
+    public const int Version = 7;
 
     /// <summary>
     /// Requested for every object, of every class, in every naming context capture reads.
@@ -237,6 +251,41 @@ public static class CapturedAttributeCatalog
         new("flags", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("versionNumber", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("gPCMachineExtensionNames", AttributeCardinality.MultiValued, AttributeStorage.Text),
+        new("gPCWQLFilter", AttributeCardinality.SingleValued, AttributeStorage.Text),
+    ];
+
+    /// <summary>
+    /// A WMI filter: the WQL queries a policy carrying it requires a machine to satisfy before the
+    /// policy applies, per <c>docs/decisions/0094</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>These are captured and never evaluated.</b> A WQL query runs on the target machine
+    /// against live WMI, and a bundle holds a directory, so answering <i>did this filter pass on
+    /// this machine</i> would mean interpreting the query against captured attributes. A partial
+    /// interpreter that mostly works is worse than none: it would produce a scoping answer that
+    /// reads as authoritative and is wrong, which is the one thing <c>docs/decisions/0086</c> puts
+    /// out of bounds.
+    /// </para>
+    /// <para>
+    /// <b>What capturing them buys is that the gap can be named.</b> Without them a finding can
+    /// only warn that some filter might exist; with them it can say which filter, and show the
+    /// query, so an operator settles in seconds what they would otherwise have to go and look up.
+    /// It also means silence about a filter is a fact rather than an omission - <c>0002</c>.
+    /// </para>
+    /// <para>
+    /// <b>Not hypothetical.</b> The lab forest carries four of these, splitting servers at the
+    /// Server 2019 build boundary, and two of them are attached to the LAPS policies that SEC-091
+    /// and SEC-092 judge. A session had already concluded twice that WMI filters were unreadable
+    /// and then that they were rare on security policies; the owner corrected both, and the
+    /// directory settled it.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<CapturedAttribute> WmiFilterAttributes { get; } =
+    [
+        new("msWMI-Name", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msWMI-ID", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("msWMI-Parm2", AttributeCardinality.SingleValued, AttributeStorage.Text),
     ];
 
     /// <summary>
@@ -370,6 +419,7 @@ public static class CapturedAttributeCatalog
             ["group"] = GroupAttributes,
             ["organizationalUnit"] = OrganizationalUnitAttributes,
             ["groupPolicyContainer"] = GroupPolicyContainerAttributes,
+            ["msWMI-Som"] = WmiFilterAttributes,
             ["domainDNS"] = DomainAttributes,
             ["msDS-PasswordSettings"] = PasswordSettingsAttributes,
             ["nTDSService"] = DirectoryServiceAttributes,
