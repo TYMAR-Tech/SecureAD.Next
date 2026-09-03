@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 
@@ -433,6 +434,47 @@ public sealed class BundleReader : IDisposable
     /// <param name="pageNumber">The page to fetch, counting from one.</param>
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
         ObjectListingReader.Read(Connection, containerDn, scope, pageNumber);
+
+    /// <summary>
+    /// The name a security identifier is known by in this bundle, for showing a principal a rule
+    /// found by identifier alone.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Microsoft's table first, then what this run captured, and nowhere else.</b> The same order
+    /// <c>ObjectPermissions</c> resolves a trustee in, and for the same reason: a well-known
+    /// identifier means the same thing in every forest and has no captured object worth preferring,
+    /// while everything else is only a name if this run read the object holding it.
+    /// </para>
+    /// <para>
+    /// <b>Null is an answer and not a failure.</b> A principal from a trusted forest, or one left
+    /// behind by a deleted object, has no name here - and showing the identifier is then the honest
+    /// thing rather than inventing one.
+    /// </para>
+    /// <para>
+    /// <b>Cheap only because the identifier is indexed</b>, from bundle schema 10. Before that this
+    /// was a full table scan, and a caller resolving a membership path per finding would have made
+    /// the product unusable on a large forest. See <c>P-128</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="sid">The security identifier, as the directory writes it.</param>
+    public string? PrincipalNameFor(string sid)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+
+        if (WellKnownSidCatalog.FindBySid(sid) is { } wellKnown)
+            return wellKnown.DisplayName;
+
+        if (Sid.ToBytes(sid) is not { } bytes)
+            return null;
+
+        using var command = Connection.CreateCommand();
+        command.CommandText =
+            "SELECT distinguished_name FROM captured_object WHERE objectsid = $sid LIMIT 1";
+        command.Parameters.Add("$sid", SqliteType.Blob).Value = bytes;
+
+        return command.ExecuteScalar() is string dn ? DnHelper.ExtractFirstRdn(dn) : null;
+    }
 
     /// <summary>
     /// Reads the permissions this bundle holds for one object.

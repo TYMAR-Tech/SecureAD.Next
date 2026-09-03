@@ -168,11 +168,17 @@ public sealed class EvidenceKindCoverageTests
                 TrusteeSid: "S-1-5-21-1004336348-1177238915-682003330-1123",
                 TrusteeName: "LAPS-Readers",
                 BroadPrincipalSid: "S-1-5-11",
+                BroadPrincipalName: "Authenticated Users",
                 MembershipPath:
                 [
-                    "S-1-5-21-1004336348-1177238915-682003330-1123",
-                    "S-1-5-21-1004336348-1177238915-682003330-1145",
-                    "S-1-5-11",
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-1123", "LAPS-Readers"),
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-1145", "IT-All"),
+
+                    // Deliberately unnamed: a principal from a trusted forest has no name in this
+                    // bundle, and a reader that dropped the null would show the wrong thing.
+                    new PathStep("S-1-5-11", null),
                 ],
                 Attribute: "msLAPS-Password",
                 Rights: LapsReadRights.Both,
@@ -185,8 +191,12 @@ public sealed class EvidenceKindCoverageTests
                 Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1123", e.TrusteeSid);
                 Assert.Equal("LAPS-Readers", e.TrusteeName);
                 Assert.Equal("S-1-5-11", e.BroadPrincipalSid);
+                Assert.Equal("Authenticated Users", e.BroadPrincipalName);
                 Assert.Equal(3, e.MembershipPath.Count);
-                Assert.Equal("S-1-5-11", e.MembershipPath[^1]);
+                Assert.Equal("S-1-5-11", e.MembershipPath[^1].Sid);
+                Assert.Null(e.MembershipPath[^1].Name);
+                Assert.Equal("LAPS-Readers", e.MembershipPath[0].Name);
+                Assert.Equal("LAPS-Readers -> IT-All -> S-1-5-11", e.Route);
                 Assert.Equal(2, e.NestingDepth);
                 Assert.Equal("msLAPS-Password", e.Attribute);
                 Assert.Equal(LapsReadRights.Both, e.Rights);

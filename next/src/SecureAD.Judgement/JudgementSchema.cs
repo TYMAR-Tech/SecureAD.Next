@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 10;
+    public const int Version = 11;
 
     private static readonly string[] TableDdl =
     [
@@ -395,6 +395,7 @@ public static class JudgementSchema
             trustee_sid                         TEXT    NOT NULL,
             trustee_name                        TEXT        NULL,
             broad_principal_sid                 TEXT    NOT NULL,
+            broad_principal_name                TEXT        NULL,
             attribute                           TEXT    NOT NULL,
             rights                              TEXT    NOT NULL,
             reach                               TEXT    NOT NULL,
@@ -404,17 +405,26 @@ public static class JudgementSchema
         )
         """,
 
-        // The membership path, one SID per row, from the delegated principal down to the broad one.
+        // The membership path, one principal per row, from the delegated principal down to the
+        // broad one.
         //
         // THE PATH IS THE FINDING AND NOT AN ORNAMENT. At depth six, naming the broad principal does
         // not tell an operator which link to cut, which is why P-123 requires the path outright. A
         // stored conclusion without it would be unactionable, and the expansion is not repeatable
         // from the judgement store alone - the nesting lives in the derivation.
+        //
+        // THE NAME IS STORED BESIDE THE IDENTIFIER RATHER THAN RESOLVED WHEN SHOWN. The identifier
+        // is what survives a rename and what a later run recognises; the name is the only part an
+        // operator can act on, and a path of raw identifiers is unactionable. Resolving at display
+        // time would be one lookup per row per page, which is the thing the finding table's own
+        // remarks refused - measured at about three seconds a page on a million objects. It is
+        // nullable because a principal from a trusted forest has no name in this bundle.
         """
         CREATE TABLE finding_laps_password_reader_path (
             finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
             ordinal                             INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
+            name                                TEXT        NULL,
             PRIMARY KEY (finding_id, ordinal)
         )
         """,

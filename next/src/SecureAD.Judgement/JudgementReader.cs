@@ -591,6 +591,7 @@ public sealed class JudgementReader : IDisposable
         r.trustee_sid                       AS r_trustee_sid,
         r.trustee_name                      AS r_trustee_name,
         r.broad_principal_sid               AS r_broad_principal_sid,
+        r.broad_principal_name              AS r_broad_principal_name,
         r.attribute                         AS r_attribute,
         r.rights                            AS r_rights,
         r.reach                             AS r_reach,
@@ -732,6 +733,9 @@ public sealed class JudgementReader : IDisposable
                 reader.GetString(lapsReaderTrustee),
                 reader.IsDBNull(trusteeName) ? null : reader.GetString(trusteeName),
                 reader.GetString(reader.GetOrdinal("r_broad_principal_sid")),
+                reader.IsDBNull(reader.GetOrdinal("r_broad_principal_name"))
+                    ? null
+                    : reader.GetString(reader.GetOrdinal("r_broad_principal_name")),
                 MembershipPaths.TryGetValue(findingId, out var path) ? path : [],
                 reader.GetString(reader.GetOrdinal("r_attribute")),
                 Enum.Parse<LapsReadRights>(reader.GetString(reader.GetOrdinal("r_rights"))),
@@ -808,12 +812,35 @@ public sealed class JudgementReader : IDisposable
     /// join would multiply the finding by the length of its path, so a broad principal reached at
     /// depth six would appear six times in the grid.
     /// </remarks>
-    private Dictionary<long, List<string>> MembershipPaths =>
-        _membershipPaths ??= ReadChildValues(
-            "SELECT finding_id, sid FROM finding_laps_password_reader_path "
+    private Dictionary<long, List<PathStep>> MembershipPaths =>
+        _membershipPaths ??= ReadPathSteps(
+            "SELECT finding_id, sid, name FROM finding_laps_password_reader_path "
             + "ORDER BY finding_id, ordinal");
 
-    private Dictionary<long, List<string>>? _membershipPaths;
+    private Dictionary<long, List<PathStep>>? _membershipPaths;
+
+    private Dictionary<long, List<PathStep>> ReadPathSteps(string sql)
+    {
+        var values = new Dictionary<long, List<PathStep>>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = sql;
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var findingId = reader.GetInt64(0);
+
+            if (!values.TryGetValue(findingId, out var stored))
+                values[findingId] = stored = [];
+
+            stored.Add(new PathStep(
+                reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
+        }
+
+        return values;
+    }
 
     private Dictionary<long, List<string>> ReadChildValues(string sql)
     {

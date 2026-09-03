@@ -527,10 +527,10 @@ public sealed class JudgementWriter : IDisposable
                 Execute(
                     transaction,
                     "INSERT INTO finding_laps_password_reader (finding_id, trustee_sid, "
-                    + "trustee_name, broad_principal_sid, attribute, rights, reach, "
-                    + "inherited_from, expansion_was_complete) "
-                    + "VALUES ($id, $trustee, $name, $broad, $attribute, $rights, $reach, "
-                    + "$inherited, $complete)",
+                    + "trustee_name, broad_principal_sid, broad_principal_name, attribute, "
+                    + "rights, reach, inherited_from, expansion_was_complete) "
+                    + "VALUES ($id, $trustee, $name, $broad, $broadName, $attribute, $rights, "
+                    + "$reach, $inherited, $complete)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -538,6 +538,8 @@ public sealed class JudgementWriter : IDisposable
                         command.Parameters.AddWithValue(
                             "$name", (object?)readers.TrusteeName ?? DBNull.Value);
                         command.Parameters.AddWithValue("$broad", readers.BroadPrincipalSid);
+                        command.Parameters.AddWithValue(
+                            "$broadName", (object?)readers.BroadPrincipalName ?? DBNull.Value);
                         command.Parameters.AddWithValue("$attribute", readers.Attribute);
                         command.Parameters.AddWithValue("$rights", readers.Rights.ToString());
                         command.Parameters.AddWithValue("$reach", readers.Reach.ToString());
@@ -551,18 +553,20 @@ public sealed class JudgementWriter : IDisposable
                 // which link an operator would cut, which is the whole of P-123's third condition.
                 for (var ordinal = 0; ordinal < readers.MembershipPath.Count; ordinal++)
                 {
-                    var sid = readers.MembershipPath[ordinal];
+                    var step = readers.MembershipPath[ordinal];
                     var position = ordinal;
 
                     Execute(
                         transaction,
-                        "INSERT INTO finding_laps_password_reader_path (finding_id, ordinal, sid) "
-                        + "VALUES ($id, $ordinal, $sid)",
+                        "INSERT INTO finding_laps_password_reader_path "
+                        + "(finding_id, ordinal, sid, name) VALUES ($id, $ordinal, $sid, $name)",
                         command =>
                         {
                             command.Parameters.AddWithValue("$id", findingId);
                             command.Parameters.AddWithValue("$ordinal", position);
-                            command.Parameters.AddWithValue("$sid", sid);
+                            command.Parameters.AddWithValue("$sid", step.Sid);
+                            command.Parameters.AddWithValue(
+                                "$name", (object?)step.Name ?? DBNull.Value);
                         });
                 }
 

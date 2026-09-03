@@ -133,13 +133,27 @@ public enum DerivedFactKind
 /// would claim otherwise - which is the same mistake as reading a value out of a schema nobody read.
 /// </para>
 /// </param>
+/// <param name="PrincipalNames">
+/// The name a security identifier is known by, or null where this bundle holds no object with it.
+/// Null itself where no bundle was opened.
+///
+/// <para>
+/// <b>Resolved once, when the finding is made, and stored on it.</b> A rule that walks group
+/// nesting has only identifiers to show, and an operator cannot act on
+/// <c>S-1-5-21-…-142105 → S-1-5-21-…-142106</c>. Resolving instead at display time would be one
+/// lookup per path entry per row per page - about three seconds a page on a million objects, on
+/// every redraw - which is what <c>JudgementSchema</c> already refused when it settled that the
+/// grid's columns are written rather than joined. Measured, and recorded as <c>P-128</c>.
+/// </para>
+/// </param>
 public sealed record JudgingContext(
     DateTimeOffset AsOf,
     StoredProtectedPrincipalDerivation? ProtectedPrincipals,
     Func<string, ObjectPermissions?>? Permissions,
     StoredAttributeVisibility? AttributeVisibility,
     Func<string, string, PrincipalExpansion>? MembersOfPrincipal,
-    SchemaGuidCatalog? SchemaGuids)
+    SchemaGuidCatalog? SchemaGuids,
+    Func<string, string?>? PrincipalNames)
 {
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
@@ -153,5 +167,5 @@ public sealed record JudgingContext(
     /// </remarks>
     /// <param name="asOf">The reference time this judging is evaluated against.</param>
     public static JudgingContext At(DateTimeOffset asOf) =>
-        new(asOf, null, null, null, null, null);
+        new(asOf, null, null, null, null, null, null);
 }

@@ -77,6 +77,7 @@ records stay in Evidence because they are durable data rather than executable po
 | `LapsPasswordReaderEvidence` | The broad principal, the membership path that reached it, the rights the entry carried and the scope it was inherited from |
 | `LapsReadRights` | Which of the two rights a confidential attribute needs the entry actually held — the distinction the predecessor's rule collapsed |
 | `LapsGrantReach` | Whether the entry names this attribute or reaches every attribute on the object, read from `ACE_OBJECT_TYPE_PRESENT` and not from a null GUID |
+| `PathStep` | One principal on a membership path, carrying both its identifier and its name — the identifier survives a rename, the name is the part an operator can act on |
 
 <!-- TYPES:END -->
 

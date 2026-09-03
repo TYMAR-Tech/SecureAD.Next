@@ -148,7 +148,8 @@ public sealed class LapsPasswordReadAccess : IRule
         var objectIsComplete = unresolved.Count == 0;
 
         var findings = pending.Values
-            .Select(p => Build(subject, objectGuid, p, p.Complete && objectIsComplete))
+            .Select(p => Build(
+                subject, objectGuid, p, p.Complete && objectIsComplete, context.PrincipalNames))
             .ToList();
 
         // Unresolved only where there is nothing to report. Where there is, the incompleteness has
@@ -408,16 +409,30 @@ public sealed class LapsPasswordReadAccess : IRule
     /// Builds the finding, once the object's overall completeness is known.
     /// </summary>
     private static Finding Build(
-        ObjectAttributes subject, Guid objectGuid, PendingFinding p, bool complete)
+        ObjectAttributes subject,
+        Guid objectGuid,
+        PendingFinding p,
+        bool complete,
+        Func<string, string?>? names)
     {
         var name =
             AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
+
+        // RESOLVED HERE, ONCE, RATHER THAN WHEN THE FINDING IS SHOWN. A path of raw identifiers is
+        // true and unactionable, and P-123 requires the path precisely so an operator can see which
+        // link to cut. Resolving at display time would be one lookup per path entry per row per
+        // page - measured at about three seconds a page on a million objects, on every redraw - so
+        // the name is stored beside the identifier instead. The lookup is memoised for the run.
+        var path = p.Path
+            .Select(sid => new PathStep(sid, NameFor(sid, names)))
+            .ToArray();
 
         var evidence = new LapsPasswordReaderEvidence(
             p.Grant.Trustee.Sid,
             p.Grant.Trustee.Name,
             p.BroadSid,
-            p.Path,
+            NameFor(p.BroadSid, names),
+            path,
             p.Attribute,
             p.Grant.Rights,
             p.Grant.Reach,
@@ -451,6 +466,17 @@ public sealed class LapsPasswordReadAccess : IRule
     }
 
     /// <summary>
+    /// What a principal is called: the catalogue's word for a principal broad everywhere, then what
+    /// this bundle captured, and the identifier where neither answers.
+    /// </summary>
+    /// <remarks>
+    /// The catalogue is asked first because it names the identifiers that mean the same thing in
+    /// every forest - <c>Everyone</c> has no captured object worth preferring to that.
+    /// </remarks>
+    private static string? NameFor(string sid, Func<string, string?>? names) =>
+        BroadPrincipalCatalogue.NameOf(sid) ?? names?.Invoke(sid);
+
+    /// <summary>
     /// How a broad principal is named as the subject of a finding: the name it is known by, with
     /// its security identifier, which is what makes the key unique and stable.
     /// </summary>
@@ -481,8 +507,7 @@ public sealed class LapsPasswordReadAccess : IRule
     {
         var route = evidence.NestingDepth == 0
             ? "directly"
-            : $"through {evidence.NestingDepth} nested group(s): "
-                + string.Join(" -> ", evidence.MembershipPath);
+            : $"through {evidence.NestingDepth} nested group(s): {evidence.Route}";
         var reach = evidence.Reach is LapsGrantReach.EveryAttribute
             ? "The entry carries no object type, so it reaches every attribute on this object "
                 + "rather than only the password - which is the blanket extended-rights grant "
@@ -506,7 +531,7 @@ public sealed class LapsPasswordReadAccess : IRule
                 + "principals may also hold it and are not listed here.";
 
         return $"{name}'s LAPS password attribute {evidence.Attribute} can be read by "
-            + $"{BroadPrincipalCatalogue.NameOf(evidence.BroadPrincipalSid) ?? evidence.BroadPrincipalSid} "
+            + $"{evidence.BroadPrincipalName ?? evidence.BroadPrincipalSid} "
             + $"({evidence.BroadPrincipalSid}), a principal that is broad in every organisation, "
             + $"reached {route}. Reading it yields the machine's local administrator password, "
             + "which grants administrative control of the machine locally - with no domain "

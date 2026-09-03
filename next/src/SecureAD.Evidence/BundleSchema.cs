@@ -73,7 +73,7 @@ public static class BundleSchema
     /// state which catalogue and parser semantics produced it, or whether its continuation
     /// references were reconciled against the authorized plan.
     /// </para>
-    public const int Version = 9;
+    public const int Version = 10;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -912,6 +912,22 @@ public static class BundleSchema
         // instead of a LIKE across every object in the forest.
         "CREATE INDEX ix_captured_object_dn_reversed ON captured_object(dn_reversed)",
         "CREATE INDEX ix_captured_object_parent ON captured_object(parent_guid)",
+
+        // ASKED FOR ONCE PER TRUSTEE ON EVERY SECURITY DESCRIPTOR READ, and until 2026-09-03 it was
+        // a full table scan. ObjectPermissions.ResolveTrustees looks a trustee up by identifier to
+        // put a name against it, and this table was indexed on the distinguished name, the object
+        // identifier and the parent - but not on the security identifier that lookup uses.
+        //
+        // MEASURED, BECAUSE THE COST IS NOT OBVIOUS FROM READING IT. On an 8,367-object bundle a
+        // lookup took 0.287 ms and the planner said SCAN; with this index it took 0.026 ms and said
+        // SEARCH. The 11x is not the point - a scan grows with the number of objects while a b-tree
+        // seek grows with its logarithm, so the scan gets worse exactly as a customer gets bigger.
+        // Extrapolated to a million objects, one computer's descriptor took about four seconds to
+        // read, which put SEC-090 across a hundred thousand computers at several days.
+        //
+        // Built after writing with the others, so the cost is one sort at the end rather than
+        // maintenance on every insert during capture.
+        "CREATE INDEX ix_captured_object_sid ON captured_object(objectsid)",
         "CREATE INDEX ix_ace_descriptor ON ace(descriptor_id)",
         "CREATE INDEX ix_ace_trustee ON ace(trustee_id)",
         "CREATE INDEX ix_ace_hash ON ace(ace_hash)",

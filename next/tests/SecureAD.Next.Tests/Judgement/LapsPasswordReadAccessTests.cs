@@ -144,7 +144,9 @@ public sealed class LapsPasswordReadAccessTests
 
         // P-123: naming the broad principal without the route does not tell an operator which link
         // to cut. The path is the finding, so it is pinned here and in the detail text.
-        Assert.Equal([Delegated, Intermediate, AuthenticatedUsers], evidence.MembershipPath);
+        Assert.Equal(
+            [Delegated, Intermediate, AuthenticatedUsers],
+            evidence.MembershipPath.Select(s => s.Sid));
         Assert.Equal(2, evidence.NestingDepth);
         Assert.Contains(Intermediate, finding.Detail, StringComparison.Ordinal);
     }
@@ -272,7 +274,7 @@ public sealed class LapsPasswordReadAccessTests
             Nested(AuthenticatedUsers)));
 
         var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
-        Assert.Equal([AuthenticatedUsers], evidence.MembershipPath);
+        Assert.Equal([AuthenticatedUsers], evidence.MembershipPath.Select(s => s.Sid));
         Assert.Equal(0, evidence.NestingDepth);
     }
 

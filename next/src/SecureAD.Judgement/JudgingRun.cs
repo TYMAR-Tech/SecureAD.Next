@@ -195,6 +195,11 @@ public static class JudgingRun
                 // schema rows, and a rule reading an object-specific access control entry cannot
                 // tell which attribute the entry names without them.
                 SchemaGuids = bundle.ReadSchemaGuids(),
+
+                // Memoised for the same reason the expansion is: one delegated group appears on
+                // every computer under an organisational unit, so its name would otherwise be
+                // looked up once per machine to say the same thing.
+                PrincipalNames = Memoised(bundle.PrincipalNameFor),
             };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse
@@ -254,9 +259,31 @@ public static class JudgingRun
                 // Captured by reference to the open reader, the same way permissions are read off
                 // the open bundle. Both live as long as the loop below, and no longer.
                 var reader = derivation;
+
+                // MEMOISED FOR THE RUN, because the same principal is asked about once per object.
+                // Every computer under one organisational unit inherits the same delegation, so a
+                // rule expanding the delegated group repeats an identical walk for each of them - a
+                // hundred thousand machines is a hundred thousand identical answers. The walk is
+                // over persisted edges and the derivation does not change while a judging runs, so
+                // the second answer cannot differ from the first.
+                //
+                // Invisible on a small forest, which is why nothing surfaced it: the lab has
+                // fourteen computers.
+                var expansions = new Dictionary<(string Sid, string Scope), PrincipalExpansion>();
+
                 context = context with
                 {
-                    MembersOfPrincipal = (sid, scope) => reader.MembersOf(sid, scope),
+                    MembersOfPrincipal = (sid, scope) =>
+                    {
+                        var key = (sid, scope);
+
+                        if (expansions.TryGetValue(key, out var known))
+                            return known;
+
+                        var walked = reader.MembersOf(sid, scope);
+                        expansions[key] = walked;
+                        return walked;
+                    },
                 };
             }
         }
@@ -365,6 +392,31 @@ public static class JudgingRun
     /// forest, because no measurement of one exists yet.
     /// </remarks>
     private const int ProgressEvery = 1_000;
+
+    /// <summary>
+    /// Wraps a lookup so it is asked once per distinct argument for the life of a judging.
+    /// </summary>
+    /// <remarks>
+    /// <b>Safe because nothing being read changes while a judging runs.</b> The evidence is sealed
+    /// and the derivation is already written, so a second answer could only ever repeat the first.
+    /// What it saves is real: a rule asks about the same delegated group once per object, and an
+    /// organisational unit holding a hundred thousand computers means a hundred thousand identical
+    /// questions.
+    /// </remarks>
+    private static Func<string, string?> Memoised(Func<string, string?> lookup)
+    {
+        var known = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        return argument =>
+        {
+            if (known.TryGetValue(argument, out var answer))
+                return answer;
+
+            answer = lookup(argument);
+            known[argument] = answer;
+            return answer;
+        };
+    }
 
     private static Result<JudgementRunState> Failure(
         string reason, string description, string context) =>

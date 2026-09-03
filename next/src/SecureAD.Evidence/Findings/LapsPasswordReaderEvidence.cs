@@ -73,6 +73,31 @@ public enum LapsGrantReach
 }
 
 /// <summary>
+/// One principal on the route from the delegated group down to the broad one.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Both, because they answer different questions.</b> The identifier is what stays true when a
+/// group is renamed or moved, and is what a later run recognises; the name is the only part an
+/// operator can act on. Storing one and deriving the other at display time was measured and
+/// refused - see <c>P-128</c> - and the same reasoning is why severity is stored as a word and a
+/// rank.
+/// </para>
+/// <para>
+/// <b><see cref="Name"/> is null for a principal this bundle does not hold</b>, which is an honest
+/// answer rather than a gap: a group from a trusted forest, or one left behind by a deleted object,
+/// has no name here and the identifier is then all there is to show.
+/// </para>
+/// </remarks>
+/// <param name="Sid">The principal's security identifier.</param>
+/// <param name="Name">What it is called, or null where nothing in this bundle holds it.</param>
+public sealed record PathStep(string Sid, string? Name)
+{
+    /// <summary>The name where there is one, and the identifier where there is not.</summary>
+    public string Display => Name ?? Sid;
+}
+
+/// <summary>
 /// What SEC-090 rested on: a broad principal that can read a machine's LAPS password, and the route
 /// by which it got there.
 /// </summary>
@@ -113,9 +138,12 @@ public enum LapsGrantReach
 /// <param name="BroadPrincipalSid">
 /// The principal found inside it that is broad in every organisation.
 /// </param>
+/// <param name="BroadPrincipalName">
+/// What that principal is called, or null where nothing in this bundle holds it.
+/// </param>
 /// <param name="MembershipPath">
-/// The SIDs from <paramref name="TrusteeSid"/> down to <paramref name="BroadPrincipalSid"/>, that
-/// one included. A direct grant to a broad principal yields a path of one.
+/// The principals from <paramref name="TrusteeSid"/> down to <paramref name="BroadPrincipalSid"/>,
+/// that one included. A direct grant to a broad principal yields a path of one.
 /// </param>
 /// <param name="Attribute">The LAPS password attribute the entry reaches.</param>
 /// <param name="Rights">Which of the two rights a confidential attribute needs the entry carried.</param>
@@ -131,7 +159,8 @@ public sealed record LapsPasswordReaderEvidence(
     string TrusteeSid,
     string? TrusteeName,
     string BroadPrincipalSid,
-    IReadOnlyList<string> MembershipPath,
+    string? BroadPrincipalName,
+    IReadOnlyList<PathStep> MembershipPath,
     string Attribute,
     LapsReadRights Rights,
     LapsGrantReach Reach,
@@ -148,6 +177,11 @@ public sealed record LapsPasswordReaderEvidence(
     /// Whether the principal can actually retrieve the password, which needs both rights.
     /// </summary>
     public bool CanReadThePassword => Rights is LapsReadRights.Both;
+
+    /// <summary>
+    /// The route as an operator would read it, naming what can be named.
+    /// </summary>
+    public string Route => string.Join(" -> ", MembershipPath.Select(s => s.Display));
 
     /// <summary>
     /// How many nested groups lie between the delegated principal and the broad one. Zero for a

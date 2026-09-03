@@ -89,6 +89,14 @@ public sealed class CoverageIdRecipeTests
         // Version 9 records capture semantic provenance and continuation reconciliation. Neither
         // changes the forest, declared-domain or exclusion inputs to the coverage identity recipe.
         [9] = "57cf8ba5a9e7fb10",
+
+        // Same value again, and again the correct outcome. Version 10 added an index on the object
+        // identifier in captured_object, so that resolving a security identifier to a name is a
+        // seek rather than a scan - see P-128. An index changes how the same rows are found and
+        // never what they are, and coverage_id is built from the forest, the declared domains and
+        // the exclusions. A differing value here would have meant the recipe moved under cover of
+        // a change that cannot touch it.
+        [10] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

@@ -375,6 +375,7 @@ The table below sits between the two markers around it, so the test parses only 
 | LapsPasswordReaderEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsReadRights | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsGrantReach | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| PathStep | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsComputer | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | LapsManagement | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | LapsPage | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
