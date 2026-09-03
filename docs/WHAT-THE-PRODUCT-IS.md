@@ -114,6 +114,42 @@ Thirty-nine of seventy-nine decision records reference it. The load-bearing diff
 | Schema partition | not read | read every run (`0014`) — what makes object-specific ACE evaluation possible |
 | Vocabulary | *Accept* on screen, *Suppression* in code | one word, **finding**, everywhere (`0066`) |
 
+### Why it took hours, and why that is not inherent
+
+**The owner's measurement, 2026-09-03: capture took 30 to 45 minutes across nine domains, and the
+run took three to five hours.** Capture was never the problem. The time went on the graph.
+
+Its own CONTROL-EDGES-AND-PATHS document, under docs/ in the predecessor tree, says how, and it is
+costs stacked on each other:
+
+- **`fact_group_membership_closure`** — the full transitive closure of every group, materialised.
+  Quadratic in the forest.
+- **"Traversal: BFS from each non-high-value principal to discover shortest paths to targets."**
+  With a hundred thousand principals that is a hundred thousand traversals of a graph holding
+  millions of edges.
+
+**Neither is required by the question being asked.** *Who can reach Tier 0* is answered by walking
+**backwards from the targets** — there are perhaps dozens of high-value targets against a hundred
+thousand principals, so the same answers cost three or four orders of magnitude less. The old
+application even built the reverse graph, as step 3 of that document, and then traversed forward
+from every principal anyway.
+
+**So the hours were an algorithmic choice, not the price of the analysis.** This matters now because
+escalation paths are unbuilt here and will be asked for eventually. Two things follow:
+
+- The closure is already refused: `what-stage-2a-derives.md` walks membership on demand, because
+  *the transitive closure of every group is quadratic in a real forest, while every consumer asks
+  about a handful of named principals*. That decision was taken for a different reason and happens
+  to remove the first cost entirely.
+- **When paths are built, traverse from the targets.** Reverse traversal needs `memberOf` edges,
+  which are linear in memberships and already persisted, and never needs the closure.
+
+**One correction to a claim made in this session and left here so it is not repeated.** SYSVOL was
+suspected of being a runtime risk on the strength of lab capture rising from 7 to 11 seconds when it
+began working. The owner's account is that the old application captured little of SYSVOL and he is
+not sure it was ever used in production, so there is no prior measurement to lean on either way.
+It is unmeasured at scale rather than known to be slow.
+
 ### What its findings grid did, and what of it is worth having
 
 Read 2026-08-26 from `SecureAD.Infrastructure/Paging/`, `Findings/FindingsService.Queries.cs`,
