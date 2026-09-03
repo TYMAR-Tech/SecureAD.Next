@@ -655,6 +655,66 @@ public sealed class BundleReaderTests : IDisposable
             BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
     }
 
+    /// <summary>
+    /// A bundle from an older build is missing the columns that build never had, and is still
+    /// refused under the schema-version code rather than as unreadable evidence.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The two tests above edit <c>schema_version</c> and leave every column in place, and that
+    /// is why this defect survived them.</b> A real older bundle differs in both ways at once: the
+    /// number is lower <i>and</i> the table is narrower. Reading the whole description first meant
+    /// the <c>SELECT</c> failed on the missing column before the version could be compared, so the
+    /// version gate — which was correct, and whose message was exactly right — could never fire for
+    /// the bundles it exists to refuse.
+    /// </para>
+    /// <para>
+    /// <b>Seen against <c>ad.lab</c> on 2026-09-03.</b> A schema 8 bundle opened against this
+    /// schema 9 build reported <c>no such column: captured_attribute_catalog_version</c> and told
+    /// the operator "this is a defect in this build rather than damage to the bundle". Neither was
+    /// true, and he went looking for a defect that did not exist. This is the documented shape of a
+    /// check that passes while measuring nothing.
+    /// </para>
+    /// <para>
+    /// <b>Nothing here makes an old bundle readable.</b> It is refused exactly as firmly as before;
+    /// what changes is that the refusal names the reason.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ABundleFromAnOlderBuildIsRefusedForItsVersionAndNotAsUnreadable()
+    {
+        WriteABundleShapedLikeAnOlderBuild();
+
+        using var opening = Open();
+
+        Assert.False(opening.IsSuccess);
+        Assert.Equal("Evidence.SchemaVersionUnsupported", opening.Error.Code);
+
+        // The operator must be told the version, not a column name from inside the database.
+        Assert.DoesNotContain(
+            "no such column", opening.Error.Description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A bundle as an older build would have left it: recorded one version back, and without the
+    /// column that version did not have.
+    /// </summary>
+    private void WriteABundleShapedLikeAnOlderBuild()
+    {
+        WriteABundle();
+
+        // SQLite can drop a column, which is the closest this test can get to a table an earlier
+        // build wrote without keeping a copy of that build around.
+        WithTheEvidenceOpen(
+            "ALTER TABLE bundle DROP COLUMN captured_attribute_catalog_version");
+
+        WithTheEvidenceOpen(
+            $"UPDATE bundle SET schema_version = {BundleSchema.Version - 1}");
+
+        BundleSealing.Seal(
+            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+    }
+
     /// <summary>The one captured object the stale descriptor hangs off.</summary>
     private static EvidenceObject AnObject() =>
         new(SomeCoverage(), "CN=Alice,DC=contoso,DC=com", Guid.NewGuid(), [], Started);

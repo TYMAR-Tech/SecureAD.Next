@@ -161,19 +161,34 @@ public sealed class BundleReader : IDisposable
         try
         {
             connection.Open();
-            var description = ReadDescription(connection, evidencePath);
 
-            if (description.SchemaVersion != BundleSchema.Version)
+            // THE VERSION IS READ ON ITS OWN, AND BEFORE ANYTHING ELSE. Every check below compares
+            // a number that lives in a column some earlier build did not write, so reading the
+            // whole description first makes the version gate unreachable for exactly the bundles it
+            // exists to refuse: the SELECT throws on the missing column and the failure falls
+            // through to the SqliteException handler, which reports a raw SQLite error and blames
+            // this build.
+            //
+            // SEEN 2026-09-03. A schema 8 bundle opened against this schema 9 build said "no such
+            // column: captured_attribute_catalog_version" and "this is a defect in this build
+            // rather than damage to the bundle" - neither of which was true, and the operator went
+            // looking for a defect that was not there. schema_version has existed in every version
+            // of this table, so asking for it alone always works.
+            var storedVersion = ReadSchemaVersion(connection, evidencePath);
+
+            if (storedVersion != BundleSchema.Version)
             {
                 connection.Dispose();
                 return Failure(
                     "SchemaVersionUnsupported",
-                    $"The bundle was written against schema version {description.SchemaVersion} "
+                    $"The bundle was written against schema version {storedVersion} "
                     + $"and this build reads version {BundleSchema.Version}. Nothing in this "
                     + "product is kept backward compatible, so a bundle from another build is "
                     + "captured again rather than migrated.",
                     evidencePath);
             }
+
+            var description = ReadDescription(connection, evidencePath);
 
             if (description.CapturedAttributeCatalogVersion != CapturedAttributeCatalog.Version)
             {
@@ -590,6 +605,34 @@ public sealed class BundleReader : IDisposable
         Result<BundleReader>.Failure(
             AuditError.Create(
                 ErrorCategory.Evidence, reason, ErrorSeverity.Failed, description, context));
+
+    /// <summary>
+    /// The schema version alone, asked for before anything else in the bundle is read.
+    /// </summary>
+    /// <remarks>
+    /// <b>One column, because it is the only one that can be relied on to exist.</b> Every other
+    /// column in this table arrived in some particular version, so a query naming them cannot be
+    /// used to discover which version wrote the file - it fails first, and on a bundle from an older
+    /// build it fails with a message about a missing column rather than about the version. This is
+    /// the check that lets the refusal above say the true thing.
+    /// </remarks>
+    private static int ReadSchemaVersion(SqliteConnection connection, string evidencePath)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT schema_version FROM bundle";
+
+        using var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+        {
+            throw new InvalidBundleException(
+                $"'{evidencePath}' has no row in its 'bundle' table, so it does not say which "
+                + "schema version wrote it. Every bundle this product writes records that before "
+                + "it is sealed.");
+        }
+
+        return reader.GetInt32(0);
+    }
 
     private static BundleDescription ReadDescription(
         SqliteConnection connection, string evidencePath)
