@@ -189,7 +189,7 @@ would be the wrong place for it.
 read the schema partition itself while it is holding a computer object; the answer has to be handed
 to it.
 
-**That means a new `DerivedFactKind`.** `DerivedFacts` is the only channel a rule has for anything
+**That means a new `DerivedFactKind`.** `JudgingContext` is the only channel a rule has for anything
 beyond the object in hand, and it is declared, so `docs/decisions/0091` refuses a judging whose
 derivation is missing rather than reporting an unanswerable question object by object. The shape:
 

@@ -15,7 +15,7 @@ namespace SecureAD.Next.Tests.Judgement;
 /// <remarks>
 /// <para>
 /// <b>These run the whole stage rather than calling the rule directly</b>, for the reason SEC-021's
-/// tests give: a test handing the rule a fabricated <c>DerivedFacts</c> would prove the rule agrees
+/// tests give: a test handing the rule a fabricated <c>JudgingContext</c> would prove the rule agrees
 /// with itself. Each builds a sealed bundle carrying a schema partition, derives it, judges it and
 /// reads the judgement back - so the visibility answer this rule turns on is one the derivation
 /// worked out from schema objects, not one a test asserted.

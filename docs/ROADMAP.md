@@ -444,7 +444,7 @@ defect in the same shape, one step earlier.
   `LapsAttributes` constants table so the two cannot disagree about the population they divide.
   Twenty-two tests between them, each rule mutated in both directions one mutation at a time.
 - **`AttributeVisibility` is a real Derivation phase with a persisted product**, chosen by the owner
-  over the cheaper lookup-delegate precedent that `DerivedFacts.Permissions` sets. What declaring a
+  over the cheaper lookup-delegate precedent that `JudgingContext.Permissions` sets. What declaring a
   `DerivedFactKind` buys is the `0091` whole-run refusal when the answer is absent; what it costs is
   a phase, a store table, `DerivationSchema.Version` 4 to 5, and a re-derive for every sealed
   bundle — and the last of those was free because nothing has shipped. It reads the schema partition

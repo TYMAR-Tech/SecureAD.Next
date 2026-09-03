@@ -17,7 +17,7 @@ namespace SecureAD.Next.Tests.Judgement;
 /// <b>These run the whole stage rather than calling the rule directly.</b> Each builds a sealed
 /// bundle, derives it, judges it, and reads the judgement back - so what is asserted is what an
 /// operator would see, and a defect anywhere between the capture and the store shows up here. A
-/// test that handed the rule a fabricated <c>DerivedFacts</c> would prove the rule agrees with
+/// test that handed the rule a fabricated <c>JudgingContext</c> would prove the rule agrees with
 /// itself.
 /// </para>
 /// <para>

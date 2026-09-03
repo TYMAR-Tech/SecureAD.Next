@@ -41,7 +41,7 @@ records stay in Evidence because they are durable data rather than executable po
 | `RuleGuidanceCatalogue` | That guidance, one entry per rule, written out beside the rule list |
 | `RuleVerdict` | What one rule made of one object, and what it could not read |
 | `DerivedFactKind` | A kind of derived fact a rule can declare it reads |
-| `DerivedFacts` | The derived facts offered to a rule beside the object it is judging |
+| `JudgingContext` | The reference time and derived facts offered to a rule beside the object it is judging |
 | `UnresolvedInput` | One reason a derived fact left a rule unable to decide |
 | `UnresolvedReason` | Why it fell short — never derived, disputed, unverified, or unreadable |
 | `AdminCountWithoutProtection` | SEC-030 — a protected-account marker with a blocked DACL that nothing protects |

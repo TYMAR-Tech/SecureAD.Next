@@ -115,10 +115,10 @@ public sealed class KerberoastablePrivilegedAccount : IRule
             + "cannot supply them, so reaching this is a defect rather than a missing derivation.");
 
     /// <inheritdoc />
-    public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived)
+    public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context)
     {
         ArgumentNullException.ThrowIfNull(subject);
-        ArgumentNullException.ThrowIfNull(derived);
+        ArgumentNullException.ThrowIfNull(context);
 
         // Cheapest discriminator first, and the one that ends most objects. An account with no
         // service name is not kerberoastable at all - there is no ticket to ask for - so this is a
@@ -143,7 +143,7 @@ public sealed class KerberoastablePrivilegedAccount : IRule
         if (!string.Equals(objectClass, JudgedClass, StringComparison.OrdinalIgnoreCase))
             return RuleVerdict.Judged([]);
 
-        if (derived.ProtectedPrincipals is not { } protection)
+        if (context.ProtectedPrincipals is not { } protection)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
 
         // Checked before the object's own facts, because no per-object answer can be trusted while

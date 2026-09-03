@@ -17,7 +17,7 @@ namespace SecureAD.Next.Tests.Judgement;
 /// <para>
 /// <b>These run the whole stage rather than calling the rule directly</b>, for the reason
 /// <c>AdminCountWithoutProtectionTests</c> gives: a test that handed the rule a fabricated
-/// <c>DerivedFacts</c> would prove the rule agrees with itself. Each builds a sealed bundle, derives
+/// <c>JudgingContext</c> would prove the rule agrees with itself. Each builds a sealed bundle, derives
 /// it, judges it and reads the judgement back, so an account is privileged here only because the
 /// derivation worked it out from a real group membership.
 /// </para>

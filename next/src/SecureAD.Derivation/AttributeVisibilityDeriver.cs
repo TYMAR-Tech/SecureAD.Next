@@ -79,7 +79,7 @@ public sealed record AttributeVisibilityFact(
 /// <b>Why a derived product and not a lookup a rule performs itself.</b> A rule judges one object
 /// and nothing else - no sibling lookup, no second pass - so a rule holding a computer object
 /// cannot go and read the schema partition. The answer has to be handed to it, and
-/// <c>DerivedFacts</c> is the only channel there is.
+/// <c>JudgingContext</c> is the only channel there is.
 /// </para>
 /// <para>
 /// <b>What declaring it buys is the whole-run refusal.</b> Per <c>docs/decisions/0091</c> a judging

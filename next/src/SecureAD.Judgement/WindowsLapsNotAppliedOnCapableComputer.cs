@@ -75,10 +75,10 @@ public sealed class WindowsLapsNotAppliedOnCapableComputer : IRule
             + "cannot supply them, so reaching this is a defect rather than a missing derivation.");
 
     /// <inheritdoc />
-    public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived)
+    public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context)
     {
         ArgumentNullException.ThrowIfNull(subject);
-        ArgumentNullException.ThrowIfNull(derived);
+        ArgumentNullException.ThrowIfNull(context);
 
         if (!LapsAttributes.IsComputer(subject))
             return RuleVerdict.Judged([]);
@@ -95,7 +95,7 @@ public sealed class WindowsLapsNotAppliedOnCapableComputer : IRule
         if (LapsAttributes.IsDisabled(subject))
             return RuleVerdict.Judged([]);
 
-        if (derived.AttributeVisibility is not { } visibility)
+        if (context.AttributeVisibility is not { } visibility)
             return RuleVerdict.CouldNotResolve([new UnresolvedInput(
                 DerivedFactKind.AttributeVisibility, UnresolvedReason.NotDerived)]);
 

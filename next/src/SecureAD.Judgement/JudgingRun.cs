@@ -130,7 +130,12 @@ public static class JudgingRun
             .ToList();
 
         DerivationReader? derivation = null;
-        DerivedFacts derived = DerivedFacts.None;
+
+        // The reference time reaches the rules from the same value that is written to
+        // evaluation_as_of, so a rule's answer and the record of what it was answering against
+        // cannot drift apart. A rule reading the clock instead would give a different answer every
+        // time this sealed evidence was re-judged, and nothing in the bundle would say why.
+        JudgingContext context = JudgingContext.At(evaluationAsOf);
         Guid? derivationGeneration = null;
 
         if (wanted.Count > 0)
@@ -181,7 +186,11 @@ public static class JudgingRun
                 return refusal;
             }
 
-            derived = new DerivedFacts(product.Value, bundle.ReadPermissions, null);
+            context = context with
+            {
+                ProtectedPrincipals = product.Value,
+                Permissions = bundle.ReadPermissions,
+            };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse
             // here than for the protected principals. A rule that reads a LAPS timestamp treats an
@@ -210,7 +219,7 @@ public static class JudgingRun
                     return refusal;
                 }
 
-                derived = derived with { AttributeVisibility = visibility.Value };
+                context = context with { AttributeVisibility = visibility.Value };
             }
         }
 
@@ -241,7 +250,7 @@ public static class JudgingRun
             cancellationToken.ThrowIfCancellationRequested();
 
             foreach (var tally in tallies)
-                tally.Offer(subject, derived);
+                tally.Offer(subject, context);
 
             objectsRead++;
 
@@ -361,8 +370,11 @@ public static class JudgingRun
         /// of a real forest were unreadable.
         /// </remarks>
         /// <param name="subject">The object to judge.</param>
-        /// <param name="derived">The derived facts, empty for an Evidence-only judging.</param>
-        public void Offer(ObjectAttributes subject, DerivedFacts derived)
+        /// <param name="context">
+        /// The reference time, and the derived facts - which are empty for an Evidence-only
+        /// judging.
+        /// </param>
+        public void Offer(ObjectAttributes subject, JudgingContext context)
         {
             if (_error is not null)
                 return;
@@ -377,7 +389,7 @@ public static class JudgingRun
 
             try
             {
-                verdict = rule.Judge(subject, derived);
+                verdict = rule.Judge(subject, context);
             }
             catch (Exception error) when (error is not OutOfMemoryException
                                               and not StackOverflowException)

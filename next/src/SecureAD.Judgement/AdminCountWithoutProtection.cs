@@ -88,10 +88,10 @@ public sealed class AdminCountWithoutProtection : IRule
             + "cannot supply them, so reaching this is a defect rather than a missing derivation.");
 
     /// <inheritdoc />
-    public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived)
+    public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context)
     {
         ArgumentNullException.ThrowIfNull(subject);
-        ArgumentNullException.ThrowIfNull(derived);
+        ArgumentNullException.ThrowIfNull(context);
 
         // Cheapest discriminator first, and the one that ends most objects. An object without the
         // marker is outside this rule entirely - N10 and N11 - and is not a gap in the evidence.
@@ -99,7 +99,7 @@ public sealed class AdminCountWithoutProtection : IRule
         if (adminCount is not 1)
             return RuleVerdict.Judged([]);
 
-        if (derived.ProtectedPrincipals is not { } protection)
+        if (context.ProtectedPrincipals is not { } protection)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
 
         // U3. A partial closure can make a protected object look unprotected, which is the failure
@@ -138,10 +138,10 @@ public sealed class AdminCountWithoutProtection : IRule
 
         // U2. Read only once the protection question is settled, because an unreadable descriptor
         // on an object that turns out to be protected is not a doubt about anything.
-        if (derived.Permissions is null)
+        if (context.Permissions is null)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.SecurityDescriptorUnreadable);
 
-        var permissions = derived.Permissions(subject.DistinguishedName);
+        var permissions = context.Permissions(subject.DistinguishedName);
 
         if (permissions is null || permissions.DaclState is DaclState.Unreadable)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.SecurityDescriptorUnreadable);

@@ -51,9 +51,9 @@ public sealed class DerivedFactRuleTests
             throw new InvalidOperationException(
                 "A rule declaring derived facts must be offered the package overload.");
 
-        public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived)
+        public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context)
         {
-            Seen = derived.ProtectedPrincipals;
+            Seen = context.ProtectedPrincipals;
             return RuleVerdict.Judged([]);
         }
     }
@@ -97,7 +97,7 @@ public sealed class DerivedFactRuleTests
         public RuleVerdict Judge(ObjectAttributes subject) =>
             throw new InvalidOperationException("Offered the wrong overload.");
 
-        public RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived) =>
+        public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context) =>
             RuleVerdict.CouldNotResolve(
                 [new UnresolvedInput(
                     DerivedFactKind.ProtectedPrincipals, UnresolvedReason.ClaimDisputed)]);
@@ -183,6 +183,71 @@ public sealed class DerivedFactRuleTests
 
         Assert.True(judged.IsSuccess, judged.Error?.Description);
         Assert.Equal(1, rule.Judged);
+    }
+
+    /// <summary>
+    /// A rule that records the reference time it was handed, so a test can prove the recorded
+    /// evaluation time reaches the rules rather than stopping at the writer.
+    /// </summary>
+    private sealed class RecordsTheReferenceTime : IRule
+    {
+        public RuleDefinition Definition { get; } = new(
+            "TEST-ASOF",
+            "Records the reference time",
+            Severity.Low,
+            1,
+            ["user"],
+            ["objectSid"],
+            RequiredDerivedFacts: []);
+
+        /// <summary>What it was told the time was, or null if it was never offered a context.</summary>
+        public DateTimeOffset? Seen { get; private set; }
+
+        public RuleVerdict Judge(ObjectAttributes subject) =>
+            throw new InvalidOperationException(
+                "A judging must offer the context overload, or no rule can ever be temporal.");
+
+        public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context)
+        {
+            Seen = context.AsOf;
+            return RuleVerdict.Judged([]);
+        }
+    }
+
+    /// <summary>
+    /// The reference time a judging records is the one its rules are judged against.
+    /// </summary>
+    /// <remarks>
+    /// <b>The two times passed in are deliberately different.</b> Every other test here passes the
+    /// same value for when judging started and for what it is evaluated against, so a rule handed
+    /// the start time by mistake would agree with the record and nothing would notice. Separating
+    /// them by a year is what makes this test able to fail.
+    /// </remarks>
+    [Fact]
+    public void Judging_JudgesRulesAgainstTheReferenceTimeItRecords()
+    {
+        var directory = CapturedButNotDerived();
+        var rule = new RecordsTheReferenceTime();
+        var asOf = Started.AddYears(1);
+
+        var judged = JudgingRun.Judge(
+            directory,
+            [rule],
+            Started,
+            asOf,
+            JudgingRun.NobodyIsWatching,
+            RunLog.Discarded,
+            CancellationToken.None);
+
+        Assert.True(judged.IsSuccess, judged.Error?.Description);
+
+        // Offered at all, and offered the evaluation time rather than the start time.
+        Assert.Equal(asOf, rule.Seen);
+
+        // And the same value is what the judgement records, so re-judging this sealed evidence
+        // against the stored time reproduces the answer instead of drifting with the clock.
+        using var judgement = JudgementReader.Open(directory).Value!;
+        Assert.Equal(asOf, judgement.Read().Description.EvaluationAsOf);
     }
 
     /// <summary>

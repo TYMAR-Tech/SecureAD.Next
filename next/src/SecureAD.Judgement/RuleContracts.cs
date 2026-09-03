@@ -92,13 +92,16 @@ public interface IRule
     RuleVerdict Judge(ObjectAttributes subject);
 
     /// <summary>
-    /// What this rule makes of one object, given the derived facts it declared.
+    /// What this rule makes of one object, given the reference time and the derived facts it
+    /// declared.
     /// </summary>
     /// <remarks>
     /// Defaulted to the single-object method, so a rule reading only captured attributes implements
     /// one method and is offered the package it never asked for without noticing it.
     /// </remarks>
     /// <param name="subject">The object to judge.</param>
-    /// <param name="derived">The derived facts, empty for an Evidence-only judging.</param>
-    RuleVerdict Judge(ObjectAttributes subject, DerivedFacts derived) => Judge(subject);
+    /// <param name="context">
+    /// The reference time, and the derived facts - which are empty for an Evidence-only judging.
+    /// </param>
+    RuleVerdict Judge(ObjectAttributes subject, JudgingContext context) => Judge(subject);
 }

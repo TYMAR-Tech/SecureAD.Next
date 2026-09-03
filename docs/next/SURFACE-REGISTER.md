@@ -296,7 +296,7 @@ The table below sits between the two markers around it, so the test parses only 
 | FindingSubject | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | FindingSubjectKind | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | DerivedFactKind | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
-| DerivedFacts | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| JudgingContext | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | AdminCountWithoutProtection | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | AdminCountWithoutProtectionEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | NoKerberosPreauthentication | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
