@@ -50,6 +50,9 @@ evidence. No rule consumes what it produces yet.
 | `NestingCycleAvailability` | Whether the store has an answer about membership cycles, and if not, why not |
 | `StoredNestingCycleProduct` | Groups that contain one another, with the availability that says whether the list is all of them |
 | `BroadPrincipalCatalogue` | Which principals are too broad to hold a sensitive right, by SID rather than by name |
+| `PrincipalExpansionOutcome` | Whether a principal was expanded, and if not, why not |
+| `ExpandedPrincipal` | One principal found inside another, with the path that reached it |
+| `PrincipalExpansion` | Everything inside one principal, and what the walk could not reach |
 | `CapturedSchemaAttributeReader` | Reads the schema partition's attribute definitions out of sealed evidence, so the phase contacts no directory |
 | `SchemaAttributeDefinition` | One attribute definition as capture stored it |
 | `SchemaAttributeReading` | Those definitions with whether the schema partition was read at all, so emptiness cannot be mistaken for a forest that withholds nothing |

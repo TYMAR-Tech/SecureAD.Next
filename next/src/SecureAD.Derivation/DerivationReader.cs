@@ -404,6 +404,220 @@ public sealed class DerivationReader : IDisposable
     }
 
     /// <summary>
+    /// Expands one principal to everything nested inside it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Walked on demand rather than read from a stored closure, and that is deliberate.</b> The
+    /// transitive closure of every group is quadratic in a real forest, while every caller asks
+    /// about a handful of named principals - an entry in a security descriptor, a value out of
+    /// Group Policy, a group an operator typed. The edges are already stored; the answer is cheap
+    /// to reach from them and expensive to keep.
+    /// </para>
+    /// <para>
+    /// <b>Breadth first, with a visited set.</b> Microsoft is explicit that group membership may
+    /// have loops and that any enumeration should keep a list of what it has seen to end the
+    /// recursion - <i>Determining a User's or Group's Membership in a Group</i>. Breadth first also
+    /// means the first route found to a principal is a shortest one, which is the route worth
+    /// showing an operator.
+    /// </para>
+    /// <para>
+    /// <b>A budget, because a forest can be large and a caller can be a screen.</b> Reaching it is
+    /// reported rather than hidden: the members found are real and the silence about the rest is
+    /// not a fact.
+    /// </para>
+    /// </remarks>
+    /// <param name="sid">The principal to expand.</param>
+    /// <param name="scope">The scope its SID is unique within, empty for a forest-wide principal.</param>
+    /// <param name="budget">The most principals to return before stopping.</param>
+    /// <returns>What is inside it, and what the walk could not reach.</returns>
+    public PrincipalExpansion MembersOf(string sid, string scope, int budget = DefaultExpansionBudget)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(budget);
+
+        // Discriminated on the phase and not on the table being empty, for the reason the schema
+        // gives everywhere else in this store: a forest with no nesting in it and a bundle whose
+        // nesting pass never ran both leave nesting_edge empty, and reading the second as the first
+        // would report a flat directory on the strength of a phase that did not happen.
+        var nesting = ReadPhases()
+            .FirstOrDefault(p => p.Phase == MembershipNestingPass.PhaseName);
+
+        if (nesting is null || nesting.Outcome is DerivationPhaseOutcome.DidNotRun
+        or DerivationPhaseOutcome.Failed)
+        {
+            return new PrincipalExpansion(sid, PrincipalExpansionOutcome.NoNestingDerived, null);
+        }
+
+        var rootId = FindSidId(sid, scope);
+
+        if (rootId is null)
+            return new PrincipalExpansion(sid, PrincipalExpansionOutcome.PrincipalNotFound, null);
+
+        var edges = ReadNestingEdges();
+
+        var identities = ReadSidIdentities();
+
+        // The path to each principal, kept as the parent that first reached it. Storing one parent
+        // rather than a whole path per member keeps this linear in the number of principals; the
+        // path is walked back out at the end, only for the members actually returned.
+        var parent = new Dictionary<int, int>();
+        var order = new List<int>();
+        var seen = new HashSet<int> { rootId.Value };
+        var queue = new Queue<int>();
+        queue.Enqueue(rootId.Value);
+
+        var stopped = false;
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+
+            if (!edges.TryGetValue(current, out var members))
+                continue;
+
+            foreach (var member in members)
+            {
+                // The visited set is what makes a cycle terminate. Without it a loop that Microsoft
+                // says may exist would be walked until something ran out.
+                if (!seen.Add(member))
+                    continue;
+
+                parent[member] = current;
+                order.Add(member);
+                queue.Enqueue(member);
+
+                if (order.Count < budget)
+                    continue;
+
+                stopped = true;
+                break;
+            }
+
+            if (stopped)
+                break;
+        }
+
+        var expanded = new List<ExpandedPrincipal>(order.Count);
+
+        foreach (var memberId in order)
+        {
+            var identity = identities.GetValueOrDefault(memberId);
+
+            // A member is complete when it is not a group, or when it is one whose own members were
+            // all reached. Where the walk stopped, anything still queued behind it is unknown, so
+            // every group left on the frontier is marked incomplete rather than quietly trusted.
+            var isComplete = !stopped
+                || !edges.ContainsKey(memberId)
+                || edges[memberId].All(seen.Contains);
+
+            expanded.Add(new ExpandedPrincipal(
+                identity.Sid ?? string.Empty,
+                identity.Scope ?? string.Empty,
+                PathTo(memberId, rootId.Value, parent, identities),
+                isComplete));
+        }
+
+        var outcome = stopped
+            ? PrincipalExpansionOutcome.StoppedAtBudget
+            : PrincipalExpansionOutcome.Expanded;
+
+        return new PrincipalExpansion(sid, outcome, expanded);
+    }
+
+    /// <summary>How many principals an expansion returns before it stops.</summary>
+    /// <remarks>
+    /// <b>Named rather than left to each caller.</b> A screen and a rule asking the same question
+    /// with different budgets would disagree about the same group, and the one with the smaller
+    /// budget would look like the correct answer because it came back faster.
+    /// </remarks>
+    public const int DefaultExpansionBudget = 5000;
+
+    /// <summary>Walks the parent chain back out to the principal that was expanded.</summary>
+    /// <param name="memberId">The principal to describe.</param>
+    /// <param name="rootId">Where the walk started.</param>
+    /// <param name="parent">What first reached each principal.</param>
+    /// <param name="identities">SID text by dictionary id.</param>
+    private static IReadOnlyList<string> PathTo(
+        int memberId,
+        int rootId,
+        Dictionary<int, int> parent,
+        Dictionary<int, (string Sid, string Scope)> identities)
+    {
+        var path = new List<string>();
+        var current = memberId;
+
+        while (true)
+        {
+            path.Add(identities.GetValueOrDefault(current).Sid ?? string.Empty);
+
+            if (current == rootId || !parent.TryGetValue(current, out var next))
+                break;
+
+            current = next;
+        }
+
+        path.Reverse();
+        return path;
+    }
+
+    /// <summary>The dictionary id of one SID in one scope, or null where it is not held.</summary>
+    /// <param name="sid">The SID.</param>
+    /// <param name="scope">The scope it is unique within.</param>
+    private int? FindSidId(string sid, string scope)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT sid_id FROM sid WHERE sid = $sid AND scope = $scope";
+        command.Parameters.AddWithValue("$sid", sid);
+        command.Parameters.AddWithValue("$scope", scope);
+
+        var found = command.ExecuteScalar();
+        return found is null or DBNull ? null : Convert.ToInt32(found, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Every nesting edge, as members by group.</summary>
+    private Dictionary<int, List<int>> ReadNestingEdges()
+    {
+        var edges = new Dictionary<int, List<int>>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT group_sid_id, member_sid_id FROM nesting_edge";
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var group = reader.GetInt32(0);
+
+            if (!edges.TryGetValue(group, out var members))
+            {
+                members = [];
+                edges[group] = members;
+            }
+
+            members.Add(reader.GetInt32(1));
+        }
+
+        return edges;
+    }
+
+    /// <summary>The SID text and scope of every principal, by dictionary id.</summary>
+    private Dictionary<int, (string Sid, string Scope)> ReadSidIdentities()
+    {
+        var identities = new Dictionary<int, (string, string)>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT sid_id, sid, scope FROM sid";
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+            identities[reader.GetInt32(0)] = (reader.GetString(1), reader.GetString(2));
+
+        return identities;
+    }
+
+    /// <summary>
     /// Reads the membership cycles, or says why there are none to read.
     /// </summary>
     /// <remarks>

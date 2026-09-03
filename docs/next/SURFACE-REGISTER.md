@@ -356,6 +356,9 @@ The table below sits between the two markers around it, so the test parses only 
 | NestingCycleAvailability | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | StoredNestingCycleProduct | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | BroadPrincipalCatalogue | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| PrincipalExpansionOutcome | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| ExpandedPrincipal | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| PrincipalExpansion | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | CapturedSchemaAttributeReader | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | SchemaAttributeDefinition | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | SchemaAttributeReading | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |

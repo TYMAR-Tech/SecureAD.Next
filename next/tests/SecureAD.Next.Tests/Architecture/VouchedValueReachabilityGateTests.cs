@@ -384,6 +384,14 @@ public sealed class VouchedValueReachabilityGateTests
     /// could not say whether anyone had looked. Removing that wrapper moved the lists onto the type
     /// that carries the answer, which is where the vouching belongs. Read true from a store whose
     /// expansion succeeded and false from one whose expansion did not run.
+    /// 43 and 44 from 2026-09-03 with <c>PrincipalExpansion.IsComplete</c> and
+    /// <c>ExpandedPrincipal.IsComplete</c>, which the shared expansion foundation needs because
+    /// four consumers rest on it - SEC-090, SEC-093, the membership cycle rule and the groups
+    /// screen. An empty expansion means the group is empty, the principal was never captured, the
+    /// nesting pass never ran, or the walk stopped at a budget, and the last three are not
+    /// statements about the group. The per-member flag marks where a stopped walk left an
+    /// unexplored subtree, so a reader can see the edge of the answer rather than infer it. Read
+    /// true from a whole expansion and false from one stopped at a budget.
     /// </para>
     /// </summary>
     [Fact]
@@ -391,7 +399,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(42, found.Count);
+        Assert.Equal(44, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");
