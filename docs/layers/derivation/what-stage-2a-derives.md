@@ -137,10 +137,23 @@ delegation to the narrower-looking one reaches whatever it is looped with — an
 directory tools shows it. `StoredNestingCycleProduct` carries them with an availability, because a
 forest with no loops and a bundle nobody expanded both leave the table empty.
 
-**One known gap, pending a lab check.** `AuthorizationMembershipExpander` keeps a strongly connected
-component only when it holds more than one principal, so a group that contained *itself* would be
-dropped before it reached the store. Whether Active Directory permits that is unsettled — Microsoft
-states only that loops may exist. See `next/tools/Test-LabOpenQuestions.ps1`.
+**One known gap, and it is now measured rather than suspected.** `AuthorizationMembershipExpander`
+keeps a strongly connected component only when it holds more than one principal, so a group that
+contains *itself* is a component of one and is dropped before it reaches the store. **Active
+Directory permits exactly that**, measured against `ba.ad.lab` on 2026-09-03 by
+`next/tools/Test-LabOpenQuestions.ps1`: `Add-ADGroupMember -Identity A -Members A` was **accepted**.
+The practitioner article that claimed a direct self-loop is refused with *a group cannot be made a
+member of itself* is wrong, and the punch list said so on its authority until this was run.
+
+**What that does and does not affect.** It is a gap in the cycle *inventory* — a self-referencing
+group will not appear in `StoredNestingCycleProduct` — and not in what any rule is told about
+membership, because an edge from a principal to itself adds nobody to its own expansion. So no
+finding is wrong today; the unbuilt cycle rule would simply be blind to this one shape.
+
+**And the cost of a cycle is measured too.** A user placed in only one group of an A-to-B-to-C-to-A
+loop came back with **all three** group SIDs in `tokenGroups`, which is what the domain controller
+itself computes for authorization. The token-size argument in `P-125` was an inference chained from
+two Microsoft pages; it is now an observation.
 
 ## How it is built
 

@@ -32,7 +32,13 @@ $prefix = 'SecureADCycleTest'
 $groupA = "$prefix-A"
 $groupB = "$prefix-B"
 $groupC = "$prefix-C"
-$member = "$prefix-User"
+
+# ONE LETTER, BECAUSE A USER'S sAMAccountName IS CAPPED AT 20 CHARACTERS AND A GROUP'S IS NOT.
+# "SecureADCycleTest-User" is 22, so the three groups were created and the user was refused with
+# "The name provided is not a properly formed account name" - which does not mention length and
+# reads like a character-set problem. Seen against ba.ad.lab on 2026-09-03. "SecureADCycleTest-U"
+# is 19 and still carries the prefix the removal path checks.
+$member = "$prefix-U"
 
 if (-not $Path) {
     $Path = (Get-ADDomain).UsersContainer
@@ -156,7 +162,16 @@ Add-ADGroupMember -Identity $groupC -Members $member -ErrorAction SilentlyContin
 # tokenGroups is what the domain controller itself computes for authorization, which is the number
 # that matters - not what a script works out by walking the graph. Asking the controller is the
 # whole point: it is the authority on what the token would contain.
-$user = Get-ADUser -Identity $member -Properties tokenGroups, memberOf
+#
+# IT MUST BE ASKED FOR WITH A BASE-SCOPE SEARCH. tokenGroups is constructed rather than stored, and
+# the controller will only compute it for a single named object; -Identity issues a subtree search
+# and the directory answers "The requested search operation is only supported for base searches",
+# which names the scope but not the attribute and reads like a permissions problem. Seen against
+# ba.ad.lab on 2026-09-03.
+$memberDn = (Get-ADUser -Identity $member).DistinguishedName
+
+$user = Get-ADUser -SearchBase $memberDn -SearchScope Base -LDAPFilter '(objectClass=*)' `
+    -Properties tokenGroups, memberOf
 $cycleSids = @()
 
 foreach ($sid in $user.tokenGroups) {
