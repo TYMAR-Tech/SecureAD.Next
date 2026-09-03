@@ -58,6 +58,35 @@ public sealed class DerivedFactRuleTests
         }
     }
 
+    /// <summary>
+    /// A rule declaring the principal expansion, so a judging can be asked for one before
+    /// SEC-090 or SEC-093 exists.
+    /// </summary>
+    private sealed class NeedsPrincipalExpansion : IRule
+    {
+        public RuleDefinition Definition { get; } = new(
+            "TEST-EXPANSION",
+            "Reads the principal expansion",
+            Severity.Medium,
+            1,
+            ["user"],
+            ["objectSid"],
+            [nameof(DerivedFactKind.PrincipalExpansion)]);
+
+        /// <summary>Whether a lookup was handed over at all.</summary>
+        public bool WasOfferedALookup { get; private set; }
+
+        public RuleVerdict Judge(ObjectAttributes subject) =>
+            throw new InvalidOperationException(
+                "A rule declaring derived facts must be offered the context overload.");
+
+        public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context)
+        {
+            WasOfferedALookup = context.MembersOfPrincipal is not null;
+            return RuleVerdict.Judged([]);
+        }
+    }
+
     /// <summary>A rule that reads only the captured object, as today's two delegation rules do.</summary>
     private sealed class NeedsNothingDerived : IRule
     {
@@ -160,6 +189,133 @@ public sealed class DerivedFactRuleTests
         // package cannot pass this by looking like a successful run.
         Assert.NotNull(rule.Seen);
         Assert.Equal(2, rule.Seen!.CatalogueVersion);
+    }
+
+    /// <summary>
+    /// A rule reading the principal expansion is refused a bundle it cannot be answered from.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The failure this prevents is silence, not noise.</b> Expanding a group over an empty edge
+    /// table finds nothing inside it, so every delegation in the estate would look scoped and every
+    /// broad principal nested inside one would go unreported. A rule that reported nothing would
+    /// look like a clean forest.
+    /// </para>
+    /// <para>
+    /// <b>What this covers and what it does not, stated rather than implied.</b> An undertived
+    /// bundle is refused earlier, by the derivation being unopenable, so this reaches the general
+    /// refusal and not the nesting-specific one. The second branch - a derivation that opened but
+    /// whose nesting pass did not run or failed - is exercised against the reader in
+    /// <c>PrincipalExpansionTests.ADerivationWithNoNestingPassSaysSo</c>, because arranging it
+    /// through <c>Stage2aRun</c> would mean making the nesting pass throw.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Judging_RefusesAPrincipalExpansionRuleWhenItCannotBeAnswered()
+    {
+        var directory = CapturedButNotDerived();
+
+        var judged = JudgingRun.Judge(
+            directory,
+            [new NeedsPrincipalExpansion()],
+            Started,
+            Started,
+            JudgingRun.NobodyIsWatching,
+            RunLog.Discarded,
+            CancellationToken.None);
+
+        Assert.False(judged.IsSuccess);
+
+        // The refusal names the fact that was declared, or an operator is left with a failure they
+        // cannot act on.
+        Assert.Contains("PrincipalExpansion", judged.Error!.Description, StringComparison.Ordinal);
+        Assert.Contains("Derive this bundle", judged.Error.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A derivation that opened but derived no nesting refuses the judging too.
+    /// </summary>
+    /// <remarks>
+    /// <b>This test exists because a mutation proved it was missing.</b> Removing the nesting check
+    /// from <c>JudgingRun</c> left the whole suite green, which means the refusal had never been
+    /// observed failing and was not evidence of anything. The undertived case is caught earlier by
+    /// the derivation being unopenable, so only a store that opens and carries no nesting reaches
+    /// this branch - which is what happens when the nesting pass throws and fault isolation keeps
+    /// the run going.
+    /// </remarks>
+    [Fact]
+    public void Judging_RefusesWhenTheDerivationOpenedButDerivedNoNesting()
+    {
+        var directory = CapturedButNotDerived();
+        var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash;
+
+        // Written by hand rather than by Stage2aRun, because the coordinator always runs the
+        // nesting pass. What is being reproduced is the pass having failed, not having been
+        // skipped by a caller.
+        using (var writer = DerivationWriter.Create(directory, seal, Started))
+        {
+            writer.WriteSids([], []);
+            writer.RecordPhase(
+                "MembershipAndNesting", DerivationPhaseOutcome.Failed, "it fell over");
+
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: false,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.None));
+
+            writer.Complete(Started.AddMinutes(1));
+        }
+
+        var judged = JudgingRun.Judge(
+            directory,
+            [new NeedsPrincipalExpansion()],
+            Started,
+            Started,
+            JudgingRun.NobodyIsWatching,
+            RunLog.Discarded,
+            CancellationToken.None);
+
+        Assert.False(judged.IsSuccess);
+        Assert.Contains("no group nesting", judged.Error!.Description, StringComparison.Ordinal);
+
+        // It says what the silence would have cost, because a refusal an operator cannot weigh is
+        // one they will switch off.
+        Assert.Contains("look scoped", judged.Error.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The negative control: the same rule on the same bundle, once derived, is offered the lookup.
+    /// </summary>
+    [Fact]
+    public void Judging_OffersTheExpansionOnceTheBundleIsDerived()
+    {
+        var directory = CapturedButNotDerived();
+
+        Assert.True(
+            Stage2aRun.Derive(
+                directory,
+                ExpansionBudget.Bulk,
+                Started,
+                Stage2aRun.Unwatched,
+                RunLog.Discarded,
+                CancellationToken.None).IsSuccess);
+
+        var rule = new NeedsPrincipalExpansion();
+
+        var judged = JudgingRun.Judge(
+            directory,
+            [rule],
+            Started,
+            Started,
+            JudgingRun.NobodyIsWatching,
+            RunLog.Discarded,
+            CancellationToken.None);
+
+        Assert.True(judged.IsSuccess, judged.Error?.Description);
+        Assert.True(rule.WasOfferedALookup);
     }
 
     /// <summary>

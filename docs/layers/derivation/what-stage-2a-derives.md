@@ -96,6 +96,52 @@ inheritance disabled, so a delegation applied at its organisational unit silentl
 `adminCount` stays set after the membership goes away, so this outlives the cause. The sentence is
 *your delegation is not doing what you think*, not *this person has privilege*.
 
+## What a rule can ask of the graph
+
+Added 2026-09-03, and it is the foundation four unbuilt things rest on — SEC-090, SEC-093, a
+membership-cycle rule and a groups screen. They differ only in which principal they start from: an
+entry in a security descriptor, a value read out of Group Policy, or one an operator typed. Building
+the walk once is what stops two of them disagreeing about the same nesting.
+
+**`DerivationReader.MembersOf` expands one principal to everything inside it.** It walks the stored
+`nesting_edge` rows breadth first, keeping a visited set — which is what Microsoft advises in
+*Determining a User's or Group's Membership in a Group*, since group membership may have loops.
+Breadth first also means the first route found to a principal is a shortest one, and a shortest
+route is the link an operator would cut.
+
+**Walked on demand, not stored.** The transitive closure of every group is quadratic in a real
+forest, while every consumer asks about a handful of named principals. The edges are already
+persisted, so the answer is cheap to reach and expensive to keep.
+
+**The outcome separates four things that all look like an empty group.** Expanded, stopped at a
+budget, the principal was never captured, and no nesting was derived. `Members` is null for the last
+three, so nothing can read *nobody looked* as *nothing is inside it*. A group that really is empty
+gets an empty list, which is what makes the null mean something.
+
+**`BroadPrincipalCatalogue` decides what is too broad to hold a sensitive right, by SID and never by
+name.** That distinction is the point rather than pedantry: Microsoft's security groups reference
+gives the built-in `Users` group default members of *Authenticated Users* and *Domain Users*, and
+`Pre-Windows 2000 Compatible Access` — which holds read access for all users and groups in the
+domain — may contain *Everyone* and *Anonymous*. A test against whatever a delegation names would
+pass both.
+
+**It does not judge whether anything found should be there.** The product cannot know which
+principals an organisation intended, which is the owner's decision recorded as `P-123`. This layer
+hands over the expansion; the only judgement a rule may make without local knowledge is that a
+member is broad in every organisation.
+
+**Membership cycles are persisted rather than discarded.** The expansion has always found them,
+because condensing the graph is how it avoids walking one forever, and until now it threw them away.
+Two groups in a cycle are permanently the same group as far as authorization is concerned, so a
+delegation to the narrower-looking one reaches whatever it is looped with — and nothing in the
+directory tools shows it. `StoredNestingCycleProduct` carries them with an availability, because a
+forest with no loops and a bundle nobody expanded both leave the table empty.
+
+**One known gap, pending a lab check.** `AuthorizationMembershipExpander` keeps a strongly connected
+component only when it holds more than one principal, so a group that contained *itself* would be
+dropped before it reached the store. Whether Active Directory permits that is unsettled — Microsoft
+states only that loops may exist. See `next/tools/Test-LabOpenQuestions.ps1`.
+
 ## How it is built
 
 ```

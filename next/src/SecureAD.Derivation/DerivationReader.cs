@@ -404,6 +404,27 @@ public sealed class DerivationReader : IDisposable
     }
 
     /// <summary>
+    /// Whether this store carries group nesting that can be walked.
+    /// </summary>
+    /// <remarks>
+    /// <b>Asked of the reader rather than worked out by the caller.</b> The answer depends on which
+    /// phase produced the edges and what became of it, and a caller that reconstructed that would
+    /// need the phase's name - a second copy of a string that has already drifted once in this
+    /// store. It also keeps Judgement from depending on Derivation's internals to decide whether a
+    /// rule can be offered an expansion.
+    /// </remarks>
+    public bool NestingWasDerived()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var nesting = ReadPhases()
+            .FirstOrDefault(p => p.Phase == MembershipNestingPass.PhaseName);
+
+        return nesting is not null
+            && nesting.Outcome is not (DerivationPhaseOutcome.DidNotRun or DerivationPhaseOutcome.Failed);
+    }
+
+    /// <summary>
     /// Expands one principal to everything nested inside it.
     /// </summary>
     /// <remarks>
@@ -442,14 +463,8 @@ public sealed class DerivationReader : IDisposable
         // gives everywhere else in this store: a forest with no nesting in it and a bundle whose
         // nesting pass never ran both leave nesting_edge empty, and reading the second as the first
         // would report a flat directory on the strength of a phase that did not happen.
-        var nesting = ReadPhases()
-            .FirstOrDefault(p => p.Phase == MembershipNestingPass.PhaseName);
-
-        if (nesting is null || nesting.Outcome is DerivationPhaseOutcome.DidNotRun
-        or DerivationPhaseOutcome.Failed)
-        {
+        if (!NestingWasDerived())
             return new PrincipalExpansion(sid, PrincipalExpansionOutcome.NoNestingDerived, null);
-        }
 
         var rootId = FindSidId(sid, scope);
 

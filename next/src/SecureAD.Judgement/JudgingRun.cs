@@ -221,6 +221,39 @@ public static class JudgingRun
 
                 context = context with { AttributeVisibility = visibility.Value };
             }
+
+            // The expansion is a lookup rather than a product, so what is checked here is that the
+            // nesting it walks was derived at all. A rule handed a walk over an empty edge table
+            // would find nothing inside every group it asked about and report a scoped delegation
+            // as safe - which is worse than silence, and is why this refuses instead.
+            if (wanted.Contains(
+                nameof(DerivedFactKind.PrincipalExpansion), StringComparer.OrdinalIgnoreCase))
+            {
+                if (!derivation.NestingWasDerived())
+                {
+                    derivation.Dispose();
+
+                    var refusal = Failure(
+                        "DerivedFactsAbsent",
+                        $"A scheduled rule reads {DerivedFactKind.PrincipalExpansion}, and this "
+                        + "bundle's derivation carries no group nesting to walk. Expanding a group "
+                        + "over nothing finds nothing inside it, so every delegation would look "
+                        + "scoped and every broad principal would go unreported. This judging "
+                        + "stops rather than reporting an answer it does not have.",
+                        bundleDirectory);
+
+                    log.Record(JudgePhase, refusal.Error!, []);
+                    return refusal;
+                }
+
+                // Captured by reference to the open reader, the same way permissions are read off
+                // the open bundle. Both live as long as the loop below, and no longer.
+                var reader = derivation;
+                context = context with
+                {
+                    MembersOfPrincipal = (sid, scope) => reader.MembersOf(sid, scope),
+                };
+            }
         }
 
         using var _ = derivation;

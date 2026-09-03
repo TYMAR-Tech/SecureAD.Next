@@ -48,6 +48,19 @@ public enum DerivedFactKind
     /// <c>docs/decisions/0091</c> refuses the judging instead.
     /// </remarks>
     AttributeVisibility,
+
+    /// <summary>
+    /// Expanding one principal to everything nested inside it, with the path that reached each.
+    /// Produced by the Derivation phase named in
+    /// <c>MembershipNestingPass.PhaseName</c>.
+    /// </summary>
+    /// <remarks>
+    /// <b>Declared because a rule reading this treats what it finds as a fact about who holds a
+    /// right.</b> A group nobody expanded and a group with nothing in it are opposite answers, and a
+    /// rule handed the second when the first is true would report a scoped delegation as safe. That
+    /// is worse than silence, so <c>docs/decisions/0091</c> refuses the judging instead.
+    /// </remarks>
+    PrincipalExpansion,
 }
 
 /// <summary>
@@ -99,11 +112,16 @@ public enum DerivedFactKind
 /// Which attributes this forest withholds, or null where the phase did not run or was not asked
 /// for.
 /// </param>
+/// <param name="MembersOfPrincipal">
+/// Expands one principal, given its SID and the scope that SID is unique within, to everything
+/// nested inside it. Null where the judging was not given a derivation to walk.
+/// </param>
 public sealed record JudgingContext(
     DateTimeOffset AsOf,
     StoredProtectedPrincipalDerivation? ProtectedPrincipals,
     Func<string, ObjectPermissions?>? Permissions,
-    StoredAttributeVisibility? AttributeVisibility)
+    StoredAttributeVisibility? AttributeVisibility,
+    Func<string, string, PrincipalExpansion>? MembersOfPrincipal)
 {
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
@@ -116,5 +134,5 @@ public sealed record JudgingContext(
     /// means there is no such thing as a judging without one.
     /// </remarks>
     /// <param name="asOf">The reference time this judging is evaluated against.</param>
-    public static JudgingContext At(DateTimeOffset asOf) => new(asOf, null, null, null);
+    public static JudgingContext At(DateTimeOffset asOf) => new(asOf, null, null, null, null);
 }
