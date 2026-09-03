@@ -41,6 +41,14 @@ public static class RuleGuidanceCatalogue
                 + "break whatever relied on it, so identify what authenticates to this account "
                 + "first - Microsoft marks unconstrained delegation \"Supported (not recommended)\" "
                 + "rather than unsupported, and it is often load-bearing.",
+            About:
+                "Reports a user or service account whose account options trust it for "
+                + "unconstrained delegation. It reads that one setting and nothing else: it does "
+                + "not report constrained delegation or resource-based constrained delegation, "
+                + "which are the safer forms and are not judged here at all, and it cannot say "
+                + "whether anyone has ever actually authenticated to this account. An account "
+                + "nothing uses carries the same setting as one every administrator signs in "
+                + "through, and the directory does not record the difference.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 
@@ -55,6 +63,15 @@ public static class RuleGuidanceCatalogue
             WhatToDo:
                 "Move the host to resource-based constrained delegation. As with any delegation "
                 + "change, find out what depends on it before removing it.",
+            About:
+                "Reports a computer trusted for unconstrained delegation that is not a domain "
+                + "controller. Domain controllers are excluded deliberately, because the setting "
+                + "is normal on them; a controller identified by any of three independent signals "
+                + "is left alone, and a machine that looks like one by some signals and not others "
+                + "is reported with that disagreement recorded rather than resolved. As with "
+                + "SEC-010 it reads one setting: the safer forms of delegation are not judged, and "
+                + "whether the machine has actually collected anyone's tickets cannot be seen from "
+                + "the directory.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 
@@ -72,6 +89,13 @@ public static class RuleGuidanceCatalogue
                 "Clear \"Do not require Kerberos preauthentication\" on the account. The flag is "
                 + "usually set for a non-Windows Kerberos client that could not send "
                 + "pre-authentication data, so establish what uses the account before clearing it.",
+            About:
+                "Reports an account whose account options waive Kerberos pre-authentication. It "
+                + "judges the setting, not the risk: a long random password makes the offline "
+                + "attack impractical without changing anything this rule can see, so a reported "
+                + "account is not necessarily crackable and an unreported one is not necessarily "
+                + "safe from anything else. It also cannot tell whether the weakness is being used "
+                + "- that is a question for sign-in telemetry, which this product does not read.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 
@@ -91,6 +115,14 @@ public static class RuleGuidanceCatalogue
                 + "container it now lives in. Check what its current access control list grants "
                 + "before doing so: it is a snapshot of AdminSDHolder from the day it was last "
                 + "stamped, and something may be relying on it.",
+            About:
+                "Reports an object carrying the AdminSDHolder marker whose permissions still "
+                + "refuse to inherit, where the captured evidence does not establish that "
+                + "AdminSDHolder protects it now. It does not prove the object was ever "
+                + "privileged - the marker is set when protection begins and is never cleared when "
+                + "it ends, so it records a history nobody can read back - and it does not examine "
+                + "what the frozen access control list actually grants. Whether those permissions "
+                + "are dangerous is a separate question this product does not yet answer.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface#privileged-accounts-and-groups-in-active-directory"),
 
@@ -113,6 +145,15 @@ public static class RuleGuidanceCatalogue
                 + "only the identifiers Microsoft documents, so an account carrying a custom group "
                 + "from a domain that no longer exists is not reported here - the values it holds "
                 + "are shown on the object itself.",
+            About:
+                "Reports an account whose SID history contains an identifier Microsoft documents "
+                + "as privileged - Domain Admins, Enterprise Admins, the built-in operator groups "
+                + "and their like. It ranks a value by the number at the end of it, which it can "
+                + "only do for the identifiers Microsoft publishes. A custom group that was "
+                + "powerful in the old domain has an ordinary, sequentially allocated number, and "
+                + "nothing in that number says what it once granted; if the old domain is gone, "
+                + "nothing can. Such an account is not reported, and every value it carries is "
+                + "shown on the object itself so a reader is not left with a filtered view.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-sid-history-attributes"),
 
@@ -132,6 +173,14 @@ public static class RuleGuidanceCatalogue
                 + "has none, it still has none until one is set. Establish what uses the account "
                 + "first: something that was created without a password may not survive being "
                 + "given one.",
+            About:
+                "Reports an account whose account options exempt it from the domain's minimum "
+                + "password length. It does not report accounts with no password, and the "
+                + "difference matters: the flag says the rule does not apply to this account, not "
+                + "that the account took advantage of it. The directory does not disclose whether "
+                + "a password is set or what it is, and this product never asks - so a reported "
+                + "account may have a perfectly good password, and what is wrong is that nothing "
+                + "obliges it to.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
 
@@ -150,6 +199,13 @@ public static class RuleGuidanceCatalogue
                 + "clearing the setting stops a new reversible copy being stored, but the existing "
                 + "one stays until the password changes. Find out why it was set - it is usually "
                 + "an application that required it, and that application may stop working.",
+            About:
+                "Reports an account set to store its password using reversible encryption. It "
+                + "reads the setting, which governs what happens at the next password change; it "
+                + "cannot see whether a reversible copy is stored right now. So an account cleared "
+                + "of the setting but never given a new password still holds one and is not "
+                + "reported, which is why the guidance insists on the password change as well as "
+                + "the clearing.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
 
@@ -167,6 +223,13 @@ public static class RuleGuidanceCatalogue
                 + "almost always present because something authenticating as this account could "
                 + "not do better - a legacy appliance or an old integration - so establish what "
                 + "that is before clearing it, or that thing stops authenticating.",
+            About:
+                "Reports an account restricted to DES encryption by its account options. It reads "
+                + "the account's own setting and not the domain's: what encryption types the domain "
+                + "permits, and which are used for the tickets actually issued, are configured "
+                + "elsewhere and are not judged here. An account without this flag may still be "
+                + "negotiating weak encryption for other reasons, and this rule says nothing about "
+                + "that.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
 
@@ -190,6 +253,16 @@ public static class RuleGuidanceCatalogue
                 + "rotates itself; where that is not possible, give it a long random password. "
                 + "Consider whether the account needs its privilege at all. Removing the service "
                 + "name closes this route to the account and says nothing about any other.",
+            About:
+                "Reports a service name registered on an account that AdminSDHolder protects. "
+                + "Ordinary service accounts with service names are not reported, and that "
+                + "is the rule rather than an omission: a service name on an ordinary account is "
+                + "what a service account is, and reporting every one would report the normal "
+                + "operation of every application in the estate. Microsoft scopes its own "
+                + "recommendation the same way. The key distribution centre's own account is "
+                + "excluded too - it carries a service name by default and cannot be changed. This "
+                + "rule does not measure password strength, which is what actually decides whether "
+                + "the offline attack succeeds.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#credential-access-alerts"),
 
@@ -213,6 +286,20 @@ public static class RuleGuidanceCatalogue
                 + "rotating, so find those before you deploy. This rule reads Active Directory "
                 + "only: a machine whose password is backed up to Microsoft Entra ID carries no "
                 + "directory attribute and cannot be told apart from an unmanaged one here.",
+            About:
+                "Reports a computer carrying neither LAPS expiration timestamp, so nothing "
+                + "visible in this directory is rotating its local administrator password. "
+                + "It reads Active Directory only. A machine whose password is backed up to "
+                + "Microsoft Entra ID instead carries no directory attribute at all and looks "
+                + "exactly like an unmanaged one - the likeliest false finding in a real estate, "
+                + "and one the product cannot detect while an administrator can. Domain "
+                + "controllers are out of scope, having no ordinary local administrator account to "
+                + "manage, and so are disabled accounts, which have no running machine behind "
+                + "them. A forest whose schema was never extended for either LAPS product is not "
+                + "reported at all, machine by machine: no computer in it could carry the "
+                + "attribute, so its absence says nothing about any one of them. Both those "
+                + "populations are listed in the LAPS inventory, which shows every computer "
+                + "including the ones no rule judges.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/laps/laps-overview"),
 
@@ -236,6 +323,16 @@ public static class RuleGuidanceCatalogue
                 + "clear text and cannot encrypt them or back them up to Microsoft Entra ID, so "
                 + "moving to native Windows LAPS gains those - and will change which attribute the "
                 + "password is read from, which any tooling reading ms-Mcs-AdmPwd depends on.",
+            About:
+                "Reports a computer capable of running Windows LAPS that carries the legacy "
+                + "timestamp and not the modern one - the absence of the confirmation Microsoft "
+                + "names for a successful deployment. It states what was observed and never "
+                + "which cause produced it, because the three causes are identical in the "
+                + "directory and what separates them is on the machine: a policy that is not "
+                + "reaching it, a deliberate legacy emulation-mode configuration, or a machine "
+                + "that never took the April 2023 update. Machines too old for Windows LAPS are "
+                + "excluded on capability, since Microsoft never shipped it for them. Whether the "
+                + "legacy timestamp is recent or years stale is not judged here.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/laps/laps-scenarios-migration"),
     ];

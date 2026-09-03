@@ -330,6 +330,17 @@ internal sealed class FindingRowViewModel
     public string WhatToDo => Guidance?.WhatToDo
         ?? "Nothing is recorded for this rule in this build.";
 
+    /// <summary>What the rule looks for, and what it does not.</summary>
+    /// <remarks>
+    /// <b>Shown beside the finding because there is nowhere else yet.</b> It is a statement about
+    /// the rule rather than about this object, so an operator reading a rule that reported nothing
+    /// still cannot see it - which is the half of <c>P-118</c> that a findings panel cannot close.
+    /// The other half, repeating it once per object, this does close: it is read from the catalogue
+    /// rather than written into each finding's text.
+    /// </remarks>
+    public string About => Guidance?.About
+        ?? $"No description is recorded for {_finding.RuleId} in this build.";
+
     /// <summary>
     /// The family this belongs to, such as <c>Kerberos</c>, or an empty string where none is known.
     /// </summary>

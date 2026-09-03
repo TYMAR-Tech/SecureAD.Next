@@ -112,6 +112,24 @@
                            TextWrapping="Wrap"
                            Margin="0,2,0,0" />
 
+                <!-- WHAT THIS RULE LOOKS FOR, AND WHAT IT DOES NOT. A rule reporting a subset of a
+                     problem must not let its silence read as "nothing else is wrong", and until
+                     this had a field of its own the only place to say so was inside each finding's
+                     own text - repeated once per object, and attached to the machines that fired
+                     rather than to the rule.
+
+                     IT IS STILL IN THE WRONG PLACE FOR HALF ITS AUDIENCE. The operator who most
+                     needs it is the one looking at a rule that reported nothing, and he never opens
+                     a finding. That is P-118's remainder and it belongs with the rule catalogue
+                     screen, which does not exist yet. -->
+                <TextBlock Text="WHAT THIS RULE LOOKS FOR"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,10,0,0" />
+                <TextBlock Text="{Binding SelectedFinding.About}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Margin="0,2,0,0" />
+
                 <!-- The source, so a customer can check the reasoning rather than take it. Shown
                      only when one is recorded: an empty line where a citation belongs suggests the
                      claim has one and it was lost. -->

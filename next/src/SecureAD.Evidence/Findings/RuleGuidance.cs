@@ -48,6 +48,29 @@ namespace SecureAD.Evidence.Findings;
 /// What an attacker gains, in plain language, and what it costs the organisation.
 /// </param>
 /// <param name="WhatToDo">The action to take, and what taking it may break.</param>
+/// <param name="About">
+/// What this rule looks for, and <b>what it does not</b>.
+/// <para>
+/// <b>The third kind of copy, and the one that makes a bounded rule honest.</b> A finding says what
+/// is true of one object and <see cref="WhyItMatters"/> says why that matters; neither can say what
+/// the rule cannot see. A rule reporting a subset of a problem is not free to let its silence read
+/// as <i>nothing else is wrong</i>, and until this field existed the only place to say so was the
+/// per-finding text - which repeats the statement once per object, attaches it to the machines that
+/// fired rather than to the rule, and never reaches the operator who most needs it: the one looking
+/// at a rule that reported nothing.
+/// </para>
+/// <para>
+/// <b>Required on every rule, on the owner's decision of 2026-09-03.</b> Optional was the cheaper
+/// choice and was refused: a field populated for some rules and empty for others renders as
+/// <i>this rule has no limitations</i>, which for a bounded rule is the exact false statement the
+/// section exists to prevent. Being made to write it is also how an unstated limit gets found, which
+/// is the same reason a rule declares its inputs.
+/// </para>
+/// <para>
+/// <b>It describes the rule, not the forest.</b> Nothing here may depend on what a run found, since
+/// the same words are shown whether the rule fired once or not at all.
+/// </para>
+/// </param>
 /// <param name="MicrosoftReference">
 /// The Microsoft page the reasoning rests on, or null where the claim rests on something else.
 /// Carried because a customer who can check a statement is the difference between this product and
@@ -59,4 +82,5 @@ public sealed record RuleGuidance(
     string? MitreTechnique,
     string WhyItMatters,
     string WhatToDo,
+    string About,
     string? MicrosoftReference);

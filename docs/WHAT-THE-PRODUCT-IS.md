@@ -222,6 +222,18 @@ repository.
 It is content, so it is written as each rule is built, alongside the guidance. Where it is displayed
 is stage 9 with the rest of the presentation.
 
+**Built 2026-09-03, and it is required on every rule.** `RuleGuidance.About` is not nullable and
+`RuleGuidanceTests` refuses a blank one. Optional was the cheaper choice and was refused for a
+reason worth keeping: a field populated for some rules and empty for others is rendered by a screen
+as *this rule has no limitations*, which for a bounded rule is the exact false statement the section
+exists to prevent. Being obliged to write it is also how an unstated limit gets found — writing the
+eleven turned up three nobody had said out loud, including that `SEC-028` reports an account
+**exempt** from the password length rule rather than one with no password.
+
+**It is shown on the findings panel, which is half of what it is for.** The operator who most needs
+a rule's boundary is the one reading a rule that reported *nothing*, and he never opens a finding.
+The rest waits for a screen that lists the rules themselves.
+
 ---
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,

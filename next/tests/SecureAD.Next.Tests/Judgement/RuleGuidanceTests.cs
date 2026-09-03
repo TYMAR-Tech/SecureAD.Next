@@ -96,6 +96,16 @@ public sealed class RuleGuidanceTests
                 string.IsNullOrWhiteSpace(g.WhyItMatters), $"{g.RuleId} does not say why it matters.");
             Assert.False(
                 string.IsNullOrWhiteSpace(g.WhatToDo), $"{g.RuleId} does not say what to do.");
+
+            // REQUIRED ON EVERY RULE, on the owner's decision of 2026-09-03. Optional was refused:
+            // a field populated for some rules and empty for others renders as "this rule has no
+            // limitations", which for a bounded rule is the exact false statement About exists to
+            // prevent. This assertion is what makes it required.
+            Assert.False(
+                string.IsNullOrWhiteSpace(g.About),
+                $"{g.RuleId} does not say what it looks for and what it does not. Every rule owes "
+                + "an About text, because a rule reporting a subset of a problem must not let its "
+                + "silence read as 'nothing else is wrong'.");
         }
     }
 
@@ -150,7 +160,14 @@ public sealed class RuleGuidanceTests
     {
         foreach (var g in RuleGuidanceCatalogue.All)
         {
-            var offending = OverClaims(g.WhatToDo).Concat(OverClaims(g.WhyItMatters)).ToArray();
+            // About is scanned too, and for a sharper reason than the other two: it is the field
+            // whose whole job is to state what the rule cannot see, so wording that drifts into
+            // "and therefore nothing else is wrong" would be the failure at its own point of
+            // origin.
+            var offending = OverClaims(g.WhatToDo)
+                .Concat(OverClaims(g.WhyItMatters))
+                .Concat(OverClaims(g.About))
+                .ToArray();
 
             Assert.True(
                 offending.Length == 0,
