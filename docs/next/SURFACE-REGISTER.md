@@ -353,6 +353,8 @@ The table below sits between the two markers around it, so the test parses only 
 | AttributeVisibilityFact | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | StoredAttributeVisibility | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | StoredAttributeVisibilityProduct | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| NestingCycleAvailability | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| StoredNestingCycleProduct | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | CapturedSchemaAttributeReader | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | SchemaAttributeDefinition | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | SchemaAttributeReading | SecureAD.Evidence | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |

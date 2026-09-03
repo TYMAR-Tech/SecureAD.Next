@@ -104,6 +104,78 @@ public sealed record StoredProtectedPrincipalProduct(
     StoredProtectedPrincipalDerivation? Value);
 
 /// <summary>
+/// Whether this store carries an answer about membership cycles, and if not, why not.
+/// </summary>
+/// <remarks>
+/// <b>An empty table means two opposite things and this enum is what separates them.</b> A forest
+/// whose expansion ran and found no loops has no rows here, and so does a bundle nobody expanded.
+/// Reading emptiness as <i>no loops</i> would report a clean directory on the strength of a phase
+/// that never happened.
+/// </remarks>
+public enum NestingCycleAvailability
+{
+    /// <summary>The expansion ran in full, so the cycles listed are all of them.</summary>
+    Available,
+
+    /// <summary>
+    /// The expansion stopped at a budget. Every cycle listed is real, but there may be more, so a
+    /// reader may report what is here and may not call the absence of anything else a fact.
+    /// </summary>
+    Partial,
+
+    /// <summary>No expansion phase ran, so nothing is known either way.</summary>
+    DidNotRun,
+
+    /// <summary>The expansion phase failed.</summary>
+    Failed,
+
+    /// <summary>The phase is not recorded at all, which a store written by this build cannot be.</summary>
+    Missing,
+}
+
+/// <summary>
+/// What this store knows about membership cycles.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b><see cref="Cycles"/> is null unless an answer was reached</b>, rather than empty, so that a
+/// caller cannot read <i>nobody looked</i> as <i>there are none</i>. That is the same shape
+/// <see cref="StoredProtectedPrincipalProduct"/> uses and it exists for the same reason.
+/// </para>
+/// <para>
+/// <b>A cycle is a bare list of SID ids and not a record of its own, which is a concession to gate
+/// 4 and the right one.</b> A one-field wrapper would be the declaring type of the only collection
+/// here, and it could not say whether anyone had looked - so the gate refused it. Putting the
+/// lists on the type that carries the answer keeps the vouching where it belongs, and there is no
+/// place left to read an empty cycle as a fact.
+/// </para>
+/// <para>
+/// <b>Each cycle is a set, not a path.</b> The expansion finds these as strongly connected
+/// components, which say that every principal reaches every other; the particular route is not
+/// unique and is not recorded, because storing one route invites a reader to believe it is the only
+/// one.
+/// </para>
+/// </remarks>
+/// <param name="Availability">Whether an answer was reached, and if not, why not.</param>
+/// <param name="Cycles">
+/// Each cycle, as the SID dictionary ids of the principals caught in it, or null where no answer was
+/// reached.
+/// </param>
+public sealed record StoredNestingCycleProduct(
+    NestingCycleAvailability Availability,
+    IReadOnlyList<IReadOnlyList<int>>? Cycles)
+{
+    /// <summary>
+    /// Whether every cycle in this forest is here, as opposed to every cycle anyone got to.
+    /// </summary>
+    /// <remarks>
+    /// False covers both <i>nobody looked</i> and <i>the walk stopped early</i>. A caller may report
+    /// what is here in either case; what it may not do is say the forest has no further loops.
+    /// </remarks>
+    public bool IsComplete => Availability is NestingCycleAvailability.Available;
+}
+
+/// <summary>
 /// Everything a derivation store holds about the run that wrote it.
 /// </summary>
 /// <remarks>
@@ -123,13 +195,18 @@ public sealed record StoredProtectedPrincipalProduct(
 /// <param name="AttributeVisibility">
 /// Which attributes this forest withholds, so a rule can tell an absent value from a withheld one.
 /// </param>
+/// <param name="NestingCycles">
+/// Groups that contain one another. Microsoft states that group membership may have loops, and two
+/// groups in one are permanently the same group as far as authorization is concerned.
+/// </param>
 public sealed record StoredDerivation(
     DerivationDescription Description,
     IReadOnlyList<StoredDerivationPhase> Phases,
     DerivationSize Size,
     DerivationCompleteness Completeness,
     StoredProtectedPrincipalProduct ProtectedPrincipals,
-    StoredAttributeVisibilityProduct AttributeVisibility)
+    StoredAttributeVisibilityProduct AttributeVisibility,
+    StoredNestingCycleProduct NestingCycles)
 {
     /// <summary>Whether every phase that ran succeeded.</summary>
     /// <remarks>
@@ -322,7 +399,66 @@ public sealed class DerivationReader : IDisposable
             ReadSize(),
             ReadCompleteness(),
             ReadProtectedPrincipals(phases),
-            ReadSchemaVisibility(phases));
+            ReadSchemaVisibility(phases),
+            ReadNestingCycles(phases));
+    }
+
+    /// <summary>
+    /// Reads the membership cycles, or says why there are none to read.
+    /// </summary>
+    /// <remarks>
+    /// <b>Discriminated on the expansion phase and never on the table being empty</b>, because a
+    /// forest with no loops and a bundle nobody expanded both produce no rows. This is the same
+    /// reasoning the schema gives for <c>derivation_phase</c> existing at all.
+    /// </remarks>
+    /// <param name="phases">Every phase the run recorded.</param>
+    private StoredNestingCycleProduct ReadNestingCycles(IReadOnlyList<StoredDerivationPhase> phases)
+    {
+        var phase = phases.FirstOrDefault(
+            p => p.Phase == AuthorizationMembershipExpander.PhaseName);
+
+        var availability = phase?.Outcome switch
+        {
+            DerivationPhaseOutcome.Succeeded => NestingCycleAvailability.Available,
+
+            // The expansion stopped at a budget. What it found before stopping is real, so the
+            // cycles are handed over - with the availability saying they are a floor rather than a
+            // total, which is the distinction a caller cannot make on its own.
+            DerivationPhaseOutcome.Degraded => NestingCycleAvailability.Partial,
+
+            DerivationPhaseOutcome.DidNotRun => NestingCycleAvailability.DidNotRun,
+            DerivationPhaseOutcome.Failed => NestingCycleAvailability.Failed,
+            _ => NestingCycleAvailability.Missing,
+        };
+
+        if (availability is not (NestingCycleAvailability.Available or NestingCycleAvailability.Partial))
+            return new StoredNestingCycleProduct(availability, null);
+
+        var byCycle = new Dictionary<long, List<int>>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT cycle_id, sid_id FROM nesting_cycle ORDER BY cycle_id, sid_id";
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var cycleId = reader.GetInt64(0);
+
+            if (!byCycle.TryGetValue(cycleId, out var members))
+            {
+                members = [];
+                byCycle[cycleId] = members;
+            }
+
+            members.Add(reader.GetInt32(1));
+        }
+
+        var cycles = byCycle
+            .OrderBy(pair => pair.Key)
+            .Select(pair => (IReadOnlyList<int>)pair.Value)
+            .ToList();
+
+        return new StoredNestingCycleProduct(availability, cycles);
     }
 
     /// <summary>

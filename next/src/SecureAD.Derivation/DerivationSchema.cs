@@ -56,8 +56,15 @@ internal static class DerivationSchema
     /// the answer is derived once and handed to the rules rather than assumed from what Microsoft
     /// ships.
     /// </para>
+    /// <para>
+    /// <b>6 - membership cycles are recorded.</b> The expansion has always found them, because
+    /// condensing the nesting graph is how it avoids walking one forever, but it discarded them
+    /// afterwards. Microsoft states that <i>group membership may have loops</i>, and two groups in
+    /// a loop are permanently one group as far as authorization is concerned - a fact about the
+    /// directory that no tool shows and that nothing in this store could previously carry.
+    /// </para>
     /// </remarks>
-    public const int Version = 5;
+    public const int Version = 6;
 
     private static readonly string[] TableDdl =
     [
@@ -229,6 +236,35 @@ internal static class DerivationSchema
             group_sid_id  INTEGER NOT NULL REFERENCES sid(sid_id),
             member_sid_id INTEGER NOT NULL REFERENCES sid(sid_id),
             PRIMARY KEY (group_sid_id, member_sid_id)
+        )
+        """,
+
+        // One row per principal caught in a membership cycle, grouped by cycle_id.
+        //
+        // WHY THIS IS STORED WHEN THE TRANSITIVE CLOSURE IS NOT. The closure is quadratic and every
+        // consumer asks about a handful of named principals, so it is walked on demand from
+        // nesting_edge instead. Cycles are the opposite shape: tiny, expensive to rediscover -
+        // finding them is the whole reason the graph is condensed - and needed by a rule rather
+        // than by a lookup. Recomputing them per question would repeat the one pass this store
+        // exists to avoid repeating.
+        //
+        // A CYCLE IS A SET, NOT A PATH, and the rows say so. Tarjan's algorithm yields the strongly
+        // connected component: every principal in it reaches every other, but the particular route
+        // is not unique and storing one route would invite a reader to believe it was the only one.
+        //
+        // A CYCLE OF ONE NEVER REACHES THIS TABLE, AND THAT IS A KNOWN GAP RATHER THAN A DECISION.
+        // The expander keeps a strongly connected component only when it holds more than one
+        // principal, so a group that contained itself would be a component of one and would be
+        // dropped before it got here. Whether Active Directory permits that at all is unsettled -
+        // Microsoft states only that loops may exist, and the one source claiming self-membership
+        // is refused carries no citation. If the lab shows a self-loop is possible, the filter in
+        // AuthorizationMembershipExpander has to go before this table can claim to hold every
+        // cycle. See next/tools/Test-LabOpenQuestions.ps1.
+        """
+        CREATE TABLE nesting_cycle (
+            cycle_id INTEGER NOT NULL,
+            sid_id   INTEGER NOT NULL REFERENCES sid(sid_id),
+            PRIMARY KEY (cycle_id, sid_id)
         )
         """,
 

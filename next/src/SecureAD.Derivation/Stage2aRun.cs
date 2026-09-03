@@ -112,7 +112,7 @@ public static class Stage2aRun
         {
             // Nothing downstream has an input. Each is recorded by name so a reader can tell a
             // derivation that produced nothing from one that was never asked to.
-            writer.RecordPhase(nameof(ExpansionPhase), DerivationPhaseOutcome.DidNotRun, error: null);
+            writer.RecordPhase(AuthorizationMembershipExpander.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
             writer.RecordPhase(ProtectedPrincipalDeriver.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
             writer.RecordPhase(LatentPrivilegeDeriver.PhaseName, DerivationPhaseOutcome.DidNotRun, error: null);
 
@@ -157,7 +157,7 @@ public static class Stage2aRun
 
         var closure = Run(
             writer,
-            nameof(ExpansionPhase),
+            AuthorizationMembershipExpander.PhaseName,
             progress,
             log,
             () => AuthorizationMembershipExpander.ClosureOf(graph, budget, cancellationToken),
@@ -167,6 +167,13 @@ public static class Stage2aRun
 
         RunProtection(writer, graph, facts, closure, progress, log, cancellationToken);
         RunLatent(writer, graph, closure, progress, log, cancellationToken);
+
+        // Written from the same closure the products were derived from, so a cycle recorded here is
+        // one that actually shaped those answers rather than one found by a second walk that might
+        // disagree. Nothing is written when the expansion did not run: derivation_phase already
+        // says so, and inventing an empty result would claim a forest with no loops in it.
+        if (closure is not null)
+            writer.WriteNestingCycles(closure.Cycles);
 
         // What none of the three products covers, recorded beside them rather than left for a
         // reader to infer. Written after the facts because the partial groups it names are sid
@@ -203,7 +210,7 @@ public static class Stage2aRun
     public static IProgress<DerivationProgress> Unwatched { get; } = new NobodyWatching();
 
     /// <summary>The name the expansion phase is recorded under.</summary>
-    private static class ExpansionPhase;
+
 
     private static NestingFacts? ReadNesting(
         BundleReader bundle,

@@ -439,6 +439,50 @@ internal sealed class DerivationWriter : IDisposable
     }
 
     /// <summary>
+    /// Records the membership cycles the expansion found.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Written even when there are none, and the absence means what it says.</b> A store with no
+    /// rows here is a forest whose expansion ran and found no loops. A store whose expansion never
+    /// ran has no rows either, which is why <c>derivation_phase</c> exists and why a reader must
+    /// consult it rather than reading emptiness as a clean bill.
+    /// </para>
+    /// <para>
+    /// <b>Each cycle gets an identifier that means nothing outside this store.</b> It groups the
+    /// principals of one component together and is not stable across derivations, because the
+    /// component itself is a set discovered by a traversal whose order carries no meaning.
+    /// </para>
+    /// </remarks>
+    /// <param name="cycles">Each cycle, as the SID dictionary ids of the principals caught in it.</param>
+    public void WriteNestingCycles(IReadOnlyList<int[]> cycles)
+    {
+        ArgumentNullException.ThrowIfNull(cycles);
+        ThrowIfFinished();
+        ThrowIfSidsNotWritten(nameof(WriteNestingCycles));
+
+        using var transaction = _connection.BeginTransaction();
+        using var command = _connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "INSERT OR IGNORE INTO nesting_cycle (cycle_id, sid_id) VALUES ($cycle, $sid)";
+        var cycleId = command.Parameters.Add("$cycle", SqliteType.Integer);
+        var sidId = command.Parameters.Add("$sid", SqliteType.Integer);
+
+        for (var i = 0; i < cycles.Count; i++)
+        {
+            foreach (var sid in cycles[i])
+            {
+                cycleId.Value = i;
+                sidId.Value = sid;
+                command.ExecuteNonQuery();
+            }
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>
     /// Records what the derivation does not cover.
     /// </summary>
     /// <remarks>

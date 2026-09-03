@@ -75,6 +75,162 @@ public sealed class DerivationReadingTests
     }
 
     /// <summary>
+    /// A membership cycle written to the store comes back as the same set of principals.
+    /// </summary>
+    /// <remarks>
+    /// <b>The expansion has always found these and always discarded them.</b> Microsoft states that
+    /// group membership may have loops, and two groups in one are permanently the same group as far
+    /// as authorization is concerned - so a delegation to the narrower-looking one reaches whatever
+    /// it is looped with. Nothing could report that until the store carried it.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AMembershipCycleSurvivesTheStore()
+    {
+        var directory = NewBundle();
+
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
+        {
+            writer.WriteSids(["S-1-5-21-1-2-3-1101", "S-1-5-21-1-2-3-1102", "S-1-5-21-1-2-3-1103"],
+                ["ad.lab", "ad.lab", "ad.lab"]);
+
+            writer.WriteNestingCycles([[0, 1, 2]]);
+            writer.RecordPhase(
+                "ExpansionPhase", DerivationPhaseOutcome.Succeeded, error: null);
+
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: true,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.None));
+
+            writer.Complete(Finished);
+        }
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var cycles = reader.Read().NestingCycles;
+
+        Assert.Equal(NestingCycleAvailability.Available, cycles.Availability);
+        Assert.Equal([0, 1, 2], Assert.Single(cycles.Cycles!));
+    }
+
+    /// <summary>
+    /// Two cycles stay two cycles rather than merging into one set.
+    /// </summary>
+    /// <remarks>
+    /// The rows carry a cycle identifier for exactly this reason. Without it the store would say
+    /// which principals are in <i>some</i> loop and not which loop, and an operator told that six
+    /// groups are tangled cannot act on it the way one told there are two separate pairs can.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_TwoCyclesDoNotMergeIntoOne()
+    {
+        var directory = NewBundle();
+
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
+        {
+            writer.WriteSids(
+                ["S-1-5-21-1-2-3-1101", "S-1-5-21-1-2-3-1102",
+                 "S-1-5-21-1-2-3-1103", "S-1-5-21-1-2-3-1104"],
+                ["ad.lab", "ad.lab", "ad.lab", "ad.lab"]);
+
+            writer.WriteNestingCycles([[0, 1], [2, 3]]);
+            writer.RecordPhase("ExpansionPhase", DerivationPhaseOutcome.Succeeded, error: null);
+
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: true,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.None));
+
+            writer.Complete(Finished);
+        }
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var cycles = reader.Read().NestingCycles.Cycles!;
+
+        Assert.Equal(2, cycles.Count);
+        Assert.All(cycles, c => Assert.Equal(2, c.Count));
+    }
+
+    /// <summary>
+    /// A store whose expansion never ran says so, and hands back no list at all.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the whole reason the product carries an availability beside the answer.</b> A
+    /// forest with no loops and a bundle nobody expanded both leave the table empty. Returning an
+    /// empty list for the second would report a clean directory on the strength of a phase that
+    /// never happened - the shape <c>docs/decisions/0002</c> forbids.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_NoExpansionMeansNoAnswerAboutCyclesRatherThanNone()
+    {
+        var directory = NewBundle();
+
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
+        {
+            writer.WriteSids([], []);
+            writer.RecordPhase("ExpansionPhase", DerivationPhaseOutcome.DidNotRun, error: null);
+
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: true,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.None));
+
+            writer.Complete(Finished);
+        }
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var cycles = reader.Read().NestingCycles;
+
+        Assert.Equal(NestingCycleAvailability.DidNotRun, cycles.Availability);
+        Assert.Null(cycles.Cycles);
+    }
+
+    /// <summary>
+    /// An expansion that stopped at a budget hands back what it found, marked as a floor.
+    /// </summary>
+    /// <remarks>
+    /// Every cycle it found is real, so withholding them would lose true findings; but there may be
+    /// more, so calling the answer complete would be a different lie. <c>Partial</c> is the only
+    /// honest reading and it is why the enum has more than two members.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_ABudgetStoppedExpansionReportsItsCyclesAsAFloor()
+    {
+        var directory = NewBundle();
+
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
+        {
+            writer.WriteSids(["S-1-5-21-1-2-3-1101", "S-1-5-21-1-2-3-1102"], ["ad.lab", "ad.lab"]);
+            writer.WriteNestingCycles([[0, 1]]);
+            writer.RecordPhase("ExpansionPhase", DerivationPhaseOutcome.Degraded, error: null);
+
+            writer.RecordCompleteness(new DerivationCompleteness(
+                IsComplete: false,
+                PartialGroups: [],
+                MissingPartitions: [],
+                UnresolvedTrustees: [],
+                DerivationGenerationId: writer.GenerationId,
+                Limit: ExpansionLimit.MaxClosureEntriesReached));
+
+            writer.Complete(Finished);
+        }
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var cycles = reader.Read().NestingCycles;
+
+        Assert.Equal(NestingCycleAvailability.Partial, cycles.Availability);
+        Assert.Single(cycles.Cycles!);
+    }
+
+    /// <summary>
     /// A phase that did not run does not count against the ones that did.
     /// </summary>
     /// <remarks>

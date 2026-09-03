@@ -81,6 +81,17 @@ internal sealed record MembershipClosure(
 internal static class AuthorizationMembershipExpander
 {
     /// <summary>
+    /// The name this phase is recorded under.
+    /// </summary>
+    /// <remarks>
+    /// <b>Shared rather than written twice.</b> The run records the phase under this name and the
+    /// reader looks it up by the same name to tell <i>the expansion found no cycles</i> from <i>the
+    /// expansion never ran</i>. Two literals would let those drift, and the reading a drifted name
+    /// produces is the clean one.
+    /// </remarks>
+    internal const string PhaseName = "ExpansionPhase";
+
+    /// <summary>
     /// Works out every group's membership, transitively.
     /// </summary>
     /// <remarks>

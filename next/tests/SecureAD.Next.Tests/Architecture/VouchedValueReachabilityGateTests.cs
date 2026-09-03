@@ -377,6 +377,13 @@ public sealed class VouchedValueReachabilityGateTests
     /// means either a bundle nobody judged or a judging that recorded nothing before it stopped,
     /// and a screen whose whole subject is what was checked would draw the same thing for both.
     /// Read true from a bundle with no judging and false from one carrying executions.
+    /// 42 from 2026-09-03 with <c>StoredNestingCycleProduct.IsComplete</c>, which the membership
+    /// expansion needed because a store with no cycle rows is either a forest with no loops in it
+    /// or a bundle nobody expanded. Gate 4 found this one rather than a person: the first draft put
+    /// each cycle in a one-field record, which became the declaring type of the only collection and
+    /// could not say whether anyone had looked. Removing that wrapper moved the lists onto the type
+    /// that carries the answer, which is where the vouching belongs. Read true from a store whose
+    /// expansion succeeded and false from one whose expansion did not run.
     /// </para>
     /// </summary>
     [Fact]
@@ -384,7 +391,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(41, found.Count);
+        Assert.Equal(42, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");
