@@ -192,7 +192,11 @@ public sealed class LapsMissingOnComputer : IRule
             + "local, so no domain authentication is involved and nothing is logged centrally. "
             + "Deploy Windows LAPS to this machine and confirm it by looking for "
             + "msLAPS-PasswordExpirationTime appearing on this computer object, which is the check "
-            + "Microsoft names. Note that this rule reads Active Directory only: a machine whose "
+            + "Microsoft names. Before deploying, check that LAPS is not already running and "
+            + "failing: where the policy names an encryption principal that cannot be resolved, "
+            + "Windows LAPS refuses to store anything at all and the machine looks exactly like "
+            + "this one. It logs event 10035 when that happens, and 10017 to say the directory was "
+            + "not updated. Note that this rule reads Active Directory only: a machine whose "
             + "password is backed up to Microsoft Entra ID instead carries no directory attribute "
             + "at all and cannot be told apart from an unmanaged one here.";
     }

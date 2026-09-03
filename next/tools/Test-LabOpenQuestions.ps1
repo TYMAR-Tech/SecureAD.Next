@@ -227,7 +227,7 @@ Write-Host '     example CONTOSO\\NoSuchGroupHere. Ensure password encryption is
 Write-Host '  3. On the machine: gpupdate /force, then Invoke-LapsPolicyProcessing, then'
 Write-Host '     Reset-LapsPassword.'
 Write-Host '  4. Read the machine LAPS event log: Applications and Services Logs >'
-Write-Host '     Microsoft > Windows > LAPS. Look for event 10034, which names an'
+Write-Host '     Microsoft > Windows > LAPS. Look for event 10035, which names an'
 Write-Host '     ambiguous or unresolvable encryption principal.'
 Write-Host '  5. Read the computer object again. Record which of these happened:'
 Write-Host '       (a) the timestamp STOPPED being updated  -> the policy-settings page is'

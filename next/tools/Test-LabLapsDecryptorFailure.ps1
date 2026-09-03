@@ -118,7 +118,8 @@ if ($Break) {
     Write-Host '  Get-WinEvent -LogName "Microsoft-Windows-LAPS/Operational" -MaxEvents 30 |'
     Write-Host '    Select-Object TimeCreated,Id,LevelDisplayName,Message | Format-List'
     Write-Host ''
-    Write-Host 'Event 10034 = the principal could not be resolved. 10018 = a password was stored.'
+    Write-Host 'Event 10035 = the principal could not be mapped. 10017 = Active Directory was not'
+    Write-Host 'updated. 10018 = a password was stored.'
     Write-Host 'Then re-run this script with -Check.'
     return
 }
@@ -147,7 +148,7 @@ if ($Check) {
     }
     else {
         Write-Host '  RESULT: the expiration DID NOT MOVE.'
-        Write-Host '          Read the event log on the machine before concluding: if it shows 10034'
+        Write-Host '          Read the event log on the machine before concluding: if it shows 10035'
         Write-Host '          and no 10018, the laps-management-policy-settings page is right and'
         Write-Host '          nothing was backed up.'
         Write-Host '          THAT WOULD MEAN SEC-091 GIVES WRONG ADVICE on such a machine: it sees'
