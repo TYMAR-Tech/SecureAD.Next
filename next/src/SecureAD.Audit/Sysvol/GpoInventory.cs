@@ -127,19 +127,47 @@ public sealed class GpoInventory
     }
 
     private static bool IsAGroupPolicyObject(CapturedObject capturedObject) =>
-        capturedObject.Attributes
-            .Where(a => string.Equals(
-                a.LdapDisplayName, ObjectClassAttribute, StringComparison.OrdinalIgnoreCase))
-            .SelectMany(a => a.Values)
-            .OfType<string>()
+        TextValuesOf(capturedObject, ObjectClassAttribute)
             .Any(v => string.Equals(
                 v, GroupPolicyContainerClass, StringComparison.OrdinalIgnoreCase));
 
     private static string? SingleValueOf(CapturedObject capturedObject, string ldapDisplayName) =>
+        TextValuesOf(capturedObject, ldapDisplayName)
+            .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+
+    /// <summary>
+    /// Every value of one attribute, read as text however the controller returned it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Through <see cref="LdapEntryReader.AsText"/> and never by casting to
+    /// <see cref="string"/>.</b> <c>AttributeValues.Values</c> is a list of <c>object</c> and the
+    /// reader documents each one as a string <i>or a byte array</i>; a directory controller commonly
+    /// returns text as bytes. Selecting only the values that happen to be strings therefore drops
+    /// real values without failing, which is the worst way to be wrong.
+    /// </para>
+    /// <para>
+    /// <b>This was not hypothetical.</b> On 2026-09-03 a sealed bundle of <c>ad.lab</c> held twelve
+    /// <c>groupPolicyContainer</c> objects, each with a valid <c>gPCFileSysPath</c>, and no policy
+    /// was recognised: <c>gpo_registry_setting</c>, <c>sysvol_gpo_coverage</c> and
+    /// <c>gpo_file_error</c> were all empty and the run log carried no SYSVOL line at all. SYSVOL
+    /// was handed an empty inventory, so it had nothing to read and nothing to fail at - and the
+    /// coverage record that <c>docs/decisions/0044</c> relies on to stop that becoming a silence
+    /// could not fire, because a policy that is never observed is never missed either.
+    /// </para>
+    /// <para>
+    /// <b>A value that is neither text nor bytes is skipped rather than thrown on.</b> This is an
+    /// inventory built while capture is running; one unreadable value on one attribute must not end
+    /// a run, and an object that yields no usable class simply is not treated as a policy.
+    /// </para>
+    /// </remarks>
+    private static IEnumerable<string> TextValuesOf(
+        CapturedObject capturedObject, string ldapDisplayName) =>
         capturedObject.Attributes
             .Where(a => string.Equals(
                 a.LdapDisplayName, ldapDisplayName, StringComparison.OrdinalIgnoreCase))
             .SelectMany(a => a.Values)
-            .OfType<string>()
-            .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+            .Select(LdapEntryReader.AsText)
+            .Where(read => read.IsSuccess)
+            .Select(read => read.Value!);
 }

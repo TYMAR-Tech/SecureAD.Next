@@ -307,6 +307,58 @@ public sealed class SysvolCaptureTests : IDisposable
     private static AttributeValues Attribute(string name, params string[] values) =>
         new(name, values, AttributeCompleteness.Complete, NextRange: null);
 
+    /// <summary>
+    /// A policy whose attribute values arrive as bytes rather than as strings, which is how a
+    /// directory controller commonly returns them.
+    /// </summary>
+    /// <remarks>
+    /// <b>Every other test here builds values as strings, and that is why this went unseen.</b>
+    /// <c>AttributeValues.Values</c> is <c>IReadOnlyList&lt;object&gt;</c> and
+    /// <c>LdapEntryReader</c> documents each value as "a string or a byte[] apiece" - which is why
+    /// <c>LdapEntryReader.AsText</c> exists at all. A run against a real forest produced no policies,
+    /// no coverage and no error, and the tests stayed green because the test and the code shared
+    /// one assumption about the shape of a value.
+    /// </remarks>
+    private static AttributeValues BytesAttribute(string name, params string[] values) =>
+        new(
+            name,
+            [.. values.Select(v => (object)System.Text.Encoding.UTF8.GetBytes(v))],
+            AttributeCompleteness.Complete,
+            NextRange: null);
+
+    /// <summary>
+    /// A policy is recognised when the directory returns its attributes as bytes.
+    /// </summary>
+    /// <remarks>
+    /// <b>Measured against <c>ad.lab</c> on 2026-09-03:</b> a sealed bundle held twelve
+    /// <c>groupPolicyContainer</c> objects each carrying a valid <c>gPCFileSysPath</c>, and yet
+    /// <c>gpo_registry_setting</c>, <c>sysvol_gpo_coverage</c> and <c>gpo_file_error</c> were all
+    /// empty and the run log carried no SYSVOL line. Nothing was recognised as a policy, so SYSVOL
+    /// was handed an empty list and had nothing to fail at - which is why the coverage record that
+    /// <c>docs/decisions/0044</c> relies on to prevent exactly this silence never fired.
+    /// </remarks>
+    [Fact]
+    public void APolicyWhoseValuesArriveAsBytesIsStillRecognised()
+    {
+        var inventory = new GpoInventory();
+
+        inventory.Observe(
+            CapturedObject.Create(
+                $"CN={{{PolicyGuid}}},CN=Policies,CN=System,DC=contoso,DC=com",
+                [
+                    BytesAttribute("objectClass", "top", "container", "groupPolicyContainer"),
+                    BytesAttribute("displayName", "Default Domain Policy"),
+                    BytesAttribute("gPCFileSysPath", PolicyPath),
+                ]),
+            PolicyGuid);
+
+        var policy = Assert.Single(inventory.Policies);
+
+        Assert.Equal(PolicyGuid, policy.GpoGuid);
+        Assert.Equal("Default Domain Policy", policy.DisplayName);
+        Assert.Equal(PolicyPath, policy.FileSysPath);
+    }
+
     private async Task<SysvolCoverage> ReadAsync(ISysvolFileReader reader, GpoInventory inventory)
     {
         using var writer = BundleWriter.Create(Directory.CreateDirectory(_root).FullName, Started);
