@@ -372,6 +372,11 @@ public sealed class VouchedValueReachabilityGateTests
     /// shorter list of unmanaged computers is indistinguishable from a rollout that is further
     /// along than it is. Read true from a whole listing and false from one whose domain coverage
     /// says a domain was not read.
+    /// 41 from 2026-09-03 with <c>StoredRuleExecutions.DidNotRun</c>, which the rules screen needs
+    /// because it hands a caller the executions without the findings. An empty list of executions
+    /// means either a bundle nobody judged or a judging that recorded nothing before it stopped,
+    /// and a screen whose whole subject is what was checked would draw the same thing for both.
+    /// Read true from a bundle with no judging and false from one carrying executions.
     /// </para>
     /// </summary>
     [Fact]
@@ -379,7 +384,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(40, found.Count);
+        Assert.Equal(41, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");

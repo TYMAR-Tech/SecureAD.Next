@@ -279,6 +279,25 @@ internal sealed class FakeAssetSource : IAssetSource
             ? Result<FindingsFilterValues>.Failure(error)
             : Result<FindingsFilterValues>.Success(FilterValues);
     }
+
+    /// <summary>What every rule did. Nothing, unless a test says otherwise.</summary>
+    public StoredRuleExecutions RuleExecutions { get; set; } =
+        new([], JudgementRunState.Completed);
+
+    /// <summary>How many times the executions were asked for.</summary>
+    public int RuleExecutionReads { get; private set; }
+
+    /// <summary>Set to fail the executions read on its own, leaving findings working.</summary>
+    public AuditError? RuleExecutionsFail { get; set; }
+
+    public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory)
+    {
+        RuleExecutionReads++;
+
+        return RuleExecutionsFail is { } error
+            ? Result<StoredRuleExecutions>.Failure(error)
+            : Result<StoredRuleExecutions>.Success(RuleExecutions);
+    }
 }
 
 internal sealed class FakeFolderPicker : IFolderPicker

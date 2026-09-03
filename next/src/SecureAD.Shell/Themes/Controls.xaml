@@ -95,6 +95,22 @@
         <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
     </Style>
 
+    <!-- The heading of a block of prose, rather than the label of a value beside it.
+
+         WHY IT IS NOT FieldLabel. That style is fixed width so every label-and-value row in the
+         product lines up, which is right for "Severity: High" and wrong for a heading over a
+         paragraph: the heading is truncated to the label column and then centred in it, so it
+         floats mid-card with its last letters cut off. Seen on the rules screen on 2026-09-03,
+         where WHAT IT DID ON THIS RUN drew as "WHAT IT DID ON THIS R". Five views had already
+         worked around it by overriding Width to Auto one at a time, which is the sign the style
+         was missing rather than misused. -->
+    <Style x:Key="BlockLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="FontSize" Value="{StaticResource LabelFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource LabelTextBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
     <!-- A distinguished name, host name, SID or GUID: monospaced so an operator can compare two
          of them by eye without being misled by proportional spacing. -->
     <Style x:Key="Identifier" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">

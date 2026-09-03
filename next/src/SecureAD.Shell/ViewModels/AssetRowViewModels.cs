@@ -523,3 +523,128 @@ internal sealed class LapsCountViewModel
         _ => "Not managed",
     };
 }
+
+/// <summary>
+/// One rule, what it looks for, and what it did to this run.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Built from the catalogue outward, not from the judgement.</b> The rules this build ships are
+/// the list; a judgement only says what became of each of them. Reading it the other way round
+/// would silently drop any rule the run never scheduled, which is the one case an operator most
+/// needs to see - a rule missing from a screen of rules reads as a rule that does not exist.
+/// </para>
+/// <para>
+/// <b>An execution naming a rule this build no longer ships is kept too.</b> A judgement outlives
+/// the build that wrote it, and dropping such a row would quietly shrink the account of what was
+/// actually done to the bundle.
+/// </para>
+/// </remarks>
+internal sealed class RuleRowViewModel
+{
+    private readonly RuleDefinition? _definition;
+    private readonly StoredRuleExecution? _execution;
+
+    /// <summary>Creates a screen's view of one rule.</summary>
+    /// <param name="ruleId">The rule, which is present whether or not either half below is.</param>
+    /// <param name="definition">What this build declares about it, or null if it no longer ships.</param>
+    /// <param name="execution">What became of it on this run, or null if it was never scheduled.</param>
+    public RuleRowViewModel(
+        string ruleId, RuleDefinition? definition, StoredRuleExecution? execution)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ruleId);
+
+        Rule = ruleId;
+        _definition = definition;
+        _execution = execution;
+    }
+
+    /// <summary>The rule, such as <c>SEC-011</c>.</summary>
+    public string Rule { get; }
+
+    /// <summary>What it is called, or the identifier alone where this build does not know.</summary>
+    public string Name => _definition?.Name ?? Rule;
+
+    /// <summary>The family it belongs to, such as <c>Kerberos</c>.</summary>
+    public string Category => Guidance?.Category ?? string.Empty;
+
+    /// <summary>How serious a finding from it is, in the word an operator reads.</summary>
+    /// <remarks>
+    /// Empty rather than a guess where the definition is absent. A severity invented for a rule
+    /// this build does not ship would be this screen stating something it does not know.
+    /// </remarks>
+    public string Severity => _definition is null ? string.Empty : _definition.Severity.ToString();
+
+    /// <summary>What the rule looks for, and what it does not.</summary>
+    /// <remarks>
+    /// <b>This is the half of <c>P-118</c> the findings panel could not close.</b> Guidance shown
+    /// beside a finding is unreachable for a rule that found nothing, which is most of them on a
+    /// healthy forest - so the description of what was checked was visible only where something
+    /// was wrong.
+    /// </remarks>
+    public string About => Guidance?.About
+        ?? $"No description is recorded for {Rule} in this build.";
+
+    private RuleGuidance? Guidance => RuleGuidanceCatalogue.For(Rule);
+
+    /// <summary>How many findings it wrote on this run.</summary>
+    public int Findings => _execution?.FindingsProduced ?? 0;
+
+    /// <summary>How many objects it reached a verdict on.</summary>
+    public int Judged => _execution?.ObjectsJudged ?? 0;
+
+    /// <summary>How many objects it was offered and could not reach a verdict on.</summary>
+    public int NotJudged => _execution?.ObjectsNotJudged ?? 0;
+
+    /// <summary>
+    /// What became of the rule, in a sentence rather than a number.
+    /// </summary>
+    /// <remarks>
+    /// <b>The whole reason for this screen is that four of these read as an empty grid.</b> A rule
+    /// that judged four thousand objects and found nothing, one that could not read what it needed,
+    /// one that threw, and one that never ran all produce no findings. Only the first is a
+    /// statement about the forest, and the wording keeps them apart in words rather than by
+    /// leaving the operator to infer it from a zero.
+    /// </remarks>
+    public string Outcome => _execution is null
+        ? "Not run. This rule was not part of this judging, so nothing here has been checked "
+          + "against it."
+        : _execution.Outcome switch
+        {
+            RuleExecutionOutcome.Succeeded when _execution.FindingsProduced > 0 =>
+                $"Judged {_execution.ObjectsJudged:N0} objects and reported "
+                + $"{_execution.FindingsProduced:N0}.",
+            RuleExecutionOutcome.Succeeded =>
+                $"Judged {_execution.ObjectsJudged:N0} objects and reported nothing.",
+            RuleExecutionOutcome.Indeterminate =>
+                $"Could not judge {_execution.ObjectsNotJudged:N0} of the objects it was offered, "
+                + $"because {MissingNamed} was not captured. What it reports is a floor, not a "
+                + "total.",
+            RuleExecutionOutcome.Error =>
+                "This rule failed while running, so nothing has been established either way. "
+                + (_execution.Error ?? "No reason was recorded."),
+            _ => "Scheduled and never executed, so nothing has been checked against it.",
+        };
+
+    /// <summary>
+    /// What this run established by running the rule, as the mark beside the row.
+    /// </summary>
+    /// <remarks>
+    /// <b>A rule that found something is not a fault.</b> It did its job; the forest is what is
+    /// wrong, so it reads as established rather than as broken. <see cref="FactState.Fault"/> is
+    /// reserved for the rule failing, which is a defect in the product.
+    /// </remarks>
+    public FactState State => _execution?.Outcome switch
+    {
+        RuleExecutionOutcome.Succeeded when _execution.FindingsProduced > 0 =>
+            FactState.EstablishedBad,
+        RuleExecutionOutcome.Succeeded => FactState.EstablishedGood,
+        RuleExecutionOutcome.Error => FactState.Fault,
+        _ => FactState.NotEstablished,
+    };
+
+    /// <summary>The attributes it could not read, or a phrase saying none was named.</summary>
+    private string MissingNamed => _execution is { MissingInputs.Count: > 0 }
+        ? string.Join(", ", _execution.MissingInputs.Select(m => m.Attribute).Distinct())
+        : "an input it declared";
+}

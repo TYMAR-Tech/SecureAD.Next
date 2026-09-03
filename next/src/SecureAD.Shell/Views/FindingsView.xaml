@@ -101,13 +101,13 @@
                 Visibility="{Binding HasSelectedFinding, Converter={StaticResource Shown}}">
             <StackPanel>
                 <TextBlock Text="WHY IT MATTERS"
-                           Style="{StaticResource FieldLabel}" />
+                           Style="{StaticResource BlockLabel}" />
                 <TextBlock Text="{Binding SelectedFinding.WhyItMatters}"
                            TextWrapping="Wrap"
                            Margin="0,2,0,10" />
 
                 <TextBlock Text="WHAT TO DO"
-                           Style="{StaticResource FieldLabel}" />
+                           Style="{StaticResource BlockLabel}" />
                 <TextBlock Text="{Binding SelectedFinding.WhatToDo}"
                            TextWrapping="Wrap"
                            Margin="0,2,0,0" />
@@ -118,12 +118,12 @@
                      own text - repeated once per object, and attached to the machines that fired
                      rather than to the rule.
 
-                     IT IS STILL IN THE WRONG PLACE FOR HALF ITS AUDIENCE. The operator who most
-                     needs it is the one looking at a rule that reported nothing, and he never opens
-                     a finding. That is P-118's remainder and it belongs with the rule catalogue
-                     screen, which does not exist yet. -->
+                     IT IS ALSO ON THE RULES TAB, WHICH IS WHERE HALF ITS AUDIENCE IS. The operator
+                     who most needs it is the one looking at a rule that reported nothing, and he
+                     never opens a finding. Repeated here because a reader of one finding should not
+                     have to leave it to learn what the rule does not cover. -->
                 <TextBlock Text="WHAT THIS RULE LOOKS FOR"
-                           Style="{StaticResource FieldLabel}"
+                           Style="{StaticResource BlockLabel}"
                            Margin="0,10,0,0" />
                 <TextBlock Text="{Binding SelectedFinding.About}"
                            TextWrapping="Wrap"

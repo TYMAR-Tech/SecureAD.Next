@@ -96,4 +96,13 @@ internal interface IAssetSource
     /// a list that changed as the operator moved about the tree would be a filter clearing itself.
     /// </remarks>
     Result<FindingsFilterValues> ReadFindingsFilterValues(string bundleDirectory);
+
+    /// <summary>Reads what every scheduled rule did to this bundle.</summary>
+    /// <remarks>
+    /// Separate from <see cref="ReadFindings"/> because it answers the other half of the question:
+    /// a page of findings says what was wrong, and this says what was checked - including the rules
+    /// that checked and found nothing, which no list of findings can contain.
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory);
 }

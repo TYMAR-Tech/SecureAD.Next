@@ -498,6 +498,28 @@ element"* on the first read-only dictionary the product declared — failing wit
 than a verdict. A gate that crashes on a shape it does not know cannot say *I could not build this*.
 It now declines, and builds a keyed collection.
 
+**The Rules tab was built on 2026-09-03**, as a fourth view under Assets, closing `P-118`. It lists
+every rule in `RuleCatalogue.All` with what it looks for and what it did to the run being read. The
+About text written the same day was reachable only by selecting a finding, so on a forest with
+nothing wrong with it the description of what had been checked was on no screen at all.
+
+**What it really adds is a way to tell four silences apart.** A rule that judged everything it was
+about and reported nothing, one that could not read a declared attribute, one that failed, and one
+that was never scheduled all draw an empty findings grid, and only the first says anything about the
+forest. Each row states which in a sentence, and the indeterminate wording names the attribute and
+says the result is a floor rather than a total. A rule that found something is marked
+established-bad rather than fault: the rule did its job and the forest is what is wrong.
+
+The catalogue is the list and the judgement only annotates it, so a rule the judging never scheduled
+still has a row — built the other way round it would simply be absent, and a rule missing from a list
+of rules reads as a rule that does not exist. It is deliberately **not scoped by the tree**, because
+a rule is a question asked of the whole forest.
+
+**Gate 4 caught a real defect during the build.** Handing the executions back as a bare list removed
+the vouching `StoredJudgement` had been providing, so an empty list would have meant either *nobody
+judged this bundle* or *the judging stopped before recording anything* with nothing to separate them.
+`StoredRuleExecutions` now carries the run's state.
+
 **Gate 4 also refused the first shape of the counts**, which is worth recording because the refusal
 was right: a `LapsStateCount` record carrying a bare `int` cannot say whether the listing behind it
 was complete. The counts moved onto `LapsPage`, which vouches, and are asked for per state so a

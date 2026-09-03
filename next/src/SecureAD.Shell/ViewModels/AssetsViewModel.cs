@@ -142,6 +142,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Whether the LAPS inventory is the view showing.</summary>
     public bool ShowsLaps => Pane is AssetsPane.Laps;
 
+    /// <summary>Whether the rule listing is the view showing.</summary>
+    public bool ShowsRules => Pane is AssetsPane.Rules;
+
     /// <summary>
     /// Whether the object grid should be on screen: the objects tab, and no object opened from it.
     /// </summary>
@@ -157,6 +160,15 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>Whether the LAPS inventory grid should be on screen.</summary>
     public bool ShowsLapsListing => ShowsLaps && ShowsListing;
+
+    /// <summary>
+    /// Whether the rule listing should be on screen.
+    /// </summary>
+    /// <remarks>
+    /// It stands down while an object is open for the same reason the others do: the object fills
+    /// the pane, and two grids in one place is the crowding the predecessor's window suffered.
+    /// </remarks>
+    public bool ShowsRulesListing => ShowsRules && ShowsListing;
 
     /// <summary>The severities a finding on this run actually has, worst first.</summary>
     /// <remarks>
@@ -285,6 +297,23 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>Whether the LAPS listing is short by an unknown number of machines.</summary>
     public bool HasLapsShortfall => LapsShortfall is not null;
+
+    /// <summary>
+    /// Every rule this build ships, and what became of it on this run.
+    /// </summary>
+    /// <remarks>
+    /// <b>Not scoped by the tree.</b> A rule is a question asked of the whole forest, and showing
+    /// "judged 2,082 objects" narrowed to one organisational unit would be a count of something
+    /// the judging never measured.
+    /// </remarks>
+    public ObservableCollection<RuleRowViewModel> RuleRows { get; } = [];
+
+    /// <summary>Why what the rules did could not be read, or null when it was.</summary>
+    [ObservableProperty]
+    private Notice? _rulesRefusal;
+
+    /// <summary>Whether the rule listing has something to say about why it is empty.</summary>
+    public bool HasRulesRefusal => RulesRefusal is not null;
 
     /// <summary>
     /// Whether a finding is selected, so there is an explanation to show beneath the grid.
@@ -451,6 +480,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Gaps.Clear();
         Objects.Clear();
         Findings.Clear();
+        RuleRows.Clear();
+        RulesRefusal = null;
         FindingsRefusal = null;
         NothingWasFound = false;
         Severities.Clear();
@@ -532,6 +563,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
         // asked for at all.
         if (Selected is null)
             ListFindings();
+
+        // The rules do not hang off the selection, so nothing above would have re-read them. A run
+        // read again after being judged would otherwise go on saying no rule ran.
+        if (Pane is AssetsPane.Rules)
+            ListRules();
 
         Announce();
     }
@@ -822,6 +858,64 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Lists every rule this build ships, with what became of it on this run.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The catalogue is the list and the judgement only annotates it.</b> Reading it the other
+    /// way round would show only the rules that ran, so a rule dropped from a judging would vanish
+    /// from a screen whose whole purpose is to say what was checked.
+    /// </para>
+    /// <para>
+    /// <b>A judgement that will not open leaves every rule saying it did not run</b>, with the
+    /// refusal above the grid saying why. Silently showing eleven rules with no outcomes would
+    /// read as a bundle nobody judged, which is a different fact.
+    /// </para>
+    /// </remarks>
+    private void ListRules()
+    {
+        RuleRows.Clear();
+        RulesRefusal = null;
+
+        if (BundlePath is null || _captureIsRunning)
+        {
+            Announce();
+            return;
+        }
+
+        var read = _assets.ReadRuleExecutions(BundlePath);
+
+        if (!read.IsSuccess)
+        {
+            RulesRefusal = new Notice(
+                "What the rules did was not read", read.Error.Description);
+        }
+
+        var executions = read.IsSuccess
+            ? read.Value!.Executions.ToDictionary(e => e.RuleId, StringComparer.OrdinalIgnoreCase)
+            : [];
+
+        foreach (var rule in RuleCatalogue.All)
+        {
+            RuleRows.Add(new RuleRowViewModel(
+                rule.Definition.Id,
+                rule.Definition,
+                executions.GetValueOrDefault(rule.Definition.Id)));
+        }
+
+        // A judgement outlives the build that wrote it, so it can name a rule this build no longer
+        // ships. Dropping the row would shrink the account of what was actually done to the bundle.
+        var shipped = RuleCatalogue.All
+            .Select(r => r.Definition.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var execution in executions.Values.Where(e => !shipped.Contains(e.RuleId)))
+            RuleRows.Add(new RuleRowViewModel(execution.RuleId, null, execution));
+
+        Announce();
+    }
+
+    /// <summary>
     /// Fills the filter lists from the findings this run holds.
     /// </summary>
     /// <remarks>
@@ -1007,12 +1101,19 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsObjects));
         OnPropertyChanged(nameof(ShowsFindings));
         OnPropertyChanged(nameof(ShowsLaps));
+        OnPropertyChanged(nameof(ShowsRules));
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
         OnPropertyChanged(nameof(ShowsLapsListing));
+        OnPropertyChanged(nameof(ShowsRulesListing));
 
         if (value is AssetsPane.Laps)
             ListLapsComputers();
+
+        // Unlike the inventory this does not depend on the tree, so it is read here and nowhere
+        // else: no selection or level change can make it stale.
+        if (value is AssetsPane.Rules)
+            ListRules();
     }
 
     /// <summary>
@@ -1104,6 +1205,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
         // AssetsViewModelTests.OpeningAnObjectTakesTheFindingsGridOffTheScreen.
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
+        OnPropertyChanged(nameof(ShowsLapsListing));
+        OnPropertyChanged(nameof(ShowsRulesListing));
+        OnPropertyChanged(nameof(HasRulesRefusal));
 
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(IsShort));

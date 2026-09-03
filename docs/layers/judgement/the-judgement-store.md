@@ -22,6 +22,7 @@ finished and sealed separately from the evidence it judged.
 | `JudgementDescription` | What one judging recorded about itself |
 | `StoredJudgement` | Everything a judging concluded: what it found, and which rules were run to produce it |
 | `StoredRuleExecution` | One rule's execution, read back |
+| `StoredRuleExecutions` | Every scheduled rule's execution, beside the state of the judging that produced them |
 | `RuleExecution` | Everything one rule did to one bundle, and the unit the store commits |
 | `MissingInput` | One declared attribute that was not captured, and how many objects it cost |
 | `JudgementRunState` | What became of a judging run as a whole |
@@ -287,6 +288,31 @@ carries `RulesRan` and `DidNotRun` tells them apart rather than leaving a screen
 **Filtering is a question, not a position.** The values narrow what `ReadPage` is asked for, and
 because the resulting list is a different list, a `FindingsPageMark` taken from the old one does not
 carry over: it points at rows the new list may not contain.
+
+---
+
+## What every rule did is readable without the findings
+
+`ReadRuleExecutions` hands back one `StoredRuleExecution` per scheduled rule and no findings at all.
+It is the other half of the question `ReadPage` answers: a page of findings says what was wrong, and
+this says what was checked — including the rules that checked and found nothing, which no list of
+findings can contain.
+
+**The count of findings comes from a grouped query, not from the rows.** `SELECT rule_id, COUNT(*)
+FROM finding GROUP BY rule_id` is one small read; carrying the findings themselves to count them
+would make a screen of eleven rules pay for every finding in the forest.
+
+**`FindingsProduced` sits beside the outcome rather than being inferred from an empty grid.** A rule
+recorded as `Succeeded` with zero findings judged everything it was about and established something.
+One recorded as `Indeterminate` established nothing about the objects it could not reach. Both write
+zero findings, and only the pair of values keeps them apart.
+
+**The list comes back vouched, not bare.** `StoredRuleExecutions` carries the run's state and
+`DidNotRun`, because an empty list of executions means either a bundle nobody judged or a judging
+that stopped before it recorded anything. Until this read existed the executions were reachable only
+through `StoredJudgement`, which says the same thing; handing them back on their own would have taken
+that statement away from the one caller whose whole subject is what was and was not checked. Gate 4
+caught the omission.
 
 ---
 

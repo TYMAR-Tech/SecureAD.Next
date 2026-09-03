@@ -104,7 +104,7 @@
                      third off the screen entirely - seen 2026-09-03. One per line also reads as
                      "pick exactly one" without the operator having to hover to find out. -->
                 <StackPanel Grid.Row="1" Margin="0,12,0,0">
-                    <TextBlock Text="Level" Style="{StaticResource FieldLabel}" />
+                    <TextBlock Text="Level" Style="{StaticResource BlockLabel}" />
                     <RadioButton Style="{StaticResource ChoiceRadio}" Content="Base" GroupName="Scope"
                                  IsChecked="{Binding ShowsBase, Mode=TwoWay}" />
                     <RadioButton Style="{StaticResource ChoiceRadio}" Content="One level" GroupName="Scope"
@@ -205,6 +205,12 @@
                  an organisational unit during a rollout keeps the tree while he does it. -->
             <views:LapsInventoryView Grid.Column="2"
                                      Visibility="{Binding ShowsLapsListing, Converter={StaticResource Shown}}" />
+
+            <!-- What the product checked for, and what each check did. The tree stays beside it for
+                 consistency, but nothing here is narrowed by it: a rule is a question asked of the
+                 whole forest, and the screen says so above the list. -->
+            <views:RulesView Grid.Column="2"
+                             Visibility="{Binding ShowsRulesListing, Converter={StaticResource Shown}}" />
 
             <!-- One object, opened from a row. It replaces the listing and the tree stays: an
                  operator reading one object is still somewhere in the directory. -->

@@ -150,6 +150,63 @@ public sealed class JudgementReadingTests
     }
 
     /// <summary>
+    /// What every rule did comes back without the findings coming back with it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The screen that asks this wants eleven rows and not thousands.</b> <c>Read</c> returns
+    /// the whole store, every finding included; a view answering <i>what did the product check</i>
+    /// would otherwise pay for a real forest's entire judgement to draw one line per rule.
+    /// </para>
+    /// <para>
+    /// <b>The counts are what separate three silences.</b> A rule that judged everything and
+    /// reported nothing, a rule that could not judge, and a rule that never ran all write zero
+    /// findings, and only these numbers tell them apart.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void WhatEveryRuleDidIsReadableWithoutTheFindings()
+    {
+        var directory = NewJudgedBundle(writer =>
+        {
+            writer.Write(RuleExecution.Judged(Sec010, 4000, 12, [SomeFinding()]));
+            writer.Write(RuleExecution.Judged(Sec011, 4000, 12, []));
+            writer.Write(RuleExecution.Indeterminate(
+                Sec022, 2, 0, 40, [new MissingInput("primaryGroupID", 40)], []));
+        });
+
+        using var reader = Opened(directory);
+        var read = reader.ReadRuleExecutions();
+        var executions = read.Executions.ToDictionary(e => e.RuleId);
+
+        // The list is vouched: an empty one would mean either a bundle nobody judged or a judging
+        // that stopped before it recorded anything, and only the state separates them.
+        Assert.False(read.DidNotRun);
+
+        Assert.Equal(3, executions.Count);
+
+        // Judged everything it was about, and found something.
+        Assert.Equal(RuleExecutionOutcome.Succeeded, executions["SEC-010"].Outcome);
+        Assert.Equal(4000, executions["SEC-010"].ObjectsJudged);
+        Assert.Equal(12, executions["SEC-010"].ObjectsNotApplicable);
+        Assert.Equal(1, executions["SEC-010"].FindingsProduced);
+
+        // Judged everything it was about, and found nothing. This is the row that turns an empty
+        // grid into a statement, and its zero is not the same zero as the one below.
+        Assert.Equal(RuleExecutionOutcome.Succeeded, executions["SEC-011"].Outcome);
+        Assert.Equal(4000, executions["SEC-011"].ObjectsJudged);
+        Assert.Equal(0, executions["SEC-011"].FindingsProduced);
+
+        // Could not judge, and says what it could not read. Also zero findings, and it establishes
+        // nothing at all.
+        Assert.Equal(RuleExecutionOutcome.Indeterminate, executions["SEC-022"].Outcome);
+        Assert.Equal(40, executions["SEC-022"].ObjectsNotJudged);
+        Assert.Equal(0, executions["SEC-022"].FindingsProduced);
+        Assert.Equal(
+            "primaryGroupID", Assert.Single(executions["SEC-022"].MissingInputs).Attribute);
+    }
+
+    /// <summary>
     /// The judging says which capture it was made against.
     /// </summary>
     [Fact]
@@ -298,6 +355,18 @@ public sealed class JudgementReadingTests
         "SEC-010", "Unconstrained delegation on an account", Severity.High, 1,
         ["user", "computer"],
         ["userAccountControl", "objectClass", "primaryGroupID"],
+        RequiredDerivedFacts: []);
+
+    private static readonly RuleDefinition Sec011 = new(
+        "SEC-011", "Unconstrained delegation on a member computer", Severity.High, 1,
+        ["computer"],
+        ["userAccountControl", "objectClass", "primaryGroupID"],
+        RequiredDerivedFacts: []);
+
+    private static readonly RuleDefinition Sec022 = new(
+        "SEC-022", "Kerberos pre-authentication not required", Severity.High, 1,
+        ["user"],
+        ["userAccountControl", "objectClass"],
         RequiredDerivedFacts: []);
 
     private static Finding SomeFinding() =>

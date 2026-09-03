@@ -34,6 +34,15 @@ public sealed record JudgementDescription(
 /// <param name="ObjectsJudged">Objects it reached a verdict on.</param>
 /// <param name="ObjectsNotJudged">Objects it could not.</param>
 /// <param name="MissingInputs">The declared attributes that were absent.</param>
+/// <param name="FindingsProduced">
+/// How many findings this rule wrote.
+/// <para>
+/// <b>Zero is not the same claim as a rule that could not run</b>, which is why it is carried
+/// beside the outcome rather than inferred from an empty grid. A rule that judged every object it
+/// was about and reported nothing has established something; one recorded as
+/// <see cref="RuleExecutionOutcome.Indeterminate"/> has not, and both write zero findings.
+/// </para>
+/// </param>
 /// <param name="Error">Why it threw, when it did.</param>
 public sealed record StoredRuleExecution(
     string RuleId,
@@ -43,7 +52,37 @@ public sealed record StoredRuleExecution(
     int ObjectsNotApplicable,
     int ObjectsNotJudged,
     IReadOnlyList<MissingInput> MissingInputs,
+    int FindingsProduced,
     string? Error);
+
+/// <summary>
+/// What every scheduled rule did to one bundle, without the findings they produced.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>A container rather than a bare list, because the empty list has two meanings.</b> No
+/// executions can mean a bundle nobody judged, or a judging that opened and recorded nothing before
+/// it stopped. A screen handed a bare list would draw the same thing for both and an operator would
+/// read either as "no rules apply here".
+/// </para>
+/// <para>
+/// <b>It carries the run's state so the reason is available where the list is.</b> Until now the
+/// executions could only be had through <see cref="StoredJudgement"/>, which says this in the same
+/// way; reading them on their own would have removed that statement from the one caller who needs
+/// it most - the screen whose whole subject is what was and was not checked.
+/// </para>
+/// </remarks>
+/// <param name="Executions">Every rule that was scheduled, and what became of it.</param>
+/// <param name="State">What became of the judging as a whole.</param>
+public sealed record StoredRuleExecutions(
+    IReadOnlyList<StoredRuleExecution> Executions,
+    JudgementRunState State)
+{
+    /// <summary>
+    /// Whether this bundle was never judged, so an empty list says nothing about the rules.
+    /// </summary>
+    public bool DidNotRun => Executions.Count == 0;
+}
 
 /// <summary>
 /// Everything one judging concluded: what it found, and which rules were run to produce it.
@@ -423,9 +462,38 @@ public sealed class JudgementReader : IDisposable
                              .Replace("%", @"\%", StringComparison.Ordinal)
                              .Replace("_", @"\_", StringComparison.Ordinal);
 
+    /// <summary>
+    /// What every scheduled rule did, without the findings it produced.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Public because a screen needs it without wanting the findings.</b> <see cref="Read"/>
+    /// returns the whole store, findings included, which on a real forest is every row a judging
+    /// wrote. A screen answering <i>what did the product check</i> wants eleven rows and would
+    /// otherwise pay for thousands.
+    /// </para>
+    /// <para>
+    /// <b>Every rule that was scheduled, whatever became of it</b>, including one recorded as
+    /// having not run. Absence cannot state that a rule was skipped, which is the reason the table
+    /// carries a row for it.
+    /// </para>
+    /// <para>
+    /// <b>Vouched rather than bare</b>, per gate 4. An empty list means either a bundle nobody
+    /// judged or a judging that recorded nothing before it stopped, and
+    /// <see cref="StoredRuleExecutions.State"/> is what separates them.
+    /// </para>
+    /// </remarks>
+    public StoredRuleExecutions ReadRuleExecutions()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        return new StoredRuleExecutions(ReadExecutions(), Description.State);
+    }
+
     private IReadOnlyList<StoredRuleExecution> ReadExecutions()
     {
         var missing = ReadMissingInputs();
+        var produced = ReadFindingCountsByRule();
         var executions = new List<StoredRuleExecution>();
 
         using var command = _connection.CreateCommand();
@@ -447,6 +515,7 @@ public sealed class JudgementReader : IDisposable
                 reader.GetInt32(4),
                 reader.GetInt32(5),
                 missing.TryGetValue(ruleId, out var inputs) ? inputs : [],
+                produced.GetValueOrDefault(ruleId),
                 reader.IsDBNull(6) ? null : reader.GetString(6)));
         }
 
@@ -851,6 +920,29 @@ public sealed class JudgementReader : IDisposable
             versions[reader.GetString(0)] = reader.GetInt32(1);
 
         return versions;
+    }
+
+    /// <summary>
+    /// How many findings each rule wrote, counted in the database.
+    /// </summary>
+    /// <remarks>
+    /// <b>Counted rather than derived from a list of findings</b>, because the caller that wants
+    /// this wants it instead of the findings, not as well: a real forest's judgement holds
+    /// thousands of rows and this screen shows one line per rule.
+    /// </remarks>
+    private Dictionary<string, int> ReadFindingCountsByRule()
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT rule_id, COUNT(*) FROM finding GROUP BY rule_id";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+            counts[reader.GetString(0)] = reader.GetInt32(1);
+
+        return counts;
     }
 
     private Dictionary<string, List<MissingInput>> ReadMissingInputs()

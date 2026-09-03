@@ -155,6 +155,33 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
     }
 
     /// <inheritdoc/>
+    public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        var opened = JudgementReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return Result<StoredRuleExecutions>.Failure(opened.Error);
+
+        try
+        {
+            using var reader = opened.Value!;
+            return Result<StoredRuleExecutions>.Success(reader.ReadRuleExecutions());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Result<StoredRuleExecutions>.Failure(AuditError.Create(
+                ErrorCategory.Shell,
+                "JudgementCannotBeRead",
+                ErrorSeverity.Failed,
+                $"The judgement in '{bundleDirectory}' was opened and could not be read. "
+                + $"{ex.Message}",
+                bundleDirectory));
+        }
+    }
+
+    /// <inheritdoc/>
     public Result<FindingsFilterValues> ReadFindingsFilterValues(string bundleDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);

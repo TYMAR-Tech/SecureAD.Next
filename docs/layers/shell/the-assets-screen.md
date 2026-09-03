@@ -33,6 +33,7 @@ As with every shell page, the types below are `internal` — the window exports 
 | `FindingRowViewModel` | One finding in the grid, as the judging stored it |
 | `LapsComputerViewModel` | One computer in the LAPS inventory: both expiration dates, what it is capable of running, and — where a rule leaves it alone — which exclusion did it |
 | `LapsCountViewModel` | How many computers are in one LAPS state across the whole container, including the states nothing is in |
+| `RuleRowViewModel` | One rule: what it looks for, and what it did to this run — including the several ways it can report nothing |
 | `ObjectPaging` | Where one page of a listing starts and how large it is |
 | `FactState` | The three states every fact on this screen is drawn in |
 | `ObjectViewModel` | One object opened in full: its sections, and which is showing |
@@ -216,6 +217,40 @@ recorded rather than showing an empty box, because blank space where an explanat
 **What it must never say is that the finding is now resolved.** That is a claim about every route to
 the object, which the judgement half must prove rather than assert. The wording is held by
 `RuleGuidanceTests`, which fails the build on copy that goes further.
+
+---
+
+## The rules tab says what was checked, which no findings grid can
+
+The fourth tab under Assets lists **every rule this build ships**, each with what it looks for and
+what it did to the run being read. It is the only place in the product where the description of a
+check is reachable without a finding to hang it on, and that is what closes `P-118`: the same words
+sat under the findings grid, so on a forest with nothing wrong with it they were on no screen at all.
+
+**The catalogue is the list and the judgement only annotates it.** `AssetsViewModel.ListRules` walks
+`RuleCatalogue.All` and looks each rule up in what `ReadRuleExecutions` returned. Built the other way
+round, a rule the judging never scheduled would be absent — and a rule missing from a list of rules
+reads as a rule that does not exist. An execution naming a rule this build no longer ships is
+appended afterwards rather than dropped, because a judgement outlives the build that wrote it and
+dropping the row would quietly shrink the account of what was done to the bundle.
+
+**Four different things draw an empty findings grid, and this tab is where they are told apart.** A
+rule that judged every object it was about and reported nothing; one that could not read what it
+declared; one that failed; one that was never scheduled. `RuleRowViewModel.Outcome` states which in
+a sentence — *judged 2,082 objects and reported nothing* is a coverage claim, and the indeterminate
+wording names the attribute that was missing and says the result is a floor rather than a total.
+`RuleRowViewModel.State` marks a rule that found something as established-bad rather than a fault:
+the rule did its job and the forest is what is wrong. `FactState.Fault` is kept for the rule itself
+failing, which is a defect in the product.
+
+**It is not scoped by the tree, and the screen says so.** A rule is a question asked of the whole
+forest, so `ListRules` runs when the tab is chosen and when the run is read again, and not on any
+selection or level change. Narrowing it would put *judged 2,082 objects* beside a container the
+judging never counted separately.
+
+**A judgement that will not open is a sentence, not a silent list of rules that did not run.** Those
+are opposite facts calling for different actions, and the second wording would state that nobody
+judged the bundle while the truth is that its judgement is unreadable.
 
 ---
 
