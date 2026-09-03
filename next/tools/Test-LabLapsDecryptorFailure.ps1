@@ -118,8 +118,9 @@ if ($Break) {
     Write-Host '  Get-WinEvent -LogName "Microsoft-Windows-LAPS/Operational" -MaxEvents 30 |'
     Write-Host '    Select-Object TimeCreated,Id,LevelDisplayName,Message | Format-List'
     Write-Host ''
-    Write-Host 'Event 10035 = the principal could not be mapped. 10017 = Active Directory was not'
-    Write-Host 'updated. 10018 = a password was stored.'
+    Write-Host 'Event 10035 = the principal could not be mapped, 10034 = the name is ambiguous'
+    Write-Host 'because it carries no domain. 10017 = Active Directory was not updated.'
+    Write-Host '10018 = a password was stored.'
     Write-Host 'Then re-run this script with -Check.'
     return
 }

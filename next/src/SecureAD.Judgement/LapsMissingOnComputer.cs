@@ -195,7 +195,8 @@ public sealed class LapsMissingOnComputer : IRule
             + "Microsoft names. Before deploying, check that LAPS is not already running and "
             + "failing: where the policy names an encryption principal that cannot be resolved, "
             + "Windows LAPS refuses to store anything at all and the machine looks exactly like "
-            + "this one. It logs event 10035 when that happens, and 10017 to say the directory was "
+            + "this one. It logs event 10035 when that happens, or 10034 when the name is "
+            + "ambiguous because it carries no domain, and 10017 to say the directory was "
             + "not updated. Note that this rule reads Active Directory only: a machine whose "
             + "password is backed up to Microsoft Entra ID instead carries no directory attribute "
             + "at all and cannot be told apart from an unmanaged one here.";
