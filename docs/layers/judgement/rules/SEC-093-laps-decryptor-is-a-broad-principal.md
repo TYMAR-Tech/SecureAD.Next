@@ -176,4 +176,41 @@ A verdict that could not be reached says so rather than staying silent, per
 
 `A1` to `A3` are the anchors, and the others are worth little without them: every case above once
 passed against a rule that was broken in three separate ways, each a false negative on a Critical
-finding. See the roadmap's stage 4 entry for what the first lab run found.
+finding.
+
+## 10. Verified against `ad.lab`
+
+**Run 2026-09-04, and it found the rule broken in three separate ways.** None was visible to 3,013
+green tests. Each was a false negative on a Critical rule — the product telling a customer that a
+policy was safe when it was not.
+
+| # | What was wrong | What a customer would have seen |
+|---|---|---|
+| 1 | Matched the key `Policies\Microsoft\Windows\LAPS`, which is none of Microsoft's four documented LAPS policy roots and which no policy editor writes | Every policy reported clean, including one handing decryption to Domain Users |
+| 2 | The broadness test sat below the `PrincipalNotFound` gate | A policy naming Domain Users outright reported as "could not resolve" |
+| 3 | Asked for the principal only under the policy's domain | The nested case — the rule's whole purpose — could never fire |
+
+**The first two shared one cause.** Twenty-five tests and seven mutations agreed with the code
+because every fixture was built from the same assumptions the code was. The specification, the rule
+and the tests all agreed with each other and none had ever been compared with a file Windows wrote.
+**Each check was sound and the whole circle was anchored to nothing outside itself** — the shape
+recorded as `F-S44-2`. [§9](#9-tests) now carries an anchor for each.
+
+**The third had been solved once already.** `SEC-090` hit the identical scope problem on its own
+first lab run and records it at `MembersOfTrustee`. This rule was written afterwards and did not
+carry the lesson across. `SidInterner` keys a principal to its domain only when the identifier
+repeats between domains — a BUILTIN SID — and stores everything else unscoped, because a
+domain-relative identifier is already unique across the forest.
+
+**After the corrections**, on the same sealed bundle re-judged without re-reading the forest:
+six findings over fifteen policies in three domains.
+
+| Policy | Reported |
+|---|---|
+| `SecureADLapsDecryptorDirect` | `Domain Users`, named by the policy directly |
+| `SecureADLapsDecryptorNested` | `Domain Users`, reached through two nested groups, with the route named |
+| `Windows Laps`, `Workstation LAPS policy`, `Laps Workstation New`, `SecureADLapsDecryptorUnknown` | decryptor named by qualified name, reported as unresolvable — a different problem, and not a broad-principal finding |
+
+The three unresolvable ones are the case [§4](#4-what-the-setting-can-hold-and-what-an-invalid-value-does)
+describes: this product resolves principals by identifier, so a value written as `DOMAIN\name` is
+reported as what it is rather than guessed at.

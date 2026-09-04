@@ -416,20 +416,10 @@ Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
 
 Specified in [`SEC-090`](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).
 
-**Its `Indeterminate` outcome on 2026-09-04 is the rule working, not a defect, and it is worth
-knowing why before someone tries to fix it.** It reported `Everyone` able to read the LAPS password
-on two computers, and a group reaching `Domain Users` on a third. On one further computer it found a
-trustee holding both `READ_PROPERTY` and `CONTROL_ACCESS` whose principal is not in the bundle,
-nothing broad to report beside it, and so refused to judge that object at all — and one unjudged
-object marks the whole rule. Measured in the bundle, the unresolvable trustees were three ordinary
-domain principals of `ba.ad.lab` carrying 18, 12 and 3 such entries; the owner confirmed on
-2026-09-04 that in this lab an unresolvable identifier is a deleted account.
-
-**The refusal is the point.** *Not found is not "not broad"* — a trustee whose membership cannot be
-established could contain anything, and reporting the computer as clean would be the false negative
-this rule exists to avoid. **Do not generalise the lab's answer into the product:** in a customer
-forest the same symptom also covers a principal from a trusted external forest, or a domain the run
-could not read, and the finding text deliberately offers both readings rather than choosing one.
+**Its `Indeterminate` outcome is the rule working, not a defect.** One computer carried a trustee
+holding both LAPS read rights whose principal is not in the bundle, so the rule refused to judge it
+rather than call it clean — *not found is not "not broad"* — and one unjudged object marks the whole
+rule. **Detail in [`SEC-090` §11](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).**
 
 **It is the first rule to read a security descriptor against the group expansion**, and it is the
 first of the four consumers `P-124` names to be built. What it asserts is deliberately narrow: the
@@ -466,39 +456,14 @@ establishes. The owner settled this on 2026-09-03. It is the first rule whose su
 security identifier, which is why `FindingSubjectKind` gained a `Policy` value.
 
 **The lab run earned its place on the checklist, three times over.** Against `ad.lab` on 2026-09-04
-the rule was found to be broken in three separate ways, none of which 3,013 green tests could see:
-
-1. **It read a registry key that does not exist.** The match was
-   `Policies\Microsoft\Windows\LAPS`, none of Microsoft's four documented LAPS policy roots. It
-   matched nothing, read that as *this policy configures no decryptor*, and reported silence — so a
-   policy handing decryption to Domain Users would have been passed as clean.
-2. **A decryptor that was itself broad was reported as unresolvable.** The broadness test sat below
-   the `PrincipalNotFound` gate, though whether an identifier is broad is a property of the
-   identifier and needs no walk at all.
-3. **It asked for the principal under the wrong scope.** `SidInterner` keys a SID to its domain only
-   when the identifier repeats between domains; ordinary groups are stored unscoped. Asking only
-   under the policy's domain meant the nested case — the rule's main purpose, and what Microsoft's
-   wrapper-group guidance produces — could never fire.
-
-**Each of the three was a false negative on a Critical rule**, and the first two shared one cause:
-twenty-five tests and seven mutations agreed with the code because every fixture was built from the
-same assumptions the code was. **Each check was sound and the whole circle was anchored to nothing
-outside itself** — the shape recorded as `F-S44-2`. The tests now carry a `Registry.pol` captured
-from a real Group Policy Object and parsed by the product's own parser, with negative controls over
-Microsoft's other three roots.
-
-**The third had been solved once already.** SEC-090 hit the identical scope problem on its own first
-lab run and records it at `MembersOfTrustee`; SEC-093 was written afterwards and did not carry the
-lesson across.
-
-**Confirmed working 2026-09-04.** Six findings over fifteen policies in three domains, including
-`Domain Users` reached through two nested groups by the route the finding names.
+the rule was found broken in three separate ways — a registry key that does not exist, a broadness
+test gated on an expansion it does not need, and a lookup under the wrong scope — each a false
+negative on a Critical rule, and none visible to 3,013 green tests. All three corrected the same
+day and the rule confirmed working against the forest. **Detail, and what the tests now anchor to,
+in [`SEC-093` §10](layers/judgement/rules/SEC-093-laps-decryptor-is-a-broad-principal.md).**
 
 **It is the first consumer of `gpo_registry_setting`,** which capture has been writing since the
-SYSVOL work and nothing had read. Gate 4 found a real defect in the first version: an empty settings
-list was read as "this policy configures none", which also covers a policy whose SYSVOL files were
-refused and a bundle captured without SYSVOL at all. `BundleReader.ReadGpoMachineRegistrySettings`
-now returns the coverage outcome beside the entries so the two cannot be confused.
+SYSVOL work and nothing had read.
 
 **It closes a hole the other two leave open.** A machine that was onboarded correctly and has since
 stopped rotating passes both in silence: its timestamp is present, so `SEC-091` says nothing, and it
