@@ -15,8 +15,14 @@ on an object, the owner of the object can always change the permissions on an ob
 
 **Where it comes from.** An object created by a member of the Administrators group is owned by that
 group. An object created by anybody else is owned by **that person, personally**, and stays that way
-for the life of the object.[^descriptors] So this condition is not usually an attack — it is the
-ordinary residue of somebody once having been allowed to create something.
+for the life of the object.[^descriptors]
+
+**This finding reports latent authority. It is not evidence of abuse, and must never be worded as
+if it were.** The ordinary sequence is: somebody was allowed to create an object, they created it,
+they became its owner, and the object stayed that way for years. Nobody did anything wrong at any
+point. What the finding says is that a capability exists which no permission review will show you —
+not that it has been used, and not that it was granted in error. An operator who reads this as
+evidence of malicious delegation will waste a day and then stop trusting the rule.
 
 ---
 
@@ -78,7 +84,7 @@ for this rule.
 | `Enterprise Admins` (RID 519) | Forest-wide administration |
 | `Administrator` (RID 500) | The built-in account |
 | `SYSTEM` (`S-1-5-18`), `Enterprise Domain Controllers` (`S-1-5-9`), `Creator Owner` (`S-1-3-0`) | Platform identities, not people |
-| Other `BUILTIN` operator groups (`S-1-5-32-548`…`552`) | Administrative by construction |
+| Other `BUILTIN` operator groups (`S-1-5-32-548`…`552`) | **Treated as administrative for the purpose of ownership, which is narrower than calling them administrators.** `Account Operators`, `Backup Operators`, `Print Operators` and `Server Operators` carry very different risk profiles, and plenty of organisations do not regard them as full administrative authorities. What is being said here is only that finding one of them as an owner is not the condition this rule looks for. Whether they should hold that standing at all is a different question and a different rule. |
 
 **An owner that is administrative only through group membership is also expected, and this is a
 correction to the predecessor.** The predecessor's `SEC-031` decided administrativeness from the
@@ -87,6 +93,25 @@ transitive group membership… will still fire a finding."* We have the membersh
 predecessor lacked, so the check consults it. A person inside `Domain Admins` **is** an
 administrator, and reporting them is a finding about nothing that would train an operator to ignore
 the rule.
+
+### A service account owner does fire, and the reason is that the product cannot know otherwise
+
+**The question, raised in review on 2026-09-04:** a service account owns objects it created, holds no
+administrative membership, and is itself managed entirely by administrators. Does that fire? **Yes,
+and deliberately.**
+
+**Because *administrative principal* and *administratively controlled principal* are different
+things, and only the first is decidable from the directory.** Nothing on an object says *this
+account is looked after by the platform team*. There is no attribute for it, no group that reliably
+means it, and no captured evidence that would settle it. A rule that tried to infer it would be
+guessing, and a rule that guessed wrong in the quiet direction would hide real latent authority
+behind an assumption nobody could check.
+
+**So the rule answers the question it can answer**: this owner is not an administrative principal.
+That statement stays true whoever manages the account. The `Low` severity of
+[§6](#6-severity) and the latent-authority framing above are what keep it proportionate, and an
+organisation that considers a particular service account's ownership acceptable has the acceptance
+mechanism for exactly that, which leaves a record where a silent exclusion would not.
 
 ## 5. The one thing that would make this rule lie
 
@@ -105,16 +130,34 @@ is invisible unless deliberately tested and the rule looks correct without it.
 
 ## 6. Severity
 
-**`High` where the owned object is itself protected by `AdminSDHolder`. `Medium` otherwise.**
+**`Low`, uniformly. One level, because a rule may only have one.**
 
-The reasoning: owning an ordinary user object lets you rewrite that object's permissions; owning a
-protected object is a route to privilege. The predecessor rated its narrower rule `High` throughout,
-but its scope was admin objects only — with the scope widened to every object, one severity for both
-cases would either overstate the ordinary case or understate the privileged one.
+**This was specified as `High` for protected objects and `Medium` otherwise, and that was wrong on
+two counts.** The first is structural: [`0066`](../../../decisions/0066-a-finding-is-called-a-finding.md)
+is `Accepted` and states that *"severity is fixed by the rule card and the customer cannot change
+it"*; [`0081`](../../../decisions/0081-severity-has-four-levels.md) completes it with *"the level
+stays catalogue data"*. A severity that varies per finding is not available to any rule in this
+product. A review on 2026-09-04 proposed a three-level split for the same reason the two-level one
+was written, and neither is possible.
 
-**This split uses something that exists.** `ProtectedPrincipalClosure` is built and persisted, so
-"is this object protected" is answerable today. It is deliberately **not** the Tier 0 question, which
-is stage 7 and must not be pre-empted here.
+**The second count is that the review was right about the noise.** The commonest cause of this
+finding is that somebody created the object, as [§1](#1-what-it-finds) says. Organisational units,
+service accounts, application containers and custom application objects routinely carry creator
+ownership as operational residue. A forest in which that is normal would produce an estate-wide wall
+of `Medium`, and a level that describes most of the directory has stopped ranking anything.
+
+**So the single level is `Low`**, which is what a true statement about latent authority deserves when
+the ordinary explanation is benign. `Low` is not *unimportant*: it is a real capability that no
+permission review will show you, and the finding is worth having precisely because nothing else
+reports it.
+
+**The protected-object case is genuinely more serious, and the way to say so is a second rule rather
+than a second severity.** Owning an object that `AdminSDHolder` protects is a route to privilege
+rather than latent authority over one object. That is a separate claim, deserving its own card, its
+own wording and `High` — and splitting a rule when the severity argument splits is the established
+pattern here: `P-92` collapsed five path rules into one on that reasoning, and `P-96` proposes
+splitting `SEC-071` by feasibility for the same reason. **Recorded as owed, not smuggled in.**
+
 
 ## 7. Which objects are examined
 
@@ -135,7 +178,10 @@ already admits.
 | `DescriptorAvailability` | To tell *no owner recorded* from *nobody read it* |
 | The object's ACEs | To find an `OWNER RIGHTS` entry |
 | `DerivationReader.MembersOf` | To decide whether the owner is administrative by membership |
-| `ProtectedPrincipalClosure` | For the severity split |
+
+**It no longer reads `ProtectedPrincipalClosure`.** It did while the severity split existed; with
+one level for the rule there is nothing for it to decide. The rule that covers protected objects,
+when it is written, will read it.
 
 ## 9. When it does not answer
 
@@ -159,7 +205,10 @@ Negative controls, each of which must be observed failing:
 - an object carrying an `OWNER RIGHTS` entry — must **not** be reported, and must be judged
 - an object whose descriptor was read but carries no owner — must **not** report clean
 - an object owned by a plain user with no administrative membership — **must** be reported
-- a protected object so owned — must be reported at `High`; an ordinary one at `Medium`
+- an object owned by a service account with no administrative membership — **must** be reported,
+  which pins the decision in [§4](#a-service-account-owner-does-fire-and-the-reason-is-that-the-product-cannot-know-otherwise)
+- every finding this rule emits carries `Low` — pinned so that a later edit reintroducing a
+  per-finding severity fails rather than quietly contradicting `0066`
 
 ## 11. Verified against `ad.lab`
 
