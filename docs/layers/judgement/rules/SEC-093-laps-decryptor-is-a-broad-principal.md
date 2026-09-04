@@ -171,6 +171,9 @@ A verdict that could not be reached says so rather than staying silent, per
 | N3 | The setting is present in the user scope only | Silent |
 | N4 | The setting is under one of Microsoft's other three LAPS roots | Silent |
 | A1 | A `Registry.pol` captured from a real policy | Fires, and the key it carries is the documented Group Policy root |
+| A2 | The value is a broad SID the expansion cannot find | Fires: broadness is a property of the identifier |
+| A3 | The decryptor is an ordinary group, stored unscoped | Found, by asking under the unscoped key as well as the domain |
 
-`A1` is the anchor, and the others are worth little without it: every case above once passed
-against a rule that could not match a real policy at all.
+`A1` to `A3` are the anchors, and the others are worth little without them: every case above once
+passed against a rule that was broken in three separate ways, each a false negative on a Critical
+finding. See the roadmap's stage 4 entry for what the first lab run found.

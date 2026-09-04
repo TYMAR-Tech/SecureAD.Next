@@ -426,8 +426,8 @@ describes credential dumping from the domain database, which reading a LAPS pass
 technique is claimed rather than a wrong one asserted.
 
 **`SEC-093`, a broad principal can decrypt LAPS passwords. Specified 2026-09-03, built 2026-09-03,
-tested and mutated 2026-09-04. First run against `ba.ad.lab` on 2026-09-04 found the rule was
-reading a registry key that does not exist; corrected the same day.**
+tested and mutated 2026-09-04. Run against `ad.lab` on 2026-09-04, which found three defects; all
+three corrected the same day and the rule confirmed working against the forest.**
 
 | Rule | Fires when | Severity |
 |---|---|---|
@@ -447,22 +447,40 @@ directory does not record. Naming machines would assert something about the past
 establishes. The owner settled this on 2026-09-03. It is the first rule whose subject has no
 security identifier, which is why `FindingSubjectKind` gained a `Policy` value.
 
+**The lab run earned its place on the checklist, three times over.** Against `ad.lab` on 2026-09-04
+the rule was found to be broken in three separate ways, none of which 3,013 green tests could see:
+
+1. **It read a registry key that does not exist.** The match was
+   `Policies\Microsoft\Windows\LAPS`, none of Microsoft's four documented LAPS policy roots. It
+   matched nothing, read that as *this policy configures no decryptor*, and reported silence — so a
+   policy handing decryption to Domain Users would have been passed as clean.
+2. **A decryptor that was itself broad was reported as unresolvable.** The broadness test sat below
+   the `PrincipalNotFound` gate, though whether an identifier is broad is a property of the
+   identifier and needs no walk at all.
+3. **It asked for the principal under the wrong scope.** `SidInterner` keys a SID to its domain only
+   when the identifier repeats between domains; ordinary groups are stored unscoped. Asking only
+   under the policy's domain meant the nested case — the rule's main purpose, and what Microsoft's
+   wrapper-group guidance produces — could never fire.
+
+**Each of the three was a false negative on a Critical rule**, and the first two shared one cause:
+twenty-five tests and seven mutations agreed with the code because every fixture was built from the
+same assumptions the code was. **Each check was sound and the whole circle was anchored to nothing
+outside itself** — the shape recorded as `F-S44-2`. The tests now carry a `Registry.pol` captured
+from a real Group Policy Object and parsed by the product's own parser, with negative controls over
+Microsoft's other three roots.
+
+**The third had been solved once already.** SEC-090 hit the identical scope problem on its own first
+lab run and records it at `MembersOfTrustee`; SEC-093 was written afterwards and did not carry the
+lesson across.
+
+**Confirmed working 2026-09-04.** Six findings over fifteen policies in three domains, including
+`Domain Users` reached through two nested groups by the route the finding names.
+
 **It is the first consumer of `gpo_registry_setting`,** which capture has been writing since the
 SYSVOL work and nothing had read. Gate 4 found a real defect in the first version: an empty settings
 list was read as "this policy configures none", which also covers a policy whose SYSVOL files were
 refused and a bundle captured without SYSVOL at all. `BundleReader.ReadGpoMachineRegistrySettings`
 now returns the coverage outcome beside the entries so the two cannot be confused.
-
-**The lab run earned its place on the checklist.** The rule matched the key
-`Policies\Microsoft\Windows\LAPS`, which is none of Microsoft's four documented LAPS policy roots
-and which no policy editor writes. It matched nothing, read that as *this policy configures no
-decryptor*, and reported silence — so a policy handing decryption to Domain Users would have been
-passed as clean, a false negative on a Critical rule. Twenty-five tests and seven mutations agreed
-with it, because every fixture was built from the same invented constant. **Each check was sound
-and the whole circle was anchored to nothing outside itself** — the shape recorded as `F-S44-2`.
-The tests now carry a `Registry.pol` captured from a real Group Policy Object and parsed by the
-product's own parser, plus negative controls over Microsoft's other three roots so the match cannot
-simply be widened until findings appear.
 
 **It closes a hole the other two leave open.** A machine that was onboarded correctly and has since
 stopped rotating passes both in silence: its timestamp is present, so `SEC-091` says nothing, and it
