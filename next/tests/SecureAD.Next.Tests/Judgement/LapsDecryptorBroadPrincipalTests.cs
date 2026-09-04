@@ -325,13 +325,13 @@ public sealed class LapsDecryptorBroadPrincipalTests
     [Fact]
     public void AScopedDecryptorWithNothingBroadInsideIsSilent()
     {
-        Assert.Empty(Judge(
+        AssertSilent(
             [Setting(LapsKey, DecryptorValue, WrapperGroup)],
             Expands(WrapperGroup,
             [
                 Member(ScopedGroup, [WrapperGroup, ScopedGroup]),
                 Member("S-1-5-21-1-2-3-1200", [WrapperGroup, "S-1-5-21-1-2-3-1200"]),
-            ])));
+            ]));
     }
 
     /// <summary>
@@ -344,7 +344,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
     [Fact]
     public void APolicyConfiguringNoDecryptorIsSilent()
     {
-        Assert.Empty(Judge([], Never()));
+        AssertSilent([], Never());
     }
 
     /// <summary>
@@ -353,12 +353,12 @@ public sealed class LapsDecryptorBroadPrincipalTests
     [Fact]
     public void APolicyConfiguringOtherLapsSettingsButNoDecryptorIsSilent()
     {
-        Assert.Empty(Judge(
+        AssertSilent(
             [
                 Setting(LapsKey, "PasswordAgeDays", "30"),
                 Setting(LapsKey, "PasswordComplexity", "4"),
             ],
-            Never()));
+            Never());
     }
 
     /// <summary>
@@ -371,7 +371,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
     [Fact]
     public void ABlankDecryptorValueCountsAsUnset()
     {
-        Assert.Empty(Judge([Setting(LapsKey, DecryptorValue, "   ")], Never()));
+        AssertSilent([Setting(LapsKey, DecryptorValue, "   ")], Never());
     }
 
     /// <summary>
@@ -380,9 +380,9 @@ public sealed class LapsDecryptorBroadPrincipalTests
     [Fact]
     public void TheSameValueNameUnderAnotherProductsKeyIsIgnored()
     {
-        Assert.Empty(Judge(
+        AssertSilent(
             [Setting(@"Software\Policies\Contoso\Backup", DecryptorValue, DomainUsers)],
-            Never()));
+            Never());
     }
 
     /// <summary>
@@ -391,12 +391,12 @@ public sealed class LapsDecryptorBroadPrincipalTests
     [Fact]
     public void TheLastDecryptorValueStatedIsTheOneJudged()
     {
-        Assert.Empty(Judge(
+        AssertSilent(
             [
                 Setting(LapsKey, DecryptorValue, DomainUsers),
                 Setting(LapsKey, DecryptorValue, WrapperGroup),
             ],
-            Expands(WrapperGroup, [])));
+            Expands(WrapperGroup, []));
     }
 
     /// <summary>
@@ -553,6 +553,27 @@ public sealed class LapsDecryptorBroadPrincipalTests
         IReadOnlyList<RegistryPolicyEntry> settings,
         Func<string, string, PrincipalExpansion> expand) =>
         Verdict(settings, expand).Findings;
+
+    /// <summary>
+    /// Asserts that the rule looked, reached an answer, and had nothing to say.
+    /// </summary>
+    /// <remarks>
+    /// <b>Asserting an empty findings list is not enough, and a mutation proved it.</b> A refusal
+    /// carries no findings either, so <c>Assert.Empty(verdict.Findings)</c> passes just as happily
+    /// when the rule gave up as when it cleared the policy - and those are opposite statements to
+    /// an operator. Inverting the completeness check in the rule left every silence test here
+    /// green until this also asserted that nothing was left unresolved.
+    /// </remarks>
+    private static void AssertSilent(
+        IReadOnlyList<RegistryPolicyEntry> settings,
+        Func<string, string, PrincipalExpansion> expand)
+    {
+        var verdict = Verdict(settings, expand);
+
+        Assert.Empty(verdict.Findings);
+        Assert.Empty(verdict.Unresolved);
+        Assert.Empty(verdict.InputsNotCaptured);
+    }
 
     private static RuleVerdict Verdict(
         IReadOnlyList<RegistryPolicyEntry> settings,
