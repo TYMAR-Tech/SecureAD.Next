@@ -554,6 +554,68 @@ public sealed class LapsDecryptorBroadPrincipalTests
             nameof(DerivedFactKind.PrincipalExpansion), definition.RequiredDerivedFacts);
     }
 
+    /// <summary>
+    /// A decryptor that is itself a broad principal fires even when the expansion cannot find it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Found by the lab on 2026-09-04, and it is a false negative on the rule's plainest
+    /// case.</b> The broadness test sat below the <c>PrincipalNotFound</c> gate, so a policy naming
+    /// Domain Users outright was reported as "this capture could not resolve the value" whenever
+    /// the expansion failed to find the group object. The lab did exactly that, and a Critical
+    /// exposure was reported as unknown.
+    /// </para>
+    /// <para>
+    /// <b>Whether an identifier is broad is a property of the identifier.</b> A relative identifier
+    /// of 513 is Domain Users in whatever domain issued it, and <c>S-1-1-0</c> is Everyone
+    /// everywhere. No membership walk, no derivation and no captured object is needed to say so, so
+    /// the answer must not be gated on any of them.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData(DomainUsers)]
+    [InlineData(AuthenticatedUsers)]
+    [InlineData(Everyone)]
+    public void ABroadDecryptorFiresEvenWhenTheExpansionCannotFindIt(string broad)
+    {
+        var finding = Assert.Single(Judge(
+            [Setting(LapsKey, DecryptorValue, broad)],
+            (sid, scope) => new PrincipalExpansion(
+                sid, PrincipalExpansionOutcome.PrincipalNotFound, null)));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Equal(broad, evidence.BroadPrincipalSid);
+        Assert.True(evidence.BroadPrincipalFound);
+        Assert.Equal(Severity.Critical, finding.Severity);
+
+        // Still honest about the walk: nothing nested was read, and the finding says so rather
+        // than claiming the membership was seen in full.
+        Assert.False(evidence.ExpansionWasComplete);
+    }
+
+    /// <summary>
+    /// A decryptor that is <i>not</i> broad and cannot be found is still reported as unresolvable.
+    /// </summary>
+    /// <remarks>
+    /// The control on the fix above. Moving the broadness test earlier must not turn every
+    /// unresolvable decryptor into a finding, because the two are different problems: one is a
+    /// password protected against too many people, the other may be no password stored at all.
+    /// </remarks>
+    [Fact]
+    public void AScopedDecryptorThatCannotBeFoundIsStillUnresolvable()
+    {
+        var finding = Assert.Single(Judge(
+            [Setting(LapsKey, DecryptorValue, ScopedGroup)],
+            (sid, scope) => new PrincipalExpansion(
+                sid, PrincipalExpansionOutcome.PrincipalNotFound, null)));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Null(evidence.BroadPrincipalSid);
+        Assert.False(evidence.BroadPrincipalFound);
+    }
+
     // -------------------------------------------------------------------------------------------
     // The anchor: bytes a real policy editor wrote
     // -------------------------------------------------------------------------------------------

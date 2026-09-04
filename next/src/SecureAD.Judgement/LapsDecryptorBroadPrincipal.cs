@@ -171,13 +171,20 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
 
         var expansion = expand(configured, domain);
 
-        if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalNotFound)
-            return RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form)]);
-
         var decryptorName = NameFor(configured, context.PrincipalNames);
 
-        // THE DECRYPTOR ITSELF FIRST. A policy naming Domain Users outright is the plainest form of
-        // this finding, and it has no membership to walk - the route is one step.
+        // THE DECRYPTOR ITSELF FIRST, AND BEFORE THE EXPANSION IS EVEN ASKED. Whether a security
+        // identifier is broad is a property of the identifier: a relative identifier of 513 is
+        // Domain Users in whatever domain issued it, and S-1-1-0 is Everyone everywhere. That needs
+        // no membership walk, no derivation and no captured object, so it must not be gated on any
+        // of them.
+        //
+        // THIS WAS THE ORDER UNTIL 2026-09-04 AND IT WAS WRONG. The broadness test sat below the
+        // PrincipalNotFound gate, so a policy naming Domain Users outright - the plainest form of
+        // this finding, and the one the rule exists for - was reported as "this capture could not
+        // resolve the value" whenever the expansion failed to find the group. The lab did exactly
+        // that: the identifier was Domain Users, the group was in the bundle, and the rule threw
+        // away an answer it already held and reported Critical exposure as unknown.
         if (BroadPrincipalCatalogue.IsBroad(configured))
         {
             return RuleVerdict.Judged(
@@ -191,10 +198,20 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
                     decryptorName,
                     configured,
                     [configured],
+
+                    // The walk is beside the point here and is reported as it stands rather than
+                    // claimed complete: nothing nested below matters when the decryptor is itself
+                    // broad, but saying the membership was fully read when it was not would be a
+                    // different untruth.
                     expansion.IsComplete,
                     context.PrincipalNames),
             ]);
         }
+
+        // Only now does not finding the principal matter. Below this line the question is what is
+        // *inside* the decryptor, and that cannot be answered without the walk.
+        if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalNotFound)
+            return RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form)]);
 
         // The shortest route to each broad principal, for the reason SEC-090 keeps the shortest: it
         // is the link an operator would cut.
