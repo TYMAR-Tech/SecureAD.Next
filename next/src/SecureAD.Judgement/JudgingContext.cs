@@ -1,5 +1,6 @@
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Schema;
 
 namespace SecureAD.Judgement;
@@ -146,6 +147,22 @@ public enum DerivedFactKind
 /// grid's columns are written rather than joined. Measured, and recorded as <c>P-128</c>.
 /// </para>
 /// </param>
+/// <param name="GpoMachineRegistrySettings">
+/// The machine-side registry settings a Group Policy Object carries, out of its own
+/// <c>Registry.pol</c> in SYSVOL, or null where no bundle was opened.
+///
+/// <para>
+/// <b>Not a derived fact.</b> The settings are captured from the policy's own files and sit in the
+/// bundle beside it, so a rule reading them is reading Evidence rather than anything computed. It
+/// is therefore not a <see cref="DerivedFactKind"/> and is not gated by a declaration.
+/// </para>
+/// <para>
+/// <b>An empty list does not mean the policy sets nothing</b> - it also covers a policy whose
+/// SYSVOL files could not be read, and a bundle captured without SYSVOL at all. That is why the
+/// answer is a <see cref="GpoRegistrySettings"/> and not a bare list: it carries the outcome
+/// beside the entries, so a rule cannot read "nobody looked" as "nothing there".
+/// </para>
+/// </param>
 public sealed record JudgingContext(
     DateTimeOffset AsOf,
     StoredProtectedPrincipalDerivation? ProtectedPrincipals,
@@ -153,7 +170,8 @@ public sealed record JudgingContext(
     StoredAttributeVisibility? AttributeVisibility,
     Func<string, string, PrincipalExpansion>? MembersOfPrincipal,
     SchemaGuidCatalog? SchemaGuids,
-    Func<string, string?>? PrincipalNames)
+    Func<string, string?>? PrincipalNames,
+    Func<Guid, GpoRegistrySettings>? GpoMachineRegistrySettings)
 {
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
@@ -167,5 +185,5 @@ public sealed record JudgingContext(
     /// </remarks>
     /// <param name="asOf">The reference time this judging is evaluated against.</param>
     public static JudgingContext At(DateTimeOffset asOf) =>
-        new(asOf, null, null, null, null, null, null);
+        new(asOf, null, null, null, null, null, null, null);
 }

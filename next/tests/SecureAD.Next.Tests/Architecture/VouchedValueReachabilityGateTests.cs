@@ -398,6 +398,15 @@ public sealed class VouchedValueReachabilityGateTests
     /// say that the answer thinned out - and, just as importantly, a stored finding must carry that
     /// statement forward, since the nesting lives in the derivation and cannot be re-walked from
     /// the judgement store. Read true from a completed expansion and false from a truncated one.
+    /// 46 and 47 from 2026-09-03 with <c>GpoRegistrySettings.IsComplete</c> and
+    /// <c>LapsDecryptorEvidence.IsComplete</c>, both added for SEC-093. The first exists because
+    /// this gate's sibling caught the rule reading an empty settings list as a policy that
+    /// configures no decryptor, when it also covers a policy whose SYSVOL files could not be read
+    /// and a bundle captured without SYSVOL - so the reader now hands back the outcome beside the
+    /// entries. Read true from a policy whose files were read and false from one that was never
+    /// offered to the SYSVOL pass. The second is SEC-090's reasoning applied to a second walk, with
+    /// one addition: it is false where the configured decryptor could not be resolved at all, which
+    /// is a finding this rule makes rather than a silence.
     /// </para>
     /// </summary>
     [Fact]
@@ -405,7 +414,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(45, found.Count);
+        Assert.Equal(47, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");

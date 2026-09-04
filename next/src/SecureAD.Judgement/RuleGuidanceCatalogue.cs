@@ -317,6 +317,54 @@ public static class RuleGuidanceCatalogue
                 "https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential"),
 
         new RuleGuidance(
+            "SEC-093",
+            "Credentials",
+
+            // No technique claimed, for the reason SEC-090's entry gives. The predecessor's card
+            // carried T1003.003 - credential dumping from the domain database - which is not what
+            // this is: decrypting a stored LAPS password uses a key the policy granted, and the
+            // tag looks copied rather than reasoned.
+            MitreTechnique: null,
+            WhyItMatters:
+                "Windows LAPS encrypts each local administrator password against exactly one "
+                + "security principal, and this policy names one that is broad in every "
+                + "organisation - or a group that contains one. Every member can therefore "
+                + "decrypt the local administrator password of every machine this policy covers. "
+                + "This is a separate gate from directory permissions: Microsoft states that "
+                + "being allowed to query a password does not imply being allowed to decrypt it, "
+                + "so an estate can have tightly held read access and still be exposed here. The "
+                + "broad principal is usually not the one the policy names - it falls out of the "
+                + "group nesting underneath, which is why nobody notices.",
+            WhatToDo:
+                "Follow the membership path on the finding and cut the link that brings the broad "
+                + "principal into the decryptor group, or point ADPasswordEncryptionPrincipal at "
+                + "a tightly scoped administrative group. Then rotate the stored passwords: "
+                + "Microsoft states the authorized decryptor cannot be changed after a password "
+                + "is encrypted, so every password already in the directory stays decryptable by "
+                + "the old principal until it is replaced. Correcting the policy alone does not "
+                + "close the exposure. Where the finding says the value could not be resolved, "
+                + "check it against the directory first - an invalid principal stops policy "
+                + "processing and the password is not backed up at all, which is a different and "
+                + "equally urgent problem.",
+            About:
+                "Reports a Group Policy Object whose authorized Windows LAPS password decryptor "
+                + "is, or contains through nesting, a principal broad in every organisation. The "
+                + "subject is the policy rather than a machine, and that is deliberate: Microsoft "
+                + "states the authorized decryptor cannot be changed after a password is "
+                + "encrypted, so a stored password was encrypted against whatever the policy "
+                + "named at the time, and the directory does not record what that was. Naming "
+                + "affected machines would assert something about the past that no evidence "
+                + "establishes. A policy that sets no decryptor is not reported, because "
+                + "Microsoft's default is the Domain Admins group of the machine's own domain. A "
+                + "scoped group containing no broad principal is not reported either - delegating "
+                + "to a wrapper group is Microsoft's own documented pattern, since only one "
+                + "principal can be named. Where the configured value could not be resolved to a "
+                + "principal the finding says so rather than staying silent, and where the "
+                + "membership walk could not finish it says that too.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/windows-server/identity/laps/laps-concepts-overview"),
+
+        new RuleGuidance(
             "SEC-091",
             "Credentials",
             MitreTechnique: null,

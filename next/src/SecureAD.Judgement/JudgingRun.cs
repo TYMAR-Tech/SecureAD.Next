@@ -200,6 +200,11 @@ public static class JudgingRun
                 // every computer under an organisational unit, so its name would otherwise be
                 // looked up once per machine to say the same thing.
                 PrincipalNames = Memoised(bundle.PrincipalNameFor),
+
+                // Not a derived fact either: a policy's settings are captured from its own SYSVOL
+                // files and sit in the bundle. Unmemoised, because a policy is judged once and its
+                // settings are not asked for a second time.
+                GpoMachineRegistrySettings = bundle.ReadGpoMachineRegistrySettings,
             };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse

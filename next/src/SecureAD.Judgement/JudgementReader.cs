@@ -597,7 +597,16 @@ public sealed class JudgementReader : IDisposable
         r.reach                             AS r_reach,
         r.inherited_from                    AS r_inherited_from,
         r.expansion_was_complete            AS r_expansion_was_complete,
-        r.finding_id                        AS r_finding_id
+        r.finding_id                        AS r_finding_id,
+        e.policy_display_name               AS e_policy_display_name,
+        e.configured_value                  AS e_configured_value,
+        e.form                              AS e_form,
+        e.decryptor_sid                     AS e_decryptor_sid,
+        e.decryptor_name                    AS e_decryptor_name,
+        e.broad_principal_sid               AS e_broad_principal_sid,
+        e.broad_principal_name              AS e_broad_principal_name,
+        e.expansion_was_complete            AS e_expansion_was_complete,
+        e.finding_id                        AS e_finding_id
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -610,6 +619,7 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_kerberoastable_account k ON k.finding_id = f.finding_id
         LEFT JOIN finding_laps_deployment l ON l.finding_id = f.finding_id
         LEFT JOIN finding_laps_password_reader r ON r.finding_id = f.finding_id
+        LEFT JOIN finding_laps_decryptor e ON e.finding_id = f.finding_id
         """;
 
     /// <summary>
@@ -658,6 +668,12 @@ public sealed class JudgementReader : IDisposable
         // inherited scope, and a well-known or foreign-forest trustee has no name in this bundle -
         // so either would drop an intact finding into the "no evidence" branch. This is P-112.
         var lapsReaderTrustee = reader.GetOrdinal("r_trustee_sid");
+
+        // configured_value, because it is NOT NULL on any row that exists. Both decryptor_sid and
+        // broad_principal_sid are legitimately null - a decryptor this capture could not resolve is
+        // exactly what one kind of SEC-093 finding says - so either as the discriminator would drop
+        // an intact finding into the "no evidence" branch below and throw on it. This is P-112.
+        var lapsDecryptorValue = reader.GetOrdinal("e_configured_value");
 
         FindingEvidence evidence;
 
@@ -743,6 +759,26 @@ public sealed class JudgementReader : IDisposable
                 reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
                 reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete")) != 0);
         }
+        else if (!reader.IsDBNull(lapsDecryptorValue))
+        {
+            var findingId = reader.GetInt64(reader.GetOrdinal("e_finding_id"));
+            var policyName = reader.GetOrdinal("e_policy_display_name");
+            var decryptorSid = reader.GetOrdinal("e_decryptor_sid");
+            var decryptorName = reader.GetOrdinal("e_decryptor_name");
+            var broadSid = reader.GetOrdinal("e_broad_principal_sid");
+            var broadName = reader.GetOrdinal("e_broad_principal_name");
+
+            evidence = new LapsDecryptorEvidence(
+                reader.IsDBNull(policyName) ? null : reader.GetString(policyName),
+                reader.GetString(lapsDecryptorValue),
+                Enum.Parse<LapsDecryptorForm>(reader.GetString(reader.GetOrdinal("e_form"))),
+                reader.IsDBNull(decryptorSid) ? null : reader.GetString(decryptorSid),
+                reader.IsDBNull(decryptorName) ? null : reader.GetString(decryptorName),
+                reader.IsDBNull(broadSid) ? null : reader.GetString(broadSid),
+                reader.IsDBNull(broadName) ? null : reader.GetString(broadName),
+                DecryptorPaths.TryGetValue(findingId, out var route) ? route : [],
+                reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0);
+        }
         else
         {
             throw new InvalidOperationException(
@@ -818,6 +854,21 @@ public sealed class JudgementReader : IDisposable
             + "ORDER BY finding_id, ordinal");
 
     private Dictionary<long, List<PathStep>>? _membershipPaths;
+
+    /// <summary>
+    /// Every stored decryptor route, by the finding it belongs to, in path order.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from <see cref="MembershipPaths"/> rather than unioned with it. The two tables
+    /// answer different questions - who can read the attribute, and who can decrypt what it holds -
+    /// and a finding identifier is only unique within one of them.
+    /// </remarks>
+    private Dictionary<long, List<PathStep>> DecryptorPaths =>
+        _decryptorPaths ??= ReadPathSteps(
+            "SELECT finding_id, sid, name FROM finding_laps_decryptor_path "
+            + "ORDER BY finding_id, ordinal");
+
+    private Dictionary<long, List<PathStep>>? _decryptorPaths;
 
     private Dictionary<long, List<PathStep>> ReadPathSteps(string sql)
     {

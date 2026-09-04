@@ -40,5 +40,6 @@ public static class RuleCatalogue
         new LapsMissingOnComputer(),
         new LapsRotationStale(),
         new LapsPasswordReadAccess(),
+        new LapsDecryptorBroadPrincipal(),
     ];
 }

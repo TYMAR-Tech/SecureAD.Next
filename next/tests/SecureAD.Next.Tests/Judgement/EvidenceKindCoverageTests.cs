@@ -205,6 +205,50 @@ public sealed class EvidenceKindCoverageTests
                 Assert.Equal("DC=contoso,DC=com", e.InheritedFrom);
                 Assert.False(e.IsComplete);
             }),
+
+        // Awkward on the axes that matter for this kind: a decryptor named as a qualified name
+        // rather than an identifier, reached at depth two, with a walk that completed. A reader
+        // that keyed the evidence off either nullable identifier column, that dropped the separate
+        // path table, or that confused this route with SEC-090's, gives a different answer to at
+        // least one of these.
+        new Sample(
+            Definition("SEC-093", "A broad principal can decrypt LAPS passwords"),
+            "CN={31B2F340-016D-11D2-945F-00C04FB984F9},CN=Policies,CN=System,DC=contoso,DC=com",
+            new LapsDecryptorEvidence(
+                PolicyDisplayName: "Windows LAPS",
+                ConfiguredValue: @"CONTOSO\LAPS-Decryptors",
+                Form: LapsDecryptorForm.QualifiedName,
+                DecryptorSid: "S-1-5-21-1004336348-1177238915-682003330-1180",
+                DecryptorName: "LAPS-Decryptors",
+                BroadPrincipalSid: "S-1-5-21-1004336348-1177238915-682003330-513",
+                BroadPrincipalName: "Domain Users",
+                MembershipPath:
+                [
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-1180", "LAPS-Decryptors"),
+
+                    // Deliberately unnamed, for the reason the SEC-090 sample gives.
+                    new PathStep("S-1-5-21-1004336348-1177238915-682003330-1190", null),
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-513", "Domain Users"),
+                ],
+                ExpansionWasComplete: true),
+            read =>
+            {
+                var e = Assert.IsType<LapsDecryptorEvidence>(read);
+                Assert.Equal("Windows LAPS", e.PolicyDisplayName);
+                Assert.Equal(@"CONTOSO\LAPS-Decryptors", e.ConfiguredValue);
+                Assert.Equal(LapsDecryptorForm.QualifiedName, e.Form);
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1180", e.DecryptorSid);
+                Assert.Equal("LAPS-Decryptors", e.DecryptorName);
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-513", e.BroadPrincipalSid);
+                Assert.Equal("Domain Users", e.BroadPrincipalName);
+                Assert.Equal(3, e.MembershipPath.Count);
+                Assert.Null(e.MembershipPath[1].Name);
+                Assert.Equal(2, e.NestingDepth);
+                Assert.True(e.BroadPrincipalFound);
+                Assert.True(e.IsComplete);
+            }),
     ];
 
     /// <summary>

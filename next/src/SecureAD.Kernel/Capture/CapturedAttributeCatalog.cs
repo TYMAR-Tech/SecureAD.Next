@@ -60,6 +60,7 @@ public static class CapturedAttributeCatalog
     /// controller's view as a fact about the domain - and every judgement built on it would be
     /// wrong in a way nothing on screen could reveal. See <see cref="NotCaptured"/>.
     /// </para>
+    /// </para>
     /// <para>
     /// <b>4 - 2026-08-25.</b> <see cref="DomainAttributes"/> and
     /// <see cref="PasswordSettingsAttributes"/> added, carrying the domain's password and lockout

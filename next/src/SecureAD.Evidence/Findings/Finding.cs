@@ -45,6 +45,18 @@ public enum FindingSubjectKind
 {
     /// <summary>A user, computer or service account.</summary>
     Account,
+
+    /// <summary>
+    /// A Group Policy Object.
+    /// </summary>
+    /// <remarks>
+    /// <b>Added for SEC-093, which is the first rule whose subject has no security identifier.</b>
+    /// A policy is what that rule can speak about: the authorized LAPS decryptor is a property of
+    /// the policy, and Microsoft states it "can't be changed after a password is encrypted", so
+    /// which machines are affected is not recoverable from the directory. This is the case the
+    /// remarks above were written for.
+    /// </remarks>
+    Policy,
 }
 
 /// <summary>

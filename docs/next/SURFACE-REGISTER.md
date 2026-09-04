@@ -209,6 +209,8 @@ The table below sits between the two markers around it, so the test parses only 
 | BundleWriter | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleObjects | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | BundleReader | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| GpoRegistrySettings | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
+| GpoSettingsOutcome | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | BundleDescription | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | ContinuationReconciliation | SecureAD.Evidence | [what-a-bundle-holds](../layers/evidence/what-a-bundle-holds.md) |
 | ContinuationReconciliationOutcome | SecureAD.Evidence | [what-a-bundle-holds](../layers/evidence/what-a-bundle-holds.md) |
@@ -376,6 +378,9 @@ The table below sits between the two markers around it, so the test parses only 
 | LapsReadRights | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsGrantReach | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PathStep | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsDecryptorBroadPrincipal | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsDecryptorEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| LapsDecryptorForm | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsComputer | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | LapsManagement | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | LapsPage | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |

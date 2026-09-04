@@ -572,6 +572,57 @@ public sealed class JudgementWriter : IDisposable
 
                 return;
 
+            case LapsDecryptorEvidence decryptor:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_laps_decryptor (finding_id, policy_display_name, "
+                    + "configured_value, form, decryptor_sid, decryptor_name, "
+                    + "broad_principal_sid, broad_principal_name, expansion_was_complete) "
+                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $broad, $broadName, "
+                    + "$complete)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue(
+                            "$policy", (object?)decryptor.PolicyDisplayName ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$value", decryptor.ConfiguredValue);
+                        command.Parameters.AddWithValue("$form", decryptor.Form.ToString());
+                        command.Parameters.AddWithValue(
+                            "$sid", (object?)decryptor.DecryptorSid ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$sidName", (object?)decryptor.DecryptorName ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$broad", (object?)decryptor.BroadPrincipalSid ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$broadName", (object?)decryptor.BroadPrincipalName ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$complete", decryptor.ExpansionWasComplete ? 1L : 0L);
+                    });
+
+                // The route, in order. Microsoft's supported way to authorize more than one
+                // decryptor is a wrapper group, so the finding is usually about what ended up
+                // nested inside one, and the endpoints alone would not say which link to cut.
+                for (var ordinal = 0; ordinal < decryptor.MembershipPath.Count; ordinal++)
+                {
+                    var step = decryptor.MembershipPath[ordinal];
+                    var position = ordinal;
+
+                    Execute(
+                        transaction,
+                        "INSERT INTO finding_laps_decryptor_path "
+                        + "(finding_id, ordinal, sid, name) VALUES ($id, $ordinal, $sid, $name)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$ordinal", position);
+                            command.Parameters.AddWithValue("$sid", step.Sid);
+                            command.Parameters.AddWithValue(
+                                "$name", (object?)step.Name ?? DBNull.Value);
+                        });
+                }
+
+                return;
+
             default:
                 throw new ArgumentException(
                     $"There is no table for evidence of type {evidence.GetType().Name}, so this "

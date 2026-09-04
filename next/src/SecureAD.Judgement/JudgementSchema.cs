@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 11;
+    public const int Version = 12;
 
     private static readonly string[] TableDdl =
     [
@@ -421,6 +421,62 @@ public static class JudgementSchema
         // nullable because a principal from a trusted forest has no name in this bundle.
         """
         CREATE TABLE finding_laps_password_reader_path (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            ordinal                             INTEGER NOT NULL,
+            sid                                 TEXT    NOT NULL,
+            name                                TEXT        NULL,
+            PRIMARY KEY (finding_id, ordinal)
+        )
+        """,
+
+        // SEC-093: the Group Policy Object whose authorized LAPS password decryptor is, or
+        // contains, a principal broad in every organisation.
+        //
+        // THERE IS NO MACHINE COLUMN, AND THAT IS A REFUSAL RATHER THAN AN OMISSION. Microsoft
+        // states the authorized decryptor "can't be changed after a password is encrypted", so a
+        // password already in the directory was encrypted against whatever the policy named when
+        // it was written - a value the directory does not record. Naming the machines affected
+        // would assert something about the past that no evidence establishes.
+        //
+        // CONFIGURED_VALUE IS NOT NULL AND IS THE DISCRIMINATOR, per P-112. It is also what an
+        // operator searches the policy for, so it is stored verbatim rather than normalised.
+        //
+        // DECRYPTOR_SID AND BROAD_PRINCIPAL_SID ARE BOTH NULLABLE, because this table carries two
+        // findings about different problems. A resolved decryptor containing a broad principal
+        // means the password is protected against too many people. An unresolvable one means
+        // Microsoft's documented failure applies - the password is not backed up at all - and
+        // reporting that as the first would send an operator to fix the wrong thing.
+        //
+        // FORM IS STORED BECAUSE IT DECIDES WHAT UNRESOLVED MEANS. An identifier this capture
+        // cannot place is a principal from somewhere unread; a name it cannot place may be the
+        // typo that stopped the policy working.
+        //
+        // EXPANSION_WAS_COMPLETE IS WHY AN EMPTY RESULT IS NOT REASSURANCE, for the reason the
+        // SEC-090 table gives.
+        """
+        CREATE TABLE finding_laps_decryptor (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            policy_display_name                 TEXT        NULL,
+            configured_value                    TEXT    NOT NULL,
+            form                                TEXT    NOT NULL,
+            decryptor_sid                       TEXT        NULL,
+            decryptor_name                      TEXT        NULL,
+            broad_principal_sid                 TEXT        NULL,
+            broad_principal_name                TEXT        NULL,
+            expansion_was_complete              INTEGER NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // The route from the configured decryptor down to the broad principal, one per row.
+        //
+        // THE ROUTE IS THE FINDING, for a reason particular to this rule: Windows LAPS encrypts
+        // against exactly one principal, and Microsoft's documented way to authorize more than one
+        // is a wrapper group. So the supported configuration is a group, and the finding is almost
+        // always about what ended up nested inside it. Naming only the endpoints would not say
+        // which link to cut.
+        """
+        CREATE TABLE finding_laps_decryptor_path (
             finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
             ordinal                             INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,

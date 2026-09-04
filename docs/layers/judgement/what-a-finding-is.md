@@ -78,6 +78,9 @@ records stay in Evidence because they are durable data rather than executable po
 | `LapsReadRights` | Which of the two rights a confidential attribute needs the entry actually held — the distinction the predecessor's rule collapsed |
 | `LapsGrantReach` | Whether the entry names this attribute or reaches every attribute on the object, read from `ACE_OBJECT_TYPE_PRESENT` and not from a null GUID |
 | `PathStep` | One principal on a membership path, carrying both its identifier and its name — the identifier survives a rename, the name is the part an operator can act on |
+| `LapsDecryptorBroadPrincipal` | SEC-093: a Group Policy Object whose authorized Windows LAPS password decryptor is, or contains through nesting, a principal broad in every organisation |
+| `LapsDecryptorEvidence` | The configured decryptor value, the principal it resolved to, the broad principal that can decrypt and the route that reached it |
+| `LapsDecryptorForm` | Which of the three forms Microsoft accepts the value was written in, which decides what an unresolved value means |
 
 <!-- TYPES:END -->
 

@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
@@ -474,6 +475,100 @@ public sealed class BundleReader : IDisposable
         command.Parameters.Add("$sid", SqliteType.Blob).Value = bytes;
 
         return command.ExecuteScalar() is string dn ? DnHelper.ExtractFirstRdn(dn) : null;
+    }
+
+    /// <summary>
+    /// Reads the machine-side registry settings this bundle holds for one Group Policy Object.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The user scope is never returned.</b> A policy carries both halves and they configure
+    /// different things; a caller asking for a machine setting that is only present under the user
+    /// scope has its answer, and returning the user value would silently substitute one for the
+    /// other.
+    /// </para>
+    /// <para>
+    /// <b>The bytes are decoded by the caller rather than here.</b> <c>value_data</c> is stored raw
+    /// because a REG_MULTI_SZ holds several strings and a REG_BINARY holds none, so rendering at
+    /// capture would decide a question the reader is better placed to answer.
+    /// <see cref="RegistryPolicyEntry.AsString"/> does that decoding, and returns null for a type
+    /// that is not a string - which is a different answer from the value being absent.
+    /// </para>
+    /// <para>
+    /// <b>Ordered by <c>ordinal</c>, which is the order the file stated them in.</b> A policy may
+    /// set the same value twice, and the last one is what a machine applies.
+    /// </para>
+    /// </remarks>
+    /// <param name="gpoGuid">The policy whose settings to read.</param>
+    /// <returns>
+    /// The entries, beside a statement of whether the policy's files were read. The two are
+    /// returned together because an empty list otherwise means three different things - a policy
+    /// that configures nothing, one whose files could not be read, and a bundle captured without
+    /// SYSVOL - and a caller reading the first for the others would report a policy as harmless
+    /// when nobody looked.
+    /// </returns>
+    public GpoRegistrySettings ReadGpoMachineRegistrySettings(Guid gpoGuid)
+    {
+        var identifier = gpoGuid.ToString("D");
+        var (outcome, reason) = SysvolCoverageOf(identifier);
+
+        if (outcome is GpoSettingsOutcome.NotCaptured or GpoSettingsOutcome.Unreadable)
+            return new GpoRegistrySettings([], outcome, reason);
+
+        using var command = Connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT key_path, value_name, registry_type, value_data
+            FROM gpo_registry_setting
+            WHERE gpo_guid = $gpo AND scope = 'Machine'
+            ORDER BY ordinal
+            """;
+        command.Parameters.AddWithValue("$gpo", identifier);
+
+        var settings = new List<RegistryPolicyEntry>();
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            settings.Add(new RegistryPolicyEntry(
+                reader.GetString(0),
+                reader.GetString(1),
+                (uint)reader.GetInt64(2),
+                (byte[])reader[3]));
+        }
+
+        return new GpoRegistrySettings(settings, outcome, reason);
+    }
+
+    /// <summary>
+    /// What capture recorded about reading one policy's files, or that it never looked.
+    /// </summary>
+    /// <remarks>
+    /// <b>A policy absent from the coverage table was never offered to the SYSVOL read at all</b>,
+    /// which is what a capture taken without SYSVOL looks like from here. That is reported as
+    /// <see cref="GpoSettingsOutcome.NotCaptured"/> rather than as an unreadable policy, because
+    /// the two send an operator to different places.
+    /// </remarks>
+    private (GpoSettingsOutcome Outcome, string? Reason) SysvolCoverageOf(string gpoGuid)
+    {
+        using var command = Connection.CreateCommand();
+        command.CommandText =
+            "SELECT outcome, reason FROM sysvol_gpo_coverage WHERE gpo_guid = $gpo LIMIT 1";
+        command.Parameters.AddWithValue("$gpo", gpoGuid);
+
+        using var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+            return (GpoSettingsOutcome.NotCaptured, "This capture did not read SYSVOL.");
+
+        var reason = reader.IsDBNull(1) ? null : reader.GetString(1);
+
+        return reader.GetString(0) switch
+        {
+            "Read" => (GpoSettingsOutcome.Read, null),
+            "PartiallyRead" => (GpoSettingsOutcome.PartiallyRead, reason),
+            _ => (GpoSettingsOutcome.Unreadable, reason),
+        };
     }
 
     /// <summary>
