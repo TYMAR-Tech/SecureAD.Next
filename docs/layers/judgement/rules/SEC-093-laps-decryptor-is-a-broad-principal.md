@@ -105,8 +105,33 @@ means no password is being protected at all, which is a different problem and no
 `Registry.pol` file under the machine-side LAPS key. Capture already parses that file into
 `gpo_registry_setting`; until this rule, nothing read the table back.
 
-The rule matches on the machine scope, a key path ending in `Policies\LAPS`, and the value name
+**Microsoft gives each LAPS policy mechanism its own registry root**, in
+[Configure policy settings for Windows LAPS](https://learn.microsoft.com/windows-server/identity/laps/laps-management-policy-settings#supported-policy-roots),
+and states that *"policy settings are never shared or inherited across policy key roots"*:
+
+| Policy mechanism | Registry key root |
+|---|---|
+| LAPS CSP | `HKLM\Software\Microsoft\Policies\LAPS` |
+| **LAPS Group Policy** | **`HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\LAPS`** |
+| LAPS Local Configuration | `HKLM\Software\Microsoft\Windows\CurrentVersion\LAPS\Config` |
+| Legacy Microsoft LAPS | `HKLM\Software\Policies\Microsoft Services\AdmPwd` |
+
+The rule reads **the Group Policy root and only that one**, because it judges a
+`groupPolicyContainer` by parsing that policy's own `Registry.pol`, which is what Group Policy
+writes. The CSP root arrives by device management rather than by a policy object, local
+configuration is a machine's own registry, and the legacy root is a different product covered by
+`SEC-091`. It matches on the machine scope, that key as a suffix, and the value name
 `ADPasswordEncryptionPrincipal`. It does not match the user scope: LAPS is a machine policy.
+
+**This section was wrong until 2026-09-04, and it is worth saying how.** The rule matched
+`Policies\Microsoft\Windows\LAPS`, which is none of the four roots above and which no policy editor
+produces. It therefore matched nothing, read that as *this policy configures no decryptor*, and
+reported silence — so a policy handing decryption to Domain Users would have been passed as clean.
+Twenty-five tests agreed with it, because every fixture was built from the same invented constant,
+and seven mutations all fired inside that closed loop. **Each check was sound and the whole circle
+was anchored to nothing outside itself.** The first capture of a real forest found it in minutes.
+The tests now include a `Registry.pol` captured from a real Group Policy Object, parsed by the
+product's own parser, so the loop has an external anchor.
 
 ## 6. Severity
 
@@ -144,3 +169,8 @@ A verdict that could not be reached says so rather than staying silent, per
 | N1 | The value is a scoped group with no broad member | Silent |
 | N2 | No LAPS decryptor setting on the policy | Silent |
 | N3 | The setting is present in the user scope only | Silent |
+| N4 | The setting is under one of Microsoft's other three LAPS roots | Silent |
+| A1 | A `Registry.pol` captured from a real policy | Fires, and the key it carries is the documented Group Policy root |
+
+`A1` is the anchor, and the others are worth little without it: every case above once passed
+against a rule that could not match a real policy at all.

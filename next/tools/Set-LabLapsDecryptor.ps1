@@ -64,7 +64,19 @@ $nestedGpo = "${prefix}Nested"
 $directGpo = "${prefix}Direct"
 $unknownGpo = "${prefix}Unknown"
 
-$lapsKey = 'HKLM\Software\Policies\Microsoft\Windows\LAPS'
+# Microsoft documents four distinct LAPS policy roots in "Configure policy settings for Windows
+# LAPS", and states that settings are never shared or inherited across them. This is the Group
+# Policy root, which is what a GPO writes and what the product reads out of Registry.pol:
+#
+#   LAPS CSP                 HKLM\Software\Microsoft\Policies\LAPS
+#   LAPS Group Policy        HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\LAPS
+#   LAPS Local Configuration HKLM\Software\Microsoft\Windows\CurrentVersion\LAPS\Config
+#   Legacy Microsoft LAPS    HKLM\Software\Policies\Microsoft Services\AdmPwd
+#
+# Confirmed against the lab on 2026-09-04: both real policies in ba.ad.lab write the Group Policy
+# root above. An earlier version of this script used Software\Policies\Microsoft\Windows\LAPS,
+# which is not any of the four and which no policy editor produces.
+$lapsKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\LAPS'
 $valueName = 'ADPasswordEncryptionPrincipal'
 
 $domain = (Get-ADDomain).DNSRoot

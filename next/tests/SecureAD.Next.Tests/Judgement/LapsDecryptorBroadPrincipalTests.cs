@@ -40,7 +40,16 @@ public sealed class LapsDecryptorBroadPrincipalTests
     private const string PolicyName = "Workstation LAPS";
     private const string Forest = "ad.lab";
 
-    private const string LapsKey = @"Software\Policies\Microsoft\Windows\LAPS";
+    /// <summary>
+    /// Microsoft's documented LAPS Group Policy root, as <c>Registry.pol</c> stores it.
+    /// </summary>
+    /// <remarks>
+    /// Verified against a real file rather than taken from the rule: see
+    /// <c>TheKeyPathAWindowsLapsPolicyActuallyWritesIsMatched</c>, which reads the bytes a policy
+    /// editor produced. An earlier version of these tests used a key path that existed nowhere but
+    /// in the rule they were testing.
+    /// </remarks>
+    private const string LapsKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\LAPS";
     private const string DecryptorValue = "ADPasswordEncryptionPrincipal";
 
     private const string DomainUsers = "S-1-5-21-1-2-3-513";
@@ -546,6 +555,113 @@ public sealed class LapsDecryptorBroadPrincipalTests
     }
 
     // -------------------------------------------------------------------------------------------
+    // The anchor: bytes a real policy editor wrote
+    // -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The key path a real Windows LAPS Group Policy writes is the one the rule matches, proved
+    /// against a <c>Registry.pol</c> produced by Windows rather than by this test.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This test exists because everything else here once agreed with a key that does not
+    /// exist.</b> Until 2026-09-04 the rule matched <c>Policies\Microsoft\Windows\LAPS</c>, which
+    /// is none of Microsoft's four documented LAPS policy roots and which no policy editor
+    /// produces. Every fixture in this file was built from that same constant, so twenty-five tests
+    /// passed and seven mutations fired against a rule that could never match a real policy: it
+    /// found nothing, read that as "this policy configures no decryptor", and reported a policy
+    /// handing decryption to Domain Users as clean.
+    /// </para>
+    /// <para>
+    /// <b>Every check was sound and the whole circle was anchored to the wrong reference.</b> The
+    /// specification, the code and the tests agreed with each other and none of them had ever been
+    /// compared with a file Windows wrote. The bytes below are that comparison, and they are what
+    /// makes the rest of this file mean anything.
+    /// </para>
+    /// <para>
+    /// <b>Where these bytes came from.</b> Captured 2026-09-04 from
+    /// <c>SYSVOL\...\Machine\Registry.pol</c> of a Group Policy Object created in the lab by
+    /// <c>next/tools/Set-LabLapsDecryptor.ps1</c>, which sets the decryptor through Microsoft's own
+    /// <c>Set-GPRegistryValue</c>. Nothing here is hand-built. The only value in the file is a
+    /// security identifier the script chose, so the fixture carries no name out of the lab.
+    /// </para>
+    /// <para>
+    /// <b>Parsed by the product's own parser</b>, so this covers the whole path from file to
+    /// verdict: if <see cref="RegistryPolicyParser"/> stops decoding the key, or the rule stops
+    /// matching it, this fails.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheKeyPathAWindowsLapsPolicyActuallyWritesIsMatched()
+    {
+        var parsed = RegistryPolicyParser.ParsePolicyFile(RealRegistryPolicy());
+
+        Assert.Empty(parsed.Errors);
+
+        // The rule is offered exactly what capture would have put in the bundle.
+        var finding = Assert.Single(Judge(
+            parsed.Entries,
+            Expands(PlantedDecryptorSid,
+                [Member(PlantedDomainUsersSid, [PlantedDecryptorSid, PlantedDomainUsersSid])])));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Equal(PlantedDecryptorSid, evidence.ConfiguredValue);
+        Assert.Equal(PlantedDomainUsersSid, evidence.BroadPrincipalSid);
+        Assert.Equal(Severity.Critical, finding.Severity);
+    }
+
+    /// <summary>
+    /// The file really does carry Microsoft's Group Policy root, read out of it rather than
+    /// asserted about it.
+    /// </summary>
+    /// <remarks>
+    /// Separate from the test above so that a failure says which half broke: whether the file
+    /// stopped containing the documented key, or the rule stopped matching it.
+    /// </remarks>
+    [Fact]
+    public void TheCapturedPolicyFileCarriesMicrosoftsDocumentedGroupPolicyRoot()
+    {
+        var parsed = RegistryPolicyParser.ParsePolicyFile(RealRegistryPolicy());
+
+        var entry = Assert.Single(parsed.Entries);
+
+        Assert.Equal(
+            @"Software\Microsoft\Windows\CurrentVersion\Policies\LAPS",
+            entry.KeyPath,
+            ignoreCase: true);
+
+        Assert.Equal(DecryptorValue, entry.ValueName);
+    }
+
+    /// <summary>
+    /// A decryptor written under one of Microsoft's <i>other</i> LAPS roots is not read as a Group
+    /// Policy setting.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Microsoft states that policy settings are "never shared or inherited across policy key
+    /// roots".</b> The CSP root is delivered by device management, local configuration is a
+    /// machine's own registry, and the legacy root belongs to the predecessor product that SEC-091
+    /// covers. A Group Policy Object's <c>Registry.pol</c> carries the Group Policy root, and
+    /// reading any of the others out of it would report a setting that this policy does not apply.
+    /// </para>
+    /// <para>
+    /// <b>This is the control on the fix.</b> Widening the match until the lab produced a finding
+    /// would have been the easy repair, and it would have made the rule report settings no policy
+    /// delivers. These three keys are the ones a careless widening would swallow.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData(@"Software\Microsoft\Policies\LAPS")]
+    [InlineData(@"Software\Microsoft\Windows\CurrentVersion\LAPS\Config")]
+    [InlineData(@"Software\Policies\Microsoft Services\AdmPwd")]
+    public void ADecryptorUnderAnotherLapsPolicyRootIsNotRead(string otherRoot)
+    {
+        AssertSilent([Setting(otherRoot, DecryptorValue, DomainUsers)], Never());
+    }
+
+    // -------------------------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------------------------
 
@@ -625,6 +741,32 @@ public sealed class LapsDecryptorBroadPrincipalTests
             Encoding.Unicode.GetBytes(value + '\0'));
 
     private static ObjectAttributes Policy() => Object(PolicyDn, "groupPolicyContainer");
+
+    /// <summary>
+    /// The security identifier the lab plant set as the decryptor, as the captured file states it.
+    /// </summary>
+    private const string PlantedDecryptorSid =
+        "S-1-5-21-1834058357-2590327168-2246012571-142601";
+
+    /// <summary>Domain Users in the lab the fixture was captured from.</summary>
+    private const string PlantedDomainUsersSid =
+        "S-1-5-21-1834058357-2590327168-2246012571-513";
+
+    /// <summary>
+    /// A <c>Registry.pol</c> written by Windows, byte for byte.
+    /// </summary>
+    /// <remarks>
+    /// <b>Do not regenerate this by hand.</b> Its value is that no one in this repository wrote
+    /// it: it came out of SYSVOL after <c>Set-GPRegistryValue</c> configured a real Group Policy
+    /// Object. Editing it to make a test pass would restore exactly the closed loop that let a
+    /// non-existent registry key survive twenty-five tests and seven mutations. If it needs
+    /// replacing, capture a fresh one from a real policy.
+    /// </remarks>
+    private static byte[] RealRegistryPolicy() => Convert.FromBase64String(
+        "UFJlZwEAAABbAFMAbwBmAHQAdwBhAHIAZQBcAE0AaQBjAHIAbwBzAG8AZgB0AFwAVwBpAG4AZABvAHcAcwBcAEMAdQByAHIAZQBu"
+        + "AHQAVgBlAHIAcwBpAG8AbgBcAFAAbwBsAGkAYwBpAGUAcwBcAEwAQQBQAFMAAAA7AEEARABQAGEAcwBzAHcAbwByAGQARQBuAGMA"
+        + "cgB5AHAAdABpAG8AbgBQAHIAaQBuAGMAaQBwAGEAbAAAADsAAQAAADsAYgAAADsAUwAtADEALQA1AC0AMgAxAC0AMQA4ADMANAAw"
+        + "ADUAOAAzADUANwAtADIANQA5ADAAMwAyADcAMQA2ADgALQAyADIANAA2ADAAMQAyADUANwAxAC0AMQA0ADIANgAwADEAAABdAA==");
 
     private static ObjectAttributes Object(string distinguishedName, string mostDerivedClass) =>
         new(

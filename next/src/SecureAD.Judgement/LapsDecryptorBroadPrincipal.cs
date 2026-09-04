@@ -52,16 +52,47 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
     private const string JudgedClass = "groupPolicyContainer";
 
     /// <summary>
-    /// The registry key a Windows LAPS policy writes its settings under, matched as a suffix.
+    /// The registry key a Windows LAPS Group Policy writes its settings under, matched as a suffix.
     /// </summary>
     /// <remarks>
-    /// <b>Matched as a suffix rather than in full.</b> The full path is
-    /// <c>Software\Policies\Microsoft\Windows\LAPS</c>, and a machine reads the settings out of
-    /// <c>Registry.pol</c> wherever the policy editor put them. Anchoring on the tail keeps the
-    /// rule working if the prefix is written differently, while <c>Policies\LAPS</c> is specific
-    /// enough that no unrelated product collides with it.
+    /// <para>
+    /// <b>Microsoft assigns each LAPS policy mechanism its own root, and states that settings are
+    /// "never shared or inherited across policy key roots".</b> The four roots are:
+    /// </para>
+    /// <list type="table">
+    /// <item><term>LAPS CSP</term>
+    ///   <description><c>HKLM\Software\Microsoft\Policies\LAPS</c></description></item>
+    /// <item><term>LAPS Group Policy</term>
+    ///   <description><c>HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\LAPS</c></description></item>
+    /// <item><term>LAPS Local Configuration</term>
+    ///   <description><c>HKLM\Software\Microsoft\Windows\CurrentVersion\LAPS\Config</c></description></item>
+    /// <item><term>Legacy Microsoft LAPS</term>
+    ///   <description><c>HKLM\Software\Policies\Microsoft Services\AdmPwd</c></description></item>
+    /// </list>
+    /// <para>
+    /// <b>This rule reads the Group Policy root and only that one.</b> It judges a
+    /// <c>groupPolicyContainer</c> by parsing the <c>Registry.pol</c> in that policy's own SYSVOL
+    /// folder, and that file is what Group Policy writes. The CSP root is delivered by device
+    /// management rather than by a policy object, local configuration is a machine's own registry,
+    /// and the legacy root is a different product whose settings SEC-091 covers.
+    /// </para>
+    /// <para>
+    /// <b>This constant was wrong until 2026-09-04, and no test caught it.</b> It read
+    /// <c>Policies\Microsoft\Windows\LAPS</c> - a path that appears in none of Microsoft's four
+    /// roots and that no policy editor produces. The rule matched nothing, read that as "this
+    /// policy configures no decryptor", and reported silence: a policy handing decryption to
+    /// Domain Users would have been passed as clean. Twenty-five tests agreed with it because
+    /// every fixture was built from the same invented constant, and seven mutations all fired
+    /// against that closed loop. The first run against a real forest found it immediately, which
+    /// is the whole reason a rule is not done until it has seen one.
+    /// </para>
+    /// <para>
+    /// <b>Matched as a suffix rather than in full</b> because <c>Registry.pol</c> stores the key
+    /// without the <c>HKLM\</c> prefix, and a reader should not depend on how the hive is spelled.
+    /// The tail is specific enough that no unrelated product collides with it.
+    /// </para>
     /// </remarks>
-    private const string LapsKeySuffix = @"Policies\Microsoft\Windows\LAPS";
+    private const string LapsKeySuffix = @"Microsoft\Windows\CurrentVersion\Policies\LAPS";
 
     /// <summary>
     /// The value naming who may decrypt, which is the whole of what this rule reads.

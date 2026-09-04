@@ -426,7 +426,8 @@ describes credential dumping from the domain database, which reading a LAPS pass
 technique is claimed rather than a wrong one asserted.
 
 **`SEC-093`, a broad principal can decrypt LAPS passwords. Specified 2026-09-03, built 2026-09-03,
-tested and mutated 2026-09-04. Not yet run against `ad.lab`.**
+tested and mutated 2026-09-04. First run against `ba.ad.lab` on 2026-09-04 found the rule was
+reading a registry key that does not exist; corrected the same day.**
 
 | Rule | Fires when | Severity |
 |---|---|---|
@@ -451,6 +452,17 @@ SYSVOL work and nothing had read. Gate 4 found a real defect in the first versio
 list was read as "this policy configures none", which also covers a policy whose SYSVOL files were
 refused and a bundle captured without SYSVOL at all. `BundleReader.ReadGpoMachineRegistrySettings`
 now returns the coverage outcome beside the entries so the two cannot be confused.
+
+**The lab run earned its place on the checklist.** The rule matched the key
+`Policies\Microsoft\Windows\LAPS`, which is none of Microsoft's four documented LAPS policy roots
+and which no policy editor writes. It matched nothing, read that as *this policy configures no
+decryptor*, and reported silence — so a policy handing decryption to Domain Users would have been
+passed as clean, a false negative on a Critical rule. Twenty-five tests and seven mutations agreed
+with it, because every fixture was built from the same invented constant. **Each check was sound
+and the whole circle was anchored to nothing outside itself** — the shape recorded as `F-S44-2`.
+The tests now carry a `Registry.pol` captured from a real Group Policy Object and parsed by the
+product's own parser, plus negative controls over Microsoft's other three roots so the match cannot
+simply be widened until findings appear.
 
 **It closes a hole the other two leave open.** A machine that was onboarded correctly and has since
 stopped rotating passes both in silence: its timestamp is present, so `SEC-091` says nothing, and it
