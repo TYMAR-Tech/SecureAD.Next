@@ -1,8 +1,10 @@
+using System.Text;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 using Xunit;
@@ -446,6 +448,158 @@ public sealed class BundleReaderTests : IDisposable
         Assert.False(File.Exists(BundleLayout.EvidencePath(_directory)));
     }
 
+    // ---------------------------------------------------------------------------------------
+    // A policy's machine-side registry settings
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The machine-side settings come back, in the order the file stated them.
+    /// </summary>
+    /// <remarks>
+    /// Ordering is load-bearing rather than tidiness: a policy may set the same value twice and a
+    /// machine applies the last one, so a reader that returned them in any other order would hand a
+    /// rule the wrong answer.
+    /// </remarks>
+    [Fact]
+    public void APolicysMachineRegistrySettingsComeBackInFileOrder()
+    {
+        WriteABundleHoldingAPolicy(
+        [
+            (GpoSettingScope.Machine, "ADPasswordEncryptionPrincipal", "first"),
+            (GpoSettingScope.Machine, "ADPasswordEncryptionPrincipal", "second"),
+        ]);
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(PolicyGuid);
+
+        Assert.Equal(GpoSettingsOutcome.Read, settings.Outcome);
+        Assert.True(settings.IsComplete);
+        Assert.Equal(["first", "second"], settings.Settings.Select(s => s.AsString()));
+    }
+
+    /// <summary>
+    /// A setting written in the user scope is not returned as a machine setting.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is SEC-093's N3, and it can only be tested here.</b> The rule never sees a
+    /// user-scope row, because the filter is in the query. LAPS is a machine policy, so a decryptor
+    /// configured under the user half of a policy does not apply to any machine - and a reader that
+    /// dropped the filter would have the rule report a finding against a setting that does nothing.
+    /// </remarks>
+    [Fact]
+    public void ASettingInTheUserScopeIsNotReturnedAsAMachineSetting()
+    {
+        WriteABundleHoldingAPolicy(
+        [
+            (GpoSettingScope.User, "ADPasswordEncryptionPrincipal", "S-1-5-21-1-2-3-513"),
+        ]);
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(PolicyGuid);
+
+        Assert.True(settings.IsComplete);
+        Assert.Empty(settings.Settings);
+    }
+
+    /// <summary>
+    /// Only the machine half comes back when a policy configures both.
+    /// </summary>
+    [Fact]
+    public void OnlyTheMachineHalfComesBackWhenAPolicyConfiguresBoth()
+    {
+        WriteABundleHoldingAPolicy(
+        [
+            (GpoSettingScope.User, "ADPasswordEncryptionPrincipal", "user side"),
+            (GpoSettingScope.Machine, "ADPasswordEncryptionPrincipal", "machine side"),
+        ]);
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(PolicyGuid);
+
+        Assert.Equal(["machine side"], settings.Settings.Select(s => s.AsString()));
+    }
+
+    /// <summary>
+    /// A policy whose folder could not be read says so, rather than coming back as a policy that
+    /// configures nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>The distinction gate 4 caught in SEC-093.</b> An empty list on its own cannot tell a rule
+    /// whether a policy sets nothing or whether nobody looked, and a rule reading the first for the
+    /// second reports a policy as harmless when it was never examined.
+    /// </remarks>
+    [Fact]
+    public void APolicyWhoseFilesWereRefusedSaysSoRatherThanComingBackEmpty()
+    {
+        WriteABundleHoldingAPolicy([], GpoCoverage.Unreadable(
+            PolicyGuid, "Workstation LAPS", @"\\contoso.com\SYSVOL\x", "Access is denied."));
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(PolicyGuid);
+
+        Assert.Equal(GpoSettingsOutcome.Unreadable, settings.Outcome);
+        Assert.False(settings.IsComplete);
+        Assert.Empty(settings.Settings);
+        Assert.Equal("Access is denied.", settings.Reason);
+    }
+
+    /// <summary>
+    /// A policy some of whose files were read is reported as partially read, because a setting
+    /// absent here may be in the part that was refused.
+    /// </summary>
+    [Fact]
+    public void APolicyOnlyPartlyReadIsReportedAsPartiallyRead()
+    {
+        WriteABundleHoldingAPolicy([], GpoCoverage.PartiallyRead(
+            PolicyGuid, "Workstation LAPS", @"\\contoso.com\SYSVOL\x", "One file was refused."));
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(PolicyGuid);
+
+        Assert.Equal(GpoSettingsOutcome.PartiallyRead, settings.Outcome);
+        Assert.False(settings.IsComplete);
+    }
+
+    /// <summary>
+    /// A bundle captured without SYSVOL reports that nothing was read, rather than reporting every
+    /// policy as configuring nothing.
+    /// </summary>
+    /// <remarks>
+    /// A capture with no SYSVOL is a fact about the run; a policy with no settings is a fact about
+    /// the policy. The two send an operator to different places, which is why they are kept apart.
+    /// </remarks>
+    [Fact]
+    public void ABundleCapturedWithoutSysvolSaysNothingWasRead()
+    {
+        WriteABundle();
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(PolicyGuid);
+
+        Assert.Equal(GpoSettingsOutcome.NotCaptured, settings.Outcome);
+        Assert.False(settings.IsComplete);
+        Assert.Empty(settings.Settings);
+    }
+
+    /// <summary>
+    /// One policy's settings are not returned for another.
+    /// </summary>
+    [Fact]
+    public void AnotherPolicysSettingsAreNotReturned()
+    {
+        WriteABundleHoldingAPolicy(
+        [
+            (GpoSettingScope.Machine, "ADPasswordEncryptionPrincipal", "S-1-5-21-1-2-3-513"),
+        ]);
+
+        using var opening = Open();
+        var settings = opening.Value.ReadGpoMachineRegistrySettings(
+            Guid.Parse("dddddddd-0000-0000-0000-00000000000d"));
+
+        Assert.Equal(GpoSettingsOutcome.NotCaptured, settings.Outcome);
+        Assert.Empty(settings.Settings);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
@@ -462,6 +616,55 @@ public sealed class BundleReaderTests : IDisposable
     private Opening Open() => new(BundleReader.Open(_directory));
 
     private void WriteABundle() => WriteABundle(OneDomainRead());
+
+    private static readonly Guid PolicyGuid =
+        Guid.Parse("a1b2c3d4-0000-0000-0000-000000000001");
+
+    /// <summary>
+    /// Writes a bundle holding one policy, its SYSVOL coverage, and the registry settings given.
+    /// </summary>
+    /// <param name="settings">Each setting's scope, value name and string value, in order.</param>
+    /// <param name="coverage">
+    /// What became of reading the policy's files. A policy read in full unless stated.
+    /// </param>
+    private void WriteABundleHoldingAPolicy(
+        IReadOnlyList<(GpoSettingScope Scope, string ValueName, string Value)> settings,
+        GpoCoverage? coverage = null)
+    {
+        using var writer = BundleWriter.Create(_directory, Started);
+        writer.WriteCoverage(SomeCoverage());
+
+        for (var ordinal = 0; ordinal < settings.Count; ordinal++)
+        {
+            var (scope, valueName, value) = settings[ordinal];
+
+            writer.WriteGpoRegistrySetting(
+                PolicyGuid,
+                ordinal,
+                scope,
+                @"Software\Policies\Microsoft\Windows\LAPS",
+                valueName,
+                (uint)RegistryValueType.String,
+                Encoding.Unicode.GetBytes(value + '\0'));
+        }
+
+        writer.Complete(
+            RunCoverage.Of(
+                CoverageId.ForDomains("contoso.com", ["contoso.com"]),
+                [DomainCoverage.Read("contoso.com")],
+                [
+                    ForestPartitionCoverage.Read(
+                        "CN=Configuration,DC=contoso,DC=com", NamingContextKind.Configuration),
+                    ForestPartitionCoverage.Read(
+                        "CN=Schema,CN=Configuration,DC=contoso,DC=com", NamingContextKind.Schema),
+                ],
+                SysvolCoverage.Of(
+                [
+                    coverage ?? GpoCoverage.Read(
+                        PolicyGuid, "Workstation LAPS", @"\\contoso.com\SYSVOL\x"),
+                ])),
+            Finished);
+    }
 
     // ---------------------------------------------------------------------------------------
     // What the run covered
