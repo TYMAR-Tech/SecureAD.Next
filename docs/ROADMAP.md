@@ -395,8 +395,9 @@ The two rules were split on 2026-09-03, and the reason is not tidiness:
 Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md) and
 [`SEC-094`](layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md).
 
-**`SEC-092`, LAPS rotation stale. Specified 2026-09-03, built 2026-09-03. Not yet run against
-`ad.lab`.**
+**`SEC-092`, LAPS rotation stale. Specified 2026-09-03, built 2026-09-03. Run against `ad.lab`
+2026-09-04: judged all 14 LAPS-relevant computers, nothing to report. A clean result rather than an
+untested one — the lab's managed machines are rotating within the 24-hour grace.**
 
 | Rule | Fires when | Severity |
 |---|---|---|
@@ -404,14 +405,29 @@ Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-comput
 
 Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
 
-**`SEC-090`, who can read LAPS passwords. Specified 2026-09-03, built 2026-09-03. Not yet run
-against `ad.lab`.**
+**`SEC-090`, who can read LAPS passwords. Specified 2026-09-03, built 2026-09-03. Run against
+`ad.lab` 2026-09-04: three findings, and one object it refused to judge.**
 
 | Rule | Fires when | Severity |
 |---|---|---|
 | `SEC-090` | a principal **broad in every organisation** appears in the fully expanded set of principals holding read access to a LAPS password attribute | High |
 
 Specified in [`SEC-090`](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).
+
+**Its `Indeterminate` outcome on 2026-09-04 is the rule working, not a defect, and it is worth
+knowing why before someone tries to fix it.** It reported `Everyone` able to read the LAPS password
+on two computers, and a group reaching `Domain Users` on a third. On one further computer it found a
+trustee holding both `READ_PROPERTY` and `CONTROL_ACCESS` whose principal is not in the bundle,
+nothing broad to report beside it, and so refused to judge that object at all — and one unjudged
+object marks the whole rule. Measured in the bundle, the unresolvable trustees were three ordinary
+domain principals of `ba.ad.lab` carrying 18, 12 and 3 such entries; the owner confirmed on
+2026-09-04 that in this lab an unresolvable identifier is a deleted account.
+
+**The refusal is the point.** *Not found is not "not broad"* — a trustee whose membership cannot be
+established could contain anything, and reporting the computer as clean would be the false negative
+this rule exists to avoid. **Do not generalise the lab's answer into the product:** in a customer
+forest the same symptom also covers a principal from a trusted external forest, or a domain the run
+could not read, and the finding text deliberately offers both readings rather than choosing one.
 
 **It is the first rule to read a security descriptor against the group expansion**, and it is the
 first of the four consumers `P-124` names to be built. What it asserts is deliberately narrow: the
