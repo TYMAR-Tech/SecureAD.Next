@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, two rules |
+| Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, 14 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard, reports, compare and export | — | not built |
 

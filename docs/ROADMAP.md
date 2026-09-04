@@ -408,7 +408,8 @@ untested one — the lab's managed machines are rotating within the 24-hour grac
 Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
 
 **`SEC-090`, who can read LAPS passwords. Specified 2026-09-03, built 2026-09-03. Run against
-`ad.lab` 2026-09-04: three findings, and one object it refused to judge.**
+`ad.lab` 2026-09-04: three findings, and one object it refused to judge. Re-judged after `P-134`
+2026-09-04: all 14 computers judged, the same three findings, nothing refused.**
 
 | Rule | Fires when | Severity |
 |---|---|---|
@@ -416,10 +417,11 @@ Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
 
 Specified in [`SEC-090`](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).
 
-**Its `Indeterminate` outcome is the rule working, not a defect.** One computer carried a trustee
-holding both LAPS read rights whose principal is not in the bundle, so the rule refused to judge it
-rather than call it clean — *not found is not "not broad"* — and one unjudged object marks the whole
-rule. **Detail in [`SEC-090` §11](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).**
+**The `Indeterminate` outcome was the rule working, and `P-134` gave it better evidence rather than
+weakening it.** The refusal, why it was right, and what changed are in
+[`SEC-090` §11](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md); the derived fact it
+now rests on is in
+[`what-stage-2a-derives`](layers/derivation/what-stage-2a-derives.md).
 
 **It is the first rule to read a security descriptor against the group expansion**, and it is the
 first of the four consumers `P-124` names to be built. What it asserts is deliberately narrow: the
