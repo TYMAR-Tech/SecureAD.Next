@@ -111,6 +111,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\judgement\rules\SEC-094-windows-laps-not-applied-on-capable-computer.md = ..\docs\layers\judgement\rules\SEC-094-windows-laps-not-applied-on-capable-computer.md
 		..\docs\layers\judgement\rules\SEC-092-laps-rotation-stale.md = ..\docs\layers\judgement\rules\SEC-092-laps-rotation-stale.md
 		..\docs\layers\judgement\rules\SEC-090-who-can-read-laps-passwords.md = ..\docs\layers\judgement\rules\SEC-090-who-can-read-laps-passwords.md
+		..\docs\layers\judgement\rules\SEC-093-laps-decryptor-is-a-broad-principal.md = ..\docs\layers\judgement\rules\SEC-093-laps-decryptor-is-a-broad-principal.md
 		..\docs\layers\evidence\how-a-bundle-is-read.md = ..\docs\layers\evidence\how-a-bundle-is-read.md
 		..\docs\layers\evidence\what-an-object-holds.md = ..\docs\layers\evidence\what-an-object-holds.md
 		..\docs\layers\evidence\what-an-objects-permissions-hold.md = ..\docs\layers\evidence\what-an-objects-permissions-hold.md

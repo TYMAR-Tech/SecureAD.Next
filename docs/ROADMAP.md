@@ -425,6 +425,33 @@ the second alone, so it named principals who cannot retrieve the password. And i
 describes credential dumping from the domain database, which reading a LAPS password is not; no
 technique is claimed rather than a wrong one asserted.
 
+**`SEC-093`, a broad principal can decrypt LAPS passwords. Specified 2026-09-03, built 2026-09-03,
+tested and mutated 2026-09-04. Not yet run against `ad.lab`.**
+
+| Rule | Fires when | Severity |
+|---|---|---|
+| `SEC-093` | a Group Policy Object's authorized Windows LAPS password decryptor **is, or contains through nesting,** a principal broad in every organisation | Critical |
+
+Specified in [`SEC-093`](layers/judgement/rules/SEC-093-laps-decryptor-is-a-broad-principal.md).
+
+**It is a second, independent gate on the same passwords `SEC-090` guards.** Microsoft separates
+them outright: being granted permission to query a password "doesn't automatically imply that the
+user has permission to decrypt an encrypted password". An estate can be tight on the access control
+list and open on the decryptor, so a clean `SEC-090` says nothing about this.
+
+**Its subject is the policy and never a machine, and that is a refusal rather than unfinished
+work.** Microsoft states the authorized decryptor "can't be changed after a password is encrypted",
+so a stored password was encrypted against whatever the policy named at the time — a value the
+directory does not record. Naming machines would assert something about the past that no evidence
+establishes. The owner settled this on 2026-09-03. It is the first rule whose subject has no
+security identifier, which is why `FindingSubjectKind` gained a `Policy` value.
+
+**It is the first consumer of `gpo_registry_setting`,** which capture has been writing since the
+SYSVOL work and nothing had read. Gate 4 found a real defect in the first version: an empty settings
+list was read as "this policy configures none", which also covers a policy whose SYSVOL files were
+refused and a bundle captured without SYSVOL at all. `BundleReader.ReadGpoMachineRegistrySettings`
+now returns the coverage outcome beside the entries so the two cannot be confused.
+
 **It closes a hole the other two leave open.** A machine that was onboarded correctly and has since
 stopped rotating passes both in silence: its timestamp is present, so `SEC-091` says nothing, and it
 is the right timestamp, so `SEC-094` says nothing. The local administrator password has become a
@@ -640,7 +667,9 @@ rising, and why the About text must name what the rule cannot see, particularly 
 to Microsoft Entra ID, which leave no directory attribute at all.
 
 **`SEC-092` and `SEC-093` are the rest of the family** — rotation stale, and a broad principal able
-to decrypt — but `SEC-093` needs the permission graph and belongs after stage 5.
+to decrypt. Both are built. `SEC-093` was expected to need the permission graph and to belong after
+stage 5; it does not, because the decryptor is a Group Policy value rather than an access control
+entry, and the group expansion it walks arrived with `SEC-090`.
 
 *Detail:* the two specifications under [`docs/layers/judgement/rules/`](layers/judgement/rules/).
 *Needs first:* stage 3.
