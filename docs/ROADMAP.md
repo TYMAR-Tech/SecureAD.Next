@@ -383,7 +383,9 @@ store rather than a person.
 sealed, and the finding count went 9 to 6 without re-reading a single object —
 [`0085`](decisions/0085-judgement-writes-beside-the-evidence.md) as intended.
 
-**`SEC-091` and `SEC-094`, LAPS deployment state. Specified 2026-09-03, built 2026-09-03.**
+**`SEC-091` and `SEC-094`, LAPS deployment state. Specified 2026-09-03, built 2026-09-03. Run
+against `ad.lab` 2026-09-04: both judged all 14 LAPS-relevant computers. `SEC-091` had nothing to
+report; `SEC-094` reported one computer carrying the legacy timestamp without the modern one.**
 
 The two rules were split on 2026-09-03, and the reason is not tidiness:
 
