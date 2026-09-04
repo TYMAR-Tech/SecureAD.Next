@@ -212,7 +212,8 @@ second when the first is true would report a broad delegation as safe.
 | --- | --- | --- |
 | The descriptor was never read (`DescriptorAvailability.NotAttempted` or `Unreadable`) | could not resolve | A production domain returned 19,927 of 100,000 objects with no readable descriptor. Reporting those as granting nothing says an object is safe when nobody knows. |
 | No LAPS password attribute exists in this forest's schema | judged, nothing reported | No object can carry the value, so nothing is delegated to read. This is a fact about the forest, and reporting the estate for it would be reporting the schema. |
-| A trustee is not in the bundle — a principal from a trusted external forest (`PrincipalExpansionOutcome.PrincipalNotFound`) | could not resolve, for that trustee | Not found is not *not broad*. |
+| A trustee is not in the bundle — a principal from a trusted external forest, or one from a domain the run could not read (`PrincipalExpansionOutcome.PrincipalNotFound`) | could not resolve, for that trustee | Not found is not *not broad*. |
+| A trustee's identifier belongs to a domain the run read **in full**, and nothing in that domain carries it (`PrincipalExpansionOutcome.PrincipalDoesNotExist`) | judged, nothing reported for that trustee | No such principal exists, so the entry grants the right to nobody. This is knowledge, not ignorance, and refusing on it costs a verdict for nothing. Usually an account deleted while the entries naming it were left behind. |
 | The expansion stopped at a budget (`StoppedAtBudget`) | could not resolve, for that trustee | Everything listed is genuinely inside; the absence of anything else is not a fact. `PrincipalExpansion.IsComplete` is what says so. |
 | The object is a disabled computer account | judged, nothing reported | Consistent with SEC-091: there is no live machine, so there is no local administrator password to read. |
 
@@ -237,8 +238,8 @@ Negative controls that must each be observed failing:
 
 ## 11. Verified against `ad.lab`
 
-**Run 2026-09-04.** Judged 13 of the 14 LAPS-relevant computers, reported three findings, and
-refused to judge one object.
+**Run 2026-09-04, re-judged after `P-134`.** Judged all 14 LAPS-relevant computers and reported
+three findings.
 
 | Finding | Broad principal | Route |
 |---|---|---|
@@ -246,29 +247,46 @@ refused to judge one object.
 | `BAWK1` | `Everyone` (`S-1-1-0`) | named directly |
 | `BAWK1` | `Domain Users` (RID 513) | through a delegated group |
 
-**The `Indeterminate` outcome is the rule working, and it is worth understanding before anyone
-tries to fix it.** On one further computer a trustee held both `READ_PROPERTY` and `CONTROL_ACCESS`
-over a LAPS password attribute and could not be found in the bundle under any scope. Nothing broad
-was found beside it, so there was no finding to carry the incompleteness — and
-[§9](#9-when-it-does-not-answer) requires a refusal rather than silence. One unjudged object marks
-the whole rule.
+**The run as first judged returned `Indeterminate`, and understanding why is worth more than the
+fix.** On one further computer a trustee held both `READ_PROPERTY` and `CONTROL_ACCESS` over a LAPS
+password attribute and could not be found in the bundle under any scope. Nothing broad was found
+beside it, so there was no finding to carry the incompleteness — and [§9](#9-when-it-does-not-answer)
+requires a refusal rather than silence. One unjudged object marked the whole rule.
 
-Measured in the bundle, the unresolvable trustees were three ordinary domain principals of
-`ba.ad.lab` carrying 18, 12 and 3 such entries between them. The owner confirmed on 2026-09-04 that
-in that lab an unresolvable identifier is a deleted account.
+Measured in the bundle, the unresolvable trustees were ordinary domain principals of `ba.ad.lab`
+carrying 18, 12 and 3 such entries between them. The owner confirmed on 2026-09-04 that in that lab
+an unresolvable identifier is a deleted account.
 
-**Do not generalise the lab's answer into the product.** In a customer forest the same symptom also
-covers a principal from a trusted external forest, or a domain the run could not read. Those are
-genuinely unknown and the caution is warranted. What the product cannot yet do is tell them apart
-from an identifier belonging to a domain it read *in full*, where nothing carries that SID and the
-entry is therefore inert — recorded on `PUNCH-LIST.md`, and it is what would have turned this run's
-`Indeterminate` into `Succeeded`.
+**The refusal was correct on the evidence the rule then had, and `P-134` gave it better evidence.**
+`ba.ad.lab` is a domain the run read *in full*, and an identifier of the form
+`S-1-5-21-a-b-c-RID` names the domain that issued it. So "nothing carries this identifier" in a
+fully-read domain is not a gap: no such principal exists, the entry grants nobody anything, and
+there is nothing inside it to fear. The derivation now records which domains were read completely,
+keyed by domain SID, and answers `PrincipalDoesNotExist` where it can prove all of that — leaving
+`PrincipalNotFound` for every case it cannot. Re-judging the same sealed bundle moved the rule to
+`Succeeded` with `objects_not_judged` at zero **and the three findings above unchanged**, which is
+the result that matters: the fix removed a refusal without moving a single answer.
+
+**What did change is that the three findings no longer carry the sentence "Not every principal
+holding this access could be expanded".** That sentence was true and is now false, because the
+expansion is complete.
+
+**Do not read this as licence to treat "not found" as "does not exist".** In a customer forest the
+same symptom still covers a principal from a trusted external forest, or a domain the run could not
+read, and those remain genuinely unknown. A domain read only in part refuses exactly as an
+unreachable one does: most of a domain is a hole of unknown shape, not nearly all of an answer.
 
 **What the run confirmed that no fixture could.** An earlier version asked for each trustee only at
 the domain the trustee was captured in, so every computer whose list named `SYSTEM` or a domain
 group answered `PrincipalNotFound`: the rule reported *Indeterminate* over half the estate and
 buried two real findings. `MembersOfTrustee` now asks under each scope a SID could be keyed by. Two
 thousand nine hundred and seventy-three green tests did not see it.
+
+**That same shape is why `PrincipalDoesNotExist` does not end the scope walk.** A domain-relative
+identifier is keyed under the *empty* scope, so an answer of "no such principal" at the trustee's
+own domain says nothing about whether the trustee exists — and stopping there would have been the
+same defect in new clothing.
+
 
 ---
 

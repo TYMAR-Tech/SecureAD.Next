@@ -44,7 +44,22 @@ internal sealed record NestingFacts(
 {
     /// <summary>The SID prefix of the forest-root domain, derived from sealed Evidence.</summary>
     public string? ForestRootDomainSid { get; init; }
+
+    /// <summary>
+    /// The domain SID prefix of each domain whose captured objects agree on one, keyed by domain
+    /// FQDN.
+    /// </summary>
+    /// <remarks>
+    /// <b>A domain missing from this map is a domain nothing can be concluded about.</b> It is what
+    /// lets an unresolvable <c>S-1-5-21-a-b-c-RID</c> identifier be attributed to a domain, and so
+    /// what separates an orphaned entry from a principal this bundle simply does not hold. A domain
+    /// whose objects disagree is left out rather than resolved by a majority, because the cost of
+    /// guessing wrong is reporting a live delegation as inert.
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> DomainSidsByFqdn { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
+
 
 /// <summary>
 /// Reads a sealed bundle once and works out the directory's nesting: who is in what, what each
@@ -130,6 +145,26 @@ internal static class MembershipNestingPass
         string? forestHeuristics = null;
         string? forestRootDomainSid = null;
 
+        // The domain SID prefix each domain's own objects agree on, and the domains whose objects
+        // did not agree.
+        //
+        // THERE IS NO AUTHORITATIVE SINGLE OBJECT TO READ THIS FROM. The domain object itself
+        // carries the bare domain SID and would settle it outright, but it is not among the classes
+        // this product captures - measured against the sealed ad.lab bundle of 2026-09-04, where no
+        // captured object carries a seven-part S-1-5-21-a-b-c identifier. So the prefix is taken
+        // from the ordinary principals of the domain, which all share it.
+        //
+        // STUBS ARE EXCLUDED, AND THAT IS THE WHOLE DIFFICULTY. A foreignSecurityPrincipal is held
+        // in one domain and carries an identifier belonging to another, so folding one in would
+        // attribute a neighbour's prefix to this domain - and every unresolvable identifier of that
+        // neighbour would then be judged against the wrong domain's coverage.
+        //
+        // DISAGREEMENT REMOVES THE DOMAIN RATHER THAN ELECTING A WINNER. A majority vote would
+        // always produce an answer, including where the evidence does not support one, and the
+        // error it would produce is the dangerous direction: a live delegation reported as inert.
+        var domainSids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var domainsWithConflictingSids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var subject in objects)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -176,7 +211,10 @@ internal static class MembershipNestingPass
             var isStub = classes.Any(
                 c => string.Equals(c, "foreignSecurityPrincipal", StringComparison.OrdinalIgnoreCase));
 
+            NoteDomainSid(subject.DomainFqdn, ownSid, isStub, domainSids, domainsWithConflictingSids);
+
             var rank = isStub ? StubRank : PrincipalRank;
+
 
             var ownSidId = sids.Intern(ownSid, subject.DomainFqdn);
             names.BindSid(ownNameId, ownSidId);
@@ -254,7 +292,46 @@ internal static class MembershipNestingPass
             forestHeuristics)
         {
             ForestRootDomainSid = forestRootDomainSid,
+
+            // Dropped last rather than never recorded, so a conflict is decided on everything the
+            // pass saw rather than on whichever object happened to arrive first.
+            DomainSidsByFqdn = domainSids
+                .Where(pair => !domainsWithConflictingSids.Contains(pair.Key))
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase),
         };
+    }
+
+    /// <summary>
+    /// Records the domain SID prefix an object implies for the domain it was captured in.
+    /// </summary>
+    /// <remarks>
+    /// <b>Only an ordinary principal of the domain speaks for it.</b> A stub carries another
+    /// domain's identifier, and a built-in or well-known identifier carries no domain prefix at
+    /// all, so neither says anything about which domain SID this domain has.
+    /// </remarks>
+    private static void NoteDomainSid(
+        string? domainFqdn,
+        string sid,
+        bool isStub,
+        Dictionary<string, string> domainSids,
+        HashSet<string> conflicting)
+    {
+        if (isStub || string.IsNullOrWhiteSpace(domainFqdn))
+            return;
+
+        var candidate = DomainSidOf(sid);
+
+        if (candidate is null)
+            return;
+
+        if (!domainSids.TryGetValue(domainFqdn, out var held))
+        {
+            domainSids[domainFqdn] = candidate;
+            return;
+        }
+
+        if (!string.Equals(held, candidate, StringComparison.Ordinal))
+            conflicting.Add(domainFqdn);
     }
 
     private static string? DomainSidOf(string sid)

@@ -272,10 +272,19 @@ public sealed class LapsPasswordReadAccess : IRule
 
         var expansion = MembersOfTrustee(expand, grant.Trustee, subject.DomainFqdn);
 
-        // A principal from a trusted external forest, or one left behind by a deleted object, is not
-        // in this bundle, so nothing can be said about what is inside it. Not found is not
-        // "not broad".
+        // NOBODY HOLDS THIS RIGHT, AND THAT IS AN ANSWER RATHER THAN A GAP. PrincipalDoesNotExist
+        // says the identifier belongs to a domain the run read in full and that no object in it
+        // carries the identifier, so no such principal exists and the entry grants the right to
+        // nobody. Most often an account deleted while the entries naming it were left behind, which
+        // is what the owner confirmed these were in ad.lab on 2026-09-04.
+        //
+        // IT ADDS NOTHING TO unresolved, WHICH IS THE WHOLE OF THE CHANGE HERE. It deliberately does
+        // not return: whether the trustee is itself broad is decided below from the shape of the
+        // identifier, and that question is not the expansion's to answer. An orphan that is not
+        // broad reaches neither branch below and the object is judged silently, which is the case
+        // P-134 was raised for.
         if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalNotFound)
+
         {
             unresolved.Add(new UnresolvedInput(
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived));
@@ -335,6 +344,15 @@ public sealed class LapsPasswordReadAccess : IRule
     /// not hold — a trustee from a trusted external forest, or one left behind by a deleted object —
     /// and that stays unresolved, as it must.
     /// </para>
+    /// <para>
+    /// <b><c>PrincipalDoesNotExist</c> is not an answer either, and stopping on it would be a
+    /// defect.</b> That outcome says no object in a fully-read domain carries the identifier, which
+    /// is a statement about the <i>scope just asked</i> and not about the trustee. A domain-relative
+    /// identifier is keyed under the empty scope, so a trustee carrying a domain would be asked
+    /// under that domain first, answer <c>PrincipalDoesNotExist</c> there, and never be looked for
+    /// where it actually lives. The walk therefore continues through every scope and returns the
+    /// last answer, so absence is concluded only once nowhere is left to ask.
+    /// </para>
     /// </remarks>
     private static PrincipalExpansion MembersOfTrustee(
         Func<string, string, PrincipalExpansion> expand,
@@ -360,12 +378,16 @@ public sealed class LapsPasswordReadAccess : IRule
         {
             last = expand(trustee.Sid, scope);
 
-            if (last.Outcome is not PrincipalExpansionOutcome.PrincipalNotFound)
+            if (last.Outcome is not (PrincipalExpansionOutcome.PrincipalNotFound
+                or PrincipalExpansionOutcome.PrincipalDoesNotExist))
+            {
                 return last;
+            }
         }
 
         return last;
     }
+
 
     /// <summary>
     /// Notes one broad principal reached, keeping the shortest route to it.

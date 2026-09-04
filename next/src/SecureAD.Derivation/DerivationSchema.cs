@@ -63,8 +63,17 @@ internal static class DerivationSchema
     /// a loop are permanently one group as far as authorization is concerned - a fact about the
     /// directory that no tool shows and that nothing in this store could previously carry.
     /// </para>
+    /// <para>
+    /// <b>7 - which domains were read in full is recorded, keyed by domain SID.</b> An identifier
+    /// nothing carries meant only <i>not found</i>, which a rule had to read as <i>nothing can be
+    /// said about this</i>. For an identifier belonging to a domain the run read completely that
+    /// caution is misplaced - no such principal exists - and SEC-090 spent a verdict on it against
+    /// <c>ad.lab</c> on 2026-09-04. Telling the two apart needs the coverage of the domain the
+    /// identifier names, and nothing in this store previously held it.
+    /// </para>
     /// </remarks>
-    public const int Version = 6;
+    public const int Version = 7;
+
 
     private static readonly string[] TableDdl =
     [
@@ -443,7 +452,41 @@ internal static class DerivationSchema
             PRIMARY KEY (ldap_display_name)
         )
         """,
+
+        // Which domains the run read in full, keyed by the domain SID their principals share.
+        //
+        // WHAT THIS EXISTS TO DECIDE. An identifier of the form S-1-5-21-a-b-c-RID names the domain
+        // it belongs to in its own text. When nothing in the derivation carries that identifier,
+        // there are two possibilities and they are opposites: the domain was read in full and no
+        // such principal exists, or the domain was never read and the principal is simply out of
+        // sight. Without this table a rule cannot tell them apart, so it must assume the second and
+        // refuse to judge a delegation that in fact grants nobody anything.
+        //
+        // KEYED BY DOMAIN SID RATHER THAN BY FQDN, because the question is asked from an identifier
+        // and an identifier carries a domain SID, not a name. Keying by name would make every
+        // caller do a lookup this table is the only holder of.
+        //
+        // THE FQDN IS CARRIED ANYWAY, for a reader. A row saying only that a numeric prefix was
+        // read is unreadable by a person diagnosing a run.
+        //
+        // outcome IS STORED RATHER THAN A read/not-read BOOLEAN. Partially read, not read, excluded
+        // by choice and excluded for want of candidates are four different things to an operator,
+        // and only one of the five licenses the conclusion above. Collapsing them here would
+        // discard the reason at exactly the point somebody asks why a rule refused.
+        //
+        // A DOMAIN WITH NO ROW IS A DOMAIN NOTHING CAN BE SAID ABOUT. That covers a domain whose
+        // captured objects disagreed about its SID and a domain the pass never saw an ordinary
+        // principal of. Absence reads as caution, which is the safe direction.
+        """
+        CREATE TABLE domain_read_coverage (
+            domain_sid  TEXT NOT NULL,
+            domain_fqdn TEXT NOT NULL,
+            outcome     TEXT NOT NULL,
+            PRIMARY KEY (domain_sid)
+        )
+        """,
     ];
+
 
     // Built after writing rather than during it, for the reason the evidence and judgement schemas
     // both give: an index maintained through ingest is paid for on every insert and read by nobody

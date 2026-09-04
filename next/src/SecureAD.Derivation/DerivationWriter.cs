@@ -235,6 +235,56 @@ internal sealed class DerivationWriter : IDisposable
     }
 
     /// <summary>
+    /// Writes which domains the run read, keyed by the SID their principals share.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Only domains whose SID could be established appear here</b>, and a domain left out is one
+    /// nothing can be concluded about. That is the safe direction: a caller asking whether an
+    /// identifier's domain was read in full gets no for an answer, and goes on refusing to judge as
+    /// it did before this table existed.
+    /// </para>
+    /// <para>
+    /// <b>Written even when empty</b>, for the reason the attribute visibility product gives: a run
+    /// that established no domain SIDs and a run whose pass never happened are different, and the
+    /// phase record is what separates them.
+    /// </para>
+    /// </remarks>
+    /// <param name="coverage">One row per domain whose SID the pass established.</param>
+    public void WriteDomainReadCoverage(IReadOnlyList<DomainReadCoverageRow> coverage)
+    {
+        ArgumentNullException.ThrowIfNull(coverage);
+        ThrowIfFinished();
+
+        using var transaction = _connection.BeginTransaction();
+        using var command = _connection.CreateCommand();
+        command.Transaction = transaction;
+
+        // Two domains cannot share a SID, so a duplicate is a defect rather than something to
+        // absorb. OR IGNORE would leave the store holding one of two disagreeing answers about
+        // which domain a whole range of identifiers belongs to.
+        command.CommandText =
+            "INSERT INTO domain_read_coverage (domain_sid, domain_fqdn, outcome) "
+            + "VALUES ($sid, $fqdn, $outcome)";
+        var sid = command.Parameters.Add("$sid", SqliteType.Text);
+        var fqdn = command.Parameters.Add("$fqdn", SqliteType.Text);
+        var outcome = command.Parameters.Add("$outcome", SqliteType.Text);
+
+        foreach (var row in coverage)
+        {
+            sid.Value = row.DomainSid;
+            fqdn.Value = row.DomainFqdn;
+
+            // Stored by name rather than by number, so a reader of the file can see what it says
+            // and so that reordering the enum cannot silently change what a stored row means.
+            outcome.Value = row.Outcome.ToString();
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>
     /// Writes which principal each SID identifies, and how.
     /// </summary>
     /// <param name="identities">One row per SID, current and historical alike.</param>

@@ -123,6 +123,11 @@ public static class Stage2aRun
 
             writer.WriteSids([], []);
 
+            // Empty rather than absent, for the same reason the completeness row below is written:
+            // a pass that produced nothing established no domain SIDs, and a reader must be able to
+            // see that stated rather than infer it from a missing table.
+            writer.WriteDomainReadCoverage([]);
+
             // An empty store is also what a forest with no groups would produce. This row is what
             // keeps the run that read nothing from reading as the clean one.
             writer.RecordCompleteness(
@@ -154,6 +159,12 @@ public static class Stage2aRun
         // Every derived product names principals by this dictionary, so it is persisted before any
         // phase can write a product that references it.
         WriteFacts(writer, facts);
+
+        // After the facts because it needs the domain SIDs the pass established, and before any
+        // phase that could fail, because it is the one product that makes a later reader able to
+        // tell an orphaned identifier from an unreadable domain - and that answer should not depend
+        // on whether an expansion happened to finish.
+        WriteDomainReadCoverage(writer, facts, scope.Value!);
 
         var closure = Run(
             writer,
@@ -434,6 +445,39 @@ public static class Stage2aRun
         writer.WriteSidIdentities(facts.Identities);
         writer.WritePrincipals(facts.Principals);
         writer.WriteNestingEdges(facts.Edges);
+    }
+
+    /// <summary>
+    /// Joins what the run said about reading each domain to the SID that domain's principals share.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Two halves of one fact live in two different places, and neither is usable alone.</b> The
+    /// bundle records coverage by domain name, because that is what an operator declared and what a
+    /// run reports against. An identifier arrives carrying a domain SID and no name at all. Joining
+    /// them here, once, is what lets a later reader turn <c>S-1-5-21-a-b-c-RID</c> into a statement
+    /// about whether the whole of that domain was read.
+    /// </para>
+    /// <para>
+    /// <b>A domain the pass could not establish a SID for is dropped, not defaulted.</b> There is
+    /// no identifier prefix to key it under, so a row would be unreachable at best and attached to
+    /// the wrong domain at worst.
+    /// </para>
+    /// </remarks>
+    private static void WriteDomainReadCoverage(
+        DerivationWriter writer, NestingFacts facts, SecureAD.Evidence.Run.RunScope scope)
+    {
+        var rows = new List<DomainReadCoverageRow>();
+
+        foreach (var domain in scope.Domains)
+        {
+            if (!facts.DomainSidsByFqdn.TryGetValue(domain.DomainFqdn, out var domainSid))
+                continue;
+
+            rows.Add(new DomainReadCoverageRow(domainSid, domain.DomainFqdn, domain.Outcome));
+        }
+
+        writer.WriteDomainReadCoverage(rows);
     }
 
     /// <summary>

@@ -213,6 +213,21 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
         if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalNotFound)
             return RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form)]);
 
+        // NO SUCH DECRYPTOR EXISTS, SO THE POLICY DELEGATES DECRYPTION TO NOBODY. The identifier is
+        // domain-relative, its domain was read in full, and nothing in that domain carries it -
+        // most often a group deleted while the policy naming it was left behind. There is nothing
+        // inside it, and unlike PrincipalNotFound that is a fact rather than an absence of one, so
+        // the policy is judged and reported clean instead of refused.
+        //
+        // BELOW THE BROADNESS TEST ABOVE, AND THAT PLACEMENT IS DELIBERATE. Whether the configured
+        // identifier is itself broad is a property of its shape and owes nothing to the walk, so
+        // gating it on this outcome would repeat the 2026-09-04 defect in a new form: a coverage
+        // join that wrongly said "read in full" would silently retire the finding this rule exists
+        // for. Nothing well-known can reach here in any case, because a well-known identifier
+        // carries no domain and so can never be judged non-existent.
+        if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalDoesNotExist)
+            return RuleVerdict.Judged([]);
+
         // The shortest route to each broad principal, for the reason SEC-090 keeps the shortest: it
         // is the link an operator would cut.
         var reached = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
@@ -282,6 +297,14 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
     /// belong to simply answers not found. This cannot manufacture a finding. What survives every
     /// scope is a principal this bundle genuinely does not hold, and that stays unresolved.
     /// </para>
+    /// <para>
+    /// <b><c>PrincipalDoesNotExist</c> does not end the walk either.</b> It reports that nothing in
+    /// a fully-read domain carries the identifier <i>under the scope just asked</i>, and an ordinary
+    /// group is keyed under the empty scope rather than under its domain. Returning it from the
+    /// first scope would therefore declare a decryptor non-existent without ever looking where such
+    /// a decryptor is actually stored - the same mistake in a new form, and the one that would
+    /// silently retire this rule. Absence is concluded only after every scope has been asked.
+    /// </para>
     /// </remarks>
     private static PrincipalExpansion MembersOfDecryptor(
         Func<string, string, PrincipalExpansion> expand, string sid, string? policyDomain)
@@ -300,12 +323,16 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
         {
             last = expand(sid, scope);
 
-            if (last.Outcome is not PrincipalExpansionOutcome.PrincipalNotFound)
+            if (last.Outcome is not (PrincipalExpansionOutcome.PrincipalNotFound
+                or PrincipalExpansionOutcome.PrincipalDoesNotExist))
+            {
                 return last;
+            }
         }
 
         return last;
     }
+
 
     /// <summary>
     /// Whether this object is a Group Policy Object, read as its most derived class.

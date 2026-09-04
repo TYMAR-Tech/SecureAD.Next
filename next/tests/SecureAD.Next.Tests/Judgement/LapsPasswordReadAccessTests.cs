@@ -546,12 +546,87 @@ public sealed class LapsPasswordReadAccessTests
         Assert.Throws<InvalidOperationException>(() => rule.Judge(Computer()));
     }
 
+    /// <summary>
+    /// An entry naming a principal that does not exist is judged, not refused.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>P-134</c>, and the reason this rule lost a verdict against <c>ad.lab</c> on
+    /// 2026-09-04.</b> Three identifiers in <c>ba.ad.lab</c> — a domain whose coverage says
+    /// <c>Read</c> — held both LAPS read rights on a computer and matched no object. The derivation
+    /// can now say that no such principal exists, and an entry granting a right to nobody exposes
+    /// nothing. Refusing here marked the object unjudged and the whole rule
+    /// <i>Indeterminate</i>.
+    /// </para>
+    /// <para>
+    /// <b>Silence and refusal are the two ways to be wrong and this asserts against both.</b> There
+    /// must be no finding, because nobody holds the right; and no unresolved input, because the
+    /// question was answered rather than dodged.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AnEntryNamingAPrincipalThatDoesNotExistIsJudgedRatherThanRefused()
+    {
+        var verdict = Verdict(
+            [Allow("S-1-5-21-9-9-9-2102", ReadProperty | ControlAccess, PasswordGuid)],
+            sid => new PrincipalExpansion(
+                sid, PrincipalExpansionOutcome.PrincipalDoesNotExist, null));
+
+        Assert.Empty(verdict.Findings);
+        Assert.Empty(verdict.Unresolved);
+    }
+
+    /// <summary>
+    /// "Does not exist" at one scope does not end the search for a trustee keyed at another.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The negative control on the scope walk, and the fastest way this change could have
+    /// created a false negative.</b> A domain-relative identifier is keyed under the <i>empty</i>
+    /// scope, but the walk asks the trustee's own domain first. If the new outcome ended the walk
+    /// the way an answer does, a real group holding both LAPS read rights would be declared
+    /// non-existent without anything ever looking where such a group is actually stored — and a
+    /// broad principal nested inside it would go unreported.
+    /// </para>
+    /// <para>
+    /// This is the shape of the defect the lab found twice already, in <c>MembersOfTrustee</c> and
+    /// again in SEC-093: an expansion asked under one scope only, answering confidently about a
+    /// principal it never looked for.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ADoesNotExistAnswerAtOneScopeDoesNotStopTheSearchAtAnother()
+    {
+        var verdict = new LapsPasswordReadAccess().Judge(
+            Computer(),
+            Context(
+                _ => Permissions(
+                    DescriptorAvailability.Read,
+                    [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)]),
+
+                // The domain scope answers "no such principal"; the empty scope, which is where an
+                // ordinary group actually lives, holds it and a broad principal inside it.
+                (sid, scope) => scope.Length == 0
+                    ? new PrincipalExpansion(
+                        sid,
+                        PrincipalExpansionOutcome.Expanded,
+                        [
+                            new ExpandedPrincipal(
+                                AuthenticatedUsers, Forest, [sid, AuthenticatedUsers], true),
+                        ])
+                    : new PrincipalExpansion(
+                        sid, PrincipalExpansionOutcome.PrincipalDoesNotExist, null)));
+
+        var finding = Assert.Single(verdict.Findings);
+        Assert.Contains(AuthenticatedUsers, finding.Detail, StringComparison.Ordinal);
+        Assert.Empty(verdict.Unresolved);
+    }
+
     private static IReadOnlyList<Finding> Judge(
         IReadOnlyList<PermissionEntry> entries,
         Func<string, PrincipalExpansion> expand,
         uint userAccountControl = 4096) =>
         Verdict(entries, expand, userAccountControl).Findings;
-
     private static RuleVerdict Verdict(
         IReadOnlyList<PermissionEntry> entries,
         Func<string, PrincipalExpansion> expand,

@@ -680,6 +680,95 @@ public sealed class LapsDecryptorBroadPrincipalTests
         Assert.Null(evidence.BroadPrincipalSid);
     }
 
+    /// <summary>
+    /// A decryptor that does not exist is judged clean rather than reported as unresolvable.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>P-134</c>.</b> The identifier is domain-relative, its domain was read in full, and
+    /// nothing in that domain carries it — so the policy encrypts against a principal that is not
+    /// there. Nobody can decrypt through it and there is nothing nested inside it to find, which is
+    /// an answer rather than the absence of one. Reporting it as unresolvable would tell an operator
+    /// the product could not check a policy it had in fact fully checked.
+    /// </remarks>
+    [Fact]
+    public void ADecryptorThatDoesNotExistIsJudgedRatherThanReportedUnresolvable()
+    {
+        var verdict = Verdict(
+            [Setting(LapsKey, DecryptorValue, ScopedGroup)],
+            (sid, scope) => new PrincipalExpansion(
+                sid, PrincipalExpansionOutcome.PrincipalDoesNotExist, null));
+
+        Assert.Empty(verdict.Findings);
+    }
+
+    /// <summary>
+    /// "Does not exist" at the policy's domain does not stop the search at the unscoped key.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The negative control on the scope walk, and the third form of a defect this rule has
+    /// already suffered twice.</b> An ordinary group is stored with no scope, but the walk asks the
+    /// policy's domain first. If the new outcome ended the walk the way a real answer does, every
+    /// wrapper group would be declared non-existent without anything looking where wrapper groups
+    /// are actually kept — and Microsoft's own documented LAPS pattern is a wrapper group, so this
+    /// rule's main purpose would silently stop working while every test stayed green.
+    /// </para>
+    /// <para>
+    /// The assertion on <c>asked</c> is what makes this measure something: without it the test
+    /// would pass on a walk that got the right answer for the wrong reason.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ADoesNotExistAnswerAtTheDomainScopeDoesNotStopTheSearch()
+    {
+        var asked = new List<string>();
+
+        var finding = Assert.Single(Judge(
+            [Setting(LapsKey, DecryptorValue, WrapperGroup)],
+            (sid, scope) =>
+            {
+                asked.Add(scope);
+
+                return scope.Length == 0
+                    ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded,
+                        [Member(AuthenticatedUsers, [WrapperGroup, AuthenticatedUsers])])
+                    : new PrincipalExpansion(
+                        sid, PrincipalExpansionOutcome.PrincipalDoesNotExist, null);
+            }));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+
+        // Both scopes were asked. Stopping at the first would have been the defect.
+        Assert.Equal([Forest, string.Empty], asked);
+    }
+
+    /// <summary>
+    /// A decryptor that is itself broad is still reported even where the walk says it does not
+    /// exist.
+    /// </summary>
+    /// <remarks>
+    /// <b>Breadth is a property of the identifier and owes nothing to the walk.</b> The gate for
+    /// the new outcome sits below the broadness test for this reason: if a coverage join ever
+    /// wrongly reported a domain as fully read, gating breadth on it would retire the plainest and
+    /// most severe finding this rule makes. A well-known identifier cannot reach the new outcome at
+    /// all — it carries no domain — so this asserts the ordering rather than a reachable state, and
+    /// it is the ordering that a future edit could quietly break.
+    /// </remarks>
+    [Fact]
+    public void ABroadDecryptorIsReportedEvenWhenTheWalkSaysItDoesNotExist()
+    {
+        var finding = Assert.Single(Judge(
+            [Setting(LapsKey, DecryptorValue, DomainUsers)],
+            (sid, scope) => new PrincipalExpansion(
+                sid, PrincipalExpansionOutcome.PrincipalDoesNotExist, null)));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Equal(DomainUsers, evidence.BroadPrincipalSid);
+    }
+
     // -------------------------------------------------------------------------------------------
     // The anchor: bytes a real policy editor wrote
     // -------------------------------------------------------------------------------------------

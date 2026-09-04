@@ -159,6 +159,20 @@ A verdict that could not be reached says so rather than staying silent, per
   configured value, because an unresolvable decryptor means passwords are not being stored at all.
 - **The expansion hit its budget.** The finding says the membership may be larger than shown.
 
+**A decryptor that provably does not exist is a different case and is judged rather than refused.**
+Where the configured identifier is domain-relative, its domain was read *in full*, and nothing in
+that domain carries it (`PrincipalExpansionOutcome.PrincipalDoesNotExist`), the policy names a
+principal that is not there — so nobody can decrypt through it and nothing is nested inside it. That
+is an answer, and reporting it as unresolvable would tell an operator the product could not check a
+policy it had in fact checked completely. See `P-134`. The refusal above still stands wherever any
+part of that cannot be proved, and in particular a domain read only in part refuses exactly as an
+unreachable one does.
+
+**This gate deliberately sits *below* the test of whether the configured identifier is itself
+broad**, for the reason recorded in [§10](#10-verified-against-adlab) as defect 2: breadth is a
+property of an identifier and owes nothing to the walk, so gating it on a coverage judgement would
+let a wrong "read in full" retire the plainest finding this rule makes.
+
 ## 9. Tests
 
 | # | Case | Expected |

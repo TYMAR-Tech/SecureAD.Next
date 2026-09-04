@@ -1,5 +1,6 @@
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Derivation;
@@ -31,6 +32,23 @@ public sealed class PrincipalExpansionTests
     private const string Staff = "S-1-5-21-9-9-9-1102";
     private const string Alice = "S-1-5-21-9-9-9-1103";
     private const string DomainUsers = "S-1-5-21-9-9-9-513";
+
+    /// <summary>
+    /// The SID <c>ba.ad.lab</c>'s principals share, read out of the sealed <c>ad.lab</c> bundle of
+    /// 2026-09-04.
+    /// </summary>
+    /// <remarks>
+    /// <b>Taken from the forest rather than made up, and that is the point.</b> <c>F-S44-2</c> is
+    /// the finding that a set of tests built entirely from the same assumption as the code proves
+    /// only that the two agree. These values were measured in the bundle this work is anchored to:
+    /// the domain reports <c>Read</c>, and this identifier is one of four found carrying LAPS read
+    /// entries while matching no captured object.
+    /// </remarks>
+    private const string LabDomainSid = "S-1-5-21-1834058357-2590327168-2246012571";
+
+    /// <summary>An identifier measured in that bundle that no object carries.</summary>
+    private const string LabOrphan = LabDomainSid + "-2102";
+
 
     /// <summary>
     /// A chain reaches everything below it, and says how it got there.
@@ -197,12 +215,144 @@ public sealed class PrincipalExpansionTests
         Assert.Throws<ArgumentOutOfRangeException>(() => reader.MembersOf(Readers, Scope, budget: 0));
     }
 
+    /// <summary>
+    /// An identifier nothing carries, in a domain read in full, is reported as non-existent.
+    /// </summary>
+    /// <remarks>
+    /// <b>The case <c>P-134</c> was raised for.</b> The values are the ones measured in the sealed
+    /// <c>ad.lab</c> bundle of 2026-09-04 rather than invented: <see cref="LabDomainSid"/> is the
+    /// SID <c>ba.ad.lab</c>'s principals actually share, and <see cref="LabOrphan"/> is one of the
+    /// four identifiers found there carrying LAPS read entries and matching no object. The owner
+    /// confirmed they are deleted accounts.
+    /// </remarks>
+    [Fact]
+    public void AnIdentifierNothingCarriesInAFullyReadDomainDoesNotExist()
+    {
+        var directory = Store(
+            edges: [(0, 1)],
+            coverage: [(LabDomainSid, "ba.ad.lab", DomainReadOutcome.Read)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(LabOrphan, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.PrincipalDoesNotExist, expansion.Outcome);
+    }
+
+    /// <summary>
+    /// A domain that was not read in full refuses, whatever the reason.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The negative control that matters most, and the one the brief for this work demanded be
+    /// written first.</b> Everything except <see cref="DomainReadOutcome.Read"/> leaves a hole of
+    /// unknown shape, so "no object carries this identifier" means only "no object we managed to
+    /// read carries it". Concluding absence from that would report a live delegation - possibly to
+    /// a principal of a domain nobody could reach - as harmless.
+    /// </para>
+    /// <para>
+    /// <b><see cref="DomainReadOutcome.PartiallyRead"/> is the dangerous member of the four</b>,
+    /// because most of a domain reads like nearly all of it. It counts as a failure, per
+    /// <c>docs/decisions/0027</c>, and must refuse exactly as an unreachable domain does.
+    /// </para>
+    /// </remarks>
+    /// <param name="outcome">A coverage outcome that is not a complete read.</param>
+    [Theory]
+    [InlineData(DomainReadOutcome.PartiallyRead)]
+    [InlineData(DomainReadOutcome.NotRead)]
+    [InlineData(DomainReadOutcome.ExcludedByChoice)]
+    [InlineData(DomainReadOutcome.ExcludedForWantOfCandidates)]
+    public void ADomainThatWasNotReadInFullStillRefuses(DomainReadOutcome outcome)
+    {
+        var directory = Store(
+            edges: [(0, 1)],
+            coverage: [(LabDomainSid, "ba.ad.lab", outcome)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(LabOrphan, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.PrincipalNotFound, expansion.Outcome);
+    }
+
+    /// <summary>
+    /// An identifier whose domain the derivation holds no row for refuses.
+    /// </summary>
+    /// <remarks>
+    /// <b>Silence is not permission.</b> A domain gets no row when its captured objects disagreed
+    /// about its SID, or when the run never saw an ordinary principal of it. Reading a missing row
+    /// as "read in full" would turn every gap in the derivation into a claim about the forest.
+    /// </remarks>
+    [Fact]
+    public void AnIdentifierWhoseDomainHasNoCoverageRowStillRefuses()
+    {
+        // A row for a different domain entirely, so the table is populated and the lookup still
+        // misses. An empty table would pass this test for the wrong reason.
+        var directory = Store(
+            edges: [(0, 1)],
+            coverage: [("S-1-5-21-1-2-3", "elsewhere.lab", DomainReadOutcome.Read)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(LabOrphan, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.PrincipalNotFound, expansion.Outcome);
+    }
+
+    /// <summary>
+    /// A built-in or well-known identifier is never judged non-existent.
+    /// </summary>
+    /// <remarks>
+    /// <b>It names no domain, so there is no coverage that could license the conclusion.</b>
+    /// <c>S-1-5-32-544</c> is Administrators in every domain and <c>S-1-1-0</c> is Everyone
+    /// everywhere; neither carries a domain SID to look up. Matching them on any weaker test - a
+    /// prefix, or merely being unresolvable - is how "not found" would quietly become "does not
+    /// exist" for the most powerful identifiers in the directory.
+    /// </remarks>
+    /// <param name="sid">An identifier that belongs to no single domain.</param>
+    [Theory]
+    [InlineData("S-1-5-32-544")]
+    [InlineData("S-1-1-0")]
+    [InlineData("S-1-5-11")]
+    [InlineData("S-1-5-18")]
+    public void AnIdentifierBelongingToNoDomainStillRefuses(string sid)
+    {
+        var directory = Store(
+            edges: [(0, 1)],
+            coverage: [(LabDomainSid, "ba.ad.lab", DomainReadOutcome.Read)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(sid, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.PrincipalNotFound, expansion.Outcome);
+    }
+
+    /// <summary>
+    /// An identifier from a fully-read domain that something DOES carry is expanded as before.
+    /// </summary>
+    /// <remarks>
+    /// <b>The control on the control.</b> Coverage saying a domain was read must not change the
+    /// answer for a principal the derivation holds; it decides only what an absence means.
+    /// </remarks>
+    [Fact]
+    public void CoverageDoesNotChangeTheAnswerForAPrincipalThatIsHeld()
+    {
+        var directory = Store(
+            edges: [(0, 1), (1, 2)],
+            coverage: [(LabDomainSid, "ba.ad.lab", DomainReadOutcome.Read)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+        Assert.Equal(2, expansion.Members!.Count);
+    }
+
     /// <summary>Builds a store holding four principals and the edges given.</summary>
     /// <param name="edges">Group and member, as indexes into the four SIDs above.</param>
     /// <param name="nesting">What became of the nesting pass.</param>
+    /// <param name="coverage">What the run made of reading each domain.</param>
     private static string Store(
         (int Group, int Member)[] edges,
-        DerivationPhaseOutcome nesting = DerivationPhaseOutcome.Succeeded)
+        DerivationPhaseOutcome nesting = DerivationPhaseOutcome.Succeeded,
+        (string DomainSid, string DomainFqdn, DomainReadOutcome Outcome)[]? coverage = null)
     {
         var directory = TempDirectories.Create("expansion-tests");
 
@@ -222,6 +372,10 @@ public sealed class PrincipalExpansionTests
             writer.WriteNestingEdges(edges.Select(e => new NestingEdge(e.Group, e.Member)));
             writer.RecordPhase(MembershipNestingPass.PhaseName, nesting, error: null);
 
+            writer.WriteDomainReadCoverage(
+                [.. (coverage ?? []).Select(c =>
+                    new DomainReadCoverageRow(c.DomainSid, c.DomainFqdn, c.Outcome))]);
+
             writer.RecordCompleteness(new DerivationCompleteness(
                 IsComplete: true,
                 PartialGroups: [],
@@ -236,3 +390,4 @@ public sealed class PrincipalExpansionTests
         return directory;
     }
 }
+

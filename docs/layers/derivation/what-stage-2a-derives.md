@@ -113,10 +113,34 @@ route is the link an operator would cut.
 forest, while every consumer asks about a handful of named principals. The edges are already
 persisted, so the answer is cheap to reach and expensive to keep.
 
-**The outcome separates four things that all look like an empty group.** Expanded, stopped at a
-budget, the principal was never captured, and no nesting was derived. `Members` is null for the last
-three, so nothing can read *nobody looked* as *nothing is inside it*. A group that really is empty
-gets an empty list, which is what makes the null mean something.
+**The outcome separates five things that all look like an empty group.** Expanded, stopped at a
+budget, the principal was never captured, no such principal exists, and no nesting was derived.
+`Members` is null for the last four, so nothing can read *nobody looked* as *nothing is inside it*.
+A group that really is empty gets an empty list, which is what makes the null mean something.
+
+**Two of those five are opposites that look identical, and telling them apart needed a new stored
+fact.** `PrincipalNotFound` is ignorance: the principal may sit in a trusted external forest, or in
+a domain the run could not read, and nothing may be concluded about what is inside it.
+`PrincipalDoesNotExist` is knowledge: the identifier is domain-relative, the domain it names was
+read *in full*, and nothing in that domain carries it — so there is no such principal, and an entry
+naming it grants nobody anything. Added at schema version 7 for `P-134`, after SEC-090 spent a
+verdict refusing to judge three deleted accounts in `ba.ad.lab`.
+
+**`domain_read_coverage` is what makes the second answerable, and it is a join of two halves neither
+of which is usable alone.** The bundle records what became of reading each domain by domain *name*,
+because that is what an operator declared. An identifier arrives carrying a domain *SID* and no name
+at all. The nesting pass establishes each domain's SID from its own ordinary principals — the domain
+object that would state it outright is not among the classes this product captures — and the derive
+joins the two, keyed by domain SID because that is the side a caller asks from.
+
+**Everything about that table is built to fail towards caution.** A `foreignSecurityPrincipal` stub
+carries another domain's identifier and is excluded, or it would give a domain its neighbour's SID.
+A domain whose own principals disagree is dropped rather than settled by a majority. The full
+`DomainReadOutcome` is stored rather than a boolean, and only `Read` licenses the conclusion — a
+partially read domain is a hole of unknown shape, not nearly all of an answer. A domain with no row
+is one nothing can be said about. Each of those absences leaves the reader answering
+`PrincipalNotFound`, exactly as it did before the table existed, because the way this could do harm
+is by reporting a live delegation as inert.
 
 **`BroadPrincipalCatalogue` decides what is too broad to hold a sensitive right, by SID and never by
 name.** That distinction is the point rather than pedantry: Microsoft's security groups reference

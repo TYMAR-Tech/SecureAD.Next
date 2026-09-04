@@ -469,7 +469,8 @@ public sealed class DerivationReader : IDisposable
         var rootId = FindSidId(sid, scope);
 
         if (rootId is null)
-            return new PrincipalExpansion(sid, PrincipalExpansionOutcome.PrincipalNotFound, null);
+            return new PrincipalExpansion(sid, OutcomeForMissingPrincipal(sid), null);
+
 
         var edges = ReadNestingEdges();
 
@@ -576,6 +577,85 @@ public sealed class DerivationReader : IDisposable
 
         path.Reverse();
         return path;
+    }
+
+    /// <summary>
+    /// Whether a principal nothing carries is definitively absent or merely out of sight.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The default is ignorance, and every condition below has to be met to leave it.</b> The
+    /// identifier must be domain-relative, so that it names a domain at all; that domain must be
+    /// one this derivation established a SID for; and the run must have read it <i>in full</i>.
+    /// Anything else - a built-in or well-known identifier, a domain with no row, a domain read in
+    /// part, unreachable or excluded - answers
+    /// <see cref="PrincipalExpansionOutcome.PrincipalNotFound"/>, exactly as it did before this
+    /// question could be asked.
+    /// </para>
+    /// <para>
+    /// <b>The asymmetry is deliberate.</b> Answering "not found" where the principal really does
+    /// not exist costs a rule its verdict on one object, which an operator sees and can act on.
+    /// Answering "does not exist" where the domain was never read would report a live delegation as
+    /// harmless, which nobody sees at all. Only the first is an acceptable way to be wrong.
+    /// </para>
+    /// </remarks>
+    /// <param name="sid">The SID no principal in this derivation carries.</param>
+    private PrincipalExpansionOutcome OutcomeForMissingPrincipal(string sid)
+    {
+        var domainSid = DomainSidOf(sid);
+
+        if (domainSid is null)
+            return PrincipalExpansionOutcome.PrincipalNotFound;
+
+        return ReadDomainReadOutcome(domainSid) == DomainReadOutcome.Read
+            ? PrincipalExpansionOutcome.PrincipalDoesNotExist
+            : PrincipalExpansionOutcome.PrincipalNotFound;
+    }
+
+    /// <summary>
+    /// The domain part of a domain-relative SID, or null where the SID is not one.
+    /// </summary>
+    /// <remarks>
+    /// <b>Only <c>S-1-5-21-a-b-c-RID</c> names a domain.</b> A built-in identifier such as
+    /// <c>S-1-5-32-544</c> and a well-known one such as <c>S-1-1-0</c> mean something in every
+    /// domain and belong to none, so there is no coverage to look up and no absence to conclude
+    /// anything from.
+    /// </remarks>
+    private static string? DomainSidOf(string sid)
+    {
+        var parts = sid.Split('-');
+
+        if (parts.Length != 8
+            || !string.Equals(parts[0], "S", StringComparison.OrdinalIgnoreCase)
+            || parts[1] != "1"
+            || parts[2] != "5"
+            || parts[3] != "21"
+            || parts.Skip(4).Any(part => !uint.TryParse(part, out _)))
+        {
+            return null;
+        }
+
+        return string.Join('-', parts[..^1]);
+    }
+
+    /// <summary>
+    /// What the run made of reading the domain with this SID, or null where it holds no row.
+    /// </summary>
+    private DomainReadOutcome? ReadDomainReadOutcome(string domainSid)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT outcome FROM domain_read_coverage WHERE domain_sid = $sid";
+        command.Parameters.AddWithValue("$sid", domainSid);
+
+        var found = command.ExecuteScalar();
+
+        if (found is null or DBNull)
+            return null;
+
+        // Stored by name, so an unrecognised value is a store this reader does not understand
+        // rather than something to guess at. Null is the cautious answer and the caller refuses on
+        // it, which is what an unreadable row deserves.
+        return Enum.TryParse<DomainReadOutcome>((string)found, out var outcome) ? outcome : null;
     }
 
     /// <summary>The dictionary id of one SID in one scope, or null where it is not held.</summary>

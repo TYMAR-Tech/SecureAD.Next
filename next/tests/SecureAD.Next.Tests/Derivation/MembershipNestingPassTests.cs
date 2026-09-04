@@ -284,6 +284,83 @@ public sealed class MembershipNestingPassTests
 
     private const string BuiltinAdministratorsSid = "S-1-5-32-544";
 
+    /// <summary>
+    /// A domain's own principals establish the SID that domain's identifiers are prefixed with.
+    /// </summary>
+    /// <remarks>
+    /// <b>What lets an unresolvable identifier be attributed to a domain at all.</b> There is no
+    /// single object to read this from - the domain object carrying the bare domain SID is not
+    /// among the classes this product captures, confirmed against the sealed <c>ad.lab</c> bundle
+    /// of 2026-09-04 - so it comes from the ordinary principals that share it.
+    /// </remarks>
+    [Fact]
+    public void ADomainsOwnPrincipalsEstablishItsDomainSid()
+    {
+        var facts = Read(
+            Group("CN=Readers,DC=ad,DC=lab", 1101, []),
+            User("CN=Alice,DC=ad,DC=lab", 1102, primaryGroupId: null, memberOf: []));
+
+        Assert.Equal(DomainSid, facts.DomainSidsByFqdn["ad.lab"]);
+    }
+
+    /// <summary>
+    /// A stub standing in for a foreign principal does not speak for the domain holding it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The negative control on the domain SID map, and the one way it could attribute a whole
+    /// range of identifiers to the wrong domain.</b> A <c>foreignSecurityPrincipal</c> lives in one
+    /// domain and carries an identifier issued by another. Letting it establish the prefix would
+    /// give this domain its neighbour's SID - and then every unresolvable identifier of that
+    /// neighbour would be judged against the wrong domain's coverage, which is how a delegation in
+    /// an unread domain would come to be reported as inert.
+    /// </para>
+    /// <para>
+    /// The stub here carries a different domain's prefix from every real object beside it, so a
+    /// pass that counted stubs would either record the wrong SID or record a conflict and drop the
+    /// domain. Both are wrong and this asserts the right answer rather than merely a safe one.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AStubDoesNotEstablishTheDomainSidOfTheDomainHoldingIt()
+    {
+        const string foreignSid = "S-1-5-21-7-7-7-1234";
+
+        var facts = Read(
+            Group("CN=Readers,DC=ad,DC=lab", 1101, []),
+            ForeignSecurityPrincipal(
+                "ad.lab",
+                "CN=" + foreignSid + ",CN=ForeignSecurityPrincipals,DC=ad,DC=lab",
+                foreignSid));
+
+        Assert.Equal(DomainSid, facts.DomainSidsByFqdn["ad.lab"]);
+    }
+
+    /// <summary>
+    /// A domain whose own principals disagree about its SID is left out rather than resolved.
+    /// </summary>
+    /// <remarks>
+    /// <b>Refusing beats guessing here, and a majority vote would always produce an answer.</b> A
+    /// domain absent from the map makes every unresolvable identifier of it stay unknown, which is
+    /// the behaviour that existed before this product could tell an orphan from a gap. Electing a
+    /// winner would instead conclude absence from evidence that contradicts itself, and the way
+    /// that fails is by reporting a live delegation as harmless.
+    /// </remarks>
+    [Fact]
+    public void ADomainWhosePrincipalsDisagreeAboutItsSidIsLeftOut()
+    {
+        var facts = Read(
+            Group("CN=Readers,DC=ad,DC=lab", 1101, []),
+            Object(
+                "CN=Odd,DC=ad,DC=lab",
+                [
+                    Binary("objectSid", SidBytes("S-1-5-21-4-5-6-1102")),
+                    Text("objectClass", AttributeCardinality.MultiValued, ["top", "group"]),
+                ]));
+
+        Assert.False(facts.DomainSidsByFqdn.ContainsKey("ad.lab"));
+    }
+
     /// <summary>One domain's <c>BUILTIN\Administrators</c>, holding one member.</summary>
     private static ObjectAttributes BuiltinAdministrators(
         string? domainFqdn, string dn, string memberDn) =>

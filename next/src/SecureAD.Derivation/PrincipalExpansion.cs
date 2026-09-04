@@ -8,6 +8,13 @@ namespace SecureAD.Derivation;
 /// inside it, which is an answer; a principal nobody captured is a question this bundle cannot
 /// settle, which is a different answer; and an expansion that ran out of budget produced true
 /// members and an untrue silence about the rest.
+/// <para>
+/// <b><see cref="PrincipalNotFound"/> and <see cref="PrincipalDoesNotExist"/> look alike and are
+/// opposites.</b> The first is ignorance and the second is knowledge. Reading one as the other in
+/// either direction is a defect: treating ignorance as knowledge reports an unknown delegation as
+/// harmless, and treating knowledge as ignorance refuses to judge an entry that grants nobody
+/// anything.
+/// </para>
 /// </remarks>
 public enum PrincipalExpansionOutcome
 {
@@ -27,10 +34,40 @@ public enum PrincipalExpansionOutcome
     PrincipalNotFound,
 
     /// <summary>
+    /// No principal carries this identifier, and the derivation is in a position to say so.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>An orphaned identifier, and it is a fact rather than a refusal.</b> The identifier is
+    /// domain-relative - <c>S-1-5-21-a-b-c-RID</c> - so it names the domain it belongs to; that
+    /// domain was read in full; and no object in it carries the identifier. There is therefore no
+    /// such principal. An access control entry naming it grants nobody anything and there is
+    /// nothing inside it to fear, so a rule should judge rather than decline to answer. In
+    /// practice this is most often an account that was deleted while entries naming it were left
+    /// behind.
+    /// </para>
+    /// <para>
+    /// <b>Every part of that is load-bearing, and dropping any one of them manufactures a false
+    /// negative.</b> Without the domain-relative form there is no domain to check, and a built-in
+    /// or well-known identifier that is merely absent would be read as non-existent. Without the
+    /// domain having been read <i>in full</i>, "no object carries it" means only "no object we
+    /// managed to read carries it" - which is exactly the trusted-external-forest and
+    /// unreachable-domain case that must keep refusing. A partially read domain is a hole of
+    /// unknown shape and is not evidence of absence.
+    /// </para>
+    /// <para>
+    /// Answered by <see cref="PrincipalNotFound"/> wherever the derivation cannot prove all three,
+    /// because the failure that matters here is the one that reports a broad delegation as inert.
+    /// </para>
+    /// </remarks>
+    PrincipalDoesNotExist,
+
+    /// <summary>
     /// No expansion could be attempted, because the derivation carries no nesting to walk.
     /// </summary>
     NoNestingDerived,
 }
+
 
 /// <summary>
 /// One principal found inside another, and how it got there.

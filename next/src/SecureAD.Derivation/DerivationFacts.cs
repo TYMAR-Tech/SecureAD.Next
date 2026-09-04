@@ -1,3 +1,5 @@
+using SecureAD.Evidence.Run;
+
 namespace SecureAD.Derivation;
 
 /// <summary>
@@ -7,6 +9,24 @@ namespace SecureAD.Derivation;
 /// <param name="PrincipalSidId">The current SID of the principal it identifies.</param>
 /// <param name="Kind">Whether this is that principal's own SID or one it carries from a migration.</param>
 internal readonly record struct SidIdentityRow(int SidId, int PrincipalSidId, SidIdentityKind Kind);
+
+/// <summary>
+/// One domain, the SID its principals share, and what the run made of reading it.
+/// </summary>
+/// <remarks>
+/// <b>This is what lets an unresolvable identifier be attributed to a domain.</b> An
+/// <c>S-1-5-21-a-b-c-RID</c> identifier names its domain in its own text, so a row here turns that
+/// prefix into a statement about whether the run saw the whole of the domain it came from - and so
+/// into whether "nothing carries this identifier" is evidence of absence or of a gap.
+/// </remarks>
+/// <param name="DomainSid">The domain's SID, the prefix its principals' identifiers share.</param>
+/// <param name="DomainFqdn">The domain, for a reader diagnosing a run.</param>
+/// <param name="Outcome">What the run made of reading it.</param>
+internal readonly record struct DomainReadCoverageRow(
+    string DomainSid,
+    string DomainFqdn,
+    DomainReadOutcome Outcome);
+
 
 /// <summary>
 /// Everything about one principal that a membership question needs, other than its edges.
