@@ -29,19 +29,43 @@ merged, its documents are updated and its row here says so. The owner's standing
 
 ## Where we are
 
-| Stage | What | Status |
-|---|---|---|
-| — | Connect, capture, seal, browse | **built** |
-| 1 | Findings move out of the sealed evidence | **built** |
-| 2 | Dashboard: coverage and inventory | not started |
-| 3 | One rule, end to end | **built** |
-| 4 | The simple posture rules | **started** |
-| 5 | Group expansion | not started |
-| 6 | Control edges | not started |
-| 7 | Paths to Tier 0 | not started |
-| 8 | Proven remediation | not started |
-| 9 | Reports and export | not started |
-| 10 | Comparing runs | not started |
+**The `Witness` column is what keeps this table honest, and it is checked.** A status is the one
+claim that goes false without anyone editing the document — it rots when the *code* moves, not when
+the prose does, which is why six passes of document-against-document checking never caught Stage 5
+being built. Each row therefore names a type whose existence in `next/src` decides the status, and
+`next/tools/check-stage-status.ps1` asserts **both directions**: a row claiming built whose witness
+is missing fails, and a row claiming *not started* whose witness exists **also** fails. The second
+direction is the one that would have caught Stage 5 on the day it was finished. See `P-135`.
+
+| Stage | What | Status | Witness |
+|---|---|---|---|
+| — | Connect, capture, seal, browse | **built** | `BundleSealing` |
+| 1 | Findings move out of the sealed evidence | **built** | `JudgementWriter` |
+| 2 | Dashboard: coverage and inventory | not started | `DashboardViewModel` |
+| 3 | One rule, end to end | **built** | `UnconstrainedDelegationOnAccount` |
+| 4 | The simple posture rules | **started** | `LapsPasswordReadAccess` |
+| 5 | Group expansion | **built** | `PrincipalExpansion` |
+| 6 | Control edges | not started | `ControlEdge` |
+| 7 | Paths to Tier 0 | not started | `Tier0Reachability` |
+| 8 | Proven remediation | not started | `RemediationIssue` |
+| 9 | Reports and export | not started | `ReportDefinition` |
+| 10 | Comparing runs | not started | `RunComparison` |
+
+**Stage 5 was recorded as *not started* until 2026-09-04 and had been built for some time.** Group
+expansion — `DerivationReader.MembersOf`, the stored `nesting_edge` and `nesting_cycle` products and
+primary-group membership — arrived with `SEC-090`, and `SEC-093` is its second consumer. The status
+was taken from the acceptance manifest, which tracked a test-naming convention nobody adopted rather
+than the code; that is `P-135`.
+
+**Stage 4 is *started*, and what remains is two named things.** LAPS, SID history, AdminSDHolder,
+Kerberos delegation and the unsecure account flags are built — fourteen rule identifiers in
+`SecureAD.Judgement`. **Ownership and broad write access are not.**
+
+**Stage 2's witness is `DashboardViewModel` and not `Dashboard`, deliberately.** A `Dashboard`
+member already exists in `ShellSection` as a navigation tab with nothing behind it, on the owner's
+instruction of 2026-08-18 so the shape of the navigation could be judged early. A witness matching
+that name would report the stage built while the screen is empty — a check passing while measuring
+nothing, which is the failure this column exists to prevent.
 
 The correction sequence that precedes further rule rollout has completed Wave 6. Wave 5 separated the
 AdminSDHolder principal and member-propagation claims and persisted the resulting evaluations,
@@ -701,8 +725,18 @@ More research is owed before it is built.
 
 Who is really in which group: nesting, primary group, cycles. Everything after this depends on it.
 
+**Built, and recorded as *not started* until 2026-09-04.** `DerivationReader.MembersOf` walks the
+stored `nesting_edge` rows breadth first with a visited set; membership cycles are persisted rather
+than discarded; primary-group membership is carried on the principal row. It arrived with `SEC-090`
+and `SEC-093` is its second consumer. *Detail:*
+[`what-stage-2a-derives`](layers/derivation/what-stage-2a-derives.md).
+
 *Criteria:* `AC-10`, `AC-25`, `AC-63`. `AC-26` and `AC-64` are **blocked** pending Microsoft evidence
 on what SDProp traverses and must not be implemented from inference.
+
+**Those criteria are not what says this stage is built, and reading them that way is what went
+wrong.** They record what would prove each behaviour and which anchor it needs; they carry no status
+and never did anything to track one. The status above comes from the witness in *Where we are*.
 
 ## Stage 6 — control edges
 

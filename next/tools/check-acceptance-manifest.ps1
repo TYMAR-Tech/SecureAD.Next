@@ -3,16 +3,23 @@
     Reconciles the acceptance-criteria manifest against the spec it was extracted from.
 
 .DESCRIPTION
-    JUDGEMENT-HALF-ACCEPTANCE.md restates 100 criteria from JUDGEMENT-HALF.md so each can carry a
-    test name and a status. A restatement is a second copy, and a second copy drifts - which is the
-    fault this repository has already paid for twice in this very document, where one fact was
-    corrected in one place and left stale in others.
+    JUDGEMENT-HALF-ACCEPTANCE.md restates 100 criteria from JUDGEMENT-HALF.md so each can carry the
+    kind of external anchor it will need. A restatement is a second copy, and a second copy drifts -
+    which is the fault this repository has already paid for twice in this very document, where one
+    fact was corrected in one place and left stale in others.
 
     So the manifest is not trusted to be right, it is checked. Ids are extracted by regex from both
     documents and differenced in both directions; the criterion text is compared character for
-    character. Either direction failing is a failure: a criterion in the spec with no row means a
-    test nobody will write, and a row with no criterion means a test measuring something the spec
-    no longer says.
+    character. Either direction failing is a failure: a criterion in the spec with no row means an
+    anchor nobody chose, and a row with no criterion means an anchor for something the spec no
+    longer says.
+
+    WHAT THIS CANNOT TELL YOU, AND MUST NOT BE READ AS TELLING YOU. This compares two documents. It
+    reads no code and says nothing about whether anything is built, tested or correct. That
+    distinction is not pedantry: until 2026-09-04 the manifest also carried a Test name and a
+    Status, this check passed against them for months, and not one of the hundred named tests had
+    ever existed. See P-135. Whether a stage is built is answered by check-stage-status.ps1, which
+    reads the code.
 
     This is not a prose check. It derives everything it expects from the source document, and the
     change that makes it fail is an edit to a criterion - not a heading, a status line or a format.
@@ -61,7 +68,7 @@ function Get-Rows([string] $text, [int] $expectedCells, [string] $label) {
 }
 
 $specRows     = Get-Rows (Read-Utf8 $Spec)     2 'Spec'
-$manifestRows = Get-Rows (Read-Utf8 $Manifest) 5 'Manifest'
+$manifestRows = Get-Rows (Read-Utf8 $Manifest) 3 'Manifest'
 
 Write-Host "Method: ids matched by regex '^\|\s*(AC-\d+)\s*\|' in both documents, differenced each way."
 Write-Host "Spec     $Spec : $($specRows.Count) criteria"

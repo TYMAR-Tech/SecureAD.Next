@@ -21,10 +21,16 @@ the record wins and this file is wrong.
 | Preflight | Prove a controller can serve what it will be asked, before the run commits | built |
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
-| Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; AdminSDHolder products persisted and readable |
+| Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
 | Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, 14 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard, reports, compare and export | — | not built |
+
+**The counts and states in that table are checked rather than maintained by hand**, by
+`next/tools/check-stage-status.ps1`. A status goes false when the code moves and the document sits
+still, so it cannot be protected by proof-reading; this file claimed *two rules* for long enough
+that twelve more were built underneath it. See `P-135`, and `ROADMAP.md` § *Where we are* for the
+per-stage witnesses.
 
 `0008` fixes the boundary: **the only component that touches a domain controller is capture.** A
 screen showing a permission is reading a file, not asking the directory.

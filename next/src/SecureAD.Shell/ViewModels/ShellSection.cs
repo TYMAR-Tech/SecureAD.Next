@@ -5,11 +5,11 @@ namespace SecureAD.Shell.ViewModels;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Only what exists is named here.</b> There is no member for findings, reports or a dashboard,
-/// because nothing in this product produces a finding yet and a navigation entry leading to an
-/// empty screen tells an operator that a thing was looked for and nothing was found - which would
-/// be false. <c>docs/decisions/0045-the-shell-is-built-before-the-judgement-half.md</c> records the
-/// same rule: screens bound to findings are left out rather than stubbed.
+/// <b>Only what exists is named here.</b> There is no member for reports or comparison, because a
+/// navigation entry leading to an empty screen tells an operator that a thing was looked for and
+/// nothing was found - which would be false.
+/// <c>docs/decisions/0045-the-shell-is-built-before-the-judgement-half.md</c> records the same
+/// rule: screens bound to findings are left out rather than stubbed.
 /// </para>
 /// <para>
 /// A member is added here when the screen behind it can answer for itself.
