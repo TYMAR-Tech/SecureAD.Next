@@ -648,8 +648,7 @@ public sealed class FindingsPagingTests
 
     private static string ADirectory()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-findings-paging", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("findings-paging");
 
         Directory.CreateDirectory(directory);
 

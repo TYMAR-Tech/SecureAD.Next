@@ -67,8 +67,7 @@ internal static class LapsBundle
         DateTimeOffset started,
         int? primaryGroupId = null)
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-laps-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("laps-tests");
 
         Directory.CreateDirectory(directory);
 
@@ -144,8 +143,7 @@ internal static class LapsBundle
     {
         ArgumentNullException.ThrowIfNull(computers);
 
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-laps-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("laps-tests");
 
         Directory.CreateDirectory(directory);
 

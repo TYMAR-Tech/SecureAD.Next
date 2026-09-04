@@ -360,8 +360,7 @@ public sealed class DerivationWritingTests
 
     private static string NewBundle()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-derivation-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("derivation-tests");
 
         Directory.CreateDirectory(directory);
         return directory;

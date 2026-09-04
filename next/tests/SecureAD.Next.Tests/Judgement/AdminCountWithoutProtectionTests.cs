@@ -252,8 +252,7 @@ public sealed class AdminCountWithoutProtectionTests
 
     private static string Build(Subject subject, Action<BundleWriter>? alsoWrite)
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-sec030-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("sec030-tests");
 
         Directory.CreateDirectory(directory);
 

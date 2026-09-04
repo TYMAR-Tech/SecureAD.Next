@@ -64,8 +64,7 @@ public sealed class AnalysisStoreLifecycleTests
 
     private static string NewBundle()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-analysis-lifecycle", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("analysis-lifecycle");
         Directory.CreateDirectory(directory);
         return directory;
     }

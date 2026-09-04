@@ -204,8 +204,7 @@ public sealed class PrincipalExpansionTests
         (int Group, int Member)[] edges,
         DerivationPhaseOutcome nesting = DerivationPhaseOutcome.Succeeded)
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-expansion-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("expansion-tests");
 
         Directory.CreateDirectory(directory);
         var evidencePath = BundleLayout.EvidencePath(directory);

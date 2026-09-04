@@ -276,7 +276,7 @@ public sealed class PreflightTests
     {
         var report = await AskAsync(AForestWithSeveralFaults(), Root, Absent);
 
-        var directory = Directory.CreateTempSubdirectory("securead-preflight-").FullName;
+        var directory = TempDirectories.Create("preflight");
         PreflightFile.Write(directory, report, DateTimeOffset.UnixEpoch);
 
         var written = File.ReadAllText(BundleLayout.PreflightPath(directory));

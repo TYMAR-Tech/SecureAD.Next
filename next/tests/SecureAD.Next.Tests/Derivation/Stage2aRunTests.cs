@@ -265,8 +265,7 @@ public sealed class Stage2aRunTests
 
     private static string NewDirectory()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-stage2a-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("stage2a-tests");
 
         Directory.CreateDirectory(directory);
         return directory;

@@ -20,8 +20,7 @@ public sealed class OfflineAuditJourneyTests
     [Fact]
     public async Task CapturedEvidenceIsDerivedJudgedAndReadBack()
     {
-        var root = Path.Combine(
-            Path.GetTempPath(), "securead-offline-journey", Guid.NewGuid().ToString("N"));
+        var root = TempDirectories.Create("offline-journey");
         var controller = ForestWithUnconstrainedAccount();
         var connections = controller.Connections();
         var plan = CapturePlan.For(

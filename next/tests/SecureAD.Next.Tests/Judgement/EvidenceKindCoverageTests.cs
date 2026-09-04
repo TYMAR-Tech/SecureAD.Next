@@ -363,8 +363,7 @@ public sealed class EvidenceKindCoverageTests
 
     private static string ADirectory()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-evidence-kinds", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("evidence-kinds");
 
         Directory.CreateDirectory(directory);
 

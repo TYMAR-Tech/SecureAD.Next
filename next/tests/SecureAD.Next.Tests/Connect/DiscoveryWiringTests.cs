@@ -411,9 +411,7 @@ public sealed class DiscoveryWiringTests
 
         Assert.Equal(0, Assert.Single(report.Domains).OtherControllersInTheForest);
 
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-tests", Guid.NewGuid().ToString("n"));
-        Directory.CreateDirectory(directory);
+        var directory = TempDirectories.Create("discovery");
 
         PreflightFile.Write(directory, report, DateTimeOffset.UnixEpoch);
 
@@ -444,9 +442,7 @@ public sealed class DiscoveryWiringTests
 
         var report = await Preflight.RunAsync(AForestOf("dc01"), plan, default);
 
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-tests", Guid.NewGuid().ToString("n"));
-        Directory.CreateDirectory(directory);
+        var directory = TempDirectories.Create("discovery");
 
         PreflightFile.Write(directory, report, DateTimeOffset.UnixEpoch);
 

@@ -399,8 +399,7 @@ public sealed class JudgementWritingTests
     /// </summary>
     private static string NewBundle()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-judgement-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("judgement-tests");
 
         Directory.CreateDirectory(directory);
         return directory;

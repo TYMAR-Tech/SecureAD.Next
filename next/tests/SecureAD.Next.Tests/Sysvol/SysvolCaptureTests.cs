@@ -33,8 +33,7 @@ public sealed class SysvolCaptureTests : IDisposable
 
     private const string TemplatePath = @"Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf";
 
-    private readonly string _root = Path.Combine(
-        Path.GetTempPath(), "securead-sysvol-" + Guid.NewGuid().ToString("N"));
+    private readonly string _root = TempDirectories.Create("sysvol");
 
     private static readonly DateTimeOffset Started = new(2026, 8, 26, 9, 0, 0, TimeSpan.Zero);
 
@@ -424,7 +423,9 @@ public sealed class SysvolCaptureTests : IDisposable
     public void Dispose()
     {
         // Left on disk deliberately: a failed run's evidence is worth reading, and the path is
-        // random so nothing collides.
+        // random so nothing collides. It is not left there forever - the directory belongs to this
+        // run's folder, which survives until the next test run starts and then goes with it. So the
+        // evidence is readable for exactly as long as anyone would want it.
         GC.SuppressFinalize(this);
     }
 }

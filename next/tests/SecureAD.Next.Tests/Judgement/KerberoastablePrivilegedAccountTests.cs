@@ -321,8 +321,7 @@ public sealed class KerberoastablePrivilegedAccountTests
 
     private static string Build(Subject subject)
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-sec021-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("sec021-tests");
 
         Directory.CreateDirectory(directory);
 

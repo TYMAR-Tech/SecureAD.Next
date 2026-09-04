@@ -529,8 +529,7 @@ public sealed class DerivedFactRuleTests
     /// </summary>
     private static string CapturedButNotDerived()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-derived-rule-tests", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("derived-rule-tests");
 
         Directory.CreateDirectory(directory);
 

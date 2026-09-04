@@ -378,8 +378,7 @@ public sealed class JudgingEndToEndTests
     /// </summary>
     private static string ABundleHolding(params EvidenceObject[] objects)
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-judging-e2e", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("judging-e2e");
 
         using (var writer = BundleWriter.Create(directory, Started))
         {
@@ -396,8 +395,7 @@ public sealed class JudgingEndToEndTests
 
     private static string ABundleHoldingWithExcludedDomain(params EvidenceObject[] objects)
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(), "securead-judging-e2e", Guid.NewGuid().ToString("N"));
+        var directory = TempDirectories.Create("judging-e2e");
 
         using (var writer = BundleWriter.Create(directory, Started))
         {
