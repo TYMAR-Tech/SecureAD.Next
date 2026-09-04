@@ -616,6 +616,70 @@ public sealed class LapsDecryptorBroadPrincipalTests
         Assert.False(evidence.BroadPrincipalFound);
     }
 
+    /// <summary>
+    /// An ordinary group is found under the unscoped key, not under the policy's domain.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Found by the lab on 2026-09-04, and it meant the nested case could never fire.</b>
+    /// <c>SidInterner</c> scopes a principal to its domain only when its identifier repeats between
+    /// domains - a BUILTIN SID such as <c>S-1-5-32-544</c> - and stores everything else with no
+    /// scope, because a domain-relative identifier is already unique across the forest. The rule
+    /// asked only under the policy's domain, so every decryptor naming an ordinary group answered
+    /// <c>PrincipalNotFound</c>.
+    /// </para>
+    /// <para>
+    /// <b>SEC-090 hit this first and SEC-093 repeated it.</b> That rule's <c>MembersOfTrustee</c>
+    /// carries the same fix and the same explanation. A wrapper group is Microsoft's documented
+    /// answer to LAPS encrypting against one principal, so the nesting case is the rule's main
+    /// purpose, not an edge of it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AnOrdinaryGroupIsFoundUnderTheUnscopedKey()
+    {
+        var asked = new List<string>();
+
+        var finding = Assert.Single(Judge(
+            [Setting(LapsKey, DecryptorValue, WrapperGroup)],
+            (sid, scope) =>
+            {
+                asked.Add(scope);
+
+                // Stored the way SidInterner stores an ordinary group: no scope.
+                return scope.Length == 0
+                    ? new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded,
+                        [Member(AuthenticatedUsers, [WrapperGroup, AuthenticatedUsers])])
+                    : new PrincipalExpansion(sid, PrincipalExpansionOutcome.PrincipalNotFound, null);
+            }));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+        Assert.Equal([Forest, string.Empty], asked);
+    }
+
+    /// <summary>
+    /// A principal no scope resolves stays unresolved.
+    /// </summary>
+    /// <remarks>
+    /// The control on the fallback above: trying more scopes must not turn every value into a
+    /// finding. What survives every scope is a principal this bundle genuinely does not hold — one
+    /// from a trusted external forest, or left behind by a deleted object.
+    /// </remarks>
+    [Fact]
+    public void ADecryptorNoScopeResolvesStaysUnresolved()
+    {
+        var finding = Assert.Single(Judge(
+            [Setting(LapsKey, DecryptorValue, ScopedGroup)],
+            (sid, scope) => new PrincipalExpansion(
+                sid, PrincipalExpansionOutcome.PrincipalNotFound, null)));
+
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Null(evidence.BroadPrincipalSid);
+    }
+
     // -------------------------------------------------------------------------------------------
     // The anchor: bytes a real policy editor wrote
     // -------------------------------------------------------------------------------------------

@@ -169,7 +169,7 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
         if (form is not LapsDecryptorForm.SecurityIdentifier)
             return RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form)]);
 
-        var expansion = expand(configured, domain);
+        var expansion = MembersOfDecryptor(expand, configured, domain);
 
         var decryptorName = NameFor(configured, context.PrincipalNames);
 
@@ -253,6 +253,58 @@ public sealed class LapsDecryptorBroadPrincipal : IRule
                     expansion.IsComplete,
                     context.PrincipalNames)),
         ]);
+    }
+
+    /// <summary>
+    /// Expands the configured decryptor, asking under each scope its identifier could be keyed
+    /// under.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A principal is keyed under a domain only when its identifier repeats between
+    /// domains.</b> <c>SidInterner</c> scopes a SID to its domain when it is a BUILTIN one -
+    /// <c>S-1-5-32-544</c> means a different group in every domain - and stores everything else
+    /// with no scope at all, because a domain-relative identifier such as
+    /// <c>S-1-5-21-…-513</c> is already unique across the forest. Asking only under the policy's
+    /// domain therefore finds the built-in principals and misses every ordinary group.
+    /// </para>
+    /// <para>
+    /// <b>The lab found this, and it is the second rule to make the same mistake.</b> Every
+    /// decryptor naming an ordinary group answered <c>PrincipalNotFound</c>, so the nested case -
+    /// the one this rule was written for, and the one Microsoft's own wrapper-group guidance
+    /// produces - could never have fired against a real forest. SEC-090 hit exactly this and
+    /// records it at <c>MembersOfTrustee</c>; SEC-093 was written afterwards and did not carry the
+    /// lesson across.
+    /// </para>
+    /// <para>
+    /// <b>Asking more than once can only turn "not found" into an answer, never the reverse.</b> A
+    /// domain-relative identifier is unique across the forest, so asking under a domain it does not
+    /// belong to simply answers not found. This cannot manufacture a finding. What survives every
+    /// scope is a principal this bundle genuinely does not hold, and that stays unresolved.
+    /// </para>
+    /// </remarks>
+    private static PrincipalExpansion MembersOfDecryptor(
+        Func<string, string, PrincipalExpansion> expand, string sid, string? policyDomain)
+    {
+        // Most specific first, then the unscoped key that ordinary principals are stored under.
+        var scopes = new List<string>();
+
+        if (!string.IsNullOrEmpty(policyDomain))
+            scopes.Add(policyDomain);
+
+        scopes.Add(string.Empty);
+
+        PrincipalExpansion last = null!;
+
+        foreach (var scope in scopes)
+        {
+            last = expand(sid, scope);
+
+            if (last.Outcome is not PrincipalExpansionOutcome.PrincipalNotFound)
+                return last;
+        }
+
+        return last;
     }
 
     /// <summary>
