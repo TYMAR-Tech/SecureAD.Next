@@ -65,12 +65,13 @@ public sealed class ObjectOwnershipRuleTests
     /// A protected object owned by a non-administrator is reported by SEC-032 alone.
     /// </summary>
     /// <remarks>
-    /// <b>This is the case the split exists for.</b> Owning an object the directory protects is a
-    /// route to privilege, not latent authority over one object, and it is worth a different
-    /// sentence at a different severity.
+    /// <b>This is the case the split exists for.</b> A protected object is one the directory
+    /// repairs on a schedule, so non-administrative ownership of it means something different
+    /// from the same condition on an ordinary object - and it is worth a different sentence at a
+    /// different severity.
     /// </remarks>
     [Fact]
-    public void AProtectedObjectIsReportedByTheHighRuleOnly()
+    public void AProtectedObjectIsReportedByTheHigherRuleOnly()
     {
         var subject = Group();
 
@@ -79,9 +80,44 @@ public sealed class ObjectOwnershipRuleTests
 
         var finding = Assert.Single(high.Findings);
         Assert.Equal("SEC-032", finding.RuleId);
-        Assert.Equal(Severity.High, finding.Severity);
+        Assert.Equal(Severity.Medium, finding.Severity);
         Assert.Empty(low.Findings);
         Assert.True(low.IsComplete);
+    }
+
+    /// <summary>
+    /// SEC-032 tells the operator the finding may already have repaired itself; SEC-031 does not.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This pins the correction made in <c>F-S45-7</c>.</b> The rule shipped saying the
+    /// exposure was durable because <c>AdminSDHolder</c> leaves ownership alone. The lab showed
+    /// SDProp restores the owner within the hour, so an operator who investigates may find it
+    /// already back to <c>Domain Admins</c>.
+    /// </para>
+    /// <para>
+    /// <b>Without this sentence the rule looks broken to the person acting on it</b> - they check,
+    /// find nothing wrong, and trust the next finding less. The assertion is deliberately on the
+    /// presence of the explanation rather than on exact wording, which is prose and will change.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void OnlyTheProtectedRuleWarnsThatTheOwnerMayAlreadyHaveBeenRestored()
+    {
+        var protectedSubject = Group();
+        var ordinarySubject = Group();
+
+        var high = JudgeHigh(protectedSubject, Person, subjectIsProtected: true);
+        var low = JudgeLow(ordinarySubject, Person, subjectIsProtected: false);
+
+        var protectedDetail = Assert.Single(high.Findings).Detail;
+        Assert.Contains("AdminSDHolder is not running", protectedDetail, StringComparison.Ordinal);
+        Assert.Contains("restored by the time you look", protectedDetail, StringComparison.Ordinal);
+
+        // SEC-031 covers objects nothing repairs on a schedule, so the same caveat there would be
+        // false rather than merely redundant.
+        Assert.DoesNotContain(
+            "AdminSDHolder", Assert.Single(low.Findings).Detail, StringComparison.Ordinal);
     }
 
     /// <summary>

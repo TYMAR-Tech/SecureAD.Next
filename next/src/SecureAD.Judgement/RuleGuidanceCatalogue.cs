@@ -414,17 +414,25 @@ public static class RuleGuidanceCatalogue
                 + "conferring privilege - a member of Domain Admins, Enterprise Admins, "
                 + "Administrators or an operator group. Its owner is not an administrative "
                 + "principal, and an owner can rewrite an object's permissions whenever they like. "
-                + "So somebody outside your administrative tier can grant themselves control of a "
-                + "privileged object, and no permission review will show it. That is a route to "
-                + "privilege rather than latent authority over one object, which is why it is "
-                + "reported separately from SEC-031 and at a higher severity.",
+                + "What makes this worth your attention is that it should not have been possible "
+                + "to observe: AdminSDHolder restores the owner of a protected object roughly "
+                + "every hour, so finding a non-administrative one in a capture means either the "
+                + "change was made within about the last hour, or AdminSDHolder is not running at "
+                + "all. The second case is the serious one, because every privileged object in "
+                + "the domain would then be sitting unrepaired.",
             WhatToDo:
-                "Change the owner to a privileged and monitored principal. Unlike the ordinary "
-                + "ownership finding this one is worth treating as urgent, because the object "
-                + "concerned is one the directory itself protects. Check also how the current "
-                + "owner came to hold that standing: an object created inside a privileged "
-                + "container by a delegated administrator is the usual route, and the delegation "
-                + "that allowed it will still be in place.",
+                "Look at this promptly, and expect the owner may already have been restored by "
+                + "the time you do - that does not mean the finding was wrong. First check "
+                + "whether AdminSDHolder is running: compare the owner now against the one "
+                + "reported here, and if it has been put back then the protection mechanism is "
+                + "working and what you are looking at is a recent change worth explaining. If "
+                + "the owner is still non-administrative an hour or more after the capture, "
+                + "treat AdminSDHolder itself as the problem and check the domain controller "
+                + "holding the PDC emulator role, because a stalled SDProp affects every "
+                + "privileged object at once. Either way, check how the owner came to hold that "
+                + "standing: an object created inside a privileged container by a delegated "
+                + "administrator is the usual route, and the delegation that allowed it will "
+                + "still be in place.",
             About:
                 "Reports an object protected by AdminSDHolder whose owner is not an administrative "
                 + "principal. It applies the same test as SEC-031 and covers the objects SEC-031 "
@@ -432,7 +440,13 @@ public static class RuleGuidanceCatalogue
                 + "protection closure is incomplete neither rule reports, because an object that "
                 + "might be protected must not be quietly reported at the lower severity. The "
                 + "owner is judged by membership as well as by identifier, and the rule stays "
-                + "silent where the owner would not actually keep the power to rewrite the list.",
+                + "silent where the owner would not actually keep the power to rewrite the list. "
+                + "This finding is time-sensitive in a way the other rules are not: because "
+                + "AdminSDHolder repairs ownership on its own schedule, the same object may be "
+                + "reported in one run and absent from the next without anybody having fixed "
+                + "anything. It does not check whether AdminSDHolder is running - it can only "
+                + "tell you that something it should have repaired had not been repaired when "
+                + "the directory was read.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory"),
 

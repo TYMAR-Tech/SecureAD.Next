@@ -1,20 +1,26 @@
 # SEC-032 — a protected object is owned by somebody who is not an administrator
 
-> **Status: built 2026-09-05.** This document states what the rule does and why. Nothing in it is
-> authoritative until a decision record says so; read it as argument.
+> **Status: built 2026-09-05. Severity corrected to `Medium` the same day — see `F-S45-7`.** This
+> document states what the rule does and why. Nothing in it is authoritative until a decision record
+> says so; read it as argument.
 
 ## For a reviewer
 
 **What this rule says in one sentence.** *Somebody who is not an administrator owns an object the
-directory itself protects because that object confers privilege — and an owner can rewrite an
-object's permissions whenever they like.*
+directory itself protects — which the directory should have undone within the hour, so either it
+just happened or the repair job has stopped running.*
+
+**Read [§2](#2-why-this-matters) before anything else if you knew the earlier version.** This rule
+shipped claiming the exposure was durable because `AdminSDHolder` leaves ownership alone. The lab
+disproved that within a day. The rule kept its subject and lost its argument, which is why the
+severity moved.
 
 **Why it is separate from [`SEC-031`](SEC-031-object-owned-by-a-non-administrator.md).** They apply
 the same test. They differ in what the answer *means*. Non-administrative ownership of an ordinary
-object is latent authority over that object. Non-administrative ownership of an object
-`AdminSDHolder` protects is a **route to privilege**: the objects in that set are the ones whose
-compromise yields administrative control of the domain, which is precisely why the directory
-re-stamps their permissions every hour.
+object is latent authority over that object, and it persists until somebody changes it.
+Non-administrative ownership of an object `AdminSDHolder` protects is not supposed to persist at
+all, so observing it says something about the directory's own housekeeping rather than only about
+the object.
 
 **Decision: two rules rather than one rule with two severities — the owner, 2026-09-05.** Two rules
 are two things an operator can sort, filter and accept independently; one rule with mixed levels is
@@ -60,22 +66,34 @@ And on the protected set:
 So an owner outside the administrative tier can grant themselves control of an object the directory
 protects *because* it confers privilege.
 
-> [!WARNING]
-> **The paragraph that followed here is in doubt, and it is the paragraph this rule's severity rests
-> on.** It argued that `AdminSDHolder` re-stamping does not help, because SDProp rewrites the DACL
-> and leaves the owner alone — so the exposure is durable. **The lab suggests otherwise.** A planted
-> protected object's owner was set to a non-administrator, was recorded as such in the capture, and
-> roughly twenty minutes later read back as `Domain Admins` with nobody having changed it. Microsoft's
-> own pages disagree with each other: most say SDProp resets *permissions*, but the Event 4780
-> article says it makes the descriptor match the template *"on the binary level"*, and a descriptor
-> includes the owner.
->
-> **If SDProp does reset the owner, this rule still has something true to say, but it is a different
-> sentence**: the ownership was changed within the last hour, or SDProp is not running. Both are
-> worth reporting; neither is what [§4](#4-severity) and the guidance currently claim. Recorded as
-> `F-S45-7`, with the controlled experiment in
-> `next/tools/Set-LabOwnershipAndTakeover.ps1 -TestSdProp`. **Do not cite the durability argument
-> until that has been run.**
+**And then the directory takes it back.** An earlier version of this section argued that
+`AdminSDHolder` re-stamping does not help, because SDProp rewrites the DACL and leaves the owner
+alone — so the exposure is durable. **That was wrong, and the lab settled it on 2026-09-05.** A
+planted protected object's owner was set to an ordinary user, read back correctly, captured as
+such, and roughly an hour later read `BA\Domain Admins` with nobody having touched it. SDProp
+resets the **owner** as well as the permissions. Microsoft's pages disagree with each other here —
+Appendix C and *Reducing the Active Directory Attack Surface* say *permissions*, while the Event
+4780 article says the descriptor is made to match the template *"on the binary level"*, and a
+descriptor includes the owner field. **The directory settled it in favour of the second reading.**
+Recorded as `F-S45-7`.
+
+**The rule survives that correction, but it is now a different claim.** If a protected object has a
+non-administrative owner at the moment of capture, exactly one of two things is true:
+
+1. **The ownership changed within roughly the last hour** — you are looking at something in
+   progress rather than something stale, which is not obviously less urgent.
+2. **SDProp is not running.** It can be disabled, stalled, or broken on the domain controller
+   holding the PDC emulator role. If so, *every* privileged object in the domain has been sitting
+   unrepaired for as long as that has been true, and nothing else in SecureAD would tell you.
+
+**This rule cannot yet distinguish the two**, and says so in what the operator reads. Detecting a
+stopped SDProp directly is a separate question, put to the owner on 2026-09-05 and not yet decided.
+
+> [!IMPORTANT]
+> **This is the only finding in the product whose absence from a later run proves nothing.** The
+> same object may be reported once and gone the next time with nobody having fixed it. Section 4
+> explains why that is tolerated rather than designed out, and
+> [§9](#9-verified-against-adlab) records the observation itself.
 
 ## 3. What this rule refuses to claim
 
@@ -88,16 +106,25 @@ protects *because* it confers privilege.
 
 ## 4. Severity
 
-**`High`, uniformly.**
+**`Medium`, uniformly. Lowered from `High` on 2026-09-05.**
 
-`High` rather than `Critical` because the finding is *a privileged object can be taken over by
-somebody outside the administrative tier*, not *the domain is compromised*. Reaching the second
-requires the owner to act, and this product reports capability rather than events.
+**Decision: `Medium` — the owner, 2026-09-05.** The rule shipped at `High` on the durability
+argument [§2](#2-why-this-matters) now retracts. With that argument gone the exposure is
+self-healing within the hour, which does not support `High`.
 
-`High` rather than `SEC-031`'s `Low` because the object is one the directory protects. That is not
-this product's judgement about which objects matter — it is Microsoft's, expressed in the protected
-set, and reading it off the closure is what lets this rule elevate without inventing a definition of
-*sensitive* that stage 7 will define properly later.
+`Medium` rather than `Low` because of what the owner expects to see in practice: *essentially never*
+in a healthy domain. A condition that should be impossible to observe, observed, is worth reporting
+loudly even when it repairs itself — and the case where it does **not** repair itself is a
+domain-wide failure of a control nobody is watching.
+
+`Medium` rather than `High` because the product reports capability rather than events, and this
+capability expires. An operator who treats every one of these as a live compromise will burn time on
+findings the directory has already fixed.
+
+**Why not one rule with a derived severity.** Tempting now that severity turns on a timing question,
+but the rule cannot answer that question — it does not know when the change happened or whether
+SDProp is running. A derived severity would have to guess, and a guessed severity is worse than a
+fixed one an operator can learn to read.
 
 ## 5. Which objects are examined
 
@@ -162,8 +189,9 @@ Negative controls, each of which must be observed failing:
 
 `Set-LabOwnershipAndTakeover.ps1` plants `SecureADProtObject`, a member of `Backup Operators` — which
 Appendix C lists as protected — owned by `SecureADPlainOwner`, an ordinary user. The rule reports it
-at `High` with the expected wording, and **`SEC-031` does not**, which proves the disjointness
-against a real directory rather than only in a fixture.
+with the expected wording, and **`SEC-031` does not**, which proves the disjointness against a real
+directory rather than only in a fixture. The finding was recorded at `High`; the severity was
+lowered to `Medium` later the same day for the reason [§4](#4-severity) gives.
 
 **Planting it is what found `F-S45-6`, and nothing else would have.** Before the plant this rule had
 returned zero and looked correct. It could not fire at all: it read `objectSid` as text where the
@@ -173,7 +201,12 @@ the wrong severity, on exactly the objects where severity matters. `SEC-031` fel
 8 and this rule rose from 0 to 1 when it was fixed, which is the same object moving to the rule that
 owns it.
 
-**The run also cast doubt on [§2](#2-why-this-matters).** See `F-S45-7`.
+**The run also disproved [§2](#2-why-this-matters), and the plant is what disproved it.** Left
+alone, the planted object's owner returned to `BA\Domain Admins` within the hour with nobody
+touching it — `adminCount` still 1, still in `Backup Operators`. That is SDProp restoring ownership,
+which the rule document said it would not do. **A rule that had only ever been tested against
+fixtures would have carried the wrong claim to a customer at the wrong severity**, because a fixture
+has no SDProp in it to contradict the argument. Settled as `F-S45-7`.
 
 ---
 

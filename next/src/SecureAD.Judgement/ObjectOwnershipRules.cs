@@ -173,6 +173,30 @@ public sealed class ObjectOwnedByNonAdministrator : IRule
 /// rather than latent authority over one object.
 /// </para>
 /// <para>
+/// <b>The severity rests on timing rather than on durability, and that is a correction
+/// (<c>F-S45-7</c>).</b> This rule shipped at <c>High</c> on the argument that <c>AdminSDHolder</c>
+/// re-stamping rewrites the DACL and leaves the owner alone, so the exposure persists. <b>The lab
+/// disproved it on 2026-09-05</b>: a planted protected object's owner was set to an ordinary user,
+/// captured as such, and had been restored to <c>Domain Admins</c> an hour later with nobody
+/// touching it. SDProp resets the owner as well as the permissions, which is the reading the Event
+/// 4780 article supports where Appendix C does not.
+/// </para>
+/// <para>
+/// <b>The rule survives the correction because what it detects is still true and still worth
+/// reporting - but it is a different claim.</b> A protected object with a non-administrative owner
+/// at capture time means either the ownership changed within roughly the last hour, or SDProp is
+/// not running. The second is a domain-wide failure of a control nobody is watching. <c>Medium</c>
+/// rather than <c>High</c> - the owner's decision of 2026-09-05 - because the exposure is
+/// self-healing within the hour, and rather than <c>Low</c> because the owner expects this to be
+/// vanishingly rare in a healthy domain, so any hit deserves attention.
+/// </para>
+/// <para>
+/// <b>The finding is timing-dependent, which no other rule in the tree is.</b> It can appear in one
+/// run and be gone from the next with nothing having been fixed. <see cref="Detail"/> says so in
+/// the text an operator reads, because one who investigates and finds the owner already restored
+/// will otherwise conclude the rule is broken.
+/// </para>
+/// <para>
 /// <b>Why it is a second rule rather than a second severity.</b> The owner's decision of
 /// 2026-09-05. Two rules are two things an operator can sort, filter and accept independently,
 /// where one rule with mixed levels is a single row they must open to understand. It is also the
@@ -193,7 +217,7 @@ public sealed class ProtectedObjectOwnedByNonAdministrator : IRule
     public RuleDefinition Definition { get; } = new(
         RuleId,
         "A protected object is owned by somebody who is not an administrator",
-        Severity.High,
+        Severity.Medium,
         Version: RuleVersion,
         SubjectClasses: [],
         RequiredAttributes: ["objectClass"],
@@ -212,7 +236,7 @@ public sealed class ProtectedObjectOwnedByNonAdministrator : IRule
     /// <inheritdoc />
     public RuleVerdict Judge(ObjectAttributes subject, JudgingContext context) =>
         OwnershipRuleBody.Judge(
-            subject, context, RuleId, RuleVersion, Severity.High, wantProtected: true);
+            subject, context, RuleId, RuleVersion, Severity.Medium, wantProtected: true);
 }
 
 /// <summary>
@@ -311,9 +335,22 @@ internal static class OwnershipRuleBody
 
     /// <summary>What the operator is told.</summary>
     /// <remarks>
+    /// <para>
     /// <b>Worded as a capability and never as an accusation.</b> The commonest cause is that the
     /// owner created the object. An operator who reads this as evidence of malicious delegation
     /// will waste a day and then stop trusting the rule.
+    /// </para>
+    /// <para>
+    /// <b>The protected wording says something different from the unprotected wording, and the
+    /// difference is the point (<c>F-S45-7</c>).</b> An earlier version told the operator that a
+    /// protected object's ownership was durable because <c>AdminSDHolder</c> re-stamping leaves
+    /// the owner alone. <b>That is false</b>: SDProp resets the owner too, observed in the lab on
+    /// 2026-09-05. So on a protected object this condition cannot persist past the next SDProp
+    /// pass, and its presence in a capture means one of two things - the change happened within
+    /// roughly the last hour, or SDProp is not running. The detail must say so, because an
+    /// operator who investigates and finds the owner already back to <c>Domain Admins</c> will
+    /// conclude the rule is broken unless it told them to expect that.
+    /// </para>
     /// </remarks>
     private static string Detail(ObjectOwnershipEvidence evidence, bool isProtected)
     {
@@ -335,7 +372,14 @@ internal static class OwnershipRuleBody
             : " The membership walk behind this did not finish, so the owner may hold "
               + "administrative rights through a group it did not reach.";
 
+        var timing = isProtected
+            ? " AdminSDHolder restores the owner of a protected object roughly every hour, so "
+              + "this should not have lasted: either it was changed within about the last hour, "
+              + "or AdminSDHolder is not running. Check which before assuming it is harmless - "
+              + "the owner may already have been restored by the time you look."
+            : string.Empty;
+
         return $"{subject} {who} is not an administrative principal. An owner can rewrite an "
-            + $"object's permissions at any time and {consequence}.{caveat}";
+            + $"object's permissions at any time and {consequence}.{caveat}{timing}";
     }
 }
