@@ -213,24 +213,29 @@ constants, and the rule is not considered working until it has run against `ad.l
 
 ## 10. Verified against `ad.lab`
 
-**Run 2026-09-05. 8,378 objects judged, 0 refused, 0 findings.**
+**Run 2026-09-05 against a planted positive. 8,383 objects judged, 0 refused, 1 finding.**
 
-**Zero findings here is a fact about the forest, and it was checked rather than assumed.**
-`building-a-rule.md` is explicit that a reading which has only ever returned zero proves nothing, so
-the evidence was queried directly: **no access control entry in the bundle grants `WRITE_DAC` or
-`WRITE_OWNER` to any of the nine broad principals.** The rule is therefore silent because there is
-nothing to report.
+`Set-LabOwnershipAndTakeover.ps1` plants a nested path — `SecureADTakeoverOuter` →
+`SecureADTakeoverInner` → `Domain Users` — and grants the outer group **both** `WriteDacl` and
+`WriteOwner` on an organizational unit. The rule reports:
 
-**The first run of this rule reported zero for a completely different reason, and that is the more
-important record.** It judged **no objects at all** — all 8,378 counted as *not applicable* — because
-the rule declares no subject class to mean *every object* and `RuleDefinition.IsAbout` read an empty
-list as matching nothing. 3,139 tests were green at the time and none of them could have noticed.
-Recorded as `F-S45-4`.
+> Domain Users can rewrite the permission list directly (reached through SecureADTakeoverOuter ->
+> SecureADTakeoverInner -> Domain Users).
 
-**A second defect surfaced in the same run.** Every computer object was refused with *the forest
-setting was never read*, because the reader added for `dSHeuristics` queried a table name that does
-not exist and a guard turned the failure into a plausible-looking silence. Recorded as `F-S45-5`.
-Both were found by this step and by nothing else.
+which is the right object, the right principal, the full two-hop path, and — because both rights
+were granted — proof that the **stronger** right is the one reported. A rule that named `WriteOwner`
+here would tell an operator that hardening the forest would protect them, which it would not.
+
+**Before the plant this rule returned zero**, and the evidence was queried directly to confirm no
+entry in the forest granted a takeover-class right to a broad principal. That was true, and it was
+still not verification: `building-a-rule.md` is explicit that a reading which has only ever returned
+zero proves nothing, and `F-S45-4` and `F-S45-6` are both defects that a zero was hiding.
+
+**Two earlier runs are the more important record.** The first judged **no objects at all** — all
+8,378 counted as *not applicable* — because the rule declares no subject class to mean *every object*
+and an empty list matched nothing (`F-S45-4`). The second refused every computer object because the
+`dSHeuristics` reader named a table that does not exist and a guard turned the failure into a
+plausible silence (`F-S45-5`). 3,139 tests were green throughout.
 
 ---
 

@@ -70,11 +70,26 @@ internal static class ProtectedObjectReading
     /// The object's own security identifier, or null where it carries none or none could be read.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>An object with no SID is not a failure.</b> Organizational units, containers and Group
     /// Policy objects have none, and they are the commonest subjects of the ownership rules.
+    /// </para>
+    /// <para>
+    /// <b>Read from bytes and never as text, which is how the directory stores it.</b> This read it
+    /// as text until 2026-09-05, and <see cref="AttributeReading.Text"/> returns null for a binary
+    /// attribute - so <i>every</i> object in the forest looked like it had no identifier, every
+    /// object was therefore treated as unprotected, and <c>SEC-032</c> could not fire at all. The
+    /// paragraph above made the wrong answer look deliberate. Found by planting a protected object
+    /// in the lab and watching <c>SEC-031</c> report it instead. Recorded as <c>F-S45-6</c>.
+    /// </para>
     /// </remarks>
     public static string? SidTextOf(ObjectAttributes subject) =>
-        AttributeReading.Text(subject, "objectSid");
+        subject.Attributes
+            .Where(a => string.Equals(
+                a.LdapDisplayName, "objectSid", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(a => a.Values)
+            .Select(v => v.Bytes is null ? null : Sid.ToText(v.Bytes))
+            .FirstOrDefault(s => s is not null);
 
     /// <summary>
     /// Whether an object without a security identifier can be treated as unprotected.

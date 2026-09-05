@@ -1,3 +1,4 @@
+using System.Security.Principal;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
@@ -422,11 +423,22 @@ public sealed class ObjectOwnershipRuleTests
     private static AdminSdExclusionMask Mask() =>
         new([], HeuristicReadOutcome.DefaultedByAbsence, '0');
 
+    /// <summary>A security identifier in the binary form the directory stores.</summary>
+    private static byte[] BytesOf(string sid)
+    {
+        var identifier = new SecurityIdentifier(sid);
+        var bytes = new byte[identifier.BinaryLength];
+        identifier.GetBinaryForm(bytes, 0);
+        return bytes;
+    }
+
     private static string? SidOf(ObjectAttributes subject) =>
         subject.Attributes
-            .FirstOrDefault(a => string.Equals(
+            .Where(a => string.Equals(
                 a.LdapDisplayName, "objectSid", StringComparison.OrdinalIgnoreCase))
-            ?.Values.FirstOrDefault()?.Text;
+            .SelectMany(a => a.Values)
+            .Select(v => v.Bytes is null ? null : Sid.ToText(v.Bytes))
+            .FirstOrDefault(s => s is not null);
 
     private static ObjectPermissions Permissions(
         DescriptorAvailability availability,
@@ -483,10 +495,13 @@ public sealed class ObjectOwnershipRuleTests
 
         if (sid is not null)
         {
+            // STORED AS BYTES, WHICH IS HOW THE DIRECTORY STORES IT. A fixture holding the text
+            // form would pass against a rule that read the text form, and that rule would find
+            // nothing in a real forest - which is exactly what happened, as F-S45-6 records.
             attributes.Add(new ObjectAttribute(
                 "objectSid",
                 AttributeCardinality.SingleValued,
-                [new AttributeValue(0, sid, null)]));
+                [new AttributeValue(0, null, BytesOf(sid))]));
         }
 
         return new ObjectAttributes(

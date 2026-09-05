@@ -58,13 +58,24 @@ And on the protected set:
 > the directory.[^appendixc]
 
 So an owner outside the administrative tier can grant themselves control of an object the directory
-protects *because* it confers privilege. `AdminSDHolder` re-stamping the object's permission list
-every hour does not help: it rewrites the **DACL**, and it does not change the **owner**, who can
-rewrite the DACL again immediately.
+protects *because* it confers privilege.
 
-**That last point is the whole reason this rule is `High` rather than `Medium`.** An administrator
-may reasonably believe a protected object is self-healing. Against a non-administrative owner it is
-not.
+> [!WARNING]
+> **The paragraph that followed here is in doubt, and it is the paragraph this rule's severity rests
+> on.** It argued that `AdminSDHolder` re-stamping does not help, because SDProp rewrites the DACL
+> and leaves the owner alone — so the exposure is durable. **The lab suggests otherwise.** A planted
+> protected object's owner was set to a non-administrator, was recorded as such in the capture, and
+> roughly twenty minutes later read back as `Domain Admins` with nobody having changed it. Microsoft's
+> own pages disagree with each other: most say SDProp resets *permissions*, but the Event 4780
+> article says it makes the descriptor match the template *"on the binary level"*, and a descriptor
+> includes the owner.
+>
+> **If SDProp does reset the owner, this rule still has something true to say, but it is a different
+> sentence**: the ownership was changed within the last hour, or SDProp is not running. Both are
+> worth reporting; neither is what [§4](#4-severity) and the guidance currently claim. Recorded as
+> `F-S45-7`, with the controlled experiment in
+> `next/tools/Set-LabOwnershipAndTakeover.ps1 -TestSdProp`. **Do not cite the durability argument
+> until that has been run.**
 
 ## 3. What this rule refuses to claim
 
@@ -147,12 +158,22 @@ Negative controls, each of which must be observed failing:
 
 ## 9. Verified against `ad.lab`
 
-**Run 2026-09-05. 8,378 objects judged, 0 refused, 0 findings.**
+**Run 2026-09-05 against a planted positive. 8,379 objects judged, 4 refused, 1 finding.**
 
-No object that `AdminSDHolder` protects in this forest is owned by a non-administrative principal,
-which is what a correctly-administered lab should look like. The mechanism is proven by the rule's
-own tests rather than by this run — see `F-S45-4` for why a zero from a rule is worth distrusting
-until the count of objects *judged* has been read beside it.
+`Set-LabOwnershipAndTakeover.ps1` plants `SecureADProtObject`, a member of `Backup Operators` — which
+Appendix C lists as protected — owned by `SecureADPlainOwner`, an ordinary user. The rule reports it
+at `High` with the expected wording, and **`SEC-031` does not**, which proves the disjointness
+against a real directory rather than only in a fixture.
+
+**Planting it is what found `F-S45-6`, and nothing else would have.** Before the plant this rule had
+returned zero and looked correct. It could not fire at all: it read `objectSid` as text where the
+directory stores bytes, so every object in the forest looked like it carried no identifier and was
+treated as unprotected. The planted object was reported by `SEC-031` at `Low` — the right claim at
+the wrong severity, on exactly the objects where severity matters. `SEC-031` fell from 9 findings to
+8 and this rule rose from 0 to 1 when it was fixed, which is the same object moving to the rule that
+owns it.
+
+**The run also cast doubt on [§2](#2-why-this-matters).** See `F-S45-7`.
 
 ---
 
