@@ -2,6 +2,7 @@ using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Schema;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
@@ -163,6 +164,21 @@ public enum DerivedFactKind
 /// beside the entries, so a rule cannot read "nobody looked" as "nothing there".
 /// </para>
 /// </param>
+/// <param name="OwnerImplicitRights">
+/// Whether this forest has switched off the rights an object's owner holds without being granted
+/// them, from <c>dSHeuristics</c> character 29. Null where no judging supplied it.
+/// <para>
+/// <b>Resolved once and passed in, rather than each rule reading the raw string.</b> Three rules
+/// need this answer and the reading has a documented fallback that is easy to get wrong — an
+/// unrecognised character defaults to <c>1</c>, not <c>0</c>. One reading is one place to be right.
+/// </para>
+/// <para>
+/// <b>It is not the whole answer and must not be used as one.</b> The setting blocks an owner's
+/// rights only in combination with the object's class and the owner's group membership; see
+/// <see cref="Kernel.Security.DirectoryHeuristics.BlocksImplicitOwnerRights"/>, which takes all
+/// three together.
+/// </para>
+/// </param>
 public sealed record JudgingContext(
     DateTimeOffset AsOf,
     StoredProtectedPrincipalDerivation? ProtectedPrincipals,
@@ -171,7 +187,8 @@ public sealed record JudgingContext(
     Func<string, string, PrincipalExpansion>? MembersOfPrincipal,
     SchemaGuidCatalog? SchemaGuids,
     Func<string, string?>? PrincipalNames,
-    Func<Guid, GpoRegistrySettings>? GpoMachineRegistrySettings)
+    Func<Guid, GpoRegistrySettings>? GpoMachineRegistrySettings,
+    OwnerImplicitRightsSetting? OwnerImplicitRights)
 {
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
@@ -185,5 +202,5 @@ public sealed record JudgingContext(
     /// </remarks>
     /// <param name="asOf">The reference time this judging is evaluated against.</param>
     public static JudgingContext At(DateTimeOffset asOf) =>
-        new(asOf, null, null, null, null, null, null, null);
+        new(asOf, null, null, null, null, null, null, null, null);
 }

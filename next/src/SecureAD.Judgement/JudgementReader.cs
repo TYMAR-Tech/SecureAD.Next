@@ -606,7 +606,21 @@ public sealed class JudgementReader : IDisposable
         e.broad_principal_sid               AS e_broad_principal_sid,
         e.broad_principal_name              AS e_broad_principal_name,
         e.expansion_was_complete            AS e_expansion_was_complete,
-        e.finding_id                        AS e_finding_id
+        e.finding_id                        AS e_finding_id,
+        t.trustee_sid                       AS t_trustee_sid,
+        t.trustee_name                      AS t_trustee_name,
+        t.broad_principal_sid               AS t_broad_principal_sid,
+        t.broad_principal_name              AS t_broad_principal_name,
+        t.takeover_right                    AS t_takeover_right,
+        t.inherited_from                    AS t_inherited_from,
+        t.expansion_was_complete            AS t_expansion_was_complete,
+        t.finding_id                        AS t_finding_id,
+        w.owner_sid                         AS w_owner_sid,
+        w.owner_name                        AS w_owner_name,
+        w.standing                          AS w_standing,
+        w.object_class                      AS w_object_class,
+        w.membership_was_complete           AS w_membership_was_complete,
+        w.finding_id                        AS w_finding_id
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -620,6 +634,8 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_laps_deployment l ON l.finding_id = f.finding_id
         LEFT JOIN finding_laps_password_reader r ON r.finding_id = f.finding_id
         LEFT JOIN finding_laps_decryptor e ON e.finding_id = f.finding_id
+        LEFT JOIN finding_object_takeover t ON t.finding_id = f.finding_id
+        LEFT JOIN finding_object_ownership w ON w.finding_id = f.finding_id
         """;
 
     /// <summary>
@@ -674,6 +690,15 @@ public sealed class JudgementReader : IDisposable
         // exactly what one kind of SEC-093 finding says - so either as the discriminator would drop
         // an intact finding into the "no evidence" branch below and throw on it. This is P-112.
         var lapsDecryptorValue = reader.GetOrdinal("e_configured_value");
+
+        // trustee_sid, because it is NOT NULL on any row that exists, for the same reason SEC-090's
+        // discriminator is. inherited_from and trustee_name are both legitimately null. P-112.
+        var takeoverTrustee = reader.GetOrdinal("t_trustee_sid");
+
+        // owner_sid, because MS-ADTS 6.1.3 states a descriptor's owner SID cannot be null, and a
+        // descriptor carrying none is refused rather than reported - so a row that exists has one.
+        // owner_name is legitimately null for a well-known or foreign-forest owner. P-112.
+        var ownershipOwner = reader.GetOrdinal("w_owner_sid");
 
         FindingEvidence evidence;
 
@@ -758,6 +783,36 @@ public sealed class JudgementReader : IDisposable
                 Enum.Parse<LapsGrantReach>(reader.GetString(reader.GetOrdinal("r_reach"))),
                 reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
                 reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete")) != 0);
+        }
+        else if (!reader.IsDBNull(takeoverTrustee))
+        {
+            var findingId = reader.GetInt64(reader.GetOrdinal("t_finding_id"));
+            var trusteeName = reader.GetOrdinal("t_trustee_name");
+            var broadName = reader.GetOrdinal("t_broad_principal_name");
+            var inheritedFrom = reader.GetOrdinal("t_inherited_from");
+
+            evidence = new ObjectTakeoverEvidence(
+                reader.GetString(takeoverTrustee),
+                reader.IsDBNull(trusteeName) ? null : reader.GetString(trusteeName),
+                reader.GetString(reader.GetOrdinal("t_broad_principal_sid")),
+                reader.IsDBNull(broadName) ? null : reader.GetString(broadName),
+                TakeoverPaths.TryGetValue(findingId, out var takeoverPath) ? takeoverPath : [],
+                Enum.Parse<ObjectTakeoverRight>(
+                    reader.GetString(reader.GetOrdinal("t_takeover_right"))),
+                reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
+                reader.GetInt64(reader.GetOrdinal("t_expansion_was_complete")) != 0);
+        }
+        else if (!reader.IsDBNull(ownershipOwner))
+        {
+            var ownerName = reader.GetOrdinal("w_owner_name");
+
+            evidence = new ObjectOwnershipEvidence(
+                reader.GetString(ownershipOwner),
+                reader.IsDBNull(ownerName) ? null : reader.GetString(ownerName),
+                Enum.Parse<ObjectOwnerStanding>(
+                    reader.GetString(reader.GetOrdinal("w_standing"))),
+                reader.GetString(reader.GetOrdinal("w_object_class")),
+                reader.GetInt64(reader.GetOrdinal("w_membership_was_complete")) != 0);
         }
         else if (!reader.IsDBNull(lapsDecryptorValue))
         {
@@ -869,6 +924,20 @@ public sealed class JudgementReader : IDisposable
             + "ORDER BY finding_id, ordinal");
 
     private Dictionary<long, List<PathStep>>? _decryptorPaths;
+
+    /// <summary>
+    /// Every stored takeover route, by the finding it belongs to, in path order.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from the other two for the reason given above: a finding identifier is only
+    /// unique within one table, so unioning them would attach one rule's path to another's finding.
+    /// </remarks>
+    private Dictionary<long, List<PathStep>> TakeoverPaths =>
+        _takeoverPaths ??= ReadPathSteps(
+            "SELECT finding_id, sid, name FROM finding_object_takeover_path "
+            + "ORDER BY finding_id, ordinal");
+
+    private Dictionary<long, List<PathStep>>? _takeoverPaths;
 
     private Dictionary<long, List<PathStep>> ReadPathSteps(string sql)
     {

@@ -41,5 +41,8 @@ public static class RuleCatalogue
         new LapsRotationStale(),
         new LapsPasswordReadAccess(),
         new LapsDecryptorBroadPrincipal(),
+        new BroadPrincipalCanTakeOverObject(),
+        new ObjectOwnedByNonAdministrator(),
+        new ProtectedObjectOwnedByNonAdministrator(),
     ];
 }

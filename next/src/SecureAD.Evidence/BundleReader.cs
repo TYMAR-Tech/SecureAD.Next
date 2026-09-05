@@ -619,6 +619,65 @@ public sealed class BundleReader : IDisposable
     }
 
     /// <summary>
+    /// Reads the forest's <c>dSHeuristics</c> string, which holds one forest-wide setting per
+    /// character position.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Read once for a bundle, not once for an object.</b> There is one <c>nTDSService</c> object
+    /// in a forest and its answer is the same for every object judged against it.
+    /// </para>
+    /// <para>
+    /// <b>Three states, and the third is why this does not return a bare string.</b> A forest that
+    /// never set the attribute answers with the empty string, which is a real answer — MS-ADTS says
+    /// every character then takes its documented default. A bundle whose configuration partition was
+    /// never read answers <c>null</c>, which is not an answer at all. Collapsing the two would let a
+    /// run that could not look report the forest's defaults, which is the shape
+    /// <c>docs/decisions/0002</c> exists to prevent, and here it would decide whether an owner keeps
+    /// the right to rewrite an object's permissions.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// The attribute's value, the empty string where the service object carries none, or null where
+    /// no service object was captured.
+    /// </returns>
+    public string? ReadForestHeuristics()
+    {
+        // A BUNDLE WITH NO OBJECT TABLE HELD NO OBJECTS, so nothing was read and null is the honest
+        // answer rather than an exception. This is asked explicitly instead of catching the error,
+        // because swallowing a SQL failure would also swallow a real one - a corrupt table would
+        // then read as "the forest was never asked" and every rule depending on this would quietly
+        // refuse instead of failing loudly.
+        using (var exists = Connection.CreateCommand())
+        {
+            exists.CommandText =
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'object' LIMIT 1";
+
+            if (exists.ExecuteScalar() is null)
+                return null;
+        }
+
+        using var command = Connection.CreateCommand();
+
+        command.CommandText =
+            $"""
+            SELECT o.{BundleSchema.ColumnNameFor("dSHeuristics")}
+            FROM object AS o
+            WHERE (SELECT v.value FROM objectclass_value AS v
+                   WHERE v.object_id = o.object_id
+                   ORDER BY v.ordinal DESC LIMIT 1) = 'nTDSService' COLLATE NOCASE
+            LIMIT 1
+            """;
+
+        using var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+            return null;
+
+        return reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+    }
+
+    /// <summary>
     /// Reads the schema partition's attribute definitions, so a caller can tell an attribute this
     /// forest withholds from one a machine simply does not carry.
     /// </summary>

@@ -3,6 +3,7 @@ using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
@@ -205,6 +206,12 @@ public static class JudgingRun
                 // files and sit in the bundle. Unmemoised, because a policy is judged once and its
                 // settings are not asked for a second time.
                 GpoMachineRegistrySettings = bundle.ReadGpoMachineRegistrySettings,
+
+                // Read once for the whole forest, not per object. Whether an owner keeps the right
+                // to rewrite an object's permissions turns partly on this, so a rule that could not
+                // read it must refuse rather than assume the permissive default.
+                OwnerImplicitRights = DirectoryHeuristics.OwnerImplicitRights(
+                    bundle.ReadForestHeuristics()),
             };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse

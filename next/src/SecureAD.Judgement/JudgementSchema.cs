@@ -37,7 +37,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 12;
+    public const int Version = 13;
 
     private static readonly string[] TableDdl =
     [
@@ -426,6 +426,76 @@ public static class JudgementSchema
             sid                                 TEXT    NOT NULL,
             name                                TEXT        NULL,
             PRIMARY KEY (finding_id, ordinal)
+        )
+        """,
+
+        // SEC-060: an object a principal broad in every organisation can take control of.
+        //
+        // TRUSTEE_SID IS NOT NULL AND IS THE DISCRIMINATOR, per P-112: a row that exists always has
+        // one, so the reader never keys this evidence kind off a legitimately null column.
+        //
+        // RIGHT IS STORED BECAUSE THE THREE ARE NOT INTERCHANGEABLE. WriteDacl and GenericAll grant
+        // control of the list directly. WriteOwner reaches it in two steps, through becoming the
+        // owner, and that second step depends on the forest not having blocked an owner's implicit
+        // rights - so an operator reading a stored finding has to be able to tell which one this
+        // was. Flattening them to "takeover" would lose the distinction that decides whether the
+        // finding is even true on a hardened forest.
+        """
+        CREATE TABLE finding_object_takeover (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            trustee_sid                         TEXT    NOT NULL,
+            trustee_name                        TEXT        NULL,
+            broad_principal_sid                 TEXT    NOT NULL,
+            broad_principal_name                TEXT        NULL,
+            takeover_right                      TEXT    NOT NULL,
+            inherited_from                      TEXT        NULL,
+            expansion_was_complete              INTEGER NOT NULL,
+            PRIMARY KEY (finding_id)
+        )
+        """,
+
+        // The membership path for SEC-060, one principal per row, for the reason the LAPS path
+        // table gives in full: the path is the finding, and the nesting lives in the derivation so
+        // it cannot be recomputed from the judgement store alone.
+        """
+        CREATE TABLE finding_object_takeover_path (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            ordinal                             INTEGER NOT NULL,
+            sid                                 TEXT    NOT NULL,
+            name                                TEXT        NULL,
+            PRIMARY KEY (finding_id, ordinal)
+        )
+        """,
+
+        // SEC-031 and SEC-032: an object whose owner is not an administrative principal.
+        //
+        // ONE TABLE FOR TWO RULES, AND THAT IS NOT A SHORTCUT. The two rules record identical facts
+        // and differ only in the claim they make about them - SEC-031 reports latent authority over
+        // an ordinary object at Low, SEC-032 reports a route to privilege over an AdminSDHolder
+        // protected object at High. The finding row already carries the rule identifier, so which
+        // claim was made is never in doubt. The rules cover disjoint sets of objects, so no object
+        // appears here twice.
+        //
+        // OWNER_SID IS NOT NULL AND IS THE DISCRIMINATOR, per P-112. A descriptor that was read
+        // always has an owner - MS-ADTS 6.1.3 states the owner SID cannot be null - and a
+        // descriptor carrying none is refused rather than reported, so a row that exists has one.
+        //
+        // STANDING IS STORED BECAUSE THE TWO STATES CARRY OPPOSITE REMEDIES. An owner that exists
+        // can be asked to hand ownership over. An owner that has been deleted cannot, and the
+        // object is orphaned - which is a different sentence to put in front of an operator.
+        //
+        // OBJECT_CLASS IS STORED RATHER THAN LOOKED UP. It decides whether the forest's
+        // owner-rights hardening could have applied at all, and a stored finding has to stay
+        // readable without re-opening the evidence it came from.
+        """
+        CREATE TABLE finding_object_ownership (
+            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+            owner_sid                           TEXT    NOT NULL,
+            owner_name                          TEXT        NULL,
+            standing                            TEXT    NOT NULL,
+            object_class                        TEXT    NOT NULL,
+            membership_was_complete             INTEGER NOT NULL,
+            PRIMARY KEY (finding_id)
         )
         """,
 

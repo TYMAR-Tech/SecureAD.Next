@@ -66,6 +66,39 @@ public static class GenericRightsExpander
     private const int DS_GENERIC_ALL = 0x000F01FF;
 
     /// <summary>
+    /// <c>WRITE_DAC</c>: the right to modify an object's access control list directly.
+    /// </summary>
+    /// <remarks>
+    /// Public because two rules ask whether a principal can rewrite an object's permissions, and a
+    /// second copy of this constant is the one that would drift. MS-ADTS 6.1.3 names it
+    /// <c>RIGHT_WRITE_DAC</c> and lists it in <c>GENERIC_ALL_MAPPING</c>.
+    /// </remarks>
+    public const int WriteDacl = 0x00040000;
+
+    /// <summary>
+    /// <c>WRITE_OWNER</c>: the right to become an object's owner.
+    /// </summary>
+    /// <remarks>
+    /// MS-ADTS 6.1.3 names it <c>RIGHT_WRITE_OWNER</c> and lists it in <c>GENERIC_ALL_MAPPING</c>.
+    /// <b>Holding it is not the same as holding <see cref="WriteDacl"/>.</b> It reaches the same
+    /// place through ownership, and only where the owner's implicit rights survive.
+    /// </remarks>
+    public const int WriteOwner = 0x00080000;
+
+    /// <summary>
+    /// Whether an expanded mask carries every right Full Control carries.
+    /// </summary>
+    /// <remarks>
+    /// <b>Asked of an already-expanded mask, which is what the evidence stores.</b> A bundle holds
+    /// masks with generic bits already resolved, so a caller cannot look for the <c>GENERIC_ALL</c>
+    /// bit and find it. This compares against the mapping MS-ADTS 6.1.3 publishes, held here once
+    /// rather than restated at each call site.
+    /// </remarks>
+    /// <param name="expandedMask">A mask that has already been through <see cref="Expand"/>.</param>
+    public static bool IsFullControl(int expandedMask) =>
+        (expandedMask & DS_GENERIC_ALL) == DS_GENERIC_ALL;
+
+    /// <summary>
     /// Expands generic rights in the access mask to their AD DS explicit equivalents.
     /// Generic bits are cleared after expansion.
     /// </summary>

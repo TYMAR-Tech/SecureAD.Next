@@ -419,6 +419,14 @@ public sealed class VouchedValueReachabilityGateTests
     /// <c>dSHeuristics</c> has a documented answer; a bundle whose configuration object was never
     /// read has none, and the two must not render alike. Read true from a character that was stated
     /// or defaulted by absence, and false from one never read.
+    /// 50 and 51 from 2026-09-05 with <c>ObjectTakeoverEvidence.IsComplete</c> and
+    /// <c>ObjectOwnershipEvidence.IsComplete</c>, both added for the ownership and takeover rules
+    /// and both SEC-090's reasoning applied to a different walk. The first is false where the walk
+    /// that found a broad principal inside a trustee stopped early, so a stored finding cannot
+    /// imply that nothing else is inside. The second is false where the walk that decided an owner
+    /// is not administrative did not finish, which matters more than it looks: the owner may hold
+    /// administrative rights through a group the walk never reached, and reporting them as
+    /// non-administrative would name an administrator as a problem.
     /// </para>
     /// </summary>
     [Fact]
@@ -426,7 +434,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(49, found.Count);
+        Assert.Equal(51, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");

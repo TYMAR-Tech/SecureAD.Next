@@ -519,7 +519,8 @@ public sealed class LapsDecryptorBroadPrincipalTests
                 SchemaGuids: null,
                 PrincipalNames: null,
                 GpoMachineRegistrySettings: _ => new GpoRegistrySettings(
-                    [], GpoSettingsOutcome.Read, null)));
+                    [], GpoSettingsOutcome.Read, null),
+                OwnerImplicitRights: null));
 
         Assert.Empty(verdict.Findings);
         Assert.Single(verdict.Unresolved);
@@ -927,7 +928,8 @@ public sealed class LapsDecryptorBroadPrincipalTests
             GpoMachineRegistrySettings: _ => new GpoRegistrySettings(
                 settings,
                 outcome,
-                outcome is GpoSettingsOutcome.Read ? null : "The share refused the folder."));
+                outcome is GpoSettingsOutcome.Read ? null : "The share refused the folder."),
+            OwnerImplicitRights: null);
 
     /// <summary>An expansion of one principal, and a refusal for anything else asked about.</summary>
     private static Func<string, string, PrincipalExpansion> Expands(

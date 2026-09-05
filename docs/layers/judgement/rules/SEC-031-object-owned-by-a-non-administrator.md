@@ -169,39 +169,48 @@ the rule looks correct without either.
 
 ## 6. Severity
 
-**`Low`, uniformly. One level, because a rule may only have one.**
+**`Low`, uniformly. One level, because this rule makes one claim.**
 
-**This was specified as `High` for protected objects and `Medium` otherwise, and that was wrong on
-two counts.** The first is structural: [`0066`](../../../decisions/0066-a-finding-is-called-a-finding.md)
-is `Accepted` and states that *"severity is fixed by the rule card and the customer cannot change
-it"*; [`0081`](../../../decisions/0081-severity-has-four-levels.md) completes it with *"the level
-stays catalogue data"*. A severity that varies per finding is not available to any rule in this
-product. A review on 2026-09-04 proposed a three-level split for the same reason the two-level one
-was written, and neither is possible.
+**Decision: the owner ruled on 2026-09-05 that the protected-object case becomes a second rule
+rather than a second severity, and that this rule keeps one level.** Two reasons were given and the
+second is the stronger. Splitting is cheaper — varying severity per finding would change
+`RuleDefinition`, which all fourteen rules share, whereas a second card changes nothing. But the
+reason to prefer it is what an operator gets: two rules are two things they can sort, filter and
+accept independently, where one rule with mixed levels is a single row they must open to understand.
 
-**The second count is that the review was right about the noise.** The commonest cause of this
-finding is that somebody created the object, as [§1](#1-what-it-finds) says. Organisational units,
-service accounts, application containers and custom application objects routinely carry creator
-ownership as operational residue. A forest in which that is normal would produce an estate-wide wall
-of `Medium`, and a level that describes most of the directory has stopped ranking anything.
+**An earlier draft reached the same shape for a wrong reason, and the correction matters because it
+nearly cost a sound design.** That draft held that
+[`0066`](../../../decisions/0066-a-finding-is-called-a-finding.md) makes per-finding severity
+impossible for any rule. It does not: `0066` forbids **the customer** changing a severity, not a rule
+deriving one. The owner confirmed this on 2026-09-04. So the split is a choice made on its merits and
+not a constraint obeyed — which means it can be revisited if it turns out to serve an operator badly.
 
-**So the single level is `Low`**, which is what a true statement about latent authority deserves when
-the ordinary explanation is benign. `Low` is not *unimportant*: it is a real capability that no
-permission review will show you, and the finding is worth having precisely because nothing else
-reports it.
+**Why `Low` is the right level for what this rule says.** The commonest cause of this finding is that
+somebody created the object, as [§1](#1-what-it-finds) says. Organisational units, service accounts,
+application containers and custom application objects routinely carry creator ownership as
+operational residue. A forest where that is normal would produce an estate-wide wall of `Medium`, and
+a level that describes most of the directory has stopped ranking anything.
 
-**The protected-object case is genuinely more serious, and the way to say so is a second rule rather
-than a second severity.** Owning an object that `AdminSDHolder` protects is a route to privilege
-rather than latent authority over one object. That is a separate claim, deserving its own card, its
-own wording and `High` — and splitting a rule when the severity argument splits is the established
-pattern here: `P-92` collapsed five path rules into one on that reasoning, and `P-96` proposes
-splitting `SEC-071` by feasibility for the same reason. **Recorded as owed, not smuggled in.**
+`Low` is not *unimportant*: it is a real capability that no permission review will show you, and the
+finding is worth having precisely because nothing else reports it.
+
+**The serious case lives in [`SEC-032`](SEC-032-protected-object-owned-by-a-non-administrator.md).**
+Owning an object that `AdminSDHolder` protects is a route to privilege rather than latent authority
+over one object, and that is a different sentence deserving its own card and `High`. Splitting a rule
+when the severity argument splits is the established pattern here: `P-92` collapsed five path rules
+into one on that reasoning, and `P-96` proposes splitting `SEC-071` by feasibility for the same
+reason.
 
 
 ## 7. Which objects are examined
 
-**Every object whose owner was captured.** Not only privileged ones — the owner's decision of
-2026-09-04, with filtering left to the screen.
+**Every object whose owner was captured, except those `AdminSDHolder` protects**, which
+[`SEC-032`](SEC-032-protected-object-owned-by-a-non-administrator.md) covers instead.
+
+**Decision: not only privileged ones — the owner's decision of 2026-09-04, reaffirmed 2026-09-05.**
+Filtering is left to the screen. The owner further ruled on 2026-09-05 that the rule is built at this
+scope and the lab count is **looked at together before anything is decided from it**: a large number
+is information about the forest rather than evidence that the rule is wrong.
 
 **Two consequences worth expecting.** In a forest where the *"System objects: Default owner for
 objects created by members of the Administrators group"* policy has been changed, creator-ownership
@@ -219,10 +228,13 @@ already admits.
 | `dSHeuristics` character 29 | To find whether the forest has blocked implicit owner rights, per [§5](#5-when-the-owner-does-not-actually-keep-the-power-this-rule-reports) |
 | The object's `objectClass` | Because the block above applies only to computer objects |
 | `DerivationReader.MembersOf` | To decide whether the owner is administrative by membership |
+| `ProtectedPrincipalClosure` | To stay silent on objects `SEC-032` covers |
 
-**It no longer reads `ProtectedPrincipalClosure`.** It did while the severity split existed; with
-one level for the rule there is nothing for it to decide. The rule that covers protected objects,
-when it is written, will read it.
+**It reads `ProtectedPrincipalClosure` again, and the reason is the split.** An earlier draft dropped
+it when the severity split was abandoned. With [`SEC-032`](SEC-032-protected-object-owned-by-a-non-administrator.md)
+now covering protected objects, this rule needs it in order to **stay silent on them** — otherwise
+both rules report the same object and an operator sees one problem twice, at two severities, and
+has to work out that they are the same thing. The two rules cover disjoint sets.
 
 ## 9. When it does not answer
 

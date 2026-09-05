@@ -572,6 +572,73 @@ public sealed class JudgementWriter : IDisposable
 
                 return;
 
+            case ObjectTakeoverEvidence takeover:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_object_takeover (finding_id, trustee_sid, "
+                    + "trustee_name, broad_principal_sid, broad_principal_name, "
+                    + "takeover_right, inherited_from, expansion_was_complete) "
+                    + "VALUES ($id, $trustee, $name, $broad, $broadName, $right, $inherited, "
+                    + "$complete)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue("$trustee", takeover.TrusteeSid);
+                        command.Parameters.AddWithValue(
+                            "$name", (object?)takeover.TrusteeName ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$broad", takeover.BroadPrincipalSid);
+                        command.Parameters.AddWithValue(
+                            "$broadName", (object?)takeover.BroadPrincipalName ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$right", takeover.Right.ToString());
+                        command.Parameters.AddWithValue(
+                            "$inherited", (object?)takeover.InheritedFrom ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$complete", takeover.ExpansionWasComplete ? 1L : 0L);
+                    });
+
+                // The path, in order, for the reason SEC-090's does: naming the broad principal
+                // without it does not tell an operator which link to cut.
+                for (var ordinal = 0; ordinal < takeover.MembershipPath.Count; ordinal++)
+                {
+                    var step = takeover.MembershipPath[ordinal];
+                    var position = ordinal;
+
+                    Execute(
+                        transaction,
+                        "INSERT INTO finding_object_takeover_path "
+                        + "(finding_id, ordinal, sid, name) VALUES ($id, $ordinal, $sid, $name)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$ordinal", position);
+                            command.Parameters.AddWithValue("$sid", step.Sid);
+                            command.Parameters.AddWithValue(
+                                "$name", (object?)step.Name ?? DBNull.Value);
+                        });
+                }
+
+                return;
+
+            case ObjectOwnershipEvidence ownership:
+                Execute(
+                    transaction,
+                    "INSERT INTO finding_object_ownership (finding_id, owner_sid, owner_name, "
+                    + "standing, object_class, membership_was_complete) "
+                    + "VALUES ($id, $sid, $name, $standing, $class, $complete)",
+                    command =>
+                    {
+                        command.Parameters.AddWithValue("$id", findingId);
+                        command.Parameters.AddWithValue("$sid", ownership.OwnerSid);
+                        command.Parameters.AddWithValue(
+                            "$name", (object?)ownership.OwnerName ?? DBNull.Value);
+                        command.Parameters.AddWithValue(
+                            "$standing", ownership.Standing.ToString());
+                        command.Parameters.AddWithValue("$class", ownership.ObjectClass);
+                        command.Parameters.AddWithValue(
+                            "$complete", ownership.MembershipWasComplete ? 1L : 0L);
+                    });
+                return;
+
             case LapsDecryptorEvidence decryptor:
                 Execute(
                     transaction,

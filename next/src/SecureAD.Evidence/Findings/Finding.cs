@@ -57,6 +57,19 @@ public enum FindingSubjectKind
     /// remarks above were written for.
     /// </remarks>
     Policy,
+
+    /// <summary>
+    /// Any object in the directory that is neither an account nor a policy - an organizational
+    /// unit, a container, a certificate template.
+    /// </summary>
+    /// <remarks>
+    /// <b>Added for SEC-031 and SEC-032, the first rules whose subject can be anything at all.</b>
+    /// Both report on every object whose owner was captured, and most of those are not principals:
+    /// an organizational unit carries no <c>objectSid</c> and is not an account, but somebody owns
+    /// it and that owner can rewrite its permissions. Forcing such a subject into
+    /// <see cref="Account"/> would tell a reader an organizational unit is a user.
+    /// </remarks>
+    DirectoryObject,
 }
 
 /// <summary>

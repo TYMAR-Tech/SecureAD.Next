@@ -317,6 +317,126 @@ public static class RuleGuidanceCatalogue
                 "https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential"),
 
         new RuleGuidance(
+            "SEC-060",
+            "Permissions",
+
+            // T1222 is permission modification, which is what holding WriteDacl or WriteOwner lets
+            // somebody do. Claimed rather than omitted because the mapping is direct: the technique
+            // describes modifying object permissions to enable follow-on access, and that is
+            // exactly the capability being reported.
+            MitreTechnique: "T1222",
+            WhyItMatters:
+                "A principal that is broad in every organisation - Everyone, Authenticated Users, "
+                + "Domain Users, Domain Computers, Guests or Anonymous - can rewrite this object's "
+                + "permission list. That means any person who can log on can grant themselves, or "
+                + "anybody else, full control of this object, and nothing about it will look "
+                + "unusual afterwards. A permission list shows what was granted; it does not show "
+                + "what the grant is worth. The principal is usually not the one named in the "
+                + "permission - it falls out of the group nesting underneath, which is why nobody "
+                + "notices.",
+            WhatToDo:
+                "Follow the membership path on the finding and cut the link that brings the broad "
+                + "principal into the group the permission names, or narrow the permission so it "
+                + "names only the administrators who need it. Do not simply delete the entry: this "
+                + "product cannot know which principals your organisation intended to hold this "
+                + "access, and the group named may be entirely legitimate apart from what is "
+                + "nested inside it. Where the entry was inherited, the container it came from is "
+                + "named on the finding, and changing it there will affect everything beneath it.",
+            About:
+                "Reports an object over which a principal broad in every organisation effectively "
+                + "holds Full Control, Write DACL, or the ability to take ownership - found by "
+                + "expanding whichever principal the permission actually names all the way down. "
+                + "GenericWrite is deliberately excluded: Microsoft's generic mapping shows it "
+                + "does not include the right to change permissions, so it cannot yield control of "
+                + "the list. Taking ownership is reported only where an owner would actually keep "
+                + "the implicit right to rewrite permissions; where the object carries an OWNER "
+                + "RIGHTS entry, or the forest has blocked implicit owner rights for computer "
+                + "objects, that route reaches nothing and is not reported. Entries that sit on an "
+                + "object only to be inherited by the objects beneath it grant nothing where they "
+                + "sit and are not counted. Deny entries are applied in the order the directory "
+                + "stores them, which is how Windows itself evaluates them. Where the object's "
+                + "permissions could not be read, or the membership walk did not finish, the rule "
+                + "says so rather than reporting the object as safe.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/certificates"),
+
+        new RuleGuidance(
+            "SEC-031",
+            "Permissions",
+
+            // No technique claimed. This reports a capability that exists by ordinary
+            // administrative accident, not an attacker action - the commonest cause is that
+            // somebody created the object. Tagging it as a technique would frame a benign
+            // condition as an attack, which is the wording error section 1 of the rule document
+            // exists to prevent.
+            MitreTechnique: null,
+            WhyItMatters:
+                "The owner of an object can rewrite that object's permissions whenever they like, "
+                + "and ownership does not appear in the permission list. You can review every "
+                + "entry on this object, find nothing wrong, and still miss that its owner can "
+                + "replace the whole list at will. Microsoft is blunt about it: no matter what "
+                + "permissions are set on an object, the owner can always change them. Objects "
+                + "created by an administrator are owned by the Administrators group; an object "
+                + "created by anybody else is owned by that person personally, and stays that way "
+                + "for the life of the object.",
+            WhatToDo:
+                "Decide whether this owner should hold that standing. Where they should not, "
+                + "change the owner to a privileged and monitored principal - which is what "
+                + "Microsoft prescribes for the one case it covers directly. Where the owner is a "
+                + "service account or an application identity that your organisation manages "
+                + "deliberately, accept the finding rather than changing anything: that leaves a "
+                + "record, where a silent exclusion would not. Where the owning account no longer "
+                + "exists the object is orphaned and nobody can be asked to hand ownership over, "
+                + "so an administrator must take ownership before anything else can be done.",
+            About:
+                "Reports an object whose owner is not an administrative principal. This is latent "
+                + "authority and not evidence of wrongdoing - the ordinary cause is that somebody "
+                + "was allowed to create the object, they created it, and they became its owner. "
+                + "An owner who is administrative only through group membership is not reported, "
+                + "which is a correction to the predecessor: the membership is consulted rather "
+                + "than the identifier alone. The rule stays silent where the owner would not "
+                + "actually keep the power - an OWNER RIGHTS entry on the object switches off the "
+                + "owner's implicit rights, and so does the forest setting that blocks them, which "
+                + "applies to computer objects owned by non-administrators. Objects that "
+                + "AdminSDHolder protects are reported by SEC-032 instead and never by both, so no "
+                + "object appears twice. Expect this rule to be plentiful in a forest where "
+                + "delegated creation is normal; a large count is information about the estate "
+                + "rather than a defect.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/windows/win32/secauthz/owner-of-a-new-object"),
+
+        new RuleGuidance(
+            "SEC-032",
+            "Permissions",
+            MitreTechnique: null,
+            WhyItMatters:
+                "This object is one AdminSDHolder protects, which means the directory treats it as "
+                + "conferring privilege - a member of Domain Admins, Enterprise Admins, "
+                + "Administrators or an operator group. Its owner is not an administrative "
+                + "principal, and an owner can rewrite an object's permissions whenever they like. "
+                + "So somebody outside your administrative tier can grant themselves control of a "
+                + "privileged object, and no permission review will show it. That is a route to "
+                + "privilege rather than latent authority over one object, which is why it is "
+                + "reported separately from SEC-031 and at a higher severity.",
+            WhatToDo:
+                "Change the owner to a privileged and monitored principal. Unlike the ordinary "
+                + "ownership finding this one is worth treating as urgent, because the object "
+                + "concerned is one the directory itself protects. Check also how the current "
+                + "owner came to hold that standing: an object created inside a privileged "
+                + "container by a delegated administrator is the usual route, and the delegation "
+                + "that allowed it will still be in place.",
+            About:
+                "Reports an object protected by AdminSDHolder whose owner is not an administrative "
+                + "principal. It applies the same test as SEC-031 and covers the objects SEC-031 "
+                + "deliberately leaves alone, so the two never report the same object. Where the "
+                + "protection closure is incomplete neither rule reports, because an object that "
+                + "might be protected must not be quietly reported at the lower severity. The "
+                + "owner is judged by membership as well as by identifier, and the rule stays "
+                + "silent where the owner would not actually keep the power to rewrite the list.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory"),
+
+        new RuleGuidance(
             "SEC-093",
             "Credentials",
 

@@ -206,6 +206,81 @@ public sealed class EvidenceKindCoverageTests
                 Assert.False(e.IsComplete);
             }),
 
+        // Awkward on the axes that matter for this kind: the WriteOwner right, which is the one
+        // whose truth depends on the forest not having blocked owner rights, reached at depth two
+        // through a nested group, with an unnamed broad principal and a walk that did not finish.
+        // A reader that keyed this off the nullable inherited_from or trustee_name columns, that
+        // dropped the separate path table, or that attached SEC-090's path to this finding, gives a
+        // different answer to at least one of these.
+        new Sample(
+            Definition("SEC-060", "A broad principal can take over an object"),
+            "OU=Applications,DC=contoso,DC=com",
+            new ObjectTakeoverEvidence(
+                TrusteeSid: "S-1-5-21-1004336348-1177238915-682003330-1201",
+                TrusteeName: "App-Admins",
+                BroadPrincipalSid: "S-1-5-21-1004336348-1177238915-682003330-513",
+                BroadPrincipalName: null,
+                MembershipPath:
+                [
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-1201", "App-Admins"),
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-1202", "App-Operators"),
+                    new PathStep(
+                        "S-1-5-21-1004336348-1177238915-682003330-513", null),
+                ],
+                Right: ObjectTakeoverRight.WriteOwner,
+                InheritedFrom: null,
+                ExpansionWasComplete: false),
+            read =>
+            {
+                var e = Assert.IsType<ObjectTakeoverEvidence>(read);
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1201", e.TrusteeSid);
+                Assert.Equal("App-Admins", e.TrusteeName);
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-513", e.BroadPrincipalSid);
+                Assert.Null(e.BroadPrincipalName);
+                Assert.Equal(3, e.MembershipPath.Count);
+                Assert.Equal("App-Admins", e.MembershipPath[0].Name);
+                Assert.Null(e.MembershipPath[^1].Name);
+                Assert.Equal(2, e.NestingDepth);
+                Assert.Equal(ObjectTakeoverRight.WriteOwner, e.Right);
+                Assert.True(e.ThroughOwnership);
+
+                // Set on the object itself rather than inherited, which is the null the
+                // discriminator must not be keyed off.
+                Assert.Null(e.InheritedFrom);
+                Assert.False(e.IsComplete);
+            }),
+
+        // Awkward on the axes that matter for this kind: an owner that no longer exists, which is
+        // the state carrying the opposite remedy, on a class the owner-rights hardening could never
+        // have applied to, with no name in this bundle and a walk that finished. A reader that
+        // keyed this off the nullable owner_name column, or that flattened the standing to a
+        // boolean, gives a different answer to at least one of these.
+        new Sample(
+            Definition("SEC-031", "An object is owned by somebody who is not an administrator"),
+            "OU=Finance,DC=contoso,DC=com",
+            new ObjectOwnershipEvidence(
+                OwnerSid: "S-1-5-21-1004336348-1177238915-682003330-1310",
+                OwnerName: null,
+                Standing: ObjectOwnerStanding.DoesNotExist,
+                ObjectClass: "organizationalUnit",
+                MembershipWasComplete: true),
+            read =>
+            {
+                var e = Assert.IsType<ObjectOwnershipEvidence>(read);
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1310", e.OwnerSid);
+                Assert.Null(e.OwnerName);
+                Assert.Equal(ObjectOwnerStanding.DoesNotExist, e.Standing);
+                Assert.True(e.IsOrphaned);
+                Assert.Equal("organizationalUnit", e.ObjectClass);
+
+                // The owner has no name here, so the display falls back to the identifier rather
+                // than showing an empty cell.
+                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1310", e.Display);
+                Assert.True(e.IsComplete);
+            }),
+
         // Awkward on the axes that matter for this kind: a decryptor named as a qualified name
         // rather than an identifier, reached at depth two, with a walk that completed. A reader
         // that keyed the evidence off either nullable identifier column, that dropped the separate

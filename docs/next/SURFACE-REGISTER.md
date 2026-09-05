@@ -223,6 +223,10 @@ The table below sits between the two markers around it, so the test parses only 
 | ListedObject | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | ObjectPage | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |
 | ObjectPermissions | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
+| ObjectTakeoverEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| ObjectTakeoverRight | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| ObjectOwnershipEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| ObjectOwnerStanding | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PermissionEntry | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
 | PermissionTrustee | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
 | DescriptorAvailability | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
@@ -383,6 +387,9 @@ The table below sits between the two markers around it, so the test parses only 
 | LapsGrantReach | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | PathStep | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsDecryptorBroadPrincipal | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| BroadPrincipalCanTakeOverObject | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| ObjectOwnedByNonAdministrator | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
+| ProtectedObjectOwnedByNonAdministrator | SecureAD.Judgement | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsDecryptorEvidence | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsDecryptorForm | SecureAD.Evidence | [what-a-finding-is](../layers/judgement/what-a-finding-is.md) |
 | LapsComputer | SecureAD.Evidence | [how-results-are-shown](../areas/how-results-are-shown.md) |

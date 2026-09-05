@@ -81,6 +81,13 @@ records stay in Evidence because they are durable data rather than executable po
 | `LapsDecryptorBroadPrincipal` | SEC-093: a Group Policy Object whose authorized Windows LAPS password decryptor is, or contains through nesting, a principal broad in every organisation |
 | `LapsDecryptorEvidence` | The configured decryptor value, the principal it resolved to, the broad principal that can decrypt and the route that reached it |
 | `LapsDecryptorForm` | Which of the three forms Microsoft accepts the value was written in, which decides what an unresolved value means |
+| `BroadPrincipalCanTakeOverObject` | SEC-060: an object over which a principal broad in every organisation effectively holds the right to rewrite the permission list, directly or by taking ownership |
+| `ObjectTakeoverEvidence` | The principal the entry named, the broad principal inside it, the route that reached it, and which takeover-class right was held |
+| `ObjectTakeoverRight` | Which of Full Control, Write DACL or Take Ownership was held — kept apart because only the last depends on an owner keeping implicit rights |
+| `ObjectOwnedByNonAdministrator` | SEC-031: an object whose owner is not an administrative principal, and which AdminSDHolder does not protect |
+| `ProtectedObjectOwnedByNonAdministrator` | SEC-032: the same condition on an object AdminSDHolder does protect, which is a route to privilege rather than latent authority |
+| `ObjectOwnershipEvidence` | The owner, whether that account still exists, the object's class, and whether the walk behind the answer finished |
+| `ObjectOwnerStanding` | Whether the owning account exists or has been deleted — two states with opposite remedies |
 
 <!-- TYPES:END -->
 
