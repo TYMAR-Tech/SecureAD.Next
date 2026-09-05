@@ -370,10 +370,26 @@ internal static class Program
     /// One line an operator can read in the morning: how many rules ran, and what they found.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>The rule count is there because a finding count on its own does not mean what it looks
     /// like.</b> "0 findings" from nine rules is a quiet forest; "0 findings" from two rules is a
     /// judging that mostly did not happen, and the two must not print identically -
     /// <c>docs/decisions/0002</c>.
+    /// </para>
+    /// <para>
+    /// <b>The rule count was not enough, and 2026-09-05 proved it.</b> Three rules ran, succeeded,
+    /// and examined <b>no objects at all</b> - every one of 8,378 counted as not applicable, because
+    /// they declared no subject class to mean <i>every object</i> and an empty list matched nothing.
+    /// The summary read "17 rules ran, 16 findings" and looked entirely healthy. A suite of 3,139
+    /// tests was green. Recorded as <c>F-S45-4</c>.
+    /// </para>
+    /// <para>
+    /// <b>So a rule that examined nothing is now named.</b> Rules are scoped, so a low count is
+    /// ordinary - SEC-090 judges fourteen computers in this lab and that is correct. <b>Zero is
+    /// different</b>: it means the rule was offered the whole forest and found nothing it was even
+    /// about, which is a defect in the rule far more often than it is a fact about the directory.
+    /// Naming it costs one line and would have caught all three.
+    /// </para>
     /// </remarks>
     private static string Summarise(string bundleDirectory)
     {
@@ -392,8 +408,23 @@ internal static class Program
             ? string.Empty
             : $", {failed} did not complete";
 
-        return $"Judged: {stored.RulesRun.Count} rules ran{faults}, "
+        var summary = $"Judged: {stored.RulesRun.Count} rules ran{faults}, "
             + $"{stored.Findings.Count} findings.";
+
+        var examinedNothing = stored.RulesRun
+            .Where(r => r.ObjectsJudged == 0)
+            .Select(r => r.RuleId)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+
+        if (examinedNothing.Count == 0)
+            return summary;
+
+        return summary
+            + Environment.NewLine
+            + $"  WARNING: {string.Join(", ", examinedNothing)} examined no objects at all. "
+            + "A rule offered the whole forest that finds nothing it is even about is usually "
+            + "broken rather than satisfied - check its subject classes before trusting a zero.";
     }
 
     private static string CurrentDerivationPath(string bundleDirectory)

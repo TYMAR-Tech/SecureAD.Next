@@ -113,14 +113,19 @@ them either. The reasoning beside `F-S45-6` — that an organizational unit legi
 identifier, so absence is an answer rather than a gap — is true, and it made the defect look
 deliberate.
 
-**Two lessons worth carrying.**
+**Two lessons worth carrying, and both now have a guard.**
 
 - **`show-findings.ps1` cannot tell a clean rule from a dead one.** It lists findings, so zero reads
-  the same either way. `rule_execution` carries `objects_judged` beside `objects_not_judged` and is
-  the only thing that separates them. **Read it before believing a zero.**
+  the same either way. **The judging summary now names any rule that examined no objects**, and
+  `RuleApplicabilityTests.EveryRuleInTheCatalogueIsAboutSomething` fails the build for a rule that is
+  about nothing before it ever reaches a forest. Both were mutation-tested against the original
+  defect: the gate names all three rules, and the summary prints
+  *"WARNING: SEC-032 examined no objects at all"*.
 - **A rule that has never been observed firing has not been verified.** Both `SEC-060` and
   `SEC-032` returned zero honestly — the forest really held no such condition — and both were
-  broken. Planting a positive is what proved them, and it is what found `F-S45-6`.
+  broken. Planting a positive is what proved them, and it is what found `F-S45-6`. **No guard
+  replaces this one**: a rule can be about the right objects, be offered all of them, and still be
+  wrong about every one.
 
 ---
 

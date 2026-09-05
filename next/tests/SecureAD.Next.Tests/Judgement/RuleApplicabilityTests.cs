@@ -32,6 +32,63 @@ namespace SecureAD.Next.Tests.Judgement;
 /// </remarks>
 public sealed class RuleApplicabilityTests
 {
+    /// <summary>
+    /// <b>Every rule in the catalogue is about something.</b> A rule that is about nothing is
+    /// offered nothing, judges nothing, and reports nothing - while succeeding.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the general form of the defect, and it is why the three hard-coded cases below
+    /// are not enough.</b> Those name <c>SEC-060</c>, <c>SEC-031</c> and <c>SEC-032</c> because
+    /// those are the three that were caught. This covers the eighteenth rule nobody has written yet.
+    /// </para>
+    /// <para>
+    /// <b>The object handed to each rule is built from the rule's own declared classes, and that is
+    /// not circular.</b> The question being asked is not <i>are these the right classes</i> - that is
+    /// the rule document's business. It is <i>given the classes this rule declares, is it about
+    /// anything at all</i>, and a rule declaring none must be about everything. A rule that declared
+    /// a misspelled class would still pass here, and should: the misspelling is a different defect,
+    /// and one a lab run finds.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryRuleInTheCatalogueIsAboutSomething()
+    {
+        var mute = new List<string>();
+
+        foreach (var rule in RuleCatalogue.All)
+        {
+            // A rule declaring no class means every object, so a plain object stands in. One
+            // declaring classes is offered an object of the first it names.
+            var objectClass = rule.Definition.SubjectClasses.Count == 0
+                ? "organizationalUnit"
+                : rule.Definition.SubjectClasses[0];
+
+            if (!rule.Definition.IsAbout(Subject(objectClass)))
+                mute.Add($"  {rule.Definition.Id} declares [{string.Join(", ", rule.Definition.SubjectClasses)}]");
+        }
+
+        Assert.True(
+            mute.Count == 0,
+            "These rules are about no object and would run, succeed, and report nothing:"
+            + Environment.NewLine + string.Join(Environment.NewLine, mute)
+            + Environment.NewLine
+            + "On 2026-09-05 three rules did exactly that against a real forest - all 8,378 "
+            + "objects counted as not applicable - while 3,139 tests were green. See F-S45-4.");
+    }
+
+    /// <summary>
+    /// The catalogue holds rules, so the check above is measuring something.
+    /// </summary>
+    /// <remarks>
+    /// <b>The self-test every gate carries.</b> A loop over an empty catalogue passes while
+    /// examining nothing, which is the failure this whole class exists to prevent - and it would be
+    /// a poor joke to prevent it in the product and commit it in the test.
+    /// </remarks>
+    [Fact]
+    public void TheCatalogueIsNotEmpty() =>
+        Assert.True(RuleCatalogue.All.Count >= 17, $"only {RuleCatalogue.All.Count} rules found");
+
     /// <summary>A rule declaring no class is offered every object.</summary>
     [Theory]
     [InlineData("organizationalUnit")]
