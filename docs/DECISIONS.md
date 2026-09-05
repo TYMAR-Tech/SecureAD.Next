@@ -94,3 +94,7 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0092](decisions/0092-a-view-filter-is-not-a-change-to-the-catalogue.md) | 2026-09-03 | Accepted | A view filter is not a change to the catalogue |
 | [0093](decisions/0093-an-export-states-what-it-contains.md) | 2026-09-03 | Accepted | An export states what it contains |
 | [0094](decisions/0094-a-wmi-filter-is-captured-and-named-never-evaluated.md) | 2026-09-03 | Accepted | A WMI filter is captured and named, never evaluated |
+| [0095](decisions/0095-ownership-is-a-control-edge-where-the-owner-is-not-an-administrator.md) | 2026-09-05 | Accepted | Ownership is a control edge where the owner is not an administrator |
+| [0096](decisions/0096-effective-permissions-are-shown-object-first-and-principal-first.md) | 2026-09-05 | Accepted | Effective permissions are shown object-first and principal-first, over one edge set |
+| [0097](decisions/0097-a-group-held-permission-is-counted-at-the-group.md) | 2026-09-05 | Accepted | A group-held permission is counted at the group and expands to its members |
+| [0098](decisions/0098-a-control-edge-is-expected-or-unexpected.md) | 2026-09-05 | Accepted | A control edge is expected or unexpected, and the screen defaults to unexpected |

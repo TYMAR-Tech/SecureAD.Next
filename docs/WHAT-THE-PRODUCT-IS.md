@@ -349,7 +349,61 @@ have - reading policy *content* out of files on SYSVOL, rather than reading the 
 directory. That capability is self-contained, it is the same amount of work whenever it is done, and
 nothing else in the roadmap depends on it. Deferring it costs nothing but the findings themselves.
 
+## What a control edge means, decided 2026-09-05
+
+Stage 6 turns permissions into *this principal can take over that object*. Four things about what an
+edge **means** were settled before any of it was built, because building it first would have chosen
+all four by accident.
+
+**A correction first: the product already judges ownership, and `P-70` said it did not.** `SEC-031`
+reports an ordinary object owned by a principal that is not administrative at `Low`, `SEC-032`
+reports the same for objects `AdminSDHolder` protects at `High`, both are registered in
+`RuleCatalogue.All`, and `ObjectOwnershipEvidence` carries the owner, the object class, a
+completeness voucher and whether the owner still exists at all. `SEC-060` already treats `WriteOwner`
+as takeover-class only where an owner's implicit rights survive, consulting the `OWNER RIGHTS` entry
+and the forest's `BlockOwnerImplicitRights` setting and refusing to answer where that setting was
+never read. The row was prose, and prose is discussion. Verified by opening `ObjectOwnershipRules.cs`,
+`ObjectOwnershipEvidence.cs`, `BroadPrincipalCanTakeOverObject.cs` and `RuleCatalogue.cs`.
+
+1. **Ownership is an edge, but only where the owner is not an administrator** - the same set
+   `SEC-031` and `SEC-032` already report, decided using the existing `ObjectOwnershipReading` rather
+   than a second definition of *administrative*. An owner implicitly holds Modify Permissions, so
+   without this the graph misses the most direct takeover there is; with it, an object owned by
+   Domain Admins produces no edge, which is the eight thousand uninteresting edges avoided.
+   [`0095`](decisions/0095-ownership-is-a-control-edge-where-the-owner-is-not-an-administrator.md).
+2. **Effective permissions are shown two ways over one stored edge set** - object-first (*who can
+   take over this object*, the shape of the Windows Effective Access tab) and principal-first (*what
+   can this service account reach*). One store, two queries, so the second view is cheap and the two
+   can never disagree. A second correction: `EffectiveAccessCalculator` already computes this,
+   denies before allows and inheritance included, and `P-71` said nothing did.
+   [`0096`](decisions/0096-effective-permissions-are-shown-object-first-and-principal-first.md).
+3. **A permission held through a group is counted at the group and expands to its members.** The
+   headline reads *Helpdesk (400 members) can take over OU=Finance*; one click lists the 400. The
+   counted edge names what an administrator actually changes - the access control entry - while the
+   membership size stays visible instead of being multiplied into the total.
+   [`0097`](decisions/0097-a-group-held-permission-is-counted-at-the-group.md).
+4. **Every edge is tagged expected or unexpected, and the screen defaults to unexpected while saying
+   how many it hides.** *42 unexpected control edges (111,585 expected, hidden)*. Nothing is
+   discarded and nothing is silently suppressed. A broad principal - `Everyone`, `Authenticated
+   Users`, `Domain Users` - is never expected, whatever it holds.
+   [`0098`](decisions/0098-a-control-edge-is-expected-or-unexpected.md).
+
+**The fourth is the one the predecessor got wrong, and its number is the evidence.** It reported
+**111,627 control edges and 0 escalation paths** on an eight-thousand-object lab. A number that large
+is not an answer; it is a number an operator learns to scroll past, and the real one hides inside it.
+Stage 6's target is a small *unexpected* count, not a large total.
+
+**Two consequences for what must happen before stage 6.** `P-85` - which groups count as Tier 0 seeds
+- now gates it, because *expected* means *the holder is part of the control plane* and nothing else
+says what the control plane is; answering it generously would convert unexpected edges into hidden
+ones. And `P-105` - `Walk` reporting the last established root rather than the nearest, so three
+accounts directly in Enterprise Admins on `ad.lab` are each reported under `BUILTIN\Administrators` -
+is fixed before stage 6 consumes `Walk`, because an edge that names the wrong root sends an operator
+to remove the wrong membership. `P-107` and `P-67` do not gate stage 6 and are deferred with reasons
+recorded on their rows.
+
 ---
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,
 it belongs here, in the same turn.
+
