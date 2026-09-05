@@ -610,7 +610,7 @@ A derived capability carries at least:
 
 | Field | Purpose |
 |---|---|
-| `Name` | `CanResetPassword`, `CanWriteRBCD`, `CanReplicateAllDomainSecrets`, … |
+| `Name` | `CanResetPassword`, `CanWriteRBCD`, `CanReplicateSecretDomainData`, … |
 | `Target` | stable directory/synthetic reference |
 | `EdgeClass` | `DirectoryControl` / `CredentialExposure` / `ConditionalEscalation` — semantic category, not ranking |
 | `Feasibility` | `Direct` / `Conditional` / `Potential` — see below |
@@ -1161,7 +1161,7 @@ The raw extended rights remain captured facts:
 The capability used for normal full-domain secret replication is:
 
 ```
-CanReplicateAllDomainSecrets =
+CanReplicateSecretDomainData =
     DS-Replication-Get-Changes
     AND DS-Replication-Get-Changes-All
 ```
@@ -1225,7 +1225,7 @@ DCSync; both are wrong, and the second is the kind of false statement an audit t
 
 **Three access rights, two named capabilities, one separate path.** The rights
 (`Get-Changes`, `Get-Changes-All`, `Get-Changes-In-Filtered-Set`) are captured facts.
-`CanReplicateAllDomainSecrets` and `CanReplicateFilteredAttributes` are derived capabilities the
+`CanReplicateSecretDomainData` and `CanReplicateFilteredAttributes` are derived capabilities the
 catalogue defines by name. The constrained `EXOP_REPL_SECRETS` / `RevealSecretsForUserAllowed` path
 is neither, and is not folded into either — if it later becomes a named capability it is named, not
 counted into a phrase like *all three*.
@@ -2335,7 +2335,7 @@ research status and sources — and the code is generated from that, not from th
 | AC-41 | Membership is target-independent while authorization usability is context-dependent; cross-domain domain-local scope is asserted on a fixture with enough domains/contexts to make the distinction real. |
 | AC-42 | Builtin groups in different domain NCs remain distinct directory objects even when SID values match; authorization trustee matching remains SID/context-based and provenance is not merged. |
 | AC-43 | GPO applicability considers site/domain/OU scope, link state/order, enforced/block inheritance, policy-half status, security filtering and WMI; missing required evidence produces `Unknown`. |
-| AC-44 | `CanReplicateAllDomainSecrets` requires `DS-Replication-Get-Changes` and `DS-Replication-Get-Changes-All`; `Get-Changes` alone is not classified as full-domain secret replication. |
+| AC-44 | `CanReplicateSecretDomainData` requires `DS-Replication-Get-Changes` and `DS-Replication-Get-Changes-All`; `Get-Changes` alone is not classified as full-domain secret replication. |
 | AC-45 | A membership cycle can be surfaced as a finding in addition to being safely traversed. |
 | AC-46 | A Tier0 reachability finding targets the synthetic control-plane anchor and resolves only when no fixed seed is reachable. |
 | AC-47 | Individual fixed seeds reached remain evidence under the anchor finding, each with route/distance evidence where requested. |
@@ -2368,8 +2368,8 @@ research status and sources — and the code is generated from that, not from th
 | AC-74 | Capability research blocks are build/rule-visible. A production rule cannot consume a `ResearchBlocked` capability as established. |
 | AC-75 | `BlockOwnerImplicitRights` reads `dSHeuristics` character 29 and accepts values `0`–`3`, resolving any other value to `1` and an absent character to `0`. Treating `0` as "not configured" fails, and so does treating a malformed value as inert. Applicability follows the recorded server behavior, not a hard-coded release name. |
 | AC-76 | Ownership-derived capabilities are evaluated against the concrete security-descriptor modification the capability requires. A capability that names no modification evaluates to `Unknown`; one that does follows the documented rules and may be `Established` or `NotEstablished`. Returning `Unknown` for every ownership case on a given build fails. |
-| AC-77 | `CanReplicateFilteredAttributes` is derived as `Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set)`. A principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set` alone yields this capability and does **not** yield `CanReplicateAllDomainSecrets`. |
-| AC-78 | Every replication control-access-right check used by these capabilities is evaluated against the naming-context root. Findings carrying `CanReplicateAllDomainSecrets` or `CanReplicateFilteredAttributes` target the applicable naming context or partition, never an object beneath it. |
+| AC-77 | `CanReplicateFilteredAttributes` is derived as `Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set)`. A principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set` alone yields this capability and does **not** yield `CanReplicateSecretDomainData`. |
+| AC-78 | Every replication control-access-right check used by these capabilities is evaluated against the naming-context root. Findings carrying `CanReplicateSecretDomainData` or `CanReplicateFilteredAttributes` target the applicable naming context or partition, never an object beneath it. |
 | AC-79 | Reachability to the anchor emits findings under SEC-071 only. A finding carrying SEC-070, SEC-072, SEC-076 or SEC-077 fails, and those identifiers are never reissued for anything else. |
 | AC-80 | Path length and the reached destination are evidence fields on the SEC-071 finding, present and orderable. A design that recovers the distinction by varying severity per finding fails, because `0066` fixes severity on the rule card. |
 | AC-81 | The key-credential capability names `msDS-KeyCredentialLink` and no other attribute. Mapping `altSecurityIdentities` to it fails: that attribute is certificate mapping, a separate capability with its own citation, and membership of the `BlockOwnerImplicitRights` protected-property list confers no capability meaning. |

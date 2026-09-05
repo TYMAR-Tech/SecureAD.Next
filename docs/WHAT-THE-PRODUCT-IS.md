@@ -394,13 +394,108 @@ is not an answer; it is a number an operator learns to scroll past, and the real
 Stage 6's target is a small *unexpected* count, not a large total.
 
 **Two consequences for what must happen before stage 6.** `P-85` - which groups count as Tier 0 seeds
-- now gates it, because *expected* means *the holder is part of the control plane* and nothing else
-says what the control plane is; answering it generously would convert unexpected edges into hidden
-ones. And `P-105` - `Walk` reporting the last established root rather than the nearest, so three
+- gated it, and is settled below by [`0099`](decisions/0099-the-tier-0-control-plane-catalogue.md).
+And `P-105` - `Walk` reporting the last established root rather than the nearest, so three
 accounts directly in Enterprise Admins on `ad.lab` are each reported under `BUILTIN\Administrators` -
 is fixed before stage 6 consumes `Walk`, because an edge that names the wrong root sends an operator
 to remove the wrong membership. `P-107` and `P-67` do not gate stage 6 and are deferred with reasons
 recorded on their rows.
+
+## Which principals are the control plane, decided 2026-09-06
+
+**The control plane is the set of principals whose control the product may hide as routine, and
+nothing wider.** Two questions look like one and are not: *can compromise of this principal reach
+Tier 0* is Microsoft's tier model, and *should what it holds be hidden by default* is `0098`. A
+principal can be Tier 0-sensitive without every permission it holds being expected.
+[`0099`](decisions/0099-the-tier-0-control-plane-catalogue.md) settles `P-85` on that distinction.
+
+**Every entry declares two scopes**, and an entry that does not declare an unrestricted capability
+scope does not get one. **Authority scope** is where the principal is an administrator; **capability
+scope** is which powers are normal for it. Unrestricted, within their own domain: the built-in
+Administrator (500), Domain Admins (512), `BUILTIN\Administrators` (544); forest-wide: Enterprise
+Admins (519). Restricted: **Schema Admins (518)** for the schema partition only, **SYSTEM** only
+where a descriptor names it directly, **Enterprise Domain Controllers** only for the capabilities a
+controller needs.
+
+**Everything else is out, and out does not mean safe.** Backup Operators (551) and Server Operators
+(549) stay Tier 0-sensitive and remain worth watching; excluding them means their edges stay visible
+rather than being hidden as routine. Also out: Account Operators (548), Print Operators (550),
+Replicator (552), Group Policy Creator Owners (520), Key Admins (526), Enterprise Key Admins (527),
+the RODC groups (521, 498) and Domain Controllers (516). **CREATOR OWNER is never a holder at all** -
+it is a placeholder for who a holder will be later, so its edges are `Unknown` rather than expected
+or unexpected, which is what the product already does everywhere else.
+
+**A correction to the record: the `CN=Keys` claim is true.** Microsoft's domain-wide schema updates,
+operation 83, grants Key Admins and Enterprise Key Admins Full Control over the `CN=Keys` container,
+inheriting, including rewriting permissions and taking ownership. Section 12 of the stage 6
+specification says it was not found in Microsoft's documentation; it is on the same page `P-86`
+already cites. It does not change the answer - `CN=Keys` holds key credential objects rather than
+accounts, and Microsoft's own operation 89 later cut the grant back to a single attribute - but the
+row was right and the specification was wrong, and it was caught by fetching the page.
+
+**A second correction: the product already had a control-plane list.**
+`ObjectOwnershipReading.AdministrativeSids` decides which owners are administrative and therefore go
+unreported, and it counts five operator groups as administrative. The brief said nothing but `P-85`
+defined the control plane. Reconciling the two is now a punch-list row, because the product must not
+answer the same question two ways on two screens.
+
+**Certificate authorities are found automatically; AD FS is declared.** An enterprise CA is an object
+the directory names, in a partition capture already reads, so classifying it is a read. Nothing marks
+an AD FS server, so naming one would be a guess - and a guess printed as a fact is the one thing this
+product must not do.
+
+**Customers may declare Tier 0 assets, never Tier 0 principals.** Declaring an asset adds something
+to watch and hides nothing. Declaring a principal would hide edges by default and make conclusions
+depend on local configuration. A specific edge that is fine here is handled by accepting the finding,
+which stays on the record. **A declaration never moves a severity** - that is fixed by the rule
+(`0066`, `0082`).
+
+## What was settled alongside the control plane, 2026-09-06
+
+**SYSTEM is expected where the object's own permissions say so, and nowhere else**
+([`0100`](decisions/0100-system-is-a-descriptor-native-expected-trustee.md)). `S-1-5-18` sits with
+full control in the default permissions of nearly every object in Active Directory, so treating it
+as unexplained would have put tens of thousands of entries on the first screen - the same failure the
+predecessor's 111,627 was. Treating it as an administrator everywhere would have been worse. The
+answer is neither: **SYSTEM is expected for exactly what an applicable permission entry on that
+object grants it, and that expectation transfers to nobody.** A service running as LocalSystem on an
+ordinary server is not SYSTEM on the network - Microsoft says it authenticates as the computer - so
+the product never lets SYSTEM quieten a computer account's edges. An unreadable descriptor still
+produces *unknown*, never *expected*.
+
+**Domain controller edges are grouped, never hidden**
+([`0105`](decisions/0105-domain-controller-edges-are-grouped-never-suppressed.md)). Every controller
+holding replication rights is normal, and a screen listing them one by one looks like hundreds of
+defects. So they are grouped by holder and naming context, labelled as controllers where that is
+established, and anything unusual the same account holds is shown apart from the routine block.
+Nothing is suppressed. **No *this is just a DC* exception exists**, and it will not until the product
+can tell an ordinary controller from a demoted one still holding rights it should have lost - which
+is exactly the finding worth having.
+
+**An expansion that ran out of room says so** ([`0102`](decisions/0102-group-expansion-is-budgeted.md)).
+Group membership is expanded against explicit budgets - how many objects, how many links, how long,
+how much stored. Reaching one never drops the finding and never discards what was found; it marks the
+expansion **incomplete**, records which budget stopped it, says so on screen, and refuses to present
+the partial number as a total. Microsoft publishes no safe threshold for this, so the product does
+not invent one and call it safe.
+
+**Confidence flows one way** ([`0103`](decisions/0103-an-established-primitive-is-not-contaminated-by-an-unverified-compound.md)).
+*This principal can take ownership* is proven from the permissions. *Taking ownership then lets it
+rewrite everything* depends on a step nobody has verified against a real forest yet. The first is
+reported as established and the second as unknown - the uncertain step does not drag the proven one
+down with it, because that would make the product quieter about something it can actually prove.
+
+**The replication capability is called `CanReplicateSecretDomainData`**
+([`0104`](decisions/0104-the-capability-is-named-canreplicatesecretdomaindata.md)), matching
+Microsoft's own words rather than claiming *all* secrets, which filtered attribute sets make untrue.
+
+**One registry of principals, with each question answered separately**
+([`0101`](decisions/0101-one-versioned-principal-registry.md)). *Is this group too broad*, *is it
+suspicious in SID history*, *is it an acceptable owner*, *is its control routine*, *is it a Tier 0
+asset* are five different questions about the same group, and one flat privileged-or-not list would
+erase all five. Backup Operators is worth watching, is not an expected controller, and is no longer
+an accepted owner - all at once, without contradiction. Nothing is inferred from anything else unless
+a decision says so.
 
 ---
 

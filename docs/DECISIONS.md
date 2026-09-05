@@ -98,3 +98,10 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0096](decisions/0096-effective-permissions-are-shown-object-first-and-principal-first.md) | 2026-09-05 | Accepted | Effective permissions are shown object-first and principal-first, over one edge set |
 | [0097](decisions/0097-a-group-held-permission-is-counted-at-the-group.md) | 2026-09-05 | Accepted | A group-held permission is counted at the group and expands to its members |
 | [0098](decisions/0098-a-control-edge-is-expected-or-unexpected.md) | 2026-09-05 | Accepted | A control edge is expected or unexpected, and the screen defaults to unexpected |
+| [0099](decisions/0099-the-tier-0-control-plane-catalogue.md) | 2026-09-06 | Accepted | The Tier 0 control-plane catalogue |
+| [0100](decisions/0100-system-is-a-descriptor-native-expected-trustee.md) | 2026-09-06 | Accepted | SYSTEM is a descriptor-native expected trustee, not a catalogue administrator |
+| [0101](decisions/0101-one-versioned-principal-registry.md) | 2026-09-06 | Accepted | One versioned principal registry, and no classification implies another |
+| [0102](decisions/0102-group-expansion-is-budgeted.md) | 2026-09-06 | Accepted | Group expansion is budgeted, and an incomplete expansion says so |
+| [0103](decisions/0103-an-established-primitive-is-not-contaminated-by-an-unverified-compound.md) | 2026-09-06 | Accepted | An established primitive is not contaminated by an unverified compound |
+| [0104](decisions/0104-the-capability-is-named-canreplicatesecretdomaindata.md) | 2026-09-06 | Accepted | The capability is named CanReplicateSecretDomainData |
+| [0105](decisions/0105-domain-controller-edges-are-grouped-never-suppressed.md) | 2026-09-06 | Accepted | Domain controller edges are grouped, never suppressed |

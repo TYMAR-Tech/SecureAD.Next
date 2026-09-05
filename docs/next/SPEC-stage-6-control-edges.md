@@ -410,6 +410,8 @@ The reason codes are the whole of the vocabulary, and every stored edge carries 
 | `UnknownControlPlaneCatalogueIncomplete` | `P-85` has not settled the seed set this run needs |
 | `UnknownTrustResolutionIncomplete` | the target's domain or the trust to it could not be resolved |
 | `UnknownMembershipIncomplete` | the membership walk behind the holder's control-plane status stopped early |
+| `UnknownHolderIsPlaceholder` | the holder is `CREATOR OWNER` or another placeholder, so there is no principal to attribute the edge to - added by `0099` |
+| `ExpectedPlatformIdentityDirectAce` | the holder is `SYSTEM` and an applicable ACE on the target establishes the capability - added by `0100`, and deliberately distinct from the two control-plane reasons |
 
 **Eight questions the predicate must answer, and none of them may be left to the implementer.** These
 are exactly what turns `P-85` from a list of group names into something testable, and each one is a
@@ -456,9 +458,17 @@ Admins over a user account is expected. Domain Admins over a certificate templat
 trust is not the same statement, and the rule must be able to tell them apart. The mechanism is the
 capability catalogue's `Tier0ClassificationEffect` for the target class, which already exists.
 
-**This is where `P-85` gates the stage.** Nothing but `P-85` says which groups are the control plane,
-and a generous answer silently converts unexpected edges into edges hidden by default. Section 12
-puts the sub-questions with what Microsoft's documentation supports for each.
+**This is where `P-85` gated the stage, and it is now settled.**
+[`0099`](../decisions/0099-the-tier-0-control-plane-catalogue.md), accepted 2026-09-06, names the
+control-plane catalogue with an authority scope and a capability scope per entry, and answers the
+eight questions above: transitive membership, `sIDHistory` never conferring it, placeholders never
+being holders, domain controller computer accounts being assets rather than entries, and customer
+declaration being available for assets only. **The one thing it left open is now settled too**:
+SYSTEM's capability scope is [`0100`](../decisions/0100-system-is-a-descriptor-native-expected-trustee.md)
+- expected for what an applicable ACE on the target establishes, scoped by that ACE and its valid
+inheritance, transferring to no other principal, and `Unknown` where the descriptor could not be
+read. That is a descriptor-native trustee rather than a catalogue administrator, and it carries its
+own reason code.
 
 **A stated consequence, so nobody discovers it later.** An expected edge is still a path. Expectedness
 affects the default view; it does not remove an edge from a chain in stage 7. A route that runs
@@ -632,13 +642,23 @@ classifies them automatically. The directory names certificate authorities in th
 container, which is a read. Nothing in Active Directory reliably marks a server as AD FS, so that
 would be an inference. **Proposal: AD CS automatically, AD FS by declaration.**
 
-**Q2. Key Admins (526) and Enterprise Key Admins (527).** Microsoft's AD FS documentation states the
-grant these groups are given is Read and Write `msDS-KeyCredentialLink` on descendant user objects.
-That is exactly the `CanWriteKeyCredentialLink` capability in section 5, which the product will
-report as a `CredentialExposure` edge on every user in scope. The `CN=Keys` Full Control claim was
-**not** found in Microsoft's published documentation. **Proposal: both groups stay out of the control
-plane, so their edges surface as unexpected and visible, and the `CN=Keys` question is settled by
-lab observation before anything changes.**
+**Q2. Key Admins (526) and Enterprise Key Admins (527). Settled 2026-09-06 by `0099`; the paragraph
+below was wrong and is corrected in place.** Microsoft's AD FS documentation states the grant these
+groups are given is Read and Write `msDS-KeyCredentialLink` on descendant user objects. That is
+exactly the `CanWriteKeyCredentialLink` capability in section 5, which the product will report as a
+`CredentialExposure` edge on every user in scope. **This document previously recorded that the
+`CN=Keys` Full Control claim was not found in Microsoft's published documentation. That was a false
+negative and the punch-list row was right.** [Domain-wide schema
+updates](https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/domain-wide-updates) -
+the same page `P-86` already cites - operation 83: *"Add Full Control allow aces to CN=Keys container
+for `domain\Key Admins` and `rootdomain\Enterprise Key Admins`"*, mask
+`(A;CI;RPWPCRLCLOCCDCRCWDWOSDDTSW;;;Key Admins)`, which includes `WD` and `WO` and inherits.
+**No lab observation is required and the proposal that one was needed is withdrawn.** The answer is
+unchanged: both groups stay out of the control plane, because `CN=Keys` holds key credential objects
+rather than accounts and control of it is not administrative authority over a domain - and because
+operation 89 shows Microsoft withdrawing the Enterprise Key Admins grant themselves, replacing it
+with an object-specific write on `msDS-KeyCredentialLink`. That withdrawal is a rule candidate,
+`P-144`.
 
 **Q3. Read-only Domain Controllers (521), Enterprise Read-only Domain Controllers (498) and
 Replicator (552).** Microsoft documents all three as containers of accounts or as legacy file
@@ -656,27 +676,38 @@ finding, which is on the record, one finding at a time.**
 nearest - the shortest path from the account to a privileged group - with ties broken deterministically
 so the answer never varies between runs.**
 
-**Q6. How much is too much.** The lab is 8,383 objects. A customer forest of 100,000 objects with
-groups of a few hundred members will produce a large edge set, and `0097` keeps the counted number
-small but not the stored one. Is there a size at which the product should refuse to expand members
-and say so, or should it always store the expansion however large? This is a question about what the
-product should say, which is why it is here rather than decided.
+**Q6. How much is too much. Settled 2026-09-06 by
+[`0102`](../decisions/0102-group-expansion-is-budgeted.md): budgeted expansion that admits when it is
+partial.** The lab is 8,383 objects and a customer forest of 100,000 will produce a large stored
+expansion. Microsoft publishes no product-specific safe threshold, so this document does not invent
+one. Expansion runs against explicit budgets - nodes, links, elapsed time, stored records - keeps
+everything found, never drops the counted group edge, sets `ExpansionComplete = false` with a stop
+reason, states on screen that the view is partial, and never presents a partial count as total
+effective membership. The same input and budget must stop deterministically, and the export carries
+both.
 
 **Q7. Who may be named as the new owner.** Microsoft states that a holder of `WRITE_OWNER` "can set
 any valid user or group SID as the owner of an object", and the `TOKEN_OWNER` constraint governs the
 default owner for newly created objects rather than this operation. **The documentation is not split
 and an earlier draft of this document was wrong to say it was.** What is genuinely unverified is
 whether AD DS adds server-side constraints of its own, because the product audits AD DS rather than
-an abstract securable object. **Proposal: report `CanSetOwner` as `Established` on the documented
-behaviour, and hold the compound `CanBecomeOwnerAndRewriteDacl` at `Unknown` until the lab gate in
-13.1 records what `ad.lab` actually permits.** This is a deliberate conservatism, not a claim that
-Microsoft is unclear - and if you would rather the compound be `Established` on the documented
-behaviour and corrected if the lab disagrees, say so, because that is a legitimate choice.
+an abstract securable object. **Settled 2026-09-06 by
+[`0103`](../decisions/0103-an-established-primitive-is-not-contaminated-by-an-unverified-compound.md):
+three claims, kept separate.** `CanSetOwner` is `Established` wherever effective access establishes
+`WRITE_OWNER`; `CanSetTakeoverOwnerSid` stays `Unknown` until the 13.1 lab gate records what `ad.lab`
+permits; `CanBecomeOwnerAndRewriteDacl` is `Unknown` unless every precondition is `Established`.
+**Confidence never flows backwards** - the established primitive is not reduced because the compound
+above it is unverified, which would make the product quieter about something it can prove.
 
 **Q8. `AC-44` names the capability `CanReplicateAllDomainSecrets`; this document proposes
 `CanReplicateSecretDomainData`.** Microsoft's wording is *secret domain data*, without the word
 *all*, and filtered attribute sets make *all* a stronger claim than the citation supports. A criterion
-and a specification disagreeing is a finding, and the owner decides which wording the product uses.
+and a specification disagreeing is a finding. **Settled 2026-09-06 by
+[`0104`](../decisions/0104-the-capability-is-named-canreplicatesecretdomaindata.md):
+`CanReplicateSecretDomainData`.** `CanReplicateFilteredAttributes` stays a separate capability and the
+target naming context is recorded separately. **`AC-44` is migrated rather than aliased
+indefinitely** - the old name survives only as a schema migration alias for reading historical
+results, never as a second current capability.
 
 **Q9. Does `sIDHistory` confer control-plane membership for the purpose of expectedness?** It confers
 authorisation in Active Directory, and `PrivilegedSidHistory` already reports it as a finding. Whether
