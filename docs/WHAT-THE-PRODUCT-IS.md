@@ -276,6 +276,40 @@ eleven turned up three nobody had said out loud, including that `SEC-028` report
 a rule's boundary is the one reading a rule that reported *nothing*, and he never opens a finding.
 The rest waits for a screen that lists the rules themselves.
 
+## Build order, and two scope decisions
+
+**The dashboard is built before the remaining rules, decided 2026-09-05.** The owner asked whether
+it had to wait until every rule existed; it does not, and it should not. Stage 2 depends on nothing
+unbuilt. The product can already find real problems in a live forest and has **no screen that shows
+them to anybody**, so every rule added before the dashboard is a rule nobody can look at. Building
+it early also puts the wording in front of an administrator, which is the only way to find out
+whether a finding reads correctly to the person who has to act on it. The order the owner set:
+**dashboard, then a punch-list session, then stage 6**.
+
+**Tier 1 means what Microsoft says it means, decided 2026-09-05.** Per the
+[tier model](https://learn.microsoft.com/windows-server/identity/ad-ds/tier-model), Tier 1 is
+*enterprise servers and applications*: member servers and server administrator roles, the solutions
+that manage them (backup, monitoring, patching, hypervisors), Microsoft server applications such as
+Exchange, SharePoint and SQL Server, third-party server solutions, and line-of-business
+applications. Tier 2 is end-user devices and accounts. This settles the wording of `SEC-073` and
+`SEC-074`, which were recorded as *gap - Tier1 undefined*.
+
+**It does not settle how the product decides which computers those are, and that is the harder
+half.** Tier 0 is derivable from the directory - Microsoft names the groups. **Tier 1 is not.**
+Nothing in Active Directory marks a member server as an Exchange server or a line-of-business host;
+the tier model is an operational structure an organisation adopts, expressed in OUs and groups it
+chose the names of. `operatingSystem` distinguishes a server from a workstation and says nothing
+about what it carries. So a Tier 1 rule must either read a customer-supplied definition or infer
+one, and **inferring it would be this product asserting a tier boundary the customer never drew**.
+Recorded as `F-S45-11`; not blocking the dashboard.
+
+**Group Policy is deferred to the end, decided 2026-09-05.** The owner: *"i may leave until the end
+unless it will be harder then but i dont see why it would be."* **It will not be harder later**, and
+the reason is worth recording: the five GPO rules are blocked on a capability the product does not
+have - reading policy *content* out of files on SYSVOL, rather than reading the policy object in the
+directory. That capability is self-contained, it is the same amount of work whenever it is done, and
+nothing else in the roadmap depends on it. Deferring it costs nothing but the findings themselves.
+
 ---
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,

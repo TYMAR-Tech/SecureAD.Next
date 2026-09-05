@@ -2471,8 +2471,8 @@ each rule still needs its own first-party semantic review.
 | SEC-070 | Short Path to Tier 0 Target | R T | retired into SEC-071; path length becomes evidence `P-92` |
 | SEC-071 | Path to Tier 0 Target | R T | supported; the one reachability finding, absorbing SEC-070/072/076/077 `P-92` |
 | SEC-072 | Path to Tier 0 Shadow | R T | retired into SEC-071; destination becomes evidence `P-92` |
-| SEC-073 | Short Path to Tier 1 Target | R TierX | gap — Tier1 undefined |
-| SEC-074 | Path to Tier 1 Target | R TierX | gap — Tier1 undefined |
+| SEC-073 | Short Path to Tier 1 Target | R TierX | meaning settled 2026-09-05 (Microsoft's tier model); membership still has no anchor — `F-S45-11` |
+| SEC-074 | Path to Tier 1 Target | R TierX | meaning settled 2026-09-05 (Microsoft's tier model); membership still has no anchor — `F-S45-11` |
 | SEC-075 | Path to Custom-Tier Target | R TierX | gap — custom tier policy undefined |
 | SEC-076 | Path to DCSync Shadow | R T | retired into SEC-071; destination becomes evidence `P-92` |
 | SEC-077 | Path to Unconstrained Delegation Host | R T | retired into SEC-071; destination becomes evidence `P-92` |
