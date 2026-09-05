@@ -43,7 +43,7 @@ direction is the one that would have caught Stage 5 on the day it was finished. 
 | 1 | Findings move out of the sealed evidence | **built** | `JudgementWriter` |
 | 2 | Dashboard: coverage and inventory | not started | `DashboardViewModel` |
 | 3 | One rule, end to end | **built** | `UnconstrainedDelegationOnAccount` |
-| 4 | The simple posture rules | **started** | `LapsPasswordReadAccess` |
+| 4 | The simple posture rules | **built** | `LapsPasswordReadAccess` |
 | 5 | Group expansion | **built** | `PrincipalExpansion` |
 | 6 | Control edges | not started | `ControlEdge` |
 | 7 | Paths to Tier 0 | not started | `Tier0Reachability` |
@@ -57,9 +57,19 @@ primary-group membership — arrived with `SEC-090`, and `SEC-093` is its second
 was taken from the acceptance manifest, which tracked a test-naming convention nobody adopted rather
 than the code; that is `P-135`.
 
-**Stage 4 is *started*, and what remains is two named things.** LAPS, SID history, AdminSDHolder,
-Kerberos delegation and the unsecure account flags are built — fourteen rule identifiers in
-`SecureAD.Judgement`. **Ownership and broad write access are not.**
+**Stage 4 closed on 2026-09-05.** Its stated scope is *LAPS, SID history, AdminSDHolder, Kerberos
+delegation, ownership, broad write access*, and the last two arrived together: `SEC-060` reports an
+object a principal broad in every organisation can take control of, `SEC-031` reports an object
+owned by somebody who is not an administrator, and `SEC-032` reports the same condition on an object
+`AdminSDHolder` protects. **Seventeen rule identifiers** in `SecureAD.Judgement`.
+
+**One thing about that closure is honest to state rather than bury.** `SEC-032` detects correctly and
+was seen firing against a planted case in `ad.lab`, but the argument for its severity is in doubt:
+the lab suggests `AdminSDHolder` may reset a protected object's *owner* as well as its permissions,
+which would make the finding self-healing within the hour and mean the rule is saying the wrong
+thing about a real condition. `F-S45-7` holds it, the paragraph is flagged in the rule document, and
+the experiment is running. **Stage 4's scope is met either way** — ownership is covered by `SEC-031`
+regardless of what becomes of `SEC-032`.
 
 **Stage 2's witness is `DashboardViewModel` and not `Dashboard`, deliberately.** A `Dashboard`
 member already exists in `ShellSection` as a navigation tab with nothing behind it, on the owner's
@@ -76,9 +86,8 @@ the first rule to consume derived facts without recomputing them**. Verified aga
 2026-08-31, where the generation refusal fired against a stale schema 3 derivation and SEC-030 then
 reached a verdict on all 4,236 objects it was about with nothing unresolved.
 
-**Stage 4 is now open with one of its rules built.** The remaining simple posture rules follow the
-same shape; those needing only captured attributes need no derived facts and are unaffected by the
-Wave 6 seam.
+**Stage 4 is complete and stage 2 is the next gap.** The dashboard is the only stage below 5 that has
+not started, and it is what turns a list of findings into something an operator can open.
 
 **A useful product exists at stage 4.** Stages 5 to 8 are the hard half, and stage 8 is where the
 predecessor went wrong.

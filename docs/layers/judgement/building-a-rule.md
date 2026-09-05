@@ -70,13 +70,57 @@ them as a broken rule, a broken capture, or a compromised forest.
 | `SecureADLapsReaders` → `SecureADLapsMid` → `Domain Users`, with a scoped LAPS read delegation on `OU=Workstations,OU=BA Lab` | `Set-LabLapsDelegation.ps1` | SEC-090's nested path. Expect a High finding on every computer in that unit naming `Domain Users` at depth two |
 | `SecureADCycleTest-A` containing itself | `Test-LabOpenQuestions.ps1` | Active Directory permits a direct self-loop, measured 2026-09-03. It is **not** reported as a cycle, because the expander keeps a component only when it holds more than one principal |
 | `SecureADCycleTest-A → B → C → A`, with `SecureADCycleTest-U` in `C` | `Test-LabOpenQuestions.ps1` | A real membership cycle for the unbuilt cycle rule, and the measurement that a member of one group in a loop carries every group's SID |
+| `SecureADTakeoverOuter` → `SecureADTakeoverInner` → `Domain Users`, holding **WriteDacl and WriteOwner** on `OU=SecureADTakeoverTarget,OU=BA Lab` | `Set-LabOwnershipAndTakeover.ps1` | SEC-060's nested takeover path. Expect one High finding on that unit naming `Domain Users` at depth two, reporting **WriteDacl** — both rights are granted deliberately, so a rule reporting the weaker one is visible |
+| `SecureADProtObject`, **a real member of `Backup Operators`**, owned by `SecureADPlainOwner` | `Set-LabOwnershipAndTakeover.ps1` | SEC-032's positive, and the proof that SEC-031 and SEC-032 do not both report one object. Expect one High SEC-032 finding and **no** SEC-031 finding for it |
 
-**Everything planted carries a `SecureAD` prefix**, and both scripts refuse to delete anything
+**`SecureADProtObject` holds Backup Operators membership while it exists**, which is a real privilege
+grant in the lab. It is the least powerful of the protected groups and nothing here touches Domain
+Admins, but it is the most consequential thing currently planted and `-Remove` is what takes it out.
+
+**Its owner may not stay where it was put.** `F-S45-7` records the open question: `AdminSDHolder`
+appears to reset the *owner* of a protected object, not only its permissions. If so, this plant
+decays within the hour and a capture taken later will not show the SEC-032 condition at all — so a
+session finding no SEC-032 finding here should re-plant before concluding anything.
+
+**Everything planted carries a `SecureAD` prefix**, and all three scripts refuse to delete anything
 without it. `-Remove` on each returns the lab to clean.
 
 **Two findings in `ad.lab` are *not* planted and are real**: `BAWK1` and `BAMS1` grant `Everyone`
 read of the LAPS password through an entry carrying no object type. Those were there before any of
 this and are the estate's own.
+
+**Eight `SEC-031` findings are also real and are not planted.** Every machine carries a
+`serviceConnectionPoint` named *Windows Virtual Machine* which the machine account itself owns,
+because the machine created it. That is ordinary Active Directory behaviour and a true finding, not
+lab residue.
+
+---
+
+## Why step 18 found three defects in one afternoon
+
+**On 2026-09-05 three rules were built, registered, documented, covered by thirty-six of their own
+tests, and committed — and all three were reporting nothing.** The suite was green at 3,139
+throughout. Every one of the following was found by running against `ad.lab` and by nothing else:
+
+| Defect | What it looked like | Why no test could catch it |
+|---|---|---|
+| `F-S45-4` | All three rules judged **zero** of 8,378 objects | They declare no subject class to mean *every object*, and an empty list matched nothing. Every rule test calls `Judge` directly, so none reaches the question of whether an object would be offered |
+| `F-S45-5` | Both ownership rules refused **every computer** in the forest | A reader queried a table name that does not exist, and the guard above it turned the failure into *the forest setting was never read* — a refusal that looks like correct caution |
+| `F-S45-6` | `SEC-032` could not fire at all | It read `objectSid` as text where the directory stores bytes, so every object looked like it had no identifier and was treated as unprotected |
+
+**All three were wrapped in correct-sounding comments**, which is why review would not have caught
+them either. The reasoning beside `F-S45-6` — that an organizational unit legitimately has no
+identifier, so absence is an answer rather than a gap — is true, and it made the defect look
+deliberate.
+
+**Two lessons worth carrying.**
+
+- **`show-findings.ps1` cannot tell a clean rule from a dead one.** It lists findings, so zero reads
+  the same either way. `rule_execution` carries `objects_judged` beside `objects_not_judged` and is
+  the only thing that separates them. **Read it before believing a zero.**
+- **A rule that has never been observed firing has not been verified.** Both `SEC-060` and
+  `SEC-032` returned zero honestly — the forest really held no such condition — and both were
+  broken. Planting a positive is what proved them, and it is what found `F-S45-6`.
 
 ---
 
