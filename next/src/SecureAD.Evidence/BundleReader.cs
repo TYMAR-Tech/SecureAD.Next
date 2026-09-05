@@ -643,15 +643,21 @@ public sealed class BundleReader : IDisposable
     /// </returns>
     public string? ReadForestHeuristics()
     {
-        // A BUNDLE WITH NO OBJECT TABLE HELD NO OBJECTS, so nothing was read and null is the honest
-        // answer rather than an exception. This is asked explicitly instead of catching the error,
-        // because swallowing a SQL failure would also swallow a real one - a corrupt table would
-        // then read as "the forest was never asked" and every rule depending on this would quietly
-        // refuse instead of failing loudly.
+        // A BUNDLE WITH NO CAPTURED OBJECTS HELD NONE, so nothing was read and null is the honest
+        // answer rather than an exception. Asked explicitly instead of catching the error, because
+        // swallowing a SQL failure would also swallow a real one.
+        //
+        // THIS CHECK ONCE NAMED THE WRONG TABLE AND HID A DEFECT FOR EXACTLY THAT REASON. Written
+        // against 'object' rather than 'captured_object', it returned null for every bundle, so
+        // SEC-031 and SEC-060 refused every computer object in the forest with "the forest setting
+        // was never read" - and the refusal looked like correct caution. Recorded as F-S45-5. The
+        // table name is now the one BundleSchema creates, and the reader is exercised against a
+        // real bundle rather than only against fixtures.
         using (var exists = Connection.CreateCommand())
         {
             exists.CommandText =
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'object' LIMIT 1";
+                "SELECT 1 FROM sqlite_master "
+                + "WHERE type = 'table' AND name = 'captured_object' LIMIT 1";
 
             if (exists.ExecuteScalar() is null)
                 return null;
@@ -662,7 +668,7 @@ public sealed class BundleReader : IDisposable
         command.CommandText =
             $"""
             SELECT o.{BundleSchema.ColumnNameFor("dSHeuristics")}
-            FROM object AS o
+            FROM captured_object AS o
             WHERE (SELECT v.value FROM objectclass_value AS v
                    WHERE v.object_id = o.object_id
                    ORDER BY v.ordinal DESC LIMIT 1) = 'nTDSService' COLLATE NOCASE

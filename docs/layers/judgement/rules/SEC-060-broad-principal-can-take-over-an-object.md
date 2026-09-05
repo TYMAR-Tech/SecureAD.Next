@@ -213,7 +213,24 @@ constants, and the rule is not considered working until it has run against `ad.l
 
 ## 10. Verified against `ad.lab`
 
-Not yet run.
+**Run 2026-09-05. 8,378 objects judged, 0 refused, 0 findings.**
+
+**Zero findings here is a fact about the forest, and it was checked rather than assumed.**
+`building-a-rule.md` is explicit that a reading which has only ever returned zero proves nothing, so
+the evidence was queried directly: **no access control entry in the bundle grants `WRITE_DAC` or
+`WRITE_OWNER` to any of the nine broad principals.** The rule is therefore silent because there is
+nothing to report.
+
+**The first run of this rule reported zero for a completely different reason, and that is the more
+important record.** It judged **no objects at all** — all 8,378 counted as *not applicable* — because
+the rule declares no subject class to mean *every object* and `RuleDefinition.IsAbout` read an empty
+list as matching nothing. 3,139 tests were green at the time and none of them could have noticed.
+Recorded as `F-S45-4`.
+
+**A second defect surfaced in the same run.** Every computer object was refused with *the forest
+setting was never read*, because the reader added for `dSHeuristics` queried a table name that does
+not exist and a guard turned the failure into a plausible-looking silence. Recorded as `F-S45-5`.
+Both were found by this step and by nothing else.
 
 ---
 

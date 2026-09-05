@@ -90,11 +90,29 @@ public sealed record RuleDefinition(
     /// computer</c>. So a rule declaring <c>user</c> sees computers too, which is what the schema
     /// means by a computer being a kind of user.
     /// </para>
+    /// <para>
+    /// <b>An empty list means every object, not no object.</b> A rule that declares no class is one
+    /// whose subject is the directory itself rather than a kind of account - ownership and
+    /// permission rules apply to organizational units, containers, certificate templates and
+    /// policies alike, and enumerating every class a forest might hold would be a list that is
+    /// wrong the moment somebody extends the schema.
+    /// </para>
+    /// <para>
+    /// <b>This was the other reading until 2026-09-05, and it silently switched three rules off.</b>
+    /// <c>SEC-060</c>, <c>SEC-031</c> and <c>SEC-032</c> all declare no class because their
+    /// specifications say <i>every object</i>. Against <c>ad.lab</c> each judged <b>zero</b> objects
+    /// and counted all 8,378 as not applicable, while 3,139 tests stayed green - every rule test
+    /// calls <c>Judge</c> directly and so never reaches this method. Three rules were registered,
+    /// documented, and measured nothing. Recorded as <c>F-S45-4</c>.
+    /// </para>
     /// </remarks>
     /// <param name="subject">The object being considered.</param>
     public bool IsAbout(ObjectAttributes subject)
     {
         ArgumentNullException.ThrowIfNull(subject);
+
+        if (SubjectClasses.Count == 0)
+            return true;
 
         return AttributeReading.AllText(subject, "objectClass")
             .Any(c => SubjectClasses.Contains(c, StringComparer.OrdinalIgnoreCase));

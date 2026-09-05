@@ -265,8 +265,26 @@ Negative controls, each of which must be observed failing:
 
 ## 11. Verified against `ad.lab`
 
-Not yet run. **Expect this one to be noisy in the lab**, and treat a large count as information
-about the forest rather than as a defect in the rule until the objects have been looked at.
+**Run 2026-09-05. 8,376 objects judged, 2 refused, 8 findings.**
+
+**It was expected to be noisy and it was not, and the reason is worth recording.** All eight findings
+are the same shape: a `serviceConnectionPoint` named *Windows Virtual Machine*, sitting under a
+computer account, and **owned by that computer account**. One per machine, across all three domains.
+That is precisely the mechanism [§1](#1-what-it-finds) describes — the object was created by
+something that is not an administrator, so it is owned by its creator personally — and it is a true
+finding rather than noise.
+
+**Nothing else in the lab fired**, because every other object was created by an administrator and so
+is owned by `BUILTIN\Administrators`. A forest where delegated creation is normal would look very
+different, which is why the scope decision stands and why the count is treated as information about
+the estate rather than as a defect.
+
+**Two objects were refused**, both with an incomplete membership answer, so the rule declined to say
+whether their owners were administrative rather than guessing.
+
+**This run is also what found `F-S45-4` and `F-S45-5`.** Before them the rule judged **zero**
+objects, and then refused every computer object in the forest. Neither was visible to 3,139 green
+tests. Read the count of objects *judged* beside any finding count from this rule.
 
 ---
 

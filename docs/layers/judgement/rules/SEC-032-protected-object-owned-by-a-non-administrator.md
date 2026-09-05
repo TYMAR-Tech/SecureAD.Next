@@ -147,7 +147,12 @@ Negative controls, each of which must be observed failing:
 
 ## 9. Verified against `ad.lab`
 
-Not yet run.
+**Run 2026-09-05. 8,378 objects judged, 0 refused, 0 findings.**
+
+No object that `AdminSDHolder` protects in this forest is owned by a non-administrative principal,
+which is what a correctly-administered lab should look like. The mechanism is proven by the rule's
+own tests rather than by this run — see `F-S45-4` for why a zero from a rule is worth distrusting
+until the count of objects *judged* has been read beside it.
 
 ---
 
