@@ -24,7 +24,8 @@ the record wins and this file is wrong.
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
 | Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, 17 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
-| Dashboard, reports, compare and export | — | not built |
+| Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
+| Reports, compare and export | — | not built |
 
 **The counts and states in that table are checked rather than maintained by hand**, by
 `next/tools/check-stage-status.ps1`. A status goes false when the code moves and the document sits
@@ -280,11 +281,49 @@ The rest waits for a screen that lists the rules themselves.
 
 **The dashboard is built before the remaining rules, decided 2026-09-05.** The owner asked whether
 it had to wait until every rule existed; it does not, and it should not. Stage 2 depends on nothing
-unbuilt. The product can already find real problems in a live forest and has **no screen that shows
-them to anybody**, so every rule added before the dashboard is a rule nobody can look at. Building
-it early also puts the wording in front of an administrator, which is the only way to find out
-whether a finding reads correctly to the person who has to act on it. The order the owner set:
+unbuilt. Building it early puts the wording in front of an administrator, which is the only way to
+find out whether it reads correctly to the person who has to act on it. The order the owner set:
 **dashboard, then a punch-list session, then stage 6**.
+
+**A correction: this paragraph claimed the product had *no screen that shows findings to anybody*,
+and that was false.** Corrected 2026-09-05 against the code. `AssetsPane` has had four working
+panes bound to live stores for some time — `Objects` and `Laps` over sealed evidence, `Findings` and
+`Rules` over the judgement store — and the findings pane already distinguishes *every rule ran and
+matched nothing* from *nobody has judged this bundle*. The claim survived into this document because
+it was written from a roadmap row rather than from `AssetsViewModel`. What was genuinely missing was
+the answer to *what am I looking at*, which is what stage 2 supplies.
+
+**The dashboard was built 2026-09-05 and the owner settled four things about it.**
+
+1. **Coverage first, counts underneath.** How much of the forest was read is stated before any
+   number on the screen, and stated every time — including when nothing was missed, so that its
+   absence is never read as reassurance.
+2. **Counted per domain, totalled afterwards.** A single forest-wide figure cannot show a hole: a
+   run that read two domains of three produces a smaller number, and a smaller number looks exactly
+   like a smaller forest. An uncovered domain is a visibly present row carrying no figures.
+3. **Where a shortfall can be counted exactly, both numbers are shown.** The owner's wording: *if we
+   can show how many were read and how many were not then we show the exact numbers.* This applies
+   to Group Policy, the one place a sealed bundle can state an exact shortfall — the policies are
+   declared by the directory, which is read all-or-nothing, while their files come from SYSVOL,
+   which `0044` allows to fail without failing the run.
+4. **The dashboard is the landing screen for an opened run.** A failed, interrupted or damaged run
+   never reaches it: the owner's observation, confirmed in the code, is that such a run *never
+   finished capture*, so there is no sealed evidence to land in. The library states what became of
+   it instead.
+
+**A domain cannot be reported as partly read, and the owner was right to question it.** Asked what
+the screen should say for a partly read domain, he asked when that could happen — *wouldn't the run
+be discarded?* It would. Capture is fail-fast per `0003`: a domain that cannot be read ends the run
+before the seal, `UnreadOutcomeIsUnreachableTests` holds that no production code records a unit as
+unread, and `BundleReader.ReadScope` refuses outright to open a bundle claiming otherwise. The
+reachable gaps in an openable bundle are a domain excluded by choice, a domain the forest named no
+writable controller for, and a SYSVOL read that partly failed.
+
+**A count is never rendered for a domain that was not read, and the type enforces it.**
+`DomainInventory` holds its counts behind `TryGetCounts`, which answers false for every outcome but
+`Read`, and its factories refuse both contradictions at construction. There is no zero available to
+render for an unread domain even if the screen's markup were wrong. See
+[`layers/shell/what-a-run-counted.md`](layers/shell/what-a-run-counted.md).
 
 **Tier 1 means what Microsoft says it means, decided 2026-09-05.** Per the
 [tier model](https://learn.microsoft.com/windows-server/identity/ad-ds/tier-model), Tier 1 is

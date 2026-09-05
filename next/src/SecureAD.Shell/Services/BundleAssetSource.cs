@@ -1,5 +1,6 @@
 using System.IO;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Inventory;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
@@ -101,6 +102,29 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
         return opened.IsSuccess
             ? Guarded(() => opened.Value.ReadObjectAttributes(distinguishedName), bundleDirectory)
             : Result<ObjectAttributes?>.Failure(opened.Error);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Not cached, unlike <see cref="ReadSchemaGuids"/>. The schema is read once because walking
+    /// every definition in the forest is expensive; counting is one grouped scan, and a cache here
+    /// would buy little while adding a second place the dashboard's numbers could come from.
+    /// </remarks>
+    public Result<ForestInventory> ReadInventory(string bundleDirectory)
+    {
+        var opened = Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return Result<ForestInventory>.Failure(opened.Error);
+
+        // The reader already returns a Result, because a run whose coverage cannot be established
+        // has no counts rather than empty ones. Guarded wraps a second one around it for the I/O
+        // case, and the inner refusal is the one worth showing an operator.
+        var guarded = Guarded(() => opened.Value.ReadInventory(), bundleDirectory);
+
+        return guarded.IsSuccess
+            ? guarded.Value
+            : Result<ForestInventory>.Failure(guarded.Error);
     }
 
     /// <inheritdoc/>

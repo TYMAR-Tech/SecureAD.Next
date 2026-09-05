@@ -1,4 +1,5 @@
 using SecureAD.Evidence;
+using SecureAD.Evidence.Inventory;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
@@ -77,6 +78,16 @@ internal interface IAssetSource
     /// object would re-read the whole schema for every screen an operator turned.
     /// </remarks>
     Result<SchemaGuidCatalog> ReadSchemaGuids(string bundleDirectory);
+
+    /// <summary>Reads what a run captured, counted per domain beside its coverage.</summary>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    /// <remarks>
+    /// <b>One question, not five.</b> The dashboard needs users, computers, groups, organisational
+    /// units and policies for every domain at once, and asking for each separately would let a
+    /// screen show four kinds counted and one refused with nothing saying the two came from
+    /// different readings of the same bundle.
+    /// </remarks>
+    Result<ForestInventory> ReadInventory(string bundleDirectory);
 
     /// <summary>Reads one page of the findings a judging produced.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>

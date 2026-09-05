@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.8.12023.21
@@ -131,6 +131,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "next", "next", "{D0C50000-0
 		..\docs\layers\shell\the-home-screen.md = ..\docs\layers\shell\the-home-screen.md
 		..\docs\layers\shell\the-laps-inventory-grid.md = ..\docs\layers\shell\the-laps-inventory-grid.md
 		..\docs\layers\shell\the-assets-screen.md = ..\docs\layers\shell\the-assets-screen.md
+		..\docs\layers\shell\what-a-run-counted.md = ..\docs\layers\shell\what-a-run-counted.md
 		..\docs\next\SURFACE-REGISTER.md = ..\docs\next\SURFACE-REGISTER.md
 	EndProjectSection
 EndProject

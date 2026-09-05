@@ -39,6 +39,7 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// <param name="home">Where the run library is chosen and a run is started from.</param>
     /// <param name="runs">The runs the library holds.</param>
     /// <param name="assets">What the selected run captured.</param>
+    /// <param name="dashboard">How much of the forest the selected run read, and what it held.</param>
     /// <remarks>
     /// <b>The audit is not passed in.</b> It is handed over by <see cref="Begin"/> when the
     /// operator starts one from Home, and dropped by <see cref="Leave"/> when he leaves it, so that
@@ -47,13 +48,16 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// window this replaced. There is still no <i>New Audit</i> rail entry: an audit is started
     /// from Home.
     /// </remarks>
-    public ShellViewModel(HomeViewModel home, AssetsViewModel assets)
+    public ShellViewModel(
+        HomeViewModel home, AssetsViewModel assets, DashboardViewModel dashboard)
     {
         ArgumentNullException.ThrowIfNull(home);
         ArgumentNullException.ThrowIfNull(assets);
+        ArgumentNullException.ThrowIfNull(dashboard);
 
         Home = home;
         Assets = assets;
+        Dashboard = dashboard;
     }
 
     /// <summary>Where the run library is chosen, and where a run is started from.</summary>
@@ -73,6 +77,16 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>What the run selected in the library captured.</summary>
     public AssetsViewModel Assets { get; }
+
+    /// <summary>
+    /// How much of the forest the selected run read, and what it held.
+    /// </summary>
+    /// <remarks>
+    /// <b>It reads the same selected run as <see cref="Assets"/>, and holds no selection of its
+    /// own.</b> Two screens over one run with two ideas of which run that is would eventually show
+    /// an operator a coverage statement from one capture beside a tree from another.
+    /// </remarks>
+    public DashboardViewModel Dashboard { get; }
 
     /// <summary>Whether the home section is the one showing.</summary>
     public bool IsHome => Section == ShellSection.Home;
@@ -108,13 +122,13 @@ internal sealed partial class ShellViewModel : ObservableObject
     public SectionView? SelectedView => Views.FirstOrDefault(v => v.IsSelected);
 
     /// <summary>What stands in for a section that is not built.</summary>
+    /// <remarks>
+    /// <b>The dashboard left this list on 2026-09-05</b>, when stage 2 was built. What replaced it
+    /// still never renders an empty result: a run whose coverage cannot be established refuses
+    /// rather than draws zeroes, which is the reasoning that put it here in the first place.
+    /// </remarks>
     private SectionView? AbsentSection => Section switch
     {
-        ShellSection.Dashboard => SectionView.NotBuilt(
-            "Dashboard",
-            "Rules are evaluated, but only by a tool run by hand outside this application, so "
-            + "there is no posture for this screen to report. This tab is here to settle where "
-            + "the dashboard will live, and it reports nothing about your directory."),
         ShellSection.Settings => SectionView.NotBuilt(
             "Settings",
             "There is no settings screen yet. The one setting this product has - where your runs "
@@ -216,10 +230,33 @@ internal sealed partial class ShellViewModel : ObservableObject
             return Section switch
             {
                 ShellSection.Assets => Assets,
+                ShellSection.Dashboard => Dashboard,
                 _ => Home,
             };
         }
     }
+
+    /// <summary>Puts <paramref name="audit"/> on the audit surface and shows it.</summary>    /// <summary>
+    /// Shows the run the operator has just opened from the library.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It lands on the dashboard</b>, the owner's decision of 2026-09-05. An operator opening a
+    /// run is asking <i>what am I looking at</i>, and a tree of eight thousand objects does not
+    /// answer that: it shows the forest's contents without its size, its coverage, or whether the
+    /// capture was complete.
+    /// </para>
+    /// <para>
+    /// <b>Named here rather than written at the call site.</b> The composition root is the one
+    /// place in this product no test constructs, so a product decision spelled out there is a
+    /// decision nothing can hold. This is the same statement, somewhere a test can reach it.
+    /// </para>
+    /// <para>
+    /// A run that would not open never arrives here. It has no sealed evidence to land in, and the
+    /// library states what became of it instead.
+    /// </para>
+    /// </remarks>
+    public void ShowOpenedRun() => Show(ShellSection.Dashboard);
 
     /// <summary>Puts <paramref name="audit"/> on the audit surface and shows it.</summary>
     /// <param name="audit">The freshly planned run.</param>
@@ -355,9 +392,17 @@ internal sealed partial class ShellViewModel : ObservableObject
             return;
         }
 
+        // The dashboard shows the run selected in the library, for the same reason and with the
+        // same caveat as Assets above.
+        if (value == ShellSection.Dashboard)
+        {
+            ShowDashboardOfTheSelectedRun();
+            return;
+        }
+
         // A section with nothing behind it reads no library. There is nothing to be current about,
         // and re-reading the disk to show a panel saying "not built" would be work for nobody.
-        if (value is ShellSection.Dashboard or ShellSection.Settings)
+        if (value is ShellSection.Settings)
             return;
 
         // Home shows the library, so arriving there reads it. A run started since the operator was
@@ -386,5 +431,28 @@ internal sealed partial class ShellViewModel : ObservableObject
         }
 
         Assets.Show(selected.Path, aCaptureIsRunning: Audit is not null && Audit.IsCapturing);
+    }
+
+    /// <summary>
+    /// Points the dashboard at whichever run is selected, or at nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>It is not told whether a capture is running, unlike <see cref="Assets"/>.</b> The assets
+    /// screen refuses a run being written to because its tree would be a half-written directory
+    /// presented as a whole one. This screen reads a sealed bundle's coverage, and a run still
+    /// capturing has none to read - so the evidence layer's own refusal is the accurate answer and
+    /// a second rule here would be a second account of one condition.
+    /// </remarks>
+    private void ShowDashboardOfTheSelectedRun()
+    {
+        var selected = Library.Selected;
+
+        if (selected is null)
+        {
+            Dashboard.Clear();
+            return;
+        }
+
+        Dashboard.Show(selected.Path);
     }
 }

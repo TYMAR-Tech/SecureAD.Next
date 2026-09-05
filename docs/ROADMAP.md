@@ -41,7 +41,7 @@ direction is the one that would have caught Stage 5 on the day it was finished. 
 |---|---|---|---|
 | — | Connect, capture, seal, browse | **built** | `BundleSealing` |
 | 1 | Findings move out of the sealed evidence | **built** | `JudgementWriter` |
-| 2 | Dashboard: coverage and inventory | not started | `DashboardViewModel` |
+| 2 | Dashboard: coverage and inventory | built | `DashboardViewModel` |
 | 3 | One rule, end to end | **built** | `UnconstrainedDelegationOnAccount` |
 | 4 | The simple posture rules | **built** | `LapsPasswordReadAccess` |
 | 5 | Group expansion | **built** | `PrincipalExpansion` |
@@ -114,11 +114,39 @@ fourteen judgement types, and the area file that held them was deleted.
 
 ## Stage 2 — dashboard: coverage and inventory
 
-Counts over evidence already captured: users, computers, groups, OUs, GPOs, and which domains and
-partitions were fully read. No rules, no graph. The predecessor showed both; the rebuild captures
-coverage in more detail than it did.
+**Built 2026-09-05.** Counts over evidence already captured: users, computers, groups, OUs and
+GPOs, per domain, led by a statement of how much of the forest was read. No rules, no graph. The
+predecessor showed both; the rebuild captures coverage in more detail than it did, and shows it
+first rather than in a card below the numbers.
 
-*Needs first:* nothing. This is the cheapest visible progress available.
+**Counted per domain and totalled afterwards, rather than counted forest-wide.** The owner's
+decision. A single forest figure cannot show a hole: a run that read two domains of three produces a
+smaller number, and a smaller number looks exactly like a smaller forest.
+
+**A domain that was not read has no number to render, and that is enforced by the type.**
+`DomainInventory` holds the counts in a field reachable only through `TryGetCounts`, and its
+factories refuse both contradictions — counts for a domain that was not read, and silence for one
+that was. So *could not read* cannot draw a zero even if the screen's markup were wrong.
+`docs/layers/shell/what-a-run-counted.md` states what the screen refuses to claim.
+
+**The class rule is the trap this stage nearly fell into.** `objectClass` is multi-valued and
+arrives least specific first, so a computer account's chain contains `user`. Counting any value in
+the chain would have reported the whole computer estate as user accounts, in a figure nobody would
+have questioned. The screen reuses the most-specific-class rule `ObjectListing` already applies, so
+the dashboard and the tree cannot disagree about what a user is.
+
+**Group Policy is stated as read of declared**, the one exact shortfall a sealed bundle can carry:
+the declaration comes from the directory, which is read all-or-nothing, while the files come from
+SYSVOL, which `0044` allows to fail without failing the run.
+
+**A domain the forest named no writable controller for is raised above everything**, separately from
+domains the operator excluded, per `0063`. It is not a decision he made and may be the first he
+hears of a broken trust or a half-decommissioned domain.
+
+*Verified against:* the lab bundle at `ad.lab-20260905-035415` (three domains), with the counts
+checked against the directory by hand. Proved by mutation in three places — the null count in
+`DomainInventory.NotCounted`, the class ordinal in `InventoryReader`, and a deliberately unbound
+property in `DashboardView.xaml` — each watched failing and reverted.
 
 ## Stage 3 — one rule, end to end
 

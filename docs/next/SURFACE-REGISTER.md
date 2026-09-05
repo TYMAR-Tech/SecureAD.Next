@@ -263,6 +263,9 @@ The table below sits between the two markers around it, so the test parses only 
 | ForestPartitionCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | RunCoverage | SecureAD.Evidence | [run-identity-and-coverage](../layers/evidence/run-identity-and-coverage.md) |
 | RunScope | SecureAD.Evidence | [how-a-bundle-is-read](../layers/evidence/how-a-bundle-is-read.md) |
+| ObjectCounts | SecureAD.Evidence.Inventory | [what-a-run-counted](../layers/shell/what-a-run-counted.md) |
+| DomainInventory | SecureAD.Evidence.Inventory | [what-a-run-counted](../layers/shell/what-a-run-counted.md) |
+| ForestInventory | SecureAD.Evidence.Inventory | [what-a-run-counted](../layers/shell/what-a-run-counted.md) |
 | RunSummary | SecureAD.Evidence | [whether-two-runs-compare](../layers/evidence/whether-two-runs-compare.md) |
 | RunListing | SecureAD.Evidence | [how-a-bundle-is-read](../layers/evidence/how-a-bundle-is-read.md) |
 | RunMoment | SecureAD.Evidence | [how-a-bundle-is-read](../layers/evidence/how-a-bundle-is-read.md) |

@@ -427,6 +427,12 @@ public sealed class VouchedValueReachabilityGateTests
     /// is not administrative did not finish, which matters more than it looks: the owner may hold
     /// administrative rights through a group the walk never reached, and reporting them as
     /// non-administrative would name an administrator as a problem.
+    /// 52 from 2026-09-05 with <c>ForestInventory.AllDeclaredDomainsAreComplete</c>, added with the
+    /// dashboard. It says whether the counts beside it are the whole forest or part of one. A total
+    /// assembled from two domains of three is a smaller number, and a smaller number looks exactly
+    /// like a smaller forest - so a caller must be able to tell a complete inventory from a partial
+    /// one without inspecting every row. Read true where every declared domain was read in full,
+    /// and false where any was excluded, partly read, or had no controller to read it.
     /// </para>
     /// </summary>
     [Fact]
@@ -434,8 +440,10 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(51, found.Count);
+        Assert.Equal(52, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "ForestInventory"
+                                    && v.Name == "AllDeclaredDomainsAreComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");
     }

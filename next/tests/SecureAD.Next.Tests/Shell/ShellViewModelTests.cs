@@ -70,33 +70,91 @@ public sealed class ShellViewModelTests
     /// The tab exists so the shape of the navigation can be judged. What it shows says plainly
     /// that it is not built.
     /// </summary>
+    /// <remarks>
+    /// <b>This read <c>ShellSection.Dashboard</c> until 2026-09-05</b>, when stage 2 was built and
+    /// the dashboard stopped being a placeholder. Settings is now the only section standing in for
+    /// something unbuilt, so it is the subject here. The test was retargeted rather than deleted
+    /// because the rule it holds - a section with nothing behind it says so rather than drawing an
+    /// empty result - is not about the dashboard and outlives it.
+    /// </remarks>
     [Fact]
     public void ASectionThatIsNotBuiltShowsSomethingSayingSo()
     {
         var shell = AShell();
 
-        shell.Show(ShellSection.Dashboard);
+        shell.Show(ShellSection.Settings);
 
         Assert.IsType<SectionView>(shell.Current);
     }
 
     /// <summary>
     /// This is the whole safeguard. <c>docs/decisions/0045</c> left these screens out because a
-    /// screen that appears to report and reports nothing is what a customer believes. The tab is
-    /// now built anyway, on the owner's instruction, so what stands behind it must say outright
-    /// that it states nothing about the directory - an empty dashboard reads as a clean forest.
+    /// screen that appears to report and reports nothing is what a customer believes. What stands
+    /// behind an unbuilt tab must therefore say outright that it is not built.
     /// </summary>
     [Fact]
-    public void ASectionThatIsNotBuiltSaysItReportsNothingAboutTheDirectory()
+    public void ASectionThatIsNotBuiltSaysSoRatherThanReportingNothing()
+    {
+        var shell = AShell();
+
+        shell.Show(ShellSection.Settings);
+
+        Assert.Contains(
+            "no settings screen yet",
+            ((SectionView)shell.Current).Absent,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The dashboard is built, so its section shows the screen rather than a placeholder.
+    /// </summary>
+    [Fact]
+    public void TheDashboardSectionShowsTheDashboard()
     {
         var shell = AShell();
 
         shell.Show(ShellSection.Dashboard);
 
-        Assert.Contains(
-            "reports nothing about your directory",
-            ((SectionView)shell.Current).Absent,
-            StringComparison.Ordinal);
+        Assert.Same(shell.Dashboard, shell.Current);
+    }
+
+    /// <summary>
+    /// With no run chosen the dashboard reports no run, rather than an empty forest.
+    /// </summary>
+    /// <remarks>
+    /// <b>The reason the dashboard was left unbuilt for so long.</b> An empty dashboard tells an
+    /// administrator his directory is clean, and the danger did not go away when the screen was
+    /// built - it moved into it. This is where that is held now.
+    /// </remarks>
+    [Fact]
+    public void TheDashboardWithNoRunChosenDoesNotDrawAnEmptyForest()
+    {
+        var shell = AShell();
+
+        shell.Show(ShellSection.Dashboard);
+
+        Assert.True(shell.Dashboard.HasNoRun);
+        Assert.False(shell.Dashboard.HasRun);
+        Assert.Empty(shell.Dashboard.Domains);
+    }
+
+    /// <summary>
+    /// Opening a run from the library lands on the dashboard.
+    /// </summary>
+    /// <remarks>
+    /// The owner's decision of 2026-09-05, and the reason <c>ShowOpenedRun</c> is a named member
+    /// rather than a line in the composition root: this is the only way the decision can be held
+    /// by anything.
+    /// </remarks>
+    [Fact]
+    public void OpeningARunLandsOnTheDashboard()
+    {
+        var shell = AShell();
+
+        shell.ShowOpenedRun();
+
+        Assert.Equal(ShellSection.Dashboard, shell.Section);
+        Assert.True(shell.IsDashboard);
     }
 
     /// <summary>
@@ -220,6 +278,7 @@ public sealed class ShellViewModelTests
 
         return new ShellViewModel(
             new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
-            new AssetsViewModel(new FakeAssetSource()));
+            new AssetsViewModel(new FakeAssetSource()),
+            new DashboardViewModel(new FakeAssetSource()));
     }
 }

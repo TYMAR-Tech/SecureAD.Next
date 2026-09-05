@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Capture;
@@ -350,6 +351,25 @@ public sealed class BundleReader : IDisposable
 
         return Result<RunScope>.Success(RunScope.Of(Description.CoverageId, domains));
     }
+
+    /// <summary>
+    /// Counts what this run captured, per domain, beside what it was able to read.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It goes through <see cref="ReadScope"/> rather than counting the object table alone.</b>
+    /// A count of objects cannot say whether a domain is missing from it because it held nothing or
+    /// because nobody could read it, and those two render identically as a zero. The coverage is
+    /// the only thing that tells them apart, so the counts are never produced without it.
+    /// </para>
+    /// <para>
+    /// A run whose coverage cannot be established yields a failure rather than counts. A number
+    /// whose denominator is unknown is worse than no number, because it looks like an answer.
+    /// </para>
+    /// </remarks>
+    /// <returns>What the forest held, or why that could not be established.</returns>
+    public Result<ForestInventory> ReadInventory() =>
+        InventoryReader.Read(Connection, Description, ReadScope());
 
     /// <summary>
     /// Turns one stored coverage row back into the type the rest of the product reads.

@@ -74,15 +74,24 @@ internal partial class App : Application
             location,
             new RunCatalog(),
             new Confirmation(),
-            // Moving to Assets already opens whichever run is selected - ShellViewModel does it on
-            // arrival, and it knows whether a capture is running, which this does not. So Open
+            // Moving to a section already opens whichever run is selected - ShellViewModel does it
+            // on arrival, and it knows whether a capture is running, which this does not. So Open
             // navigates and lets that one path do the reading, rather than being a second door
             // onto it that would have to be kept in step.
-            new RunOpener(_ => shell.Show(ShellSection.Assets)));
+            //
+            // It lands wherever ShellViewModel.ShowOpenedRun says, which is where that product
+            // decision is written down and tested. Restating it here would be a second answer.
+            new RunOpener(_ => shell.ShowOpenedRun()));
+
+        // One asset source for both screens, not one each. It holds the opened bundle so the seal
+        // is verified once when the operator arrives at a run; two of them would re-hash gigabytes
+        // of evidence every time he moved between the dashboard and the tree.
+        var assets = new BundleAssetSource();
 
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
-            new AssetsViewModel(new BundleAssetSource()));
+            new AssetsViewModel(assets),
+            new DashboardViewModel(assets));
 
         // Home is the section already showing, so nothing navigates to it and nothing would
         // otherwise ask the library to read itself before the first screen is painted.

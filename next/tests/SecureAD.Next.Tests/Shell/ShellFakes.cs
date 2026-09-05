@@ -1,6 +1,7 @@
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
@@ -182,6 +183,33 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public LapsPage LapsPage { get; set; } =
         new([], 0, new Dictionary<LapsManagement, int>(), true, null);
+
+    /// <summary>
+    /// What the dashboard is told the forest holds. Null means the run's coverage could not be
+    /// established, which is a refusal rather than an empty forest.
+    /// </summary>
+    public ForestInventory? Inventory { get; set; }
+
+    public AuditError? InventoryFails { get; set; }
+
+    public int InventoryReads { get; private set; }
+
+    public Result<ForestInventory> ReadInventory(string bundleDirectory)
+    {
+        InventoryReads++;
+
+        if (InventoryFails is { } error)
+            return Result<ForestInventory>.Failure(error);
+
+        return Inventory is { } inventory
+            ? Result<ForestInventory>.Success(inventory)
+            : Result<ForestInventory>.Failure(AuditError.Create(
+                ErrorCategory.Shell,
+                "CoverageAbsent",
+                ErrorSeverity.Failed,
+                "This fake was not given an inventory.",
+                bundleDirectory));
+    }
 
     public AuditError? LapsListingFails { get; set; }
 
