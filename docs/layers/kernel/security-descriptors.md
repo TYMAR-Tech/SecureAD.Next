@@ -73,6 +73,7 @@ to one value and collapse to one entry rather than two.
 | `HeuristicCharacter` | One character read at a stated position, and whether it was stated, defaulted or never read |
 | `HeuristicReadOutcome` | Which of those three a character was |
 | `AdminSdExclusionMask` | Which operator groups a forest has removed from AdminSDHolder's protection |
+| `OwnerImplicitRightsSetting` | Whether this forest has switched off the rights an object's owner gets without being granted them |
 | `AdminSdExcludableGroup` | The four groups that mask can name, and no others |
 <!-- TYPES:END -->
 

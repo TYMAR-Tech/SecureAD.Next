@@ -183,48 +183,29 @@ public sealed class LapsPasswordReadAccess : IRule
     /// <c>OWNER RIGHTS</c> are placeholders rather than principals, and one lab bundle credited
     /// 1,708 entries to two of them.
     /// </para>
+    /// <para>
+    /// <b>An inherit-only entry grants nothing here, and this rule used to count one.</b> Until
+    /// 2026-09-05 this walked the entries itself and never consulted the propagation flags, so an
+    /// entry marked <c>INHERIT_ONLY_ACE</c> - which MS-ADTS 6.1.3 calls <i>"an ineffective ACE,
+    /// which does not control access to the object to which it is attached"</i> - counted as a
+    /// grant on the computer carrying it. A delegation inherited from an organizational unit but
+    /// scoped by <c>inheritedObjectType</c> to some other class lands on a computer object exactly
+    /// that way, so this was reachable rather than theoretical: the rule could name a broad
+    /// principal as able to read a machine's LAPS password from an entry that grants nothing on
+    /// that machine. Recorded as <c>F-S45-1</c>.
+    /// </para>
     /// </remarks>
     private static IEnumerable<EffectiveGrant> EffectiveGrants(
         ObjectPermissions permissions, string attributeGuid)
     {
-        var granted = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var denied = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var context = new Dictionary<string, PermissionEntry>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in permissions.Entries)
+        foreach (var access in EffectiveAccessCalculator.Over(permissions, attributeGuid).Holders)
         {
-            if (!entry.Trustee.HoldsThePermission)
-                continue;
-
-            if (!Reaches(entry, attributeGuid))
-                continue;
-
-            var sid = entry.Trustee.Sid;
-            var isDeny = entry.AceType.Contains("Denied", StringComparison.OrdinalIgnoreCase);
-            var alreadyGranted = granted.GetValueOrDefault(sid);
-
-            if (isDeny)
-            {
-                denied[sid] = denied.GetValueOrDefault(sid) | (entry.AccessMask & ~alreadyGranted);
-                continue;
-            }
-
-            granted[sid] = alreadyGranted | entry.AccessMask;
-
-            // The entry that first granted a right is the one worth showing an operator, because it
-            // is the one to change. A later, wider entry would name a scope that is not the cause.
-            context.TryAdd(sid, entry);
-        }
-
-        foreach (var (sid, mask) in granted)
-        {
-            var effective = mask & ~denied.GetValueOrDefault(sid);
-            var rights = RightsOf(effective);
+            var rights = RightsOf(access.Mask);
 
             if (rights is LapsReadRights.Neither)
                 continue;
 
-            var entry = context[sid];
+            var entry = access.FirstGrantingEntry;
 
             yield return new EffectiveGrant(
                 entry.Trustee,
@@ -233,11 +214,6 @@ public sealed class LapsPasswordReadAccess : IRule
                 entry.IsInherited ? entry.InheritedObjectTypeGuid ?? "an inherited scope" : null);
         }
     }
-
-    /// <summary>Whether the entry reaches this attribute at all.</summary>
-    private static bool Reaches(PermissionEntry entry, string attributeGuid) =>
-        !entry.HasObjectType
-        || string.Equals(entry.ObjectTypeGuid, attributeGuid, StringComparison.OrdinalIgnoreCase);
 
     private static LapsGrantReach Reach(PermissionEntry entry) =>
         entry.HasObjectType ? LapsGrantReach.ThisAttributeOnly : LapsGrantReach.EveryAttribute;

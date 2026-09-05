@@ -106,6 +106,68 @@ public sealed record AdminSdExclusionMask(
 }
 
 /// <summary>
+/// Whether a forest has switched off the rights an object's owner gets without being granted them.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>What this is for.</b> An owner normally holds <c>READ_CONTROL</c> and <c>WRITE_DAC</c> over
+/// what they own without any entry in the permission list saying so, which is why owning an object
+/// is a form of control that no permission review shows. A forest can turn that off, and a rule
+/// telling a customer that an owner can rewrite an object's permissions has to know whether this
+/// forest did.
+/// </para>
+/// <para>
+/// <b>It is deliberately not the answer on its own, and this is the whole reason the type exists
+/// rather than a bare <c>bool</c>.</b> The heuristic is one of three conditions, and the other two
+/// depend on the object and the owner rather than on the forest -
+/// <see cref="DirectoryHeuristics.BlocksImplicitOwnerRights"/> puts all three together. Handing
+/// back "owner rights are blocked" from the forest setting alone would be true of a computer object
+/// and false of the organizational unit beside it.
+/// </para>
+/// </remarks>
+/// <param name="Value">
+/// The heuristic's numeric value, after the specification's own fallbacks. Null only where nothing
+/// was read.
+/// </param>
+/// <param name="Outcome">Whether the character was stated, defaulted or never read.</param>
+/// <param name="Character">
+/// The character the value was resolved from, kept so an operator can check this product against
+/// what the directory holds. Null only where nothing was read.
+/// </param>
+public sealed record OwnerImplicitRightsSetting(
+    int? Value,
+    HeuristicReadOutcome Outcome,
+    char? Character)
+{
+    /// <summary>Whether the forest was asked and answered.</summary>
+    public bool IsComplete => Outcome is HeuristicReadOutcome.Stated
+        or HeuristicReadOutcome.DefaultedByAbsence;
+
+    /// <summary>
+    /// Whether this setting blocks an owner's implicit rights, taking the forest's part of the
+    /// question alone.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Only the value 1 blocks, and 2 and 3 do not.</b> MS-ADTS 6.1.3.4 names the blocking
+    /// condition as the heuristic being set to 1. The higher values are settings of the same
+    /// heuristic that do not block, so reading this as "anything above zero is hardened" would be
+    /// wrong in the direction that hides a real capability.
+    /// </para>
+    /// <para>
+    /// <b>The specification also blocks on 0 for Windows 11 version 26H1, and this deliberately
+    /// does not.</b> Nothing captured says which build serves the forest, and 0 is the documented
+    /// default of every forest that has never set the attribute. Treating 0 as blocking would
+    /// silence the owner question across essentially every directory this product will ever be
+    /// pointed at, on the strength of a build that is not a domain controller operating system.
+    /// The limit is real and is recorded rather than hidden: on a 26H1 server this answers
+    /// <c>false</c> where the platform would block.
+    /// </para>
+    /// </remarks>
+    public bool BlocksWhereItApplies => Value == 1;
+}
+
+/// <summary>
 /// Reads the forest-wide settings held one per character position in <c>dSHeuristics</c>.
 /// </summary>
 /// <remarks>
@@ -124,9 +186,10 @@ public sealed record AdminSdExclusionMask(
 /// index 15 for character 16 - is an off-by-one waiting to be written down as correct.
 /// </para>
 /// <para>
-/// <b>It resolves one setting, not all thirty-one.</b> Only <c>dwAdminSDExMask</c> has a consumer
-/// today. The rest are reachable through <see cref="CharacterAt"/> when something needs them, and
-/// building an accessor for each now would shape thirty types against no caller.
+/// <b>It resolves two settings, not all thirty-one.</b> <c>dwAdminSDExMask</c> and
+/// <c>BlockOwnerImplicitRights</c> have consumers; the rest are reachable through
+/// <see cref="CharacterAt"/> when something needs them, and building an accessor for each now
+/// would shape thirty types against no caller.
 /// </para>
 /// </remarks>
 public static class DirectoryHeuristics
@@ -146,6 +209,12 @@ public static class DirectoryHeuristics
 
     /// <summary>The position of <c>dwAdminSDExMask</c>, which decides the protected set.</summary>
     public const int AdminSdExMaskPosition = 16;
+
+    /// <summary>
+    /// The position of <c>BlockOwnerImplicitRights</c>, which decides whether an owner keeps the
+    /// rights nobody granted them.
+    /// </summary>
+    public const int BlockOwnerImplicitRightsPosition = 29;
 
     /// <summary>
     /// Reads one character by its MS-ADTS position.
@@ -230,6 +299,94 @@ public static class DirectoryHeuristics
         if ((mask & 0x8) != 0) excluded.Add(AdminSdExcludableGroup.BackupOperators);
 
         return new AdminSdExclusionMask(excluded, character.Outcome, digit);
+    }
+
+    /// <summary>
+    /// Resolves <c>BlockOwnerImplicitRights</c> into the forest's setting.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The specification states its own fallbacks, and they are not the ones used elsewhere in
+    /// this file.</b> MS-ADTS 6.1.1.2.4.1.2: <i>"If this character is '0', '1', '2', or '3' the
+    /// BlockOwnerImplicitRights heuristic is set to the equivalent numeric value. If this character
+    /// is not set, the heuristic defaults to 0. If this character has any other value, the heuristic
+    /// defaults to 1."</i> So an unreadable character is not a refusal here the way it is for
+    /// <see cref="AdminSdExclusions"/> - Microsoft documents what the server does with it, and what
+    /// the server does is block. The outcome is still reported as
+    /// <see cref="HeuristicReadOutcome.Malformed"/> so a caller can see that the forest wrote
+    /// something nobody planned for, but the value follows the platform rather than this product's
+    /// preference.
+    /// </para>
+    /// <para>
+    /// <b>Defaulting a junk character to 1 lands on the safe side by luck rather than by design,
+    /// and it is worth saying which.</b> 1 is the blocking value, so a malformed character makes
+    /// this product quieter, not louder. That is the direction that hides a capability rather than
+    /// inventing one - normally the worse direction - but it is what the platform does, and a rule
+    /// that departed from the platform would be describing a forest that does not exist.
+    /// </para>
+    /// </remarks>
+    /// <param name="dsHeuristics">The attribute's value, or null where it was never read.</param>
+    /// <returns>The setting, and whether the forest was asked and answered.</returns>
+    public static OwnerImplicitRightsSetting OwnerImplicitRights(string? dsHeuristics)
+    {
+        var character = CharacterAt(dsHeuristics, BlockOwnerImplicitRightsPosition);
+
+        if (character.Outcome == HeuristicReadOutcome.NotRead)
+            return new OwnerImplicitRightsSetting(Value: null, HeuristicReadOutcome.NotRead, null);
+
+        var stated = character.Value!.Value;
+
+        return stated switch
+        {
+            >= '0' and <= '3' => new OwnerImplicitRightsSetting(
+                stated - '0', character.Outcome, stated),
+
+            // Documented, not invented: any other character defaults the heuristic to 1.
+            _ => new OwnerImplicitRightsSetting(1, HeuristicReadOutcome.Malformed, stated),
+        };
+    }
+
+    /// <summary>
+    /// Whether an owner's implicit <c>READ_CONTROL</c> and <c>WRITE_DAC</c> are blocked for one
+    /// object and one owner.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Three conditions, and all three must hold.</b> MS-ADTS 6.1.3.4 lists them together: the
+    /// heuristic blocks, the owner is in neither Domain Admins nor Enterprise Admins, and the
+    /// object's class is <c>computer</c> or derives from it. A forest that sets the heuristic has
+    /// not switched owner rights off across the directory - it has switched them off for computer
+    /// objects owned by people who are not forest or domain administrators.
+    /// </para>
+    /// <para>
+    /// <b>Why this is a method and not three checks at each call site.</b> Two rules need this
+    /// answer and each would otherwise carry its own copy of a condition that is easy to state
+    /// incompletely - and stating it incompletely is exactly the defect this exists to fix.
+    /// Treating the heuristic alone as the answer would make a rule silent about every
+    /// organizational unit, group and user in a hardened forest, hiding real latent authority
+    /// behind a setting that never applied to them.
+    /// </para>
+    /// </remarks>
+    /// <param name="setting">The forest's setting, from <see cref="OwnerImplicitRights"/>.</param>
+    /// <param name="objectIsComputerClass">
+    /// Whether the object's class is <c>computer</c> or derived from it. The caller decides this,
+    /// because resolving a class hierarchy needs the forest's schema and this type holds no schema.
+    /// </param>
+    /// <param name="ownerIsDomainOrEnterpriseAdmin">
+    /// Whether the owner is a member of Domain Admins or Enterprise Admins - those two groups
+    /// specifically, and not administrative standing in the wider sense, because those two are what
+    /// the specification names.
+    /// </param>
+    public static bool BlocksImplicitOwnerRights(
+        OwnerImplicitRightsSetting setting,
+        bool objectIsComputerClass,
+        bool ownerIsDomainOrEnterpriseAdmin)
+    {
+        ArgumentNullException.ThrowIfNull(setting);
+
+        return setting.BlocksWhereItApplies
+            && objectIsComputerClass
+            && !ownerIsDomainOrEnterpriseAdmin;
     }
 
     /// <summary>

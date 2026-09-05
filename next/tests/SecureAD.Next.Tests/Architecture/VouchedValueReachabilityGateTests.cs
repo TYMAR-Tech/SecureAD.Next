@@ -407,6 +407,18 @@ public sealed class VouchedValueReachabilityGateTests
     /// offered to the SYSVOL pass. The second is SEC-090's reasoning applied to a second walk, with
     /// one addition: it is false where the configured decryptor could not be resolved at all, which
     /// is a finding this rule makes rather than a silence.
+    /// 48 from 2026-09-05 with <c>EffectiveAccessResult.IsComplete</c>, which exists because working
+    /// out what a trustee holds over an object has four answers and only one of them is a list. The
+    /// descriptor may never have been read, the DACL may be null - which grants everyone everything
+    /// and is the most open state an object can be in - or it may have declared entries that none of
+    /// which parsed. All three arrive as an empty list of holders and would read as the safest
+    /// object in the directory. Read true from a descriptor that was read with every declared entry
+    /// parsed, and false from any of the three silences.
+    /// 49 from 2026-09-05 with <c>OwnerImplicitRightsSetting.IsComplete</c>, which says whether the
+    /// forest was asked whether it blocks an owner's implicit rights. A forest that never set
+    /// <c>dSHeuristics</c> has a documented answer; a bundle whose configuration object was never
+    /// read has none, and the two must not render alike. Read true from a character that was stated
+    /// or defaulted by absence, and false from one never read.
     /// </para>
     /// </summary>
     [Fact]
@@ -414,7 +426,7 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(47, found.Count);
+        Assert.Equal(49, found.Count);
         Assert.Contains(found, v => v.Type.Name == "RuleVerdict" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");

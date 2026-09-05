@@ -70,8 +70,9 @@ for this rule.
 
 - **That the owner did anything wrong.** The commonest cause is that they created the object.
 - **That the object matters.** See [§6](#6-severity).
-- **That the owner can rewrite the list**, where an `OWNER RIGHTS` entry says otherwise. See
-  [§5](#5-the-one-thing-that-would-make-this-rule-lie).
+- **That the owner can rewrite the list**, where an `OWNER RIGHTS` entry or a forest that has
+  blocked implicit owner rights says otherwise. See
+  [§5](#5-when-the-owner-does-not-actually-keep-the-power-this-rule-reports).
 
 ## 4. What counts as an administrative owner
 
@@ -113,20 +114,58 @@ That statement stays true whoever manages the account. The `Low` severity of
 organisation that considers a particular service account's ownership acceptable has the acceptance
 mechanism for exactly that, which leaves a record where a silent exclusion would not.
 
-## 5. The one thing that would make this rule lie
+## 5. When the owner does not actually keep the power this rule reports
 
-**`OWNER RIGHTS` (`S-1-3-4`) switches off what this rule is about.** Microsoft:
+**The question is not "is there an `OWNER RIGHTS` entry". It is "does this owner still hold
+`WRITE_DAC` over this object".** Two different things switch that power off, and an earlier draft of
+this document named only the first, calling it *"the one thing that would make this rule lie"*. That
+was wrong, and the correction is recorded as `P-138`.
+
+**This matters because it is the one category of error an audit tool may never commit.** A finding
+that says an owner can rewrite an object's permissions, on an object where the platform stops them,
+is a false statement a customer would act on.
+
+### The first: an `OWNER RIGHTS` entry on the object
+
+Microsoft:
 
 > The Owner Rights group represents the current owner of the object. When an ACE that carries this
 > SID is applied to an object, the system **ignores the implicit READ_CONTROL and WRITE_DAC
 > permissions for the object owner**.[^special]
 
-So on an object carrying such an entry, the owner cannot rewrite the permission list, and a finding
-saying they can would be **false** — the one category of error an audit tool may never commit.
+So on an object carrying such an entry, the owner cannot rewrite the permission list.
 
-**The rule therefore checks for it and stays silent where it applies**, and the object is judged
-rather than refused: this is knowledge, not ignorance. This must be a negative control, because it
-is invisible unless deliberately tested and the rule looks correct without it.
+### The second: the forest has blocked implicit owner rights
+
+`BlockOwnerImplicitRights` is character 29 of `dSHeuristics`, introduced with the hardening for
+`CVE-2021-42291`. **It does not switch owner rights off across the directory, and reading it that way
+would be a worse defect than the one it fixes.** MS-ADTS 6.1.3.4 gives three conditions, and the
+implicit rights are blocked only when **all three** hold:[^blocking]
+
+| Condition | Detail |
+|---|---|
+| The heuristic blocks | Character 29 is `1`. **`2` and `3` do not block** — they are settings of the same heuristic that leave owner rights alone. `0` is the default and does not block, except on Windows 11 version 26H1, which this product cannot detect and therefore does not claim |
+| The owner is not a forest or domain administrator | Membership of `Domain Admins` or `Enterprise Admins` **specifically** — narrower than [§4](#4-what-counts-as-an-administrative-owner)'s notion of administrative |
+| The object is a computer | `objectClass` is `computer` or derives from it |
+
+**So in a hardened forest this rule stays fully answerable for organizational units, groups, users,
+certificate templates and everything else** — which is most of what it is worth having on. Had the
+heuristic been read as a general switch, a forest that set it would have gone silent across the
+directory and hidden exactly the latent authority this rule exists to surface.
+
+### What the rule does with each
+
+**Where either condition applies, the rule stays silent and the object is judged rather than
+refused**: this is knowledge, not ignorance.
+
+**Where the evidence cannot settle it, the object is refused rather than reported.** If
+`dSHeuristics` was never read, the forest's setting is unknown, and on a computer object owned by a
+non-administrator that unknown is load-bearing — the difference between a real finding and a false
+one. `HeuristicReadOutcome` already separates *the forest defaults this* from *nobody looked*, so the
+rule can tell.
+
+Both conditions must be negative controls, because each is invisible unless deliberately tested and
+the rule looks correct without either.
 
 ## 6. Severity
 
@@ -177,6 +216,8 @@ already admits.
 | The object's `owner_sid` | The subject of the rule; already captured |
 | `DescriptorAvailability` | To tell *no owner recorded* from *nobody read it* |
 | The object's ACEs | To find an `OWNER RIGHTS` entry |
+| `dSHeuristics` character 29 | To find whether the forest has blocked implicit owner rights, per [§5](#5-when-the-owner-does-not-actually-keep-the-power-this-rule-reports) |
+| The object's `objectClass` | Because the block above applies only to computer objects |
 | `DerivationReader.MembersOf` | To decide whether the owner is administrative by membership |
 
 **It no longer reads `ProtectedPrincipalClosure`.** It did while the severity split existed; with
@@ -223,4 +264,5 @@ about the forest rather than as a defect in the rule until the objects have been
 [^attacksurface]: [Reducing the Active Directory Attack Surface](https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface)
 [^esc4]: [Security assessment: Certificates — Edit misconfigured certificate templates owner (ESC4)](https://learn.microsoft.com/defender-for-identity/security-posture-assessments/certificates)
 [^special]: [Special identity groups — Owner Rights](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-special-identities-groups)
+[^blocking]: [MS-ADTS 6.1.3.4 — Blocking Implicit Owner Rights](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/fb7c101d-ec8b-4fbf-bca8-7d7c2d747d0c), and [MS-ADTS 6.1.1.2.4.1.2 — dSHeuristics](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/e5899be4-862e-496f-9a38-33950617d2c5) for the character and its values. Both read 2026-09-05.
 [^planning]: [Security Planning — Securing the server operating system](https://learn.microsoft.com/dynamics-gp/installation/securityplanning)

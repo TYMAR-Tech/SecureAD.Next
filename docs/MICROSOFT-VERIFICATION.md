@@ -33,10 +33,12 @@ beside it. The two are separate facts and the column carries the first.
 | `GenericRightsExpander` | 17 | MS-ADTS 5.1.3.2 | 2026-08-20 | `GenericRightsExpanderMicrosoftAnchorTests` |
 | `AceType` | 10 | MS-DTYP 2.4.4.1 | 2026-08-20 | `AceTypeMicrosoftAnchorTests` |
 | `WellKnownSidCatalog` | 88 | MS-DTYP 2.4.2.4 | 2026-08-20 | `WellKnownSidCatalogMicrosoftAnchorTests` |
+| `BroadPrincipalCatalogue` | 9 identifiers | MS-DTYP 2.4.2.4, and Active Directory security groups for the two membership claims | 2026-09-05 | `BroadPrincipalCatalogueMicrosoftAnchorTests` |
 | `UserAccountControlWording` | 22 | adschema a-useraccountcontrol, `ADS_USER_FLAG_ENUM`, KB 305144 | 2026-08-21 | `UserAccountControlWordingMicrosoftAnchorTests` |
 | `ProtectedGroupCatalogue` independent claims | 18 entries | Appendix C and Active Directory security groups | 2026-08-30 | `AdminSdHolderCatalogueSemanticTests` |
 | Protected-member distribution traversal | 1 semantic claim | Reducing the Active Directory Attack Surface, protected accounts and groups section | 2026-08-30 | `AdminSdHolderCatalogueSemanticTests` |
 | `DirectoryHeuristics` mask encoding and bit assignments | 4 bits | MS-ADTS 6.1.1.2.4.1.2, and KB 56a70fa8 for the bit assignments | 2026-08-28 | `DirectoryHeuristicsMicrosoftAnchorTests` |
+| `DirectoryHeuristics` owner implicit rights | 4 values, 3 conditions | MS-ADTS 6.1.1.2.4.1.2 for the character, 6.1.3.4 for the conditions | 2026-09-05 | `OwnerImplicitRightsMicrosoftAnchorTests` |
 
 **Defects found: 12 of 238.** Eleven were in `SchemaGuidCatalog`, seven of those in the 74 entries
 nothing had ever checked. The twelfth is below, and it was a **missing** value rather than a wrong

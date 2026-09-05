@@ -226,6 +226,10 @@ The table below sits between the two markers around it, so the test parses only 
 | PermissionEntry | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
 | PermissionTrustee | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
 | DescriptorAvailability | SecureAD.Evidence | [what-an-objects-permissions-hold](../layers/evidence/what-an-objects-permissions-hold.md) |
+| EffectiveAccess | SecureAD.Evidence | [working-out-effective-access](../layers/evidence/working-out-effective-access.md) |
+| EffectiveAccessCalculator | SecureAD.Evidence | [working-out-effective-access](../layers/evidence/working-out-effective-access.md) |
+| EffectiveAccessOutcome | SecureAD.Evidence | [working-out-effective-access](../layers/evidence/working-out-effective-access.md) |
+| EffectiveAccessResult | SecureAD.Evidence | [working-out-effective-access](../layers/evidence/working-out-effective-access.md) |
 | ObjectAttributes | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | ObjectAttribute | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | AttributeValue | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
@@ -389,6 +393,7 @@ The table below sits between the two markers around it, so the test parses only 
 | HeuristicReadOutcome | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | AdminSdExclusionMask | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 | AdminSdExcludableGroup | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
+| OwnerImplicitRightsSetting | SecureAD.Kernel | [security-descriptors](../layers/kernel/security-descriptors.md) |
 
 <!-- REGISTER:END -->
 
