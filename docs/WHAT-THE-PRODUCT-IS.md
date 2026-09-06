@@ -74,8 +74,10 @@ records the implementation and before/after lab checks. P-145 now has initial-sl
 not an acceptance pass: the remaining capabilities, member expansion, Tier 0-target review and
 claim-specific laboratory gates remain outstanding. The
 [membership slice](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
-has automated coverage, not laboratory acceptance. Re-judge schema-15 results to obtain it;
-this does not accept the whole stage-6 proposal or change the recorded initial-slice lab counts.
+has automated coverage and an isolated offline lab comparison, not live requester acceptance.
+The comparison preserved all 65,084 existing primitives and added 10,776 established general
+membership writes plus 10,761 unknown self-membership candidates. Re-judge schema-15 results to
+obtain it; this does not accept the whole stage-6 proposal or replace the historical baseline.
 
 ## The five commitments
 

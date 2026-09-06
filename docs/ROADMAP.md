@@ -807,8 +807,11 @@ receive separate general membership-write and own-account-only Self-Membership c
 stored scope evidence and both existing views. Concrete self-membership requester operations stay
 unknown; this is not member expansion or a claim that every group is privileged. The
 [membership implementation](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
-has automated coverage but no new lab acceptance. Catalogue 2 and the corrected schema-15 laboratory
-baseline are unchanged; old judgements require re-judging to obtain the wider slice.
+has automated coverage and an [isolated offline lab comparison](layers/judgement/the-judgement-store.md#schema-16-membership-slice--offline-lab-comparison-2026-09-06):
+all old primitives are unchanged, with 10,776 general membership writes and 10,761 unknown
+self-membership candidates added. There were no self-membership-only cases in that capture, so
+the requester gate remains open. Catalogue 2 and the corrected schema-15 laboratory baseline are
+unchanged; old judgements require re-judging to obtain the wider slice.
 
 Ownership-derived control, credential and replication capabilities,
 full-control aggregation and effective member expansion remain outside these bounded slices.

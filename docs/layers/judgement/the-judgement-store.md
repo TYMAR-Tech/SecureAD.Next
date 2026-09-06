@@ -275,7 +275,9 @@ descriptor when the unresolved input is the requester operation (presentation se
 `DuplicateGrantsDoNotMultiplyTheNamedHolderOrInvokeMemberExpansion` verifies the bounded count and
 fails if the analysis calls member expansion.
 
-**No new laboratory measurement is claimed.** The schema-15 corrected baseline remains 65,084
+**The implementation test run above did not claim a laboratory measurement.** The separate
+schema-16 offline comparison below now records one, without discharging live requester gates.
+The schema-15 corrected baseline remains 65,084
 counted primitives: 53,265 expected, 11,805 unexpected and 14 of unknown expectedness. It does not
 include these new membership candidates. No sealed laboratory evidence or `next/artifacts/` was
 modified or reused for writes. P-145 and the remaining stage-6 laboratory gates remain open;
@@ -393,6 +395,89 @@ finding rows and all 17 rule-execution rows match the baseline. The evidence fin
 The real reader shows eight hidden expected primitives and four visible rows on the planted target;
 the two unexpected takeover-group primitives remain visible. Opening the historical generation
 still returns its version-1 answers. **P-150 is closed; P-145 and stage-6 acceptance remain open.**
+
+### Schema-16 membership slice — offline lab comparison, 2026-09-06
+
+**Checkpoint `491fbff`, not stage-6 acceptance.** The bounded membership slice was committed,
+then the corrected schema-15 evidence and derivation were copied into a new, separate workspace
+directory. The original `next/artifacts/` files were not used as writable working files. All twelve
+files in the source bundle, including its existing SQLite sidecars, retain their original hashes;
+all six database seals in the comparison baseline and final working copy verify.
+
+The final judging used the baseline's exact evaluation time,
+`2026-09-06T03:28:21.4277714+00:00`, so time-dependent rule inputs did not change. It completed in
+108.95 seconds as generation `3fd5276e-66b3-4f1b-925f-0f3720672fff`, with judgement schema 16,
+control engine 2 and principal catalogue 2. Derivation remains
+`709c602a-19ad-428d-91bd-5d10efb507a6`; Evidence SHA-256 remains
+`2DEF9F8AD4DE01877970B7F97F845716C1FFC1B093B01F388004610526E76BE4`.
+
+**Existing answers did not change.** Comparing by target, scoped holder and capability, rather
+than generation-local row numbers, found identical values for all 97,624 old edge rows, 433,561
+supporting ACE rows, 97,620 preconditions and the existing membership-route evidence. The 8,383
+descriptor-coverage records are unchanged apart from the explicitly broader completeness question
+below. All 27 findings, their detail tables and all 17 rule-execution rows match. The judging outcome
+remains `CompletedDegraded`. The 32,540 owner-to-DACL compounds remain unknown and uncounted.
+
+| Counted slice | Expected | Unexpected | Expectedness unknown | Total | Capability evaluation |
+|---|---:|---:|---:|---:|---|
+| Existing WRITE_DAC/WRITE_OWNER | 53,265 | 11,805 | 14 | 65,084 | Established |
+| General membership writes | 8,635 | 2,141 | 0 | 10,776 | Established |
+| Own-account-only Self-Membership candidates | 6,457 | 2,141 | 2,163 | 10,761 | Unknown |
+| All counted rows in these slices | 68,357 | 16,087 | 2,177 | 86,621 | Mixed; not a total of proven operations |
+
+Both new capabilities occur across **2,163 captured groups**. Those groups now have incomplete
+supported-capability coverage because their concrete self-membership requester operations are
+unanswered, **not because descriptors were lost**. General membership-write answers remain
+established independently. An expected self-membership candidate is still unknown as an operation;
+the expectedness column does not establish the requester constraint.
+
+**The unexpected membership volume is attributable, not unexplained.** Account Operators contributes
+2,130 general writes and 2,130 self-membership candidates: 2,054 of each in `ba.ad.lab`, 40 in
+`ph.ad.lab` and 36 in `ad.lab`. The principal named `ba.laps.new`
+(`S-1-5-21-1834058357-2590327168-2246012571-1607`) contributes the other eleven of each, against
+groups under `OU=Groups,OU=BA Lab`, including the LAPS-related groups. No wider authority was granted
+to either holder by changing the catalogue. SYSTEM contributes 2,163 expected general writes and
+2,163 self-membership candidates with unknown expectedness (`UnknownCapabilityScope`). The other
+four excluded operator groups and the domain-controller computer accounts have no named-holder
+membership candidates in this capture; that is not a claim about their other rights or expanded
+membership. The renamed RID-500 account `jimmystrand` has fifteen additional general membership
+writes, each supported by an object-specific READ_PROPERTY/WRITE_PROPERTY ACE on `member`, without
+a corresponding Self-Membership candidate.
+
+**Independent byte-level and coverage checks passed.** The .NET `RawSecurityDescriptor` reader,
+not SecureAD's descriptor parser or effective-access calculator, verified 122 distinct ACE
+signatures representing all 21,537 new stored membership ACE rows. Checks covered ordinal, type,
+SID, mapped mask, GUID-presence flags, GUIDs, inheritance and opaque bytes. Independently enumerating
+uncomplicated direct grants from the captured groups found the same 21,537 candidate identities,
+with no omissions or additions, across all 2,163 groups. Changing a compared mask and omitting a
+candidate in memory were both detected; the stable-store comparison also detected omitted old
+edges and altered old ACE masks through read-only query mutations. No evidence file was mutated.
+
+**Both reader directions agree.** Twenty-five representative rows cover every observed scoped
+holder/capability combination. Object-first and named-holder-first calls returned identical full
+edge evidence and generation identities. Toggling the object filter retained its expected count;
+expected rows were hidden by default without changing their stored classifications. These are real reader checks, not a claim
+that a person manually exercised the graphical interface.
+
+**What this capture cannot validate:** all self-membership candidates also have a general-write
+candidate for the same target and holder. There are **zero self-membership-only cases**, no relevant
+denies, callbacks or inherit-only grants, and no property-set-based membership grants in this
+measurement. The fifteen scoped grants reach `member` directly. Automated tests cover the absent
+scope/deny/callback cases; this captured-evidence pass does not replace controlled live tests of
+own-account versus other-account modification, especially through a trustee group. It also does
+not establish token-wide effective authorization, member expansion, full Tier 0-target review,
+remediation or the acceptability of the default result volume. **P-145 and the claim-specific
+laboratory gates remain open.**
+
+Local artifacts are deliberately untracked under `next/lab-validation-membership-491fbff/`:
+`run-judging.ps1`, `compare-membership.ps1`, `inspect-membership.ps1`, `verify-integrity.ps1`, their
+logs, JSON reports, source/binary manifests, a preserved baseline and isolated working copies.
+The first diagnostic generation `f16f74a8-ce95-4af3-b252-3abb842227ea` is retained separately but
+excluded from the comparison: PowerShell's automatic JSON date conversion discarded fractional
+seconds. The final harness preserves date strings and refuses a reference time that does not
+round-trip exactly. A catalogue-namespace typo stopped an earlier harness attempt before judging;
+a later file-count alarm was JSON-array handling, with all twelve original files independently
+confirmed unchanged. These were corrected harness defects, not product or evidence changes.
 
 ---
 
