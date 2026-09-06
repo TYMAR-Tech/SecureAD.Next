@@ -9,8 +9,10 @@ public sealed class ControlEdgeStorageTests
 {
     private const string Seal = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-    [Fact]
-    public void Schema14IsRefusedWithBothVersionNumbers()
+    [Theory]
+    [InlineData(14)]
+    [InlineData(15)]
+    public void OlderSchemasAreRefusedWithBothVersionNumbers(int version)
     {
         var directory = TempDirectories.Create("control-edge-old-schema");
         File.WriteAllText(BundleLayout.SealPath(directory), JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, Seal)));
@@ -20,15 +22,75 @@ public sealed class ControlEdgeStorageTests
             {
                 connection.Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE judgement SET schema_version=14";
+                command.CommandText = "UPDATE judgement SET schema_version=$version";
+                command.Parameters.AddWithValue("$version", version);
                 command.ExecuteNonQuery();
             }
             writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));
         }
         var opened = JudgementReader.Open(directory);
         Assert.False(opened.IsSuccess);
-        Assert.Contains("14", opened.Error.Description);
+        Assert.Contains(version.ToString(), opened.Error.Description);
         Assert.Contains(JudgementSchema.Version.ToString(), opened.Error.Description);
+    }
+
+    [Fact]
+    public void MembershipKindsConstraintsAndOriginalAcesSurviveBothQueries()
+    {
+        var ace = GroupMembershipControlTests.Scoped(7, 0x28);
+        var directory = Store(writer =>
+        {
+            writer.StartControlEdges(true);
+            var result = GroupMembershipControlTests.Membership(ControlEdgeDeriverTests.Permissions(ace));
+            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
+            writer.CompleteControlEdges();
+        });
+        using var reader = Open(directory);
+        var byObject = reader.ReadControlEdges(GroupMembershipControlTests.Group.DistinguishedName, null, null, false, 0);
+        var byHolder = reader.ReadControlEdges(null, ControlEdgeDeriverTests.Holder, null, false, 0);
+        Assert.Equal(byObject.Edges.Select(edge => edge.Id), byHolder.Edges.Select(edge => edge.Id));
+        Assert.Equal(2, byObject.Edges.Count);
+        Assert.Equal(2, byObject.UnknownCount);
+        Assert.Equal(1, byObject.UnansweredObjects);
+        Assert.False(byObject.IsComplete);
+        Assert.All(byObject.Edges, edge =>
+        {
+            Assert.Equal(ControlEdgeClass.MembershipEscalation, edge.EdgeClass);
+            Assert.True(edge.IsCounted);
+            var stored = Assert.Single(edge.Evidence);
+            Assert.Equal(ace.Ordinal, stored.Ordinal);
+            Assert.Equal(ace.AccessMask, stored.AccessMask);
+            Assert.Equal(ace.ObjectTypeGuid, stored.ObjectTypeGuid);
+            Assert.True(stored.HasObjectType);
+            Assert.Equal("Computed", edge.DescriptorOutcome);
+        });
+        Assert.True(byObject.Edges.Single(edge => edge.Capability == ControlCapability.CanModifyGroupMembership).IsComplete);
+        var self = byObject.Edges.Single(edge => edge.Capability == ControlCapability.CanAddSelfToGroup);
+        Assert.Equal(ControlEvaluationState.Unknown, self.EvaluationState);
+        Assert.Contains(self.Preconditions, condition => condition.Name == "AddedMemberSid == RequesterSid" && condition.State == ControlEvaluationState.Unknown);
+        Assert.Equal("ResearchBlocked", self.ResearchStatus);
+    }
+
+    [Fact]
+    public void OldControlEngineCannotClaimTheWiderMembershipScope()
+    {
+        var directory = TempDirectories.Create("control-edge-old-engine");
+        File.WriteAllText(BundleLayout.SealPath(directory), JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, Seal)));
+        using (var writer = JudgementWriter.Create(directory, Seal, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch))
+        {
+            writer.StartControlEdges(true);
+            writer.CompleteControlEdges();
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE control_product SET engine_version=1";
+                command.ExecuteNonQuery();
+            }
+            writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));
+        }
+        using var reader = Open(directory);
+        Assert.False(reader.ReadControlEdges(null, null, null, false, 0).ProductWasDerived);
     }
 
     [Fact]

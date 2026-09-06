@@ -27,6 +27,51 @@ public sealed class JudgingEndToEndTests
     private static readonly DateTimeOffset Started = new(2026, 8, 26, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = new(2026, 8, 26, 11, 0, 0, TimeSpan.Zero);
 
+    [Theory]
+    [InlineData("WP", true, false)]
+    [InlineData("SW", false, true)]
+    [InlineData("GW", true, true)]
+    [InlineData("GA", true, true)]
+    public void SealedGroupDescriptorProducesSeparateMembershipCapabilities(string rights, bool general, bool self)
+    {
+        var directory = TempDirectories.Create("membership-control-e2e");
+        const string dn = "CN=DelegatedGroup,DC=contoso,DC=com";
+        var subject = NotAnAccount(dn, "group");
+        var descriptor = new System.Security.AccessControl.RawSecurityDescriptor($"O:SYG:SYD:(A;;{rights};;;WD)");
+        var bytes = new byte[descriptor.BinaryLength];
+        descriptor.GetBinaryForm(bytes, 0);
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var id = writer.WriteObject(subject);
+            writer.WriteSecurityDescriptor(id, bytes, SecureAD.Kernel.Security.AceNormalizer.Normalize(
+                subject.ObjectGuid!.Value, SecureAD.Kernel.Security.SecurityDescriptorParser.Parse(bytes)));
+            writer.Complete(OneDomainRead(), Finished);
+        }
+        Judged(directory);
+        using var reader = JudgementReader.Open(directory).Value!;
+        var page = reader.ReadControlEdges(dn, null, null, false, 0);
+        var holder = reader.ReadControlEdges(null, "S-1-1-0", null, false, 0);
+        Assert.True(page.ProductWasDerived);
+        Assert.Equal(page.Edges.Select(edge => edge.Id), holder.Edges.Select(edge => edge.Id));
+        Assert.Equal(general, page.Edges.Any(edge => edge.Capability == ControlCapability.CanModifyGroupMembership));
+        Assert.Equal(self, page.Edges.Any(edge => edge.Capability == ControlCapability.CanAddSelfToGroup));
+        if (general)
+        {
+            var edge = page.Edges.Single(edge => edge.Capability == ControlCapability.CanModifyGroupMembership);
+            Assert.True(edge.IsComplete);
+            Assert.Equal(ControlExpectedness.Unexpected, edge.Expectedness);
+            Assert.Single(edge.Evidence);
+        }
+        if (self)
+        {
+            var edge = page.Edges.Single(edge => edge.Capability == ControlCapability.CanAddSelfToGroup);
+            Assert.Equal(ControlEvaluationState.Unknown, edge.EvaluationState);
+            Assert.Contains(edge.Preconditions, condition => condition.Name == "AddedMemberSid == RequesterSid");
+            Assert.False(page.IsComplete);
+        }
+    }
+
     [Fact]
     public void SealedDescriptorProducesStoredControlEdgesThroughTheRealCoordinator()
     {

@@ -31,7 +31,7 @@ finished and sealed separately from the evidence it judged.
 | `FindingsPage` | One page of findings, and whether there is another |
 | `FindingsPageMark` | Where a page of findings ended, so the next can start after it |
 | `FindingsFilterValues` | What a findings grid's filters may offer, taken from the findings that exist |
-| `ControlCapability` | The supported initial control capabilities, not the complete stage-6 catalogue |
+| `ControlCapability` | The supported bounded control capabilities, not the complete stage-6 catalogue |
 | `ControlEdge` | A stored capability attributed to its named trustee, with evidence and independent expectedness |
 | `ControlEdgeClass` | Semantic categories, never severity or an ordered risk score |
 | `ControlEdgePage` | A bounded page with generation, coverage and counts, including hidden expected edges |
@@ -172,6 +172,8 @@ protected account and an unresolved membership elsewhere in the captured graph.
 
 ### Initial control-edge product — schema 15
 
+**Historical baseline; the current product is schema 16, described below.**
+
 `JudgingRun` now calls `ControlEdgeDeriver` for each streamed object and persists its result through
 `JudgementWriter`. `ControlEdgeStorage` records product completion, per-object descriptor coverage,
 edges, supporting ACEs and preconditions. Membership evidence is stored with each edge rather than
@@ -184,11 +186,101 @@ owner-setting right does not prove a takeover. Expectedness and capability evalu
 stored product. The object screen defaults to hiding expected edges, states their count, shows
 coverage and evidence, and refuses to mix generations while paging.
 
-This is a started slice, not completed stage 6. Ownership-derived control, membership changes,
+This was a started slice, not completed stage 6. Ownership-derived control, membership changes,
 credentials, replication, full-control aggregation and effective member expansion are not derived.
 Reachability remains unbuilt. The end-to-end witness is
 `JudgingEndToEndTests.SealedDescriptorProducesStoredControlEdgesThroughTheRealCoordinator`;
 automated tests do not discharge the stage's claim-specific laboratory gates or P-145.
+
+### Bounded group-membership control — schema 16
+
+**Implemented, not laboratory-accepted.** `ControlEdgeDeriver` now asks two separate questions
+on captured group objects. Neither category nor target class says that the group is privileged.
+Known non-group objects are excluded; a missing target class is an explicit coverage gap.
+
+| Capability | What is established from permissions | What is not claimed |
+|---|---|---|
+| `CanModifyGroupMembership` | WRITE_PROPERTY (`0x20`) reaches `member`, without the own-account restriction | That every proposed membership value would pass AD's group-scope, value or other directory constraints; that the group is Tier 0 |
+| `CanAddSelfToGroup` | A separate Self-Membership validated-write (`0x08`) candidate, with `HoldsSelfMembershipValidatedWrite` recording the permission answer | That a concrete requester can perform the operation. `AddedMemberSid == RequesterSid` stays `Unknown`; only the caller's own account may be added or removed |
+
+**Why even a directly named self-membership candidate stays unknown in this bounded slice:**
+the analysis does not identify and evaluate a concrete acting requester. A named trustee, including
+a group or a broad identity, is not itself proof of that requester. The stored permission answer
+can be established while the constrained operation stays unknown. This is an implementation limit,
+not a new AD rule or acceptance of the stage-6 proposal's direct-requester claims. Group-held
+self-membership expansion remains gated under `0110`; no member capabilities are generated.
+An unknown self-membership candidate does not weaken an independent general membership write.
+
+**The external anchor is Microsoft's distinction, not agreement between tests and code.**
+[Control Access Rights](https://learn.microsoft.com/windows/win32/ad/control-access-rights)
+defines WRITE_PROPERTY as 32 and validated SELF as 8, and explicitly limits Self-Membership to
+the caller's account. [Self-Membership](https://learn.microsoft.com/windows/win32/adschema/r-self-membership)
+gives its GUID and group target. The existing Microsoft-anchored `SchemaGuidCatalog` supplies
+GUIDs rather than duplicating literals. `member` and Self-Membership share a GUID but not a right.
+
+**Attribute and property-set entries are evaluated together, in stored order.** A temporary
+projection selects only the entries reaching the one membership operation, then calls the existing
+`EffectiveAccessCalculator`. Evaluating property sets separately and unioning answers would let a
+property-set allow escape an attribute deny. A property set reaches `member` only when the captured
+catalogue says it contains that attribute; no shipped membership list is assumed. Unknown property
+scope, incomplete descriptors, unsupported/callback ACEs and relevant cross-trustee denies retain
+unknown candidates. Inherit-only entries grant nothing on this object. NULL, empty and unread
+descriptors remain distinct. Generic rights arrive mapped through the existing parser/normalizer.
+
+**Stored evidence is not the projection.** Original ACE ordinals, trustees (including an original
+SELF placeholder), masks, GUID flags, inheritance and callback bytes are retained, together with
+the captured property-set explanation, requester constraint, descriptor outcome, generation and
+existing membership routes. Both capabilities use `MembershipEscalation` under `0110`. Expectedness
+still uses catalogue 2 and accepted authority scopes, including the P-150 correction; ownership
+acceptance, protection and target privilege are not substitutes. The two existing views read these
+same stored rows and expose the distinct wording, uncertainty and constraints.
+
+**Counting is still named-holder counting, not member counting.** Each capability candidate is
+counted once per target and scoped trustee; unknown candidates are included, explicitly labeled,
+and keep object coverage incomplete. Expectedness counts are not counts of established operations.
+The owner-to-DACL compound remains unknown and uncounted. Effective member expansion, ownership-
+derived control, credential and replication capabilities, full-control aggregation and reachability
+remain outside this work.
+
+**Schema 16 and control engine 2 are semantic changes, not evidence or table-layout changes.**
+Schema-15 judgements are refused and must be re-judged; an engine-1 product cannot claim membership
+coverage. The schema-15 independent layout checkpoint remains untouched, and schema 16 explicitly
+shares that layout. Semantic tests therefore accompany the layout check. No re-capture or
+re-derivation is required. Principal catalogue version remains 2.
+
+**Automated witnesses:** `GroupMembershipControlTests`,
+`ControlEdgeStorageTests.MembershipKindsConstraintsAndOriginalAcesSurviveBothQueries`,
+`JudgingEndToEndTests.SealedGroupDescriptorProducesSeparateMembershipCapabilities` and
+`ControlEdgePresentationTests.BothViewsKeepGeneralAndSelfMembershipSeparateAndShowTheirLimits`.
+The coordinator tests use newly created isolated synthetic bundles, including generic-write and
+generic-all descriptors. The initial targeted run passed all 64 tests across membership analysis,
+storage, layout, coordinator and presentation. The final full run passed **3,390 tests**, with none
+failed or skipped, compared with the checkpoint's 3,356. The solution build succeeded.
+
+**Observed negative control:** temporarily replacing the self-membership mask `0x08` with `0x20`
+made both `SameGuidDoesNotMergeDifferentRights` cases fail. The WRITE_PROPERTY case reported
+`Assert.Single` with two rows; the SELF case reported an empty collection. Neither case passed.
+The correct mask was restored before the green full run. Existing layout mutation tests still
+reject added columns and missing indexes; the old-schema tests refuse both 14 and 15, and the
+engine-version negative control refuses engine 1 under the new scope.
+
+**Validation findings, closed:** the older whole-object test fixture omitted its target class;
+making its intended OU class explicit preserved its original assertions while the missing-class
+test still proves the unknown boundary (test-fixture severity: low). The new engine-refusal fixture
+initially opened a legacy filename instead of the generation product; it now mutates only its own
+synthetic partial store before publication (test-fixture severity: low). Final review also corrected
+SYSTEM self-membership expectedness to `UnknownCapabilityScope`, rather than claiming an incomplete
+descriptor when the unresolved input is the requester operation (presentation severity: medium).
+`SystemRequesterUncertaintyIsNotMislabelledAsAnUnreadDescriptor` guards that distinction.
+`DuplicateGrantsDoNotMultiplyTheNamedHolderOrInvokeMemberExpansion` verifies the bounded count and
+fails if the analysis calls member expansion.
+
+**No new laboratory measurement is claimed.** The schema-15 corrected baseline remains 65,084
+counted primitives: 53,265 expected, 11,805 unexpected and 14 of unknown expectedness. It does not
+include these new membership candidates. No sealed laboratory evidence or `next/artifacts/` was
+modified or reused for writes. P-145 and the remaining stage-6 laboratory gates remain open;
+completed permission/Tier 0 session briefs are historical and the stage-6 specification remains
+a proposal except where accepted decisions govern it.
 
 ### Captured-lab validation of the initial slice — 2026-09-06
 
@@ -463,8 +555,8 @@ caught the omission.
 ## What is built
 
 The schema, the two state machines, the writer, the reader and the `JudgingRun` coordinator are built.
-Judging runs the scheduled rules over sealed evidence and also writes the initial control-edge
-product described above. The initial slice is not completion of stage 6 or its acceptance gates.
+Judging runs the scheduled rules over sealed evidence and also writes the bounded control-edge
+products described above. These slices are not completion of stage 6 or its acceptance gates.
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|

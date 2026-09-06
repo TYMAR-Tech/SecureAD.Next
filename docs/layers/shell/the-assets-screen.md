@@ -99,7 +99,12 @@ calculate directory access. By default it shows rights over the opened object. W
 a principal SID, **Rights held by this principal** switches to the named-holder view of the same
 stored edge set. This is not expansion of the rights the principal receives through group membership.
 
-The current slice covers WRITE_DAC and WRITE_OWNER. Its scope notice explicitly names capabilities
+The current slices cover WRITE_DAC, WRITE_OWNER and bounded group-membership rights. General
+membership writes and own-account-only Self-Membership candidates have different labels. The latter
+remain unknown because no concrete requester operation is evaluated. The evidence view shows their
+`MembershipEscalation` category, evaluation, constraints and research status without calling the
+target group privileged. Unknown candidates remain counted, and the coverage text says that
+expectedness is not proof of an established capability. Its scope notice explicitly names capabilities
 not yet derived, so its counts cannot be read as totals for all control. Expected primitives are
 hidden by default, with expected, unexpected and unknown-expectedness counts stated separately.
 Showing expected edges changes the filter, not the stored classification. Supporting ownership

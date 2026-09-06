@@ -3,7 +3,7 @@ using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Judgement;
 
-/// <summary>Capabilities evaluated by the initial control slice; not a complete stage-6 catalogue.</summary>
+/// <summary>Capabilities evaluated by the bounded control slices; not a complete stage-6 catalogue.</summary>
 public enum ControlCapability
 {
     /// <summary>The named trustee holds WRITE_DAC.</summary>
@@ -12,6 +12,10 @@ public enum ControlCapability
     CanSetOwner,
     /// <summary>The compound owner-to-DACL transition, still gated by its recorded preconditions.</summary>
     CanBecomeOwnerAndRewriteDacl,
+    /// <summary>WRITE_PROPERTY reaches member on a group, without the own-account restriction.</summary>
+    CanModifyGroupMembership,
+    /// <summary>A Self-Membership candidate, limited to the requester's own account; requester evaluation is separate.</summary>
+    CanAddSelfToGroup,
 }
 /// <summary>Semantic categories accepted under 0110, never an ordered risk score.</summary>
 public enum ControlEdgeClass
@@ -102,6 +106,12 @@ public enum ControlUncertainty
     OwnerRightsOperationNotEvaluated = 256,
     /// <summary>Object-specific scope for the standard-right candidate remains unevaluated.</summary>
     ObjectSpecificScopeNotEvaluated = 512,
+    /// <summary>The captured schema does not establish whether an entry reaches member.</summary>
+    MembershipScopeNotEvaluated = 1024,
+    /// <summary>No concrete requester operation or group-held Self-Membership expansion was evaluated.</summary>
+    SelfMembershipRequesterNotEvaluated = 2048,
+    /// <summary>The target's captured class does not establish whether it is a group.</summary>
+    TargetClassNotRead = 4096,
 }
 
 /// <summary>A named condition, with its own evaluation; uncertainty never flows back into its primitive.</summary>
@@ -131,14 +141,15 @@ public sealed record ControlEdge(
 {
     /// <summary>The descriptor-level source, including a NULL DACL that has no granting ACE.</summary>
     public string DescriptorOutcome { get; init; } = "NotRecorded";
-    /// <summary>The category of all capabilities in this initial slice.</summary>
-    public ControlEdgeClass EdgeClass => ControlEdgeClass.DirectoryControl;
+    /// <summary>The capability's semantic category, not a severity or target privilege classification.</summary>
+    public ControlEdgeClass EdgeClass => Capability is ControlCapability.CanModifyGroupMembership or ControlCapability.CanAddSelfToGroup
+        ? ControlEdgeClass.MembershipEscalation : ControlEdgeClass.DirectoryControl;
     /// <summary>Whether the capability evaluation has no unresolved input; expectedness is separate.</summary>
     public bool IsComplete => EvaluationState != ControlEvaluationState.Unknown && Uncertainty == ControlUncertainty.None;
     /// <summary>Whether an additional transition is required.</summary>
-    public string Feasibility => Capability == ControlCapability.CanBecomeOwnerAndRewriteDacl ? "Conditional" : "Direct";
-    /// <summary>The compound is blocked regardless of confidence.</summary>
-    public string ResearchStatus => Capability == ControlCapability.CanBecomeOwnerAndRewriteDacl ? "ResearchBlocked" : "Verified";
+    public string Feasibility => Capability is ControlCapability.CanBecomeOwnerAndRewriteDacl or ControlCapability.CanAddSelfToGroup ? "Conditional" : "Direct";
+    /// <summary>Unverified owner transitions and self-membership requester operations remain blocked.</summary>
+    public string ResearchStatus => Capability is ControlCapability.CanBecomeOwnerAndRewriteDacl or ControlCapability.CanAddSelfToGroup ? "ResearchBlocked" : "Verified";
     /// <summary>Evidence quality, never a substitute for establishing a capability.</summary>
     public string Confidence => IsComplete ? "High" : "Low";
 }
@@ -173,7 +184,8 @@ public sealed record ControlEdgePage(
     /// <summary>Completeness of the supported primitive slice, not of all stage-6 capabilities.</summary>
     public bool IsComplete => ProductWasDerived && CaptureIsComplete && UnansweredObjects == 0;
     /// <summary>The boundary stated wherever this partial capability catalogue is shown.</summary>
-    public const string SupportedScope = "Initial control-edge slice: WRITE_DAC and WRITE_OWNER only. "
-        + "Ownership-derived control, membership changes, credentials, replication, full-control aggregation "
+    public const string SupportedScope = "Bounded control-edge slices: WRITE_DAC, WRITE_OWNER and group-membership rights. "
+        + "General membership writes and own-account-only Self-Membership are separate; self-membership requester operations remain unknown. "
+        + "Ownership-derived control, credentials, replication, full-control aggregation "
         + "and effective member expansion are not yet derived. Counts are not totals for all control capabilities.";
 }

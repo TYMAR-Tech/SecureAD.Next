@@ -802,8 +802,16 @@ proved takeover. Expected edges are hidden by default with their count stated. T
 and its end-to-end witness are described in
 [the judgement store](layers/judgement/the-judgement-store.md#initial-control-edge-product--schema-15).
 
-Ownership-derived control, membership changes, credential and replication capabilities,
-full-control aggregation and effective member expansion remain outside this initial slice.
+**The next bounded slice is implemented in judgement schema 16, control engine 2.** Group objects
+receive separate general membership-write and own-account-only Self-Membership candidates, with
+stored scope evidence and both existing views. Concrete self-membership requester operations stay
+unknown; this is not member expansion or a claim that every group is privileged. The
+[membership implementation](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
+has automated coverage but no new lab acceptance. Catalogue 2 and the corrected schema-15 laboratory
+baseline are unchanged; old judgements require re-judging to obtain the wider slice.
+
+Ownership-derived control, credential and replication capabilities,
+full-control aggregation and effective member expansion remain outside these bounded slices.
 The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
 passing automated tests does not discharge them.
 

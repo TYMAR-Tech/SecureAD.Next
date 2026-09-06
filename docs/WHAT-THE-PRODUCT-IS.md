@@ -62,16 +62,20 @@ Evidence-bound Derivation products and typed missing/degraded input handling. Th
 order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longer treated as an unbounded
 architectural question.
 
-**Stage 6 has started, not finished.** Judging now stores the initial WRITE_DAC/WRITE_OWNER
-control-edge slice, with object-first and named-holder-first views in the object screen. The
-owner-to-DACL transition remains unknown and uncounted. Judgement schema 15 stores this product;
+**Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER and bounded
+group-membership control, with object-first and named-holder-first views in the object screen.
+General membership writes and own-account-only Self-Membership candidates are separate; concrete
+self-membership requester operations remain unknown and no member capabilities are expanded.
+The owner-to-DACL transition remains unknown and uncounted. Judgement schema 16 stores this product;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
 records the implementation and before/after lab checks. P-145 now has initial-slice measurements,
 not an acceptance pass: the remaining capabilities, member expansion, Tier 0-target review and
-claim-specific laboratory gates remain outstanding. Group-membership control is a recommended
-next slice, not an already-implemented feature or acceptance of the whole stage-6 proposal.
+claim-specific laboratory gates remain outstanding. The
+[membership slice](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
+has automated coverage, not laboratory acceptance. Re-judge schema-15 results to obtain it;
+this does not accept the whole stage-6 proposal or change the recorded initial-slice lab counts.
 
 ## The five commitments
 

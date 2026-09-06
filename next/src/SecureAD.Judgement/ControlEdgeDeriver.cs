@@ -2,6 +2,7 @@ using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel.Naming;
+using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
@@ -94,7 +95,103 @@ internal static class ControlEdgeDeriver
                     });
             }
         }
+        uncertainty |= AddMembershipEdges(subject, permissions, normalized, context, generation, derivationGeneration,
+            domainSid, effective.Outcome, uncertainty, edges);
         return new(subject.DistinguishedName, targetSid, targetScope, effective.Outcome.ToString(), uncertainty, edges);
+    }
+
+    private static ControlUncertainty AddMembershipEdges(ObjectAttributes subject, ObjectPermissions original,
+        ObjectPermissions normalized, JudgingContext context, Guid generation, Guid? derivationGeneration,
+        Func<string, string?> domainSid, EffectiveAccessOutcome outcome, ControlUncertainty descriptorUncertainty,
+        List<ControlEdge> edges)
+    {
+        var classes = subject.Find("objectClass")?.Values;
+        var isGroup = classes?.Any(value => Same(value.Text, "group")) == true;
+        if (!isGroup && classes?.Any(value => value.Text is not null) == true) return ControlUncertainty.None;
+        var targetUncertainty = isGroup ? ControlUncertainty.None : ControlUncertainty.TargetClassNotRead;
+        var catalogue = context.SchemaGuids ?? SchemaGuidCatalog.Embedded;
+        foreach (var (right, capability) in new[] { (0x20, ControlCapability.CanModifyGroupMembership), (0x08, ControlCapability.CanAddSelfToGroup) })
+        {
+            var relevant = normalized.Entries.Select((entry, index) => (Entry: entry, Original: original.Entries[index],
+                    Scope: MembershipScope(entry, right, catalogue)))
+                .Where(item => Applies(item.Entry) && (item.Entry.AccessMask & right) != 0
+                    && item.Scope.State != ControlEvaluationState.NotEstablished).ToArray();
+            // Project one operation, preserving DACL order. Never union separately evaluated property sets:
+            // that would let a broad allow escape a member-specific deny (or the reverse).
+            var effective = EffectiveAccessCalculator.Over(normalized with
+            {
+                Entries = relevant.Where(item => item.Scope.State == ControlEvaluationState.Established && IsSupported(item.Entry.AceType))
+                    .Select(item => item.Entry with { HasObjectType = false, ObjectTypeGuid = null }).ToArray(),
+            }, objectTypeGuid: null);
+            var trustees = relevant.Select(item => item.Entry.Trustee).Where(trustee => trustee.Sid != "S-1-3-4")
+                .DistinctBy(trustee => trustee.Sid, StringComparer.OrdinalIgnoreCase).ToList();
+            if (outcome == EffectiveAccessOutcome.GrantsEveryoneEverything)
+                trustees = [new PermissionTrustee("S-1-1-0", "Everyone", null, null, null, WellKnownSidRole.Principal, null)];
+            foreach (var trustee in trustees.OrderBy(item => item.Sid, StringComparer.Ordinal))
+            {
+                var evidence = relevant.Where(item => Same(item.Entry.Trustee.Sid, trustee.Sid)
+                    || item.Entry.AceType.Contains("Denied", StringComparison.Ordinal)).ToArray();
+                var unknown = descriptorUncertainty | targetUncertainty;
+                if (evidence.Any(item => item.Scope.State == ControlEvaluationState.Unknown)) unknown |= ControlUncertainty.MembershipScopeNotEvaluated;
+                if (evidence.Any(item => !IsSupported(item.Entry.AceType))) unknown |= ControlUncertainty.ConditionalOrUnsupportedAce;
+                if (evidence.Any(item => item.Entry.AceType.Contains("Denied", StringComparison.Ordinal)
+                    && !Same(item.Entry.Trustee.Sid, trustee.Sid))) unknown |= ControlUncertainty.CrossTrusteeDeny;
+                if (!trustee.HoldsThePermission) unknown |= ControlUncertainty.HolderIsPlaceholder;
+                var classification = PrincipalClassificationRegistry.For(trustee.Sid);
+                if (!classification.IdentityIsValid || trustee.DistinguishedName is null && classification.MicrosoftName is null)
+                    unknown |= ControlUncertainty.HolderUnresolved;
+                if (Sid.IsBuiltinDomain(trustee.Sid) && !IsDomainTarget(subject, context.ForestFqdn))
+                    unknown |= ControlUncertainty.ResourceContextUnverified;
+                var granted = outcome == EffectiveAccessOutcome.GrantsEveryoneEverything
+                    || ((effective.Holders.FirstOrDefault(holder => Same(holder.Trustee.Sid, trustee.Sid))?.Mask ?? 0) & right) != 0;
+                var possibleGrant = evidence.Any(item => Same(item.Entry.Trustee.Sid, trustee.Sid)
+                    && !item.Entry.AceType.Contains("Denied", StringComparison.Ordinal));
+                if (!granted && !(possibleGrant && unknown != ControlUncertainty.None)) continue;
+                var conditions = evidence.Select(item => new ControlPrecondition($"ACE {item.Entry.Ordinal} reaches membership operation",
+                    item.Scope.State, item.Scope.Source)).ToList();
+                if (capability == ControlCapability.CanAddSelfToGroup)
+                {
+                    conditions.Add(new("HoldsSelfMembershipValidatedWrite", unknown == ControlUncertainty.None && granted
+                        ? ControlEvaluationState.Established : ControlEvaluationState.Unknown, "Stored descriptor; ADS_RIGHT_DS_SELF (0x08)"));
+                    conditions.Add(new("AddedMemberSid == RequesterSid", ControlEvaluationState.Unknown,
+                        "Microsoft Self-Membership: only the caller's account may be added or removed. No concrete requester operation evaluated; group-held expansion remains gated by 0110."));
+                    unknown |= ControlUncertainty.SelfMembershipRequesterNotEvaluated;
+                }
+                var holderScope = Sid.IsBuiltinDomain(trustee.Sid) ? subject.DomainFqdn : null;
+                var routes = context.ProtectedPrincipals?.Lookup(trustee.Sid, holderScope)?.MembershipRoutes ?? MembershipRouteSummary.NotDerived;
+                var expected = Expected(trustee, subject, context.ForestFqdn, routes, original.DaclCompleteness == DaclCompleteness.Complete,
+                    outcome != EffectiveAccessOutcome.GrantsEveryoneEverything && granted && unknown == ControlUncertainty.None, domainSid);
+                if (capability == ControlCapability.CanAddSelfToGroup && Same(trustee.Sid, "S-1-5-18"))
+                    expected = (ControlExpectedness.Unknown, ControlExpectednessReason.UnknownCapabilityScope);
+                edges.Add(new ControlEdge(0, subject.ObjectGuid, subject.DistinguishedName, classes?.LastOrDefault()?.Text,
+                    trustee.Sid, trustee.Name, holderScope, capability,
+                    unknown == ControlUncertainty.None ? ControlEvaluationState.Established : ControlEvaluationState.Unknown,
+                    unknown, expected.State, expected.Reason, PrincipalClassificationRegistry.Version, generation, derivationGeneration,
+                    true, evidence.Select(item => item.Original).ToArray(), conditions, routes) { DescriptorOutcome = outcome.ToString() });
+            }
+        }
+        return targetUncertainty;
+    }
+
+    private static (ControlEvaluationState State, string Source) MembershipScope(PermissionEntry entry, int right, SchemaGuidCatalog catalogue)
+    {
+        if (!entry.HasObjectType) return (ControlEvaluationState.Established, "Unscoped entry reaches all operations of this access-mask kind.");
+        var name = right == 0x20 ? "member" : "Self-Membership";
+        if (entry.ObjectTypeGuid is { } guid && Same(guid, catalogue.GuidFor(name)))
+            return (ControlEvaluationState.Established, $"{name}: {guid}; {catalogue.FindByLdapName(name)!.Source} schema catalogue.");
+        if (right == 0x20 && entry.ObjectTypeGuid is { } propertySet)
+        {
+            var members = catalogue.MembersOfPropertySet(propertySet);
+            if (members is not null)
+                return (members.Any(member => Same(member, "member")) ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished,
+                    $"Captured property set {propertySet}; attributes: {string.Join(", ", members)}.");
+            var meanings = catalogue.FindByGuid(propertySet);
+            if (meanings.Count == 0 || meanings.Any(item => item.Kind is SchemaGuidKind.PropertySet or SchemaGuidKind.Unclassified))
+                return (ControlEvaluationState.Unknown, $"Property/attribute scope {propertySet}: captured property-set membership unavailable.");
+        }
+        if (entry.ObjectTypeGuid is null || !Guid.TryParse(entry.ObjectTypeGuid, out _))
+            return (ControlEvaluationState.Unknown, "Object-type flag is present but its GUID is unavailable or invalid.");
+        return (ControlEvaluationState.NotEstablished, "Entry is scoped to a different operation.");
     }
 
     internal static (ControlExpectedness State, ControlExpectednessReason Reason) Expected(PermissionTrustee holder,

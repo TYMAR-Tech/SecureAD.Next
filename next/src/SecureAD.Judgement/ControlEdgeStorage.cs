@@ -7,6 +7,8 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
+    private const int EngineVersion = 2;
+
     public static void CreateTables(SqliteConnection connection)
     {
         Execute(connection, null, """
@@ -36,7 +38,7 @@ internal static class ControlEdgeStorage
     }
 
     public static void Start(SqliteConnection connection, bool captureComplete) => Execute(connection, null,
-        "INSERT INTO control_product VALUES (1, 1, $complete, 0)", ("$complete", captureComplete));
+        "INSERT INTO control_product VALUES (1, $version, $complete, 0)", ("$version", EngineVersion), ("$complete", captureComplete));
     public static void Complete(SqliteConnection connection) => Execute(connection, null, "UPDATE control_product SET completed = 1 WHERE id = 1");
 
     public static void Write(SqliteConnection connection, ControlObjectEvaluation result)
@@ -86,7 +88,8 @@ internal static class ControlEdgeStorage
         string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
     {
         using var product = connection.CreateCommand();
-        product.CommandText = "SELECT capture_complete, completed FROM control_product WHERE id=1 AND engine_version=1";
+        product.CommandText = "SELECT capture_complete, completed FROM control_product WHERE id=1 AND engine_version=$version";
+        product.Parameters.AddWithValue("$version", EngineVersion);
         bool derived, capture;
         using (var read = product.ExecuteReader())
         {

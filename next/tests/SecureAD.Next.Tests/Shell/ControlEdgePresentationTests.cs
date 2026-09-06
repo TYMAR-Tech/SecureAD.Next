@@ -8,6 +8,28 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class ControlEdgePresentationTests
 {
+    [Fact]
+    public void BothViewsKeepGeneralAndSelfMembershipSeparateAndShowTheirLimits()
+    {
+        var evaluation = Judgement.GroupMembershipControlTests.Membership(Judgement.ControlEdgeDeriverTests.Permissions(
+            Judgement.GroupMembershipControlTests.Scoped(0, 0x28)));
+        var vm = new ControlEdgesSectionViewModel(new(ObjectSectionCatalog.ControlEdges, "Control edges", []));
+        vm.Configure(true, (_, _, _) => Result<ControlEdgePage>.Success(new(evaluation.Edges, 0, 2, 0, 1, true, true, false, 2)));
+        foreach (var byHolder in new[] { false, true })
+        {
+            vm.ByHolder = byHolder;
+            Assert.Equal(2, vm.Rows.Count);
+            Assert.Contains(vm.Rows, row => row.Capability.Contains("no own-account restriction") && row.Evaluation == "Established");
+            var self = Assert.Single(vm.Rows.Where(row => row.Capability.Contains("Self-Membership")));
+            Assert.Contains("own account only", self.Capability);
+            Assert.Equal("Unknown", self.Evaluation);
+            Assert.Contains("MembershipEscalation", self.Evidence);
+            Assert.Contains("AddedMemberSid == RequesterSid: Unknown", self.Evidence);
+            Assert.Contains("requester operations remain unknown", vm.SupportedScope);
+            Assert.Contains("Counts include unknown candidates", vm.Coverage);
+        }
+    }
+
     [Theory]
     [InlineData("Counts")]
     [InlineData("Coverage")]

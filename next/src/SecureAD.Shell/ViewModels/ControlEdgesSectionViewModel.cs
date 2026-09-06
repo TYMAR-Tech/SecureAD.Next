@@ -69,7 +69,8 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             : $"Capture coverage: {(page.CaptureIsComplete ? "all declared domains read" : "incomplete")}. "
                 + $"Objects with unanswered supported rights: {page.UnansweredObjects}. "
                 + (ByHolder ? "Unanswered-object count covers the whole capture because unread ACLs may name this principal. " : "")
-                + "This is a named-trustee view, not an expansion of rights inherited through group membership.";
+                + "This is a named-trustee view, not an expansion of rights inherited through group membership. "
+                + "Counts include unknown candidates; expectedness is not proof that a capability is established.";
         Counts = page.ProductWasDerived
             ? $"{page.UnexpectedCount} unexpected; {page.UnknownCount} expectedness unknown; {page.ExpectedCount} expected "
                 + (IncludeExpected ? "(shown)." : "(hidden).")
@@ -90,12 +91,17 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
     {
         ControlCapability.CanWriteDacl => "Can change permissions (WRITE_DAC)",
         ControlCapability.CanSetOwner => "Holds WRITE_OWNER — takeover not proven",
-        _ => "Owner-to-DACL takeover — supporting compound, not counted",
+        ControlCapability.CanBecomeOwnerAndRewriteDacl => "Owner-to-DACL takeover — supporting compound, not counted",
+        ControlCapability.CanModifyGroupMembership => "General group-membership changes — no own-account restriction",
+        ControlCapability.CanAddSelfToGroup => "Self-Membership candidate — own account only; requester not verified",
+        _ => "Unsupported capability",
     };
     public string Evaluation => edge.EvaluationState.ToString();
     public string Expectedness => edge.Expectedness.ToString();
     public string Evidence => $"Holder: {edge.HolderSid}; scope: {edge.HolderScope ?? "SID-scoped"}\n"
         + $"Object: {edge.TargetGuid?.ToString() ?? "stable identity not captured"}\n"
+        + $"Category: {edge.EdgeClass}; this does not classify the target group as privileged.\n"
+        + $"Evaluation: {edge.EvaluationState}; feasibility: {edge.Feasibility}; research: {edge.ResearchStatus}; counted: {edge.IsCounted}\n"
         + $"Expectedness: {edge.ExpectednessReason}; principal catalogue {edge.PrincipalCatalogueVersion}\n"
         + $"Generation: {edge.GenerationId}; derivation: {edge.DerivationGenerationId?.ToString() ?? "not used"}\n"
         + $"Uncertainty: {edge.Uncertainty}\n"

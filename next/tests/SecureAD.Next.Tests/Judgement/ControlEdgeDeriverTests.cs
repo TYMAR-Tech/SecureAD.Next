@@ -1,6 +1,7 @@
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Security;
 using Xunit;
 
@@ -10,7 +11,8 @@ public sealed class ControlEdgeDeriverTests
 {
     internal const string Holder = "S-1-5-21-1-2-3-1200";
     internal static ObjectAttributes Subject => new("OU=Test,DC=contoso,DC=com", Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-        DateTimeOffset.UnixEpoch, default, [], "contoso.com");
+        DateTimeOffset.UnixEpoch, default,
+        [new("objectClass", AttributeCardinality.MultiValued, [new(0, "organizationalUnit", null)])], "contoso.com");
     internal static PermissionEntry Ace(int ordinal, string sid, int mask, string type = "AccessAllowed", byte propagation = 0) =>
         new(ordinal, type, new(sid, sid, "CN=Holder,DC=contoso,DC=com", "contoso.com", null, null, null),
             mask, null, null, false, 0, propagation, false, false, []);

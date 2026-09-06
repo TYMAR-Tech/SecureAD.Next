@@ -13,6 +13,8 @@ public sealed class ControlEdgeLayoutTests
     private static readonly IReadOnlyDictionary<int, string> Layouts = new Dictionary<int, string>
     {
         [15] = "DD3895257D39B029C04ABC2B35DA5B27102485A75A6BF276FE32F5FE5B41ECD4",
+        // Schema 16 changes capability semantics, not DDL; the independent schema-15 layout remains the anchor.
+        [16] = "DD3895257D39B029C04ABC2B35DA5B27102485A75A6BF276FE32F5FE5B41ECD4",
     };
 
     [Fact]
