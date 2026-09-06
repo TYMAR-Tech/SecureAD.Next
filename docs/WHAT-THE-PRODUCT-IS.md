@@ -62,6 +62,17 @@ Evidence-bound Derivation products and typed missing/degraded input handling. Th
 order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longer treated as an unbounded
 architectural question.
 
+**Stage 6 has started, not finished.** Judging now stores the initial WRITE_DAC/WRITE_OWNER
+control-edge slice, with object-first and named-holder-first views in the object screen. The
+owner-to-DACL transition remains unknown and uncounted. Judgement schema 15 stores this product;
+principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
+Re-judging existing evidence obtains that correction without re-capture or re-derivation.
+The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
+records the implementation and before/after lab checks. P-145 now has initial-slice measurements,
+not an acceptance pass: the remaining capabilities, member expansion, Tier 0-target review and
+claim-specific laboratory gates remain outstanding. Group-membership control is a recommended
+next slice, not an already-implemented feature or acceptance of the whole stage-6 proposal.
+
 ## The five commitments
 
 1. **Evidence is permanent.** Sealed once, never re-sealed. Re-analysis copies the source and seals
@@ -679,18 +690,21 @@ did not detect every future schema edit made without a version bump. P-149's ind
 checkpoint and disabled-refusal control have since been implemented with P-146, described above.
 
 **P-147's measured blocker is resolved.** That correction built no control edges or multi-route
-presentation; P-146 has since implemented 0108's route explanation. P-145 still waits for real
-stage 6 output before it can run. The ten remaining findings and four undecided objects are not a
-claim of a clean forest.
+presentation; P-146 subsequently implemented 0108's route explanation. Stage 6 has since produced
+initial-slice output, and its measured P-150 correction is linked above. P-145 remains open for the
+remaining acceptance work, not for lack of any control-edge output. The ten remaining ownership
+findings and four undecided objects are not a claim of a clean forest.
 
 ### Measured ownership volume on ad.lab, 2026-09-05
 
 **This is the five-operator ownership comparison, not P-145.** That row needs control edges and
-their expected/unexpected/unknown classifications, which cannot be measured while stage 6 is absent.
-It is an acceptance gate after stage 6 produces output, not a prerequisite for starting its build.
+their expected/unexpected/unknown classifications, which were not implemented when this comparison
+was performed. The later initial-slice measurements are in the judgement-store document; they do
+not turn this ownership comparison into a P-145 acceptance pass.
 
 **This subsection preserves the earlier schema-8 comparison, before the scoped correction.** The
-current schema-9 result and the resolution of P-147 are recorded immediately above it.
+subsequent schema-9 result and the resolution of P-147 are recorded immediately above it; these
+historical version numbers do not state the current derivation schema.
 
 **One capture, two policies.** The CLI captured ad.lab-20260905-212426: three domains and 8,383
 objects. A copy of that sealed evidence was derived and judged with 548, 549, 550, 551 and 552

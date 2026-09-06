@@ -1,5 +1,12 @@
 # Session brief — the permission decisions, before stage 6
 
+> **Historical brief — completed; not instructions for a new session.** Decisions `0095`–`0098`
+> settled this session's permission questions. The initial control-edge slice has since been built
+> and P-150 corrected. The original objectives, counts and instruction to keep `ControlEdge` absent
+> below describe the earlier decision-only session; do not execute them now or reopen its decisions.
+> Use the [current roadmap](../ROADMAP.md), [accepted decisions](../DECISIONS.md) and
+> [implemented control-edge boundary](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+
 > **Written 2026-09-05.** A brief states the objective and the known ground. It is not authoritative:
 > where it disagrees with the code, the code wins and the disagreement is a finding.
 

@@ -73,7 +73,7 @@ their scoped identities, captured names, primary links, separate authorization/p
 and explicit completeness. The selected protection basis and independent owner acceptance remain
 separate. Older single-path stores are refused, not presented as complete route answers.
 
-SEC-021 version 2 carries the summary in one finding, persisted in judgement schema 14 and exposed
+SEC-021 version 2 carries the summary in one finding, first persisted in judgement schema 14 and exposed
 on both existing finding surfaces. Partial evidence retains known findings and names its limits;
 the wording makes no minimum-removal or all-privilege-eliminated claim. These are representative
 supporting chains, not an exhaustive enumeration of all paths through nesting. Tests cover independent
@@ -82,7 +82,12 @@ partial expansion, both stores and both screen bindings; regression mutations we
 and restored. P-149's independent layout checkpoint and disabled-refusal control preceded the layout
 change. Verification details and the unchanged ad.lab ownership result are in the product document.
 
-Stage 6 remains not started. The ownership measurement exposed 1,778 misleading Schema Admins
+At the completion of P-146, stage 6 had not started. The ownership measurement exposed 1,778 misleading Schema Admins
 findings, recorded as `P-147` and subsequently corrected by scoped acceptance under `0109`.
 The owner explicitly permitted a stopping point with the measurement reported and this decision
 recorded rather than a half-built control-edge implementation.
+
+The initial control-edge slice was implemented afterwards, including P-150's catalogue-2 scope
+correction. Its current boundary and remaining acceptance gates are recorded in
+[the judgement store](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+That later work does not change this decision's membership-evidence requirements.

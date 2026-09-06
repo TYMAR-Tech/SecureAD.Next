@@ -462,8 +462,9 @@ caught the omission.
 
 ## What is built
 
-The schema, the two state machines, the writer and the reader. Nothing runs a rule to fill a store
-yet.
+The schema, the two state machines, the writer, the reader and the `JudgingRun` coordinator are built.
+Judging runs the scheduled rules over sealed evidence and also writes the initial control-edge
+product described above. The initial slice is not completion of stage 6 or its acceptance gates.
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|

@@ -1,5 +1,13 @@
 # Session brief - P-85, the Tier 0 control plane
 
+> **Historical brief — completed; not instructions for a new session.** P-85 was settled by
+> [decision 0099](../decisions/0099-the-tier-0-control-plane-catalogue.md). The initial control-edge
+> slice has since been built and P-150 corrected. The instruction below that `ControlEdge` must
+> remain absent applied only to that decision session; it is not a current restriction.
+> Read the [current roadmap](../ROADMAP.md) and
+> [implemented control-edge boundary](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+> P-145's remaining acceptance checks are still open; the accepted catalogue is not reopened here.
+
 > **Written 2026-09-05.** A brief states the objective and the known ground. It is not authoritative:
 > where it disagrees with the code, the code wins and the disagreement is a finding.
 

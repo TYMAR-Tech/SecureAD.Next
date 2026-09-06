@@ -10,7 +10,8 @@ disagreement is a finding.
 **What it is for.** Stage 6 turns permissions into *this principal can take over that object*. The
 roadmap calls it the largest single piece and what makes an AD audit tool worth having. This document
 says what an edge is, what it means, what the product will and will not claim, and what is still
-undecided - so that a reviewer can disagree with it before code exists rather than afterwards.
+undecided. It was written before implementation; the implementation boundary below distinguishes
+what has since been built from what remains proposed or laboratory-gated.
 
 **Terms are defined where they are first used.** A reader who administers Active Directory but does
 not write software should be able to follow the whole document.
@@ -21,11 +22,21 @@ preserves primitive derivations beneath aggregates, defines executable expectedn
 rules, clarifies replication scope, and corrects the AdminSDHolder treatment to cover the whole
 security descriptor. Open verification items remain explicitly gated in sections 12 and 13.
 
+**Implementation checkpoint, 2026-09-06.** The initial WRITE_DAC/WRITE_OWNER slice is implemented,
+stored and shown in object-first and named-holder-first views. Its owner-to-DACL supporting compound
+remains unknown and uncounted. Catalogue version 2 corrects P-150's BUILTIN domain scope; judgement
+schema 15 stores the product. This does not implement membership changes, credential or replication
+capabilities, existing-owner control, full-control aggregation or effective member expansion.
+The [judgement-store document](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
+records the code boundary and measured lab comparison. P-145 and the claim-specific gates below
+remain open. The remaining sections are still a proposal except where an accepted decision is cited.
+
 ---
 
 ## 1. What already exists, verified against the code
 
-Not from the roadmap, and not from the punch list. These were opened on 2026-09-05.
+Not from the roadmap, and not from the punch list. Originally checked on 2026-09-05; the control-edge
+and schema entries below were refreshed against the implemented slice on 2026-09-06.
 
 | What | Where | What it does |
 |---|---|---|
@@ -34,7 +45,9 @@ Not from the roadmap, and not from the punch list. These were opened on 2026-09-
 | `BroadPrincipalCanTakeOverObject` (`SEC-060`) | `next/src/SecureAD.Judgement/` | Reports that a principal broad in every organisation can take over an object, conditioning `WriteOwner` on whether the owner's implicit rights survive. |
 | `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 2 and registered in `RuleCatalogue.All`; their shared owner predicate includes `0109`'s schema-only acceptance. |
 | `ObjectTakeoverEvidence`, `ObjectOwnershipEvidence` | `next/src/SecureAD.Evidence/Findings/` | Typed evidence carriers, each with an `IsComplete` voucher. |
-| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 13. One `finding` table plus a typed table per evidence shape, including `finding_object_takeover` and `finding_object_ownership`. |
+| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 15. Finding and typed evidence tables, persisted membership routes, and the initial control product, object coverage, edges, ACEs and preconditions. |
+| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | The bounded WRITE_DAC/WRITE_OWNER slice and its unknown, uncounted supporting ownership compound, written by `JudgingRun` and read through `JudgementReader`. |
+| `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
 | **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
 
 **Two punch-list rows were wrong and are corrected.** `P-70` said the product does not judge

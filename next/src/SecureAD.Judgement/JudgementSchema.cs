@@ -22,7 +22,8 @@ namespace SecureAD.Judgement;
 /// <para>
 /// <b>Derived evidence names the generation it came from.</b> Membership-route findings also carry
 /// their supporting chains, catalogue version and completeness, so reading one never substitutes a
-/// newer derivation's explanation. Control edges and reachability remain separate, unbuilt stages.
+/// newer derivation's explanation. The initial control-edge slice is stored separately from findings;
+/// the remaining control capabilities and reachability are not yet built.
 /// </para>
 /// </remarks>
 public static class JudgementSchema

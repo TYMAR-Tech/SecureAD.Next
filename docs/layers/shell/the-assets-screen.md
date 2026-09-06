@@ -2,6 +2,7 @@
 
 **Code:** `next/src/SecureAD.Shell/ViewModels/AssetsViewModel.cs`, `AssetRowViewModels.cs`,
 `ObjectViewModel.cs`, `ObjectSections.cs`, `ObjectSectionCatalog.cs`, `FactState.cs`,
+`ControlEdgesSectionViewModel.cs`,
 `next/src/SecureAD.Shell/Services/IAssetSource.cs`, `BundleAssetSource.cs`
 **Layer:** Shell — what one run captured and what the judging concluded about it: the directory as
 its evidence can rebuild it, the objects in the part of it the operator selected, the findings, and
@@ -43,6 +44,8 @@ As with every shell page, the types below are `internal` — the window exports 
 | `OverviewSectionViewModel` | What this object is, said first |
 | `AccountSectionViewModel` | What the directory records about an account |
 | `PermissionsSectionViewModel` | Who can do what to this object |
+| `ControlEdgesSectionViewModel` | Paged stored control edges, read by target or named holder, with coverage and hidden expected counts |
+| `ControlEdgeRowViewModel` | One stored capability's wording, classification and supporting evidence |
 | `EvidenceSectionViewModel` | What was captured about this object and what was not |
 | `FindingsSectionViewModel` | What the judging concluded about this one object |
 | `PolicyLinksSectionViewModel` | The policy linked at this container |
@@ -86,6 +89,40 @@ Showing an empty list for all four would say *there is nothing here* in three ca
 not known to be true. That is
 [`0002`](../../decisions/0002-absent-view-means-degraded-run.md) exactly, and it is the rule the
 whole screen is built around.
+
+---
+
+## Stored control edges on an object
+
+`ControlEdgesSectionViewModel` reads the stored product through `IAssetSource`; the screen does not
+calculate directory access. By default it shows rights over the opened object. When that object has
+a principal SID, **Rights held by this principal** switches to the named-holder view of the same
+stored edge set. This is not expansion of the rights the principal receives through group membership.
+
+The current slice covers WRITE_DAC and WRITE_OWNER. Its scope notice explicitly names capabilities
+not yet derived, so its counts cannot be read as totals for all control. Expected primitives are
+hidden by default, with expected, unexpected and unknown-expectedness counts stated separately.
+Showing expected edges changes the filter, not the stored classification. Supporting ownership
+compounds remain separately labeled, unknown and uncounted; these are not findings or severity grades.
+
+First/next-page controls read bounded pages. Changing views or filters returns to the first page;
+if the judgement generation changes during paging, the view refuses to mix results and asks the
+operator to return to the first page. A missing or unreadable product says so rather than presenting
+a complete empty result. Holder-first coverage retains capture-wide unanswered-object counts,
+because an unread descriptor could name the selected principal.
+
+The evidence expander carries the holder SID and scope, target identity, catalogue and generation
+identifiers, contributing ACEs, uncertainty, preconditions and representative membership routes.
+The [judgement-store document](../judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
+records P-150's corrected domain-scoped Administrators classification and the real-reader lab
+comparison. Historical results retain their recorded catalogue version; re-judge to obtain the fix.
+
+**Documentation scope was corrected on 2026-09-06.** `ShellLayerTypesTests.AssetsFiles` previously
+omitted `ControlEdgesSectionViewModel.cs`. Adding it before these entries made
+`EachPageNamesEveryFileItsComponentIsScopedFrom` fail naming that file and
+`TheAssetsPageTypesTableAndItsComponentAgree` fail naming both undocumented types. The other five
+tests passed. The existing check now covers 34 assets-component types rather than 32; its parsing
+and comparison rules were not weakened to accommodate the page.
 
 ---
 

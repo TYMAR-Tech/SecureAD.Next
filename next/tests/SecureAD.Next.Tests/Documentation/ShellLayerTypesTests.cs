@@ -108,6 +108,7 @@ public sealed class ShellLayerTypesTests
         "ViewModels/ObjectViewModel.cs",
         "ViewModels/ObjectSections.cs",
         "ViewModels/ObjectSectionCatalog.cs",
+        "ViewModels/ControlEdgesSectionViewModel.cs",
         "ViewModels/FactState.cs",
         "Services/IAssetSource.cs",
         "Services/BundleAssetSource.cs",
@@ -229,8 +230,8 @@ public sealed class ShellLayerTypesTests
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         // 29 to 31 on 2026-09-03, when the LAPS inventory added LapsComputerViewModel and
         // LapsCountViewModel to the assets component; 31 to 32 when the rules listing added
-        // RuleRowViewModel.
-        Assert.Equal(32, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        // RuleRowViewModel; 32 to 34 when the initial control-edge section and row were included.
+        Assert.Equal(34, AssetsFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
 
         foreach (var (document, _) in Pages())
         {
