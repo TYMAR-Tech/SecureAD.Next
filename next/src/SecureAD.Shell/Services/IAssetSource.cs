@@ -26,6 +26,10 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal interface IAssetSource
 {
+    /// <summary>Reads a page of stored control statements, with coverage and hidden expected counts.</summary>
+    Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
+        string? holderScope, bool includeExpected, long afterId);
+
     /// <summary>Reads the directory tree of the bundle in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     Result<DirectoryTree> ReadTree(string bundleDirectory);

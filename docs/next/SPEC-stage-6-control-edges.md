@@ -32,7 +32,7 @@ Not from the roadmap, and not from the punch list. These were opened on 2026-09-
 | `EffectiveAccessCalculator` | `next/src/SecureAD.Evidence/EffectiveAccessCalculator.cs` | Works out what each trustee actually holds over one object: applies deny entries the way Active Directory applies them, ignores inherit-only entries, and keeps scoped entries apart from whole-object ones. Returns an outcome and an `IsComplete` voucher. |
 | `GenericRightsExpander` | `next/src/SecureAD.Kernel/Security/GenericRightsExpander.cs` | Expands generic rights to the specific rights Active Directory maps them to, and names `WriteDacl` (`0x00040000`) and `WriteOwner` (`0x00080000`). |
 | `BroadPrincipalCanTakeOverObject` (`SEC-060`) | `next/src/SecureAD.Judgement/` | Reports that a principal broad in every organisation can take over an object, conditioning `WriteOwner` on whether the owner's implicit rights survive. |
-| `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report an object owned by a principal that is not administrative - `Low` for ordinary objects, `High` for objects AdminSDHolder protects. Both registered in `RuleCatalogue.All`. |
+| `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 2 and registered in `RuleCatalogue.All`; their shared owner predicate includes `0109`'s schema-only acceptance. |
 | `ObjectTakeoverEvidence`, `ObjectOwnershipEvidence` | `next/src/SecureAD.Evidence/Findings/` | Typed evidence carriers, each with an `IsComplete` voucher. |
 | `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 13. One `finding` table plus a typed table per evidence shape, including `finding_object_takeover` and `finding_object_ownership`. |
 | **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
@@ -115,10 +115,13 @@ while the catalogue implemented a broader one.
 `EdgeClass` already exists in the capability record and already carries `DirectoryControl` and
 `CredentialExposure`. **This document uses the accepted value `CredentialExposure` and does not rename
 it.** A previous draft of this section wrote `CredentialControl`, which would have been exactly the
-silent specification-to-catalogue drift this document objects to for the replication capability. If
-the value is to be renamed that is an owner decision with a migration, carried as `Q10` in section 12.
-This specification proposes `MembershipEscalation` and `ReplicationControl` as two further semantic
-categories. Per `AC-28` these are categories and never an ordered risk score.
+silent specification-to-catalogue drift this document objects to for the replication capability.
+Any rename would need an owner decision. **Q10 is now settled by
+[`0110`](../decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md):
+add `MembershipEscalation` and `ReplicationControl` without renaming existing categories.**
+The existing specification's `ConditionalEscalation` vocabulary is retained as well.
+Per `AC-28` these are categories and never an ordered risk score. This accepts the category choice,
+not the rest of this proposal or any unverified capability.
 
 An edge is **not** an access control entry. One entry can establish several capabilities, and several
 entries can jointly establish one capability. **A group-held capability produces one counted group
@@ -495,10 +498,12 @@ produced by one inherited entry share one `RemediationActionId`, so the recommen
 source entry once rather than thousands of child edges. `AC-66`: one direct group membership feeding
 many transitive paths remains one source action.
 
-**`P-105` must be fixed before this is built.** `Walk` reports the last established root processed
-rather than the nearest, so three accounts directly in Enterprise Admins on `ad.lab` are each
-reported under `BUILTIN\Administrators`. Both are true; they send an operator to remove a different
-membership. An edge that names the wrong root sends someone to fix the wrong thing.
+**P-105 is fixed by `0106`; do not schedule that fix again.** The current stored protection reason
+selects a nearest root deterministically. `0108` subsequently changed the reporting requirement:
+one finding must summarize independent membership routes, including longer routes and shared
+initial memberships. P-146 now supplies that separate derived summary, persisted finding evidence
+and both finding views. The single selected protection path is not that summary. This foundation
+does not implement control edges or start stage 6.
 
 **A primitive and its aggregate never both count for the same established aggregate.** Since section 5
 keeps `CanWriteDacl` and `CanSetOwner` in the graph beneath `HasFullControl`, the counting rule has to
@@ -633,14 +638,14 @@ Naming these here so a reviewer does not read their absence as an omission.
 
 ## 12. Residual questions, for the owner
 
-Each has been checked against Microsoft's documentation first. Where the documentation settles it,
-that is said and no question is asked.
+The question numbers are retained for references. Settled choices name their accepted records;
+remaining proposals are explicitly labelled and must not be treated as decisions. Laboratory
+verification of a capability is separate from whether its reporting policy has been settled.
 
-**Q1. AD CS and AD FS servers as Tier 0.** Microsoft's tier model names both as Tier 0 identity
-services, so *whether* they are Tier 0 is settled. What is not settled is whether the product
-classifies them automatically. The directory names certificate authorities in the Configuration
-container, which is a read. Nothing in Active Directory reliably marks a server as AD FS, so that
-would be an inference. **Proposal: AD CS automatically, AD FS by declaration.**
+**Q1. AD CS and AD FS servers as Tier 0. Settled by `0099`: automatic enterprise CA classification,
+declaration-only AD FS.** The directory names certificate authorities in the Configuration
+container; nothing reliably marks an AD FS server. Implementation remains on P-142 and P-143,
+not an unanswered choice about automatic classification.
 
 **Q2. Key Admins (526) and Enterprise Key Admins (527). Settled 2026-09-06 by `0099`; the paragraph
 below was wrong and is corrected in place.** Microsoft's AD FS documentation states the grant these
@@ -664,17 +669,22 @@ with an object-specific write on `msDS-KeyCredentialLink`. That withdrawal is a 
 Replicator (552).** Microsoft documents all three as containers of accounts or as legacy file
 replication support, with no direct user rights. This is the same shape as the Domain Controllers
 group (516), which the owner already ruled out on the grounds that a group of domain controllers is
-not a domain controller - a ruling `AC-30` already encodes. **Proposal: all three out; the RODC
+not a domain controller - a ruling `AC-30` already encodes. **Settled by `0099`: all three out; the RODC
 computer account remains a Tier 0 asset.**
 
 **Q4. Customer-declared Tier 0.** Two different declarations with opposite risks. Declaring an
 **asset** adds something to watch. Declaring a **principal** as control plane hides its edges by
-default. **Proposal: assets only. A specific edge that is fine here is handled by accepting the
+default. **Settled by `0099`: assets only. A specific edge that is fine here is handled by accepting the
 finding, which is on the record, one finding at a time.**
 
-**Q5. `P-105`, which root a membership is attributed to.** Nearest, first or last. **Proposal:
-nearest - the shortest path from the account to a privileged group - with ties broken deterministically
-so the answer never varies between runs.**
+**Q5. `P-105`, which root a membership is attributed to. Settled by `0106`; the reporting choice
+was revised by [`0108`](../decisions/0108-a-finding-summarizes-independent-membership-routes.md),
+2026-09-05, for `P-146`.** A finding summarizes independent membership routes, including longer
+routes, grouping shared initial memberships rather than adding a row for each outer group. The
+answer must remain deterministic and must not claim that every other form of privilege is removed.
+The derivation retains its selected protection basis and also stores the independent route summary.
+P-146 implements the latter through SEC-021 finding evidence and both existing finding views; stage 6
+must reuse the explanation without multiplying its counted permission edges by route count.
 
 **Q6. How much is too much. Settled 2026-09-06 by
 [`0102`](../decisions/0102-group-expansion-is-budgeted.md): budgeted expansion that admits when it is
@@ -712,16 +722,18 @@ results, never as a second current capability.
 **Q9. Does `sIDHistory` confer control-plane membership for the purpose of expectedness?** It confers
 authorisation in Active Directory, and `PrivilegedSidHistory` already reports it as a finding. Whether
 it should also make an edge *expected* is a different question, and answering it yes would hide edges
-that the existing rule reports as dangerous. **Proposal: no - `sIDHistory` never makes an edge
+that the existing rule reports as dangerous. **Settled by `0099`: no - `sIDHistory` never makes an edge
 expected, and the existing finding continues to report it.** This is now `AC-S6-15` rather than only a
 question, because it is a rule an implementer would otherwise have to guess at.
 
-**Q10. `EdgeClass` naming.** This document proposes two new values, `MembershipEscalation` and
-`ReplicationControl`, and deliberately keeps the accepted `CredentialExposure` rather than renaming it
-to `CredentialControl` - which a draft of this document did, and which would have been the same silent
-drift objected to in `Q8`. **Proposal: add the two new values, keep `CredentialExposure`.** If a rename
-is wanted it needs the persisted enum, the capability catalogue, the export representation and the
-screen wording changed together, which is `AC-S6-13`.
+**Q10. `EdgeClass` naming. Settled by
+[`0110`](../decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md).**
+The owner accepted adding `MembershipEscalation` and `ReplicationControl`, without renaming or
+removing existing categories. Retain `DirectoryControl`, `CredentialExposure` and the existing
+specification's `ConditionalEscalation` vocabulary. These are SecureAD's semantic categories,
+not a Microsoft taxonomy or a risk ranking. Persistence, the capability catalogue, presentation
+and future export must agree on the values (`AC-S6-13`). Counting, expectedness, severity and
+the claim-specific laboratory gates are unchanged; this does not accept the rest of the proposal.
 
 ---
 
@@ -733,14 +745,21 @@ screen wording changed together, which is `AC-S6-13`.
 - **The lab bundle is the anchor**: `ad.lab-20260905-035415`, three domains, 8,383 objects, with
   planted positives that `Set-LabOwnershipAndTakeover.ps1 -Remove` clears. An edge count is checked
   against the live directory by hand before it is believed.
-- **The number to watch is the unexpected count, not the total.** If stage 6 produces a large
-  unexpected count on a healthy lab, the expectedness rule is wrong and that is a finding, not a
-  tuning exercise.
-- **Ask what the checks are anchored to.** The acceptance criteria in `JUDGEMENT-HALF.md` are the
-  external anchor for this stage. Tests that only prove the code agrees with itself are the `F-S44-2`
-  shape and do not count.
+- **Inspect what dominates the unexpected count, not merely its size.** P-145 distinguishes real
+  overdelegation from necessary platform behavior classified or presented incorrectly. A large
+  count alone does not justify changing the catalogue, and its gate runs after stage 6 produces
+  output, before acceptance.
+- **Ask what the checks are anchored to.** `JUDGEMENT-HALF.md` supplies product requirements;
+  underlying AD semantics need Microsoft sources and the stated laboratory checks. Agreement
+  between this repository's code, tests and prose is not by itself an external anchor (`F-S44-2`).
 
-### 13.1 Two lab gates this document owes before code
+### 13.1 Laboratory checks for gated semantics
+
+These three checks govern the claims they verify, not the start of every part of stage 6. Under
+`0103`, established primitive owner-setting rights remain established while unverified compound
+ownership claims remain unknown. Group-held Self-Membership expansion has its own unknown boundary.
+The owner-reset observation in F-S45-7 informed SEC-032's Medium severity; it does not claim to
+complete the controlled tests listed below.
 
 **The owner-write gate, for `Q7`.** Two halves, and the second is the one the review asked for.
 

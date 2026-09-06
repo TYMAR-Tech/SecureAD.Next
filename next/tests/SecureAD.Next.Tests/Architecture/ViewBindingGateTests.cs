@@ -151,6 +151,20 @@ public sealed class ViewBindingGateTests
         Assert.Contains(member, PermissionsTemplate(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("FindingsView.xaml", "SelectedFinding.")]
+    [InlineData("ObjectSectionTemplates.xaml", "")]
+    public void BothFindingSurfacesBindMembershipEvidenceAndCompleteness(string fileName, string prefix)
+    {
+        var file = XamlFiles().Single(path => Path.GetFileName(path) == fileName);
+        var document = System.Xml.Linq.XDocument.Load(file);
+        var paths = document.Descendants().SelectMany(element => element.Attributes()).Select(attribute =>
+            Regex.Match(attribute.Value, @"^\{Binding\s+([^,}\s]+)").Groups[1].Value).ToArray();
+        foreach (var member in new[] { nameof(FindingRowViewModel.HasMembershipEvidence),
+            nameof(FindingRowViewModel.MembershipCompleteness), nameof(FindingRowViewModel.MembershipDetails) })
+            Assert.Contains(prefix + member, paths);
+    }
+
     // -------------------------------------------------------------------------------------------
     // The scanner self-test. A gate that scans nothing passes.
     // -------------------------------------------------------------------------------------------

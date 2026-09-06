@@ -704,6 +704,15 @@ internal sealed partial class AssetsViewModel : ObservableObject
             findings.IsSuccess ? findings.Value : null,
             findings.IsSuccess ? null : findings.Error.Description);
 
+        var sidValue = values?.Find("objectSid")?.OnlyValue;
+        var principalSid = sidValue?.Bytes is { } sidBytes ? SecureAD.Kernel.Security.Sid.ToText(sidBytes) : sidValue?.Text;
+        var principalScope = principalSid is not null && SecureAD.Kernel.Security.Sid.IsBuiltinDomain(principalSid)
+            ? values?.DomainFqdn : null;
+        if (Opened.Section(ObjectSectionCatalog.ControlEdges) is ControlEdgesSectionViewModel controls)
+            controls.Configure(principalSid is not null, (byHolder, includeExpected, afterId) =>
+                _assets.ReadControlEdges(BundlePath!, byHolder ? null : distinguishedName,
+                    byHolder ? principalSid : null, principalScope, includeExpected, afterId));
+
         Opened.Show(section);
         Announce();
     }

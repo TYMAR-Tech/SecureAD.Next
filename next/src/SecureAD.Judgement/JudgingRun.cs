@@ -189,6 +189,7 @@ public static class JudgingRun
 
             context = context with
             {
+                ForestFqdn = bundle.Description.ForestFqdn,
                 ProtectedPrincipals = product.Value,
                 Permissions = bundle.ReadPermissions,
 
@@ -318,6 +319,14 @@ public static class JudgingRun
         var tallies = rules.Select(r => new Tally(r)).ToList();
 
         long objectsRead = 0;
+        writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete);
+        var controlContext = context with { ForestFqdn = bundle.Description.ForestFqdn };
+        var domainSids = Memoised(domain =>
+        {
+            var root = bundle.ReadObjectAttributes(string.Join(',', domain.Split('.').Select(part => "DC=" + part)));
+            var value = root?.Find("objectSid")?.OnlyValue;
+            return value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
+        });
 
         foreach (var subject in bundle.StreamObjects().Objects)
         {
@@ -325,6 +334,9 @@ public static class JudgingRun
             // could spend a long time on one object, and a cancel that waits for the batch boundary
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
+
+            writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
+                bundle.ReadPermissions(subject.DistinguishedName), controlContext, writer.GenerationId, derivationGeneration, domainSids));
 
             foreach (var tally in tallies)
                 tally.Offer(subject, context);
@@ -338,6 +350,7 @@ public static class JudgingRun
         // The last report is unconditional, so a run that ends between two reports does not leave
         // the operator looking at a count short of what was actually read.
         progress.Report(new JudgingProgress(objectsRead));
+        writer.CompleteControlEdges();
 
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
@@ -509,10 +522,12 @@ public static class JudgingRun
                 return;
             }
 
+            // An unresolved part of an answer does not erase its established findings. A thrown
+            // rule still loses everything above; partial evidence is not a thrown rule (0108).
+            _findings.AddRange(verdict.Findings);
             if (verdict.IsComplete)
             {
                 _judged++;
-                _findings.AddRange(verdict.Findings);
                 return;
             }
 

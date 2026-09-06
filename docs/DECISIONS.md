@@ -105,3 +105,8 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0103](decisions/0103-an-established-primitive-is-not-contaminated-by-an-unverified-compound.md) | 2026-09-06 | Accepted | An established primitive is not contaminated by an unverified compound |
 | [0104](decisions/0104-the-capability-is-named-canreplicatesecretdomaindata.md) | 2026-09-06 | Accepted | The capability is named CanReplicateSecretDomainData |
 | [0105](decisions/0105-domain-controller-edges-are-grouped-never-suppressed.md) | 2026-09-06 | Accepted | Domain controller edges are grouped, never suppressed |
+| [0106](decisions/0106-a-membership-is-reported-under-the-nearest-root.md) | 2026-09-05 | Accepted *(see record)* | A membership is reported under the nearest privileged root |
+| [0107](decisions/0107-an-accepted-owner-is-a-separate-question-from-protection.md) | 2026-09-05 | Accepted | An accepted owner is a separate question from AdminSDHolder protection |
+| [0108](decisions/0108-a-finding-summarizes-independent-membership-routes.md) | 2026-09-05 | Accepted | A finding summarizes independent membership routes |
+| [0109](decisions/0109-schema-admins-ownership-is-accepted-only-in-the-schema.md) | 2026-09-05 | Accepted | Schema Admins ownership is accepted only in the schema |
+| [0110](decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md) | 2026-09-06 | Accepted | Membership and replication have distinct control-edge categories |

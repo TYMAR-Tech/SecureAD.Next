@@ -9,10 +9,10 @@ The capture half reads a forest and seals it. Judgement is the other half: execu
 declared inputs and write findings outside the seal, keeping *nothing is wrong* apart from *nobody
 could look*.
 
-Four rules exist: two about unconstrained delegation, `SEC-030` about a protected-account marker
-nothing protects, and `SEC-022` about an account that does not require Kerberos pre-authentication.
-Three of the four read only captured attributes; only `SEC-030` declares a derived fact. `JudgingRun`
-executes them over sealed bundles, stores their findings, and the Shell reads those findings back.
+`RuleCatalogue.All` is the executable rule set; this page does not keep a second count that can
+drift when a rule is added. Some rules use captured attributes alone and others declare derived
+facts. `JudgingRun` executes the scheduled rules over sealed bundles and stores their findings.
+Both the Shell and CLI invoke judging, and the Shell reads its results back.
 The executable contracts and rules live in `SecureAD.Judgement`; passive finding and rule-definition
 records stay in Evidence because they are durable data rather than executable policy.
 
@@ -54,6 +54,13 @@ records stay in Evidence because they are durable data rather than executable po
 | `DesEncryptionOnly` | SEC-033 — an account restricted to DES, so its Kerberos tickets are cheap to attack |
 | `KerberoastablePrivilegedAccount` | SEC-021 — a privileged account any domain member can request a crackable ticket for |
 | `KerberoastableAccountEvidence` | The service names SEC-021 found on the account, and the value its disabled state is read from |
+| `MembershipRouteSummary` | Initial memberships and the completeness of their discovery; a partial count is not a total |
+| `InitialMembershipRoutes` | Supporting routes sharing one initial membership, with their discovery completeness |
+| `MembershipRoute` | One supporting chain to a catalogue root, with authorization and protection stated separately |
+| `MembershipRouteStep` | One principal in a chain, marking whether it is reached through primary-group membership |
+| `MembershipRoutePrincipal` | A SID, its domain scope where needed, and its captured distinguished name |
+| `MembershipRouteAuthorization` | Whether the chain is security-enabled, contains distribution nesting, or has unknown group type |
+| `MembershipRouteIncompleteReason` | Typed capture, identity, forest-mask, resource-limit or cycle reasons why a route summary is partial |
 | `PrivilegedSidCatalogue` | Which of Microsoft's identifiers this product treats as privileged, as one written-out table |
 | `PrivilegedSidHistoryEvidence` | Every SID history value SEC-027 read, which of them are privileged, and whether any could not be read |
 | `PrivilegedSidHistoryMatch` | One history value that names a privileged principal, with Microsoft's name for it |
@@ -135,9 +142,16 @@ complete rather than a forest with nothing wrong with it.
 
 ## A rule declares what it reads, and the build fails if it does not
 
-`RuleDefinition.RequiredAttributes` lists every attribute the rule reads, by LDAP display name.
-`RuleDefinition.IsComplete` is false when that list is empty, and `RuleDeclarationTests` fails the
-build on it.
+`RuleDefinition.RequiredAttributes` lists the captured attributes the rule declares, by LDAP display
+name. `RuleDeclarationTests` checks that list directly for absence, duplicate names and empty names.
+Derived inputs are declared separately in `RuleDefinition.RequiredDerivedFacts` and acquired by
+`JudgingRun` before any object is offered to a rule that needs them.
+
+**Do not confuse definition and verdict completeness.** The legacy `RuleDefinition.IsComplete`
+predicate also requires a nonempty class list; it is not the applicability check or the declaration
+test described here. `RuleDefinition.IsAbout` treats an empty class list as every object, which the
+ownership rules deliberately use. `RuleVerdict.IsComplete` says whether a particular verdict had
+missing or unresolved inputs.
 
 Both delegation rules declare `userAccountControl`, `objectClass` and `primaryGroupID`. `SEC-022`
 declares the first two and no more, which is why it can judge a bundle that was never derived.
@@ -151,7 +165,8 @@ can say exactly which of them an object did not carry, instead of falling silent
 
 A finding tells an operator that something is true about one object. `RuleGuidance` tells him what
 that means and what to do about it: a category, an optional MITRE technique, *why it matters*, *what
-to do*, and the Microsoft page the reasoning rests on. `RuleGuidanceCatalogue.All` holds one entry
+to do*, an *About* statement of the rule's scope and limitations, and the Microsoft page the reasoning
+rests on. `RuleGuidanceCatalogue.All` holds one entry
 per rule, and `RuleGuidanceTests` binds the two lists in both directions — a rule with no guidance is
 a finding nobody can act on, and guidance naming no rule is copy that quietly rots.
 
@@ -177,35 +192,36 @@ proven and which belongs to stage 8. `RuleGuidanceTests` refuses the wording, an
 so a pattern that stopped matching could not go on reporting nothing. The danger is not that somebody
 decides to over-claim; it is that *"this resolves the issue"* reads like ordinary helpful writing.
 
-**A null MITRE technique is an answer.** `SEC-022` carries `T1558.004` because Microsoft's own
-Defender for Identity page states that mapping. The other three carry null, because no first-party
-source establishes one and an invented mapping would be an unverified claim printed beside verified
-ones. The predecessor mapped a resource-based delegation rule to `T1558.001`, which is Golden Ticket
-— a different thing.
+**A null MITRE technique is an answer.** Mappings belong to individual guidance entries, not to a
+default applied to every rule. A null entry makes no technique claim; a non-null entry needs its own
+supporting source. `RuleGuidanceCatalogue.All` is the current set, not the original four-rule snapshot.
 
 ---
 
 ## Silence has to mean one thing
 
-`RuleVerdict` carries two lists, and the pair is the point:
+`RuleVerdict` carries three lists, keeping a reached verdict apart from two kinds of missing answer:
 
-| Made by | `Findings` | `InputsNotCaptured` | `IsComplete` |
-|---|---|---|---|
-| `RuleVerdict.Judged` | what was found, often empty | empty | true |
-| `RuleVerdict.CouldNotJudge` | empty | the declared attributes that were absent | false |
+| Made by | `Findings` | `InputsNotCaptured` | `Unresolved` | `IsComplete` |
+|---|---|---|---|---|
+| `RuleVerdict.Judged` | what was found, often empty | empty | empty | true |
+| `RuleVerdict.CouldNotJudge` | empty | the declared attributes that were absent | empty | false when missing inputs are named |
+| `RuleVerdict.CouldNotResolve` | empty | empty | the derived questions left undecided | false when unresolved inputs are named |
 
-**Both can carry an empty findings list, and they mean opposite things.** One is *the rule looked
-and there was nothing to say*. The other is *the rule was handed an object missing something it
-needs, and reached no verdict at all*. A bare `IReadOnlyList<Finding>` return would collapse them
-into the same value, and a screen would print both as a clean object.
+**All three can carry an empty findings list, and they do not mean the same thing.** A reached
+verdict with no findings is an answer. A missing captured attribute and an unresolved derived fact
+are different reasons the rule could not answer, with different remedies. A bare
+`IReadOnlyList<Finding>` would collapse these states and let a screen print them as clean objects.
 
 `StoredFindings` is the same guarantee one level up: findings beside the `EvaluatedRule` rows saying
 which rules ran, so that no findings and no rules — *nobody judged this* — cannot be mistaken for no
 findings beside rules that ran. `StoredFindings.DidNotRun` is the question a caller must ask before
 reporting that nothing was found.
 
-Nothing constructs `StoredFindings` today. It is kept because it is the shape a judgement store has
-to return.
+`StoredFindings` currently has no production consumers; it is not the shape the live screen reads.
+`JudgementReader` reads the separate judgement generation, its per-rule execution outcomes and its
+findings. Those outcomes must be read alongside a finding count to distinguish a quiet rule from
+one that did not run or could not reach every verdict.
 
 ---
 
@@ -214,8 +230,8 @@ to return.
 `Finding` names its subject twice over, and the two are for different readers.
 
 `FindingSubject` is a `FindingSubjectKind` and a key — for an account, its `sAMAccountName`, because
-that is what an administrator recognises in a report. `FindingSubjectKind` currently declares one
-value, `Account`, and widens when a rule is written about something else. It is deliberately not a
+that is what an administrator recognises in a report. `FindingSubjectKind` declares `Account`,
+`Policy` and `DirectoryObject`, so an organizational unit is not represented as an account. It is deliberately not a
 security identifier: containers and policies have none, and a subject column that assumes one fails
 closed on every finding that is not about an account.
 
@@ -315,6 +331,30 @@ Both run the same sequence, in this order, and the order matters:
 
 ## What is built
 
+**Independent membership summaries (`0108`, P-146).** SEC-021 version 2 writes one finding per
+account, grouping supporting chains by initial membership rather than emitting a finding per outer
+root. Longer independent memberships remain visible, including those reaching the same root as a
+shorter route. `KerberoastableAccountEvidence` carries `MembershipRoutes`, the protection catalogue
+version and any direct catalogue basis. Names, scoped SIDs, primary links and completeness survive
+both disposable stores. The finding's captured-object coverage and route completeness are separate;
+the screen cannot show complete coverage when the membership summary is partial.
+
+`JudgingRun` retains established findings from an incomplete `RuleVerdict` alongside its unresolved
+inputs. A rule that throws still loses all its findings. Partial membership detail does not erase a
+proven protection claim, and an incomplete walk still cannot prove an account unprotected. Protection
+through distribution nesting is never described as proof of administrative authorization; neither
+the route summary nor the selected protection basis determines owner acceptance.
+
+**Scoped owner acceptance, built 2026-09-05 (`0109`).** Both ownership rules use
+`ObjectOwnershipReading` and the independently derived `OwnerAcceptance` answer. The forest-root
+Schema Admins group and its members are accepted only within that forest's schema partition.
+`JudgingContext.ForestFqdn` comes from sealed evidence; parsed DN ancestors, including the object
+itself, establish the boundary without mistaking an escaped comma for a parent separator. Missing
+forest identity produces `UnresolvedReason.ForestIdentityUnreadable`, not acceptance. A proven schema
+membership with uncertainty elsewhere is accepted in the schema and remains unresolved outside it.
+The rule versions are 2; the predicates, both rule consumers, persistence and real-bundle judging
+are exercised. The product document records the measured counts and deliberate failing controls.
+
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|
 | be certain a rule cannot ship without saying what data it reads | `RuleDeclarationTests.EveryRuleDeclaresTheDataItReads` |  |
@@ -338,6 +378,6 @@ now been run end to end against a capture of a live forest — see the capabilit
 
 `SecureAD.Judgement` holds the store and the coordinator that streams a bundle and offers every
 object to every scheduled rule — see [`the-judgement-store.md`](the-judgement-store.md). The Shell
-runs judging after derivation and presents findings on the Assets screen. The CLI does not yet invoke
-judging; the current and target host paths are stated in
+runs judging after derivation and presents findings on the Assets screen. The CLI also invokes the
+shared judging path after capture/derive and supports judging an existing bundle. The host paths are stated in
 [`../../next/WORKFLOW.md`](../../next/WORKFLOW.md).

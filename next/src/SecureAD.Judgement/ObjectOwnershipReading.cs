@@ -1,6 +1,7 @@
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
@@ -50,25 +51,36 @@ internal static class ObjectOwnershipReading
     private const string OwnerRightsSid = "S-1-3-4";
 
     /// <summary>
-    /// Identifiers that are administrative wherever they appear, for the purpose of ownership.
+    /// Identifiers that are accepted owners wherever they appear, whoever is inside them.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <c>SYSTEM</c>, <c>Enterprise Domain Controllers</c> and <c>CREATOR OWNER</c> are platform
     /// identities rather than people. Reporting them would be reporting the directory for being a
-    /// directory.
+    /// directory. <c>CREATOR OWNER</c> in particular names nobody at all - it is a placeholder the
+    /// directory substitutes when a child object is created - so a finding about it would send an
+    /// operator to look for an account that does not exist.
+    /// </para>
+    /// <para>
+    /// <b>Matched on the identifier because that is the shape of the question.</b> Nobody is a
+    /// member of <c>CREATOR OWNER</c>, so there is nothing to walk; these are accepted for what
+    /// they are and not for what they contain. <c>BUILTIN\Administrators</c> is here as well
+    /// because it is the default owner of most objects in the directory, and an answer that
+    /// depended on the derivation having a fact about it would report every one of them the moment
+    /// the closure did not. Its <i>members</i> are covered separately by
+    /// <see cref="OwnerAcceptance"/>, which is the part this list cannot do.
+    /// </para>
+    /// <para>
+    /// <b>Five operator groups were removed from this list on 2026-09-05, per <c>P-140</c>.</b>
+    /// Account Operators, Server Operators, Print Operators, Backup Operators and Replicator were
+    /// treated as administrative here while <c>0099</c> excludes every one of them from the control
+    /// plane, so the same principal produced silence on the ownership screen and a visible
+    /// unexpected edge on the control-edge screen. Removing them from this list alone changed
+    /// nothing, because the protection closure below reached the same answer by a second route;
+    /// that is why <see cref="OwnerAcceptance"/> exists.
+    /// </para>
     /// </remarks>
-    private static readonly string[] AdministrativeSids =
-    [
-        "S-1-5-32-544", // BUILTIN\Administrators - the default owner of most AD DS objects
-        "S-1-5-18",     // SYSTEM
-        "S-1-5-9",      // Enterprise Domain Controllers
-        "S-1-3-0",      // CREATOR OWNER
-        "S-1-5-32-548", // Account Operators
-        "S-1-5-32-549", // Server Operators
-        "S-1-5-32-550", // Print Operators
-        "S-1-5-32-551", // Backup Operators
-        "S-1-5-32-552", // Replicator
-    ];
+    private static readonly IReadOnlySet<string> AdministrativeSids = PrincipalClassificationRegistry.AcceptedOwnerSids;
 
     /// <summary>
     /// Relative identifiers that are administrative under any domain.
@@ -77,12 +89,7 @@ internal static class ObjectOwnershipReading
     /// <c>AdminSDHolder</c> is owned by <c>Domain Admins</c> rather than <c>Administrators</c> by
     /// design, which is why 512 is here and why that documented exception costs nothing.
     /// </remarks>
-    private static readonly int[] AdministrativeRids =
-    [
-        500, // The built-in Administrator account
-        512, // Domain Admins
-        519, // Enterprise Admins
-    ];
+    private static readonly IReadOnlySet<int> AdministrativeRids = PrincipalClassificationRegistry.AcceptedOwnerIdentifierRids;
 
     /// <summary>
     /// Decides the ownership question for one object.
@@ -129,27 +136,44 @@ internal static class ObjectOwnershipReading
         if (IsAdministrativeByIdentifier(ownerSid))
             return Administrative();
 
-        // ADMINISTRATIVE THROUGH MEMBERSHIP IS ALSO EXPECTED, AND THIS IS A CORRECTION TO THE
+        // AN ACCEPTED OWNER THROUGH MEMBERSHIP IS ALSO UNREPORTED, AND THIS IS A CORRECTION TO THE
         // PREDECESSOR. Its SEC-031 decided administrativeness from the identifier alone and
         // recorded its own false positive: "An owner who is privileged only by transitive group
-        // membership will still fire a finding." The AdminSDHolder closure answers exactly that
-        // question - a principal is protected because it is inside Domain Admins, Enterprise
-        // Admins, Administrators or an operator group - so it is asked rather than re-walked.
+        // membership will still fire a finding."
+        //
+        // WHAT THIS ASKS CHANGED ON 2026-09-05, PER P-140. It used to ask whether AdminSDHolder
+        // protects the owner, which is a different question and gave a different answer: the
+        // protected set includes the five operator groups, so an account inside Backup Operators
+        // was silently accepted as an owner while 0099 puts Backup Operators outside the control
+        // plane. It now asks the derivation's own accepted-owner answer, walked over the accepted
+        // roots alone and carrying its own evidence, per 0101.
         var scope = Sid.IsBuiltinDomain(ownerSid) ? subject.DomainFqdn : null;
 
         if (protection.Lookup(ownerSid, scope) is { } fact)
         {
-            switch (fact.Evaluation)
+            switch (fact.OwnerAcceptance)
             {
-                case ProtectedPrincipalEvaluation.Protected:
+                case OwnerAcceptance.Accepted:
                     return Administrative();
 
-                case ProtectedPrincipalEvaluation.NotProtected:
+                case OwnerAcceptance.SchemaOnly:
+                case OwnerAcceptance.SchemaOnlyOtherwiseUnknown:
+                    if (string.IsNullOrWhiteSpace(context.ForestFqdn))
+                        return Unresolved(UnresolvedReason.ForestIdentityUnreadable);
+
+                    if (IsInSchema(subject.DistinguishedName, context.ForestFqdn))
+                        return Administrative();
+
+                    if (fact.OwnerAcceptance == OwnerAcceptance.SchemaOnlyOtherwiseUnknown)
+                        return Unresolved(UnresolvedReason.MembershipIncomplete);
+                    break;
+
+                case OwnerAcceptance.NotAccepted:
                     break;
 
                 default:
-                    // The derivation declined to call it either way and said why. Reporting an
-                    // owner as non-administrative on that basis could name a domain administrator.
+                    // The derivation declined to call it either way. Reporting an owner as
+                    // non-administrative on that basis could name a domain administrator.
                     return Unresolved(UnresolvedReason.MembershipIncomplete);
             }
         }
@@ -243,7 +267,7 @@ internal static class ObjectOwnershipReading
                 return true;
         }
 
-        return RelativeIdentifierOf(sid) is { } rid && Array.IndexOf(AdministrativeRids, rid) >= 0;
+        return RelativeIdentifierOf(sid) is { } rid && AdministrativeRids.Contains(rid);
     }
 
     /// <summary>
@@ -262,6 +286,22 @@ internal static class ObjectOwnershipReading
         var lastDash = sid.LastIndexOf('-');
 
         return lastDash > 0 && int.TryParse(sid[(lastDash + 1)..], out var rid) ? rid : null;
+    }
+
+    private static bool IsInSchema(string distinguishedName, string forestFqdn)
+    {
+        // Microsoft documents this fixed forest-relative naming context. Walk parsed ancestors:
+        // a comma escaped inside a leaf name must never manufacture a schema ancestor.
+        var schema = "CN=Schema,CN=Configuration,"
+            + string.Join(',', forestFqdn.Split('.').Select(label => "DC=" + label));
+
+        for (string? ancestor = distinguishedName; ancestor is not null; ancestor = DnHelper.GetParentDn(ancestor))
+        {
+            if (string.Equals(ancestor, schema, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private static ObjectOwnershipDecision Administrative() =>

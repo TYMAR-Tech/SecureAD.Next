@@ -612,7 +612,7 @@ A derived capability carries at least:
 |---|---|
 | `Name` | `CanResetPassword`, `CanWriteRBCD`, `CanReplicateSecretDomainData`, … |
 | `Target` | stable directory/synthetic reference |
-| `EdgeClass` | `DirectoryControl` / `CredentialExposure` / `ConditionalEscalation` — semantic category, not ranking |
+| `EdgeClass` | `DirectoryControl` / `CredentialExposure` / `ConditionalEscalation` / `MembershipEscalation` / `ReplicationControl` — semantic category, not ranking; additions accepted by `0110` |
 | `Feasibility` | `Direct` / `Conditional` / `Potential` — see below |
 | `Confidence` | `High` / `Medium` / `Low` |
 | `Preconditions[]` | named conditions that must also hold |
@@ -626,6 +626,12 @@ A derived capability carries at least:
 
 `EdgeClass` is not an ordered score. Route grading derives from feasibility, confidence and named
 preconditions.
+
+[`0110`](../../decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md)
+accepts the two additional categories without renaming or removing existing ones. Membership
+changes and replication are not described as control of the target's permission list. This is an
+accepted vocabulary requirement, not a claim that the capability engine or stored enum exists;
+it changes neither expectedness nor the claim-specific laboratory gates.
 
 A `Conditional` capability with no named precondition is invalid evidence.
 

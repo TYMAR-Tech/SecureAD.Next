@@ -28,15 +28,16 @@ namespace SecureAD.Judgement;
 /// ordinary account is what a service account <i>is</i> - reporting every one would report the
 /// normal operation of every application in the estate. Microsoft scopes its own recommendation the
 /// same way: of removing a service principal name it says "This recommendation only showed for
-/// sensitive accounts." What makes the privileged case different in kind is that a single ordinary
-/// domain member obtains material that turns into domain administration by offline guessing, with no
-/// lateral movement in between.
+/// sensitive accounts." A domain member can obtain material for offline guessing against an account
+/// with the directory's sensitive-account designation; what authority it holds is a separate question.
 /// </para>
 /// <para>
 /// <b>Privilege means AdminSDHolder-protected</b>, which is Microsoft's own designation of the
 /// accounts that matter rather than a list this product invented. It is why this rule declares
 /// <see cref="DerivedFactKind.ProtectedPrincipals"/> and is the first stage-4 rule that cannot judge
 /// a bundle nobody derived.
+/// Protection alone does not prove administrative authorization: distribution nesting can propagate
+/// protection without contributing the privileged group's SID to an access token.
 /// </para>
 /// <para>
 /// <b>Disabled accounts are reported, departing from the predecessor's card.</b> The card excluded
@@ -102,7 +103,7 @@ public sealed class KerberoastablePrivilegedAccount : IRule
         "SEC-021",
         "Privileged account with a service name registered on it",
         Severity.Critical,
-        Version: 1,
+        Version: 2,
         SubjectClasses: ["user"],
         RequiredAttributes:
             ["servicePrincipalName", "objectSid", "objectClass", "userAccountControl"],
@@ -146,13 +147,6 @@ public sealed class KerberoastablePrivilegedAccount : IRule
         if (context.ProtectedPrincipals is not { } protection)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
 
-        // Checked before the object's own facts, because no per-object answer can be trusted while
-        // the graph behind it is incomplete - and a partial closure makes a privileged account look
-        // ordinary, which is the direction that loses a finding rather than inventing one.
-        if (!protection.IsComplete)
-            return ProtectedPrincipalReading.Unresolved(
-                ProtectedPrincipalReading.ReasonFor(protection.StatedLimits));
-
         if (SidTextOf(subject) is not { } sid)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.IdentityUnreadable);
 
@@ -169,6 +163,12 @@ public sealed class KerberoastablePrivilegedAccount : IRule
 
         if (protection.Lookup(sid, scope) is not { } fact)
             return ProtectedPrincipalReading.Unresolved(UnresolvedReason.NotDerived);
+
+        // A partial walk cannot prove absence, but it does not undo an established protection
+        // claim. Keep that finding and carry the incomplete route explanation with it (0108).
+        if (!protection.IsComplete && fact.Evaluation != ProtectedPrincipalEvaluation.Protected)
+            return ProtectedPrincipalReading.Unresolved(
+                ProtectedPrincipalReading.ReasonFor(protection.StatedLimits));
 
         switch (fact.Evaluation)
         {
@@ -194,10 +194,18 @@ public sealed class KerberoastablePrivilegedAccount : IRule
         // reader can see the account's other flags without a second finding in front of him.
         var control = AttributeReading.UnsignedInteger(subject, "userAccountControl") ?? 0;
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
+        var directBasis = fact.Basis?.Kind == ProtectedPrincipalBasisKind.DirectPrincipalClaim
+            ? protection.Catalogue.Single(entry => entry.Id == fact.Basis.CatalogueEntryId) : null;
         var evidence = new KerberoastableAccountEvidence(
-            sid, services.Values, control, services.UnreadableValues);
+            sid, services.Values, control, services.UnreadableValues)
+        {
+            MembershipRoutes = fact.MembershipRoutes,
+            ProtectionCatalogueVersion = protection.CatalogueVersion,
+            DirectProtectionCatalogueEntryId = directBasis?.Id,
+            DirectProtectionName = directBasis?.Name,
+        };
 
-        return RuleVerdict.Judged(
+        return new RuleVerdict(
         [
             new Finding(
                 Definition.Id,
@@ -211,7 +219,8 @@ public sealed class KerberoastablePrivilegedAccount : IRule
                 Detail(name, evidence),
                 subject.Completeness,
                 evidence),
-        ]);
+        ], [], evidence.MembershipRoutes.IsComplete ? [] :
+            [new UnresolvedInput(DerivedFactKind.ProtectedPrincipals, UnresolvedReason.MembershipIncomplete)]);
     }
 
     /// <summary>What the operator is told.</summary>
@@ -238,7 +247,20 @@ public sealed class KerberoastablePrivilegedAccount : IRule
                 + $"{(evidence.UnreadableServiceNames == 1 ? "name was" : "names were")} present but"
                 + " could not be read, so this account may claim to run more than is listed here.";
 
-        return $"{name} is a privileged account and has a service name registered on it "
+        var summary = evidence.MembershipRoutes;
+        var count = summary.Memberships.Count;
+        var membership = summary.IsComplete
+            ? $"{name} has {count} membership {(count == 1 ? "route" : "routes")} to privileged groups, grouped by initial membership. "
+            : $"At least {count} initial {(count == 1 ? "membership is" : "memberships are")} known to lead to catalogue groups. ";
+        var direct = evidence.DirectProtectionName is { } basis
+            ? $"{name} is protected in its own right as {basis}; membership changes do not remove that catalogue basis. "
+            : string.Empty;
+
+        return direct + membership + summary.CompletenessDescription + " "
+            + (count == 0 ? string.Empty : "Review each initial membership and its supporting chains in the membership evidence. ")
+            + "These are membership explanations, not a minimum set of removals. Removing the listed memberships does not establish that every other form of privilege is gone. "
+            + "Protection and membership-based authorization are separate; a distribution-group path can establish protection without authorization. "
+            + $"{name} is an AdminSDHolder-protected account and has a service name registered on it "
             + $"({services}), so any authenticated member of the domain can ask a domain controller "
             + "for a ticket encrypted with this account's password and attack it offline - without "
             + "touching the account, without any privilege, and without leaving a failed logon. "

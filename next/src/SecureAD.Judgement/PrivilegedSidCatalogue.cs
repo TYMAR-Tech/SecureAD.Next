@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using SecureAD.Derivation;
 using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
@@ -51,17 +52,7 @@ public static class PrivilegedSidCatalogue
     /// <summary>
     /// Relative identifiers that name a privileged principal under whichever domain issued them.
     /// </summary>
-    public static readonly FrozenSet<int> PrivilegedRelativeIdentifiers = new[]
-    {
-        500, // Administrator
-        502, // krbtgt
-        512, // Domain Admins
-        516, // Domain Controllers
-        518, // Schema Admins
-        519, // Enterprise Admins
-        520, // Group Policy Creator Owners
-        521, // Read-only Domain Controllers
-    }.ToFrozenSet();
+    public static readonly FrozenSet<int> PrivilegedRelativeIdentifiers = PrincipalClassificationRegistry.SensitiveHistoryRids;
 
     /// <summary>
     /// Built-in groups that are privileged, held as whole SIDs rather than relative identifiers.
@@ -82,15 +73,7 @@ public static class PrivilegedSidCatalogue
     /// shared the mistake. Only the check that goes outside this repository disagreed.
     /// </para>
     /// </remarks>
-    public static readonly FrozenSet<string> PrivilegedWellKnownSids = new[]
-    {
-        "S-1-5-32-544", // BUILTIN\Administrators
-        "S-1-5-32-548", // BUILTIN\Account Operators
-        "S-1-5-32-549", // BUILTIN\Server Operators
-        "S-1-5-32-550", // BUILTIN\Print Operators
-        "S-1-5-32-551", // BUILTIN\Backup Operators
-        "S-1-5-32-552", // BUILTIN\Replicator
-    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+    public static readonly FrozenSet<string> PrivilegedWellKnownSids = PrincipalClassificationRegistry.SensitiveHistorySids;
 
     /// <summary>
     /// What Microsoft calls this SID, when this product treats it as privileged.

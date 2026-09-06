@@ -1,5 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
+using SecureAD.Storage;
 
 namespace SecureAD.Derivation;
 
@@ -325,10 +327,13 @@ internal sealed class DerivationWriter : IDisposable
 
         if (product.EvaluationBySid.Count != product.ReasonsBySid.Count
             || product.EvaluationBySid.Count != product.BasisBySid.Count
-            || product.EvaluationBySid.Count != product.PathsBySid.Count)
+            || product.EvaluationBySid.Count != product.PathsBySid.Count
+            || product.EvaluationBySid.Count != product.OwnerAcceptanceBySid.Count
+            || (product.MembershipRoutesBySid.Count != 0 && product.MembershipRoutesBySid.Count != product.EvaluationBySid.Count))
         {
             throw new ArgumentException(
-                "Protected-principal evaluations, reasons, bases and paths must describe the same principals.",
+                "Protected-principal evaluations, reasons, bases, paths and owner acceptance must "
+                + "describe the same principals.",
                 nameof(product));
         }
 
@@ -387,8 +392,9 @@ internal sealed class DerivationWriter : IDisposable
             path.Transaction = transaction;
             principal.CommandText =
                 "INSERT INTO protected_principal "
-                + "(sid_id, evaluation, basis_kind, basis_catalogue_entry_id, unknown_reasons) "
-                + "VALUES ($sid, $evaluation, $basisKind, $basisEntry, $reasons)";
+                + "(sid_id, evaluation, basis_kind, basis_catalogue_entry_id, unknown_reasons, "
+                + "owner_acceptance) "
+                + "VALUES ($sid, $evaluation, $basisKind, $basisEntry, $reasons, $ownerAcceptance)";
             path.CommandText =
                 "INSERT INTO protected_principal_path (sid_id, ordinal, path_sid_id) "
                 + "VALUES ($sid, $ordinal, $pathSid)";
@@ -402,7 +408,13 @@ internal sealed class DerivationWriter : IDisposable
                 principal.Parameters.AddWithValue("$basisKind", (object?)basis?.Kind.ToString() ?? DBNull.Value);
                 principal.Parameters.AddWithValue("$basisEntry", (object?)basis?.CatalogueEntryId ?? DBNull.Value);
                 principal.Parameters.AddWithValue("$reasons", (int)product.ReasonsBySid[sidId]);
+                principal.Parameters.AddWithValue(
+                    "$ownerAcceptance", product.OwnerAcceptanceBySid[sidId].ToString());
                 principal.ExecuteNonQuery();
+
+                MembershipRouteStorage.Write(_connection, transaction,
+                    sidId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    product.MembershipRoutesBySid.Count == 0 ? MembershipRouteSummary.NotDerived : product.MembershipRoutesBySid[sidId]);
 
                 for (var ordinal = 0; ordinal < product.PathsBySid[sidId].Count; ordinal++)
                 {
@@ -775,7 +787,7 @@ internal sealed class DerivationWriter : IDisposable
     /// </para>
     /// </remarks>
     /// <param name="completedUtc">When deriving finished.</param>
-    public void Complete(DateTimeOffset completedUtc)
+    public DerivationRunState Complete(DateTimeOffset completedUtc)
     {
         ThrowIfFinished();
 
@@ -803,6 +815,7 @@ internal sealed class DerivationWriter : IDisposable
             AnalysisStoreKind.Derivation,
             GenerationId);
         _finished = true;
+        return state;
     }
 
     /// <summary>

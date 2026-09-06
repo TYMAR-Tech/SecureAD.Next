@@ -355,9 +355,12 @@ Stage 6 turns permissions into *this principal can take over that object*. Four 
 edge **means** were settled before any of it was built, because building it first would have chosen
 all four by accident.
 
+**The following edge and screen descriptions are accepted requirements, not built features.**
+Control edges, their executable control-plane catalogue and these two views remain stage 6 work.
+
 **A correction first: the product already judges ownership, and `P-70` said it did not.** `SEC-031`
 reports an ordinary object owned by a principal that is not administrative at `Low`, `SEC-032`
-reports the same for objects `AdminSDHolder` protects at `High`, both are registered in
+reports the same for objects `AdminSDHolder` protects at `Medium`, both are registered in
 `RuleCatalogue.All`, and `ObjectOwnershipEvidence` carries the owner, the object class, a
 completeness voucher and whether the owner still exists at all. `SEC-060` already treats `WriteOwner`
 as takeover-class only where an owner's implicit rights survive, consulting the `OWNER RIGHTS` entry
@@ -369,7 +372,7 @@ never read. The row was prose, and prose is discussion. Verified by opening `Obj
    `SEC-031` and `SEC-032` already report, decided using the existing `ObjectOwnershipReading` rather
    than a second definition of *administrative*. An owner implicitly holds Modify Permissions, so
    without this the graph misses the most direct takeover there is; with it, an object owned by
-   Domain Admins produces no edge, which is the eight thousand uninteresting edges avoided.
+   Domain Admins would produce no ownership edge. Actual edge counts await stage 6 and P-145.
    [`0095`](decisions/0095-ownership-is-a-control-edge-where-the-owner-is-not-an-administrator.md).
 2. **Effective permissions are shown two ways over one stored edge set** - object-first (*who can
    take over this object*, the shape of the Windows Effective Access tab) and principal-first (*what
@@ -393,13 +396,35 @@ never read. The row was prose, and prose is discussion. Verified by opening `Obj
 is not an answer; it is a number an operator learns to scroll past, and the real one hides inside it.
 Stage 6's target is a small *unexpected* count, not a large total.
 
-**Two consequences for what must happen before stage 6.** `P-85` - which groups count as Tier 0 seeds
-- gated it, and is settled below by [`0099`](decisions/0099-the-tier-0-control-plane-catalogue.md).
-And `P-105` - `Walk` reporting the last established root rather than the nearest, so three
-accounts directly in Enterprise Admins on `ad.lab` are each reported under `BUILTIN\Administrators` -
-is fixed before stage 6 consumes `Walk`, because an edge that names the wrong root sends an operator
-to remove the wrong membership. `P-107` and `P-67` do not gate stage 6 and are deferred with reasons
-recorded on their rows.
+**The earlier prerequisites are resolved.** `P-85` is settled by
+[`0099`](decisions/0099-the-tier-0-control-plane-catalogue.md), and `P-105` was fixed by `0106`:
+the stored protection reason uses a nearest root rather than whichever root was processed last.
+That single stored reason is not the complete membership explanation now required by `0108`;
+P-146 now supplies the separate grouped route evidence and presentation. `P-107` and `P-67` do not
+gate stage 6 and remain deferred for the reasons on their rows.
+
+## Control-edge categories, decided 2026-09-06
+
+**Membership changes and replication have their own categories**, accepted by the owner under
+[`0110`](decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md).
+Add `MembershipEscalation` and `ReplicationControl` without renaming existing categories.
+`DirectoryControl` describes authority over the object's security descriptor;
+`CredentialExposure` describes credential-related capabilities. The existing specification's
+`ConditionalEscalation` vocabulary is retained, not silently removed.
+
+**The distinction is what a capability does, not how bad it is.** Resetting a password,
+changing group membership and replicating secrets must not all be described as rewriting an
+object's permission list. Self-Membership remains distinct from unrestricted membership changes.
+A replication capability keeps its qualifying rights and the partition it reaches.
+
+Microsoft's control-access-right, Self-Membership, Reset Password and replication-right pages
+were read in full before the recommendation. They support the different operations; these category
+names are SecureAD vocabulary, not Microsoft's taxonomy. Severity, expectedness, group counting,
+owner acceptance and the claim-specific laboratory gates are unchanged. In particular, the new
+replication category does not make a domain controller's edges expected or hidden.
+
+**This records the accepted category choice, not an implementation.** Stage 6 and P-145 remain
+outstanding; the rest of the stage-6 proposal is not accepted merely by this decision.
 
 ## Which principals are the control plane, decided 2026-09-06
 
@@ -409,7 +434,7 @@ Tier 0* is Microsoft's tier model, and *should what it holds be hidden by defaul
 principal can be Tier 0-sensitive without every permission it holds being expected.
 [`0099`](decisions/0099-the-tier-0-control-plane-catalogue.md) settles `P-85` on that distinction.
 
-**Every entry declares two scopes**, and an entry that does not declare an unrestricted capability
+**The accepted catalogue requires every entry to declare two scopes**, and an entry that does not declare an unrestricted capability
 scope does not get one. **Authority scope** is where the principal is an administrator; **capability
 scope** is which powers are normal for it. Unrestricted, within their own domain: the built-in
 Administrator (500), Domain Admins (512), `BUILTIN\Administrators` (544); forest-wide: Enterprise
@@ -427,22 +452,25 @@ or unexpected, which is what the product already does everywhere else.
 
 **A correction to the record: the `CN=Keys` claim is true.** Microsoft's domain-wide schema updates,
 operation 83, grants Key Admins and Enterprise Key Admins Full Control over the `CN=Keys` container,
-inheriting, including rewriting permissions and taking ownership. Section 12 of the stage 6
-specification says it was not found in Microsoft's documentation; it is on the same page `P-86`
-already cites. It does not change the answer - `CN=Keys` holds key credential objects rather than
+inheriting, including rewriting permissions and taking ownership. An earlier draft of section 12
+said it was not found; that section has now been corrected. The source is the same page `P-86`
+already cited. It does not change the answer - `CN=Keys` holds key credential objects rather than
 accounts, and Microsoft's own operation 89 later cut the grant back to a single attribute - but the
 row was right and the specification was wrong, and it was caught by fetching the page.
 
-**A second correction: the product already had a control-plane list.**
-`ObjectOwnershipReading.AdministrativeSids` decides which owners are administrative and therefore go
-unreported, and it counts five operator groups as administrative. The brief said nothing but `P-85`
-defined the control plane. Reconciling the two is now a punch-list row, because the product must not
-answer the same question two ways on two screens.
+**The earlier ownership implementation conflicted with the control-plane policy.** Its identifier
+list and protection fallback accepted five operator groups as owners. P-140 was corrected by
+`0107`: owner acceptance is independently derived, and the five groups no longer qualify by that
+route. `0109` subsequently added schema-only acceptance. None of this means the stage 6 executable
+catalogue already exists, or that ownership and control-edge expectedness are one interchangeable
+question; `0101` requires the questions to remain separate.
 
-**Certificate authorities are found automatically; AD FS is declared.** An enterprise CA is an object
+**The accepted policy is automatic certificate-authority discovery and declaration-only AD FS.** An enterprise CA is an object
 the directory names, in a partition capture already reads, so classifying it is a read. Nothing marks
 an AD FS server, so naming one would be a guess - and a guess printed as a fact is the one thing this
 product must not do.
+
+The classification and declaration mechanisms remain implementation work on P-142 and P-143.
 
 **Customers may declare Tier 0 assets, never Tier 0 principals.** Declaring an asset adds something
 to watch and hides nothing. Declaring a principal would hide edges by default and make conclusions
@@ -496,6 +524,242 @@ asset* are five different questions about the same group, and one flat privilege
 erase all five. Backup Operators is worth watching, is not an expected controller, and is no longer
 an accepted owner - all at once, without contradiction. Nothing is inferred from anything else unless
 a decision says so.
+
+## Which membership a finding names, decided 2026-09-05
+
+**One finding must summarize independent membership routes, including longer routes**, decided by
+the owner under [`0108`](decisions/0108-a-finding-summarizes-independent-membership-routes.md).
+This revises `0106`'s choice to name only the nearest privileged group. The derivation retains
+that selected protection basis and now also stores the independent membership-route summary.
+SEC-021 version 2 carries that summary in one finding. A principal protected in its own right retains that
+direct catalogue basis rather than being relabelled as protected through membership.
+
+**What was wrong.** The walk let each later group overwrite an earlier one, so the *last* one it
+happened to process was reported. Three accounts sitting directly in **Enterprise Admins** on
+`ad.lab` were each reported under **BUILTIN\Administrators**, because Enterprise Admins is nested
+there. Nothing said was false - the accounts really are under both - but the answer shown was the
+wrong one to act on. The fix is to remove the account from Enterprise Admins; removing it from
+`BUILTIN\Administrators` would not have taken its privilege away, because it is not directly in that
+group at all.
+
+**Why not a separate row for every outer group reached.** Where several groups are reached through
+the same membership, those outer groups are consequences of that route, not separate removals.
+Counting each one would multiply rows by nesting depth rather than by the memberships an operator
+can change. That reasoning does not apply to an independent route, even when it is longer.
+
+**A correction from source inspection, 2026-09-05.** This page previously claimed the whole chain
+to every outer root was stored and shown on a detail view. At that point `ProtectedPrincipalClosure`
+held one basis and one path per principal, stored in `protected_principal_path`. The alternative
+route evidence was genuinely missing. P-146 has now added it separately; the result is supporting
+chains grouped by initial membership, not an exhaustive list of every possible path.
+
+**The owner selected option 3 for P-146 on 2026-09-05.** Two direct memberships in privileged groups require two
+removals, and naming one hides the other. Equally near nested roots can instead share an initial
+membership; an independent route can also be longer. The tie-break makes a choice stable, not
+complete. These were the three choices; option 3 is accepted and the other two were not selected:
+
+| Option | Example finding text | Cost and limitation |
+|---|---|---|
+| 1. Name every equally nearest root in one finding | Alice reaches Domain Admins and Enterprise Admins through two direct memberships. | Store multiple roots and paths and update finding evidence and presentation. Avoids duplicate rows, but longer independent routes remain unmentioned. |
+| 2. Name one and count the other equally near roots | Alice reaches Domain Admins; one other equally near membership also exists. | Still derive the alternatives and provide their details. Shorter headline, but an extra click is needed to learn the other membership. |
+| 3. Summarize independent membership routes in one finding | Alice has two membership routes to privileged groups. Review both. | Most derivation, evidence and presentation work. Include longer independent routes, show the memberships that start them, and group routes sharing an initial membership rather than adding a row per outer group. |
+
+**Why option 3.** Fixing only ties leaves the same failure when another
+independent route is longer. An initial membership means the group the account directly belongs to;
+it is not every outer group reached through that group. The finding must not claim that removing listed
+memberships removes every other form of privilege. That stronger claim requires the later work that
+proves a proposed repair covers every route.
+
+**Implemented under 0108.** Derivation schema 10 stores independent initial memberships, the
+reachable catalogue roots and supporting chains, including longer routes to the same root. The
+chains retain captured names, scoped SIDs, primary-group links and separate authorization/protection
+answers. Initial memberships sharing several outer roots produce one detail block, not extra
+findings. SEC-021 version 2 persists the evidence in judgement schema 14; both finding screens expose
+it through **View membership evidence**. Direct catalogue protection is retained in its own right,
+and owner acceptance is neither reconstructed from this summary nor changed by it.
+
+**Incomplete is visible, not discarded.** Limits on principal visits, examined links, estimated
+stored evidence and time stop the walk with a named reason. Capture gaps and cycle-limited group
+answers are also explicit. Known routes survive, their count is not called a total, and a proven
+finding survives with unresolved inputs recorded beside it. This required correcting `JudgingRun`,
+which previously discarded findings from an incomplete verdict. A rule that throws still loses its
+findings. Distribution nesting can confer protection without authorization; the wording now says
+so rather than promising that every protected account has domain administration.
+
+**Checks were observed failing, one mutation at a time.** Retaining only one route failed 17 checks
+across derivation, storage, judging and presentation. Erasing completeness failed six; mislabelling
+distribution paths failed three; capture-dependent ordering failed one. Disconnecting each real
+screen's binding failed separately, naming `SelectedFinding.MembershipDetails` and
+`MembershipCompleteness`. Removing SID scope and primary-link labels each failed their dedicated
+check. Every mutation was restored. The full-suite architecture checks also required completeness
+on each initial-membership block, rather than only on its containing summary.
+
+**P-149's remaining checks are implemented.** Before changing the stored layout, the existing
+version-1/version-8 refusal and matching-version tests were verified against their bodies. Disabling
+refusal made both mismatch cases fail; an added unversioned production column failed the independent
+schema-9 layout checkpoint. Schema 10 has its own checkpoint, and the schema-9 checkpoint is retained.
+The guard covers structural changes, not semantic-only changes with identical SQL; those still need
+an explicit version decision and behavioral tests. Version-9 refusal is now tested too.
+
+**The same sealed ad.lab evidence was checked again on a new copy.** Existing diagnostics, run with
+`pwsh`, derived and judged `next/artifacts/membership-routes-0108/`. SEC-031 remains **10**, SEC-032
+remains **0**, and both retain **four undecided objects**. All ten ownership finding details match
+the preserved scoped result. Evidence retains SHA-256
+2DEF9F8AD4DE01877970B7F97F845716C1FFC1B093B01F388004610526E76BE4. Derivation generation
+69c75821-3f63-4045-806d-d9c7513c1fc4 records three initial memberships for `ba.admin`, with outer
+Administrators roots grouped under their actual initial membership. Judgement generation is
+1685f45e-0ea0-49cc-89b9-34df2b37c5af. Reports are `next/artifacts/p146-lab-*.txt` and
+`p146-prior-ownership.txt`. This bundle has no SEC-021 findings; planted end-to-end tests prove the
+multi-route finding and partial-finding cases. No control edge or stage 6 implementation was added.
+
+## Who counts as an acceptable owner, decided 2026-09-05
+
+**Owning an object and being repaired by AdminSDHolder are two different questions, and the product
+now answers them separately**
+([`0107`](decisions/0107-an-accepted-owner-is-a-separate-question-from-protection.md)). An object's
+owner can rewrite its permissions without appearing in the permission list, so who owns something is
+a control question. The five operator groups `0099` leaves out of the control plane - Account
+Operators, Server Operators, Print Operators, Backup Operators and Replicator - are **no longer
+accepted owners**, so an object one of them owns is now reported. Out still does not mean safe:
+Backup Operators remains Tier 0-sensitive, and this makes its ownership visible rather than hidden.
+
+**CREATOR OWNER and SYSTEM stay accepted**, because an owner recorded as a placeholder or as the
+platform is a directory artefact rather than a person. `0099` governs the first and `0100` the
+second.
+
+**Two things were found by opening the code, and both changed the work.** First, the shipping list
+was not what decided this: where the list did not match, the rule asked whether AdminSDHolder
+protects the owner and read that as *administrative*. All five operator groups **are** protected, so
+removing them from the list alone would have changed nothing a customer could see, while every test
+of the list went green. Second, the answer could not be filtered out of protection afterwards either,
+because the derivation records only one group as the reason - an account in both Domain Admins and
+Account Operators would have been reported as a non-administrative owner, which is the product
+stating something false. So *is this an acceptable owner* is now derived once in its own right,
+walked over the accepted groups alone, and stored beside the protection answer rather than inside
+it. That is the first of the five questions [`0101`](decisions/0101-one-versioned-principal-registry.md)
+requires; the other four are scheduled, not folded in.
+
+### Schema Admins ownership has a target scope, decided 2026-09-05
+
+**Accept the forest-root Schema Admins group and its members as owners only within that forest's
+schema partition**, including the schema root itself. The owner selected both the group and its
+members, recorded in [0109](decisions/0109-schema-admins-ownership-is-accepted-only-in-the-schema.md).
+Ownership elsewhere remains reportable unless a separate accepted membership gives broader authority.
+Someone in both Schema Admins and Domain Admins must not lose the broader acceptance.
+
+The group is identified by its forest-root SID, not its name or RID 518 under any domain. The target
+must be in the captured forest's schema, not merely under a similarly named container. Protection
+by AdminSDHolder does not establish this answer: ownership acceptance remains independently derived.
+Distribution nesting is not administrative authority. When a schema membership is proven but other
+membership evidence is incomplete, acceptance inside the schema is known and acceptance elsewhere
+may remain unknown. Missing forest identity must not authorize the exception.
+
+**Implemented and verified against the same evidence.** `OwnerAcceptance.SchemaOnly` and
+`OwnerAcceptance.SchemaOnlyOtherwiseUnknown` preserve the scoped answer and uncertainty outside it.
+The unrestricted list still excludes RID 518. Derivation schema 9 refuses older owner semantics;
+both ownership rules are version 2. `JudgingContext.ForestFqdn` supplies the captured forest identity
+to the target check, and explain mode now supplies the same inputs as normal judging.
+
+On a copy of ad.lab-20260905-212426, re-deriving and judging changed SEC-031 from **1,788 to 10** and
+left SEC-032 at **0**. Both still reached 8,379 verdicts with **four undecided objects**. The removed
+findings are exactly the 1,778 Schema Admins/schema cases; the ten machine-owned findings remain.
+The schema root was also checked through explain mode, which reports a reached verdict and no
+ownership finding. Evidence retained SHA-256
+2DEF9F8AD4DE01877970B7F97F845716C1FFC1B093B01F388004610526E76BE4. The scoped derivation generation is
+f67940b1-105c-4092-916e-d8b2bcb5c730. Artifacts remain in
+next/artifacts/ownership-volume-20260905/, with the scoped prefix and scoped bundle copy.
+
+**The checks were observed failing.** Removing the scoped membership roots caused four derivation
+test failures, including *expected SchemaOnly, actual NotAccepted*. Inverting the target boundary
+caused all ten scope cases to fail: legitimate schema ownership was reported and outside ownership
+was accepted. Restoring both changes gave 120 passing targeted derivation, persistence and ownership
+tests. The schema-8 refusal test failed before the version bump and passed afterwards; the actual
+schema-8 lab store was also refused with both versions named before it was re-derived. These checks
+did not detect every future schema edit made without a version bump. P-149's independent structural
+checkpoint and disabled-refusal control have since been implemented with P-146, described above.
+
+**P-147's measured blocker is resolved.** That correction built no control edges or multi-route
+presentation; P-146 has since implemented 0108's route explanation. P-145 still waits for real
+stage 6 output before it can run. The ten remaining findings and four undecided objects are not a
+claim of a clean forest.
+
+### Measured ownership volume on ad.lab, 2026-09-05
+
+**This is the five-operator ownership comparison, not P-145.** That row needs control edges and
+their expected/unexpected/unknown classifications, which cannot be measured while stage 6 is absent.
+It is an acceptance gate after stage 6 produces output, not a prerequisite for starting its build.
+
+**This subsection preserves the earlier schema-8 comparison, before the scoped correction.** The
+current schema-9 result and the resolution of P-147 are recorded immediately above it.
+
+**One capture, two policies.** The CLI captured ad.lab-20260905-212426: three domains and 8,383
+objects. A copy of that sealed evidence was derived and judged with 548, 549, 550, 551 and 552
+temporarily added to `ProtectedGroupCatalogue.AcceptedOwnerRids`. After restoring the original
+source exactly, the original bundle was derived and judged again. This isolates the five groups;
+it is not a rollback of every change made by `0107` or a comparison with the predecessor.
+
+The existing `next/tools/explain-derivation.ps1`, `next/tools/judge-bundle.ps1` and
+`next/tools/show-findings.ps1` produced and read both results. No throwaway test class or directory
+modification was used. The artifacts are in next/artifacts/ownership-volume-20260905/.
+
+| Rule | Five operator groups accepted | Current policy | New findings |
+|---|---:|---:|---:|
+| SEC-031 | 1,788 | 1,788 | 0 |
+| SEC-032 | 0 | 0 | 0 |
+
+**Both rules reached 8,379 verdicts and could not decide four objects, under both policies.** Their
+stored outcome is `Indeterminate`, with `ProtectedPrincipals.MembershipIncomplete` recorded for
+each rule. These are reported findings, not a claim that every object was judged. The derivation
+records four unresolved protection answers: three with `PrimaryGroupTraversalResearchBlocked` and
+one with `PrincipalClaimDisputed`. The separate owner-acceptance answer was not unknown.
+
+**The policy switch was observed, not assumed.** Reading the persisted derivations back gave 29
+accepted principals before and 13 afterwards. The sixteen changed answers are the five operator
+groups in each of the three domains and one account reached through Backup Operators. Both complete
+ownership reports, including finding text and targets, are identical after excluding their
+bundle/store headers. There are therefore no new findings from this comparison to call wrong.
+
+**What the 1,788 findings are actually about:**
+
+| Owner and target | SEC-031 findings, under both policies |
+|---|---:|
+| Schema Admins owning the schema partition itself or its descendants | 1,778 |
+| Computer accounts owning Windows Virtual Machine service-connection records | 8 |
+| BADC and PHDC owning domain-reference objects in the configuration partition | 2 |
+
+**The first 1,778 exposed the reporting defect P-147, not a five-operator volume increase.**
+The finding said Schema Admins was *not an administrative principal* on the very schema that
+[Microsoft's security-groups reference](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#schema-admins)
+gives it full administrative access to. That was misleading, not merely verbose. The target-scope
+decision was subsequently accepted and implemented as `0109`; the current run no longer emits
+those 1,778 findings. The ten machine-owned objects carry the stated ownership, but
+this measurement does not establish that their ownership is improper or evidence of abuse.
+
+**Verdict at the time of the five-group comparison: no observed increase, but not ready for stage 6.** The
+existing Schema Admins volume is already the failure this check was meant to catch. It is recorded
+as high severity on P-147; it was subsequently corrected by scoped acceptance under 0109, measured
+above, rather than by suppressing findings. This small lab result cannot establish the impact in a forest with years of operator-group
+delegation, and the four undecided objects remain undecided.
+
+**Reproducibility:** both evidence files retained SHA-256
+2DEF9F8AD4DE01877970B7F97F845716C1FFC1B093B01F388004610526E76BE4. The before derivation generation is
+066e66ca-3cc6-48dd-bf00-0b66b4fe3bcc and its judgement generation is
+338e54a1-e0fe-4d0a-ae76-261a74e2b5f2. The after generations are
+0f3b1913-434e-4a1c-8a03-f72185e537ff and b5abf116-8918-4d44-aa09-492c80d059b9 respectively.
+Both derivations in this earlier comparison use schema 8. At its conclusion the temporary catalogue
+change was restored and its source hash matched the pre-measurement hash; scoped acceptance was
+implemented afterwards.
+
+**A high-severity verification defect was found and fixed during the comparison.**
+`ObjectOwnershipRuleTests.OwnershipAndTheControlPlaneClassifyTheSameIdentifierCompatibly` stayed
+green while all five operator groups were accepted. Its owner fixture gave built-in groups a null
+domain, so the rule's domain-scoped lookup never read the supplied acceptance. Correcting the
+fixture in `ObjectOwnershipRuleTests` made the widened policy fail with
+*S-1-5-32-548 is outside the control plane under 0099, so ownership must report it.* Restoring the
+then-current policy made all 24 ownership-rule tests in that comparison pass. The test still compares against the
+repository's written-out `0099` set, not Microsoft's specifications or the unbuilt control-plane
+catalogue. It must be retargeted when that catalogue is built; this fixture repair does not discharge
+that obligation.
 
 ---
 

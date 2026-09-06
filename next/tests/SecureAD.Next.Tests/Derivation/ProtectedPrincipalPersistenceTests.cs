@@ -124,7 +124,8 @@ public sealed class ProtectedPrincipalPersistenceTests
             [[], [], []],
             Seeds: [],
             ProtectedGroupCatalogue.NarrowedBy(string.Empty),
-            ProtectionUnknownReason.None);
+            ProtectionUnknownReason.None,
+            [OwnerAcceptance.NotAccepted, OwnerAcceptance.NotAccepted, OwnerAcceptance.NotAccepted]);
 
         Assert.Throws<ArgumentException>(() => writer.WriteProtectedPrincipals(incoherent));
     }
@@ -143,9 +144,34 @@ public sealed class ProtectedPrincipalPersistenceTests
             [[], [], []],
             Seeds: [],
             ProtectedGroupCatalogue.NarrowedBy(string.Empty),
-            ProtectionUnknownReason.None);
+            ProtectionUnknownReason.None,
+            [OwnerAcceptance.NotAccepted, OwnerAcceptance.NotAccepted, OwnerAcceptance.NotAccepted]);
 
         Assert.Throws<ArgumentException>(() => writer.WriteProtectedPrincipals(incoherent));
+    }
+
+    [Theory]
+    [InlineData(OwnerAcceptance.SchemaOnly)]
+    [InlineData(OwnerAcceptance.SchemaOnlyOtherwiseUnknown)]
+    public void ScopedOwnerAcceptanceSurvivesTheStore(OwnerAcceptance acceptance)
+    {
+        var directory = NewBundle();
+        using (var writer = DerivationWriter.Create(directory, EvidenceSealOf(directory), Started))
+        {
+            writer.WriteSids(Sids, Scopes);
+            writer.WriteProtectedPrincipals(Product() with
+            {
+                OwnerAcceptanceBySid = [acceptance, OwnerAcceptance.NotAccepted, OwnerAcceptance.Accepted],
+            });
+            writer.RecordPhase(ProtectedPrincipalDeriver.PhaseName, DerivationPhaseOutcome.Succeeded, null);
+            writer.RecordCompleteness(Complete(writer.GenerationId));
+            writer.Complete(Finished);
+        }
+
+        var opened = DerivationReader.Open(directory);
+        Assert.True(opened.IsSuccess, opened.Error?.Description);
+        using var reader = opened.Value!;
+        Assert.Equal(acceptance, reader.Read().ProtectedPrincipals.Value!.Lookup(Sids[0], null)!.OwnerAcceptance);
     }
 
     private static readonly string[] Sids =
@@ -167,7 +193,11 @@ public sealed class ProtectedPrincipalPersistenceTests
             [new[] { 0, 1, 2 }, [], []],
             Seeds: [2],
             catalogue,
-            ProtectionUnknownReason.None);
+            ProtectionUnknownReason.None,
+            // Index 2 is Domain Admins itself and index 0 reaches it, so both are accepted owners.
+            // Index 1 is not under an accepted root - and its protection being Unknown is a
+            // separate answer that must not decide this one.
+            [OwnerAcceptance.Accepted, OwnerAcceptance.NotAccepted, OwnerAcceptance.Accepted]);
     }
 
     private static DerivationCompleteness Complete(Guid generationId) => new(

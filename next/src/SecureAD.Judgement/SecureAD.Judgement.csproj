@@ -9,6 +9,21 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <Compile Include="..\SecureAD.Derivation\MembershipRouteStorage.cs" Link="MembershipRouteStorage.cs" />
+  </ItemGroup>
+
+  <!-- The readings the rules share are worth testing directly and are not worth publishing.
+       ObjectOwnershipReading decides which owners go unreported, and until 2026-09-07 nothing
+       could name its OwnerIsAdministrative outcome from a test, because the type is internal and
+       this assembly exposed nothing - so the list it consults was unmeasured and P-140 could have
+       been "fixed" without any check noticing. Asserting the outcome through a rule's findings
+       instead would only ever prove that nothing was reported, which is also what a broken
+       predicate produces.
+
+       Same shape and the same reason as SecureAD.Derivation, SecureAD.Cli and SecureAD.Shell:
+       one assembly, one direction, nothing added to SURFACE-REGISTER.md. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
   </ItemGroup>
 
   <!-- Judgement coordinates executable rules over both sealed evidence and reusable derived facts.

@@ -4,7 +4,8 @@ Date: 2026-09-06
 Status: Accepted.
 
 Settles `P-85`. This is the record [0098](0098-a-control-edge-is-expected-or-unexpected.md)
-condition 4 defers to, and the last thing gating stage 6.
+condition 4 defers to. It settles the catalogue policy; it does not claim that the executable
+catalogue or stage 6 is built.
 
 ## Context
 
@@ -26,18 +27,17 @@ into Tier 0 dilutes it. **Where the evidence is uncertain, this catalogue favour
 **What was verified before deciding**, because the two preceding sessions each found a punch-list row
 whose premise was false:
 
-- **The `CN=Keys` claim in `P-85` is true, and section 12 of `SPEC-stage-6-control-edges.md` is wrong
-  to record it as not found.** Microsoft's [domain-wide schema
+- **The `CN=Keys` claim in `P-85` was confirmed, and section 12 of `SPEC-stage-6-control-edges.md`
+  was corrected after recording it as not found.** Microsoft's [domain-wide schema
   updates](https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/domain-wide-updates)
   operation 83 adds Full Control allow ACEs on `CN=Keys` for `domain\Key Admins` and
   `rootdomain\Enterprise Key Admins`, mask `(A;CI;RPWPCRLCLOCCDCRCWDWOSDDTSW;;;Key Admins)`, which
   includes `WD` and `WO` and inherits. **The lab observation the spec proposed is not needed.**
-- **The product already ships a control-plane list that disagrees with the working position.**
-  `ObjectOwnershipReading.AdministrativeSids` and `AdministrativeRids` decide when an owner is
-  administrative and therefore not reported - `0095` in running code - and they include Account
-  Operators, Server Operators, Print Operators, Backup Operators and Replicator. The brief's claim
-  that *nothing but `P-85` says what the control plane is* was wrong. Reconciling the two is a
-  finding this record creates.
+- **At review time, ownership accepted principals this control-plane policy excluded.** Its
+  identifier lists and protection fallback accepted Account Operators, Server Operators, Print
+  Operators, Backup Operators and Replicator. This was an ownership policy, not an already-built
+  control-edge catalogue. The reconciliation became P-140 and was implemented under `0107`;
+  schema-scoped ownership followed under `0109`.
 - **`BroadPrincipalCatalogue` implements `0098` condition 3** and needs nothing from this record.
 
 ## Decision
@@ -64,11 +64,14 @@ scope does not receive one (`AC-S6-14`):
 
 - **Schema Admins, RID 518** - expected only for schema-administration capabilities against the
   schema naming context. **Membership does not make control over domain objects, accounts, groups or
-  any other naming context expected.** Its default membership is empty; an account improperly left in
-  it must surface rather than be hidden.
-- **SYSTEM, `S-1-5-18`** - expected only where the stored security descriptor names SYSTEM directly
-  and the authority context is established. **No blanket forest-wide expectedness.** Its capability
-  scope must be written out concretely before stage 6 computes anything - see *What remains open*.
+  any other naming context expected.** Microsoft's
+  [privileged-group reference](https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-b--privileged-accounts-and-groups-in-active-directory)
+  names the forest-root built-in Administrator as its default member; the earlier claim of empty
+  default membership was incorrect. Membership should be temporary for schema administration;
+  an account improperly left in it must surface rather than be hidden.
+- **SYSTEM, `S-1-5-18`** - its initially unspecified capability scope was settled by `0100`.
+  It is a descriptor-native platform identity, not an ordinary catalogue administrator: expectation
+  follows applicable ACEs naming it and transfers to nobody else. **No blanket forest-wide expectedness.**
 - **Enterprise Domain Controllers, `S-1-5-9`** - expected only for the directory and replication
   capabilities a domain controller requires, within the forest. Not unrestricted.
 
@@ -178,30 +181,32 @@ reversible and on the record, one edge at a time.
 
 ## Consequences
 
-- **Stage 6 can compute expectedness.** `UnknownControlPlaneCatalogueIncomplete` now has a version to
-  compare against rather than an unanswered question.
-- **`ObjectOwnershipReading` must be reconciled**, or the product answers the same question two ways
-  on two screens. Account Operators, Server Operators, Print Operators, Backup Operators and
-  Replicator come out of its administrative list; CREATOR OWNER and SYSTEM stay, for the stated
-  reason that an owner is not a holder.
+- **Stage 6 has an accepted policy to implement.** The executable catalogue, its stored version
+  and control-edge expectedness remain unbuilt; a decided policy is not a running comparison.
+- **Ownership reconciliation is implemented.** `0107` removed the five operators from accepted
+  ownership by both identifier and membership; `0109` added the separate schema-only answer.
+  CREATOR OWNER and SYSTEM remain accepted owners for their documented platform/placeholder reasons.
 - **One versioned catalogue, with each entry declaring which question it answers.** Ownership under
   `0095`, expectedness under `0098` and SID-history privilege are three different questions, and
   `PrivilegedSidCatalogue` deliberately includes principals this record excludes. A single flat list
   serving all three would be a regression; a single catalogue whose entries are scoped per consumer
   makes divergence a test failure instead of a screen-specific behaviour.
-- **The first runs will show more, not less.** That is the intended direction: removing a principal
-  from this catalogue increases visibility and never removes evidence.
+- **Exclusions preserve visibility, not a promised count.** Their control-edge impact must be
+  measured by P-145 once stage 6 produces output. The separate ad.lab five-operator ownership
+  comparison produced no new findings; that neither proves the catalogue policy nor predicts
+  another forest's volume.
 
-## What remains open, and is not settled by this record
+## Follow-up status
 
-- **SYSTEM's capability scope is not yet written out.** `S-1-5-18` appears with full control in the
-  default descriptor of very nearly every object in Active Directory. Under `AC-S6-14` an undeclared
-  capability scope is not unrestricted, so every one of those becomes unexpected and the default
-  screen shows a number in the tens of thousands - the failure `0098` exists to prevent, arriving as
-  the conservative choice. This must be concrete before stage 6 computes anything.
-- **The anchor for the exclusions.** Microsoft's pages anchor the AD CS discovery; `ad.lab` must
-  anchor the operator-group exclusions. A catalogue, tests matching the catalogue and a document
-  matching the tests is a closed loop with no external reference - the shape of `F-S44-2`.
-- **Whether `ObjectOwnershipReading` is covered at all.** No test in the tree names the
-  `OwnerIsAdministrative` outcome directly. The reconciliation must not be scheduled on the
-  assumption that the suite will catch a mistake in it.
+- **SYSTEM's policy is settled by `0100`.** Its stage 6 implementation remains future work.
+- **P-145 measures consequences, not whether the lab agrees with the exclusions.** The exclusions
+  are a product decision; planted cases and exploratory counts must expose classification and
+  presentation failures after control-edge output exists. The lab cannot prove the policy by
+  agreeing with labels the policy itself supplied.
+- **Ownership now has direct, downstream, persistence and lab coverage.**
+  `ObjectOwnershipReadingTests` names the predicate outcomes; `ObjectOwnershipRuleTests` exercises
+  both rules. The compatibility test still compares against the repository's written-out `0099`
+  set and must be retargeted when the real control-plane catalogue is built. It is not independent
+  evidence that either side matches Microsoft.
+- **Automatic CA classification and asset declarations remain unbuilt**, on P-142 and P-143.
+  The decisions above are requirements for those features, not a claim that the features exist.

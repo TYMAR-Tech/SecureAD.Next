@@ -31,6 +31,16 @@ finished and sealed separately from the evidence it judged.
 | `FindingsPage` | One page of findings, and whether there is another |
 | `FindingsPageMark` | Where a page of findings ended, so the next can start after it |
 | `FindingsFilterValues` | What a findings grid's filters may offer, taken from the findings that exist |
+| `ControlCapability` | The supported initial control capabilities, not the complete stage-6 catalogue |
+| `ControlEdge` | A stored capability attributed to its named trustee, with evidence and independent expectedness |
+| `ControlEdgeClass` | Semantic categories, never severity or an ordered risk score |
+| `ControlEdgePage` | A bounded page with generation, coverage and counts, including hidden expected edges |
+| `ControlEvaluationState` | Whether a capability is established, not established or unknown |
+| `ControlExpectedness` | Whether control is expected, unexpected or not yet classified |
+| `ControlExpectednessReason` | The stored reason for that separate classification |
+| `ControlObjectEvaluation` | Per-object coverage, retained even when no edge can be identified |
+| `ControlPrecondition` | A named condition with its own evaluation and evidence source |
+| `ControlUncertainty` | Explicit unresolved inputs that limit a capability claim |
 
 <!-- TYPES:END -->
 
@@ -148,15 +158,149 @@ rule that was running, and no finding can exist without the record of what produ
 
 ---
 
-## What the schema deliberately has no column for
+## Derived evidence is bound to its generation
 
-Nothing derived from the graph. There is no derivation-generation identifier and no capability
-catalogue version on an execution record, because group expansion, control edges and reachability
-are not built and nothing could fill them.
+`judgement.derivation_generation_id` identifies the derivation used by a judging that requires one.
+Schema 14 also persists SEC-021's grouped membership evidence and completeness using the same
+`MembershipRouteStorage` encoding as Derivation. The finding carries its protection catalogue version
+and any direct catalogue basis. Opening or paging it therefore does not reconstruct routes from a
+newer derivation or silently lose longer alternatives.
 
-A column that is always null teaches every reader to ignore it, and would still be null a year
-later. They arrive in the stage that fills them, and the store being rebuildable is what makes that
-free: there is no data to migrate and no compatibility to keep.
+An incomplete verdict may retain established findings beside its unresolved inputs. A rule that
+throws still loses its entire output. This distinction was exercised end to end with a known
+protected account and an unresolved membership elsewhere in the captured graph.
+
+### Initial control-edge product — schema 15
+
+`JudgingRun` now calls `ControlEdgeDeriver` for each streamed object and persists its result through
+`JudgementWriter`. `ControlEdgeStorage` records product completion, per-object descriptor coverage,
+edges, supporting ACEs and preconditions. Membership evidence is stored with each edge rather than
+reconstructed from a later derivation.
+
+The supported primitives are `CanWriteDacl` and `CanSetOwner`. The supporting
+`CanBecomeOwnerAndRewriteDacl` compound remains `Unknown`, research-blocked and uncounted; a proved
+owner-setting right does not prove a takeover. Expectedness and capability evaluation are separate.
+`JudgementReader.ReadControlEdges` supplies object-first and named-holder-first pages from the same
+stored product. The object screen defaults to hiding expected edges, states their count, shows
+coverage and evidence, and refuses to mix generations while paging.
+
+This is a started slice, not completed stage 6. Ownership-derived control, membership changes,
+credentials, replication, full-control aggregation and effective member expansion are not derived.
+Reachability remains unbuilt. The end-to-end witness is
+`JudgingEndToEndTests.SealedDescriptorProducesStoredControlEdgesThroughTheRealCoordinator`;
+automated tests do not discharge the stage's claim-specific laboratory gates or P-145.
+
+### Captured-lab validation of the initial slice — 2026-09-06
+
+**The catalogue-1 baseline, not stage-6 acceptance.** A fresh evidence-only copy of
+`ad.lab-20260905-212426` was derived and judged before the P-150 correction below. This is the newer capture
+used by the interrupted session, not the older `03:54` capture named in its brief. All three domains
+and 8,383 captured objects were represented. The source, preserved previous copy and new copy retain
+Evidence SHA-256 `2DEF9F8AD4DE01877970B7F97F845716C1FFC1B093B01F388004610526E76BE4`.
+No directory connection or modification was made.
+
+| Initial-slice measurement | Result |
+|---|---:|
+| Counted WRITE_DAC primitives | 32,544 |
+| Counted WRITE_OWNER primitives | 32,540 |
+| Expected primitives | 43,447 |
+| Unexpected primitives | 11,805 |
+| Expectedness unknown | 9,832 |
+| Supporting owner-to-DACL compounds, unknown and uncounted | 32,540 |
+| Objects with unanswered supported primitives | 0 |
+
+All 65,084 primitives have evaluation `Established`. **That is separate from whether a right is
+expected**, and neither this table nor zero unanswered supported primitives means all stage-6
+capabilities were evaluated. Judging produced 27 findings; SEC-031 and SEC-032 each retained their
+four unresolved objects, so the overall run remains `CompletedDegraded`.
+
+**The byte-level check did not call SecureAD's parser or access evaluator.** The .NET
+`RawSecurityDescriptor` reader parsed the 390 distinct captured descriptors. Its entry ordinals,
+types, SIDs, masks, GUID presence, inheritance flags and opaque data matched the 1,547 distinct
+supporting signatures representing all 433,561 stored control-ACE records. Generic mapping and
+inherit-only interpretation follow [MS-ADTS 6.1.3](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/081c41f0-4c8d-4ab0-971d-77ec2504375a).
+Every counted primitive had an applicable raw allow, and independently enumerating uncomplicated
+direct grants found the same 65,084 identities with none omitted. Altering a compared ACE and
+removing an edge in memory each made the corresponding check detect the mismatch. These checks
+establish provenance and direct-grant coverage, not token-wide effective access.
+
+The previous and fresh generations have identical edge answers and object coverage after excluding
+generation identifiers. The planted `SecureADTakeoverOuter` group retains two unexpected primitives
+on `OU=SecureADTakeoverTarget,OU=BA Lab,DC=ba,DC=ad,DC=lab` and one unknown, uncounted compound.
+Object-first and holder-first reader calls return the same edge identities. The target has 15 stored
+rows, seven default-visible rows and six hidden expected primitives; supporting rows are not added
+to those primitive counts. An absent target is not presented as a complete empty result.
+
+**The baseline exposed P-150, since corrected below.** All 9,818 `UnknownAuthorityScope`
+primitives belong to `BUILTIN\Administrators`: 460 scoped to `ad.lab`, 8,834 to `ba.ad.lab` and 524
+to `ph.ad.lab`. The three scoped group objects are captured. `ObjectPermissions` deliberately gives
+well-known SID labels no domain; the original `ControlEdgeDeriver` recorded a scoped holder but passed the
+unscoped label's domain into its direct expectedness check. Decision `0099` accepts Administrators
+within its own domain. The missing scope handoff was the defect, not the accepted catalogue.
+Do not resolve a shared BUILTIN SID
+by taking the first matching directory row, or remove the uncertainty required for non-domain
+resource contexts under P-90.
+
+**Unexpected volume has two large concentrations.** Account Operators contributes 8,426 primitives
+(4,260 on groups, 4,120 on users, 24 on foreign security principals, 16 on computers and six on group
+managed service accounts). Forest-root Domain Admins contributes 3,210 outside its accepted authority
+scope. A large count does not by itself justify widening the catalogue. SYSTEM contributes 16,732
+expected primitives; ADDC, BADC and PHDC each contribute six unexpected primitives. Server Operators,
+Print Operators, Backup Operators and Replicator have no named-trustee primitives in this slice;
+that is not a claim that they have no other capabilities. Enterprise Domain Controllers accounts for
+the remaining 14 unknown expectedness answers, with `UnknownCapabilityScope`.
+
+Artifacts, including the two executable checks, raw diagnostic outputs and binary fingerprints,
+remain under `next/artifacts/stage6-control-recovery-validation/`. Judgement generation:
+`4cfa848c-83c2-42b5-8eb9-c65014d07c72`; derivation generation:
+`709c602a-19ad-428d-91bd-5d10efb507a6`. **P-145 remains open:** the remaining capabilities,
+member expansion, Tier 0-target analysis and the claim-specific live laboratory gates are not
+discharged by this offline check. No application behavior or policy was changed in the baseline pass.
+
+### P-150 corrected — catalogue 2, 2026-09-06
+
+`ControlEdgeDeriver.Expected` now obtains direct BUILTIN domain authority from the target's domain
+only when the target is in that domain naming context and its captured domain root supplies a SID.
+The well-known label remains domainless. Configuration, schema, application-partition and missing-
+scope cases remain unknown; a membership route retains its root's own recorded scope. No first-match
+SID lookup or new expected principal was introduced.
+
+`PrincipalClassificationRegistry.Version` is now 2. The storage layout remains judgement schema 15:
+new edges carry the changed semantic version, and old generations are read as recorded, not relabeled.
+**Re-judge existing evidence to obtain the correction; re-capture and re-derivation are not required.**
+
+The regression uses a real two-domain bundle containing both Administrators groups and real
+descriptors, in both capture orders. It verifies that the reader's label is still domainless,
+object-first and holder-first identities agree, scopes stay separate, expected primitives are hidden
+with their count stated, and the supporting ownership compound remains unknown and uncounted.
+Both cases failed before the fix with *expected 2 expected primitives, actual 0*. Two direct-scope
+positive cases also failed; the negative scope and cross-domain membership-root cases passed.
+After correction and versioning, all 60 targeted tests passed.
+
+A separate copy of the same evidence and sealed derivation was judged into generation
+`a0eef917-5c1b-493b-98bf-8b21bbcf63b4`. The preserved baseline was not overwritten.
+
+| Counted primitive classification | Catalogue 1 | Catalogue 2 |
+|---|---:|---:|
+| Expected | 43,447 | 53,265 |
+| Unexpected | 11,805 | 11,805 |
+| Unknown | 9,832 | 14 |
+
+Exactly 9,818 counted primitives changed from `UnknownAuthorityScope` to
+`ExpectedSameDomainControlPlane`, all scoped BUILTIN Administrators. Another 4,909 supporting
+compounds changed only their expectedness: their capability evaluation remains unknown and they are
+still uncounted. Each domain already had two expected Administrators primitives; the corrected
+holder totals are therefore 462 in `ad.lab`, 8,836 in `ba.ad.lab`, and 526 in `ph.ad.lab`, not merely
+the reclassification deltas. The remaining 14 unknown answers still have `UnknownCapabilityScope`
+for Enterprise Domain Controllers.
+
+The executable comparison in `next/artifacts/stage6-p150-scope-correction/compare-p150.ps1` checks
+both directions: all other stored edge fields (apart from the new generation and catalogue version),
+8,383 object-coverage rows, 433,561 control ACEs, 97,620 preconditions, membership-route tables, 27
+finding rows and all 17 rule-execution rows match the baseline. The evidence fingerprint is unchanged.
+The real reader shows eight hidden expected primitives and four visible rows on the planted target;
+the two unexpected takeover-group primitives remain visible. Opening the historical generation
+still returns its version-1 answers. **P-150 is closed; P-145 and stage-6 acceptance remain open.**
 
 ---
 

@@ -51,7 +51,10 @@ internal readonly record struct PrincipalRow(
     Guid ObjectGuid,
     bool IsGroup,
     int? GroupType,
-    int? PrimaryGroupSidId);
+    int? PrimaryGroupSidId)
+{
+    public string? DistinguishedName { get; init; }
+}
 
 /// <summary>
 /// One directory nesting relationship: <paramref name="MemberSidId"/> is directly in

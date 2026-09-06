@@ -220,6 +220,20 @@ the object, which the judgement half must prove rather than assert. The wording 
 
 ---
 
+## Membership evidence stays with one finding
+
+**Membership detail under `0108` is built on both finding surfaces.** The selected finding panel and
+an object's Findings section each have a **View membership evidence** expander. It shows one block
+per initial membership, with the reached roots, captured names, scoped identifiers and supporting
+chains beneath it. Primary links, distribution paths, unknown group types and direct catalogue
+protection are stated explicitly. This adds detail, not finding rows. Partial summaries name their
+limits, say the displayed count is not a total, and prevent the finding row from showing complete
+coverage. The text does not promise a minimum set of removals or elimination of other privilege.
+
+`MembershipEvidencePresentationTests` exercises the wording; `ViewBindingGateTests` checks the
+exact bindings in both real templates. Disconnecting the findings detail binding and, separately,
+the object completeness binding was observed failing with the missing property named.
+
 ## The rules tab says what was checked, which no findings grid can
 
 The fourth tab under Assets lists **every rule this build ships**, each with what it looks for and

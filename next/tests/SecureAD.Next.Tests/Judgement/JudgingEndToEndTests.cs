@@ -27,6 +27,106 @@ public sealed class JudgingEndToEndTests
     private static readonly DateTimeOffset Started = new(2026, 8, 26, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = new(2026, 8, 26, 11, 0, 0, TimeSpan.Zero);
 
+    [Fact]
+    public void SealedDescriptorProducesStoredControlEdgesThroughTheRealCoordinator()
+    {
+        var directory = TempDirectories.Create("control-edge-e2e");
+        const string dn = "OU=Delegated,DC=contoso,DC=com";
+        var subject = NotAnAccount(dn, "organizationalUnit");
+        var descriptor = new System.Security.AccessControl.RawSecurityDescriptor("O:SYG:SYD:(A;;WDWO;;;WD)");
+        var bytes = new byte[descriptor.BinaryLength];
+        descriptor.GetBinaryForm(bytes, 0);
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var id = writer.WriteObject(subject);
+            writer.WriteSecurityDescriptor(id, bytes, SecureAD.Kernel.Security.AceNormalizer.Normalize(
+                subject.ObjectGuid!.Value, SecureAD.Kernel.Security.SecurityDescriptorParser.Parse(bytes)));
+            writer.Complete(OneDomainRead(), Finished);
+        }
+        Judged(directory);
+        using var reader = JudgementReader.Open(directory).Value!;
+        var page = reader.ReadControlEdges(dn, null, null, false, 0);
+        Assert.True(page.ProductWasDerived);
+        Assert.Equal(2, page.UnexpectedCount);
+        Assert.Equal(2, page.Edges.Count(edge => edge.IsCounted));
+        Assert.All(page.Edges.Where(edge => edge.IsCounted), edge => Assert.Equal(ControlEvaluationState.Established, edge.EvaluationState));
+        Assert.Single(page.Edges.Single(edge => edge.Capability == ControlCapability.CanSetOwner).Evidence);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BuiltinAdministratorsUsesTheTargetsDomainThroughTheRealReader(bool childFirst)
+    {
+        var directory = TempDirectories.Create("builtin-control-scope");
+        const string administrators = "S-1-5-32-544";
+        var domains = new[] { (Name: "contoso.com", Sid: "S-1-5-21-1-2-3"), (Name: "child.contoso.com", Sid: "S-1-5-21-4-5-6") };
+        var descriptor = new System.Security.AccessControl.RawSecurityDescriptor("O:SYG:SYD:(A;;WDWO;;;BA)");
+        var bytes = new byte[descriptor.BinaryLength];
+        descriptor.GetBinaryForm(bytes, 0);
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            foreach (var domain in childFirst ? domains.Reverse() : domains)
+            {
+                var domainDn = string.Join(',', domain.Name.Split('.').Select(part => "DC=" + part));
+                var coverage = new PartitionCoverage(domainDn, NamingContextKind.Domain, "dc01." + domain.Name,
+                    ConnectionSecurityLevel.SignedAndSealed, 12, 4200, 3, [], false);
+                writer.WriteCoverage(coverage);
+                foreach (var (dn, objectClass, sid) in new[]
+                {
+                    (domainDn, "domainDNS", domain.Sid),
+                    ("CN=Administrators,CN=Builtin," + domainDn, "group", administrators),
+                })
+                    writer.WriteObject(new EvidenceObject(coverage, dn, Guid.NewGuid(),
+                    [
+                        new("objectClass", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText(objectClass)]),
+                        new("objectSid", StoredAttributeCompleteness.Complete,
+                            [EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes(sid)!)]),
+                    ], Started));
+                var target = new EvidenceObject(coverage, "OU=Delegated," + domainDn, Guid.NewGuid(),
+                    [new("objectClass", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("organizationalUnit")])], Started);
+                var id = writer.WriteObject(target);
+                writer.WriteSecurityDescriptor(id, bytes, SecureAD.Kernel.Security.AceNormalizer.Normalize(
+                    target.ObjectGuid!.Value, SecureAD.Kernel.Security.SecurityDescriptorParser.Parse(bytes)));
+            }
+            writer.Complete(RunCoverage.Of(
+                CoverageId.ForDomains("contoso.com", domains.Select(domain => domain.Name).ToArray()),
+                domains.Select(domain => DomainCoverage.Read(domain.Name)).ToArray(),
+                [
+                    ForestPartitionCoverage.Read("CN=Configuration,DC=contoso,DC=com", NamingContextKind.Configuration),
+                    ForestPartitionCoverage.Read("CN=Schema,CN=Configuration,DC=contoso,DC=com", NamingContextKind.Schema),
+                ], SysvolCoverage.Of([])), Finished);
+        }
+        using var evidence = BundleReader.Open(directory).Value!;
+        Judged(directory);
+        using var reader = JudgementReader.Open(directory).Value!;
+        foreach (var domain in domains)
+        {
+            var target = "OU=Delegated," + string.Join(',', domain.Name.Split('.').Select(part => "DC=" + part));
+            var trustee = Assert.Single(evidence.ReadPermissions(target)!.Entries).Trustee;
+            Assert.Null(trustee.DomainFqdn);
+            Assert.Null(trustee.DistinguishedName);
+            var shown = reader.ReadControlEdges(target, null, null, true, 0);
+            var hidden = reader.ReadControlEdges(target, null, null, false, 0);
+            var held = reader.ReadControlEdges(null, administrators, domain.Name, true, 0);
+            Assert.Equal(2, shown.ExpectedCount);
+            Assert.Equal(0, shown.UnknownCount);
+            Assert.Equal(2, hidden.ExpectedCount);
+            Assert.Empty(hidden.Edges);
+            Assert.Equal(shown.Edges.Select(edge => edge.Id), held.Edges.Select(edge => edge.Id));
+            Assert.All(shown.Edges, edge =>
+            {
+                Assert.Equal(domain.Name, edge.HolderScope);
+                Assert.Equal(ControlExpectedness.Expected, edge.Expectedness);
+                Assert.Equal(ControlExpectednessReason.ExpectedSameDomainControlPlane, edge.ExpectednessReason);
+                Assert.Equal(2, edge.PrincipalCatalogueVersion);
+            });
+            Assert.All(shown.Edges.Where(edge => edge.IsCounted), edge => Assert.Equal(ControlEvaluationState.Established, edge.EvaluationState));
+            Assert.Equal(ControlEvaluationState.Unknown, Assert.Single(shown.Edges.Where(edge => !edge.IsCounted)).EvaluationState);
+        }
+    }
+
     /// <summary>
     /// A planted account is found, all the way from a sealed bundle to a stored finding.
     /// </summary>

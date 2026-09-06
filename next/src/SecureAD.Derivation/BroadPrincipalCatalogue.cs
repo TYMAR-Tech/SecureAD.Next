@@ -40,15 +40,7 @@ public static class BroadPrincipalCatalogue
     /// without authenticating at all, so it is broader than <i>Authenticated Users</i> rather than a
     /// subset of it.
     /// </remarks>
-    private static readonly string[] AbsoluteSids =
-    [
-        "S-1-1-0",      // Everyone
-        "S-1-5-7",      // Anonymous Logon
-        "S-1-5-11",     // Authenticated Users
-        "S-1-5-32-545", // BUILTIN\Users - contains Authenticated Users and Domain Users by default
-        "S-1-5-32-546", // BUILTIN\Guests
-        "S-1-5-32-554", // Pre-Windows 2000 Compatible Access
-    ];
+    private static readonly IReadOnlySet<string> AbsoluteSids = PrincipalClassificationRegistry.BroadSids;
 
     /// <summary>
     /// Relative identifiers that are broad under any domain.
@@ -58,12 +50,7 @@ public static class BroadPrincipalCatalogue
     /// it hung off anything would let 513 match under a machine SID and be called Domain Users,
     /// which is the distinction <c>DomainRelativeScope</c> exists to keep.
     /// </remarks>
-    private static readonly int[] DomainRids =
-    [
-        513, // Domain Users
-        514, // Domain Guests
-        515, // Domain Computers
-    ];
+    private static readonly IReadOnlySet<int> DomainRids = PrincipalClassificationRegistry.BroadRids;
 
     /// <summary>
     /// Whether this SID names a principal too broad to hold a sensitive right.
@@ -86,7 +73,7 @@ public static class BroadPrincipalCatalogue
                 return true;
         }
 
-        return RelativeIdentifierOf(sid) is { } rid && Array.IndexOf(DomainRids, rid) >= 0;
+        return RelativeIdentifierOf(sid) is { } rid && DomainRids.Contains(rid);
     }
 
     /// <summary>

@@ -1,12 +1,10 @@
 # Checks the claims .github/copilot-instructions.md makes about what does NOT exist.
 #
-# Why this file exists at all: the instructions cite it by name as the evidence for two
-# claims - that scoped capture was removed, and that compare/derive/assessment are not
-# built. It was zero bytes from the day it was named until 2026-09, so both citations
-# pointed at a script that had never run. The claims were true; the proof was not.
+# This checks the named legacy symbols, not whether replacement features are built.
+# In particular, absence of DerivedStore does not mean the Stage2aRun derive stage is absent.
+# Older instructions and this script's display label incorrectly conflated those claims.
 #
-# A claim that something is ABSENT is the one kind of statement no gate in this
-# repository checks, because there is no name to look up. This is that gate.
+# Stage status is checked separately by check-stage-status.ps1. This is the legacy-name check.
 #
 # Exit code 0 when every named symbol is absent, 1 when any has come back.
 
@@ -21,7 +19,7 @@ $claims = [ordered]@{
         'ConfigurationModeRunner'
         'ForConfigurationMode'
     )
-    'Compare, derive and assessment modes are not built' = @(
+    'Legacy compare, derive and assessment symbols were removed' = @(
         'AssessmentMode'
         'DerivedStoreSchema'
         'DerivedStore'

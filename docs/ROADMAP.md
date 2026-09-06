@@ -45,7 +45,7 @@ direction is the one that would have caught Stage 5 on the day it was finished. 
 | 3 | One rule, end to end | **built** | `UnconstrainedDelegationOnAccount` |
 | 4 | The simple posture rules | **built** | `LapsPasswordReadAccess` |
 | 5 | Group expansion | **built** | `PrincipalExpansion` |
-| 6 | Control edges | not started | `ControlEdge` |
+| 6 | Control edges | started | `ControlEdge` |
 | 7 | Paths to Tier 0 | not started | `Tier0Reachability` |
 | 8 | Proven remediation | not started | `RemediationIssue` |
 | 9 | Reports and export | not started | `ReportDefinition` |
@@ -63,13 +63,11 @@ object a principal broad in every organisation can take control of, `SEC-031` re
 owned by somebody who is not an administrator, and `SEC-032` reports the same condition on an object
 `AdminSDHolder` protects. **Seventeen rule identifiers** in `SecureAD.Judgement`.
 
-**One thing about that closure is honest to state rather than bury.** `SEC-032` detects correctly and
-was seen firing against a planted case in `ad.lab`, but the argument for its severity is in doubt:
-the lab suggests `AdminSDHolder` may reset a protected object's *owner* as well as its permissions,
-which would make the finding self-healing within the hour and mean the rule is saying the wrong
-thing about a real condition. `F-S45-7` holds it, the paragraph is flagged in the rule document, and
-the experiment is running. **Stage 4's scope is met either way** — ownership is covered by `SEC-031`
-regardless of what becomes of `SEC-032`.
+**The protected-ownership severity question was settled, not left running.** `F-S45-7` records the
+ad.lab observation of the owner being restored. The owner selected `Medium` for SEC-032, and
+`ObjectOwnershipRules.cs` and its rule card use that severity. The rule's timing limitation remains
+documented; the older roadmap paragraph describing an ongoing experiment was stale. Both ownership
+rules are now version 2 following the scoped-acceptance correction under `0109`.
 
 **Stage 2's witness is `DashboardViewModel` and not `Dashboard`, deliberately.** A `Dashboard`
 member already exists in `ShellSection` as a navigation tab with nothing behind it, on the owner's
@@ -86,8 +84,19 @@ the first rule to consume derived facts without recomputing them**. Verified aga
 2026-08-31, where the generation refusal fired against a stale schema 3 derivation and SEC-030 then
 reached a verdict on all 4,236 objects it was about with nothing unresolved.
 
-**Stage 4 is complete and stage 2 is the next gap.** The dashboard is the only stage below 5 that has
-not started, and it is what turns a list of findings into something an operator can open.
+**Stage 2 is built; the pre-stage-6 corrections are recorded below.** The earlier sentence calling
+the dashboard the next gap contradicted the built witness above. The separate ownership comparison
+is now recorded in [WHAT-THE-PRODUCT-IS.md](WHAT-THE-PRODUCT-IS.md): excluding the five operator groups
+added no observed findings, but exposed 1,778 misleading Schema Admins findings. `P-147` is now
+fixed under `0109`: schema-scoped acceptance removed exactly those findings on the same evidence,
+leaving ten other findings and four undecided objects. Stage 6 was not started. The owner settled
+`P-146` with `0108`: one finding summarizes independent membership routes, including longer ones;
+that explanation is now implemented in derivation schema 10, SEC-021 version 2, judgement schema 14
+and both existing finding views. P-149's independent schema-layout checkpoint and disabled-refusal
+control are also implemented; semantic-only version changes still need behavioral tests. Re-running
+the same ad.lab evidence on a new copy retained the ownership counts, ten finding details and four
+undecided objects. Stage 6 has since started with the initial slice described below. `P-145` requires stage 6 output and gates its
+acceptance, not its start.
 
 **A useful product exists at stage 4.** Stages 5 to 8 are the hard half, and stage 8 is where the
 predecessor went wrong.
@@ -779,6 +788,24 @@ and never did anything to track one. The status above comes from the witness in 
 
 Turn permissions into *this principal can take over that object*. The largest single piece, and what
 makes an AD audit tool worth having.
+
+**Category choice settled under
+[`0110`](decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md).**
+Membership changes and replication have separate `MembershipEscalation` and `ReplicationControl`
+categories; existing categories are not renamed. They must not be presented as permission-list
+takeover. This settles Q10 of the stage-6 proposal, not completion of its implementation.
+
+**Started, not complete.** The initial `ControlEdge` slice evaluates `WRITE_DAC` and `WRITE_OWNER`,
+stores their evidence and coverage during judging, and supplies object-first and named-holder-first
+pages to the object screen. The owner-to-DACL compound remains unknown and is not counted as a
+proved takeover. Expected edges are hidden by default with their count stated. The implementation
+and its end-to-end witness are described in
+[the judgement store](layers/judgement/the-judgement-store.md#initial-control-edge-product--schema-15).
+
+Ownership-derived control, membership changes, credential and replication capabilities,
+full-control aggregation and effective member expansion remain outside this initial slice.
+The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
+passing automated tests does not discharge them.
 
 *Criteria:* `AC-24`, `AC-27`, `AC-37`, `AC-55`, `AC-56`, `AC-76`.
 

@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
+using SecureAD.Storage;
 
 namespace SecureAD.Judgement;
 
@@ -63,6 +64,24 @@ public sealed class JudgementWriter : IDisposable
         ArgumentNullException.ThrowIfNull(scope);
         ThrowIfFinished();
         _evidenceIsComplete = scope.AllDeclaredDomainsAreComplete;
+    }
+
+    internal void StartControlEdges(bool captureComplete)
+    {
+        ThrowIfFinished();
+        ControlEdgeStorage.Start(_connection, captureComplete);
+    }
+
+    internal void WriteControlEdges(ControlObjectEvaluation evaluation)
+    {
+        ThrowIfFinished();
+        ControlEdgeStorage.Write(_connection, evaluation);
+    }
+
+    internal void CompleteControlEdges()
+    {
+        ThrowIfFinished();
+        ControlEdgeStorage.Complete(_connection);
     }
 
     /// <summary>
@@ -465,8 +484,9 @@ public sealed class JudgementWriter : IDisposable
                 Execute(
                     transaction,
                     "INSERT INTO finding_kerberoastable_account (finding_id, object_sid, "
-                    + "user_account_control, unreadable_service_names) "
-                    + "VALUES ($id, $sid, $uac, $unreadable)",
+                    + "user_account_control, unreadable_service_names, protection_catalogue_version, "
+                    + "direct_protection_entry_id, direct_protection_name) "
+                    + "VALUES ($id, $sid, $uac, $unreadable, $catalogue, $directId, $directName)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -475,7 +495,13 @@ public sealed class JudgementWriter : IDisposable
                             "$uac", (long)kerberoastable.UserAccountControl);
                         command.Parameters.AddWithValue(
                             "$unreadable", kerberoastable.UnreadableServiceNames);
+                        command.Parameters.AddWithValue("$catalogue", (object?)kerberoastable.ProtectionCatalogueVersion ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$directId", (object?)kerberoastable.DirectProtectionCatalogueEntryId ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$directName", (object?)kerberoastable.DirectProtectionName ?? DBNull.Value);
                     });
+
+                MembershipRouteStorage.Write(_connection, transaction,
+                    findingId.ToString(System.Globalization.CultureInfo.InvariantCulture), kerberoastable.MembershipRoutes);
 
                 for (var ordinal = 0;
                      ordinal < kerberoastable.ServicePrincipalNames.Count;

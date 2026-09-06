@@ -71,8 +71,19 @@ internal static class DerivationSchema
     /// <c>ad.lab</c> on 2026-09-04. Telling the two apart needs the coverage of the domain the
     /// identifier names, and nothing in this store previously held it.
     /// </para>
+    /// <para>
+    /// <b>8 - whether the product accepts a principal as an object's owner is stored beside
+    /// protection rather than read out of it.</b> The two were the same answer until `P-140`, and
+    /// they are not the same question: AdminSDHolder repairs the five operator groups and `0099`
+    /// leaves them out of the control plane, so an object one of them owns is now reported. It
+    /// cannot be derived from what version 7 held, because a protected principal's basis names a
+    /// single root and an account inside both Domain Admins and Account Operators carries only one
+    /// of them - so a version 7 store cannot answer this and is refused rather than guessed at.
+    /// </para>
     /// </remarks>
-    public const int Version = 7;
+    // Version 9 introduced schema-scoped owner acceptance under 0109. Version 10 adds the
+    // independent membership routes and their completeness under 0108; old paths are not totals.
+    public const int Version = 10;
 
 
     private static readonly string[] TableDdl =
@@ -399,6 +410,15 @@ internal static class DerivationSchema
             basis_kind               TEXT        NULL,
             basis_catalogue_entry_id INTEGER     NULL REFERENCES adminsd_catalogue_entry(catalogue_entry_id),
             unknown_reasons          INTEGER NOT NULL,
+            -- A SECOND, INDEPENDENT ANSWER AND NOT A VIEW OVER THE FIRST. Whether this product
+            -- accepts the principal as an object's owner in silence, per 0099 read through 0095.
+            -- It is stored rather than computed from evaluation and basis_catalogue_entry_id
+            -- because those record protection and a single attributed root: an account inside both
+            -- Domain Admins and Account Operators carries one of them, and reading that as the
+            -- ownership answer would report a domain administrator as a non-administrative owner.
+            -- NOT NULL with no default, so a writer that has not computed it cannot leave a silence
+            -- that reads as "not accepted" - which is the direction that produces false findings.
+            owner_acceptance         TEXT    NOT NULL,
             PRIMARY KEY (sid_id)
         )
         """,
@@ -537,6 +557,7 @@ internal static class DerivationSchema
     {
         ArgumentNullException.ThrowIfNull(connection);
         Execute(connection, TableDdl);
+        SecureAD.Storage.MembershipRouteStorage.CreateTables(connection);
     }
 
     /// <summary>

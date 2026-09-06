@@ -126,6 +126,9 @@ internal static class ObjectSectionCatalog
     /// <summary>What the rules concluded about this object.</summary>
     public const string Findings = "Findings";
 
+    /// <summary>Evidence-backed control statements, object-first and named-trustee-first.</summary>
+    public const string ControlEdges = "ControlEdges";
+
     /// <summary>How this run came by this object, and what it could not read.</summary>
     public const string Evidence = "Evidence";
 
@@ -509,7 +512,7 @@ internal static class ObjectSectionCatalog
         // rules could not read what they needed are three different facts, and an absent section
         // would render all three as silence. That is docs/decisions/0002 exactly, and the section
         // says which of the three it is.
-        return [.. sections, OtherValuesSection, FindingsSection, EvidenceSection];
+        return [.. sections, new ObjectSectionDefinition(ControlEdges, "Control edges", []), OtherValuesSection, FindingsSection, EvidenceSection];
     }
 
     /// <summary>

@@ -4,6 +4,9 @@
 > document states what the rule does and why. Nothing in it is authoritative until a decision record
 > says so; read it as argument.
 
+**Current rule version: 2.** It shares `0109`'s schema-scoped owner acceptance with SEC-031; the
+scope correction did not change this rule's `Medium` severity.
+
 ## For a reviewer
 
 **What this rule says in one sentence.** *Somebody who is not an administrator owns an object the
@@ -49,6 +52,11 @@ The two conditions are both necessary, and neither is this rule's own invention:
   which this rule shares rather than restates. The decision lives in `ObjectOwnershipReading`,
   written once, because two copies of it would be two chances to get the owner-rights condition
   wrong.
+
+Owner acceptance is a separate derived answer, not an inference from AdminSDHolder protection.
+Under `0109`, the forest-root Schema Admins group and its members are accepted only inside that
+forest's schema. Ownership of a protected object elsewhere remains reportable unless another
+accepted owner category independently applies.
 
 ## 2. Why this matters
 
@@ -153,7 +161,9 @@ question would go unanswered across most of the directory.
 | `DescriptorAvailability` | To tell *no owner recorded* from *nobody read it* |
 | The object's ACEs | To find an `OWNER RIGHTS` entry |
 | `dSHeuristics` character 29, and the object's `objectClass` | To decide whether the owner keeps implicit rights |
-| `ProtectedPrincipalClosure` | Whether the object is protected, and whether the owner is administrative by membership |
+| Persisted protected-principal evaluation | Whether the object is protected; unknown remains unknown |
+| Persisted `OwnerAcceptance` | Whether the owner is accepted, including schema-only scope and uncertainty, independently of protection |
+| `JudgingContext.ForestFqdn` | Captured forest identity for applying the schema-only owner scope |
 | `DerivationReader.MembersOf` | Whether the owning account still exists |
 
 ## 7. When it does not answer
@@ -165,6 +175,7 @@ question would go unanswered across most of the directory.
 | The protection closure is incomplete | could not resolve | A protected object could look unprotected, and reporting it at `Low` under `SEC-031` would understate it |
 | The closure holds no fact about an object that **has** a SID | could not resolve | A gap, not a statement |
 | The owner's membership walk did not finish | could not resolve | The owner might be administrative through a group the walk did not reach |
+| A schema-scoped owner is known but the captured forest identity is missing | could not resolve | The schema boundary cannot be established; the object's domain is not a substitute |
 | The owner cannot rewrite the list | judged, nothing reported | Knowledge, not ignorance |
 | The owner is administrative | judged, nothing reported | A real answer |
 

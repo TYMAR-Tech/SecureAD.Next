@@ -275,6 +275,57 @@ public sealed class KerberoastablePrivilegedAccountTests
         Assert.Single(Judge(Svc() with { Privileged = true, Sid = DomainSid + "-503" }));
     }
 
+    [Fact]
+    public void OneStoredFindingSummarizesIndependentRoutesIncludingTheLongerOne()
+    {
+        var finding = Assert.Single(Judge(Svc() with { Privileged = true, MultipleRoutes = true }));
+        var evidence = Assert.IsType<KerberoastableAccountEvidence>(finding.Evidence);
+        Assert.Equal(2, finding.RuleVersion);
+        Assert.Equal(2, evidence.MembershipRoutes.Memberships.Count);
+        Assert.Equal(3, evidence.MembershipRoutes.Memberships.Sum(m => m.Routes.Count));
+        Assert.Contains(evidence.MembershipRoutes.Memberships.SelectMany(m => m.Routes), r => r.Steps.Count == 4);
+        Assert.All(evidence.MembershipRoutes.Memberships, m => Assert.NotNull(m.InitialMembership.DistinguishedName));
+        Assert.Contains("2 membership routes", finding.Detail, StringComparison.Ordinal);
+        Assert.Contains("does not establish that every other form of privilege is gone", finding.Detail, StringComparison.Ordinal);
+        Assert.True(evidence.MembershipRoutes.IsComplete);
+    }
+
+    [Fact]
+    public void KnownRoutesAndTheFindingSurviveIncompleteMembershipEvidence()
+    {
+        var stored = JudgeStore(Svc() with { Privileged = true, MultipleRoutes = true, MissingMember = true });
+        var finding = Assert.Single(stored.Findings);
+        var summary = Assert.IsType<KerberoastableAccountEvidence>(finding.Evidence).MembershipRoutes;
+        Assert.Equal(2, summary.Memberships.Count);
+        Assert.False(summary.IsComplete);
+        Assert.Contains("Partial membership summary", finding.Detail, StringComparison.Ordinal);
+        Assert.Contains("not a total", finding.Detail, StringComparison.Ordinal);
+        Assert.False(stored.EveryRuleReachedEveryVerdict);
+    }
+
+    [Fact]
+    public void ADirectCatalogueClaimSurvivesAlongsideMembershipEvidence()
+    {
+        var finding = Assert.Single(Judge(Svc() with { Privileged = true, Sid = DomainSid + "-500" }));
+        var evidence = Assert.IsType<KerberoastableAccountEvidence>(finding.Evidence);
+        Assert.NotNull(evidence.DirectProtectionCatalogueEntryId);
+        Assert.NotNull(evidence.DirectProtectionName);
+        Assert.NotNull(evidence.ProtectionCatalogueVersion);
+        Assert.Single(evidence.MembershipRoutes.Memberships);
+        Assert.Contains("protected in its own right", finding.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DistributionPathsAreStoredAsProtectionNotAuthorization()
+    {
+        var finding = Assert.Single(Judge(Svc() with { Privileged = true, MultipleRoutes = true, DistributionRoute = true }));
+        var summary = Assert.IsType<KerberoastableAccountEvidence>(finding.Evidence).MembershipRoutes;
+        Assert.Contains(summary.Memberships.SelectMany(m => m.Routes), r =>
+            r.Authorization == MembershipRouteAuthorization.DistributionGroup && r.EstablishesProtection);
+        Assert.Contains("without authorization", finding.Detail, StringComparison.Ordinal);
+        Assert.Contains(summary.Memberships.SelectMany(m => m.Routes), r => r.Authorization == MembershipRouteAuthorization.SecurityEnabled);
+    }
+
     /// <summary>One object's shape, so each test states only what it changes.</summary>
     private sealed record Subject
     {
@@ -291,11 +342,16 @@ public sealed class KerberoastablePrivilegedAccountTests
         /// to establish protection. Nothing in these tests asserts privilege directly.
         /// </summary>
         public bool Privileged { get; init; }
+        public bool MultipleRoutes { get; init; }
+        public bool MissingMember { get; init; }
+        public bool DistributionRoute { get; init; }
     }
 
     private static Subject Svc() => new();
 
-    private static IReadOnlyList<Finding> Judge(Subject subject)
+    private static IReadOnlyList<Finding> Judge(Subject subject) => JudgeStore(subject).Findings;
+
+    private static StoredJudgement JudgeStore(Subject subject)
     {
         var directory = Build(subject);
 
@@ -316,7 +372,7 @@ public sealed class KerberoastablePrivilegedAccountTests
         Assert.True(judged.IsSuccess, judged.Error?.Description);
 
         using var reader = JudgementReader.Open(directory).Value!;
-        return reader.Read().Findings;
+        return reader.Read();
     }
 
     private static string Build(Subject subject)
@@ -348,6 +404,19 @@ public sealed class KerberoastablePrivilegedAccountTests
             WriteGroup(writer, "Domain Admins", DomainAdmins,
                 subject.Privileged ? subject.Dn : null);
 
+            if (subject.MultipleRoutes)
+            {
+                WriteGroup(writer, "Long initial", DomainSid + "-1200", subject.Dn,
+                    subject.DistributionRoute ? "2" : "-2147483646");
+                WriteGroup(writer, "Long outer", DomainSid + "-1201", "CN=Long initial,DC=ad,DC=lab");
+                writer.WriteObject(new EvidenceObject(Partition, "CN=Enterprise Admins,DC=ad,DC=lab", Guid.NewGuid(),
+                    [Text("objectClass", "group"), Binary("objectSid", SidBytes(DomainSid + "-519")),
+                     Text("groupType", "-2147483646"),
+                     Multi("member", ["CN=Domain Admins,DC=ad,DC=lab", "CN=Long outer,DC=ad,DC=lab"])], Started));
+            }
+            if (subject.MissingMember)
+                WriteGroup(writer, "Unresolved", DomainSid + "-1209", "CN=not-captured,DC=ad,DC=lab");
+
             // The one object per forest carrying dSHeuristics. Without it the exclusion mask reads
             // as never-looked and every principal is conservatively Unknown, so a positive case
             // would silently stop being one.
@@ -366,12 +435,13 @@ public sealed class KerberoastablePrivilegedAccountTests
     }
 
     private static void WriteGroup(
-        BundleWriter writer, string name, string sid, string? member)
+        BundleWriter writer, string name, string sid, string? member, string groupType = "-2147483646")
     {
         var attributes = new List<EvidenceAttribute>
         {
             Text("objectClass", "group"),
             Binary("objectSid", SidBytes(sid)),
+            Text("groupType", groupType),
         };
 
         if (member is not null)

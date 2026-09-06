@@ -14,6 +14,45 @@
          NOTHING HERE IS A VERDICT. No severity, no risk, no colour an administrator would read as
          a security judgement. -->
 
+    <DataTemplate DataType="{x:Type vm:ControlEdgesSectionViewModel}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="{Binding SupportedScope}" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <TextBlock Grid.Row="1" Text="{Binding Coverage}" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <TextBlock Grid.Row="2" Text="{Binding Counts}" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+                <CheckBox Content="Rights held by this principal" IsChecked="{Binding ByHolder}"
+                          IsEnabled="{Binding HasPrincipal}" Margin="0,0,16,0" />
+                <CheckBox Content="Show expected edges" IsChecked="{Binding IncludeExpected}" Margin="0,0,16,0" />
+                <Button Content="First page" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
+                <Button Content="Next page" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
+            </StackPanel>
+            <DataGrid Grid.Row="4" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedEdge}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MinHeight="120">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Holder" Binding="{Binding Holder}" Width="*" />
+                    <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*" />
+                    <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="2*" />
+                    <DataGridTextColumn Header="Established?" Binding="{Binding Evaluation}" Width="Auto" />
+                    <DataGridTextColumn Header="Expected?" Binding="{Binding Expectedness}" Width="Auto" />
+                </DataGrid.Columns>
+            </DataGrid>
+            <Expander Grid.Row="5" Header="View control evidence and preconditions" Margin="0,8,0,0">
+                <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding SelectedEdge.Evidence, Mode=OneWay}" IsReadOnly="True"
+                             TextWrapping="Wrap" BorderThickness="0" />
+                </ScrollViewer>
+            </Expander>
+        </Grid>
+    </DataTemplate>
+
     <!-- ONE FIELD: THE LABEL ABOVE THE VALUE, AND THE STORED FORM UNDER BOTH.
 
          Label above rather than beside, because that is what lets fields sit two to a row without
@@ -716,6 +755,16 @@
                                 <TextBlock Text="{Binding Coverage}"
                                            Foreground="{StaticResource SecondaryTextBrush}"
                                            Margin="0,4,0,0" />
+                                <Expander Header="View membership evidence" Margin="0,8,0,0"
+                                          Visibility="{Binding HasMembershipEvidence, Converter={StaticResource Shown}}">
+                                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding MembershipCompleteness}" TextWrapping="Wrap" Margin="0,4,0,6" />
+                                            <TextBox Text="{Binding MembershipDetails, Mode=OneWay}"
+                                                     Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Expander>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

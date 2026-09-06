@@ -3,14 +3,15 @@
 **Code:** `next/src/SecureAD.Derivation/`
 **Layer:** Derivation — where a sealed bundle becomes answers about more than one object.
 
-Group nesting, read once out of a sealed bundle and turned into three separate answers. This is the
-first phase of the derive stage, and the first thing in this product that answers a question about
-more than one object.
+Reusable facts computed from sealed evidence. Group nesting supports separate authorization,
+protection and latent-privilege answers. The stage also records attribute visibility and an owner-
+acceptance answer independent of protection, including its schema-only scope.
 
 **Status: built, 2026-08-27. Wired in 2026-08-28; persisted AdminSDHolder product built
 2026-08-30.** Runs end to end over a sealed bundle through
 `Stage2aRun.Derive`, which both the window and the command line call once a capture has sealed
-evidence. No rule consumes what it produces yet.
+evidence. Rules consume the stored products through `JudgingContext`; ownership uses both the
+protected-principal product and principal expansion.
 
 ---
 
@@ -33,6 +34,7 @@ evidence. No rule consumes what it produces yet.
 | `StoredDerivationPhase` | One phase, read back, with why it failed if it did |
 | `DerivationSize` | How much the store holds |
 | `ProtectedPrincipalEvaluation` | Whether AdminSDHolder protection is established, disproved or unknown |
+| `OwnerAcceptance` | Whether this product accepts the principal as an object's owner in silence, which is a separate question from protection and is answered separately |
 | `ProtectionUnknownReason` | Typed reasons a protected-principal answer is unknown |
 | `ProtectedPrincipalBasisKind` | Whether direct protection or a membership root established protection |
 | `ProtectedPrincipalBasis` | The decisive catalogue entry behind an established result |
@@ -50,6 +52,9 @@ evidence. No rule consumes what it produces yet.
 | `NestingCycleAvailability` | Whether the store has an answer about membership cycles, and if not, why not |
 | `StoredNestingCycleProduct` | Groups that contain one another, with the availability that says whether the list is all of them |
 | `BroadPrincipalCatalogue` | Which principals are too broad to hold a sensitive right, by SID rather than by name |
+| `PrincipalAuthorityScope` | The boundary of a catalogue claim, not proof of a held permission |
+| `PrincipalClassification` | Independent identifier-level answers for breadth, SID history, ownership, control-plane scope and Tier 0 |
+| `PrincipalClassificationRegistry` | Shared versioned identifier data with separate predicates under decision 0101 |
 | `PrincipalExpansionOutcome` | Whether a principal was expanded, and if not, why not |
 | `ExpandedPrincipal` | One principal found inside another, with the path that reached it |
 | `PrincipalExpansion` | Everything inside one principal, and what the walk could not reach |
@@ -181,6 +186,10 @@ two Microsoft pages; it is now an observation.
 
 ## How it is built
 
+The diagram follows the membership products. Attribute visibility is another phase, and the
+protected-principal product also carries independently computed owner acceptance; the three
+membership branches are not a claim that the stage produces nothing else.
+
 ```
 Stage2aRun.Derive(bundleDirectory)
         |
@@ -272,9 +281,10 @@ path that does not exist is the one finding this product must never produce.
 | a universal well-known SID has a stub in each domain | yes | one principal; the extras are counted |
 | a `foreignSecurityPrincipal` stands in for someone from another domain | yes | one principal; the real object's facts win |
 
-The scope is part of the key and never part of the answer: `SidInterner.TextOf` returns the SID the
-directory holds, so `ProtectedGroupCatalogue` and every other reader are untouched. Two ids may
-return the same text, which is the point.
+Scoping does not rewrite the SID text: `SidInterner.TextOf` returns the SID the directory holds,
+while stored principal records carry the domain scope separately. Two interned ids may return the
+same SID text and still identify different domains' built-in groups. Callers must retain that scope
+when performing a lookup rather than treating the returned SID text as a forest-wide unique key.
 
 See [`0087`](../../decisions/0087-a-sid-is-unique-within-its-scope.md).
 
@@ -452,8 +462,10 @@ required before claiming the group-object effect.
 `IDerivationLauncher` once a capture has sealed evidence, and `SecureAD.Cli` calls `Stage2aRun.Derive`
 directly after it prints the sealed bundle. It goes before the judging because what it produces is
 what a rule reading more than one object will rest on, and a judging that ran first would rest on
-nothing. A derivation that could not be done is reported and does not stop the judging: every rule
-that exists today reads one object and needs nothing derived. See
+nothing. A failed derivation does not invalidate sealed evidence. A host may still attempt judging,
+but `JudgingRun` refuses when a scheduled rule's required derivation is absent, belongs to different
+evidence, or lacks a required product. It does not give those rules an empty answer and call the
+forest clean. See
 [the New Audit screen](../shell/the-new-audit-screen.md).
 
 **A bundle can also be derived on its own.** `securead --derive <bundle>` opens a sealed bundle,
@@ -467,8 +479,11 @@ it is after a capture: a run asked only to derive has produced nothing if it did
 
 **The protected-principal product is persisted and read back.** `DerivationReader` returns typed
 availability, the versioned catalogue and mask, and each principal's evaluation, reasons, decisive
-basis and deterministic membership path. It offers a scoped SID lookup and does not expose the graph
-or a general group-membership query. Rule acquisition remains Wave 6 work.
+basis and deterministic membership path, alongside independent owner acceptance and a grouped
+membership-route summary. The stored
+protection product offers a scoped SID lookup; general membership expansion is available separately
+through `DerivationReader.MembersOf`, without exposing the in-memory graph. Rule acquisition through
+declared derived inputs and `JudgingContext` is built, not future Wave 6 work.
 
 **A store from another schema is refused rather than read.** Version 2 gave the SID dictionary a
 scope; a version 1 store keys principals by SID alone, so every domain's built-in groups are one
@@ -478,9 +493,80 @@ written to remove. Version 3 added completeness, and version 4 added the persist
 product. Older stores are disposable and are refused rather than interpreted under newer semantics;
 the Evidence is untouched and can be derived again.
 
-**No rule reads any of this.** The rule interface over declared derived facts is a judge-stage
-change and has not been made. `IRule` still takes one object. The right moment to design its
-replacement is when the first rule that needs a derived fact exists to shape it.
+**Rules consume these products through `JudgingContext`.** The earlier claim that no rule read
+them was stale; ownership and other rules already declare their derived inputs.
+
+**Schema-scoped ownership, built 2026-09-05 under `0109`.** `OwnerAcceptance.SchemaOnly` accepts the
+forest-root Schema Admins group and its authorization-capable members only in the captured forest's
+schema. A separate graph walk includes direct, nested and primary-group membership, excludes known
+distribution groups, and refuses to treat an unknown group type as proven authorization. It does
+not read the single protection basis. A broader `OwnerAcceptance.Accepted` wins over this narrower
+answer. `OwnerAcceptance.SchemaOnlyOtherwiseUnknown` preserves proven schema acceptance when
+incomplete evidence cannot rule out broader acceptance elsewhere.
+
+**Derivation schema 9 introduced these changed owner semantics in the existing owner column.** A
+schema-8 derivation is refused and must be rebuilt from unchanged Evidence. Both scoped states
+round-trip through `DerivationWriter` and `DerivationReader`; the reader tests refuse versions 1
+and 8 and assert both version numbers in the error. The version-8 test was observed failing before
+the bump to 9. This guards that semantic transition; the independent layout guard below addresses
+future structural changes.
+
+### Shared identifiers, separate classification questions
+
+`PrincipalClassificationRegistry.For` returns separate answers rather than treating protection,
+accepted ownership and expected control as interchangeable. `PrincipalAuthorityScope` records the
+boundary to validate: domain, forest, schema, descriptor or required domain-controller operations.
+A recognized SID does not establish captured authority, effective permission or membership.
+`PrincipalClassification.IsComplete` establishes readable SID syntax only; Tier 0 classification
+can remain unknown when object evidence is needed. Control edges record the registry's catalogue
+version beside their expectedness reason. Catalogue version 2 records the P-150 correction to direct
+BUILTIN domain expectedness in Judgement; it does not change the derivation schema, stored membership
+routes, owner acceptance or protection. Existing derivations can be reused when re-judging for that
+correction. The measured result is in [the judgement store](../judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+
+### Independent membership routes — schema 10, decision 0108
+
+`MembershipRouteDeriver` walks outwards from the matched catalogue groups, not once from every
+account. It emits a supporting chain before applying its visited-state check, so an account's
+second initial membership survives even when it reaches the same root by a longer route. Output is
+grouped by the initial group's scoped SID. Roots and traversal neighbors are ordered by catalogue
+identity and scoped SID rather than capture-order integer IDs. Captured distinguished names travel
+with each step; a rename cannot change classification or leave the operator with an unnamed group.
+
+The answer is **representative supporting chains, not every possible path**. Security-enabled,
+distribution and unknown-group-type chains remain distinguishable, as do ordinary and primary-group
+links. Primary-group paths do not establish SDProp protection. Catalogue membership and effective
+protection propagation are separate, so a forest's protection exclusion is not an authorization
+exclusion. Direct catalogue protection and independently derived owner acceptance are unchanged.
+
+Resource caps are 500,000 principal-state visits, 2,000,000 examined links, 64 MiB of estimated encoded
+route-step data, and 30 minutes. These are engineering limits, not safe-forest thresholds or a cap
+on the complete database file. Reaching a limit keeps previously found routes and records the
+specific stopping reason on every affected summary and initial-membership block. Capture gaps,
+missing forest identity and unreadable protection exclusions also travel with the answer. Cycles
+terminate; a group whose supporting walk encounters itself is marked cycle-limited rather than
+claiming all simple alternatives. Accounts below a cycle retain their independent initial groups.
+
+`membership_route_summary`, `membership_route` and `membership_route_step` persist that evidence
+atomically with the principal. `MembershipRouteStorage.cs` lives in Derivation and is linked into
+Judgement so both stores use the same relational encoding. Missing summary rows or broken chains
+are refused, not read as empty complete membership. Older derivations are refused; schema 10 must be
+rebuilt from the unchanged Evidence. The existing diagnostic `explain-derivation.ps1` prints both
+the selected protection basis and the separate grouped routes.
+
+### Schema-layout regression guard — P-149
+
+`DerivationLayoutTests` fingerprints SQLite's actual table/index definitions against independently
+recorded checkpoints keyed by version (9 and 10). Changing a table, column, constraint or index
+without a new version checkpoint fails even when a fresh writer and reader agree. Existing
+checkpoints must not be replaced to bless a changed layout. This detects structure, not a change of
+meaning with identical SQL; semantic changes still require explicit versioning and behavioral tests.
+
+Before schema 10 was introduced, disabling the reader's version comparison failed both existing
+version-1 and version-8 refusal cases with *expected False, actual True*. Adding a production column
+without changing version 9 failed the layout checkpoint. Both mutations were restored, and all 25
+then-current layout/reading tests passed. Version-9 refusal was added for schema 10; matching-version
+reads and both reported version numbers remain tested.
 
 ## What is built
 

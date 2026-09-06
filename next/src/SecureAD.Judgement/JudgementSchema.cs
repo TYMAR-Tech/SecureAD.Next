@@ -20,11 +20,9 @@ namespace SecureAD.Judgement;
 /// to delete and regenerate rather than a file to upgrade.
 /// </para>
 /// <para>
-/// <b>Nothing derived from the graph is stored, because nothing derives it yet.</b> Group
-/// expansion, control edges and reachability are unbuilt, so there is no generation identifier and
-/// no capability catalogue version on an execution record. A column that is always null teaches
-/// every reader to ignore it, and would still be null a year from now. They arrive in the stage
-/// that fills them.
+/// <b>Derived evidence names the generation it came from.</b> Membership-route findings also carry
+/// their supporting chains, catalogue version and completeness, so reading one never substitutes a
+/// newer derivation's explanation. Control edges and reachability remain separate, unbuilt stages.
 /// </para>
 /// </remarks>
 public static class JudgementSchema
@@ -37,7 +35,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 13;
+    public const int Version = 15;
 
     private static readonly string[] TableDdl =
     [
@@ -305,6 +303,9 @@ public static class JudgementSchema
             object_sid                          TEXT    NOT NULL,
             user_account_control                INTEGER NOT NULL,
             unreadable_service_names            INTEGER NOT NULL,
+            protection_catalogue_version        INTEGER NULL,
+            direct_protection_entry_id          INTEGER NULL,
+            direct_protection_name              TEXT NULL,
             PRIMARY KEY (finding_id)
         )
         """,
@@ -589,6 +590,8 @@ public static class JudgementSchema
     {
         ArgumentNullException.ThrowIfNull(connection);
         Execute(connection, TableDdl);
+        SecureAD.Storage.MembershipRouteStorage.CreateTables(connection);
+        ControlEdgeStorage.CreateTables(connection);
     }
 
     /// <summary>

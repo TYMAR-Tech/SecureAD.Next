@@ -185,7 +185,7 @@ $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.bat
 # DerivationSchema is internal - and against the store rather than the reader for the better
 # reason too: an old bundle read by new assemblies is the common case on a lab machine, and it is
 # the bundle that lacks the rows, not the code.
-$expectedSchema = 4
+$expectedSchema = 10
 
 $BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
 
@@ -241,8 +241,8 @@ This derivation is older than this script.
   derivation schema this script expects   $expectedSchema
   derivation schema this store has        $($stored.Description.SchemaVersion)
 
-A store written before schema $expectedSchema has no protected-principal rows at all, and reporting
-"nothing protected" from it would be false. Derive it again with -Derive.
+A store written before schema $expectedSchema does not carry the independent membership-route
+summary. A selected protection path is not that answer. Derive it again with -Derive.
 "@
         }
 
@@ -293,6 +293,31 @@ A store written before schema $expectedSchema has no protected-principal rows at
             return (($fact.Path | ForEach-Object { $sidById[$_] }) -join ' -> ')
         }
 
+        function Format-RoutePrincipal([object] $principal) {
+            $scope = if ($principal.Scope) { " [$($principal.Scope)]" } else { '' }
+            $name = if ($principal.DistinguishedName) { " $($principal.DistinguishedName)" } else { '' }
+            return "$($principal.Sid)$scope$name"
+        }
+
+        function Show-MembershipRoutes([object] $fact) {
+            $summary = $fact.MembershipRoutes
+            Write-Host ("  {0}" -f $summary.CompletenessDescription)
+            Write-Host ("  initial memberships shown: {0}" -f $summary.Memberships.Count)
+            foreach ($membership in $summary.Memberships) {
+                Write-Host ("    Initial membership: {0}" -f (Format-RoutePrincipal $membership.InitialMembership))
+                foreach ($route in $membership.Routes) {
+                    Write-Host ("      Root: {0}; chain type: {1}; establishes protection: {2}" -f
+                        $route.RootName, $route.Authorization, $route.EstablishesProtection)
+                    $steps = @($route.Steps | ForEach-Object {
+                        $primary = if ($_.IsPrimaryGroup) { ' (primary group)' } else { '' }
+                        (Format-RoutePrincipal $_.Principal) + $primary
+                    })
+                    Write-Host ("      {0}" -f ($steps -join ' -> '))
+                }
+            }
+            Write-Host '  These memberships are not proof that removing them removes every other form of privilege.'
+        }
+
         if ($Sid) {
             # Scope is part of the key, and a caller asking about one SID does not know it - so
             # every match is shown rather than one guessed at. A principal present under a scope
@@ -316,6 +341,7 @@ A store written before schema $expectedSchema has no protected-principal rows at
                 Write-Host ''
                 Write-Host ("  scope           {0}" -f $(if ($fact.Scope) { $fact.Scope } else { '(none)' }))
                 Write-Host ("  evaluation      {0}" -f $fact.Evaluation)
+                Write-Host ("  owner acceptance {0} (separately derived)" -f $fact.OwnerAcceptance)
 
                 if ($fact.Basis) {
                     Write-Host ("  because         {0}   catalogue entry {1} (RID {2})" -f
@@ -336,12 +362,13 @@ A store written before schema $expectedSchema has no protected-principal rows at
 
                 if ($fact.Path.Count -gt 0) {
                     Write-Host ("  path            {0}" -f (Format-Path $fact))
-                    Write-Host '                  (one path of possibly several; see P-105 on which root wins)'
+                    Write-Host '                  (selected protection basis only; the grouped route summary follows)'
                 }
 
                 if ($fact.UnknownReasons -ne [SecureAD.Derivation.ProtectionUnknownReason]::None) {
                     Write-Host ("  not settled     {0}" -f $fact.UnknownReasons)
                 }
+                Show-MembershipRoutes $fact
             }
 
             Write-Host ''
@@ -378,6 +405,7 @@ A store written before schema $expectedSchema has no protected-principal rows at
             foreach ($fact in ($viaMembership | Select-Object -First $Limit)) {
                 Write-Host ("  {0}" -f $fact.Sid)
                 Write-Host ("      root RID {0}   {1}" -f $fact.Basis.CatalogueRid, (Format-Path $fact))
+                Show-MembershipRoutes $fact
             }
 
             if ($viaMembership.Count -gt $Limit) {
@@ -398,6 +426,8 @@ A store written before schema $expectedSchema has no protected-principal rows at
         Write-Host ''
         Write-Host ("Stated limits       {0}" -f $derivation.StatedLimits)
         Write-Host ("Whole forest        {0}" -f $derivation.IsComplete)
+        $partialRoutes = @($derivation.Principals | Where-Object { -not $_.MembershipRoutes.IsComplete })
+        Write-Host ("Partial membership summaries {0:N0}" -f $partialRoutes.Count)
 
         Write-Host ''
         Write-Host 'An Unknown is a principal this product declined to call safe, not one it found'

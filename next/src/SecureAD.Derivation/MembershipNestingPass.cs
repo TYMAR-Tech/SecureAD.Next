@@ -251,7 +251,7 @@ internal static class MembershipNestingPass
                     subject.ObjectGuid ?? Guid.Empty,
                     isGroup,
                     groupType,
-                    primaryGroupSidId)))
+                    primaryGroupSidId) { DistinguishedName = subject.DistinguishedName }))
             {
                 collapsedStubs++;
             }

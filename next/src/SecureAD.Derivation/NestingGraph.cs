@@ -38,6 +38,7 @@ internal sealed class NestingGraph
     private readonly int[] _primaryMembers;
     private readonly bool[] _isGroup;
     private readonly int?[] _groupType;
+    private readonly string?[] _distinguishedNames;
 
     private NestingGraph(
         int[] memberOffsets,
@@ -47,7 +48,8 @@ internal sealed class NestingGraph
         int[] primaryMemberOffsets,
         int[] primaryMembers,
         bool[] isGroup,
-        int?[] groupType)
+        int?[] groupType,
+        string?[] distinguishedNames)
     {
         _memberOffsets = memberOffsets;
         _members = members;
@@ -57,10 +59,13 @@ internal sealed class NestingGraph
         _primaryMembers = primaryMembers;
         _isGroup = isGroup;
         _groupType = groupType;
+        _distinguishedNames = distinguishedNames;
     }
 
     /// <summary>How many SIDs the graph is over.</summary>
     public int Count => _isGroup.Length;
+
+    public string? DistinguishedNameOf(int sidId) => _distinguishedNames[sidId];
 
     /// <summary>
     /// Builds the graph from what one pass over the bundle found.
@@ -75,10 +80,12 @@ internal sealed class NestingGraph
 
         var isGroup = new bool[count];
         var groupType = new int?[count];
+        var distinguishedNames = new string?[count];
         foreach (var principal in facts.Principals)
         {
             isGroup[principal.SidId] = principal.IsGroup;
             groupType[principal.SidId] = principal.GroupType;
+            distinguishedNames[principal.SidId] = principal.DistinguishedName;
         }
 
         var (memberOffsets, members) = CompressRows(
@@ -114,7 +121,7 @@ internal sealed class NestingGraph
 
         return new NestingGraph(
             memberOffsets, members, containerOffsets, containers,
-            primaryOffsets, primaryMembers, isGroup, groupType);
+            primaryOffsets, primaryMembers, isGroup, groupType, distinguishedNames);
     }
 
     /// <summary>

@@ -22,6 +22,16 @@ public sealed class JudgementReadingTests
     private static readonly DateTimeOffset Started = new(2026, 8, 25, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = new(2026, 8, 25, 9, 5, 0, TimeSpan.Zero);
 
+    [Fact]
+    public void DisposedReaderRefusesFurtherReads()
+    {
+        var directory = NewJudgedBundle(writer => writer.Write(RuleExecution.Judged(Sec010, 1, 0, [])));
+        var reader = Opened(directory);
+        reader.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => reader.Read());
+        reader.Dispose();
+    }
+
     /// <summary>
     /// A finding survives being written and comes back with the evidence it rests on.
     /// </summary>

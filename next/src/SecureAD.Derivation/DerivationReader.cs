@@ -1,8 +1,10 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Storage;
 
 namespace SecureAD.Derivation;
 
@@ -76,8 +78,11 @@ public sealed record StoredProtectedPrincipalFact(
     ProtectedPrincipalEvaluation Evaluation,
     ProtectedPrincipalBasis? Basis,
     ProtectionUnknownReason UnknownReasons,
-    IReadOnlyList<int> Path)
+    IReadOnlyList<int> Path,
+    OwnerAcceptance OwnerAcceptance)
 {
+    public MembershipRouteSummary MembershipRoutes { get; init; } = MembershipRouteSummary.NotDerived;
+
     public bool IsComplete => Evaluation != ProtectedPrincipalEvaluation.Unknown;
 }
 
@@ -852,11 +857,12 @@ public sealed class DerivationReader : IDisposable
 
         var catalogue = ReadAdminSdCatalogue();
         var paths = ReadProtectedPrincipalPaths();
+        var membershipRoutes = MembershipRouteStorage.Read(_connection, subjectId: null);
         var principals = new List<StoredProtectedPrincipalFact>();
         using var command = _connection.CreateCommand();
         command.CommandText =
             "SELECT p.sid_id, s.sid, s.scope, p.evaluation, p.basis_kind, "
-            + "p.basis_catalogue_entry_id, c.rid, p.unknown_reasons "
+            + "p.basis_catalogue_entry_id, c.rid, p.unknown_reasons, p.owner_acceptance "
             + "FROM protected_principal p JOIN sid s ON s.sid_id = p.sid_id "
             + "LEFT JOIN adminsd_catalogue_entry c "
             + "ON c.catalogue_entry_id = p.basis_catalogue_entry_id ORDER BY p.sid_id";
@@ -877,7 +883,12 @@ public sealed class DerivationReader : IDisposable
                 Enum.Parse<ProtectedPrincipalEvaluation>(reader.GetString(3)),
                 basis,
                 (ProtectionUnknownReason)reader.GetInt32(7),
-                paths.GetValueOrDefault(sidId, [])));
+                paths.GetValueOrDefault(sidId, []),
+                Enum.Parse<OwnerAcceptance>(reader.GetString(8)))
+            {
+                MembershipRoutes = membershipRoutes.TryGetValue(sidId.ToString(CultureInfo.InvariantCulture), out var summary)
+                    ? summary : throw new InvalidOperationException("A principal has no membership-route completeness record."),
+            });
         }
 
         var mask = new SecureAD.Kernel.Security.AdminSdExclusionMask(

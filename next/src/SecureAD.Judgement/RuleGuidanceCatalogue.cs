@@ -240,9 +240,9 @@ public static class RuleGuidanceCatalogue
             WhyItMatters:
                 "Any authenticated member of the domain can ask a domain controller for a ticket to "
                 + "this account's service, and that ticket is encrypted with this account's "
-                + "password. Because the account is privileged, cracking it offline hands over "
-                + "administration of the domain in a single step - with no foothold on a privileged "
-                + "machine first. The request is ordinary protocol traffic, the account is never "
+                + "password. Compromising it exposes the authority it actually holds. AdminSDHolder "
+                + "protection alone does not prove domain administration: distribution-group paths "
+                + "can propagate protection without authorization. The request is ordinary protocol traffic, the account is never "
                 + "contacted, and the cracking leaves no failed logons, so nothing about it looks "
                 + "like an attack while it is happening.",
             WhatToDo:
@@ -252,7 +252,10 @@ public static class RuleGuidanceCatalogue
                 + "it with a group managed service account, whose password Windows generates and "
                 + "rotates itself; where that is not possible, give it a long random password. "
                 + "Consider whether the account needs its privilege at all. Removing the service "
-                + "name closes this route to the account and says nothing about any other.",
+                + "name closes this route to the account and says nothing about any other. Review "
+                + "each initial membership in the supporting evidence, including longer routes. "
+                + "Changing a shared group can affect other accounts. Removing the listed memberships "
+                + "does not establish that every other form of privilege is gone.",
             About:
                 "Reports a service name registered on an account that AdminSDHolder protects. "
                 + "Ordinary service accounts with service names are not reported, and that "
@@ -392,8 +395,9 @@ public static class RuleGuidanceCatalogue
                 "Reports an object whose owner is not an administrative principal. This is latent "
                 + "authority and not evidence of wrongdoing - the ordinary cause is that somebody "
                 + "was allowed to create the object, they created it, and they became its owner. "
-                + "An owner who is administrative only through group membership is not reported, "
-                + "which is a correction to the predecessor: the membership is consulted rather "
+                + "An owner accepted through group membership is not reported within that "
+                + "acceptance's scope. The forest-root Schema Admins group and its members are "
+                + "accepted only in that forest's schema partition. Membership is consulted rather "
                 + "than the identifier alone. The rule stays silent where the owner would not "
                 + "actually keep the power - an OWNER RIGHTS entry on the object switches off the "
                 + "owner's implicit rights, and so does the forest setting that blocks them, which "
@@ -441,6 +445,8 @@ public static class RuleGuidanceCatalogue
                 + "might be protected must not be quietly reported at the lower severity. The "
                 + "owner is judged by membership as well as by identifier, and the rule stays "
                 + "silent where the owner would not actually keep the power to rewrite the list. "
+                + "Schema Admins and its members are accepted as owners only within the captured "
+                + "forest's schema, not on protected objects elsewhere unless independently accepted. "
                 + "This finding is time-sensitive in a way the other rules are not: because "
                 + "AdminSDHolder repairs ownership on its own schedule, the same object may be "
                 + "reported in one run and absent from the next without anybody having fixed "

@@ -133,7 +133,7 @@ public sealed class ObjectOwnedByNonAdministrator : IRule
 {
     private const string RuleId = "SEC-031";
 
-    private const int RuleVersion = 1;
+    private const int RuleVersion = 2;
 
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
@@ -211,7 +211,7 @@ public sealed class ProtectedObjectOwnedByNonAdministrator : IRule
 {
     private const string RuleId = "SEC-032";
 
-    private const int RuleVersion = 1;
+    private const int RuleVersion = 2;
 
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(

@@ -1,5 +1,6 @@
 using System.Globalization;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
 
 namespace SecureAD.Derivation;
@@ -176,7 +177,10 @@ public static class Stage2aRun
                 ? DerivationPhaseOutcome.Succeeded
                 : DerivationPhaseOutcome.Degraded);
 
-        RunProtection(writer, graph, facts, closure, progress, log, cancellationToken);
+        var completeness = closure is null
+            ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
+            : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId);
+        RunProtection(writer, graph, facts, closure, !completeness.IsComplete, progress, log, cancellationToken);
         RunLatent(writer, graph, closure, progress, log, cancellationToken);
 
         // Written from the same closure the products were derived from, so a cycle recorded here is
@@ -189,16 +193,9 @@ public static class Stage2aRun
         // What none of the three products covers, recorded beside them rather than left for a
         // reader to infer. Written after the facts because the partial groups it names are sid
         // dictionary ids, and the dictionary is written by WriteFacts.
-        var completeness = closure is null
-            ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
-            : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId);
         writer.RecordCompleteness(completeness);
 
-        writer.Complete(DateTimeOffset.UtcNow);
-
-        var state = !completeness.IsComplete
-            ? DerivationRunState.CompletedDegraded
-            : DerivationRunState.Completed;
+        var state = writer.Complete(DateTimeOffset.UtcNow);
 
         log.Note(DerivePhase, "finished", [new RunLogDetail("state", state.ToString())]);
 
@@ -316,6 +313,7 @@ public static class Stage2aRun
         NestingGraph graph,
         NestingFacts facts,
         MembershipClosure? closure,
+        bool routeEvidenceIncomplete,
         IProgress<DerivationProgress> progress,
         IRunLog log,
         CancellationToken cancellationToken)
@@ -339,14 +337,17 @@ public static class Stage2aRun
             ProtectedPrincipalDeriver.PhaseName,
             progress,
             log,
-            () => ProtectedPrincipalDeriver.Derive(
-                graph,
-                facts.Sids,
-                catalogue,
-                evidenceIsPartial,
-                cancellationToken,
-                facts.ForestRootDomainSid),
-            _ => evidenceIsPartial
+            () =>
+            {
+                var derived = ProtectedPrincipalDeriver.Derive(
+                    graph, facts.Sids, catalogue, evidenceIsPartial, cancellationToken, facts.ForestRootDomainSid);
+                return !routeEvidenceIncomplete ? derived : derived with
+                {
+                    MembershipRoutesBySid = derived.MembershipRoutesBySid.Select(summary => summary.WithIncompleteReasons(
+                        summary.IncompleteReasons | MembershipRouteIncompleteReason.MembershipEvidenceIncomplete)).ToArray(),
+                };
+            },
+            result => evidenceIsPartial || result.MembershipRoutesBySid.Any(summary => !summary.IsComplete)
                 ? DerivationPhaseOutcome.Degraded
                 : DerivationPhaseOutcome.Succeeded);
 

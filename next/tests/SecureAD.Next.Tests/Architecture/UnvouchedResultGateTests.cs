@@ -143,6 +143,9 @@ public sealed class UnvouchedResultGateTests
             "BundleSchema", "GpoClientSideExtensionCatalog", "DirectoryTime",
             "WellKnownSidCatalog", "RuleCatalogue", "RuleGuidanceCatalogue",
             "PrivilegedSidCatalogue", "LapsPasswordAttributeCatalogue",
+            // 0101 moves the existing constant selections here. No I/O or discovered collections;
+            // the same expiry checks apply if this registry ever starts loading its data.
+            "PrincipalClassificationRegistry",
         ];
 
     /// <summary>

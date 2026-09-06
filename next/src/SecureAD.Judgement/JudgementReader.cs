@@ -3,6 +3,7 @@ using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Security;
+using SecureAD.Storage;
 
 namespace SecureAD.Judgement;
 
@@ -163,6 +164,17 @@ public sealed class JudgementReader : IDisposable
 
     /// <summary>What the judging recorded about itself.</summary>
     public JudgementDescription Description { get; }
+
+    /// <summary>Reads the stored control product, object-first or named-trustee-first, with coverage and hidden counts.</summary>
+    public ControlEdgePage ReadControlEdges(string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (target is not null && holderSid is not null)
+            throw new ArgumentException("Choose an object or a holder, not both.");
+        ArgumentOutOfRangeException.ThrowIfNegative(afterId);
+        return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
+            with { GenerationId = Description.GenerationId };
+    }
 
     /// <summary>
     /// Verifies the judgement's seal and, only if it is intact and it belongs to this bundle, opens
@@ -582,6 +594,9 @@ public sealed class JudgementReader : IDisposable
         k.object_sid                        AS k_object_sid,
         k.user_account_control              AS k_user_account_control,
         k.unreadable_service_names          AS k_unreadable_service_names,
+        k.protection_catalogue_version      AS k_protection_catalogue_version,
+        k.direct_protection_entry_id        AS k_direct_protection_entry_id,
+        k.direct_protection_name            AS k_direct_protection_name,
         l.windows_laps_expiration           AS l_windows_laps_expiration,
         l.legacy_laps_expiration            AS l_legacy_laps_expiration,
         l.capability_kind                   AS l_capability_kind,
@@ -745,7 +760,17 @@ public sealed class JudgementReader : IDisposable
                 reader.GetString(reader.GetOrdinal("k_object_sid")),
                 ServicePrincipalNames.TryGetValue(findingId, out var spns) ? spns : [],
                 (uint)reader.GetInt64(reader.GetOrdinal("k_user_account_control")),
-                (int)reader.GetInt64(reader.GetOrdinal("k_unreadable_service_names")));
+                (int)reader.GetInt64(reader.GetOrdinal("k_unreadable_service_names")))
+            {
+                ProtectionCatalogueVersion = reader.IsDBNull(reader.GetOrdinal("k_protection_catalogue_version"))
+                    ? null : reader.GetInt32(reader.GetOrdinal("k_protection_catalogue_version")),
+                DirectProtectionCatalogueEntryId = reader.IsDBNull(reader.GetOrdinal("k_direct_protection_entry_id"))
+                    ? null : reader.GetInt32(reader.GetOrdinal("k_direct_protection_entry_id")),
+                DirectProtectionName = reader.IsDBNull(reader.GetOrdinal("k_direct_protection_name"))
+                    ? null : reader.GetString(reader.GetOrdinal("k_direct_protection_name")),
+                MembershipRoutes = MembershipRoutes.TryGetValue(findingId.ToString(System.Globalization.CultureInfo.InvariantCulture), out var routes)
+                    ? routes : throw new InvalidOperationException("A finding has no membership-route completeness record."),
+            };
         }
         else if (!reader.IsDBNull(lapsCapability))
         {
@@ -895,6 +920,11 @@ public sealed class JudgementReader : IDisposable
 
     private Dictionary<long, List<string>>? _servicePrincipalNames;
 
+    private Dictionary<string, MembershipRouteSummary> MembershipRoutes =>
+        _membershipRoutes ??= MembershipRouteStorage.Read(_connection, subjectId: null);
+
+    private Dictionary<string, MembershipRouteSummary>? _membershipRoutes;
+
     /// <summary>
     /// Every stored membership path, by the finding it belongs to, in path order.
     /// </summary>
@@ -1009,6 +1039,7 @@ public sealed class JudgementReader : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        if (_disposed)
             return;
 
         _connection.Dispose();

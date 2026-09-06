@@ -223,6 +223,106 @@ public sealed class ProtectedPrincipalDeriverTests
         Assert.Equal(first.PathFor(3), second.PathFor(3));
     }
 
+    // ---- P-105: which root a membership is reported under ----
+
+    /// <summary>
+    /// A membership is reported under the nearest root, not the last one walked.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the <c>ad.lab</c> observation of 2026-08-31, reduced to its shape.</b> Three
+    /// accounts sitting directly in Enterprise Admins were each reported under
+    /// <c>BUILTIN\Administrators</c>, because Enterprise Admins is nested there and the walk let
+    /// each later root overwrite an earlier one. Here the account is directly in Domain Admins
+    /// (catalogue entry 3) and Domain Admins is nested in Enterprise Admins (entry 11), so the old
+    /// behaviour reported entry 11 and the operator was sent to the wrong membership.
+    /// </para>
+    /// <para>
+    /// <b>Both answers were true, which is why no correctness test caught it.</b> The account
+    /// really is under both. The one worth reporting is the one an operator can remove, and
+    /// removing the outer membership would not have taken the account's privilege away.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AMembershipIsReportedUnderTheNearestRoot()
+    {
+        var principals = new[]
+        {
+            Security(0, rid: 519), // Enterprise Admins, catalogue entry 11 - the outer root
+            Security(1, rid: 512), // Domain Admins, catalogue entry 3 - the nearer root
+            User(2, rid: 1104),
+        };
+
+        // Domain Admins is nested inside Enterprise Admins, and the account is directly in
+        // Domain Admins - so it reaches entry 11 as well, one hop further away.
+        var closure = Derive(principals, edges: [(0, 1), (1, 2)]);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.Protected, closure.EvaluationOf(2));
+        Assert.Equal(512, closure.BasisFor(2)!.CatalogueRid);
+        Assert.Equal(new[] { 2, 1 }, closure.PathFor(2));
+    }
+
+    /// <summary>
+    /// Two roots the same distance away are broken deterministically, and by the same value
+    /// whatever order the evidence arrives in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A tie is two separate memberships and therefore two separate removals</b>, and naming one
+    /// hides the other. That is a real limit of reporting a single root rather than a defect in the
+    /// tie-break, and it is carried as <c>P-146</c>; what this test pins is that the choice cannot
+    /// wander between runs over the same forest, because a finding that moves on re-analysis is one
+    /// an operator stops believing.
+    /// </para>
+    /// <para>
+    /// <b>Asserted twice with the edges in different orders</b>, for the reason
+    /// <c>Stage2a_TheStoredMembershipPathIsDeterministicFromPrincipalToRoot</c> already gives: the
+    /// walk must not depend on the order rows came out of the database.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Stage2a_TwoRootsAtTheSameDistanceAreBrokenDeterministically()
+    {
+        var principals = new[]
+        {
+            Security(0, rid: 519), // Enterprise Admins, catalogue entry 11
+            Security(1, rid: 512), // Domain Admins, catalogue entry 3
+            User(2, rid: 1104),
+        };
+
+        var first = Derive(principals, edges: [(0, 2), (1, 2)]);
+        var second = Derive(principals, edges: [(1, 2), (0, 2)]);
+
+        // The lower catalogue entry id holds it. Both are one hop away, so nearness cannot decide.
+        Assert.Equal(512, first.BasisFor(2)!.CatalogueRid);
+        Assert.Equal(first.BasisFor(2)!.CatalogueEntryId, second.BasisFor(2)!.CatalogueEntryId);
+        Assert.Equal(first.PathFor(2), second.PathFor(2));
+    }
+
+    /// <summary>
+    /// A principal Microsoft names in the catalogue keeps that as its reason, however it is nested.
+    /// </summary>
+    /// <remarks>
+    /// <b>Being inside something else does not make membership the reason.</b> Domain Admins is
+    /// protected because Microsoft says Domain Admins is protected, and it is also nested under
+    /// Enterprise Admins in most forests. Reporting it under a membership would tell an operator to
+    /// remove Domain Admins from Enterprise Admins to fix something that is not a problem.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_ADirectCatalogueClaimIsNotDisplacedByAnyMembership()
+    {
+        var principals = new[]
+        {
+            Security(0, rid: 519),
+            Security(1, rid: 512),
+        };
+
+        var closure = Derive(principals, edges: [(0, 1)]);
+
+        Assert.Equal(
+            ProtectedPrincipalBasisKind.DirectPrincipalClaim, closure.BasisFor(1)!.Kind);
+    }
+
     /// <summary>
     /// Every derivation admits that the protected set itself could have been customised.
     /// </summary>
@@ -271,6 +371,80 @@ public sealed class ProtectedPrincipalDeriverTests
             DomainSid);
 
         Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
+    }
+
+    [Fact]
+    public void SchemaOwnersIncludeTheRootAndDirectNestedAndPrimaryMembers()
+    {
+        var result = Derive(
+            [Security(0, 518), Security(1, 1200), User(2, 1104), User(3, 1105), User(4, 1106, primaryGroup: 0)],
+            [(0, 1), (0, 2), (1, 3)]);
+
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(OwnerAcceptance.SchemaOnly, result.OwnerAcceptanceOf(i));
+        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, result.EvaluationOf(4));
+    }
+
+    [Fact]
+    public void SchemaOwnershipDoesNotDependOnTheProtectionClaim()
+    {
+        Fixture[] principals = [Security(0, 518), User(1, 1104)];
+        var catalogue = ProtectedGroupCatalogue.NarrowedBy(string.Empty);
+        var noProtection = new CatalogueClaim(CatalogueClaimStatus.EstablishedNo,
+            CatalogueClaimProvenance.None, "test");
+        catalogue = catalogue with
+        {
+            Entries = catalogue.Entries.Select(e => e.Rid == 518
+                ? e with { PrincipalProtection = noProtection, MemberPropagation = noProtection } : e).ToArray(),
+        };
+        var result = ProtectedPrincipalDeriver.Derive(GraphOf(principals, [(0, 1)]), SidsFor(principals),
+            catalogue, false, CancellationToken.None, DomainSid);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, result.EvaluationOf(1));
+        Assert.Equal(OwnerAcceptance.SchemaOnly, result.OwnerAcceptanceOf(1));
+    }
+
+    [Fact]
+    public void SchemaMembershipDoesNotNarrowAnIndependentlyAcceptedOwner()
+    {
+        var result = Derive([Security(0, 518), Security(1, 512), User(2, 1104)], [(0, 2), (1, 2)]);
+        Assert.Equal(OwnerAcceptance.Accepted, result.OwnerAcceptanceOf(2));
+    }
+
+    [Fact]
+    public void APartialReadingKeepsProvenSchemaAcceptanceButNotANegativeElsewhere()
+    {
+        var result = Derive([Security(0, 518), User(1, 1104), User(2, 1105)], [(0, 1)], true);
+        Assert.Equal(OwnerAcceptance.SchemaOnlyOtherwiseUnknown, result.OwnerAcceptanceOf(1));
+        Assert.Equal(OwnerAcceptance.Unknown, result.OwnerAcceptanceOf(2));
+    }
+
+    [Fact]
+    public void DistributionNestingDoesNotConferSchemaOwnerAcceptance()
+    {
+        var result = Derive([Security(0, 518), Distribution(1, 1200), User(2, 1104)], [(0, 1), (1, 2)]);
+        Assert.Equal(ProtectedPrincipalEvaluation.Protected, result.EvaluationOf(2));
+        Assert.Equal(OwnerAcceptance.NotAccepted, result.OwnerAcceptanceOf(2));
+    }
+
+    [Fact]
+    public void AnUnknownGroupTypeDoesNotEstablishSchemaOwnerAcceptance()
+    {
+        var group = Security(1, 1200);
+        group = group with { Row = group.Row with { GroupType = null } };
+        var result = Derive([Security(0, 518), group, User(2, 1104)], [(0, 1), (1, 2)]);
+        Assert.Equal(OwnerAcceptance.Unknown, result.OwnerAcceptanceOf(2));
+    }
+
+    [Fact]
+    public void Rid518UnderAnotherDomainIsNotTheForestsSchemaOwnerRoot()
+    {
+        Fixture[] principals = [Security(0, 518), User(1, 1104)];
+        var result = ProtectedPrincipalDeriver.Derive(GraphOf(principals, [(0, 1)]), SidsFor(principals),
+            ProtectedGroupCatalogue.NarrowedBy(string.Empty), false, CancellationToken.None,
+            "S-1-5-21-999-888-777");
+        Assert.Equal(OwnerAcceptance.NotAccepted, result.OwnerAcceptanceOf(0));
+        Assert.Equal(OwnerAcceptance.NotAccepted, result.OwnerAcceptanceOf(1));
     }
 
     private static ProtectedPrincipalClosure Derive(

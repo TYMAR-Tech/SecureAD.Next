@@ -32,6 +32,11 @@ public sealed record KerberoastableAccountEvidence(
     uint UserAccountControl,
     int UnreadableServiceNames = 0) : FindingEvidence
 {
+    public MembershipRouteSummary MembershipRoutes { get; init; } = MembershipRouteSummary.NotDerived;
+    public int? ProtectionCatalogueVersion { get; init; }
+    public int? DirectProtectionCatalogueEntryId { get; init; }
+    public string? DirectProtectionName { get; init; }
+
     /// <summary>
     /// Whether every service name the account carried was read, so this is the whole of what it
     /// claims to run.

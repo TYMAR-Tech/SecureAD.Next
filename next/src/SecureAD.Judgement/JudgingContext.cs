@@ -191,6 +191,12 @@ public sealed record JudgingContext(
     OwnerImplicitRightsSetting? OwnerImplicitRights)
 {
     /// <summary>
+    /// The captured forest-root DNS name, used to locate its schema partition for scoped ownership.
+    /// Null means the scope cannot be established; the object's domain is not a substitute.
+    /// </summary>
+    public string? ForestFqdn { get; init; }
+
+    /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
     /// judging hands over.
     /// </summary>

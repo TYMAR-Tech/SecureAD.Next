@@ -1,9 +1,9 @@
 # SEC-021 — a privileged account with a service name registered on it
 
-**Status:** specified 2026-09-02. Not yet built.
+**Status:** built; version 2 adds independent membership-route evidence under decision 0108.
 **Severity:** Critical — the first rule in this product to carry it. See [§6](#6-severity).
 **Rule identifier:** `SEC-021`.
-**Implemented by:** `KerberoastablePrivilegedAccount` in `SecureAD.Judgement` (planned).
+**Implemented by:** `KerberoastablePrivilegedAccount` in `SecureAD.Judgement`.
 
 ---
 
@@ -215,12 +215,13 @@ invented, and it is already derived, already persisted and already bound to the 
 
 ## 8. When it does not answer
 
-Follows `SEC-030`, because it consumes the same derived product and the same failures apply:
+Missing or unknown protection cannot become a clean result. An established protection claim can
+support a finding even when the additional membership explanation is incomplete (`0108`):
 
 | Case | What happens |
 |---|---|
 | No derivation offered | `CouldNotResolve(NotDerived)`. Per `0091` the run is refused before this point, so it should be unreachable. |
-| The protected-principal closure is incomplete | `CouldNotResolve`, carrying the derivation's own stated reason. **Checked before the object's own facts**, because no per-object answer can be trusted while the graph behind it is incomplete — a partial closure makes a privileged account look ordinary, which is the direction that loses a finding. |
+| The protected-principal closure is incomplete | An account not established as protected remains unresolved, carrying the derivation's reason. An established protection claim is retained; partial route evidence is reported with its stopping reasons and unresolved-input accounting, never a total or a dropped finding. |
 | The object's SID cannot be read | `CouldNotResolve(IdentityUnreadable)`. The derivation is keyed by SID; without one there is nothing to ask about. |
 | The derivation has no entry for this SID | `CouldNotResolve(NotDerived)`. Silence would report a privileged account as ordinary. |
 | The derivation says *unknown* | `CouldNotResolve`, carrying its reason rather than flattening it. |
@@ -246,6 +247,23 @@ a child table:
 - the account's `objectSid` — the identity the derivation was asked about
 - every `servicePrincipalName` it carries, in the order captured
 - the whole `userAccountControl` value, from which `IsDisabled` is derived rather than stored
+- the protection catalogue version and any direct catalogue basis, independently of membership
+- `MembershipRouteSummary`: initial memberships, reached roots and supporting chains, including
+  longer independent routes, with captured names, scoped SIDs, primary links and completeness
+
+Judgement schema 14 stores those chains in `membership_route_summary`, `membership_route` and
+`membership_route_step`, using the same encoding as derivation schema 10. One account still yields
+one finding. Routes sharing an initial membership are detail under that membership, not separate
+findings or separate removal instructions. A partial summary names why it stopped and says its
+count is not a total. Both finding screens expose the supporting evidence.
+
+**Protection is not authorization.** Microsoft's [Reducing the Active Directory Attack Surface](https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface)
+explicitly distinguishes distribution nesting that propagates protection from security-group SIDs
+in access tokens; the page was read in full for this change. The evidence labels distribution and
+unknown-group-type chains rather than promising domain administration from protection alone.
+Primary-group membership remains real authorization input but does not establish SDProp traversal.
+Neither removing the listed memberships nor changing one shared group proves every other form of
+privilege is gone, and the summary is not a minimum-removal calculation.
 
 **Every service name, not just the first.** An operator deciding whether the account really runs
 something needs to see what it claims to run; one name would answer a narrower question than the one

@@ -112,7 +112,7 @@ internal sealed record ProtectedGroupCatalogue(
         Entry(9, "Enterprise Read-only Domain Controllers", CataloguePrincipalScope.ForestRootRid, 498,
             Claim(CatalogueClaimStatus.Disputed, "MS-APPENDIX-C-VS-GROUP-PAGE-2026-08"),
             UnverifiedPropagation),
-        Entry(10, "Schema Admins", CataloguePrincipalScope.ForestRootRid, 518, EstablishedPrincipal,
+        Entry(10, "Schema Admins", CataloguePrincipalScope.ForestRootRid, SchemaOwnerRid, EstablishedPrincipal,
             EstablishedPropagation),
         Entry(11, "Enterprise Admins", CataloguePrincipalScope.ForestRootRid, 519, EstablishedPrincipal,
             EstablishedPropagation),
@@ -131,6 +131,42 @@ internal sealed record ProtectedGroupCatalogue(
         Entry(18, "Replicator", CataloguePrincipalScope.BuiltinPerDomain, 552, EstablishedPrincipal,
             EstablishedPropagation),
     ];
+
+    /// <summary>
+    /// The catalogue entries whose members this product accepts as an object's owner in silence.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This answers a different question from protection and is deliberately much smaller.</b>
+    /// Protection is Microsoft's set - which principals AdminSDHolder repairs - and this is the
+    /// product's, taken from <c>0099</c>: the principals whose control may be hidden as routine.
+    /// Every entry here has an <i>unrestricted</i> authority scope within its own domain, or
+    /// forest-wide for Enterprise Admins. An owner implicitly holds Modify Permissions, so
+    /// accepting one of these means never telling a customer that it owns something.
+    /// </para>
+    /// <para>
+    /// <b>The five operator groups are absent, and that is the point of <c>P-140</c>.</b> Account
+    /// Operators, Server Operators, Print Operators, Backup Operators and Replicator are protected
+    /// principals and are outside the control plane, both at once. Out does not mean safe - Backup
+    /// Operators stays Tier 0-sensitive - it means its edges stay visible rather than being hidden
+    /// as routine, and ownership is an edge.
+    /// </para>
+    /// <para>
+    /// <b>Schema Admins is accepted only inside the forest's schema, per <c>0109</c>.</b>
+    /// Its separate membership walk produces a scoped answer; adding it here would incorrectly
+    /// accept ownership outside that scope. Its identifier is <see cref="SchemaOwnerRid"/>.
+    /// </para>
+    /// <para>
+    /// <b>Identity-shaped principals are not here.</b> SYSTEM, Enterprise Domain Controllers and
+    /// CREATOR OWNER are accepted owners because of what they are rather than who is inside them -
+    /// nobody is a <i>member</i> of CREATOR OWNER - so they are matched on the identifier by the
+    /// judging layer and never walked.
+    /// </para>
+    /// </remarks>
+    public static readonly IReadOnlySet<int> AcceptedOwnerRids = PrincipalClassificationRegistry.AcceptedOwnerRootRids;
+
+    /// <summary>The forest-root Schema Admins RID, accepted only in the schema under <c>0109</c>.</summary>
+    public const int SchemaOwnerRid = 518;
 
     /// <summary>
     /// The catalogue this product ships.

@@ -171,9 +171,17 @@ public sealed class ObjectOwnershipRuleTests
     /// An owner who is administrative only through group membership is not reported.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>A correction to the predecessor, which recorded this as its own false positive:</b> <i>"An
     /// owner who is privileged only by transitive group membership will still fire a finding."</i>
     /// Reporting a domain administrator as a problem would train an operator to ignore the rule.
+    /// </para>
+    /// <para>
+    /// <b>The fixture says accepted rather than merely protected, and on 2026-09-05 that stopped
+    /// being the same statement.</b> Membership of an operator group also makes a principal
+    /// protected, and under <c>0099</c> that is not an owner the product accepts. The case this
+    /// test is about is membership of the control plane, so the fixture says so directly.
+    /// </para>
     /// </remarks>
     [Fact]
     public void AnOwnerAdministrativeOnlyThroughMembershipIsNotReported()
@@ -182,7 +190,7 @@ public sealed class ObjectOwnershipRuleTests
 
         var verdict = new ObjectOwnedByNonAdministrator().Judge(
             subject,
-            Context(subject, ProtectedGroup, Protection((ProtectedGroup, true))));
+            Context(subject, ProtectedGroup, OwnerProtection(ProtectedGroup, OwnerAcceptance.Accepted)));
 
         Assert.Empty(verdict.Findings);
         Assert.True(verdict.IsComplete);
@@ -376,6 +384,175 @@ public sealed class ObjectOwnershipRuleTests
         Assert.True(verdict.IsComplete);
     }
 
+    // ---- P-140: the rules consume the corrected predicate ----
+
+    /// <summary>
+    /// An operator group outside the control plane, owning an ordinary object, raises SEC-031.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The closure marks it protected, which is true and is not the question.</b> AdminSDHolder
+    /// really does repair Backup Operators, so a real forest hands this rule a
+    /// <c>Protected</c> fact about the owner. <c>0099</c> excludes it from the control plane all
+    /// the same, so its ownership of an object is a control edge worth reporting rather than
+    /// routine administration to be hidden.
+    /// </para>
+    /// <para>
+    /// <b>Downstream of <c>ObjectOwnershipReadingTests</c> and not a duplicate of it.</b> That file
+    /// proves the predicate returns the right outcome; this proves the rule turns that outcome into
+    /// a finding an operator actually sees, at the right severity, under the right identifier.
+    /// A predicate that was fixed while the rule swallowed its answer would pass there and fail
+    /// here.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData("S-1-5-32-548")]
+    [InlineData("S-1-5-32-549")]
+    [InlineData("S-1-5-32-550")]
+    [InlineData("S-1-5-32-551")]
+    [InlineData("S-1-5-32-552")]
+    public void AnOperatorGroupOwningAnOrdinaryObjectIsReported(string ownerSid)
+    {
+        var subject = Container();
+
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject, Context(subject, ownerSid, OwnerProtection(ownerSid, OwnerAcceptance.NotAccepted)));
+
+        var finding = Assert.Single(verdict.Findings);
+        Assert.Equal("SEC-031", finding.RuleId);
+        Assert.Equal(Severity.Low, finding.Severity);
+        Assert.True(verdict.IsComplete);
+    }
+
+    /// <summary>
+    /// A principal that is still in the control plane, owning the same object, is not reported.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control for the row, and it is what stops the fix going too far.</b>
+    /// <c>P-140</c> narrows what counts as an acceptable owner; narrowing it to nothing would put a
+    /// finding on every object in the directory, since most of them are owned by
+    /// <c>BUILTIN\Administrators</c> or <c>Domain Admins</c> by default. That failure would be far
+    /// louder than the one being fixed, and no test of the operator groups alone would catch it.
+    /// </remarks>
+    [Theory]
+    [InlineData(Administrators)]
+    [InlineData(DomainAdmins)]
+    public void AControlPlanePrincipalOwningAnOrdinaryObjectIsNotReported(string ownerSid)
+    {
+        var subject = Container();
+
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject, Context(subject, ownerSid, OwnerProtection(ownerSid, OwnerAcceptance.Accepted)));
+
+        Assert.Empty(verdict.Findings);
+        Assert.True(verdict.IsComplete);
+    }
+
+    /// <summary>
+    /// Ownership and the control plane give compatible answers about the same security identifier.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The condition <c>P-140</c> exists to remove.</b> Two screens answering
+    /// <i>is this principal administrative</i> two ways about one SID sends an operator looking for
+    /// a defect in the product rather than in the directory. An owner the ownership rule stays
+    /// silent about must be a principal <c>0099</c> puts in the control plane, and an owner it
+    /// reports must be one <c>0099</c> leaves out.
+    /// </para>
+    /// <para>
+    /// <b>What this does not cover, stated because the check would otherwise read as more than it
+    /// is.</b> Control-edge expectedness is not built - <c>ControlEdge</c> does not exist and stage
+    /// 6 has not started - so the control-plane side of this comparison is the set written here
+    /// from <c>0099</c> rather than the catalogue the product will actually consult. That makes
+    /// this an internal agreement anchored to a set this repository wrote, which is the
+    /// <c>F-S44-2</c> shape and is not evidence that either side matches Microsoft. It is retargeted
+    /// at the real catalogue when stage 6 lands; the row carrying that is on the punch list.
+    /// </para>
+    /// <para>
+    /// <b>Deliberately restricted to the entries whose authority scope is unrestricted.</b> Schema
+    /// Admins is in the control plane for the schema partition only, so whether it is an acceptable
+    /// owner depends on which object it owns - a question <c>P-140</c> does not settle and this
+    /// test must not pretend to.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void OwnershipAndTheControlPlaneClassifyTheSameIdentifierCompatibly()
+    {
+        // 0099, the entries with an unrestricted authority scope within their own domain, plus
+        // Enterprise Admins which is unrestricted forest-wide.
+        string[] inTheControlPlane =
+        [
+            Administrators,
+            DomainAdmins,
+            "S-1-5-21-1004336348-1177238915-682003330-500",
+            "S-1-5-21-1004336348-1177238915-682003330-519",
+        ];
+
+        // 0099, "everything else is out, and out does not mean safe".
+        string[] outsideTheControlPlane =
+        [
+            "S-1-5-32-548", "S-1-5-32-549", "S-1-5-32-550", "S-1-5-32-551", "S-1-5-32-552",
+        ];
+
+        foreach (var sid in inTheControlPlane.Concat(outsideTheControlPlane))
+        {
+            var classification = PrincipalClassificationRegistry.For(sid);
+            var controlPlane = classification.ControlPlaneScope is PrincipalAuthorityScope.Domain or PrincipalAuthorityScope.Forest;
+            Assert.Equal(inTheControlPlane.Contains(sid), controlPlane);
+            var subject = Container();
+            var verdict = new ObjectOwnedByNonAdministrator().Judge(
+                subject, Context(subject, sid, OwnerProtection(sid, AcceptanceFromCatalogue(sid))));
+            Assert.Equal(controlPlane ? 0 : 1, verdict.Findings.Count);
+        }
+    }
+
+    /// <summary>
+    /// The acceptance answer the shipped catalogue gives for one identifier.
+    /// </summary>
+    /// <remarks>
+    /// <b>Taken from <c>ProtectedGroupCatalogue</c> rather than written into the test, which is
+    /// what stops this checking its own homework.</b> If the accepted set were widened to include
+    /// an operator group, the input to this test would flip to <c>Accepted</c>, the rule would fall
+    /// silent, and the assertion against the <c>0099</c> list above would fail - which is the
+    /// change to the product this test exists to notice. Handing the acceptance in directly would
+    /// only prove that a fixture value reaches the rule.
+    /// </remarks>
+    private static OwnerAcceptance AcceptanceFromCatalogue(string sid)
+    {
+        var separator = sid.LastIndexOf('-');
+        return separator > 0
+            && int.TryParse(sid[(separator + 1)..], out var rid)
+            && ProtectedGroupCatalogue.AcceptedOwnerRids.Contains(rid)
+                ? OwnerAcceptance.Accepted
+                : OwnerAcceptance.NotAccepted;
+    }
+
+    [Theory]
+    [InlineData(true, false, 0, 0)]
+    [InlineData(false, false, 1, 0)]
+    [InlineData(false, true, 0, 1)]
+    public void SchemaAcceptanceReachesBothOwnershipRulesWithoutWideningTheirScope(
+        bool inSchema, bool protectedTarget, int lowFindings, int highFindings)
+    {
+        const string ownerSid = "S-1-5-21-1004336348-1177238915-682003330-518";
+        var subject = protectedTarget ? Group() : Container();
+        if (inSchema)
+            subject = subject with { DistinguishedName = "CN=Example,CN=Schema,CN=Configuration,"
+                + string.Join(',', Forest.Split('.').Select(label => "DC=" + label)) };
+        var protection = OwnerProtection(ownerSid, OwnerAcceptance.SchemaOnly);
+        protection = protection with
+        {
+            Principals = [.. protection.Principals, .. ProtectionFor(subject, protectedTarget).Principals],
+        };
+        var context = Context(subject, ownerSid, protection) with { ForestFqdn = Forest };
+        var low = new ObjectOwnedByNonAdministrator().Judge(subject, context);
+        var high = new ProtectedObjectOwnedByNonAdministrator().Judge(subject, context);
+        Assert.True(low.IsComplete);
+        Assert.True(high.IsComplete);
+        Assert.Equal(lowFindings, low.Findings.Count);
+        Assert.Equal(highFindings, high.Findings.Count);
+    }
+
     // ---- fixtures ----
 
     private static RuleVerdict JudgeLow(
@@ -440,7 +617,10 @@ public sealed class ObjectOwnershipRuleTests
                         : ProtectedPrincipalEvaluation.NotProtected,
                     null,
                     ProtectionUnknownReason.None,
-                    [])),
+                    [],
+                    // Says nothing about ownership. This fixture answers the subject-side question
+                    // - is the judged object itself protected - and acceptance is about owners.
+                    OwnerAcceptance.NotAccepted)),
             ],
             ProtectionUnknownReason.None);
 
@@ -452,6 +632,37 @@ public sealed class ObjectOwnershipRuleTests
         SidOf(subject) is { } sid
             ? Protection((sid, isProtected))
             : Protection();
+
+    /// <summary>
+    /// A closure that answers about an <i>owner</i>, saying protection and acceptance separately.
+    /// </summary>
+    /// <remarks>
+    /// <b>Two answers because they are two questions, which is <c>0101</c> in a test fixture.</b>
+    /// Every principal here is <c>Protected</c> - AdminSDHolder really does repair all of them,
+    /// operator groups included - and only some are accepted owners. A fixture that derived one
+    /// from the other could not express the case <c>P-140</c> is about, and these tests would pass
+    /// against the defect they exist to catch.
+    /// Built-in owners carry the object's domain: without that scope the rule's lookup misses
+    /// this fact, so changing its acceptance would change nothing the test observes.
+    /// </remarks>
+    private static StoredProtectedPrincipalDerivation OwnerProtection(
+        string ownerSid, OwnerAcceptance acceptance) =>
+        new(
+            1,
+            Mask(),
+            [],
+            [
+                new StoredProtectedPrincipalFact(
+                    1,
+                    ownerSid,
+                    Sid.IsBuiltinDomain(ownerSid) ? Forest : null,
+                    ProtectedPrincipalEvaluation.Protected,
+                    null,
+                    ProtectionUnknownReason.None,
+                    [],
+                    acceptance),
+            ],
+            ProtectionUnknownReason.None);
 
     private static StoredProtectedPrincipalDerivation IncompleteProtection() =>
         new(1, Mask(), [], [], ProtectionUnknownReason.MembershipEvidenceIncomplete);

@@ -289,8 +289,11 @@ public sealed class DerivationReadingTests
     /// their members - so a reader that shrugged at the version would report one domain's local
     /// Administrators as containing another's Domain Admins.
     /// </remarks>
-    [Fact]
-    public void Stage2a_AStoreFromAnotherSchemaIsRefused()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(8)]
+    [InlineData(9)]
+    public void Stage2a_AStoreFromAnotherSchemaIsRefused(int storedVersion)
     {
         var directory = Derived();
 
@@ -303,7 +306,8 @@ public sealed class DerivationReadingTests
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE derivation SET schema_version = 1";
+            command.CommandText = "UPDATE derivation SET schema_version = $version";
+            command.Parameters.AddWithValue("$version", storedVersion);
             command.ExecuteNonQuery();
         }
 
@@ -315,6 +319,8 @@ public sealed class DerivationReadingTests
         Assert.False(opened.IsSuccess);
         Assert.Equal("Evidence.DerivationSchemaNotUnderstood", opened.Error!.Code);
         Assert.Contains("without its scope", opened.Error.Description, StringComparison.Ordinal);
+        Assert.Contains($"schema version {storedVersion}", opened.Error.Description, StringComparison.Ordinal);
+        Assert.Contains($"reads version {DerivationSchema.Version}", opened.Error.Description, StringComparison.Ordinal);
     }
 
     /// <summary>

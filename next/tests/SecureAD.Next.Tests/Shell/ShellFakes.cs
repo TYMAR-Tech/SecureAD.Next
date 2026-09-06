@@ -138,6 +138,10 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    public ControlEdgePage ControlEdges { get; set; } = new([], 0, 0, 0, 0, false, false, false, 0);
+    public Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
+        string? holderScope, bool includeExpected, long afterId) => Result<ControlEdgePage>.Success(ControlEdges);
+
     public DirectoryTree Tree { get; set; } = new([], []);
 
     public ObjectPage Page { get; set; } = new([], 0, true, null);

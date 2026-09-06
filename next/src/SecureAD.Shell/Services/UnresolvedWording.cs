@@ -83,6 +83,10 @@ internal static class UnresolvedWording
                 "These objects carried no readable security identifier, so they could not be "
                 + "matched against anything.",
 
+            UnresolvedReason.ForestIdentityUnreadable =>
+                "The captured forest could not be identified, so schema-scoped owner acceptance "
+                + "could not be checked. Check the run's recorded forest identity before judging again.",
+
             _ => $"{token} was undecided, and this version has no plainer way to say why.",
         };
     }

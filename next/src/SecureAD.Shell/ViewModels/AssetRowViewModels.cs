@@ -270,6 +270,56 @@ internal sealed class FindingRowViewModel
     /// <summary>What was found, said plainly enough to act on.</summary>
     public string Detail => _finding.Detail;
 
+    public bool HasMembershipEvidence => _finding.Evidence is KerberoastableAccountEvidence;
+
+    public string MembershipCompleteness => _finding.Evidence is KerberoastableAccountEvidence evidence
+        ? evidence.MembershipRoutes.CompletenessDescription : string.Empty;
+
+    public string MembershipDetails
+    {
+        get
+        {
+            if (_finding.Evidence is not KerberoastableAccountEvidence evidence)
+                return string.Empty;
+            var blocks = new List<string>();
+            if (evidence.DirectProtectionName is { } direct)
+                blocks.Add($"Direct protection basis: {direct} (catalogue entry {evidence.DirectProtectionCatalogueEntryId}, version {evidence.ProtectionCatalogueVersion}). Membership changes do not remove this basis.");
+            foreach (var membership in evidence.MembershipRoutes.Memberships)
+            {
+                var lines = new List<string> { "Initial membership: " + MembershipPrincipal(membership.InitialMembership) };
+                foreach (var route in membership.Routes)
+                {
+                    var authorization = route.Authorization switch
+                    {
+                        MembershipRouteAuthorization.SecurityEnabled => "Security-enabled membership chain; this is not an effective-access calculation.",
+                        MembershipRouteAuthorization.DistributionGroup => "Contains a distribution group: this chain does not confer membership-based authorization.",
+                        _ => "Group type was not captured: membership-based authorization is unknown.",
+                    };
+                    var protection = route.EstablishesProtection ? "Protection is established by this chain."
+                        : route.Steps.Any(s => s.IsPrimaryGroup)
+                            ? "Protection through primary-group membership is not established."
+                            : "Protection propagation from this root is not established or is excluded by the forest.";
+                    var chain = string.Join("", route.Steps.Select((step, index) =>
+                        (index == 0 ? string.Empty : step.IsPrimaryGroup ? " --primary group--> " : " --member of--> ")
+                        + MembershipPrincipal(step.Principal)));
+                    lines.Add($"Root: {route.RootName} (catalogue entry {route.CatalogueEntryId})");
+                    lines.Add(chain);
+                    lines.Add(authorization + " " + protection);
+                }
+                blocks.Add(string.Join(Environment.NewLine, lines));
+            }
+            blocks.Add("Supporting chains are grouped by initial membership, not every possible path. They are not a minimum set of removals. Changing a shared group may affect other accounts; removing these memberships does not establish that every other form of privilege is gone.");
+            return string.Join(Environment.NewLine + Environment.NewLine, blocks);
+        }
+    }
+
+    private static string MembershipPrincipal(MembershipRoutePrincipal principal) =>
+        (principal.DistinguishedName is { } dn ? dn + " [" + principal.Sid + "]" : principal.Sid)
+        + (principal.Scope is { } scope ? " (" + scope + ")" : string.Empty);
+
+    private bool EvidenceIsComplete => _finding.Coverage == EvidenceCompleteness.Complete
+        && (_finding.Evidence is not KerberoastableAccountEvidence evidence || evidence.MembershipRoutes.IsComplete);
+
     /// <summary>
     /// Whether the evidence this rests on was complete, in words.
     /// </summary>
@@ -277,7 +327,7 @@ internal sealed class FindingRowViewModel
     /// <b>Said rather than left blank.</b> An empty cell beside a finding reads as though the
     /// question was not worth asking, and the answer here changes what the finding is worth.
     /// </remarks>
-    public string Coverage => _finding.Coverage == EvidenceCompleteness.Complete
+    public string Coverage => EvidenceIsComplete
         ? "Complete"
         : "May be incomplete";
 
@@ -289,7 +339,7 @@ internal sealed class FindingRowViewModel
     /// whole, not whether the finding is serious - severity already says that, and colouring a row
     /// twice for two different things is how a screen comes to mean nothing.
     /// </remarks>
-    public FactState State => _finding.Coverage == EvidenceCompleteness.Complete
+    public FactState State => EvidenceIsComplete
         ? FactState.EstablishedGood
         : FactState.NotEstablished;
 

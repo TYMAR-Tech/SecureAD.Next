@@ -177,6 +177,8 @@ internal sealed partial class ObjectViewModel : ObservableObject
                 new EvidenceSectionViewModel(definition, permissions),
             ObjectSectionCatalog.Findings =>
                 new FindingsSectionViewModel(definition, findings, findingsRefusal),
+            ObjectSectionCatalog.ControlEdges =>
+                new ControlEdgesSectionViewModel(definition),
             ObjectSectionCatalog.OtherValues =>
                 new OtherValuesSectionViewModel(definition),
             _ => new NotBuiltSectionViewModel(definition),

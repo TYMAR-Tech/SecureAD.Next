@@ -21,6 +21,10 @@ param(
     # cannot answer on its own.
     [string] $Explain,
 
+    # Read the persisted initial control slice without re-judging. This is diagnostic measurement,
+    # not acceptance of the unfinished stage-6 catalogue or P-145.
+    [switch] $ControlEdges,
+
     # Where the built assemblies are - the FOLDER holding them, not one of the files. Only needed
     # when this script is not sitting in the repository: on a lab machine, copy the whole build
     # output folder across and either put this script inside it or point -BinPath at it.
@@ -168,7 +172,7 @@ $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SQLitePCLRaw.bat
 # script newer than its assemblies fails silently rather than loudly: a column this script prints
 # but the older type does not have comes out blank, and the run looks like a result rather than a
 # mismatch. That cost a lab round trip on 2026-08-26. Checked here instead.
-$expectedSchema = 2
+$expectedSchema = if ($ControlEdges) { 15 } else { 2 }
 $actualSchema = [SecureAD.Judgement.JudgementSchema]::Version
 
 if ($actualSchema -lt $expectedSchema) {
@@ -189,6 +193,75 @@ $BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
 Push-Location $bin
 
 try {
+    if ($ControlEdges) {
+        if ($Explain) { throw 'Choose -ControlEdges or -Explain, not both.' }
+        $opened = [SecureAD.Judgement.JudgementReader]::Open($BundlePath)
+        if (-not $opened.IsSuccess) { throw $opened.Error.Description }
+        $reader = $opened.Value
+        try {
+            $all = [System.Collections.Generic.List[object]]::new()
+            $after = 0L
+            $supporting = 0L
+            do {
+                $unset = [System.Management.Automation.Language.NullString]::Value
+                $page = $reader.ReadControlEdges($unset, $unset, $unset, $true, $after)
+                if (-not $page.ProductWasDerived) { throw 'The control product was not derived.' }
+                foreach ($edge in $page.Edges) {
+                    if ($edge.IsCounted) { $all.Add($edge) } else { $supporting++ }
+                }
+                $after = $page.LastId
+            } while ($page.HasMore)
+            Write-Output ([SecureAD.Judgement.ControlEdgePage]::SupportedScope)
+            Write-Output "Evidence: $($reader.Description.EvidenceSeal)"
+            Write-Output "Generation: $($reader.Description.GenerationId); derivation: $($reader.Description.DerivationGenerationId)"
+            $path = [SecureAD.Evidence.BundleLayout]::AnalysisGenerationDataPath($BundlePath, [SecureAD.Evidence.AnalysisStoreKind]::Judgement, $reader.Description.GenerationId)
+            $connection = [Microsoft.Data.Sqlite.SqliteConnection]::new("Data Source=$path;Mode=ReadOnly;Pooling=False")
+            try {
+                $connection.Open()
+                $query = $connection.CreateCommand()
+                $query.CommandText = 'SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY type,name'
+                $schema = $query.ExecuteReader()
+                $layout = [System.Text.StringBuilder]::new()
+                try {
+                    while ($schema.Read()) {
+                        for ($column = 0; $column -lt 4; $column++) { $null = $layout.Append($schema.GetString($column).Replace("`r`n", "`n")).Append("`n") }
+                    }
+                } finally { $schema.Dispose(); $query.Dispose() }
+                Write-Output ('Stored layout SHA256: ' + [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($layout.ToString()))))
+            } finally { $connection.Dispose() }
+            Write-Output "Counted primitives: $($all.Count); uncounted supporting compounds: $supporting"
+            Write-Output "Expected: $($page.ExpectedCount); unexpected: $($page.UnexpectedCount); expectedness unknown: $($page.UnknownCount)"
+            Write-Output "Unanswered objects: $($page.UnansweredObjects); capture complete: $($page.CaptureIsComplete)"
+            foreach ($property in @('EvaluationState', 'Uncertainty', 'ExpectednessReason', 'Capability', 'TargetClass', 'HolderSid')) {
+                Write-Output "Grouped by $property (top 20):"
+                $all | Group-Object -Property $property | Sort-Object @{Expression='Count';Descending=$true},Name |
+                    Select-Object -First 20 Count,Name | Format-Table -AutoSize | Out-String -Width 220 | Write-Output
+            }
+            Write-Output 'Unexpected contributors:'
+            $all | Where-Object Expectedness -eq Unexpected | Group-Object HolderSid,HolderName,TargetClass |
+                Sort-Object @{Expression='Count';Descending=$true},Name | Select-Object -First 30 Count,Name |
+                Format-Table -AutoSize | Out-String -Width 220 | Write-Output
+            foreach ($sid in @('S-1-5-18','S-1-5-32-548','S-1-5-32-549','S-1-5-32-550','S-1-5-32-551','S-1-5-32-552')) {
+                $held = @($all | Where-Object HolderSid -eq $sid)
+                Write-Output "$sid : $($held.Count) counted primitives"
+            }
+            $evidence = [SecureAD.Evidence.BundleReader]::Open($BundlePath)
+            if (-not $evidence.IsSuccess) { throw $evidence.Error.Description }
+            try {
+                foreach ($subject in $evidence.Value.StreamObjects().Objects) {
+                    if ($subject.Find('objectClass').Values.Text -notcontains 'computer') { continue }
+                    if (-not [SecureAD.Evidence.Findings.DomainControllerSignals]::Of($subject).IsDomainController) { continue }
+                    $value = $subject.Find('objectSid').OnlyValue
+                    $sid = if ($value.Bytes) { [System.Security.Principal.SecurityIdentifier]::new([byte[]]$value.Bytes, 0).Value } else { $value.Text }
+                    $held = @($all | Where-Object HolderSid -eq $sid)
+                    Write-Output "DC $($subject.DistinguishedName) [$sid]: $($held.Count) counted primitives"
+                }
+            } finally { $evidence.Value.Dispose() }
+            Write-Output 'P-145: NOT PASSED. Initial-slice diagnostics only; remaining capabilities, member expansion and lab gates are outstanding.'
+        } finally { $reader.Dispose() }
+        return
+    }
+
     # The product's own list, rather than one written out here.
     #
     # This script used to construct two rules by name, which went stale twice: once when IRule moved
@@ -298,8 +371,17 @@ try {
             }
 
             # Built in one call rather than with a `with` expression, which PowerShell cannot use.
+            $members = $null
+            if ($openedDerivation.IsSuccess -and $openedDerivation.Value.NestingWasDerived()) {
+                $members = [Func[string, string, SecureAD.Derivation.PrincipalExpansion]] {
+                    param($sid, $scope) $openedDerivation.Value.MembersOf($sid, $scope) }
+            }
+            $names = [Func[string, string]] { param($sid) $bundle.PrincipalNameFor($sid) }
             $context = [SecureAD.Judgement.JudgingContext]::new(
-                $asOf, $protectedPrincipals, $permissions, $attributeVisibility)
+                $asOf, $protectedPrincipals, $permissions, $attributeVisibility,
+                $members, $bundle.ReadSchemaGuids(), $names, $null,
+                [SecureAD.Kernel.Security.DirectoryHeuristics]::OwnerImplicitRights($bundle.ReadForestHeuristics()))
+            $context.ForestFqdn = $bundle.Description.ForestFqdn
 
             foreach ($rule in $rules) {
                 $definition = $rule.Definition
@@ -315,7 +397,8 @@ try {
                 # that had only the visibility.
                 $missing = @($definition.RequiredDerivedFacts | Where-Object {
                     ($_ -eq 'ProtectedPrincipals' -and $null -eq $context.ProtectedPrincipals) -or
-                    ($_ -eq 'AttributeVisibility' -and $null -eq $context.AttributeVisibility) })
+                    ($_ -eq 'AttributeVisibility' -and $null -eq $context.AttributeVisibility) -or
+                    ($_ -eq 'PrincipalExpansion' -and $null -eq $context.MembersOfPrincipal) })
 
                 if ($missing.Count -gt 0) {
                     Write-Host ("  {0,-10} needs {1}, which this bundle has not derived" -f

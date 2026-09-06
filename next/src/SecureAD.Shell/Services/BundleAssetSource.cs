@@ -26,6 +26,24 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal sealed class BundleAssetSource : IAssetSource, IDisposable
 {
+    /// <inheritdoc/>
+    public Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
+        string? holderScope, bool includeExpected, long afterId)
+    {
+        var opened = JudgementReader.Open(bundleDirectory);
+        if (!opened.IsSuccess) return Result<ControlEdgePage>.Failure(opened.Error);
+        using var reader = opened.Value;
+        try
+        {
+            return Result<ControlEdgePage>.Success(reader.ReadControlEdges(target, holderSid, holderScope, includeExpected, afterId));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            return Result<ControlEdgePage>.Failure(AuditError.Create(ErrorCategory.Shell, "ControlEdgesUnreadable",
+                ErrorSeverity.Failed, "Stored control edges could not be read: " + error.Message, bundleDirectory));
+        }
+    }
+
     private BundleReader? _open;
     private string? _openPath;
 

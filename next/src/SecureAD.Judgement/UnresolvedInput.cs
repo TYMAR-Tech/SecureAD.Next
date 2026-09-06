@@ -62,6 +62,9 @@ public enum UnresolvedReason
 
     /// <summary>The object carried no usable SID, so it could not be matched against anything.</summary>
     IdentityUnreadable,
+
+    /// <summary>The captured forest identity is missing, so schema-scoped ownership cannot be judged.</summary>
+    ForestIdentityUnreadable,
 }
 
 /// <summary>

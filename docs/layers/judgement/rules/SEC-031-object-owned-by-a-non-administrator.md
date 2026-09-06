@@ -1,7 +1,7 @@
 # SEC-031 — an object is owned by somebody who is not an administrator
 
-> **Status: specified, not built.** This document states what the rule must do and why. Nothing in
-> it is authoritative until a decision record says so; read it as argument. Written 2026-09-04.
+> **Status: built.** Owner acceptance is governed by decisions 0107 and 0109. Rule version 2
+> adds schema-scoped acceptance, implemented and measured 2026-09-05.
 
 ## For a reviewer
 
@@ -85,7 +85,13 @@ for this rule.
 | `Enterprise Admins` (RID 519) | Forest-wide administration |
 | `Administrator` (RID 500) | The built-in account |
 | `SYSTEM` (`S-1-5-18`), `Enterprise Domain Controllers` (`S-1-5-9`), `Creator Owner` (`S-1-3-0`) | Platform identities, not people |
-| Other `BUILTIN` operator groups (`S-1-5-32-548`…`552`) | **Treated as administrative for the purpose of ownership, which is narrower than calling them administrators.** `Account Operators`, `Backup Operators`, `Print Operators` and `Server Operators` carry very different risk profiles, and plenty of organisations do not regard them as full administrative authorities. What is being said here is only that finding one of them as an owner is not the condition this rule looks for. Whether they should hold that standing at all is a different question and a different rule. |
+| Forest-root Schema Admins and its members | Accepted only on the schema partition root and descendants of that same forest, under [0109](../../../decisions/0109-schema-admins-ownership-is-accepted-only-in-the-schema.md); ownership elsewhere remains reportable unless independently accepted. |
+
+**The five operator groups are not accepted owners**, under `0107`. The earlier table said the
+opposite and did not describe the implemented rule. Owner acceptance is derived separately from
+AdminSDHolder protection; Schema Admins membership does not erase a broader accepted membership.
+Distribution nesting alone does not establish schema authority. Missing forest identity or uncertain
+membership cannot silently grant the schema exception.
 
 **An owner that is administrative only through group membership is also expected, and this is a
 correction to the predecessor.** The predecessor's `SEC-031` decided administrativeness from the
@@ -195,8 +201,9 @@ a level that describes most of the directory has stopped ranking anything.
 finding is worth having precisely because nothing else reports it.
 
 **The serious case lives in [`SEC-032`](SEC-032-protected-object-owned-by-a-non-administrator.md).**
-Owning an object that `AdminSDHolder` protects is a route to privilege rather than latent authority
-over one object, and that is a different sentence deserving its own card and `High`. Splitting a rule
+`SEC-032` reports protected-object ownership at `Medium`. Its earlier `High` severity assumed durable
+exposure; the owner changed that after the `F-S45-7` lab observation of ownership being restored.
+Its own card states the current reasoning and the timing limitation. Splitting a rule
 when the severity argument splits is the established pattern here: `P-92` collapsed five path rules
 into one on that reasoning, and `P-96` proposes splitting `SEC-071` by feasibility for the same
 reason.
@@ -227,7 +234,9 @@ already admits.
 | The object's ACEs | To find an `OWNER RIGHTS` entry |
 | `dSHeuristics` character 29 | To find whether the forest has blocked implicit owner rights, per [§5](#5-when-the-owner-does-not-actually-keep-the-power-this-rule-reports) |
 | The object's `objectClass` | Because the block above applies only to computer objects |
-| `DerivationReader.MembersOf` | To decide whether the owner is administrative by membership |
+| Persisted `OwnerAcceptance` | Whether membership establishes unrestricted or schema-scoped acceptance, independently of protection |
+| `JudgingContext.ForestFqdn` | Captured forest identity for the schema root and descendant boundary; never the object's domain as a substitute |
+| `DerivationReader.MembersOf` | To determine whether the owning principal still exists and whether its expansion was complete |
 | `ProtectedPrincipalClosure` | To stay silent on objects `SEC-032` covers |
 
 **It reads `ProtectedPrincipalClosure` again, and the reason is the split.** An earlier draft dropped
