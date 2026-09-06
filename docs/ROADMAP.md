@@ -810,7 +810,12 @@ unknown; this is not member expansion or a claim that every group is privileged.
 has automated coverage and an [isolated offline lab comparison](layers/judgement/the-judgement-store.md#schema-16-membership-slice--offline-lab-comparison-2026-09-06):
 all old primitives are unchanged, with 10,776 general membership writes and 10,761 unknown
 self-membership candidates added. There were no self-membership-only cases in that capture, so
-the requester gate remains open. Catalogue 2 and the corrected schema-15 laboratory baseline are
+that comparison did not measure the requester behavior. A subsequent
+[isolated live measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06)
+passed twelve self/other-account and no-grant checks for direct and group-held Self-Membership,
+then verified fresh captured evidence and both real presentation directions. Concrete requester
+analysis and member expansion remain unimplemented; the requester acceptance gate remains open.
+Catalogue 2 and the corrected schema-15 laboratory baseline are
 unchanged; old judgements require re-judging to obtain the wider slice.
 
 Ownership-derived control, credential and replication capabilities,

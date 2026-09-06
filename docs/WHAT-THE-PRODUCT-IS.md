@@ -74,7 +74,10 @@ records the implementation and before/after lab checks. P-145 now has initial-sl
 not an acceptance pass: the remaining capabilities, member expansion, Tier 0-target review and
 claim-specific laboratory gates remain outstanding. The
 [membership slice](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
-has automated coverage and an isolated offline lab comparison, not live requester acceptance.
+has automated coverage, an isolated offline comparison and an
+[isolated live Self-Membership measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06).
+The live direct/group-held tests and fresh readback passed; concrete requester analysis and member
+expansion remain unimplemented, so this is not end-to-end requester acceptance.
 The comparison preserved all 65,084 existing primitives and added 10,776 established general
 membership writes plus 10,761 unknown self-membership candidates. Re-judge schema-15 results to
 obtain it; this does not accept the whole stage-6 proposal or replace the historical baseline.

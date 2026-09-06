@@ -284,6 +284,83 @@ modified or reused for writes. P-145 and the remaining stage-6 laboratory gates 
 completed permission/Tier 0 session briefs are historical and the stage-6 specification remains
 a proposal except where accepted decisions govern it.
 
+### Isolated live Self-Membership measurement — 2026-09-06
+
+**AD behavior measured; requester analysis and member expansion still unimplemented.**
+`next/tools/Test-LabSelfMembership.ps1` created fresh non-privileged objects under
+`OU=SecureAD-SelfMembership-saSM6d575afc,DC=ba,DC=ad,DC=lab` on `BADC.ba.ad.lab`.
+The two target groups have protected DACLs: Domain Admins and SYSTEM retain administrative access,
+Authenticated Users has read access, and the test trustee has only object-specific SELF (`0x08`)
+for the Self-Membership GUID. There is no general membership-write grant for either test trustee.
+The direct trustee is one temporary user; the other trustee is a temporary global security group
+containing a different temporary user. Neither target nor grant-holding group is privileged.
+
+Each measured modify used a fresh, explicitly authenticated LDAP connection with signing and
+sealing as the temporary caller, not the administrator. Binding errors cannot count as refused
+modifies. Membership was read before and after each request; deletion tests started with the
+member present. Administrator setup also demonstrated that the other account was a legal member
+value. Twelve assertions passed:
+
+| Grant | Caller adds/removes itself | Caller adds/removes another account |
+|---|---|---|
+| Direct Self-Membership | Both succeeded, LDAP 0; membership changed exactly as requested | Both refused, LDAP 50; membership unchanged |
+| Self-Membership through one global security group | Both succeeded, LDAP 0; membership changed exactly as requested | Both refused, LDAP 50; membership unchanged |
+| No-grant control, tested with both callers | All four operations refused, LDAP 50; membership unchanged | Not measured on this control |
+
+**Fresh evidence and readback.** The CLI captured all three domains into
+`ad.lab-20260906-053214`, containing 8,407 objects, including the eight objects in the successful
+test OU and sixteen retained objects from incomplete setup attempts. Evidence SHA-256:
+`137FF0CE603D5CC6463C76D1FA0432245A57C2FC1FF48481BDDDA9C6A8B8DA41`.
+Derivation generation: `9059ced8-4300-431f-a5ce-e959d3e4d15a`; judgement generation:
+`b3ba397d-3a48-43dc-bec5-2b48302be4dc`. Judging remains `CompletedDegraded`: 27 findings,
+with SEC-031 and SEC-032 each indeterminate on four objects. This is not a complete all-rule pass.
+
+The read-only comparison under `next/artifacts/self-membership-live-20260906-0527/` verifies
+the successful run's object GUIDs, disabled users, grant-group membership and two exact SELF-only
+grants. Raw captured ACE ordinals, trustees, masks and GUIDs match their stored supporting entries.
+The live recorder uses `ActiveDirectorySecurity`, which normalizes entry order; the same
+representation of captured bytes matches that live DACL. Raw ordering is checked separately with
+`RawSecurityDescriptor`, not silently compared with the normalized display.
+
+Both named holders have exactly one membership candidate on their respective targets:
+`CanAddSelfToGroup`, permission precondition `Established`, operation `Unknown`, and
+`AddedMemberSid == RequesterSid: Unknown`. Neither has general membership control. Both actual
+object-first and holder-first reader/presentation paths return identical evidence and retain the
+own-account/requester limitation. The grant group's member has no expanded edge, and the view
+states that it is not a member expansion. No-grant candidates are absent. Altered-mask and
+missing-representative negative controls were detected. **These are programmatic checks of the
+real presentation classes, not a visual GUI inspection.**
+
+**Retention and cleanup.** The owner chose to retain the objects. All nine temporary users across
+the three attempts were disabled; passwords were never persisted. Each attempt has its own
+`live-results.json` manifest, with GUIDs and directory names:
+
+| Artifact subfolder | Retained OU under `DC=ba,DC=ad,DC=lab` | Outcome |
+|---|---|---|
+| `live` | `SecureAD-SelfMembership-saSMf2f33e85` | Incomplete: ADSI property adapter intercepted `Options`; corrected with `psbase` before retry |
+| `live-retry` | `SecureAD-SelfMembership-saSM2f44e696` | Incomplete: built-in `measure` alias intercepted the helper; renamed before retry |
+| `live-final` | `SecureAD-SelfMembership-saSM6d575afc` | All twelve live assertions passed |
+
+Each OU contains users named with its `saSM` tag and suffixes `-D`, `-G`, `-O`, plus groups with
+suffixes `-DirectTarget`, `-GroupTarget`, `-GrantHolders`, `-NoGrant`. The two setup findings are
+closed harness defects, not failed authorization measurements. Their artifacts remain separate.
+To preview cleanup, run `next/tools/Remove-LabSelfMembership.ps1` with `-ManifestPath` pointing to
+one attempt's manifest and `-WhatIf`. Omit `-WhatIf` only when ready to confirm deletion. The
+helper verifies GUIDs, names, ownership markers and the entire OU inventory, refuses extra objects,
+and never recursively deletes or removes evidence files. Cleanup was not executed.
+
+**Final verification:** solution build succeeded; all 3,390 tests passed, with none failed or
+skipped. Nineteen script checks passed, including cleanup previews for all three OUs and refusals
+for wrong scope, an unrecorded child, duplicate identity and reuse of an existing result directory.
+All 238 pre-existing artifact file fingerprints were unchanged (transient SQLite WAL/SHM files
+excluded); the fresh Evidence hash also remained unchanged. Read-only inventory confirmed all
+24 retained objects and all nine users disabled. `validation.json` beside the inspection records
+the checks; no credentials are included.
+
+This measurement supports the own-account-only AD behavior in these two isolated grant shapes.
+It does not implement concrete requester evaluation, accept arbitrary nested/token scenarios,
+classify any target as Tier 0, or close P-145 and the remaining stage-6 acceptance gates.
+
 ### Captured-lab validation of the initial slice — 2026-09-06
 
 **The catalogue-1 baseline, not stage-6 acceptance.** A fresh evidence-only copy of
