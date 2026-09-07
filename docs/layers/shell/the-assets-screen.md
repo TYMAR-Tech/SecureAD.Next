@@ -337,6 +337,27 @@ owns the verification results and remaining gates. The documentation correction 
 the delivered scope; physical laptop/monitor and real-product verification remain outstanding
 normal work. No new presentation, production limit or final acceptance was approved by R8.
 
+### Password-reset permission
+
+The owner approved the capability-first implementation and wording. `CanResetPassword` now appears
+in the existing control table as **Password-reset permission**, with the existing evaluation and
+expectedness columns. Its category is `CredentialExposure`, not permission-list takeover or a
+classification of the target as Tier 0. The evidence states: **Permission evidence only. A password
+reset and subsequent sign-in have not been tested.**
+
+The label/category/caveat use `Resources/ControlEdgePresentation.resx`; the updated partial-scope
+notice comes from Judgement's `Resources/ControlEdgeScope.resx`. The template, table sizing,
+selection, paging and failure/generation safeguards are unchanged. Existing Self-Membership
+requester details remain separate and their production discovery remains inactive. No password
+action or new security finding was added.
+
+`PasswordResetWorkflowTests` exercises real synthetic judging, persistence, both object-screen
+directions, old-engine/category refusal and stale-proof clearing. Additional `ControlEdgeSizingTests`
+cases bind the label and caveat through the unchanged real template at the three existing pane
+sizes, without a visible window. The [judgement-store implementation record](../judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
+owns results and limitations. Re-judge to obtain schema 19 results; real-product visual checks
+remain normal outstanding verification, not implied by these offline checks.
+
 ---
 
 ## Nothing on this screen is ever established-bad

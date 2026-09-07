@@ -22,7 +22,7 @@ preserves primitive derivations beneath aggregates, defines executable expectedn
 rules, clarifies replication scope, and corrects the AdminSDHolder treatment to cover the whole
 security descriptor. Open verification items remain explicitly gated in sections 12 and 13.
 
-**Implementation checkpoint, 2026-09-06.** The initial WRITE_DAC/WRITE_OWNER slice is implemented,
+**Historical implementation checkpoint, 2026-09-06.** The initial WRITE_DAC/WRITE_OWNER slice was implemented,
 stored and shown in object-first and named-holder-first views. Its owner-to-DACL supporting compound
 remains unknown and uncounted. Catalogue version 2 corrects P-150's BUILTIN domain scope; judgement
 schema 15 stores the product. This does not implement membership changes, credential or replication
@@ -31,12 +31,22 @@ The [judgement-store document](../layers/judgement/the-judgement-store.md#p-150-
 records the code boundary and measured lab comparison. P-145 and the claim-specific gates below
 remain open. The remaining sections are still a proposal except where an accepted decision is cited.
 
+**Current bounded implementation:** judgement schema **19**, control engine **3**, retains that
+initial slice and the later membership/requester products, and adds the explicitly approved
+`CanResetPassword` capability as `CredentialExposure`. The existing screen shows password-reset
+permission evidence, not a tested reset or sign-in. Automatic Self-Membership discovery remains
+inactive in both hosts without an approved budget. Other credential capabilities, replication,
+existing-owner control, full-control aggregation and effective member expansion remain unfinished.
+The [implementation record](../layers/judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
+owns behavior and validation. Approval of this bounded slice does not accept the entire proposal
+or close P-145.
+
 ---
 
 ## 1. What already exists, verified against the code
 
 Not from the roadmap, and not from the punch list. Originally checked on 2026-09-05; the control-edge
-and schema entries below were refreshed against the implemented slice on 2026-09-06.
+and schema entries below are refreshed for the approved password-reset slice.
 
 | What | Where | What it does |
 |---|---|---|
@@ -45,8 +55,8 @@ and schema entries below were refreshed against the implemented slice on 2026-09
 | `BroadPrincipalCanTakeOverObject` (`SEC-060`) | `next/src/SecureAD.Judgement/` | Reports that a principal broad in every organisation can take over an object, conditioning `WriteOwner` on whether the owner's implicit rights survive. |
 | `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 2 and registered in `RuleCatalogue.All`; their shared owner predicate includes `0109`'s schema-only acceptance. |
 | `ObjectTakeoverEvidence`, `ObjectOwnershipEvidence` | `next/src/SecureAD.Evidence/Findings/` | Typed evidence carriers, each with an `IsComplete` voucher. |
-| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 15. Finding and typed evidence tables, persisted membership routes, and the initial control product, object coverage, edges, ACEs and preconditions. |
-| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | The bounded WRITE_DAC/WRITE_OWNER slice and its unknown, uncounted supporting ownership compound, written by `JudgingRun` and read through `JudgementReader`. |
+| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 19. Findings, membership routes, bounded control evidence and separately stored requester assessments/discovery coverage. |
+| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership and password-reset permission slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 3. |
 | `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
 | **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
 
@@ -585,10 +595,11 @@ missed, so its absence is never read as reassurance.
 
 ## 9. Where the edges are stored
 
-**In the judgement store, as a typed table beside the findings, at a new schema version.**
-`JudgementSchema.Version` is 13 today; stage 6 takes it to 14.
+**In the judgement store beside the findings.** Current `JudgementSchema.Version` is 19. The
+implemented bounded slices use the existing control product/object/edge/ACE/precondition tables
+described in the judgement-store document; they do not implement all the proposed tables below.
 
-Four tables:
+The full-stage design proposes four tables:
 
 - `control_edge` - one row per counted edge: holder SID, holder name, object GUID, object DN,
   capability name, edge class, feasibility, confidence, evaluation state, expectedness, expectedness

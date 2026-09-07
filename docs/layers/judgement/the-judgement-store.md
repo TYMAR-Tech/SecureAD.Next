@@ -185,7 +185,8 @@ protected account and an unresolved membership elsewhere in the captured graph.
 
 ### Initial control-edge product — schema 15
 
-**Historical baseline; the current product is schema 16, described below.**
+**Historical baseline; current schema 19 also includes the later membership, requester and
+password-reset products described below.**
 
 `JudgingRun` now calls `ControlEdgeDeriver` for each streamed object and persists its result through
 `JudgementWriter`. `ControlEdgeStorage` records product completion, per-object descriptor coverage,
@@ -200,7 +201,8 @@ stored product. The object screen defaults to hiding expected edges, states thei
 coverage and evidence, and refuses to mix generations while paging.
 
 This was a started slice, not completed stage 6. Ownership-derived control, membership changes,
-credentials, replication, full-control aggregation and effective member expansion are not derived.
+credentials, replication, full-control aggregation and effective member expansion were not derived
+by that initial slice.
 Reachability remains unbuilt. The end-to-end witness is
 `JudgingEndToEndTests.SealedDescriptorProducesStoredControlEdgesThroughTheRealCoordinator`;
 automated tests do not discharge the stage's claim-specific laboratory gates or P-145.
@@ -566,7 +568,7 @@ processing budget or host composition, and includes no new commit or push.
 
 | Question | Verified current state | What it does not establish |
 |---|---|---|
-| Is concrete requester analysis implemented? | Yes. The schema-17 assessment is retained in current schema 18; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
+| Is concrete requester analysis implemented? | Yes. The schema-17 assessment and schema-18 discovery coverage are retained in current schema 19; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
 | Does normal judging automatically produce requester answers? | Not with the shipping configuration. `App.xaml.cs` and CLI `Main` pass a null discovery budget; both hosts reach shared judging and report that no scan was scheduled. | That nobody is authorized, that discovery is unimplemented, or that a numerical budget has been approved. |
 | Does configured automatic discovery reach the hosts? | Synthetic test budgets reach the real Shell post-capture and both CLI judging paths, as covered by `SelfMembershipDiscoveryTests`. | Production enablement or a recommended budget; test limits are fixtures only. |
 | Can stored answers reach the actual object screen? | Yes. `BundleAssetSource` and `AssetsViewModel` read the same persisted answers in target-first and requester-first views, including selected proof. | A visible-window or physical laptop/monitor acceptance result. |
@@ -1426,6 +1428,130 @@ seconds. The final harness preserves date strings and refuses a reference time t
 round-trip exactly. A catalogue-namespace typo stopped an earlier harness attempt before judging;
 a later file-count alarm was JSON-array handling, with all twelve original files independently
 confirmed unchanged. These were corrected harness defects, not product or evidence changes.
+
+---
+
+## Password-reset control — bounded implementation preparation
+
+**Requirement already documented; bounded implementation and wording approved.** The owner selected
+"Approve the capability-first implementation and wording" after reviewing the recommendation below.
+The owner's "begin" follows his clarification that the Stage 6 documentation is for this build.
+`CanResetPassword` is in the [current-build capability catalogue](../../next/SPEC-stage-6-control-edges.md#5-the-edge-catalogue-for-stage-6)
+and the [judgement-half capability contract](../specs/JUDGEMENT-HALF.md#capability-is-the-unit-everything-above-this-layer-consumes).
+The approved implementation maps that existing requirement to code; it does not reopen the requirement or
+claim that the predecessor SEC-003 implementation is this build's design. Accepted decisions
+0097–0101 and 0110 govern counting, expectedness and the `CredentialExposure` category.
+
+### Implemented path
+
+| Code | Delivered behavior |
+|---|---|
+| `SchemaGuidCatalog` and `BundleReader.ReadPermissions` | The Reset Password GUID is already known, and the real reader already expands generic rights. No new password attribute, capture pass or directory access is needed. |
+| `EffectiveAccessCalculator.Over` | Reuses its ordered named-trustee calculation after projecting the relevant reset operation. It is not a full requester-token evaluator. |
+| `ControlEdgeDeriver` | Evaluates password reset alongside descriptor/membership operations. `AddScopedEdges` reuses the ordered operation projection while `OperationScope` distinguishes extended rights from membership/property scopes. Original ACEs, target identity, coverage and uncertainty are retained. |
+| `JudgingRun.Judge` | Its unchanged shared object stream calls the extended control derivation during ordinary Shell/CLI judging, independently of the inactive Self-Membership discovery budget. |
+| `ControlCapability`, `ControlEdge.EdgeClass`, `ControlEdgeStorage` | Store `CanResetPassword` as `CredentialExposure` in the existing tables and read it in both directions. `PasswordResetScopeNotEvaluated` identifies unresolved reset scope. |
+| `ControlEdgesSectionViewModel` | Uses the approved resource-backed wording and caveat in the unchanged control table. Filters, counts, generation checks, evidence expansion and R6/R7 sizing are retained. |
+
+### Approved and implemented bounded semantics
+
+- Evaluate the **Reset Password** control-access right, `0x100` scoped to
+  `00299570-246d-11d0-a768-00aa006e0529`, including unscoped All Extended Rights and expanded
+  Generic All. A Change Password grant, Write Property or Generic Write alone is not this right.
+  A property-set membership must not turn a different extended right into Reset Password.
+- Match the captured account class chain: user, computer, inetOrgPerson and managed-service-account
+  classes covered by the documented right. Do not restrict the feature to ordinary user accounts
+  merely because the first fixture is a user. Missing class evidence retains uncertainty; known
+  non-account objects do not acquire password-reset capabilities. Managed-account operation rules
+  are not converted into a promise that a password reset or subsequent logon would succeed.
+- Combine applicable broad and reset-specific entries in captured order for the same requested
+  operation. A broad allow cannot escape a specific deny by being evaluated separately. Ignore
+  inherit-only entries for the current target; retain the original entries as proof.
+- Keep the existing bounded named-holder model. Unresolved cross-trustee deny applicability,
+  conditional/unsupported entries, missing scope or incomplete descriptor evidence must not become
+  an established grant or a clean absence. Preserve NULL-DACL, empty-DACL and unread-DACL distinctions.
+- Count one holder/target/capability, never one per group member or supporting ACE. No general member
+  expansion is introduced. Reuse current authority/capability-scope policy, including 0100's
+  directly evidenced SYSTEM grants; do not copy SEC-003's predecessor administrator exclusions.
+  Expectedness, target Tier 0 classification and operation success remain separate questions.
+
+Microsoft's [Reset Password right](https://learn.microsoft.com/windows/win32/adschema/r-user-force-change-password)
+supplies the fixed right identity and applicable account classes. Its
+[password operation description](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/change-windows-active-directory-user-password)
+distinguishes an administrative reset from a change using the old password. These are sources for
+offline analysis, not authorization to perform either operation.
+
+### Storage, presentation and validation
+
+**Versioning:** judgement schema **19** and control engine **3**, without changing the Evidence
+or Derivation schema. The new version records the larger evaluated capability set, even though the
+existing tables can store the additional capability. Re-judge existing sealed evidence; do not
+relabel historical generations, reinterpret an older missing capability as an evaluated negative,
+or modify frozen results. Schema-18 stores are refused rather than presented as having evaluated
+password reset. An unsupported control engine yields a not-derived control product; category
+contradictions produce a read failure. Both cases clear previously selected screen evidence.
+
+**Presentation:** keep the existing table, columns, sizing and evidence expander. Use the neutral
+capability label **"Password-reset permission"**, with the existing Established/Unknown evaluation
+column carrying the answer. The supporting evidence states: **"Permission evidence only.
+A password reset and subsequent sign-in have not been tested."** Update the partial-capability
+scope notice to include password reset while still naming key-credential control, replication,
+ownership-derived control, full-control aggregation and member expansion as unfinished. New wording
+is resource-backed in `SecureAD.Shell/Resources/ControlEdgePresentation.resx` and
+`SecureAD.Judgement/Resources/ControlEdgeScope.resx`. `ControlEdgePage.SupportedScope` is now a
+resource-backed static property instead of a literal constant; its sole production consumer remains
+the Shell section. Explicit owner approval preceded the edits; no XAML layout or reset action changed.
+
+**Verification coverage:** focused positive and negative cases cover direct/group/SELF holders, applicable
+account classes, broad versus specific scope, both deny orders, generic-right expansion through the
+real permission reader, unrelated Change Password/property rights, unknown/malformed scope,
+conditional entries, cross-trustee uncertainty and NULL/empty/unread descriptors. Preserve current
+counting/expectedness regressions, including SYSTEM and domain-scoped BUILTIN identities. The tests exercise
+the real shared judging pass, sealed persistence, both object-screen directions, category readback,
+version refusal and old-result clearing. Existing descriptor/membership regressions remain in the
+selection. The synthetic requester fixture gained an optional user-descriptor argument, leaving
+all existing defaults unchanged; configured requester discovery still stores two own-account answers
+while the reset holder count stays unchanged. This is not a byte-for-byte comparison of every old
+generation. Frozen fixtures remain unchanged, and no production performance budget is claimed.
+
+**Scope boundary:** this slice supplies the documented capability and its evidence, not the
+SEC-003-style finding, a severity decision, new Tier 0 classification, requester-token expansion,
+full-control aggregation or Stage 7 paths. The corresponding finding is a separate consumer of the
+capability under current target/expectedness rules. Further discovery tuning remains paused. No
+live-directory operation, protected-artifact access, commit or push is included. P-145 and final
+Stage 6 acceptance remain open.
+
+**Historical preparation validation:** before production edits, the full offline suite passed
+**3,849/3,849**, none skipped, and the solution build succeeded. Only the preparation and
+product-overview clarification had changed then. Those were preservation checks, not capability
+validation. The subsequent implementation checks are separate below.
+
+**Implementation evidence:** `DirectResetGrantProducesTheDocumentedCredentialCapability` failed
+against the preceding implementation with an empty edge collection, then passed unchanged after
+the new capability was added. `PasswordResetControlTests` supplies **43** operation cases;
+`PasswordResetWorkflowTests` supplies **9** real reader/store/screen cases; three new no-window
+`ControlEdgeSizingTests` cases bind the new wording at 900-by-430, 1,300-by-650 and 1,600-by-900.
+The combined reset, existing descriptor/membership and layout selection passed **132/132**.
+Low-severity test-setup errors were corrected: missing namespace imports and an inherit-only fixture
+using `0x02` instead of the captured raw `0x08` flag. These were not product reproductions and
+required no production workaround.
+
+**Final validation:** the full offline project passed **3,904/3,904**, none skipped, and the solution
+build succeeded. The first full run passed 3,896/3,904; all eight failures were the layout guard's
+missing schema-19 checkpoint. The observed layout hash was identical to schema 18, as expected
+for this capability-semantic change. A new schema-19 entry was added without replacing any
+historical hash; the layout check and all seven deliberate layout mutations then passed, followed
+by the successful full run. This corrected test-integration omission did not change the schema
+layout or weaken its guard.
+
+The reset operation/workflow, real-template sizing, layout guard and synthetic-host selection also
+passed **85/85** under code-coverage collection. Its report is
+`next/.vs/PasswordReset-252cbdc67eba41fabfdcb08a89689d83/coverage.cobertura.xml`.
+No visible window, live-directory operation, protected-artifact access, performance experiment,
+commit or push was performed. The extra capability adds judging and storage work; prior P-151/P-152
+measurements remain observations of their recorded product version, not a measured budget for
+this enlarged product. Real-product visual verification, the separate security finding and final
+Stage 6/P-145 acceptance remain outstanding.
 
 ---
 

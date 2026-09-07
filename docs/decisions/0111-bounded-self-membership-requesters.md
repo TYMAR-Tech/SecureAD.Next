@@ -48,8 +48,9 @@ artifacts are preserved; deleting laboratory objects requires the owner's separa
 
 ## Implementation
 
-Introduced in judgement schema 17 and retained in current schema 18, which adds separately approved
-automatic discovery coverage. Both production hosts currently pass no discovery budget, leaving
+Introduced in judgement schema 17; schema 18 added separately approved automatic discovery coverage.
+Current schema 19 retains those products and adds a separate password-reset permission capability,
+without changing this requester's semantics. Both production hosts currently pass no discovery budget, leaving
 that scan inactive. The approved R7 requester presentation is implemented; the
 [R8 reconciliation](../layers/judgement/the-judgement-store.md#r8-current-state-reconciliation)
 records current behavior, offline verification and outstanding acceptance. These implementation

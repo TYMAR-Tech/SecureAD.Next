@@ -62,14 +62,15 @@ Evidence-bound Derivation products and typed missing/degraded input handling. Th
 order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longer treated as an unbounded
 architectural question.
 
-**Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER and bounded
-group-membership control, with object-first and named-holder-first views in the object screen.
+**Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER, bounded
+group-membership control and password-reset permission, with object-first and named-holder-first
+views in the object screen.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 18 stores this
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 19 stores this
 product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
-coverage introduced in schema 18;
+coverage introduced in schema 18; schema 19/control engine 3 adds the reset-permission capability;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -86,7 +87,33 @@ The comparison preserved all 65,084 existing primitives and added 10,776 establi
 membership writes plus 10,761 unknown self-membership candidates. Re-judge schema-15 results to
 obtain it; this does not accept the whole stage-6 proposal or replace the historical baseline.
 
-**The bounded requester design was introduced in judgement schema 17 and is retained in schema 18.** The owner answered "continue then"
+**Password-reset control is an existing current-build requirement, not a new feature proposal.**
+After the R8 checkpoint, the owner clarified: "we also have the stage 6 documentation which is for
+this build", then said "begin" to the preparation described against that specification. Start from
+`CanResetPassword` in the [Stage 6 catalogue](next/SPEC-stage-6-control-edges.md#5-the-edge-catalogue-for-stage-6),
+the judgement-half requirements and accepted decisions. The predecessor banner on SEC-003 does not
+make those current-build requirements historical. Identify the unimplemented capability, reusable
+code and genuinely unresolved details; do not ask the owner to restate the requirement. This
+preparation does not itself approve new UI wording/layout, a reset operation, discovery enablement,
+further performance tuning or a commit/push. A stored password-reset capability and a security
+finding about unexpected reset authority are separate deliverables.
+The [bounded implementation preparation](layers/judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
+records the implementation path, versioning, verification cases and approved presentation.
+The owner subsequently selected **"Approve the capability-first implementation and wording"**.
+That approves this bounded stored-capability slice, the existing-table label "Password-reset
+permission" and the permission-only/no-tested-sign-in caveat. It does not add a security finding,
+member expansion, live directory operation, discovery budget or final Stage 6 acceptance.
+
+**The approved password-reset capability is implemented in schema 19, control engine 3.** Normal
+judging evaluates applicable captured reset rights and stores `CanResetPassword` as `CredentialExposure`,
+independently of the inactive Self-Membership discovery budget. The existing table shows
+"Password-reset permission" and keeps evaluation, expectedness and supporting evidence separate.
+This is named-holder permission evidence, not a tested reset, complete requester-token evaluation,
+sign-in prediction or SEC-003-style finding. Re-judge sealed evidence to obtain it; no re-capture,
+Evidence/Derivation schema change or historical-result rewrite is needed. Validation and limits
+are recorded in the linked implementation record; Stage 6 acceptance remains open.
+
+**The bounded requester design was introduced in judgement schema 17 and is retained in schema 19.** The owner answered "continue then"
 after the plain-language explanation. [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 limits it to direct user grants and one explicit same-domain global-security-
 group membership. Requester assessments are stored separately from counted holder edges, with

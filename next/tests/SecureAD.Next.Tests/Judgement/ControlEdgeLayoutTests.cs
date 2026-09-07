@@ -20,6 +20,8 @@ public sealed class ControlEdgeLayoutTests
         // rather than an external store, so it detects later unversioned drift but is not an
         // independent anchor the way the schema-15 value is.
         [18] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
+        // Schema 19 adds reset capability semantics, not DDL; retain the schema-18 layout checkpoint.
+        [19] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
     };
 
     [Fact]

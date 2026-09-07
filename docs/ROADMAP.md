@@ -822,7 +822,7 @@ Catalogue 2 and the corrected schema-15 laboratory baseline are
 unchanged; old judgements require re-judging to obtain the wider slice.
 
 **Concrete requester analysis is implemented.** [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
-introduced the bounded requester assessment in schema 17; current schema 18 also stores automatic
+introduced the bounded requester assessment in schema 17; schema 18 added automatic
 discovery coverage. Shared discovery is integrated into normal Shell/CLI judging, but both production
 hosts pass no budget, so it remains inactive. Explicit request batches are a library input, not an
 administrator-maintained selection list. No numerical production budget has been approved.
@@ -835,7 +835,15 @@ and offline-verification results, not real-product acceptance. See the
 R2 enablement and real-product/laptop/monitor verification remain open; further discovery tuning is
 paused rather than replaced by an assumed budget.
 
-Ownership-derived control, credential and replication capabilities,
+**Password-reset permission is implemented in schema 19, control engine 3**, following explicit
+approval of the bounded capability-first slice and its wording. Normal judging stores
+`CanResetPassword` as `CredentialExposure`, with original permission evidence, named-holder counts
+and both object-screen directions. It does not reset passwords or predict successful sign-in;
+the corresponding security finding remains separate. The existing control table and sizing are
+unchanged. See the [implementation record](layers/judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
+for validation and limits. Re-judging obtains the larger evaluated capability set without re-capture.
+
+Ownership-derived control, other credential capabilities (including key-credential writes), replication,
 full-control aggregation and effective member expansion remain outside these bounded slices.
 The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
 passing automated tests does not discharge them.

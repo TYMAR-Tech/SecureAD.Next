@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 
@@ -16,6 +18,8 @@ public enum ControlCapability
     CanModifyGroupMembership,
     /// <summary>A Self-Membership candidate, limited to the requester's own account; requester evaluation is separate.</summary>
     CanAddSelfToGroup,
+    /// <summary>The named trustee holds the Reset Password control-access right; operation success is not evaluated.</summary>
+    CanResetPassword,
 }
 /// <summary>Semantic categories accepted under 0110, never an ordered risk score.</summary>
 public enum ControlEdgeClass
@@ -110,8 +114,10 @@ public enum ControlUncertainty
     MembershipScopeNotEvaluated = 1024,
     /// <summary>No concrete requester operation or group-held Self-Membership expansion was evaluated.</summary>
     SelfMembershipRequesterNotEvaluated = 2048,
-    /// <summary>The target's captured class does not establish whether it is a group.</summary>
+    /// <summary>The target's captured class does not establish whether the operation applies.</summary>
     TargetClassNotRead = 4096,
+    /// <summary>The reset operation's extended-right scope could not be established.</summary>
+    PasswordResetScopeNotEvaluated = 8192,
 }
 
 /// <summary>A named condition, with its own evaluation; uncertainty never flows back into its primitive.</summary>
@@ -142,8 +148,12 @@ public sealed record ControlEdge(
     /// <summary>The descriptor-level source, including a NULL DACL that has no granting ACE.</summary>
     public string DescriptorOutcome { get; init; } = "NotRecorded";
     /// <summary>The capability's semantic category, not a severity or target privilege classification.</summary>
-    public ControlEdgeClass EdgeClass => Capability is ControlCapability.CanModifyGroupMembership or ControlCapability.CanAddSelfToGroup
-        ? ControlEdgeClass.MembershipEscalation : ControlEdgeClass.DirectoryControl;
+    public ControlEdgeClass EdgeClass => Capability switch
+    {
+        ControlCapability.CanModifyGroupMembership or ControlCapability.CanAddSelfToGroup => ControlEdgeClass.MembershipEscalation,
+        ControlCapability.CanResetPassword => ControlEdgeClass.CredentialExposure,
+        _ => ControlEdgeClass.DirectoryControl,
+    };
     /// <summary>Whether the capability evaluation has no unresolved input; expectedness is separate.</summary>
     public bool IsComplete => EvaluationState != ControlEvaluationState.Unknown && Uncertainty == ControlUncertainty.None;
     /// <summary>Whether an additional transition is required.</summary>
@@ -179,13 +189,13 @@ public sealed record ControlEdgePage(
     bool HasMore,
     long LastId)
 {
+    private static readonly ResourceManager ScopeResources = new("SecureAD.Judgement.Resources.ControlEdgeScope", typeof(ControlEdgePage).Assembly);
+
     /// <summary>The selected immutable generation, used to refuse mixed-generation paging.</summary>
     public Guid? GenerationId { get; init; }
     /// <summary>Completeness of the supported primitive slice, not of all stage-6 capabilities.</summary>
     public bool IsComplete => ProductWasDerived && CaptureIsComplete && UnansweredObjects == 0;
     /// <summary>The boundary stated wherever this partial capability catalogue is shown.</summary>
-    public const string SupportedScope = "Bounded control-edge slices: WRITE_DAC, WRITE_OWNER and group-membership rights. "
-        + "General membership writes and own-account-only Self-Membership are separate; named-holder requester operations remain unknown, while explicit bounded requester assessments are separate uncounted detail. "
-        + "Ownership-derived control, credentials, replication, full-control aggregation "
-        + "and effective member expansion are not yet derived. Counts are not totals for all control capabilities.";
+    public static string SupportedScope => ScopeResources.GetString(nameof(SupportedScope), CultureInfo.CurrentUICulture)
+        ?? throw new MissingManifestResourceException(nameof(SupportedScope));
 }

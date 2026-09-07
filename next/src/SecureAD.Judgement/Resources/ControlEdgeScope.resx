@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SupportedScope" xml:space="preserve"><value>Bounded control-edge slices: WRITE_DAC, WRITE_OWNER, group-membership rights and password-reset permission. General membership writes and own-account-only Self-Membership are separate; named-holder requester operations remain unknown, while explicit bounded requester assessments are separate uncounted detail. Password-reset edges describe permission evidence, not a tested password reset or subsequent sign-in. Ownership-derived control, other credential capabilities, replication, full-control aggregation and effective member expansion are not yet derived. Counts are not totals for all control capabilities.</value></data>
+</root>

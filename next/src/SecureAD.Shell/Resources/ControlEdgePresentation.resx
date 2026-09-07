@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PasswordResetLabel" xml:space="preserve"><value>Password-reset permission</value></data>
+  <data name="PasswordResetCaveat" xml:space="preserve"><value>Permission evidence only. A password reset and subsequent sign-in have not been tested.</value></data>
+  <data name="PasswordResetCategory" xml:space="preserve"><value>Category: CredentialExposure; this does not classify the target as Tier 0.</value></data>
+</root>

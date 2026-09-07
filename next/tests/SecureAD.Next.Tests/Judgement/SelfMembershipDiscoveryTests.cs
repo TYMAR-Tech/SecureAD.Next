@@ -94,7 +94,7 @@ public sealed class SelfMembershipDiscoveryTests
     internal static string Hash(string directory) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(directory, "evidence.db"))));
 
     internal static string Bundle(string? sddl = null, bool membership = true, int users = 1,
-        string[]? members = null, long? groupType = -2147483646, bool targetDescriptor = true)
+        string[]? members = null, long? groupType = -2147483646, bool targetDescriptor = true, string? userDescriptor = null)
     {
         var directory = TempDirectories.Create("self-membership-discovery");
         var coverage = new PartitionCoverage("DC=contoso,DC=com", NamingContextKind.Domain, "dc01.contoso.com",
@@ -104,7 +104,7 @@ public sealed class SelfMembershipDiscoveryTests
         Write("DC=contoso,DC=com", "domainDNS", "S-1-5-21-1-2-3", [], "O:SYG:SYD:");
         for (var index = 0; index < users; index++)
             Write(UserName(index), "user", $"S-1-5-21-1-2-3-{1100 + index}",
-                [new("userAccountControl", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("512")])], "O:SYG:SYD:");
+                [new("userAccountControl", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("512")])], userDescriptor ?? "O:SYG:SYD:");
         Write(TargetDn, "group", TargetSid,
         [
             new("groupType", StoredAttributeCompleteness.Complete, groupType is { } type
