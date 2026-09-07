@@ -262,13 +262,15 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
         ControlCapability.CanModifyGroupMembership => "General group-membership changes — no own-account restriction",
         ControlCapability.CanAddSelfToGroup => "Self-Membership candidate — own account only; requester not verified",
         ControlCapability.CanResetPassword => Text("PasswordResetLabel"),
+        ControlCapability.CanWriteKeyCredentialLink => Text("KeyCredentialLinkLabel"),
         _ => "Unsupported capability",
     };
     public string Evaluation => edge.EvaluationState.ToString();
     public string Expectedness => edge.Expectedness.ToString();
     public string Evidence => $"Holder: {edge.HolderSid}; scope: {edge.HolderScope ?? "SID-scoped"}\n"
         + $"Object: {edge.TargetGuid?.ToString() ?? "stable identity not captured"}\n"
-        + (edge.Capability == ControlCapability.CanResetPassword ? Text("PasswordResetCategory") + "\n"
+        + (edge.Capability == ControlCapability.CanWriteKeyCredentialLink ? Text("KeyCredentialLinkAttribute") + "\n" : "")
+        + (edge.EdgeClass == ControlEdgeClass.CredentialExposure ? Text("CredentialExposureCategory") + "\n"
             : $"Category: {edge.EdgeClass}; this does not classify the target group as privileged.\n")
         + $"Evaluation: {edge.EvaluationState}; feasibility: {edge.Feasibility}; research: {edge.ResearchStatus}; counted: {edge.IsCounted}\n"
         + $"Expectedness: {edge.ExpectednessReason}; principal catalogue {edge.PrincipalCatalogueVersion}\n"
@@ -286,7 +288,12 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
                 $"{step.Principal.DistinguishedName ?? step.Principal.Sid} [{step.Principal.Sid}; {step.Principal.Scope ?? "SID-scoped"}]"
                 + (step.IsPrimaryGroup ? " (primary membership)" : "")))))
         + "\nSupporting membership chains are representative, not proof that every route can be removed."
-        + (edge.Capability == ControlCapability.CanResetPassword ? "\n" + Text("PasswordResetCaveat") : "");
+        + (edge.Capability switch
+        {
+            ControlCapability.CanResetPassword => "\n" + Text("PasswordResetCaveat"),
+            ControlCapability.CanWriteKeyCredentialLink => "\n" + Text("KeyCredentialLinkCaveat"),
+            _ => "",
+        });
 
     private static string Text(string key) => Presentation.GetString(key, CultureInfo.CurrentUICulture)
         ?? throw new MissingManifestResourceException(key);

@@ -88,6 +88,7 @@ convention a member follows is a caller that will read an absent answer as a pre
 | `FindByLdapName` | The one entry with this name | `null` |
 | `GuidFor` | The GUID for a name | `null` |
 | `MembersOfPropertySet` | The attributes a forest puts in a property set | `null`, meaning *not known* — never an empty list |
+| `AttributeBelongsToPropertySet` | Whether this attribute's captured assignment places it in the requested set | `null` for unavailable, malformed or contradictory assignment; omission from a member list does not prove exclusion |
 | `Guid` | On a row: the `rightsGuid` or `schemaIDGUID`, lowercase and without braces | — |
 | `LdapName` | On a row: the name Microsoft's AD schema gives it | — |
 | `Kind` | On a row: what this GUID names | — |
@@ -120,6 +121,25 @@ Only the forest can answer this at all. A property set names none of its members
 points back at the set through `attributeSecurityGUID`, so a customer can put their own attribute
 into a Microsoft-defined set. There is no shipped fallback, and inventing one would call a set
 harmless while the directory disagreed.
+
+### A member list is not a completeness guarantee
+
+The real reader builds lists from the attribute assignments it observed. A populated list can
+still be partial: seeing `displayName` in a set does not prove that an unread attribute is outside
+that set. Empty lists supplied to a constructed catalogue likewise carry no completeness voucher.
+
+`AttributeBelongsToPropertySet(attributeName, propertySetGuid)` therefore asks about the requested
+attribute's positive captured assignment, not its absence from one list. It returns `true` for
+the same set, `false` for a positively evidenced different set, and `null` if no assignment is
+available, multiple assignments contradict each other or a relevant GUID is malformed. Names and
+GUID comparisons are case-insensitive; null arguments are rejected. An unassigned attribute and
+an unread assignment are not distinguishable through this captured product, so neither becomes
+a definite negative. Embedded schema names never invent an assignment.
+
+The bounded control evaluator uses this query for key-credential and general member writes.
+Otherwise an uncertain property-set deny could disappear and leave a falsely established grant.
+`SchemaGuidCatalogPropertySetTests` covers this public contract, and the key-credential workflow
+tests verify the actual captured `attributeSecurityGUID` join and partial-schema deny behavior.
 
 ---
 

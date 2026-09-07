@@ -119,7 +119,7 @@ public sealed class GroupMembershipControlTests
         var missing = Assert.Single(Membership(Permissions(ace)).Edges);
         Assert.Equal(ControlEvaluationState.Unknown, missing.EvaluationState);
         Assert.True(missing.Uncertainty.HasFlag(ControlUncertainty.MembershipScopeNotEvaluated));
-        Assert.Empty(Membership(Permissions(ace), PropertySet()).Edges);
+        Assert.Equal(ControlEvaluationState.Unknown, Assert.Single(Membership(Permissions(ace), PropertySet()).Edges).EvaluationState);
         var proven = Assert.Single(Membership(Permissions(ace), PropertySet("member")).Edges);
         Assert.True(proven.IsComplete);
         Assert.Contains(proven.Preconditions, condition => condition.EvidenceSource.Contains("Captured property set") && condition.EvidenceSource.Contains("member"));
@@ -132,6 +132,21 @@ public sealed class GroupMembershipControlTests
         var result = Membership(Permissions(Scoped(0, 0x20, MembershipSet, "AccessDeniedObject"), Scoped(1, 0x20)));
         Assert.Equal(ControlEvaluationState.Unknown, Assert.Single(result.Edges).EvaluationState);
         Assert.False(result.IsComplete);
+    }
+
+    [Fact]
+    public void PartialPropertySetDenyDoesNotEstablishGeneralMembership()
+    {
+        var result = Membership(Permissions(Scoped(0, 0x20, MembershipSet, "AccessDeniedObject"), Scoped(1, 0x20)), PropertySet("displayName"));
+        Assert.Equal(ControlEvaluationState.Unknown, Assert.Single(result.Edges).EvaluationState);
+    }
+
+    [Fact]
+    public void AProvenDifferentPropertySetDoesNotReachMember()
+    {
+        var catalogue = SchemaGuidCatalog.CapturedOver([], SchemaGuidCatalog.Embedded,
+            new Dictionary<string, IReadOnlyList<string>> { ["aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"] = ["member"] });
+        Assert.Empty(Membership(Permissions(Scoped(0, 0x20, MembershipSet)), catalogue).Edges);
     }
 
     [Theory]

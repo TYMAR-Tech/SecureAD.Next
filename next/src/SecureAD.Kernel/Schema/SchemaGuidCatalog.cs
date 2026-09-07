@@ -239,6 +239,33 @@ public sealed class SchemaGuidCatalog
     }
 
     /// <summary>
+    /// Whether an attribute's captured assignment places it in this property set. Null means
+    /// the assignment is unavailable or contradictory, not that the attribute is outside the set.
+    /// </summary>
+    /// <remarks>
+    /// Observing other members of a set does not prove its member list complete. Only a positive
+    /// assignment of this attribute can establish membership or exclusion from a different set.
+    /// An absent assignment cannot distinguish an unassigned attribute from an unread one.
+    /// </remarks>
+    /// <param name="attributeName">The attribute's LDAP name.</param>
+    /// <param name="propertySetGuid">The property-set GUID named by the permission entry.</param>
+    public bool? AttributeBelongsToPropertySet(string attributeName, string propertySetGuid)
+    {
+        ArgumentNullException.ThrowIfNull(attributeName);
+        ArgumentNullException.ThrowIfNull(propertySetGuid);
+
+        string? assignedSet = null;
+        foreach (var set in _propertySetMembers)
+        {
+            if (!set.Value.Contains(attributeName, StringComparer.OrdinalIgnoreCase)) continue;
+            if (assignedSet is not null || !Guid.TryParse(set.Key, out _)) return null;
+            assignedSet = set.Key;
+        }
+        return assignedSet is null || !Guid.TryParse(propertySetGuid, out _)
+            ? null : string.Equals(assignedSet, propertySetGuid, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Every meaning of a GUID. Empty when the catalogue does not know it, which is an ordinary
     /// answer: a forest carries schema extensions this table cannot have heard of.
     /// </summary>

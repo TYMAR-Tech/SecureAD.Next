@@ -118,6 +118,25 @@ public sealed class ControlEdgeSizingTests
     {
         var edge = Assert.Single(Judgement.PasswordResetControlTests.Evaluate(Judgement.ControlEdgeDeriverTests.Permissions(
             Judgement.PasswordResetControlTests.Reset(0))).Edges);
+        VerifyCredentialEvidence(edge, width, height, "Password-reset permission",
+            "Permission evidence only. A password reset and subsequent sign-in have not been tested.", "password-reset permission");
+    });
+
+    [Theory]
+    [InlineData(900, 430)]
+    [InlineData(1300, 650)]
+    [InlineData(1600, 900)]
+    public void KeyCredentialWordingAndEvidenceBindInTheUnchangedTemplate(int width, int height) => OnSta(() =>
+    {
+        var edge = Assert.Single(Judgement.KeyCredentialLinkControlTests.Evaluate(Judgement.ControlEdgeDeriverTests.Permissions(
+            Judgement.KeyCredentialLinkControlTests.Write(0))).Edges);
+        VerifyCredentialEvidence(edge, width, height, "Key-credential write permission",
+            "Permission evidence only. A key-credential write and subsequent sign-in have not been tested. This does not establish account takeover or a completed path to Tier 0.",
+            "key-credential write permission");
+    });
+
+    private static void VerifyCredentialEvidence(ControlEdge edge, int width, int height, string label, string caveat, string scope)
+    {
         var vm = Model(0, 0);
         vm.Configure(true, false,
             (_, _, _) => Result<ControlEdgePage>.Success(new([edge], 0, 1, 0, 0, true, true, false, 1) { GenerationId = Guid.Empty }),
@@ -126,21 +145,21 @@ public sealed class ControlEdgeSizingTests
         Layout(pane, width, height);
         var (control, requester) = Tables(pane);
         var row = Assert.IsType<DataGridRow>(control.ItemContainerGenerator.ContainerFromIndex(0));
-        Assert.Equal("Password-reset permission", Assert.IsType<TextBlock>(control.Columns[2].GetCellContent(row)).Text);
+        Assert.Equal(label, Assert.IsType<TextBlock>(control.Columns[2].GetCellContent(row)).Text);
         Assert.InRange(control.ActualHeight, 120, 240.1);
         AssertInside(row, control);
         var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name != "RequesterEvidence"));
         expander.IsExpanded = true;
         Layout(pane, width, height);
         var text = Assert.Single(Descendants<TextBox>(expander));
-        Assert.Contains("Permission evidence only. A password reset and subsequent sign-in have not been tested.", text.Text);
+        Assert.Contains(caveat, text.Text);
         Assert.Equal(vm.SelectedEdge!.Evidence, text.Text);
         var outer = SectionScroll(pane, requester);
         outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(expander, outer));
         Layout(pane, width, height);
         Assert.True(expander.ActualHeight > 0 && Top(expander, pane) < pane.ActualHeight);
-        Assert.Contains("password-reset permission", Notice(pane, nameof(vm.SupportedScope)).Text);
-    });
+        Assert.Contains(scope, Notice(pane, nameof(vm.SupportedScope)).Text);
+    }
 
     private static (FrameworkElement Pane, ControlEdgesSectionViewModel Model, Expander Expander, TextBox Evidence)
         VerifyRequesterEvidence(int width, int height, string? mutation = null)

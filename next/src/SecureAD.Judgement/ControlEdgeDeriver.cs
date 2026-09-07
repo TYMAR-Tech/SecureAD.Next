@@ -114,12 +114,15 @@ internal static class ControlEdgeDeriver
         var classKnown = classes?.Any(value => !string.IsNullOrWhiteSpace(value.Text)) == true;
         var targetUncertainty = classKnown ? ControlUncertainty.None : ControlUncertainty.TargetClassNotRead;
         var catalogue = context.SchemaGuids ?? SchemaGuidCatalog.Embedded;
-        foreach (var (right, capability) in new[] { (0x20, ControlCapability.CanModifyGroupMembership),
-            (0x08, ControlCapability.CanAddSelfToGroup), (ControlAccess, ControlCapability.CanResetPassword) })
+        foreach (var (right, capability, operation) in new[] { (0x20, ControlCapability.CanModifyGroupMembership, "member"),
+            (0x08, ControlCapability.CanAddSelfToGroup, "Self-Membership"),
+            (ControlAccess, ControlCapability.CanResetPassword, "User-Force-Change-Password"),
+            (0x20, ControlCapability.CanWriteKeyCredentialLink, "msDS-KeyCredentialLink") })
         {
-            if (classKnown && !(right == ControlAccess ? isAccount : isGroup)) continue;
+            var accountOperation = capability is ControlCapability.CanResetPassword or ControlCapability.CanWriteKeyCredentialLink;
+            if (classKnown && !(accountOperation ? isAccount : isGroup)) continue;
             var relevant = normalized.Entries.Select((entry, index) => (Entry: entry, Original: original.Entries[index],
-                    Scope: OperationScope(entry, right, catalogue)))
+                    Scope: OperationScope(entry, right, operation, classes?.LastOrDefault()?.Text, catalogue)))
                 .Where(item => Applies(item.Entry) && (item.Entry.AccessMask & right) != 0
                     && item.Scope.State != ControlEvaluationState.NotEstablished).ToArray();
             // Project one operation, preserving DACL order. Never union separately evaluated property sets:
@@ -139,7 +142,12 @@ internal static class ControlEdgeDeriver
                     || item.Entry.AceType.Contains("Denied", StringComparison.Ordinal)).ToArray();
                 var unknown = descriptorUncertainty | targetUncertainty;
                 if (evidence.Any(item => item.Scope.State == ControlEvaluationState.Unknown))
-                    unknown |= right == ControlAccess ? ControlUncertainty.PasswordResetScopeNotEvaluated : ControlUncertainty.MembershipScopeNotEvaluated;
+                    unknown |= capability switch
+                    {
+                        ControlCapability.CanResetPassword => ControlUncertainty.PasswordResetScopeNotEvaluated,
+                        ControlCapability.CanWriteKeyCredentialLink => ControlUncertainty.KeyCredentialLinkScopeNotEvaluated,
+                        _ => ControlUncertainty.MembershipScopeNotEvaluated,
+                    };
                 if (evidence.Any(item => !IsSupported(item.Entry.AceType))) unknown |= ControlUncertainty.ConditionalOrUnsupportedAce;
                 if (evidence.Any(item => item.Entry.AceType.Contains("Denied", StringComparison.Ordinal)
                     && !Same(item.Entry.Trustee.Sid, trustee.Sid))) unknown |= ControlUncertainty.CrossTrusteeDeny;
@@ -154,8 +162,12 @@ internal static class ControlEdgeDeriver
                 var possibleGrant = evidence.Any(item => Same(item.Entry.Trustee.Sid, trustee.Sid)
                     && !item.Entry.AceType.Contains("Denied", StringComparison.Ordinal));
                 if (!granted && !(possibleGrant && unknown != ControlUncertainty.None)) continue;
-                var conditions = evidence.Select(item => new ControlPrecondition(right == ControlAccess
-                    ? $"ResetPasswordRightScope[{item.Entry.Ordinal}]" : $"ACE {item.Entry.Ordinal} reaches membership operation",
+                var conditions = evidence.Select(item => new ControlPrecondition(capability switch
+                    {
+                        ControlCapability.CanResetPassword => $"ResetPasswordRightScope[{item.Entry.Ordinal}]",
+                        ControlCapability.CanWriteKeyCredentialLink => $"KeyCredentialLinkWriteScope[{item.Entry.Ordinal}]",
+                        _ => $"ACE {item.Entry.Ordinal} reaches membership operation",
+                    },
                     item.Scope.State, item.Scope.Source)).ToList();
                 if (capability == ControlCapability.CanAddSelfToGroup)
                 {
@@ -181,23 +193,32 @@ internal static class ControlEdgeDeriver
         return targetUncertainty;
     }
 
-    private static (ControlEvaluationState State, string Source) OperationScope(PermissionEntry entry, int right, SchemaGuidCatalog catalogue)
+    private static (ControlEvaluationState State, string Source) OperationScope(PermissionEntry entry, int right,
+        string name, string? targetClass, SchemaGuidCatalog catalogue)
     {
         if (!entry.HasObjectType) return (ControlEvaluationState.Established, "Unscoped entry reaches all operations of this access-mask kind.");
-        var name = right switch { 0x20 => "member", ControlAccess => "User-Force-Change-Password", _ => "Self-Membership" };
-        if (right == ControlAccess && !Guid.TryParse(catalogue.GuidFor(name), out _))
+        if (!Guid.TryParse(catalogue.GuidFor(name), out _))
             return (ControlEvaluationState.Unknown, name);
         if (entry.ObjectTypeGuid is { } guid && Same(guid, catalogue.GuidFor(name)))
             return (ControlEvaluationState.Established, $"{name}: {guid}; {catalogue.FindByLdapName(name)!.Source} schema catalogue.");
         if (right == 0x20 && entry.ObjectTypeGuid is { } propertySet)
         {
-            var members = catalogue.MembersOfPropertySet(propertySet);
-            if (members is not null)
-                return (members.Any(member => Same(member, "member")) ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished,
-                    $"Captured property set {propertySet}; attributes: {string.Join(", ", members)}.");
             var meanings = catalogue.FindByGuid(propertySet);
-            if (meanings.Count == 0 || meanings.Any(item => item.Kind is SchemaGuidKind.PropertySet or SchemaGuidKind.Unclassified))
+            if (meanings.Any(item => item.Kind == SchemaGuidKind.ObjectClass))
+            {
+                if (targetClass is null || !Guid.TryParse(catalogue.GuidFor(targetClass), out _))
+                    return (ControlEvaluationState.Unknown, propertySet);
+                return (Same(propertySet, catalogue.GuidFor(targetClass)) ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished,
+                    $"{targetClass}: {catalogue.GuidFor(targetClass)}; {catalogue.FindByLdapName(targetClass)!.Source} schema catalogue.");
+            }
+            var members = catalogue.MembersOfPropertySet(propertySet);
+            if (members is not null || meanings.Count == 0 || meanings.Any(item => item.Kind is SchemaGuidKind.PropertySet or SchemaGuidKind.Unclassified))
+            {
+                if (catalogue.AttributeBelongsToPropertySet(name, propertySet) is { } belongs)
+                    return (belongs ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished,
+                        $"Captured property set {propertySet}; attributes: {string.Join(", ", members ?? [])}.");
                 return (ControlEvaluationState.Unknown, $"Property/attribute scope {propertySet}: captured property-set membership unavailable.");
+            }
         }
         if (entry.ObjectTypeGuid is null || !Guid.TryParse(entry.ObjectTypeGuid, out _))
             return (ControlEvaluationState.Unknown, "Object-type flag is present but its GUID is unavailable or invalid.");

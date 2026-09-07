@@ -20,6 +20,8 @@ public enum ControlCapability
     CanAddSelfToGroup,
     /// <summary>The named trustee holds the Reset Password control-access right; operation success is not evaluated.</summary>
     CanResetPassword,
+    /// <summary>WRITE_PROPERTY reaches msDS-KeyCredentialLink; mutation and authentication success are not evaluated.</summary>
+    CanWriteKeyCredentialLink,
 }
 /// <summary>Semantic categories accepted under 0110, never an ordered risk score.</summary>
 public enum ControlEdgeClass
@@ -118,6 +120,8 @@ public enum ControlUncertainty
     TargetClassNotRead = 4096,
     /// <summary>The reset operation's extended-right scope could not be established.</summary>
     PasswordResetScopeNotEvaluated = 8192,
+    /// <summary>The key-credential property's attribute, property-set or class scope could not be established.</summary>
+    KeyCredentialLinkScopeNotEvaluated = 16384,
 }
 
 /// <summary>A named condition, with its own evaluation; uncertainty never flows back into its primitive.</summary>
@@ -151,7 +155,7 @@ public sealed record ControlEdge(
     public ControlEdgeClass EdgeClass => Capability switch
     {
         ControlCapability.CanModifyGroupMembership or ControlCapability.CanAddSelfToGroup => ControlEdgeClass.MembershipEscalation,
-        ControlCapability.CanResetPassword => ControlEdgeClass.CredentialExposure,
+        ControlCapability.CanResetPassword or ControlCapability.CanWriteKeyCredentialLink => ControlEdgeClass.CredentialExposure,
         _ => ControlEdgeClass.DirectoryControl,
     };
     /// <summary>Whether the capability evaluation has no unresolved input; expectedness is separate.</summary>

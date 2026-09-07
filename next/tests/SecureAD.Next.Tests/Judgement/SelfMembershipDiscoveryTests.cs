@@ -94,7 +94,8 @@ public sealed class SelfMembershipDiscoveryTests
     internal static string Hash(string directory) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(directory, "evidence.db"))));
 
     internal static string Bundle(string? sddl = null, bool membership = true, int users = 1,
-        string[]? members = null, long? groupType = -2147483646, bool targetDescriptor = true, string? userDescriptor = null)
+        string[]? members = null, long? groupType = -2147483646, bool targetDescriptor = true, string? userDescriptor = null,
+        Action<BundleWriter, PartitionCoverage>? writeAdditional = null)
     {
         var directory = TempDirectories.Create("self-membership-discovery");
         var coverage = new PartitionCoverage("DC=contoso,DC=com", NamingContextKind.Domain, "dc01.contoso.com",
@@ -112,6 +113,7 @@ public sealed class SelfMembershipDiscoveryTests
             new("member", StoredAttributeCompleteness.Complete, !membership ? []
                 : (members ?? Enumerable.Range(0, users).Select(UserName).ToArray()).Select(EvidenceValue.OfText).ToArray()),
         ], !targetDescriptor ? null : sddl ?? $"O:SYG:SYD:(OA;;SW;bf9679c0-0de6-11d0-a285-00aa003049e2;;{UserSid})");
+        writeAdditional?.Invoke(writer, coverage);
         writer.Complete(RunCoverage.Of(CoverageId.ForDomains("contoso.com", ["contoso.com"]),
             [DomainCoverage.Read("contoso.com")],
             [ForestPartitionCoverage.Read("CN=Configuration,DC=contoso,DC=com", NamingContextKind.Configuration),

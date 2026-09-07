@@ -185,8 +185,8 @@ protected account and an unresolved membership elsewhere in the captured graph.
 
 ### Initial control-edge product — schema 15
 
-**Historical baseline; current schema 19 also includes the later membership, requester and
-password-reset products described below.**
+**Historical baseline; current schema 20 also includes the later membership, requester,
+password-reset and key-credential write products described below.**
 
 `JudgingRun` now calls `ControlEdgeDeriver` for each streamed object and persists its result through
 `JudgementWriter`. `ControlEdgeStorage` records product completion, per-object descriptor coverage,
@@ -568,7 +568,7 @@ processing budget or host composition, and includes no new commit or push.
 
 | Question | Verified current state | What it does not establish |
 |---|---|---|
-| Is concrete requester analysis implemented? | Yes. The schema-17 assessment and schema-18 discovery coverage are retained in current schema 19; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
+| Is concrete requester analysis implemented? | Yes. The schema-17 assessment and schema-18 discovery coverage are retained in current schema 20; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
 | Does normal judging automatically produce requester answers? | Not with the shipping configuration. `App.xaml.cs` and CLI `Main` pass a null discovery budget; both hosts reach shared judging and report that no scan was scheduled. | That nobody is authorized, that discovery is unimplemented, or that a numerical budget has been approved. |
 | Does configured automatic discovery reach the hosts? | Synthetic test budgets reach the real Shell post-capture and both CLI judging paths, as covered by `SelfMembershipDiscoveryTests`. | Production enablement or a recommended budget; test limits are fixtures only. |
 | Can stored answers reach the actual object screen? | Yes. `BundleAssetSource` and `AssetsViewModel` read the same persisted answers in target-first and requester-first views, including selected proof. | A visible-window or physical laptop/monitor acceptance result. |
@@ -1552,6 +1552,133 @@ commit or push was performed. The extra capability adds judging and storage work
 measurements remain observations of their recorded product version, not a measured budget for
 this enlarged product. Real-product visual verification, the separate security finding and final
 Stage 6/P-145 acceptance remain outstanding.
+
+---
+
+## Key-credential write permission — bounded implementation
+
+**Requirement documented; bounded implementation and wording explicitly approved.** The owner
+selected **"Approve the bounded implementation and wording"** after reviewing the recommendation
+against Stage 6 and decisions 0097–0101/0110. This adds `CanWriteKeyCredentialLink` as
+`CredentialExposure`; it does not approve the rest of the Stage 6 proposal or create a finding.
+The preceding password-reset validation is historical and is not a pass for this enlarged product.
+
+### Implemented scope
+
+- Write Property (`0x20`) reaches `msDS-KeyCredentialLink`, whose published attribute GUID is
+  `5b47d60f-6090-40b2-9f37-2a4de88f3063`. The captured catalogue takes precedence over shipped names.
+  Direct attribute, captured property-set, applicable class-root and unscoped property grants are
+  evaluated as one ordered operation. The real reader expands Generic Write and Generic All.
+  Read Property, extended rights, validated writes, WRITE_DAC/WRITE_OWNER and writes to other
+  attributes do not independently establish this capability.
+- Supported targets follow the captured user/account class chain, including computers,
+  inetOrgPerson and both managed-service-account classes. A captured user ancestor also covers
+  an extended account class. Known non-account targets do not receive this capability; missing
+  target class or relevant scope evidence stays Unknown. This is not a new general schema-hierarchy
+  reconstruction or a promise that a server will accept a particular modification.
+- `AddScopedEdges` now carries the operation identity separately from the access-mask bit;
+  Write Property no longer invariably means `member`. Broad, attribute and property-set entries
+  retain captured order, so one scope cannot escape a deny evaluated in another scope.
+  Inherit-only entries grant nothing on the current target. Already-materialized inherited entries,
+  original class/attribute scope, ordinal, mask, flags, trustee and application data remain evidence;
+  this slice does not replay parent-to-child inheritance from an OU.
+- SELF resolves to the target account while original SELF evidence survives. Microsoft's separate
+  computer validated-write route has SELF/value restrictions; those are not imposed on general
+  Write Property and validated-write-only access is explicitly not derived here. No key-credential
+  value parsing, key generation, modification or authentication is performed.
+- Cross-trustee deny applicability, unsupported/conditional entries, unresolved holders and
+  incomplete descriptors remain unknown. NULL DACL, empty DACL and unread/unparsed DACL retain
+  their distinct outcomes. Per-object coverage survives when no holder edge can be identified.
+
+The external anchors are Microsoft's [user class](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adsc/719c0035-2aa4-4ca6-b763-41a758bd2410),
+[computer inheritance](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adsc/142185a8-2e23-4628-b002-cf31d57bb37a),
+[object-specific access procedure](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/3da5080d-de25-4ac8-9f2b-982709253dfb),
+[domain-update grants](https://learn.microsoft.com/windows-server/identity/ad-ds/deploy/domain-wide-updates)
+and [validated-write constraints](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/f70afbcc-780e-4d91-850c-cfadce5bb15c).
+These anchor permission semantics, not a claim that an attack or sign-in was tested.
+
+### Captured property-set evidence and findings
+
+`SchemaGuidCatalog.AttributeBelongsToPropertySet` answers true/false only from a positive captured
+assignment of the requested attribute to one set. A missing, malformed or contradictory assignment
+returns unknown. Observing unrelated members is not proof that a set's list is complete. The existing
+reader cannot distinguish an unassigned attribute from an unread assignment, so both remain unknown
+at this boundary; no shipped property-set list substitutes for forest evidence. Existing catalogue
+APIs, capture format and principal catalogue version 2 are unchanged.
+
+| Finding | Severity/status | Evidence and correction |
+|---|---|---|
+| KCL-1: partial member list treated as proof of exclusion | High — corrected | With the old member-list inference temporarily restored, `PartialPropertySetDenyCannotLeaveAnEstablishedAttributeGrant` expected Unknown but observed Established. It passed unchanged after restoring the positive-assignment safeguard. The sibling general-member-write operation uses the same safeguard; its former empty-list fixture now correctly asserts Unknown, and a separate positive different-set fixture proves exclusion. No frozen fixture was changed. |
+| KCL-2: capability-only judging ignored captured schema | Medium — corrected | Real workflow tests found property-set grants Unknown even though `BundleReader.ReadSchemaGuids` recovered the assignment. `JudgingRun` had populated schema only in the rules-request-derived-facts branch. The control context now reads it independently, reusing the existing instance when available. The same workflow assertions then passed. |
+| KCL-3: expectedness fixture lacked required context | Low — corrected test setup | Key Admin fixtures first scheduled no derived-fact consumer, then still omitted the captured nTDSService object. The existing membership product correctly remained incomplete. The fixture now requests the existing membership context and includes the service object with unset dSHeuristics; production expectedness was not relaxed. Both Key Admin cases pass as visible Unexpected edges. |
+
+### Storage, presentation and preserved boundaries
+
+Judgement **schema 20 / control engine 4** records the enlarged evaluated set and property-scope
+correction. Existing control tables store holder, target, scope, original ACEs, preconditions,
+expectedness/reason, catalogue version, generations and coverage. No table layout or Evidence/
+Derivation schema changes were needed. Schema 19 is refused rather than read as having evaluated
+the new capability; unsupported engines are not derived and contradictory categories/missing proof
+fail readback. A new schema-20 layout checkpoint matches schema 19's unchanged layout; every
+historical hash is preserved, and the layout test plus seven deliberate mutations passed **8/8**.
+
+Counts remain one named holder/target/capability, not one per ACE or group member. Expectedness
+remains separately scoped under the accepted catalogue: broad principals stay visible, Key Admins
+and Enterprise Key Admins receive no exemption, directly evidenced SYSTEM rights use 0100, and
+BUILTIN domain scope retains P-150's correction. Missing membership context is still Unknown,
+not a guessed Unexpected or Expected answer. No general member expansion was added.
+
+The existing table uses the approved **"Key-credential write permission"** label, with its ordinary
+evaluation/expectedness columns. Resource-backed evidence says **"Attribute: msDS-KeyCredentialLink."**,
+**"Category: CredentialExposure; this does not classify the target as Tier 0."** and
+**"Permission evidence only. A key-credential write and subsequent sign-in have not been tested.
+This does not establish account takeover or a completed path to Tier 0."** The partial-scope notice
+names validated-write-only key-credential access and the other unfinished products. Password-reset
+wording is preserved. No XAML/layout, requester scheduling, count/filter or generation/failure
+safeguard changed. Re-judge sealed evidence to obtain the new product.
+
+### Verification
+
+The initial `DirectPropertyWriteProducesTheDocumentedCredentialCapability` test failed with no
+edge before implementation, then passed unchanged. The focused operation/catalogue/reset/membership
+selection passed **156/156**. The new real-reader/store/screen workflow passed **31/31** after the
+corrections above. No-window sizing passed **25/25**, including three new key-credential cases
+and the existing reset/requester/broken-layout controls.
+
+**Final validation:** the full offline project passed **4,025/4,025**, none skipped, and the complete
+solution build succeeded. The first full run passed 4,023/4,025; both failures were the schema
+documentation guard naming the new public `AttributeBelongsToPropertySet` member. Its component
+member table and absent-input contract were added without weakening either guard. This was a
+low-severity documentation-integration omission, corrected before the final full run.
+
+The combined key-credential, public schema-query, membership, password-reset, real-template sizing,
+layout-guard, readback-safety and synthetic-host selection passed **270/270** under `dotnet-coverage`.
+The new report is
+`next/.vs/KeyCredentialLink-76360e855a064de79a7623b717ffd323/coverage.cobertura.xml`;
+previous reports were not replaced. The report was parsed to verify actual executable-line hits:
+ControlEdgeDeriver **215/233**, ControlEdgeStorage **163/163**, SchemaGuidCatalog **196/197**, and
+ControlEdgesSectionViewModel **180/202**. These are coverage observations for this selection, not
+complete branch coverage or proof of live authorization semantics. The CLI coverage build resolved
+SDK 10.0.400 under the unchanged `latestFeature` policy and reported 216 compiler/analyzer warnings;
+it succeeded, but no warning-free-build claim is made. No warning suppression was added.
+
+No live directory, protected capture, historical measurement artifact or performance experiment is
+part of this work. P-151/P-152 measurements remain tied to their recorded product version and do not
+establish a cost or budget for this larger capability set. Discovery tuning remains paused; both
+hosts still pass no discovery budget. Ordinary laptop/monitor verification, separate security
+findings (including password reset), Tier 0-target review and final Stage 6/P-145 acceptance remain
+outstanding. Implementation and validation were performed without committing or pushing. The owner
+subsequently requested documentation review and publication of the completed slice; that request
+authorizes this commit/push only and does not broaden the implementation or verification boundary.
+
+**Next-session boundary:** prepare `CanReplicateSecretDomainData` and `CanReplicateFilteredAttributes`
+together from the Stage 6 catalogue, judgement-half authorization requirements and accepted decisions
+0097–0101, 0104, 0105 and 0110. Verify operation-specific right combinations, naming-context-root
+targets, missing evidence, deny ordering, scoped expectedness and domain-controller presentation.
+Reuse existing products where appropriate, retain permission-only claims, and present the bounded
+implementation and wording recommendation for explicit approval before editing. Discovery tuning,
+production budgets, ownership transitions, separate security findings and Stage 7 paths are not
+folded into that preparation.
 
 ---
 

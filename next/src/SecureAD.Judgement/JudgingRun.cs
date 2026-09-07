@@ -370,7 +370,12 @@ public static class JudgingRun
         long objectsRead = 0;
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete);
         writer.StartSelfMembershipAssessments();
-        var controlContext = context with { ForestFqdn = bundle.Description.ForestFqdn };
+        // Control capabilities always consume captured schema, even when no rule requests derived facts.
+        var controlContext = context with
+        {
+            ForestFqdn = bundle.Description.ForestFqdn,
+            SchemaGuids = context.SchemaGuids ?? bundle.ReadSchemaGuids(),
+        };
         var domainSids = Memoised(domain =>
         {
             var root = bundle.ReadObjectAttributes(string.Join(',', domain.Split('.').Select(part => "DC=" + part)));

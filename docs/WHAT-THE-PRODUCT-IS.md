@@ -63,14 +63,15 @@ order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longe
 architectural question.
 
 **Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER, bounded
-group-membership control and password-reset permission, with object-first and named-holder-first
+group-membership control, password-reset permission and key-credential write permission, with object-first and named-holder-first
 views in the object screen.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 19 stores this
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 20 stores this
 product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
-coverage introduced in schema 18; schema 19/control engine 3 adds the reset-permission capability;
+coverage introduced in schema 18; schema 19/control engine 3 introduced reset permission, and
+schema 20/control engine 4 adds key-credential write permission and the property-set evidence safeguard;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -104,7 +105,8 @@ That approves this bounded stored-capability slice, the existing-table label "Pa
 permission" and the permission-only/no-tested-sign-in caveat. It does not add a security finding,
 member expansion, live directory operation, discovery budget or final Stage 6 acceptance.
 
-**The approved password-reset capability is implemented in schema 19, control engine 3.** Normal
+**The approved password-reset capability was introduced in schema 19/control engine 3 and is retained
+in current schema 20/control engine 4.** Normal
 judging evaluates applicable captured reset rights and stores `CanResetPassword` as `CredentialExposure`,
 independently of the inactive Self-Membership discovery budget. The existing table shows
 "Password-reset permission" and keeps evaluation, expectedness and supporting evidence separate.
@@ -113,7 +115,23 @@ sign-in prediction or SEC-003-style finding. Re-judge sealed evidence to obtain 
 Evidence/Derivation schema change or historical-result rewrite is needed. Validation and limits
 are recorded in the linked implementation record; Stage 6 acceptance remains open.
 
-**The bounded requester design was introduced in judgement schema 17 and is retained in schema 19.** The owner answered "continue then"
+**The key-credential write slice and wording are explicitly approved.** After reviewing the bounded
+recommendation, the owner selected **"Approve the bounded implementation and wording"**.
+`CanWriteKeyCredentialLink` is an existing current-build Stage 6 requirement, not a new feature
+proposal. Schema 20/control engine 4 stores it as `CredentialExposure` and the existing table says
+**"Key-credential write permission"**. It evaluates property writes, not the separate validated-write
+route, and does not claim a tested write, sign-in, account takeover or completed path to Tier 0.
+The [implementation record](layers/judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
+owns the exact boundary, reproduced defects and validation. No layout, capture/Derivation schema,
+finding, discovery budget, performance tuning, commit or push is part of this approval. The separate
+password-reset security finding and final Stage 6/P-145 acceptance remain outstanding.
+
+The owner subsequently requested documentation review, a commit/push of this completed slice and a
+new-session handoff. That is separate publication authorization, not standing permission to publish
+future work. The next recommended session is bounded preparation for the two replication capabilities;
+their concrete implementation scope and new screen wording have not yet been approved.
+
+**The bounded requester design was introduced in judgement schema 17 and is retained in schema 20.** The owner answered "continue then"
 after the plain-language explanation. [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 limits it to direct user grants and one explicit same-domain global-security-
 group membership. Requester assessments are stored separately from counted holder edges, with

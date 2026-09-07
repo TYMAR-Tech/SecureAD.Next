@@ -100,7 +100,8 @@ calculate directory access. By default it shows rights over the opened object. W
 a principal SID, **Rights held by this principal** switches to the named-holder view of the same
 stored edge set. This is not expansion of the rights the principal receives through group membership.
 
-The current slices cover WRITE_DAC, WRITE_OWNER and bounded group-membership rights. General
+The current slices cover WRITE_DAC, WRITE_OWNER, bounded group-membership rights, password-reset
+permission and key-credential write permission. General
 membership writes and own-account-only Self-Membership candidates have different labels. The latter
 remain unknown because no concrete requester operation is evaluated. The evidence view shows their
 `MembershipEscalation` category, evaluation, constraints and research status without calling the
@@ -355,8 +356,30 @@ action or new security finding was added.
 directions, old-engine/category refusal and stale-proof clearing. Additional `ControlEdgeSizingTests`
 cases bind the label and caveat through the unchanged real template at the three existing pane
 sizes, without a visible window. The [judgement-store implementation record](../judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
-owns results and limitations. Re-judge to obtain schema 19 results; real-product visual checks
+owns results and limitations. Introduced in schema 19 and retained in current schema 20; real-product visual checks
 remain normal outstanding verification, not implied by these offline checks.
+
+### Key-credential write permission
+
+The owner explicitly approved the bounded implementation and wording before edits.
+`CanWriteKeyCredentialLink` appears in the same table as **Key-credential write permission**.
+Its resource-backed evidence identifies **Attribute: msDS-KeyCredentialLink.** and says
+**Category: CredentialExposure; this does not classify the target as Tier 0.** The caveat is:
+**Permission evidence only. A key-credential write and subsequent sign-in have not been tested.
+This does not establish account takeover or a completed path to Tier 0.**
+
+The scope notice includes this capability while retaining validated-write-only key-credential
+access, ownership-derived control, replication, full-control aggregation and effective member
+expansion as unfinished. Existing password-reset wording and requester distinctions are preserved.
+No XAML, column, table sizing, paging, selection or readback-safety behavior changed.
+
+`KeyCredentialLinkWorkflowTests` covers synthetic sealed-bundle readers, both directions,
+expectedness/counts and old-engine/category/missing-proof refusal. Three additional
+`ControlEdgeSizingTests` cases exercise the real template at 900-by-430, 1,300-by-650 and
+1,600-by-900 layout units without opening a window. The
+[implementation record](../judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
+owns validation and limits. Re-judge to obtain schema 20/control engine 4; ordinary laptop/monitor
+verification remains outstanding and is not a separate blocking session.
 
 ---
 

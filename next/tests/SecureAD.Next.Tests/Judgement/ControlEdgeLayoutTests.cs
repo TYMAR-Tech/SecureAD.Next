@@ -22,6 +22,8 @@ public sealed class ControlEdgeLayoutTests
         [18] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
         // Schema 19 adds reset capability semantics, not DDL; retain the schema-18 layout checkpoint.
         [19] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
+        // Schema 20 adds key-credential write semantics and the property-scope safeguard, not DDL.
+        [20] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
     };
 
     [Fact]

@@ -843,7 +843,22 @@ the corresponding security finding remains separate. The existing control table 
 unchanged. See the [implementation record](layers/judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
 for validation and limits. Re-judging obtains the larger evaluated capability set without re-capture.
 
-Ownership-derived control, other credential capabilities (including key-credential writes), replication,
+**Key-credential write permission is implemented in schema 20, control engine 4**, following explicit
+approval of the bounded slice and **"Key-credential write permission"** wording. Normal judging stores
+`CanWriteKeyCredentialLink` as `CredentialExposure`, using ordered property-write evaluation and
+original evidence in both existing views. The partial-property-set safeguard also protects general
+member writes; capability-only judging now receives captured schema independently of scheduled rules.
+Full offline validation passed **4,025/4,025**, the solution build succeeded, and the targeted coverage
+selection passed **270/270**. Historical layout hashes and the product layout are unchanged. See the
+[implementation record](layers/judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
+for permission-only limits, reproduced defects and the local coverage report.
+
+**Next recommended bounded work: replication preparation**, covering `CanReplicateSecretDomainData`
+and `CanReplicateFilteredAttributes` together. Start from current requirements and accepted decisions,
+verify qualifying rights and naming-context scope, and obtain approval of the concrete implementation
+slice and new screen wording before editing. This recommendation does not authorize implementation.
+
+Ownership-derived control, validated-write-only key-credential access, replication,
 full-control aggregation and effective member expansion remain outside these bounded slices.
 The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
 passing automated tests does not discharge them.
