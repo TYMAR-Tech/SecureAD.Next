@@ -33,6 +33,7 @@ public sealed class ControlEdgeReadbackSafetyTests
             ? Result<ControlEdgePage>.Failure(Failure) : Result<ControlEdgePage>.Success(Page(generation));
         vm.Configure(true, user, Read, _ => Result<SelfMembershipAssessmentSet>.Success(Assessments(generation)));
         Assert.Single(vm.RequesterAssessments);
+        Assert.NotNull(vm.SelectedRequesterAssessment);
         Assert.Single(vm.Rows);
         fail = true;
 
@@ -47,6 +48,7 @@ public sealed class ControlEdgeReadbackSafetyTests
 
         Assert.Empty(vm.RequesterAssessments);
         Assert.Empty(vm.Rows);
+        Assert.Null(vm.SelectedRequesterAssessment);
         Assert.Null(vm.SelectedEdge);
         Assert.False(vm.HasMore);
         Assert.Contains("unreadable", vm.Counts);
@@ -119,6 +121,7 @@ public sealed class ControlEdgeReadbackSafetyTests
         Assert.Empty(vm.Rows);
         Assert.Empty(vm.RequesterAssessments);
         Assert.Null(vm.SelectedEdge);
+        Assert.Null(vm.SelectedRequesterAssessment);
         Assert.False(vm.HasMore);
         Assert.Contains("generation", vm.Coverage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("generation", vm.RequesterCoverage, StringComparison.OrdinalIgnoreCase);
@@ -157,6 +160,7 @@ public sealed class ControlEdgeReadbackSafetyTests
         {
             Assert.Empty(vm.Rows);
             Assert.Empty(vm.RequesterAssessments);
+            Assert.Null(vm.SelectedRequesterAssessment);
             Assert.Null(vm.SelectedEdge);
             Assert.False(vm.HasMore);
             return Result<SelfMembershipAssessmentSet>.Success(Assessments(generation));
@@ -175,9 +179,11 @@ public sealed class ControlEdgeReadbackSafetyTests
             ? Result<SelfMembershipAssessmentSet>.Failure(Failure)
             : Result<SelfMembershipAssessmentSet>.Success(Assessments(generation)));
         Assert.Single(vm.RequesterAssessments);
+        Assert.NotNull(vm.SelectedRequesterAssessment);
         fail = true;
         vm.NextPageCommand.Execute(null);
         Assert.Empty(vm.RequesterAssessments);
+        Assert.Null(vm.SelectedRequesterAssessment);
         Assert.Equal(Failure.Description, vm.RequesterCoverage);
         Assert.Single(vm.Rows);
         Assert.NotNull(vm.SelectedEdge);
@@ -198,6 +204,7 @@ public sealed class ControlEdgeReadbackSafetyTests
             _ => Result<SelfMembershipAssessmentSet>.Success(new([], requesterDerived, requesterDerived ? generation : null)));
         Assert.Empty(vm.Rows);
         Assert.Empty(vm.RequesterAssessments);
+        Assert.Null(vm.SelectedRequesterAssessment);
         Assert.Contains(requesterDerived ? "No concrete requester request was scheduled" : "not derived", vm.RequesterCoverage);
         Assert.DoesNotContain("withheld", vm.Counts);
     }
@@ -219,6 +226,7 @@ public sealed class ControlEdgeReadbackSafetyTests
         var initialReads = reads;
         vm.ByHolder = !user;
         Assert.Empty(vm.RequesterAssessments);
+        Assert.Null(vm.SelectedRequesterAssessment);
         Assert.Equal(initialReads, reads);
         Assert.Contains("shown when", vm.RequesterCoverage);
     }
@@ -295,6 +303,7 @@ public sealed class ControlEdgeReadbackSafetyTests
     {
         Assert.Empty(vm.Rows);
         Assert.Empty(vm.RequesterAssessments);
+        Assert.Null(vm.SelectedRequesterAssessment);
         Assert.Null(vm.SelectedEdge);
         Assert.False(vm.HasMore);
         Assert.Contains("changed", vm.Coverage);

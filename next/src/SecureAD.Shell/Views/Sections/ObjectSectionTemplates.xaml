@@ -26,6 +26,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="{Binding SupportedScope}" TextWrapping="Wrap" Margin="0,0,0,8" />
                 <TextBlock Grid.Row="1" Text="{Binding Coverage}" TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -54,7 +55,8 @@
                     </ScrollViewer>
                 </Expander>
                 <TextBlock Grid.Row="6" Text="{Binding RequesterCoverage}" TextWrapping="Wrap" Margin="0,8,0,4" />
-                <DataGrid Grid.Row="7" ItemsSource="{Binding RequesterAssessments}" AutoGenerateColumns="False"
+                <DataGrid Grid.Row="7" ItemsSource="{Binding RequesterAssessments}"
+                          SelectedItem="{Binding SelectedRequesterAssessment, Mode=TwoWay}" AutoGenerateColumns="False"
                           IsReadOnly="True" CanUserAddRows="False" MaxHeight="180">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Requester" Binding="{Binding Requester}" Width="*" />
@@ -66,6 +68,22 @@
                         <DataGridTextColumn Header="Limits" Binding="{Binding Limits}" Width="2*" />
                     </DataGrid.Columns>
                 </DataGrid>
+                <Expander Grid.Row="8" x:Name="RequesterEvidence"
+                          Header="{Binding SelectedRequesterAssessment.EvidenceHeader}" Margin="0,8,0,0">
+                    <Expander.Style>
+                        <Style TargetType="Expander">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedRequesterAssessment}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Expander.Style>
+                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                        <TextBox Text="{Binding SelectedRequesterAssessment.Evidence, Mode=OneWay}"
+                                 IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" />
+                    </ScrollViewer>
+                </Expander>
             </Grid>
         </ScrollViewer>
     </DataTemplate>

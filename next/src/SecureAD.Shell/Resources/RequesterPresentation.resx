@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="EvidenceHeader" xml:space="preserve"><value>View selected requester evidence and limitations</value></data>
+  <data name="OperationAdd" xml:space="preserve"><value>Add to group</value></data>
+  <data name="OperationRemove" xml:space="preserve"><value>Remove from group</value></data>
+  <data name="OperationUnknown" xml:space="preserve"><value>Unknown operation</value></data>
+  <data name="AuthorizationEstablished" xml:space="preserve"><value>Authorized</value></data>
+  <data name="AuthorizationNotEstablished" xml:space="preserve"><value>Not authorized</value></data>
+  <data name="AuthorizationUnknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="OwnAccountEstablished" xml:space="preserve"><value>Own account only</value></data>
+  <data name="OwnAccountNotEstablished" xml:space="preserve"><value>Different account</value></data>
+  <data name="OwnAccountUnknown" xml:space="preserve"><value>Not confirmed</value></data>
+  <data name="ReadinessEstablished" xml:space="preserve"><value>Ready from capture</value></data>
+  <data name="ReadinessNotEstablished" xml:space="preserve"><value>Not ready</value></data>
+  <data name="ReadinessUnknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="ScopeEstablished" xml:space="preserve"><value>Applies to this right</value></data>
+  <data name="ScopeNotEstablished" xml:space="preserve"><value>Does not apply to this right</value></data>
+  <data name="ScopeUnknown" xml:space="preserve"><value>Applicability is unknown</value></data>
+  <data name="TrusteeMatches" xml:space="preserve"><value>Applies to this requester</value></data>
+  <data name="TrusteeDoesNotMatch" xml:space="preserve"><value>Does not apply to this requester</value></data>
+  <data name="TrusteeUnknown" xml:space="preserve"><value>Requester applicability is unknown</value></data>
+  <data name="IssueRequesterMissing" xml:space="preserve"><value>Missing captured evidence: requester account was not found.</value></data>
+  <data name="IssueRequesterNotUser" xml:space="preserve"><value>Unsupported analysis: requester is not a user account.</value></data>
+  <data name="IssueTargetMissing" xml:space="preserve"><value>Missing captured evidence: target was not found.</value></data>
+  <data name="IssueTargetNotGroup" xml:space="preserve"><value>Unsupported analysis: target is not a group.</value></data>
+  <data name="IssueMemberMissing" xml:space="preserve"><value>Missing captured evidence: the account to add or remove was not found.</value></data>
+  <data name="IssueDescriptorUnreadable" xml:space="preserve"><value>Missing captured evidence: the target's permissions could not be read.</value></data>
+  <data name="IssueDescriptorIncomplete" xml:space="preserve"><value>Incomplete captured evidence: some permission entries are missing.</value></data>
+  <data name="IssuePermissionBudgetExceeded" xml:space="preserve"><value>Processing stopped: this answer's permission-entry allowance was exceeded.</value></data>
+  <data name="IssueScopeUnknown" xml:space="preserve"><value>Unresolved permission scope: whether an entry applies to this right is unknown.</value></data>
+  <data name="IssueTrusteeUnknown" xml:space="preserve"><value>Unresolved permission holder: whether an entry applies to this requester is unknown.</value></data>
+  <data name="IssueUnsupportedAce" xml:space="preserve"><value>Unsupported analysis: a relevant permission-entry type cannot be fully evaluated.</value></data>
+  <data name="IssueAccountStatusMissing" xml:space="preserve"><value>Missing captured evidence: account enabled/disabled status is unknown.</value></data>
+  <data name="IssueAccountDisabled" xml:space="preserve"><value>Not ready: the requester account was disabled when captured.</value></data>
+  <data name="IssueAlreadyMember" xml:space="preserve"><value>Not ready to add: the account is already a captured member.</value></data>
+  <data name="IssueMembershipStateUnknown" xml:space="preserve"><value>Missing captured evidence: current membership is not established; absence is not proof of non-membership.</value></data>
+  <data name="IssueLiveOperationNotEvaluated" xml:space="preserve"><value>Live operation not checked.</value></data>
+  <data name="IssueUnknown" xml:space="preserve"><value>Unrecognized stored limitation ({0}); no further conclusion is available.</value></data>
+  <data name="ReasonDirectIdentity" xml:space="preserve"><value>The permission names the requester's current identity directly.</value></data>
+  <data name="ReasonAuthenticatedIdentity" xml:space="preserve"><value>The permission covers this assumed authenticated user through a broad identity.</value></data>
+  <data name="ReasonDirectGlobalMembership" xml:space="preserve"><value>The permission is held by a same-domain global security group with the requester explicitly listed as a member.</value></data>
+  <data name="ReasonDistributionGroup" xml:space="preserve"><value>A distribution group does not supply this authorization route.</value></data>
+  <data name="ReasonOtherCurrentUser" xml:space="preserve"><value>The permission names a different user's current identity.</value></data>
+  <data name="ReasonNonUserIdentity" xml:space="preserve"><value>The permission names an identity that does not match this ordinary authenticated user.</value></data>
+  <data name="ReasonIdentityMissing" xml:space="preserve"><value>Captured identity evidence is missing or cannot be matched.</value></data>
+  <data name="ReasonUnsupportedIdentity" xml:space="preserve"><value>This identity route is outside the supported analysis.</value></data>
+  <data name="ReasonResourceContextUnknown" xml:space="preserve"><value>The required same-domain context could not be verified.</value></data>
+  <data name="ReasonGroupTypeMissing" xml:space="preserve"><value>The captured group type is missing.</value></data>
+  <data name="ReasonUnsupportedGroupScope" xml:space="preserve"><value>The group's scope is outside the supported analysis.</value></data>
+  <data name="ReasonMembershipNotEstablished" xml:space="preserve"><value>Direct membership was not established; nested and other membership routes are not expanded.</value></data>
+  <data name="ReasonUnknown" xml:space="preserve"><value>Unrecognized stored route reason ({0}); no further conclusion is available.</value></data>
+  <data name="NotRecorded" xml:space="preserve"><value>Not recorded</value></data>
+  <data name="NoneRecorded" xml:space="preserve"><value>None recorded</value></data>
+  <data name="NoIssues" xml:space="preserve"><value>No individual limitations recorded; live success is not implied.</value></data>
+  <data name="Context" xml:space="preserve"><value>Assumes an ordinary authenticated directory user, using direct identity or one explicit same-domain global-security-group membership. This is not a live access token or a prediction that a directory change will succeed. Authorization, the own-account restriction and readiness are separate answers. No chain to Tier 0 is established by this assessment.</value></data>
+  <data name="Answer" xml:space="preserve"><value>Operation: {0}
+Permission answer: {1}
+Own-account restriction: {2}
+Operation readiness: {3}</value></data>
+  <data name="Identities" xml:space="preserve"><value>Requester: {0}
+Requester object identifier (GUID): {1}; security identifier (SID): {2}
+Target group: {3}
+Target GUID: {4}; SID: {5}
+Account to add or remove: {6}
+Member GUID: {7}; SID: {8}</value></data>
+  <data name="Provenance" xml:space="preserve"><value>Judgement generation: {0}
+Derivation generation (if recorded): {1}
+Evidence fingerprint: {2}
+Requester captured at: {3}
+Stored account flags (userAccountControl): {4}
+Stored membership state: {5}
+Stored permission-reading outcome: {6}</value></data>
+  <data name="MemberPresent" xml:space="preserve"><value>Member present</value></data>
+  <data name="MemberAbsent" xml:space="preserve"><value>Member absent</value></data>
+  <data name="MemberUnknown" xml:space="preserve"><value>Unknown; not proof of non-membership</value></data>
+  <data name="Limitations" xml:space="preserve"><value>Individual limitations:
+{0}
+Capture-wide discovery coverage is reported separately.</value></data>
+  <data name="HolderEdges" xml:space="preserve"><value>Supporting holder-edge identifiers: {0}
+This requester answer does not add to holder-edge counts.</value></data>
+  <data name="NoEntries" xml:space="preserve"><value>No supporting permission entries were stored for this answer. This alone is not an authorization result.</value></data>
+  <data name="PermissionEntry" xml:space="preserve"><value>Permission entry (ACE) {0}: {1}
+Original trustee SID: {2}; access mask: 0x{3:X8}
+Inherited: {4}; inheritance flags: 0x{5:X2}; propagation flags: 0x{6:X2}
+Object-type field present: {7}; GUID: {8}
+Inherited-object-type field present: {9}; GUID: {10}
+Application data (hex): {11}
+Permission scope: {12}
+Requester applicability: {13}
+Route explanation: {14}
+Resolved holder: {15}; GUID: {16}; domain: {17}
+Stored group type: {18}; holder captured at: {19}
+Explicit member in this route: {20}</value></data>
+  <data name="Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="No" xml:space="preserve"><value>No</value></data>
+</root>

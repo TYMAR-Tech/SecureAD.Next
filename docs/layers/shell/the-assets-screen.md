@@ -46,7 +46,7 @@ As with every shell page, the types below are `internal` — the window exports 
 | `PermissionsSectionViewModel` | Who can do what to this object |
 | `ControlEdgesSectionViewModel` | Paged stored control edges, read by target or named holder, with coverage and hidden expected counts |
 | `ControlEdgeRowViewModel` | One stored capability's wording, classification and supporting evidence |
-| `SelfMembershipAssessmentRowViewModel` | One stored concrete requester answer, separate from holder-edge counts |
+| `SelfMembershipAssessmentRowViewModel` | Plain-language stored requester answers and their identity, permission and route evidence, separate from holder-edge counts |
 | `EvidenceSectionViewModel` | What was captured about this object and what was not |
 | `FindingsSectionViewModel` | What the judging concluded about this one object |
 | `PolicyLinksSectionViewModel` | The policy linked at this container |
@@ -230,20 +230,20 @@ R6's implementation is complete, not fully visually accepted in the real product
 R7 presentation, R8 final reconciliation and P-145 remain open. **Ordinary Shell/CLI re-judging still
 schedules no requester batch**, so it cannot populate this table merely by obtaining the sizing fix.
 
-### R7 next bounded presentation proposal — awaiting owner approval
+### R7 requester presentation
 
 Following the completed performance comparison, the owner approved pausing further discovery tuning
-and returning to the remaining product work. This does not approve a new presentation design.
+and returning to the remaining product work. That checkpoint did not approve a presentation design;
+the explicit continuation-session approval below did.
 The later R2 schema-18 integration exists, but both hosts still pass no discovery budget; the
 historical R6 statement above is not a claim that the automatic scheduler remains unimplemented.
 
-Source review confirms the current requester table shows requester, target, operation, authorization,
-own-account, readiness and limits. The row model exposes enum names as text and combines issue names
-with the common scope explanation. Unlike the holder-edge table, the requester table has no selected
-row binding or accompanying evidence view. This is the contained R7 presentation gap, not a reason
-to change the evaluator or enable scheduling.
+Before this slice, the requester table showed requester, target, operation, authorization,
+own-account, readiness and limits using internal enum names and a repeated common scope explanation.
+Unlike the holder-edge table, it had no selected-row binding or accompanying evidence view.
+That was the contained R7 presentation gap, not a reason to change the evaluator or enable scheduling.
 
-**Recommended design:** keep the existing table and approved R6 sizing. Use plain-language wording
+**Approved design:** keep the existing table and approved R6 sizing. Use plain-language wording
 for its separate answers, and add an expandable explanation for the selected requester assessment
 beneath it. The explanation should show the stored identities, supporting permission entries and
 holder/membership route, plus why authorization is unknown or the operation is not ready. Preserve
@@ -256,14 +256,62 @@ a row and expanding its explanation. Showing all supporting evidence inside ever
 comparison harder and consume the laptop's available height. The existing section scrolling and
 table-height limits remain; no new screen or layout redesign is proposed.
 
-This is a proposal only. Obtain explicit owner approval before changing the template or displayed
-wording. Preserve the R4 generation-bound readback and failure clearing, the existing stored answers
-and holder counts. No authorization, persistence/schema, budget, directory access or laboratory
-operation is part of this proposed slice. R7 and final R8 acceptance remain open.
+**Approved in the continuation session:** the owner selected "Approve the recommended table wording
+and expandable selected-answer evidence" after reviewing the plain-language design and its trade-off.
+This supersedes the pending approval recorded at the checkpoint; implementation and validation are
+recorded separately below. The R4 generation-bound readback and failure clearing, existing stored
+answers and holder counts are preserved. No authorization, persistence/schema, budget, directory
+access or laboratory operation is part of this slice. R7 real-product verification and final R8
+acceptance remain open.
 
 The owner requested a commit/push checkpoint and a new-session handoff before answering this
-presentation proposal. The proposal therefore remains unapproved; a request to resume the work or
-create the checkpoint is not approval of its displayed wording or layout.
+presentation proposal. It was unapproved at that checkpoint; the explicit answer above, not the
+request to resume or create the checkpoint, supplies approval. No new commit or push is authorized.
+
+**Implemented and offline-validated.** The table retains all seven columns, its 180-unit height cap,
+the control table's 240-unit cap and section scrolling. Authorization reads **Authorized / Not
+authorized / Unknown**; the own-account answer reads **Own account only / Different account / Not
+confirmed**; readiness reads **Ready from capture / Not ready / Unknown**. These are independent
+translations of stored answers, never new permission calculations. Individual limitations now name
+their specific missing evidence, unsupported analysis, processing stop or readiness blocker. The
+common assumptions move into the evidence rather than being repeated in every table row.
+
+The first stored requester answer is selected after generation validation; selecting another row
+updates its proof. The expandable, read-only, copyable explanation includes requester/target/member
+identities, judgement and derivation identifiers, Evidence fingerprint, captured time and account
+flags, membership state, original supporting permission entries and direct/group route explanations.
+Original SELF trustee identifiers remain beside resolved holders; permission order, masks, scope
+flags, object-type fields and application bytes are shown as stored. No supporting entries is not
+presented as a refusal. Unknown membership is not presented as non-membership. The explanation
+states that this is neither a live-operation success prediction nor an established chain to Tier 0.
+Capture-wide discovery notices and holder counts are not changed.
+
+The explanation has its own 240-unit scroll area and is hidden without a selected answer. Selection
+clears before every read, including paging, direction/filter changes and reconfiguration. Failure,
+missing generations, mixed generations and empty products cannot retain old selected evidence.
+New wording lives in `next/src/SecureAD.Shell/Resources/RequesterPresentation.resx`; no dependency or
+public judgement contract was added.
+
+**Validation:** the unchanged focused wording regression failed before the row-model change
+(expected `Authorized`, actual `Established`) and passed afterwards. The presentation/readback/layout
+selection passed **137/137**, including all current issue and route-reason translations, exact stored
+identity/permission fields and preservation of R4 clearing. The real-template no-window layout suite
+now has **19 cases**, retaining R6 coverage and adding selected-answer cells/proof at 900-by-430,
+1,300-by-650 and 1,600-by-900 units, expanded-proof clearing after a failed read, and three in-memory
+negative controls. Removing selection binding, removing evidence binding or collapsing the evidence
+area each makes the same checks fail. No visible application window was launched.
+
+Two low-severity test-setup findings were corrected, not counted as product reproduction: the
+no-window table needed the existing R6 scroll/layout procedure to generate its last row; the
+240-unit bound applies to the visible scroll area, not the longer text inside it. Neither correction
+weakened the required row-content, selection, overflow or reachability assertions.
+
+The full test project passed **3,837/3,837**, none skipped, and the solution build succeeded. The 137
+focused tests also passed under code-coverage collection; its new report is
+`next/.vs/R7-61e46dd999344a57bc8a79744f22a199/coverage.cobertura.xml`. No further performance experiment,
+live-directory operation, protected-artifact access, frozen-evidence edit, commit or push was part
+of this slice. Real-product laptop/monitor review remains unperformed, not accepted. R2 remains
+inactive in both hosts without an approved numerical budget; R8 final reconciliation remains open.
 
 ---
 

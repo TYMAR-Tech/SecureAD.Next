@@ -79,12 +79,81 @@ public sealed class ControlEdgeSizingTests
         Assert.ThrowsAny<XunitException>(() => VerifyPopulated(900, 430, true, mutation));
     });
 
+    [Theory]
+    [InlineData(900, 430)]
+    [InlineData(1300, 650)]
+    [InlineData(1600, 900)]
+    public void SelectedRequesterProofAndPlainAnswersAreReachableInTheRealTemplate(int width, int height)
+        => OnSta(() => VerifyRequesterEvidence(width, height));
+
+    [Theory]
+    [InlineData("unbound-requester-selection")]
+    [InlineData("unbound-requester-evidence")]
+    [InlineData("collapsed-requester-evidence")]
+    public void RequesterProofChecksRejectBrokenSelectionEvidenceAndLayout(string mutation) => OnSta(() =>
+    {
+        Assert.ThrowsAny<XunitException>(() => VerifyRequesterEvidence(900, 430, mutation));
+    });
+
+    [Fact]
+    public void ExpandedRequesterProofClearsWhenTheNextReadFails() => OnSta(() =>
+    {
+        var (pane, vm, expander, evidence) = VerifyRequesterEvidence(900, 430);
+        vm.Configure(true, false,
+            (_, _, _) => Result<ControlEdgePage>.Success(new([], 0, 0, 0, 0, true, true, false, 0) { GenerationId = Guid.Empty }),
+            _ => Result<SelfMembershipAssessmentSet>.Failure(AuditError.Create(ErrorCategory.Shell, "SyntheticFailure",
+                ErrorSeverity.Failed, "Synthetic requester read failure", null)));
+        Layout(pane, 900, 430);
+        Assert.Null(vm.SelectedRequesterAssessment);
+        Assert.Empty(evidence.Text);
+        Assert.Equal(Visibility.Collapsed, expander.Visibility);
+        Assert.Equal("Synthetic requester read failure", Notice(pane, nameof(vm.RequesterCoverage)).Text);
+    });
+
+    private static (FrameworkElement Pane, ControlEdgesSectionViewModel Model, Expander Expander, TextBox Evidence)
+        VerifyRequesterEvidence(int width, int height, string? mutation = null)
+    {
+        var vm = Model(60, 40);
+        var pane = Pane(vm, mutation);
+        Layout(pane, width, height);
+        var requester = Tables(pane).Requester;
+        Assert.Same(vm.RequesterAssessments[0], requester.SelectedItem);
+        var selected = vm.RequesterAssessments[^1];
+        requester.SelectedItem = selected;
+        Descendants<ScrollViewer>(requester).First().ScrollToEnd();
+        Layout(pane, width, height);
+        Assert.Same(selected, vm.SelectedRequesterAssessment);
+        var row = Assert.IsType<DataGridRow>(requester.ItemContainerGenerator.ContainerFromIndex(requester.Items.Count - 1));
+        Assert.Equal(new[] { selected.Requester, selected.Target, "Add to group", "Authorized", "Own account only", "Unknown", "Live operation not checked." },
+            requester.Columns.Select(column => Assert.IsType<TextBlock>(column.GetCellContent(row)).Text));
+        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "RequesterEvidence"));
+        Assert.Equal("View selected requester evidence and limitations", expander.Header);
+        expander.IsExpanded = true;
+        Layout(pane, width, height);
+        var evidence = Assert.Single(Descendants<TextBox>(expander));
+        Assert.Equal(selected.Evidence, evidence.Text);
+        Assert.True(evidence.IsReadOnly);
+        var evidenceScroll = Assert.Single(Descendants<ScrollViewer>(expander).Where(scroll => ReferenceEquals(scroll.Content, evidence)));
+        Assert.InRange(evidenceScroll.ActualHeight, 1, 240.1);
+        Assert.True(expander.ActualHeight > evidenceScroll.ActualHeight);
+        Assert.True(evidenceScroll.ScrollableHeight > 0, "Long requester proof must scroll within its bounded area.");
+        evidenceScroll.ScrollToEnd();
+        var outer = SectionScroll(pane, requester);
+        outer.ScrollToEnd();
+        Layout(pane, width, height);
+        AssertInside(expander, outer);
+        AssertInside(expander, pane);
+        Assert.InRange(Tables(pane).Control.ActualHeight, 120, 240.1);
+        Assert.InRange(requester.ActualHeight, 60, 180.1);
+        return (pane, vm, expander, evidence);
+    }
+
     private static void VerifyPopulated(int width, int height, bool expanded, string? mutation = null)
     {
         var vm = Model(60, 40);
         var pane = Pane(vm, mutation);
         Layout(pane, width, height);
-        var expander = Assert.Single(Descendants<Expander>(pane));
+        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name != "RequesterEvidence"));
         expander.IsExpanded = expanded;
         Layout(pane, width, height);
         var (control, requester) = Tables(pane);
@@ -159,6 +228,10 @@ public sealed class ControlEdgeSizingTests
         var grid = template.Descendants(Wpf + "Grid").Single();
         if (mutation == "unbounded-control") grid.Elements(Wpf + "DataGrid").First().Attribute("MaxHeight")?.Remove();
         if (mutation == "collapsed-requester") grid.Elements(Wpf + "DataGrid").Last().SetAttributeValue("Height", "0");
+        if (mutation == "unbound-requester-selection") grid.Elements(Wpf + "DataGrid").Last().Attribute("SelectedItem")!.Remove();
+        var requesterEvidence = grid.Elements(Wpf + "Expander").Single(element => (string?)element.Attribute(Xaml + "Name") == "RequesterEvidence");
+        if (mutation == "unbound-requester-evidence") requesterEvidence.Descendants(Wpf + "TextBox").Single().Attribute("Text")!.Remove();
+        if (mutation == "collapsed-requester-evidence") requesterEvidence.SetAttributeValue("Height", "0");
         if (mutation == "no-section-scroll" && grid.Parent!.Name == Wpf + "ScrollViewer")
             grid.Parent.ReplaceWith(new XElement(grid));
         var objectView = XDocument.Load(Path.Combine(shell, "Views", "ObjectView.xaml")).Root!;

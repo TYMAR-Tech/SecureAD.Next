@@ -106,6 +106,19 @@ open; see the
 [review status](layers/judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings).
 This is not a complete token model, whole-feature acceptance or a new live acceptance result.
 
+**R7 presentation approved after the performance checkpoint:** the owner selected
+"Approve the recommended table wording and expandable selected-answer evidence". Keep the existing
+table, approved sizing and scrolling; show plain-language authorization, own-account restriction and
+readiness separately, with expandable stored identities, permission entries and direct/group route
+for the selected answer. Keep capture-wide coverage limitations separate. This approves presentation
+only, not discovery enablement, a numerical budget, authorization/storage changes or R8 acceptance.
+Implementation and offline validation are recorded in the
+[Assets specification](layers/shell/the-assets-screen.md#r7-requester-presentation).
+The approved presentation is implemented: 137 focused checks and the full 3,837-test suite passed,
+and the solution builds. Selected evidence clears with failed or mismatched-generation reads.
+This is offline validation, not real-product acceptance; laptop/monitor checks remain outstanding
+normal verification, discovery is still inactive in both hosts, and R8 remains open.
+
 **R2 owner requirement:** on 2026-09-06 the owner clarified that requester assessment "should always
 run on new captures" and asked for a clearer explanation of the proposed interaction. An
 existing-capture-only/manual-rejudge-first scope does not meet that requirement. Requester
@@ -173,9 +186,10 @@ verification work, not an additional session that must precede continued develop
 
 **Session checkpoint requested by the owner:** update the governing documents, commit and push the
 validated work, then resume in a new session. This explicitly authorizes that checkpoint commit and
-push; it does not approve the still-proposed R7 requester-details presentation. The next session
-should read [the presentation proposal](layers/shell/the-assets-screen.md#r7-next-bounded-presentation-proposal--awaiting-owner-approval)
-and obtain its approval before changing displayed wording or layout. Keep further performance tuning
+push; it did not approve the then-proposed R7 requester-details presentation. The continuation session
+obtained explicit approval before implementation; see the
+[R7 presentation record](layers/shell/the-assets-screen.md#r7-requester-presentation).
+No further commit or push is authorized. Keep further performance tuning
 paused unless later work changes the measured workload or a remaining cost blocks the bounded feature.
 
 **R6 presentation review:**

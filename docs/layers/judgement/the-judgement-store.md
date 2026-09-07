@@ -529,7 +529,7 @@ work were preserved. Schema 17, evaluator version 1 and control engine version 2
 | R4 — stale/mixed-generation Shell rows | Corrected and regression-tested: old rows clear on failed reads/selection changes; differing judgement generations withhold both products. See the [Shell readback contract](../shell/the-assets-screen.md#requester-and-control-readback-safety--r4). |
 | R5 — supporting JSON and holder-edge validation | Corrected and regression-tested; malformed records and mismatched references fail the read, including through the Shell adapter. Persistence safety only, not feature acceptance. |
 | R6 — requester grid sizing | Corrected and regression-tested after owner approval of the synthetic preview. Real-product laptop/monitor/forest checks remain outstanding; not fully visually accepted. See the [Shell sizing contract](../shell/the-assets-screen.md#requester-sizing--r6). |
-| R7 — incomplete requester presentation | Open, deferred to the Shell slice. |
+| R7 — incomplete requester presentation | Approved and implemented in the bounded Shell slice: separate plain-language answers and expandable selected requester evidence. 137 focused checks and the full 3,837-test suite passed; solution build succeeded. Real-product verification remains open; see the [Shell presentation record](../shell/the-assets-screen.md#r7-requester-presentation). |
 | R8 — contradictory product overview | Immediate historical/evaluator/scheduling distinctions corrected here and in the product overview; final cross-document reconciliation remains open for acceptance. |
 
 The R1/R3 authorization correction, R5 persistence safety and R4 Shell readback safety are complete.
@@ -550,7 +550,7 @@ checks will happen during normal verification, not in a separate session blockin
 They remain unperformed, not implicitly accepted. At the end of the R6 session, ordinary Shell/CLI
 re-judging scheduled no requester batch and R2 had not been implemented. The later schema-18
 integration described below supplies automatic discovery but leaves it inactive in both hosts
-without an approved budget. R2 enablement, R7 presentation and R8 final cross-document acceptance
+without an approved budget. R2 enablement, R7 real-product verification and R8 final cross-document acceptance
 reconciliation remain open; the historical R6 validation does not accept those later changes.
 
 #### R2 production scheduling boundary
@@ -1001,9 +1001,10 @@ discovery cost stays open under P-152; pausing tuning does not approve a budget 
 Remeasure when subsequent work changes data access, candidate counts or processing volume, and before
 approving production limits, rather than after presentation-only changes. The owner subsequently
 requested a documentation checkpoint, commit and push before moving to a new session; that commit
-and push are explicitly authorized. The next bounded preparation is the
-[R7 presentation proposal](../shell/the-assets-screen.md#r7-next-bounded-presentation-proposal--awaiting-owner-approval),
-which requires explicit approval of the presentation before implementation. R2 enablement and final
+and push were explicitly authorized for that checkpoint. The next bounded preparation was the
+[R7 presentation](../shell/the-assets-screen.md#r7-requester-presentation), subsequently explicitly
+approved, implemented and offline-validated in the continuation session. No further commit or push
+is authorized. R2 enablement and final
 R8 acceptance remain open, and laptop/monitor checks remain normal outstanding product verification.
 
 Each full-volume measurement had one repetition, always scan-off before scan-on, supplying neither a variability estimate nor a

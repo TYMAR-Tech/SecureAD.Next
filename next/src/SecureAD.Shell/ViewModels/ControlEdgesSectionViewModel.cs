@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Judgement;
@@ -24,8 +26,14 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     [ObservableProperty] private ControlEdgeRowViewModel? _selectedEdge;
     private string _requesterCoverage = "Requester assessments have not been read.";
     private IReadOnlyList<SelfMembershipAssessmentRowViewModel> _requesterAssessments = [];
+    private SelfMembershipAssessmentRowViewModel? _selectedRequesterAssessment;
 
     public string RequesterCoverage { get => _requesterCoverage; private set => SetProperty(ref _requesterCoverage, value); }
+    public SelfMembershipAssessmentRowViewModel? SelectedRequesterAssessment
+    {
+        get => _selectedRequesterAssessment;
+        set => SetProperty(ref _selectedRequesterAssessment, value);
+    }
     public IReadOnlyList<SelfMembershipAssessmentRowViewModel> RequesterAssessments
     {
         get => _requesterAssessments;
@@ -77,6 +85,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         Rows = [];
         SelectedEdge = null;
         HasMore = false;
+        SelectedRequesterAssessment = null;
         RequesterAssessments = [];
         RequesterCoverage = "Requester assessments have not been read.";
         Coverage = "Control edges have not been read.";
@@ -153,6 +162,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
                 ? "No concrete requester request was scheduled for this selection. This is not a refusal result."
                 : $"{result.Value.Assessments.Count} stored concrete requester assessment(s). These do not add to holder-edge counts.";
         RequesterAssessments = result.Value.Assessments.Select(value => new SelfMembershipAssessmentRowViewModel(value)).ToArray();
+        SelectedRequesterAssessment = RequesterAssessments.FirstOrDefault();
         return true;
     }
 
@@ -166,13 +176,75 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
 
 internal sealed class SelfMembershipAssessmentRowViewModel(SelfMembershipAssessment value)
 {
+    private static readonly ResourceManager Resources = new("SecureAD.Shell.Resources.RequesterPresentation",
+        typeof(SelfMembershipAssessmentRowViewModel).Assembly);
+
+    public string EvidenceHeader => Text("EvidenceHeader");
     public string Requester => value.Request.RequesterDn;
     public string Target => value.Request.TargetDn;
-    public string Operation => value.Request.Operation.ToString();
-    public string Authorization => value.Authorization.ToString();
-    public string OwnAccount => value.OwnAccount.ToString();
-    public string Readiness => value.Readiness.ToString();
-    public string Limits => string.Join(", ", value.Issues) + ". " + SelfMembershipAssessment.Context;
+    public string Operation => Text(value.Request.Operation switch
+    {
+        SelfMembershipOperation.Add => "OperationAdd",
+        SelfMembershipOperation.Remove => "OperationRemove",
+        _ => "OperationUnknown",
+    });
+    public string Authorization => State("Authorization", value.Authorization);
+    public string OwnAccount => State("OwnAccount", value.OwnAccount);
+    public string Readiness => State("Readiness", value.Readiness);
+    public string Limits => value.Issues.Count == 0 ? Text("NoIssues")
+        : string.Join(" ", value.Issues.Select(issue => Explanation("Issue", issue)));
+    public string Evidence => string.Join("\n\n",
+        Text("Answer", Operation, Authorization, OwnAccount, Readiness),
+        Text("Identities", Requester, Recorded(value.RequesterGuid), Recorded(value.RequesterSid),
+            Target, Recorded(value.TargetGuid), Recorded(value.TargetSid), value.Request.MemberDn ?? Requester,
+            Recorded(value.MemberGuid), Recorded(value.MemberSid)),
+        Text("Provenance", value.GenerationId, Recorded(value.DerivationGenerationId), value.EvidenceSeal,
+            Recorded(value.RequesterCapturedUtc), Recorded(value.UserAccountControl),
+            Text(value.MemberPresent switch { true => "MemberPresent", false => "MemberAbsent", null => "MemberUnknown" }),
+            value.DescriptorOutcome),
+        Text("Limitations", Limits),
+        Text("Context"),
+        Text("HolderEdges", value.HolderEdgeIds.Count == 0 ? Text("NoneRecorded") : string.Join(", ", value.HolderEdgeIds)),
+        value.Evidence.Count == 0 ? Text("NoEntries") : string.Join("\n\n", value.Evidence.Select(PermissionEvidence)));
+
+    private static string PermissionEvidence(SelfMembershipAceEvidence evidence)
+    {
+        var entry = evidence.Entry;
+        var trustee = evidence.Trustee;
+        return Text("PermissionEntry", entry.Ordinal, entry.AceType, entry.Trustee.Sid, entry.AccessMask,
+            Text(entry.IsInherited ? "Yes" : "No"), entry.InheritanceFlags, entry.PropagationFlags,
+            Text(entry.HasObjectType ? "Yes" : "No"), Recorded(entry.ObjectTypeGuid),
+            Text(entry.HasInheritedObjectType ? "Yes" : "No"), Recorded(entry.InheritedObjectTypeGuid),
+            entry.ApplicationData.Length == 0 ? Text("NoneRecorded") : Convert.ToHexString(entry.ApplicationData),
+            State("Scope", evidence.Scope), Explanation("Trustee", trustee.State), Explanation("Reason", trustee.Reason),
+            Recorded(trustee.HolderDn), Recorded(trustee.HolderGuid), Recorded(trustee.HolderDomain),
+            Recorded(trustee.GroupType), Recorded(trustee.CapturedUtc), Recorded(trustee.DirectMemberDn));
+    }
+
+    private static string State(string prefix, ControlEvaluationState state) => Text(prefix + (state switch
+    {
+        ControlEvaluationState.Established => "Established",
+        ControlEvaluationState.NotEstablished => "NotEstablished",
+        _ => "Unknown",
+    }));
+
+    private static string Explanation<T>(string prefix, T value) where T : struct, Enum =>
+        Resources.GetString(prefix + value, CultureInfo.CurrentUICulture) ?? Text(prefix + "Unknown", value);
+
+    private static string Recorded(object? value) => value switch
+    {
+        null => Text("NotRecorded"),
+        DateTimeOffset time => time.ToString("O", CultureInfo.InvariantCulture),
+        IFormattable formatted => formatted.ToString(null, CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? Text("NotRecorded"),
+    };
+
+    private static string Text(string key, params object?[] arguments)
+    {
+        var format = Resources.GetString(key, CultureInfo.CurrentUICulture)
+            ?? throw new MissingManifestResourceException(key);
+        return arguments.Length == 0 ? format : string.Format(CultureInfo.CurrentCulture, format, arguments);
+    }
 }
 
 /// <summary>A stored statement and its proof; compound support is labelled and never added to the counted total.</summary>
