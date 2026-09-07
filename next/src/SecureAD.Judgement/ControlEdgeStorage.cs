@@ -7,7 +7,7 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
-    private const int EngineVersion = 2;
+    internal const int EngineVersion = 2;
 
     public static void CreateTables(SqliteConnection connection)
     {
@@ -40,6 +40,20 @@ internal static class ControlEdgeStorage
     public static void Start(SqliteConnection connection, bool captureComplete) => Execute(connection, null,
         "INSERT INTO control_product VALUES (1, $version, $complete, 0)", ("$version", EngineVersion), ("$complete", captureComplete));
     public static void Complete(SqliteConnection connection) => Execute(connection, null, "UPDATE control_product SET completed = 1 WHERE id = 1");
+
+    public static IReadOnlyList<long> SelfMembershipEdgeIds(SqliteConnection connection, string target,
+        IEnumerable<string> trusteeSids)
+    {
+        var wanted = trusteeSids.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id,holder_sid FROM control_edge WHERE target=$target COLLATE NOCASE AND capability='CanAddSelfToGroup' ORDER BY id";
+        command.Parameters.AddWithValue("$target", target);
+        using var reader = command.ExecuteReader();
+        var result = new List<long>();
+        while (reader.Read())
+            if (wanted.Contains(reader.GetString(1))) result.Add(reader.GetInt64(0));
+        return result;
+    }
 
     public static void Write(SqliteConnection connection, ControlObjectEvaluation result)
     {

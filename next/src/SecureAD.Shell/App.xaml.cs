@@ -65,7 +65,10 @@ internal partial class App : Application
                     shell.Show(ShellSection.Assets);
                 }),
                 new DerivationLauncher(),
-                new JudgingLauncher()),
+                // No automatic own-account membership scan runs until a processing limit has been
+                // measured and approved. Passed explicitly so the absence is a stated decision
+                // rather than a default nobody chose.
+                new JudgingLauncher(discoveryBudget: null)),
             audit => shell.Begin(audit),
             () => shell.Leave());
 

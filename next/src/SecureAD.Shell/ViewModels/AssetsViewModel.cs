@@ -500,6 +500,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [RelayCommand]
     public void Read()
     {
+        Opened = null;
         Roots.Clear();
         Gaps.Clear();
         Objects.Clear();
@@ -658,7 +659,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <param name="knownClass">The class the caller already knows, or null when it does not.</param>
     private void Open(string distinguishedName, string section, string? knownClass)
     {
-        var read = _assets.ReadPermissions(BundlePath!, distinguishedName);
+        var bundleDirectory = BundlePath!;
+        Opened = null;
+        Refusal = null;
+        var read = _assets.ReadPermissions(bundleDirectory, distinguishedName);
 
         if (!read.IsSuccess)
         {
@@ -684,14 +688,14 @@ internal sealed partial class AssetsViewModel : ObservableObject
         // Attribute values are read separately and are allowed to be absent. A failure to read
         // them is not a reason to refuse the object: the permissions are the reason this screen
         // exists, and each section says for itself when it has nothing.
-        var attributes = _assets.ReadObjectAttributes(BundlePath!, distinguishedName);
+        var attributes = _assets.ReadObjectAttributes(bundleDirectory, distinguishedName);
         var values = attributes.IsSuccess ? attributes.Value : null;
 
         // What the rules made of this object, for the findings section. Read the same way: a
         // judgement that will not open is a fact the section states, not a reason to refuse an
         // object whose evidence read perfectly.
         var findings = _assets.ReadFindings(
-            BundlePath!, FindingsQuery.About(distinguishedName));
+            bundleDirectory, FindingsQuery.About(distinguishedName));
 
         var objectClass = knownClass ?? ClassOf(values);
 
@@ -709,9 +713,12 @@ internal sealed partial class AssetsViewModel : ObservableObject
         var principalScope = principalSid is not null && SecureAD.Kernel.Security.Sid.IsBuiltinDomain(principalSid)
             ? values?.DomainFqdn : null;
         if (Opened.Section(ObjectSectionCatalog.ControlEdges) is ControlEdgesSectionViewModel controls)
-            controls.Configure(principalSid is not null, (byHolder, includeExpected, afterId) =>
-                _assets.ReadControlEdges(BundlePath!, byHolder ? null : distinguishedName,
-                    byHolder ? principalSid : null, principalScope, includeExpected, afterId));
+            controls.Configure(principalSid is not null, string.Equals(objectClass, "user", StringComparison.OrdinalIgnoreCase),
+                (byHolder, includeExpected, afterId) =>
+                _assets.ReadControlEdges(bundleDirectory, byHolder ? null : distinguishedName,
+                    byHolder ? principalSid : null, principalScope, includeExpected, afterId),
+                byRequester => _assets.ReadSelfMembershipAssessments(bundleDirectory, byRequester ? null : distinguishedName,
+                    byRequester ? distinguishedName : null));
 
         Opened.Show(section);
         Announce();

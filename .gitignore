@@ -35,6 +35,16 @@ audit.db-wal
 audit.db-shm
 verification-output/
 
+# Judged evidence kept beside the tree as proof a change altered nothing. Documents cite these
+# paths (the judgement store, WHAT-THE-PRODUCT-IS.md) and the files must stay on disk, but they
+# are recorded outputs and not source: 1.6 GB across next/artifacts/ and the lab-validation
+# folders on 2026-09-07, with single judgement databases over 200 MB - past GitHub's 100 MB
+# hard limit, so one `git add -A` would have produced a rejected push and a rewritten history.
+# Ignored by pattern rather than trusted to habit. A run brought back from the laboratory is
+# evidence to read, never content to commit.
+next/artifacts/
+next/lab-validation-*/
+
 # lab/ is deliberately NOT ignored here. The directory is tracked so that it exists on a
 # fresh clone and can carry a README explaining what it is for; its own lab/.gitignore
 # excludes everything dropped inside it. Ignoring it from this file would stop git

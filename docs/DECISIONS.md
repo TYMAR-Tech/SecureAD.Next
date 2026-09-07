@@ -110,3 +110,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0108](decisions/0108-a-finding-summarizes-independent-membership-routes.md) | 2026-09-05 | Accepted | A finding summarizes independent membership routes |
 | [0109](decisions/0109-schema-admins-ownership-is-accepted-only-in-the-schema.md) | 2026-09-05 | Accepted | Schema Admins ownership is accepted only in the schema |
 | [0110](decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md) | 2026-09-06 | Accepted | Membership and replication have distinct control-edge categories |
+| [0111](decisions/0111-bounded-self-membership-requesters.md) | 2026-09-06 | Accepted | Bounded Self-Membership requester assessments |

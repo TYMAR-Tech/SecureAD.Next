@@ -1,4 +1,5 @@
 using SecureAD.Kernel;
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
@@ -26,6 +27,135 @@ public sealed class JudgingEndToEndTests
 
     private static readonly DateTimeOffset Started = new(2026, 8, 26, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = new(2026, 8, 26, 11, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void ExplicitRequesterSurvivesTheRealCoordinatorWithoutMultiplyingTheHolderEdge()
+    {
+        var directory = TempDirectories.Create("self-membership-requester-e2e");
+        const string requesterDn = "CN=Alice,DC=contoso,DC=com";
+        const string requesterSid = "S-1-5-21-1-2-3-1100";
+        const string targetDn = "CN=Target,DC=contoso,DC=com";
+        var requester = new EvidenceObject(SomeCoverage(), requesterDn, Guid.NewGuid(),
+        [
+            new("objectClass", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("top"), EvidenceValue.OfText("user")]),
+            new("objectSid", StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes(requesterSid)!)]),
+            new("userAccountControl", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("512")]),
+        ], Started);
+        var target = new EvidenceObject(SomeCoverage(), targetDn, Guid.NewGuid(),
+        [
+            new("objectClass", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("top"), EvidenceValue.OfText("group")]),
+            new("objectSid", StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes("S-1-5-21-1-2-3-1200")!)]),
+        ], Started);
+        var descriptor = new System.Security.AccessControl.RawSecurityDescriptor(
+            $"O:SYG:SYD:(OA;;SW;bf9679c0-0de6-11d0-a285-00aa003049e2;;{requesterSid})");
+        var bytes = new byte[descriptor.BinaryLength];
+        descriptor.GetBinaryForm(bytes, 0);
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            writer.WriteObject(requester);
+            var id = writer.WriteObject(target);
+            writer.WriteSecurityDescriptor(id, bytes, SecureAD.Kernel.Security.AceNormalizer.Normalize(
+                target.ObjectGuid!.Value, SecureAD.Kernel.Security.SecurityDescriptorParser.Parse(bytes)));
+            writer.Complete(OneDomainRead(), Finished);
+        }
+        using (var captured = BundleReader.Open(directory).Value!)
+        {
+            Assert.Equal("contoso.com", captured.Description.ForestFqdn);
+            Assert.Equal("contoso.com", captured.ReadObjectAttributes(requesterDn)!.DomainFqdn);
+            Assert.Equal("contoso.com", captured.ReadObjectAttributes(targetDn)!.DomainFqdn);
+        }
+        var judged = JudgingRun.Judge(directory, [], [new(requesterDn, targetDn, SelfMembershipOperation.Add, null)],
+            SelfMembershipBudget.Default, Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
+        Assert.True(judged.IsSuccess, judged.Error?.Description);
+        using var reader = JudgementReader.Open(directory).Value!;
+        var assessment = Assert.Single(reader.ReadSelfMembershipAssessments(targetDn, null).Assessments);
+        Assert.True(assessment.Authorization == ControlEvaluationState.Established,
+            $"Authorization was {assessment.Authorization}; issues: {string.Join(',', assessment.Issues)}; evidence: {string.Join(';', assessment.Evidence.Select(value => $"{value.Entry.AceType}/{value.Entry.AccessMask:X}/{value.Scope}/{value.Trustee.State}/{value.Trustee.Reason}"))}");
+        Assert.Equal(RequesterTrusteeReason.DirectIdentity, Assert.Single(assessment.Evidence).Trustee.Reason);
+        Assert.Null(assessment.MemberPresent);
+        Assert.Single(assessment.HolderEdgeIds);
+        Assert.Single(reader.ReadControlEdges(targetDn, null, null, true, 0).Edges.Where(edge => edge.Capability == ControlCapability.CanAddSelfToGroup));
+    }
+
+    [Theory]
+    [InlineData(true, true, true, ControlEvaluationState.Established, RequesterTrusteeReason.DirectGlobalMembership)]
+    [InlineData(false, true, true, ControlEvaluationState.Unknown, RequesterTrusteeReason.MembershipNotEstablished)]
+    [InlineData(true, false, true, ControlEvaluationState.Unknown, RequesterTrusteeReason.IdentityMissing)]
+    [InlineData(true, true, false, ControlEvaluationState.Unknown, RequesterTrusteeReason.IdentityMissing)]
+    public void SelfTrusteeResolvesCapturedTargetThroughRealReaderAndCoordinator(bool membership, bool sid, bool guid,
+        ControlEvaluationState expected, RequesterTrusteeReason reason)
+    {
+        var directory = TempDirectories.Create("self-target-requester-e2e");
+        const string requesterDn = "CN=Alice,DC=contoso,DC=com";
+        const string targetDn = "CN=Target,DC=contoso,DC=com";
+        var requester = new EvidenceObject(SomeCoverage(), requesterDn, Guid.NewGuid(),
+        [
+            new("objectClass", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("top"), EvidenceValue.OfText("user")]),
+            new("objectSid", StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes("S-1-5-21-1-2-3-1100")!)]),
+            new("userAccountControl", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("512")]),
+        ], Started);
+        var target = new EvidenceObject(SomeCoverage(), targetDn, guid ? Guid.NewGuid() : null,
+        [
+            new("objectClass", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("top"), EvidenceValue.OfText("group")]),
+            new("objectSid", StoredAttributeCompleteness.Complete, sid ? [EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes("S-1-5-21-1-2-3-1200")!)] : []),
+            new("groupType", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("-2147483646")]),
+            new("member", StoredAttributeCompleteness.Complete, membership ? [EvidenceValue.OfText(requesterDn)] : []),
+        ], Started);
+        var descriptor = new System.Security.AccessControl.RawSecurityDescriptor(
+            "O:SYG:SYD:(OA;;SW;bf9679c0-0de6-11d0-a285-00aa003049e2;;PS)");
+        var bytes = new byte[descriptor.BinaryLength];
+        descriptor.GetBinaryForm(bytes, 0);
+        using (var writer = BundleWriter.Create(directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            writer.WriteObject(requester);
+            var id = writer.WriteObject(target);
+            writer.WriteSecurityDescriptor(id, bytes, SecureAD.Kernel.Security.AceNormalizer.Normalize(
+                target.ObjectGuid ?? Guid.Empty, SecureAD.Kernel.Security.SecurityDescriptorParser.Parse(bytes)));
+            writer.Complete(OneDomainRead(), Finished);
+        }
+        using (var captured = BundleReader.Open(directory).Value!)
+        {
+            var entry = Assert.Single(captured.ReadPermissions(targetDn)!.Entries);
+            Assert.Equal("S-1-5-10", entry.Trustee.Sid);
+            Assert.Null(entry.Trustee.DistinguishedName);
+        }
+        SelfMembershipRequest[] requests =
+        [new(requesterDn, targetDn, SelfMembershipOperation.Add, null), new(requesterDn, targetDn, SelfMembershipOperation.Remove, null)];
+        var judged = JudgingRun.Judge(directory, [], requests, SelfMembershipBudget.Default,
+            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
+        Assert.True(judged.IsSuccess, judged.Error?.Description);
+        using var reader = JudgementReader.Open(directory).Value!;
+        var assessments = reader.ReadSelfMembershipAssessments(targetDn, null).Assessments;
+        Assert.Equal(2, assessments.Count);
+        foreach (var request in requests)
+        {
+            var assessment = Assert.Single(assessments, value => value.Request.Operation == request.Operation);
+            Assert.Equal(expected, assessment.Authorization);
+            Assert.Equal(ControlEvaluationState.Established, assessment.OwnAccount);
+            var evidence = Assert.Single(assessment.Evidence);
+            Assert.Equal("S-1-5-10", evidence.Entry.Trustee.Sid);
+            Assert.Null(evidence.Entry.Trustee.DistinguishedName);
+            Assert.Equal("S-1-5-10", evidence.Trustee.TrusteeSid);
+            Assert.Equal(reason, evidence.Trustee.Reason);
+            Assert.Equal(target.ObjectGuid, evidence.Trustee.HolderGuid);
+            Assert.Equal(targetDn, evidence.Trustee.HolderDn);
+            if (expected == ControlEvaluationState.Established)
+            {
+                Assert.Equal(requesterDn, evidence.Trustee.DirectMemberDn);
+                Assert.Equal(-2147483646L, evidence.Trustee.GroupType);
+                Assert.Equal("contoso.com", evidence.Trustee.HolderDomain);
+                Assert.Equal(Started, evidence.Trustee.CapturedUtc);
+                Assert.Single(assessment.HolderEdgeIds);
+                Assert.Equal(request.Operation == SelfMembershipOperation.Add
+                    ? ControlEvaluationState.NotEstablished : ControlEvaluationState.Established, assessment.Readiness);
+            }
+            else Assert.Null(evidence.Trustee.DirectMemberDn);
+        }
+        if (expected == ControlEvaluationState.Established)
+            Assert.Single(reader.ReadControlEdges(targetDn, null, null, true, 0).Edges.Where(edge => edge.Capability == ControlCapability.CanAddSelfToGroup));
+    }
 
     [Theory]
     [InlineData("WP", true, false)]

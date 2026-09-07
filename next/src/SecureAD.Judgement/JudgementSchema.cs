@@ -36,7 +36,7 @@ public static class JudgementSchema
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
     /// </remarks>
-    public const int Version = 16;
+    public const int Version = 18;
 
     private static readonly string[] TableDdl =
     [
@@ -593,6 +593,7 @@ public static class JudgementSchema
         Execute(connection, TableDdl);
         SecureAD.Storage.MembershipRouteStorage.CreateTables(connection);
         ControlEdgeStorage.CreateTables(connection);
+        SelfMembershipStorage.CreateTables(connection);
     }
 
     /// <summary>

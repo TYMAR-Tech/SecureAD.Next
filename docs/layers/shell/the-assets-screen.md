@@ -46,6 +46,7 @@ As with every shell page, the types below are `internal` — the window exports 
 | `PermissionsSectionViewModel` | Who can do what to this object |
 | `ControlEdgesSectionViewModel` | Paged stored control edges, read by target or named holder, with coverage and hidden expected counts |
 | `ControlEdgeRowViewModel` | One stored capability's wording, classification and supporting evidence |
+| `SelfMembershipAssessmentRowViewModel` | One stored concrete requester answer, separate from holder-edge counts |
 | `EvidenceSectionViewModel` | What was captured about this object and what was not |
 | `FindingsSectionViewModel` | What the judging concluded about this one object |
 | `PolicyLinksSectionViewModel` | The policy linked at this container |
@@ -116,6 +117,52 @@ operator to return to the first page. A missing or unreadable product says so ra
 a complete empty result. Holder-first coverage retains capture-wide unanswered-object counts,
 because an unread descriptor could name the selected principal.
 
+### Requester and control readback safety — R4
+
+**Corrected and tested offline.** A judgement generation identifies one completed judging run.
+Control edges and requester assessments are read separately, so a new judgement published between
+those reads must not leave answers from two runs on the same object screen.
+
+- Every load clears both sets of rows, selected edge, next-page availability and prior success
+  wording before attempting a read. A failed control read therefore cannot leave a previous
+  requester's answer visible, including after paging, changing direction/filter or reconfiguration.
+- A completed control product needs a generation identity. Where requester readback applies, a
+  completed requester product also needs one and must match the control page, including an empty
+  completed requester product. A generation change during paging or between reads withholds both
+  sets of rows and counts, leaves no selected edge or next page, and asks for the first page.
+  Neither product's rows are published before that comparison finishes.
+- A requester-read failure clears its old rows and states the failure, while the successfully read
+  control page may still be displayed. A requester product that was not derived remains distinct
+  from a completed product with no scheduled request; absence has no requester generation to match.
+  A direction that does not apply to requester readback neither reads nor reuses requester rows.
+- Configuring a selected object reads each applicable product once. The direction-change callback
+  does not trigger a second initial read while configuration is in progress.
+- Reloading/changing a run closes old object detail even when the tree has no selected node. Trying
+  to open another object clears the old detail before a failed or missing-object result can return.
+  Object read callbacks retain the bundle path that opened the object rather than reading the
+  screen's later selection. Returning to the first page can then load a matching new generation.
+
+`ControlEdgeReadbackSafetyTests` exercises these cases through the real view-model commands with
+synthetic source results. Its assertions inspect both rows and refusal/coverage states, and record
+the bundle/selection actually passed to both readers. They do not launch a window or contact AD.
+`ControlRowsAreNotPublishedBeforeRequesterGenerationIsChecked` checks the state during the second
+read, not merely after it; `DifferentGenerationsBetweenReadsWithholdBothProductsUntilFirstPage`
+also proves recovery and covers both populated and empty requester results in both directions.
+
+**Validation:** the same `ControlEdgeReadbackSafetyTests` and `ControlEdgePresentationTests`
+selection ran **47 cases: 18 passed and 29 failed before the production correction, then 47/47
+passed after it**, with no test edits between those runs. Existing presentation fixtures were
+given coherent generation identities before the first run; no frozen historical values changed.
+The additional `AssetsViewModelTests`, `SelfMembershipRequesterTests`, `JudgingEndToEndTests`,
+`SelfMembershipStorageTests` and `ControlEdgeStorageTests` selection passed **348/348**. A fresh full
+`SecureAD.Next.Tests` run passed **3,703/3,703**, none skipped, and the full solution build succeeded.
+
+This corrects stale/mixed-generation readback, not requester scheduling, layout or full presentation.
+It does not add background monitoring of a judgement while a screen is idle, a visual acceptance
+result, new authorization logic or a new storage format. R2, R7 and final R8 reconciliation remain
+open in the [review register](../judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings);
+the subsequent R6 sizing correction and its remaining acceptance limit are recorded below.
+
 The evidence expander carries the holder SID and scope, target identity, catalogue and generation
 identifiers, contributing ACEs, uncertainty, preconditions and representative membership routes.
 The [judgement-store document](../judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -128,6 +175,60 @@ omitted `ControlEdgesSectionViewModel.cs`. Adding it before these entries made
 `TheAssetsPageTypesTableAndItsComponentAgree` fail naming both undocumented types. The other five
 tests passed. The existing check now covers 34 assets-component types rather than 32; its parsing
 and comparison rules were not weakened to accommodate the page.
+
+### Requester sizing — R6
+
+**Corrected and regression-tested; real-product visual validation is still outstanding.** On
+2026-09-06 the owner reviewed the isolated made-up-data gallery comparison and accepted its sizing
+for implementation. He plans subsequent forest testing on his small laptop screen and a monitor.
+These checks belong to normal verification; the owner does not require a separate monitor-check
+session before R2, R7 or R8 work continues.
+That is preview/design approval, not evidence that the implemented product has passed those checks.
+The Shell build marker is **AC**, so later screenshots can identify this implementation.
+
+The defect was in the containing layout: the control table occupied an unbounded content-sized
+row, while the requester notice, not a table, received the remaining height. Neither ObjectView
+nor its Assets host provided section scrolling. A long control page could therefore put requester
+answers below the reachable pane even though their table already had a maximum height.
+
+The local section correction caps the control table at **240 WPF layout units**, retains the
+requester table's **180-unit cap**, sizes the requester notice to its text, and adds vertical section
+scrolling. WPF layout units scale with display settings; these are not fixed physical screen pixels.
+Each table scrolls its rows; a short pane can scroll the section to reach notices, evidence and
+requester answers. Small lists use only the height they need. This accepted nested-scrolling
+trade-off follows Microsoft's [DataGrid sizing guidance](https://learn.microsoft.com/dotnet/desktop/wpf/controls/sizing-options-in-the-datagrid-control).
+No data binding, coverage/failure wording, column, evidence access, paging command or data source
+changed. No authorization, storage, schema or scheduling change is part of R6.
+
+`ControlEdgeSizingTests` measures and arranges the real section/ObjectView XAML with the Assets
+host's padding and column geometry, the product's theme dictionaries and real view models fed
+synthetic results. It creates no application or visible window. Its **12 cases** cover populated
+900-by-430, 1,300-by-650 and 1,600-by-900-unit panes, expanded evidence, empty/one/two-row requester
+lists and requester-read failure beneath a full control page. Assertions measure row bounds,
+generated last rows and their bound text, scroll extents, notices and evidence; binding checks alone
+are not the sizing proof. Three in-memory negative controls remove the control cap, collapse the
+requester table while leaving its maximum-height attribute, or remove section scrolling. Each must
+make the same geometry assertions fail. These cases do not simulate physical monitors or certify
+all column readability; the owner's actual laptop/monitor review remains necessary.
+
+**Observed before/after:** after correcting harness setup, the unchanged selection ran **12 cases:
+6 passed and 6 failed before production edits, then 12/12 passed afterward**. Five populated-pane
+cases measured the unbounded control table at 1,300.29 units; the failure-notice case lacked the
+section scrollbar. The regression source SHA-256 was unchanged between those runs. Initial harness
+resource-loading failures are not counted as reproduction of R6. The broader layout, presentation,
+Assets, R4, binding and resource selection passed **133/133**. The full `SecureAD.Next.Tests` project
+passed **3,715/3,715**, none skipped, and the full solution build succeeded.
+
+The separate gallery remains available as `SecureAD.Gallery --r6-preview`. It now labels its tabs
+**Before R6 — reconstructed sizing** and **Implemented**; the first reverses only the three sizing
+choices in memory, while the second uses the corrected product template. Both use made-up data;
+navigation is a labeled placeholder and filters/paging are disabled. The no-window
+`--r6-check <report-path>` compatibility check passed after implementation. No new visible window
+was launched for the implementation checks, and no AD operation or retained-data readback ran.
+
+R6's implementation is complete, not fully visually accepted in the real product. R2 scheduling,
+R7 presentation, R8 final reconciliation and P-145 remain open. **Ordinary Shell/CLI re-judging still
+schedules no requester batch**, so it cannot populate this table merely by obtaining the sizing fix.
 
 ---
 

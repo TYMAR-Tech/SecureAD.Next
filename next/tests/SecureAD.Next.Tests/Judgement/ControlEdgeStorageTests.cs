@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using Xunit;
@@ -12,6 +13,7 @@ public sealed class ControlEdgeStorageTests
     [Theory]
     [InlineData(14)]
     [InlineData(15)]
+    [InlineData(16)]
     public void OlderSchemasAreRefusedWithBothVersionNumbers(int version)
     {
         var directory = TempDirectories.Create("control-edge-old-schema");
@@ -174,6 +176,47 @@ public sealed class ControlEdgeStorageTests
         Assert.False(page.CaptureIsComplete);
         using var absent = Open(Store(_ => { }));
         Assert.False(absent.ReadControlEdges(null, null, null, false, 0).ProductWasDerived);
+    }
+
+    [Fact]
+    public void RequesterAssessmentSurvivesBothDirectionsWithoutAddingAnEdge()
+    {
+        SelfMembershipAssessment? stored = null;
+        var directory = Store(writer =>
+        {
+            var requesterGuid = Guid.NewGuid();
+            var target = GroupMembershipControlTests.Group with { DistinguishedName = "CN=Target,DC=contoso,DC=com" };
+            var ace = GroupMembershipControlTests.Scoped(0, 0x08);
+            writer.StartControlEdges(true);
+            var control = GroupMembershipControlTests.Membership(ControlEdgeDeriverTests.Permissions(ace), subject: target);
+            writer.WriteControlEdges(control with { Edges = control.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
+            writer.CompleteControlEdges();
+            var ids = writer.SelfMembershipEdgeIds(target.DistinguishedName, [ace.Trustee.Sid]);
+            Assert.Single(ids);
+            writer.StartSelfMembershipAssessments();
+            stored = new(new("CN=Alice,DC=contoso,DC=com", target.DistinguishedName, SelfMembershipOperation.Add, null),
+                writer.GenerationId, null, Seal, requesterGuid, ace.Trustee.Sid, target.ObjectGuid,
+                "S-1-5-21-1-2-3-1300", requesterGuid, ace.Trustee.Sid,
+                ControlEvaluationState.Established, ControlEvaluationState.Established, ControlEvaluationState.Unknown,
+                "Computed", DateTimeOffset.UnixEpoch, 512, null, [SelfMembershipIssue.MembershipStateUnknown],
+                [new(ace, ControlEvaluationState.Established, new(ace.Trustee.Sid, RequesterTrusteeState.Matches,
+                    RequesterTrusteeReason.DirectIdentity, requesterGuid, "CN=Alice,DC=contoso,DC=com", "contoso.com", null, DateTimeOffset.UnixEpoch, null))], ids);
+            writer.WriteSelfMembershipAssessment(stored);
+            writer.CompleteSelfMembershipAssessments(null);
+        });
+        using var reader = Open(directory);
+        var byTarget = reader.ReadSelfMembershipAssessments(stored!.Request.TargetDn, null);
+        var byRequester = reader.ReadSelfMembershipAssessments(null, stored.Request.RequesterDn);
+        Assert.True(byTarget.ProductWasDerived);
+        var targetResult = Assert.Single(byTarget.Assessments);
+        var requesterResult = Assert.Single(byRequester.Assessments);
+        Assert.Equal(targetResult.Request, requesterResult.Request);
+        Assert.Equal(targetResult.GenerationId, requesterResult.GenerationId);
+        Assert.Equal(targetResult.Authorization, requesterResult.Authorization);
+        Assert.Equal(targetResult.Issues, requesterResult.Issues);
+        Assert.Equal(targetResult.HolderEdgeIds, requesterResult.HolderEdgeIds);
+        var edge = Assert.Single(reader.ReadControlEdges(null, null, null, true, 0).Edges);
+        Assert.Equal([edge.Id], targetResult.HolderEdgeIds);
     }
 
     private static JudgementReader Open(string path)

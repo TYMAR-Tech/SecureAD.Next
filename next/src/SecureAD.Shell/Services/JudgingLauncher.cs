@@ -23,7 +23,7 @@ namespace SecureAD.Shell.Services;
 /// in hours.
 /// </para>
 /// </remarks>
-internal sealed class JudgingLauncher : IJudgingLauncher
+internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget) : IJudgingLauncher
 {
     /// <inheritdoc/>
     public Task<Result<JudgingOutcome>> RunAsync(
@@ -48,7 +48,7 @@ internal sealed class JudgingLauncher : IJudgingLauncher
     /// cannot drift from it. A count assembled in flight would be a second account of the same
     /// judging, and the two would disagree on the day one of them had a defect.
     /// </remarks>
-    private static Result<JudgingOutcome> Judge(
+    private Result<JudgingOutcome> Judge(
         string bundleDirectory,
         IProgress<JudgingRun.JudgingProgress> progress,
         CancellationToken cancellationToken)
@@ -61,6 +61,7 @@ internal sealed class JudgingLauncher : IJudgingLauncher
         var judged = JudgingRun.Judge(
             bundleDirectory,
             RuleCatalogue.All,
+            discoveryBudget,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             progress,
@@ -98,6 +99,9 @@ internal sealed class JudgingLauncher : IJudgingLauncher
                 judged.Value,
                 stored.RulesRun.Sum(r => (long)r.ObjectsJudged),
                 bySeverity,
-                couldNotDecide));
+                couldNotDecide)
+            {
+                Requesters = reader.ReadSelfMembershipSummary(),
+            });
     }
 }

@@ -176,6 +176,20 @@ public sealed class JudgementReader : IDisposable
             with { GenerationId = Description.GenerationId };
     }
 
+    /// <summary>Reads explicit requester assessments object-first, requester-first, or together.</summary>
+    public SelfMembershipAssessmentSet ReadSelfMembershipAssessments(string? target, string? requester)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return SelfMembershipStorage.Read(_connection, Description, target, requester);
+    }
+
+    /// <summary>Reads stored requester counts and capture-wide coverage; null means no requester product was derived.</summary>
+    public SelfMembershipSummary? ReadSelfMembershipSummary()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return SelfMembershipCoverageStorage.Read(_connection, Description);
+    }
+
     /// <summary>
     /// Verifies the judgement's seal and, only if it is intact and it belongs to this bundle, opens
     /// it for reading.

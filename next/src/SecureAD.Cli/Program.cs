@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using SecureAD.Audit.Capture;
 using SecureAD.Audit.Connect;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -72,7 +73,11 @@ internal static class Program
 
         try
         {
-            return await RunAsync(parsed, stopping.Token).ConfigureAwait(false);
+            // No automatic own-account membership scan runs until a processing limit has been
+            // measured and approved, and a real run always captures for itself. Both are stated
+            // here rather than defaulted, per gate 1.
+            return await RunAsync(parsed, stopping.Token, discoveryBudget: null, capture: null)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -94,8 +99,18 @@ internal static class Program
         }
     }
 
-    private static async Task<int> RunAsync(
-        CommandLine options, CancellationToken cancellationToken)
+    /// <param name="discoveryBudget">
+    /// The limits an automatic own-account membership scan runs under, or null for no scan. Named
+    /// at every call site rather than defaulted, so a run that schedules nothing has said so.
+    /// </param>
+    /// <param name="capture">
+    /// Where the sealed bundle comes from, or null to capture from a directory. A substitute exists
+    /// so the post-capture path can be exercised without contacting a forest; production passes null.
+    /// </param>
+    internal static async Task<int> RunAsync(
+        CommandLine options, CancellationToken cancellationToken,
+        SelfMembershipDiscoveryBudget? discoveryBudget,
+        Func<CancellationToken, Task<Result<CaptureRunResult>>>? capture)
     {
         // Before this machine's own addresses are read, because deriving contacts nothing: it opens
         // a sealed bundle that already exists. Asking the network anything first would make a
@@ -104,7 +119,14 @@ internal static class Program
             return Derive(options.DeriveOnly, afterCapture: false, cancellationToken);
 
         if (options.JudgeOnly is not null)
-            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken);
+            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget);
+
+        if (capture is not null)
+        {
+            if (options.PreviewOnly || options.ValidateOnly)
+                throw new ArgumentException("A capture substitute cannot perform preview or validation.", nameof(capture));
+            return FinishCapture(await capture(cancellationToken).ConfigureAwait(false), cancellationToken, discoveryBudget);
+        }
 
         // A machine whose own addresses cannot be read has no site, and every domain then reports
         // as chosen without full knowledge rather than the run pretending it was sited.
@@ -160,6 +182,12 @@ internal static class Program
                 cancellationToken)
             .ConfigureAwait(false);
 
+        return FinishCapture(run, cancellationToken, discoveryBudget);
+    }
+
+    private static int FinishCapture(Result<CaptureRunResult> run, CancellationToken cancellationToken,
+        SelfMembershipDiscoveryBudget? discoveryBudget)
+    {
         if (!run.IsSuccess)
         {
             Console.Error.WriteLine(run.Error!.Description);
@@ -183,7 +211,7 @@ internal static class Program
         var derived = Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken);
 
         return derived is Success
-            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken)
+            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken, discoveryBudget)
             : derived;
     }
 
@@ -310,7 +338,8 @@ internal static class Program
     /// </para>
     /// </remarks>
     private static int Judge(
-        string bundleDirectory, bool afterCapture, CancellationToken cancellationToken)
+        string bundleDirectory, bool afterCapture, CancellationToken cancellationToken,
+        SelfMembershipDiscoveryBudget? discoveryBudget)
     {
         if (!afterCapture && !Directory.Exists(bundleDirectory))
         {
@@ -335,6 +364,7 @@ internal static class Program
             judged = JudgingRun.Judge(
                 bundleDirectory,
                 RuleCatalogue.All,
+                discoveryBudget,
                 started,
                 started,
                 JudgingRun.NobodyIsWatching,
@@ -409,7 +439,7 @@ internal static class Program
             : $", {failed} did not complete";
 
         var summary = $"Judged: {stored.RulesRun.Count} rules ran{faults}, "
-            + $"{stored.Findings.Count} findings.";
+            + $"{stored.Findings.Count} findings." + Requesters(reader);
 
         var examinedNothing = stored.RulesRun
             .Where(r => r.ObjectsJudged == 0)
@@ -425,6 +455,40 @@ internal static class Program
             + $"  WARNING: {string.Join(", ", examinedNothing)} examined no objects at all. "
             + "A rule offered the whole forest that finds nothing it is even about is usually "
             + "broken rather than satisfied - check its subject classes before trusting a zero.";
+    }
+
+    /// <summary>
+    /// What the own-account membership scan covered, for the operator reading this in the morning.
+    /// </summary>
+    /// <remarks>
+    /// <b>Printed even when the scan did nothing</b>, because a silent line reads as a forest where
+    /// nobody can add themselves to a group. The wording is this host's; the facts come from the
+    /// store, so an unattended run and the window cannot disagree about what was covered.
+    /// </remarks>
+    private static string Requesters(JudgementReader reader)
+    {
+        if (reader.ReadSelfMembershipSummary() is not { } requesters)
+            return string.Empty;
+
+        var limits = requesters.Discovery.Limitations.Count;
+
+        return Environment.NewLine + "  " + requesters.Discovery.Verdict switch
+        {
+            "NotStarted" =>
+                "Own-account membership questions were not scheduled: no processing limit is "
+                + "configured. This is not a result saying nobody can add themselves to a group.",
+            "ExplicitRequestsOnly" =>
+                $"Own-account membership: {requesters.AssessmentsStored} stored answer(s) from "
+                + "explicit requests; no automatic scan ran.",
+            "ProcessingStopped" =>
+                $"Own-account membership: {requesters.AssessmentsStored} answer(s) stored, then the "
+                + $"scan stopped at its configured limit. {limits} limitation(s) recorded; this is "
+                + "not the whole capture.",
+            _ =>
+                $"Own-account membership: {requesters.AssessmentsStored} answer(s) over "
+                + $"{requesters.Discovery.PairsDiscovered} pair(s), "
+                + $"{requesters.AuthorizationUnknown} undecided, {limits} limitation(s) recorded.",
+        };
     }
 
     private static string CurrentDerivationPath(string bundleDirectory)

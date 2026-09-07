@@ -65,8 +65,10 @@ architectural question.
 **Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER and bounded
 group-membership control, with object-first and named-holder-first views in the object screen.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
-self-membership requester operations remain unknown and no member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Judgement schema 16 stores this product;
+requester answers are not implied by those candidates. Historical schema-16 Self-Membership
+candidates remain Unknown, and no general member capabilities are expanded.
+The owner-to-DACL transition remains unknown and uncounted. Judgement schema 17 stores this product
+and the separately requested bounded Self-Membership requester assessments;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -76,11 +78,130 @@ claim-specific laboratory gates remain outstanding. The
 [membership slice](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
 has automated coverage, an isolated offline comparison and an
 [isolated live Self-Membership measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06).
-The live direct/group-held tests and fresh readback passed; concrete requester analysis and member
-expansion remain unimplemented, so this is not end-to-end requester acceptance.
+The live direct/group-held tests and fresh readback passed. Those measurements did not include
+concrete requester evaluation and do not accept the schema-17 implementation below. General member
+expansion remains unimplemented.
 The comparison preserved all 65,084 existing primitives and added 10,776 established general
 membership writes plus 10,761 unknown self-membership candidates. Re-judge schema-15 results to
 obtain it; this does not accept the whole stage-6 proposal or replace the historical baseline.
+
+**The bounded requester design is implemented in judgement schema 17.** The owner answered "continue then"
+after the plain-language explanation. [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
+limits it to direct user grants and one explicit same-domain global-security-
+group membership. Requester assessments are stored separately from counted holder edges, with
+ordered deny evaluation, an own-account constraint and separate operation readiness. Missing inputs
+and unsupported routes remain unknown; the live measurements do not promote historical results.
+Explicit request batches are persisted and shown object-first and requester-first without increasing
+the named-holder count when supplied to the judging library. **The Shell and CLI do not yet supply
+these batches**, so ordinary re-judging does not schedule requester assessments. The authorization
+correction retains earlier uncertainty when it could change the ordered result and resolves SELF
+to the captured target group's identity and membership, not to the requester. R5 persistence safety
+is corrected: malformed stored requester records and mismatched holder references produce a
+controlled read failure, including through the Shell adapter, rather than empty or partial answers.
+R4 Shell readback safety is also corrected: failed reads and selection changes clear old answers,
+and control/requester results from different judging runs are withheld rather than combined.
+Requester-grid sizing is corrected and regression-tested; real-product laptop/monitor validation
+remains outstanding. Scheduling, full presentation and final acceptance reconciliation remain
+open; see the
+[review status](layers/judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings).
+This is not a complete token model, whole-feature acceptance or a new live acceptance result.
+
+**R2 owner requirement:** on 2026-09-06 the owner clarified that requester assessment "should always
+run on new captures" and asked for a clearer explanation of the proposed interaction. An
+existing-capture-only/manual-rejudge-first scope does not meet that requirement. Requester
+assessment must run automatically during normal Shell and unattended CLI judging, including after
+new Evidence is sealed. The judgement specification supplies the direction: start with a captured
+permission's trustee, resolve relevant captured members and validate scope. Decision 0111's concrete
+bounded requests do not require an administrator-maintained selection list. Discover questions from
+each capture's own permissions and memberships, within the accepted direct-user and single explicit
+same-domain global-security-group routes, including SELF resolved to the target. The remaining
+approval boundary is how incomplete discovery, unsupported inputs and budget stops are stored and
+reported without implying negative authorization or complete coverage. This does not authorize a
+forest-wide pair cross-product, live lookups, authorization/storage changes or the withdrawn
+request-file proposal; current production scheduling is still absent.
+When presented with a partial-coverage recommendation and a proposed 50-pair allowance, the owner
+asked work to stop for a plain-language explanation because the proposed implementation was unclear.
+That response is not approval of the allowance, partial-result policy or storage/readback changes.
+
+**R2 processing-budget direction approved:** after the recommendation was revised to reject a
+blanket 50-pair cutoff and establish a measured processing budget instead, the owner answered
+"ok i apporove your proposal". The 50-pair recommendation is withdrawn. The existing library limit
+of 100 submitted requests is not a measured forest-wide discovery limit and must not be repurposed
+as one. Establish a numerical recommendation through bounded offline measurements before changing
+production scheduling limits. No replacement number, silent batch truncation, authorization change
+or specific storage/readback extension is approved by this budget-direction answer. Missing captured
+evidence, unsupported analysis and processing-budget stops remain distinct; R2 is not implemented.
+
+**R2 contract and integration approved, 2026-09-07:** after the recommendation was explained against
+the actual Shell, CLI, evaluator and storage paths, the owner answered "i approve proceed".
+This approves one shared permission-first automatic scheduler, both own-account Add and Remove
+questions per concrete pair, schema-18 discovery coverage and limitation records beside the existing
+answers, strict generation-bound readback, and minimum Shell/CLI coverage notices. The evaluator's
+authorization rules, holder counts and explicit submitted-batch refusal remain unchanged. Missing
+evidence, unsupported routes and processing stops remain separate. A failed or cancelled attempt
+publishes nothing from that attempt. Older judgement results require re-judging, not re-capture or
+rewriting historical generations. This approval does not establish a numerical automatic-processing
+limit: measurements and approval of that recommendation still precede enabling a new production
+limit. Implementation and validation are not implied by approval; P-145 and R2 remain open.
+
+**R2 automatic discovery implemented in judgement schema 18, 2026-09-07.** Normal judging in both
+the Shell and the unattended command line now discovers own-account membership questions from each
+capture's own permissions and memberships, inside the existing single pass over the bundle, and
+stores the answers with a persisted record of what the scan covered. Denies and uncertain entries
+are discovered rather than filtered to the safe cases; broad trustees and NULL DACLs are recorded as
+coverage limitations instead of being expanded into invented requesters; missing evidence,
+unsupported routes and processing stops stay separate; a failed or cancelled attempt publishes
+nothing and leaves the previous results as previous results. The authorization rules, the
+own-account constraint and the counted holder edges are unchanged. **No processing limit has been
+measured or approved, so the scan performs no work today and both hosts say so rather than staying
+silent** — an empty requester product never reads as a forest where nobody can add themselves to a
+group. Older judgement results must be re-judged to gain this; no Evidence, Derivation, retained
+generation or frozen value was rewritten. Validated offline against synthetic sealed bundles with no
+directory contact; real-forest verification, the measured budget, broader presentation and final
+acceptance remain outstanding, and P-145 and R2 remain open.
+
+**R6 presentation review:**
+comparison and accepted the proposed sizing, now implemented. The control table is capped
+at 240 WPF layout units, the requester table retains its 180-unit cap, notices use their text's
+height, and the section scrolls when the pane is short. The accepted trade-off is scrolling within
+each table as well as through the section to reach notices, evidence and requester answers.
+He plans to test the implemented product in his forest, on his small laptop screen and on a monitor.
+The owner clarified that these checks will happen during normal verification, not as a separate
+monitor-check session or a prerequisite to continuing R2, R7 and R8.
+Those checks have not occurred here; preview approval is not real-product or forest acceptance.
+No directory operation or retained-Evidence access is authorized by this presentation decision.
+
+## The forest this is built for
+
+**The owner's production forest is the scale that matters, and the laboratory is not it.** Recorded
+because every performance and budget decision has to be argued against a real shape rather than a
+convenient one, and because a session that measures a small synthetic capture and reasons from it
+will reach a confident wrong answer.
+
+| | |
+|---|---|
+| Domains | 9 |
+| Objects | ~347,000 |
+| Access control entries | ~5.9 million |
+| Control edges the predecessor produced | ~9 million |
+| Delegations | ~1.3 million |
+| Findings | ~34,000 |
+| Directory depth | deep, average distinguished name about 97 characters |
+
+**Where these come from, exactly.** They were first found in the predecessor's
+`tests/SecureAD.Infrastructure.Tests/Performance/ObjectDetailProfiler.cs`, which states them as the
+production environment it profiles against. **The owner confirmed them as still correct on
+2026-09-07.** They are the shape to design and measure against.
+
+**The laboratory is `ad.lab`, about 8,383 objects, and the owner's words for it are that it "falls
+far short" of production in both scale and complexity.** It is genuinely useful for testing
+behaviour — that a rule fires, that an answer is right, that a screen refuses to mislead — and it is
+not evidence about cost, volume or what a real directory contains. The 111,627 control edges
+[`0097`](decisions/0097-a-group-held-permission-is-counted-at-the-group.md) argues against were a
+*lab* number; production produced roughly eighty times more. A budget, threshold or timing measured
+only on the lab or on a small synthetic capture is not a claim about a customer forest, and stating
+it as one is the failure [`0002`](decisions/0002-absent-view-means-degraded-run.md) exists to
+prevent.
 
 ## The five commitments
 

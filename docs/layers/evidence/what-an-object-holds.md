@@ -133,9 +133,10 @@ an object beside somebody else's coverage.
 
 ## Which domain it came from
 
-`ObjectAttributes.DomainFqdn` names the domain this object was captured from, and is null where the
-caller did not ask for one — `ObjectAttributesReader`, which reads a single object by name for a
-screen, states `null` deliberately rather than fetching a value nothing there uses.
+`ObjectAttributes.DomainFqdn` names the domain this object was captured from. Streaming and
+single-object reads both return the stored value. The point lookup originally returned null because
+its only caller was a screen; schema-17 concrete requester analysis needs the resource domain to
+avoid treating an unverified authorization context as a same-domain grant.
 
 **It is part of a principal's identity rather than decoration.** A SID is unique within its scope
 and not within a forest: `S-1-5-32-544` is `BUILTIN\Administrators` in *every* domain, and those are

@@ -188,7 +188,7 @@ internal static class ObjectAttributesReader
         if (stored is null)
             return null;
 
-        var (objectId, dn, objectGuid, captured, completeness, attributes) = stored.Value;
+        var (objectId, dn, objectGuid, captured, completeness, domainFqdn, attributes) = stored.Value;
 
         foreach (var attribute in BundleSchema.MultiValuedTables)
         {
@@ -204,10 +204,7 @@ internal static class ObjectAttributesReader
             captured,
             completeness,
             [.. attributes.OrderBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)],
-            // This reads one object by name for a screen to show. Nothing here keys a principal, so
-            // the domain is not fetched rather than being fetched and ignored - and it is stated
-            // here so a caller that later needs it changes this deliberately.
-            DomainFqdn: null);
+            domainFqdn);
     }
 
     /// <summary>
@@ -220,14 +217,14 @@ internal static class ObjectAttributesReader
     /// an object beside somebody else's coverage. <c>connection_security</c> is selected after the
     /// attribute columns so that adding a catalogued attribute does not move it.
     /// </remarks>
-    private static (long ObjectId, string Dn, Guid? ObjectGuid, DateTimeOffset Captured, EvidenceCompleteness Completeness, List<ObjectAttribute> Attributes)? SingleValuedOf(
+    private static (long ObjectId, string Dn, Guid? ObjectGuid, DateTimeOffset Captured, EvidenceCompleteness Completeness, string? DomainFqdn, List<ObjectAttribute> Attributes)? SingleValuedOf(
         SqliteConnection connection, string distinguishedName)
     {
         var columns = BundleSchema.SingleValuedColumns;
 
         using var command = connection.CreateCommand();
         command.CommandText =
-            "SELECT o.object_id, o.distinguished_name, o.object_guid, o.captured_utc"
+            "SELECT o.object_id, o.distinguished_name, o.object_guid, o.captured_utc, o.domain_fqdn"
             + string.Concat(
                 columns.Select(a => ", o." + BundleSchema.ColumnNameFor(a.LdapDisplayName)))
             + ", c.connection_security"
@@ -255,7 +252,7 @@ internal static class ObjectAttributesReader
         for (var i = 0; i < columns.Count; i++)
         {
             var attribute = columns[i];
-            var ordinal = i + 4;
+            var ordinal = i + 5;
 
             attributes.Add(new ObjectAttribute(
                 attribute.LdapDisplayName,
@@ -264,7 +261,7 @@ internal static class ObjectAttributesReader
         }
 
         var completeness = ReadCoverage.Over(
-            Enum.Parse<ConnectionSecurityLevel>(reader.GetString(4 + columns.Count)));
+            Enum.Parse<ConnectionSecurityLevel>(reader.GetString(5 + columns.Count)));
 
         return (
             objectId,
@@ -272,6 +269,7 @@ internal static class ObjectAttributesReader
             storedGuid is null ? null : Guid.Parse(storedGuid),
             captured,
             completeness,
+            reader.IsDBNull(4) ? null : reader.GetString(4),
             attributes);
     }
 

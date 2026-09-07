@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- THE DISCOVERY MEASUREMENT HARNESS. Not part of the product. It answers one question
+       with numbers instead of a guess: what automatic Self-Membership discovery costs, so a
+       production processing budget can be recommended and approved. Decision 0102 refuses to
+       invent a universal threshold and the unmeasured 50-pair proposal was withdrawn; measuring
+       is what replaces it.
+
+       A SEPARATE EXECUTABLE ON PURPOSE. Measurement is not a test: a suite asserts correctness
+       and must stay fast and deterministic, while this runs for minutes and reports figures
+       nobody can assert in advance. Folding it into the tests would let an execution time be
+       mistaken for a passing check, which docs/next/README.md gate 1 exists to prevent.
+
+       IT CONTACTS NOTHING AND WRITES NOTHING INTO THE REPOSITORY. Every bundle it judges it
+       wrote itself, beneath the system temporary directory, and each is deleted as soon as its
+       shape is measured. Sealed Evidence, next/artifacts and the laboratory directory are never
+       opened for writing.
+
+       DELETE THIS PROJECT once a budget is measured, approved and recorded in
+       docs/layers/judgement/the-judgement-store.md. Kept past that point it becomes a second
+       account of how judging performs, free to drift from the product it describes. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SecureAD.Measure</RootNamespace>
+    <AssemblyName>SecureAD.Measure</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <!-- Matched to the referenced projects, which are x64 so SQLite native loading resolves. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SecureAD.Kernel\SecureAD.Kernel.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Evidence\SecureAD.Evidence.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Derivation\SecureAD.Derivation.csproj" />
+    <ProjectReference Include="..\..\src\SecureAD.Judgement\SecureAD.Judgement.csproj" />
+  </ItemGroup>
+
+</Project>

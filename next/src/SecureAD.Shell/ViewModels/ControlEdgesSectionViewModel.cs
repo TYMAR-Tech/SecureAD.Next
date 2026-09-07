@@ -9,6 +9,9 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewModel
 {
     private Func<bool, bool, long, Result<ControlEdgePage>>? _read;
+    private Func<bool, Result<SelfMembershipAssessmentSet>>? _readAssessments;
+    private bool _selectedIsUser;
+    private bool _configuring;
     private long _after;
     private Guid? _generation;
     [ObservableProperty] private bool _byHolder;
@@ -19,18 +22,43 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     [ObservableProperty] private string _counts = "Expected edges hidden: unknown (product not read).";
     [ObservableProperty] private IReadOnlyList<ControlEdgeRowViewModel> _rows = [];
     [ObservableProperty] private ControlEdgeRowViewModel? _selectedEdge;
+    private string _requesterCoverage = "Requester assessments have not been read.";
+    private IReadOnlyList<SelfMembershipAssessmentRowViewModel> _requesterAssessments = [];
+
+    public string RequesterCoverage { get => _requesterCoverage; private set => SetProperty(ref _requesterCoverage, value); }
+    public IReadOnlyList<SelfMembershipAssessmentRowViewModel> RequesterAssessments
+    {
+        get => _requesterAssessments;
+        private set => SetProperty(ref _requesterAssessments, value);
+    }
 
     public string SupportedScope => ControlEdgePage.SupportedScope;
     public ControlEdgesSectionViewModel(ObjectSectionDefinition definition) : base(definition) { }
 
-    public void Configure(bool hasPrincipal, Func<bool, bool, long, Result<ControlEdgePage>> read)
+    public void Configure(bool hasPrincipal, bool selectedIsUser,
+        Func<bool, bool, long, Result<ControlEdgePage>> read,
+        Func<bool, Result<SelfMembershipAssessmentSet>> readAssessments)
     {
-        HasPrincipal = hasPrincipal;
-        _read = read;
+        _configuring = true;
+        try
+        {
+            HasPrincipal = hasPrincipal;
+            _selectedIsUser = selectedIsUser;
+            _read = read;
+            _readAssessments = readAssessments;
+            ByHolder = selectedIsUser;
+        }
+        finally { _configuring = false; }
         FirstPage();
     }
-    partial void OnByHolderChanged(bool value) => FirstPage();
-    partial void OnIncludeExpectedChanged(bool value) => FirstPage();
+    partial void OnByHolderChanged(bool value)
+    {
+        if (!_configuring) FirstPage();
+    }
+    partial void OnIncludeExpectedChanged(bool value)
+    {
+        if (!_configuring) FirstPage();
+    }
 
     [RelayCommand]
     private void FirstPage()
@@ -49,21 +77,31 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         Rows = [];
         SelectedEdge = null;
         HasMore = false;
+        RequesterAssessments = [];
+        RequesterCoverage = "Requester assessments have not been read.";
+        Coverage = "Control edges have not been read.";
+        Counts = "Expected edges hidden: unknown (product not read).";
         if (_read is null) return;
         var result = _read(ByHolder, IncludeExpected, _after);
         if (!result.IsSuccess)
         {
             Coverage = result.Error.Description;
             Counts = "Expected edges hidden: unknown (product unreadable).";
+            RequesterCoverage = "Requester assessments were not read because control edges could not be read.";
             return;
         }
         var page = result.Value;
-        if (_generation is not null && _generation != page.GenerationId)
+        if (page.ProductWasDerived && page.GenerationId is null)
         {
-            Coverage = "The judgement changed while paging. Return to the first page to read the new generation.";
-            Counts = "Counts withheld: generation changed.";
+            WithholdGeneration("The judgement generation is missing. Return to the first page to read the products again.");
             return;
         }
+        if (_generation is not null && _generation != page.GenerationId)
+        {
+            WithholdGeneration("The judgement changed while paging. Return to the first page to read the new generation.");
+            return;
+        }
+        if (!LoadRequesterAssessments(page.GenerationId)) return;
         _generation = page.GenerationId;
         Coverage = !page.ProductWasDerived ? "Control edges were not derived for this selection; re-judge the bundle."
             : $"Capture coverage: {(page.CaptureIsComplete ? "all declared domains read" : "incomplete")}. "
@@ -80,6 +118,61 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         HasMore = page.HasMore;
         _after = page.LastId;
     }
+
+    private bool LoadRequesterAssessments(Guid? generation)
+    {
+        if (_readAssessments is null || ByHolder != _selectedIsUser)
+        {
+            RequesterCoverage = ByHolder
+                ? "Requester assessments are shown when this selected object is the requester."
+                : "Requester assessments are shown when this selected object is the target group.";
+            return true;
+        }
+        var result = _readAssessments(ByHolder);
+        if (!result.IsSuccess)
+        {
+            RequesterCoverage = result.Error.Description;
+            return true;
+        }
+        if (result.Value.ProductWasDerived)
+        {
+            if (generation is null || result.Value.GenerationId is null)
+            {
+                WithholdGeneration("The judgement generation is missing. Return to the first page to read the products again.");
+                return false;
+            }
+            if (generation != result.Value.GenerationId)
+            {
+                WithholdGeneration("The judgement changed between reading control edges and requester assessments. Return to the first page to read the same generation.");
+                return false;
+            }
+        }
+        RequesterCoverage = !result.Value.ProductWasDerived
+            ? "Concrete requester analysis was not derived; re-judge with an explicit requester request."
+            : result.Value.Assessments.Count == 0
+                ? "No concrete requester request was scheduled for this selection. This is not a refusal result."
+                : $"{result.Value.Assessments.Count} stored concrete requester assessment(s). These do not add to holder-edge counts.";
+        RequesterAssessments = result.Value.Assessments.Select(value => new SelfMembershipAssessmentRowViewModel(value)).ToArray();
+        return true;
+    }
+
+    private void WithholdGeneration(string message)
+    {
+        Coverage = message;
+        RequesterCoverage = message;
+        Counts = "Counts withheld: judgement generations could not be matched.";
+    }
+}
+
+internal sealed class SelfMembershipAssessmentRowViewModel(SelfMembershipAssessment value)
+{
+    public string Requester => value.Request.RequesterDn;
+    public string Target => value.Request.TargetDn;
+    public string Operation => value.Request.Operation.ToString();
+    public string Authorization => value.Authorization.ToString();
+    public string OwnAccount => value.OwnAccount.ToString();
+    public string Readiness => value.Readiness.ToString();
+    public string Limits => string.Join(", ", value.Issues) + ". " + SelfMembershipAssessment.Context;
 }
 
 /// <summary>A stored statement and its proof; compound support is labelled and never added to the counted total.</summary>

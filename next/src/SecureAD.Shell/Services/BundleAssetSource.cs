@@ -44,6 +44,23 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
         }
     }
 
+    /// <inheritdoc/>
+    public Result<SelfMembershipAssessmentSet> ReadSelfMembershipAssessments(string bundleDirectory, string? target, string? requester)
+    {
+        var opened = JudgementReader.Open(bundleDirectory);
+        if (!opened.IsSuccess) return Result<SelfMembershipAssessmentSet>.Failure(opened.Error);
+        using var reader = opened.Value;
+        try
+        {
+            return Result<SelfMembershipAssessmentSet>.Success(reader.ReadSelfMembershipAssessments(target, requester));
+        }
+        catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            return Result<SelfMembershipAssessmentSet>.Failure(AuditError.Create(ErrorCategory.Shell, "SelfMembershipAssessmentsUnreadable",
+                ErrorSeverity.Failed, "Stored Self-Membership requester assessments could not be read: " + error.Message, bundleDirectory));
+        }
+    }
+
     private BundleReader? _open;
     private string? _openPath;
 

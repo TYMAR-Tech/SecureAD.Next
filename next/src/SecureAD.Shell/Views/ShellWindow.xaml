@@ -59,7 +59,7 @@
                          would otherwise be silent about WHICH build it shows. A round was lost to
                          that: a rail fix was judged not to work when the copy under test may have
                          predated it. Bumped by hand with every change. -->
-                    <TextBlock Text="build AB"
+                    <TextBlock Text="build AC"
                                FontFamily="{StaticResource UiFontFamily}"
                                FontSize="{StaticResource CaptionFontSize}"
                                Foreground="{StaticResource RailTextBrush}"

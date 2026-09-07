@@ -41,6 +41,19 @@ finished and sealed separately from the evidence it judged.
 | `ControlObjectEvaluation` | Per-object coverage, retained even when no edge can be identified |
 | `ControlPrecondition` | A named condition with its own evaluation and evidence source |
 | `ControlUncertainty` | Explicit unresolved inputs that limit a capability claim |
+| `SelfMembershipRequest` | One explicit user, target group and add/remove own-account question |
+| `SelfMembershipBudget` | Deterministic limits for a bounded requester batch |
+| `SelfMembershipAssessment` | Stored authorization, own-account and readiness answers with their evidence |
+| `SelfMembershipAssessmentSet` | Readback voucher distinguishing no scheduled request from no product |
+| `SelfMembershipOperation` | Whether the explicit own-account request adds or removes membership |
+| `SelfMembershipIssue` | A missing input or known readiness blocker that limits the answer |
+| `SelfMembershipAceEvidence` | One original permission entry beside requester applicability and scope |
+| `SelfMembershipDiscoveryBudget` | Explicit work limits for an automatic scan; no production default is chosen |
+| `SelfMembershipDiscoveryMode` | Whether questions came from explicit requests or an automatic scan |
+| `SelfMembershipDiscoveryReason` | Why coverage is limited, keeping missing evidence, unsupported routes and processing stops apart |
+| `SelfMembershipDiscoveryLimitation` | One limitation bound to the captured target, permission, trustee or member it came from |
+| `SelfMembershipDiscoveryCoverage` | What the scan examined and where it stopped, never a claim about the forest |
+| `SelfMembershipSummary` | Generation-bound counts and coverage read without loading every assessment |
 
 <!-- TYPES:END -->
 
@@ -360,6 +373,420 @@ the checks; no credentials are included.
 This measurement supports the own-account-only AD behavior in these two isolated grant shapes.
 It does not implement concrete requester evaluation, accept arbitrary nested/token scenarios,
 classify any target as Tier 0, or close P-145 and the remaining stage-6 acceptance gates.
+
+### Bounded concrete requester assessment — schema 17
+
+**Implemented from captured evidence; not a new live acceptance result.** Decision `0111` adds an
+explicit requester/target/add-or-remove assessment beneath the existing named-holder product. The
+first supported authorization routes are a direct captured user grant and one explicit same-domain
+global security-group membership. The permission list is evaluated once for the concrete requester,
+so an applicable deny through another identity is not missed. Stored order is retained.
+
+Authorization, the own-account restriction and operation readiness are three separate answers. A
+disabled account can therefore have established permission evidence without being described as able
+to authenticate. An absent captured `member` value remains unknown rather than proving absence.
+Nested, primary-group, SID-history, foreign, cross-domain, domain-local, universal and unresolved
+routes remain unknown where they could change the permission answer. The assessment describes an
+ordinary authenticated directory user; it is not a reconstruction of a live access token or a
+prediction that an LDAP operation will succeed.
+
+Judging accepts an explicit, deterministic request batch and refuses a batch beyond its configured
+budget rather than silently dropping requests. Schema 17 stores the evidence seal and generation,
+request identities, operation, three answers, original permission entries, requester applicability,
+typed limits and links to the existing holder edges. Requester assessments are uncounted detail:
+the named holder count required by `0097` is unchanged. Empty readback states whether no request was
+scheduled or the requester product was not derived. The object-first and requester-first Shell views
+read the same stored rows and perform no authorization calculation.
+
+The 2026-09-06 artifacts remain historical evidence of two live grant shapes. They were not changed
+or used to promote their schema-16 Unknown rows. Schema-16 judgements must be re-judged to obtain the
+new product; evidence and derivation do not need to be rewritten. P-145 remains open.
+
+**Earlier implementation-session validation (recorded, not rerun by the reviewer):**
+`SelfMembershipRequesterTests` covers direct and one-global-group grants,
+an applicable deny through another requester identity, stored order, missing membership,
+distribution groups, another requested member, disabled accounts, incomplete descriptors and the
+0x08/0x20 distinction. `JudgingEndToEndTests.ExplicitRequesterSurvivesTheRealCoordinatorWithoutMultiplyingTheHolderEdge`
+writes and seals a real synthetic bundle, schedules one request, and reads its original permission
+and holder-edge link back. Storage and presentation tests compare both directions. Schema-17 layout
+mutations detect an added requester column and a removed identity index. The solution build and all
+3,403 tests passed. The 238 historical artifact hashes, two lab-script hashes and fresh Evidence hash
+were rechecked unchanged; no directory operation or cleanup ran.
+
+#### Authorization correction and remaining review findings
+
+The bounded authorization evaluator now retains possible earlier allow and deny outcomes instead
+of discarding uncertainty when a later matching entry is reached. An uncertain deny before a known
+allow, or an uncertain allow before a known deny, yields Unknown. Uncertainty that cannot change
+the outcome does not erase a justified answer: a possible deny followed by a known deny remains
+NotEstablished, and a possible allow followed by a known allow remains Established. A definite
+decision stops evaluation; a later deny does not overturn an earlier grant. An undecided path at
+the end of the DACL is implicitly denied, so a possible deny alone cannot grant the requested right.
+These expectations follow Microsoft's
+[ordered access check](https://learn.microsoft.com/windows/win32/secauthz/how-dacls-control-access-to-an-object),
+not a rule that denies always win. Incomplete descriptors cannot justify either definite answer
+because the evidence does not locate or constrain the missing entries. Callback conditions are
+not evaluated; their possible allow/deny effects are retained. Unrecognized ACE kinds remain
+uncertain in both directions.
+
+SELF now resolves the captured holder and SID together to the target object. A real SELF trustee
+has no DN; the requester explanation nevertheless identifies the captured target group and its
+explicit same-domain global-security membership. The original entry still names `S-1-5-10` (SELF).
+Missing target SID/GUID yields IdentityMissing; missing membership stays MembershipNotEstablished,
+not non-membership. This does not expand the supported membership routes or equate SELF with the
+requester. Add and Remove share authorization for the validated write (`0x08`, not `0x20`), while
+own-account and readiness remain separate, including disabled accounts and already-present members.
+
+**Correction validation:** the unchanged focused test selection, `SelfMembershipRequesterTests`
+and `JudgingEndToEndTests`, ran 69 cases against the unfixed production code: 39 passed and 30 failed.
+After the fix, all 69 passed with none failed or skipped. The full solution build succeeded.
+Visual Studio Test Explorer then ran the entire `SecureAD.Next.Tests` project: **3,444 passed,
+zero failed and zero skipped**. The focused runs used those two fully qualified TypeName filters;
+the full run used the Project filter. These are new executions, not historical test statuses.
+The regressions cover both unsafe answer directions, same-outcome and later uncertainty,
+incomplete descriptors with relevant entries, callback/unsupported entries, unknown scope/trustees,
+bounded unsupported routes and both Add/Remove paths. Four synthetic sealed-bundle cases exercise
+the real permission reader and coordinator with null-DN SELF, explicit/absent membership, and
+missing target SID or GUID. Historical expected values and retained laboratory Evidence are not
+inputs to these new synthetic tests and were not rewritten.
+
+The session-start SHA-256 comparison covered 1,268 tracked/nonignored files: only the two production
+files, two test files and two documentation files changed; none were added or removed. All 330
+artifact/lab/script files in that comparison, including both retained Self-Membership scripts,
+were unchanged. The ignored fresh `evidence.db` was checked separately against the supplied baseline
+and still hashes to `137FF0CE603D5CC6463C76D1FA0432245A57C2FC1FF48481BDDDA9C6A8B8DA41`.
+This comparison is not a rerun of the historical 238-file fingerprint procedure. The session-only
+diff was inspected and `git diff --check` passed. No AD contact, directory operation, cleanup,
+application launch, historical fixture change or commit occurred. The pre-existing modification
+to `.github/copilot-instructions.md` was left untouched.
+
+**R5 persistence correction:** requester readback now refuses malformed stored answers even when
+the judgement seal correctly describes those bytes. Local `System.Text.Json` options require every
+non-optional constructor field and respect non-nullable fields. Microsoft's
+[required-property guidance](https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/required-properties)
+and [nullable-annotation limits](https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/nullable-annotations#limitations)
+distinguish missing fields from explicit nulls and explain why root arrays and collection elements
+also need explicit checks. This is local to requester persistence, not a global serializer change.
+
+- JSON null, malformed JSON, wrong collection shapes, null elements, missing nested constructor
+  fields, null required nested values and null `ApplicationData` are rejected, not replaced by empty
+  collections. Enum values must be defined. Original ACE type text is retained, including unknown
+  ACE kinds; readback does not turn unsupported captured evidence into a new authorization answer.
+- Required scalar text must be nonblank; typed GUIDs and timestamps must parse. SQLite account
+  values must be integers and `member_present` must be exactly 0, 1 or null. Assessment and holder
+  IDs must be positive, ACE ordinals nonnegative and unique, and holder IDs unique. Assessment
+  generation, consumed Derivation generation and Evidence seal must agree with the judgement.
+- A missing requester product beside assessment rows is invalid even when the query selects no
+  row. An incomplete or unsupported requester product is refused. An absent product with no rows
+  still means NotDerived; an empty completed product remains a different, valid answer.
+- Each referenced holder edge must exist beneath a completed, supported control product and match
+  target DN (case-insensitively), target GUID when known, `CanAddSelfToGroup`, both generations and
+  counted state. Its holder SID and resource scope must match at least one stored requester route
+  not marked DoesNotMatch; Unknown routes remain possible references, not grants. SELF keeps its
+  original `S-1-5-10` explanation and resolves to the assessment target SID for matching. BUILTIN
+  identities require the target domain's scope; unscoped identities cannot acquire an extra scope.
+- Empty holder lists remain valid without a control product. Explicit nullable identity evidence
+  remains nullable. No permissions, readiness or membership answers are recomputed during readback.
+  A malformed selected row aborts the whole read rather than exposing the preceding valid rows.
+  Data errors become `InvalidDataException` with assessment/field context (and edge ID for a bad
+  reference); the Shell adapter returns `Shell.SelfMembershipAssessmentsUnreadable`, not an empty
+  success or an unhandled parsing exception.
+
+**R5 validation:** the interrupted tests compiled, but their first run (195 cases: 10 passed,
+185 failed) could not open the new synthetic stores because their Derivation generation was
+fabricated. That is fixture failure, not persistence evidence. Creating a real sealed synthetic
+Derivation reached readback: 195 cases, 15 passed and 180 failed against unchanged production.
+The expanded pre-fix selection ran 231 cases: 17 passed and 214 failed. Those raw totals also include
+two test defects later corrected: an error-code expectation missing the established `Shell.` prefix,
+and a target-mismatch mutation blocked by a foreign key. They are not 214 independently demonstrated
+production defects. The latter fixture now creates the alternate control object before redirecting
+the edge, without disabling foreign-key enforcement. No frozen historical expected value changed.
+
+After the production correction and these test repairs, `SelfMembershipStorageTests` plus
+`ControlEdgeStorageTests` ran **231/231 passed**, covering both directions and the real Shell
+adapter. `MalformedSealedRowIsRejectedInBothDirections`,
+`ShellReportsMalformedSealedRowsAsReadFailures`,
+`HolderReferencesRequireMatchingCompletedControlProduct` and
+`BuiltinReferencesRequireTheTargetResourceScope` exercise the refusals; direct/SELF Add and Remove,
+explicit missing evidence and empty/unscheduled products supply positive controls. The existing
+real-edge round trip in `ControlEdgeStorageTests` was preserved. The R1/R3 selection,
+`SelfMembershipRequesterTests` plus `JudgingEndToEndTests`, ran **69/69 passed**. A fresh full
+`SecureAD.Next.Tests` run passed **3,665/3,665**, with none skipped, and the full solution build
+succeeded. Focused runs used fully qualified TypeName filters; the full run used the Project filter.
+
+The R5 baseline contains 1,269 tracked/nonignored files; a separate read-only hash manifest covers
+389 retained artifact/lab files including ignored files. Retained files remained unchanged, including
+fresh Evidence SHA-256 `137FF0CE603D5CC6463C76D1FA0432245A57C2FC1FF48481BDDDA9C6A8B8DA41`.
+This is not a rerun of the historical fingerprint procedure. No AD contact, application launch,
+directory operation, cleanup or commit was performed. Existing instructions and earlier feature
+work were preserved. Schema 17, evaluator version 1 and control engine version 2 are unchanged.
+
+| Review finding | Current status |
+|---|---|
+| R1 — ordered uncertainty | Corrected and regression-tested; definite answers require agreement of the possible ordered outcomes. |
+| R2 — no production requester scheduling | Open, deferred to product integration. The judging library accepts batches, but Shell/CLI callers still schedule none. |
+| R3 — SELF holder resolution | Corrected and regression-tested through the real permission reader/coordinator; original SELF evidence is retained. |
+| R4 — stale/mixed-generation Shell rows | Corrected and regression-tested: old rows clear on failed reads/selection changes; differing judgement generations withhold both products. See the [Shell readback contract](../shell/the-assets-screen.md#requester-and-control-readback-safety--r4). |
+| R5 — supporting JSON and holder-edge validation | Corrected and regression-tested; malformed records and mismatched references fail the read, including through the Shell adapter. Persistence safety only, not feature acceptance. |
+| R6 — requester grid sizing | Corrected and regression-tested after owner approval of the synthetic preview. Real-product laptop/monitor/forest checks remain outstanding; not fully visually accepted. See the [Shell sizing contract](../shell/the-assets-screen.md#requester-sizing--r6). |
+| R7 — incomplete requester presentation | Open, deferred to the Shell slice. |
+| R8 — contradictory product overview | Immediate historical/evaluator/scheduling distinctions corrected here and in the product overview; final cross-document reconciliation remains open for acceptance. |
+
+The R1/R3 authorization correction, R5 persistence safety and R4 Shell readback safety are complete.
+R4's unchanged focused selection passed 47/47 after 18 passed and 29 failed against the unfixed
+Shell; its additional regression selection passed 348/348, the full test project passed 3,703/3,703
+with none skipped, and the solution build succeeded. The linked Shell document owns the behavior
+and test details. No persistence or authorization code changed for R4.
+
+R6 sizing is now corrected without changing authorization, persistence, schema 17 or scheduling.
+The unchanged 12-case layout selection passed 12/12 after 6 passed and 6 failed against the unfixed
+layout; the broader selection passed 133/133, the full test project passed 3,715/3,715 with none
+skipped, and the solution build succeeded. The linked Shell document owns the measurements and
+the distinction between the approved synthetic preview and outstanding real-product validation.
+
+This does not accept the whole requester feature, close P-145, or provide a live LDAP-success claim.
+**Continue with R2, then R7 and R8 in bounded slices.** The owner clarified that laptop/monitor
+checks will happen during normal verification, not in a separate session blocking this work.
+They remain unperformed, not implicitly accepted. Ordinary Shell/CLI re-judging still schedules
+no requester batch; that limitation must be retained until R2 is implemented. R2 scheduling,
+R7 presentation and R8 final cross-document acceptance reconciliation remain open; none was
+implemented in the R6 session.
+
+#### R2 production scheduling boundary
+
+**Contract and integration approved, 2026-09-07; implementation and numerical budget remain
+outstanding.** After an explanation tied to the actual production paths below, the owner answered
+"i approve proceed". This approves the shared permission-first scheduler, both own-account Add and
+Remove per concrete pair, schema-18 persisted discovery summary and typed limitation records,
+generation-bound summary/selection readback, and minimum Shell/CLI notices. Authorization and
+explicit-batch refusal do not change. No numerical automatic-discovery default is approved; measure
+and obtain approval before enabling a new production limit. This later answer supersedes the
+earlier coverage-contract approval boundary below, not the outstanding implementation/validation.
+
+##### Delivered in schema 18 — 2026-09-07
+
+**Automatic discovery is implemented and reached by both hosts; it performs no work until a
+processing limit is configured, and says so.** `SelfMembershipScheduler` runs inside the existing
+single pass over captured objects, so discovery costs no extra read of the bundle. For each captured
+group it examines Self-Membership entries that apply to the object itself, resolves the direct user
+or the explicit same-domain global-security-group members, resolves `SELF` through the target, and
+schedules **both Add and Remove for the requester's own account** on every concrete pair. Missing
+membership never selects the operation. `SelfMembershipEvaluator` decides every answer unchanged, so
+decision 0111's authorization rules, the own-account constraint and holder counts are untouched.
+
+**Discovery does not restrict itself to established allows.** Denies and uncertain entries are
+discovered, because a scan that kept only the safe cases would produce a screen listing exactly what
+an administrator does not need. Broad runtime trustees and NULL DACLs are recorded as limitations
+rather than expanded into a requester per captured account: expanding them would manufacture
+concrete claims the evidence does not support.
+
+`SelfMembershipDiscoveryCoverage` is persisted with the assessments and validated on read. It
+records the mode, whether the captured-input scan finished, the configured budget, the work
+consumed, the pairs discovered and typed `SelfMembershipDiscoveryLimitation` records. The four
+states remain distinct and separately reportable: **missing captured evidence**
+(`DescriptorUnavailable`, `MembershipNotCaptured`, `GroupTypeMissing`, `MissingIdentity`),
+**unsupported analysis** (`UnsupportedRoute`, `BroadTrustee`, `UnresolvedTrustee`), **processing
+stops** (the four budget reasons) and a failed or cancelled attempt, which publishes nothing and
+leaves the previous generation current. A finished scan claims only that the captured permissions
+this run could read were examined; it is not a claim about the forest or about attribute
+completeness. `JudgementReader.ReadSelfMembershipSummary` reads counts and coverage without
+materialising every assessment, and the selection read carries the same coverage.
+`SelfMembershipCoverageStorage` refuses a missing, malformed, contradictory or orphaned record,
+including through the Shell adapter, rather than returning an empty-looking result.
+
+**Both production hosts now report it.** `JudgingLauncher` reads the summary back from the store and
+`NewAuditViewModel` states it on the completion screen; `SecureAD.Cli.Program.Summarise` prints the
+equivalent line for an unattended run. Each host words its own sentence, following the existing
+`UnresolvedWording` precedent, but both read the same stored fields so the facts cannot drift.
+**When no budget is configured — the current shipping state — both say the questions were not
+scheduled and that this is not a result saying nobody can add themselves to a group.**
+
+Validated offline against synthetic sealed bundles only. `SelfMembershipDiscoveryTests` proves
+discovered requests reach judging and persist readable answers through the Shell post-capture path,
+CLI `--judge` and CLI post-capture, each observed failing first with zero stored answers.
+`SelfMembershipDiscoveryCoverageTests` covers denies, uncaptured permissions, NULL DACLs, broad
+trustees, missing group type, unsupported scope, both operations per pair, a deterministic
+processing stop that retains what it found, and a cancelled judging leaving the earlier generation
+current. `SelfMembershipCoverageTests` mutates the sealed store in twelve ways and requires a
+controlled read failure in both directions. `SelfMembershipNoticeTests` checks the host wording.
+No AD contact, no application launch, no retained artifact or lab write.
+
+**Still open.** No numerical automatic-discovery budget has been measured or approved, so normal
+judging schedules nothing today; that measurement is the next bounded task. Nested, primary-group,
+SID-history, foreign-principal and cross-domain routes remain unsupported and are recorded as such.
+Broad R7 presentation and R8 reconciliation remain deferred, real-forest verification has not
+occurred, and P-145 and R2 remain open.
+
+##### What discovery costs — measured 2026-09-07, no budget set
+
+**Measured with `next/tools/SecureAD.Measure`, offline against synthetic captures only.** Each shape
+is judged twice, once with the scan configured and once with no budget, so the difference is the
+cost of discovery and nothing else. Figures are from one machine — Xeon 8171M, 8 cores, 32 GB — and
+**are not a published safe threshold for any forest**.
+
+| Capture shape | Pairs | Scan cost | Per pair | Stored per pair |
+|---|---|---|---|---|
+| 1,000 objects | 500 | 0.5 s | 1.06 ms | ~3.1 KB |
+| 5,000 objects | 2,500 | 3.7 s | 1.49 ms | ~3.1 KB |
+| 10,000 objects | 5,000 | 12.6 s | 2.52 ms | ~3.1 KB |
+| 20,000 objects | 10,000 | 54.2 s | 5.42 ms | ~3.1 KB |
+| 10,000 objects | 25,000 | 180.9 s | 7.24 ms | ~3.1 KB |
+
+**Storage is stable and predictable at about 3.1 KB per account/group pair.** Elapsed time is not:
+the cost per pair climbs as the work grows.
+
+**Two defects were found and fixed, and the answers did not change.** Each question about a group
+re-read that group's permissions and re-queried its stored control edges; questions are now ordered
+by target so each is read once. And every answer was its own committed transaction — the
+control-edge writer already batched, while the requester writer passed no transaction — so 50,000
+answers meant 50,000 commits; they now commit in batches of 1,000, rolled back if a run fails part
+way. Together these took the largest shape from 211.7 s to 180.9 s and the smallest from 1.1 s to
+0.5 s.
+
+**The dominant cost is elsewhere, and is recorded rather than guessed.** Judging now writes a
+per-phase breakdown to the run log — `scan-ms`, `read-ms`, `assess-ms`, `write-ms` — because three
+causes were proposed in one session and two were wrong. On 3,000 objects with 7,500 pairs the whole
+request loop is about 2.7 seconds and **the scan during the object pass is 13.4 seconds**. The scan
+resolves principals by distinguished name, and `ObjectAttributesReader.Read` issues one query for
+the object row and **a further query for each multi-valued attribute**, so a single by-name lookup
+costs several round trips. Holding lookups constant while tripling the object count left the cost
+unchanged (13.4 s against 13.8 s), which rules out a missing index or a table scan: the cost is the
+number of round trips per lookup, not the size of the table. **The fix is to read an object's
+multi-valued attributes in one round trip**, which benefits every by-name read in the product, not
+only discovery. It is not yet implemented.
+
+**These figures are a floor, not a bound.** They stop at 20,000 objects against a production forest
+of roughly 347,000 with 5.9 million access control entries — see
+[the forest this is built for](../../WHAT-THE-PRODUCT-IS.md#the-forest-this-is-built-for). A budget
+argued from them alone would be argued from a capture two orders of magnitude too small.
+
+**To re-run the measurement**, from the repository root:
+
+```powershell
+dotnet run --project next/tools/SecureAD.Measure -c Release -- 3
+dotnet run --project next/tools/SecureAD.Measure -c Release -- 1 3000 750 10
+```
+
+The first argument is how many times each shape is repeated; the remaining three — objects, groups,
+members per group — narrow the run to a single shape, which is how the phase breakdown above was
+obtained. **Build in Release or the numbers mean nothing.** Each capture is generated, judged twice,
+and deleted, so the harness needs free temporary space for one capture at a time rather than all of
+them; a summary is written to `measurements.csv` beneath the system temporary directory. It contacts
+no directory and reads nothing from a real forest.
+
+The production
+Shell path is `NewAuditViewModel.JudgeAsync` through `IJudgingLauncher.RunAsync` and
+`JudgingLauncher` to `JudgingRun.Judge`. Its only current launcher caller follows capture; an
+interactive offline requester action is not already present. CLI `Program.RunAsync` reaches
+`Program.Judge` both for offline `--judge` and after capture/derivation. Both hosts call the overload
+that supplies an empty requester list. The CLI does judge; the missing integration is explicit
+requester scheduling, not judging as a whole.
+
+The existing request contract carries requester DN, target DN, Add or Remove, and an optional
+member DN; null means the requester's own account. The default budget permits **100 submitted
+requests** and **10,000 relevant permission entries per assessment**. The coordinator checks the
+submitted count before deduplication, refuses an oversized batch rather than taking its first
+100 entries, then deduplicates and orders requests deterministically. The permission-entry limit
+instead records `PermissionBudgetExceeded` with Unknown authorization. It is not a global bound
+on the ordinary rules or control-edge pass. Unknown requester answers are not reflected in the
+coordinator's overall completion state, which depends on capture scope and rule outcomes; a host
+must read and report requester outcomes separately rather than imply that completion means every
+requested question was answered definitively.
+
+Each successful judging publishes a new complete judgement generation, including its entire
+requester set. Requests are not automatically carried forward: an empty batch publishes an empty
+completed requester product. Failure before publication leaves the previous generation current;
+it must not be presented as results of the failed attempt. Evidence and Derivation are not rewritten.
+`ExplicitRequesterSurvivesTheRealCoordinatorWithoutMultiplyingTheHolderEdge` exercises the library
+coordinator, not either production host. Closing R2 requires host-to-store regression checks that
+prove automatically discovered requests reach judging after capture and through offline CLI judging,
+then read the persisted answers, including refusal and replacement behavior. Scheduling does not
+authorize changing the evaluator, public contracts or storage semantics without prior approval.
+
+**Owner requirement and specification-backed direction:** the owner clarified on 2026-09-06 that
+this "should always run on new captures". The existing-capture-first scope and same-Evidence-only
+request-file proposal were not approved and are withdrawn. The judgement specification's
+[permission/group-first approach](../specs/JUDGEMENT-HALF.md#authorization-membership-is-cached-by-context-capability-evaluation-remains-target-specific)
+starts with a captured permission's trustee, resolves relevant captured members and validates scope.
+Decision 0111 requires concrete bounded questions, not an administrator-maintained selection list.
+Normal Shell and unattended CLI judging must discover them from each capture's own evidence,
+including the first capture, within the supported direct-user and single explicit same-domain
+global-security-group routes. SELF resolves to the captured target identity and membership, not the
+machine's current user. This assesses own-account changes; it never performs membership changes,
+uses live lookups or constructs a forest-wide requester/target cross-product.
+
+**Remaining approval boundary:** define and persist truthful discovery coverage and budget stops,
+separately from individual authorization answers and overall rule completion. Schema 17's requester
+product stores only evaluator version and completion; its public assessment set carries rows,
+product availability and generation, not discovery coverage. Unknown assessments require concrete
+requests and cannot stand in for an unidentified requester or an unvisited part of the capture.
+Decision 0102 requires retained partial expansion with an explicit stop reason; it does not change
+the existing submitted-batch refusal into "take the first 100". A new discovery coverage contract,
+its storage/readback and the minimum host notices needed to avoid a complete-looking partial result
+require approval before implementation. Authorization and holder counts remain unchanged; broad
+R7 presentation and R8 reconciliation remain deferred.
+
+**Recommended bounded production slice; not yet approved:** integrate one permission-first scheduler
+into normal judging, reached by both hosts. For each relevant captured Self-Membership entry, use
+its direct user or explicit group members; resolve SELF through the target. Do not restrict seeds
+to established allows: relevant denies and uncertain entries must not disappear from discovery.
+Schedule both Add and Remove for each concrete pair, with null member DN, independently of whether
+the captured target lists the requester. Missing membership is not proof of absence. Evaluate with
+the existing ordered authorization code and retain links to stored holder edges without adding
+counted edges. Do not traverse nested/primary-group/SID-history/foreign or cross-domain routes;
+record unresolved and unsupported discovery evidence rather than manufacturing requester identities.
+Broad runtime trustees and null/unreadable descriptors cannot justify a fabricated complete empty
+requester set; record the coverage limitation without expanding every user against those targets.
+
+Use a separate automatic-discovery budget and persisted coverage product, not silent truncation of
+submitted batches. **The initial 100-record/50-pair discovery recommendation is withdrawn.** After
+the revised recommendation to establish a measured processing budget rather than a blanket 50-pair
+cutoff, the owner answered "ok i apporove your proposal". This approves the budget direction, not a
+new numerical threshold or the entire proposed storage/readback extension. The explicit library
+batch limit is not evidence of an appropriate automatic-discovery limit. The next bounded task is
+offline measurement with synthetic inputs: account for discovery work, assessment processing,
+memory and stored-result size before recommending numerical limits. Do not bypass the existing
+submitted-batch refusal to perform that measurement or contact AD; retained Evidence and laboratory
+artifacts remain read-only.
+
+**Budget-direction documentation validation:** the fresh external baseline is
+`%TEMP%\SecureAD-R2-budget-baseline-20260906-230510`. The full test project passed 3,715/3,715,
+none skipped, and the solution build passed after recording this direction. Only this document
+and the product overview were edited; no production code or tests changed. These are preservation
+checks, not processing measurements or acceptance of automatic scheduling. No numerical budget
+has been established by these test results.
+
+The proposed coverage behavior retains unresolved nodes already encountered and records which
+target/holder was reached and the stop reason; an unknown remainder is not a known total. Missing
+captured evidence, unsupported analysis and a processing stop are different reasons, not a single
+claim of incomplete capture. The 10,000-entry per-assessment authorization limit and explicit
+submitted-batch refusal remain unchanged. Ordinary rules and counted holder edges continue
+independently. A completed generation may contain a truthfully partial requester product; failure
+or cancellation before publication still leaves the previous generation current, never relabelled
+as the new attempt's results.
+
+This recommendation needs a versioned judgement-storage/readback extension for discovery scope,
+configured limits, unresolved inputs and stop reasons (not changes to Evidence or Derivation), plus
+minimum Shell/CLI coverage notices. Historical schema-17 results must not acquire an invented
+automatic-discovery coverage claim. Full requester presentation remains R7. Production acceptance
+must exercise the real Shell post-capture path and both CLI judging paths using synthetic sealed
+bundles, with no directory contact, and prove persisted results and generation replacement rather
+than merely inspecting calls or supplying a hard-coded library batch.
+
+**Prerequisite correction validation, 2026-09-06:** the fresh external baseline is
+`%TEMP%\SecureAD-R2-baseline-20260906-201531`, at HEAD
+`0e4762baf1c713f9bc86538da3e7ab1cde33ed52` on `main`: 30 modified tracked files, 338 untracked,
+nothing staged. Only this document and the product overview changed in this prerequisite slice;
+no production code or tests changed. Fresh Test Explorer runs passed 526/526 focused requester,
+storage, readback, sizing and host regressions and 3,715/3,715 full-project tests, none skipped;
+the full solution build passed. These are preservation checks, not R2 before/after defect evidence
+or host-to-store acceptance of automatic discovery, which remains unimplemented pending approval.
+The session-only diff was inspected and `git diff --check` passed. All 389 retained artifact/lab
+files, including ignored files, matched the fresh hash manifest; fresh Evidence remains SHA-256
+`137FF0CE603D5CC6463C76D1FA0432245A57C2FC1FF48481BDDDA9C6A8B8DA41`.
+Instructions, the gallery, historical fixtures and earlier fixes were preserved. No visual/live
+verification, application launch, directory operation, cleanup or commit occurred. R2, R7, R8 and
+P-145 remain open.
 
 ### Captured-lab validation of the initial slice — 2026-09-06
 

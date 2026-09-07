@@ -185,7 +185,7 @@ public sealed record ControlEdgePage(
     public bool IsComplete => ProductWasDerived && CaptureIsComplete && UnansweredObjects == 0;
     /// <summary>The boundary stated wherever this partial capability catalogue is shown.</summary>
     public const string SupportedScope = "Bounded control-edge slices: WRITE_DAC, WRITE_OWNER and group-membership rights. "
-        + "General membership writes and own-account-only Self-Membership are separate; self-membership requester operations remain unknown. "
+        + "General membership writes and own-account-only Self-Membership are separate; named-holder requester operations remain unknown, while explicit bounded requester assessments are separate uncounted detail. "
         + "Ownership-derived control, credentials, replication, full-control aggregation "
         + "and effective member expansion are not yet derived. Counts are not totals for all control capabilities.";
 }

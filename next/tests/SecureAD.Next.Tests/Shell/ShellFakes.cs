@@ -139,8 +139,21 @@ internal sealed class FakeConfirmation : IConfirmation
 internal sealed class FakeAssetSource : IAssetSource
 {
     public ControlEdgePage ControlEdges { get; set; } = new([], 0, 0, 0, 0, false, false, false, 0);
+    public SelfMembershipAssessmentSet SelfMembershipAssessments { get; set; } = new([], false, null);
+    public List<(string Bundle, string? Target, string? Holder)> ControlQueries { get; } = [];
+    public List<(string Bundle, string? Target, string? Requester)> RequesterQueries { get; } = [];
     public Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
-        string? holderScope, bool includeExpected, long afterId) => Result<ControlEdgePage>.Success(ControlEdges);
+        string? holderScope, bool includeExpected, long afterId)
+    {
+        ControlQueries.Add((bundleDirectory, target, holderSid));
+        return Result<ControlEdgePage>.Success(ControlEdges);
+    }
+    public Result<SelfMembershipAssessmentSet> ReadSelfMembershipAssessments(string bundleDirectory, string? target,
+        string? requester)
+    {
+        RequesterQueries.Add((bundleDirectory, target, requester));
+        return Result<SelfMembershipAssessmentSet>.Success(SelfMembershipAssessments);
+    }
 
     public DirectoryTree Tree { get; set; } = new([], []);
 

@@ -15,6 +15,11 @@ public sealed class ControlEdgeLayoutTests
         [15] = "DD3895257D39B029C04ABC2B35DA5B27102485A75A6BF276FE32F5FE5B41ECD4",
         // Schema 16 changes capability semantics, not DDL; the independent schema-15 layout remains the anchor.
         [16] = "DD3895257D39B029C04ABC2B35DA5B27102485A75A6BF276FE32F5FE5B41ECD4",
+        [17] = "FAF24769514E72DE2678D259113840E0895FEAB05E97169F507C2EE907C0E523",
+        // Schema 18 adds self_membership_discovery. Recorded from this build's published layout
+        // rather than an external store, so it detects later unversioned drift but is not an
+        // independent anchor the way the schema-15 value is.
+        [18] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
     };
 
     [Fact]
@@ -28,6 +33,10 @@ public sealed class ControlEdgeLayoutTests
     [InlineData("ALTER TABLE control_edge ADD COLUMN unversioned TEXT")]
     [InlineData("DROP INDEX ix_control_holder")]
     [InlineData("DROP INDEX ux_control_identity")]
+    [InlineData("ALTER TABLE self_membership_assessment ADD COLUMN unversioned TEXT")]
+    [InlineData("DROP INDEX ux_self_membership_identity")]
+    [InlineData("ALTER TABLE self_membership_discovery ADD COLUMN unversioned TEXT")]
+    [InlineData("DROP TABLE self_membership_discovery")]
     public void LayoutCheckpointRejectsUnversionedChanges(string mutation)
     {
         using var connection = Create();

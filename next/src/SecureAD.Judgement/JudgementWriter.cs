@@ -85,6 +85,61 @@ public sealed class JudgementWriter : IDisposable
     }
 
     /// <summary>
+    /// How many requester answers share one commit.
+    /// </summary>
+    /// <remarks>
+    /// <b>Measured, not guessed.</b> Written one row at a time each answer was its own committed
+    /// transaction, and 50,000 of them cost about 200 seconds on synthetic captures - the commits,
+    /// not the analysis. Batching removes that without holding the whole product open: a single
+    /// transaction spanning the run would grow the write-ahead log by the size of every answer
+    /// before any of it could be checkpointed.
+    /// </remarks>
+    private const int SelfMembershipBatch = 1_000;
+
+    private SqliteTransaction? _selfMembershipBatch;
+    private int _selfMembershipWritten;
+
+    internal void StartSelfMembershipAssessments()
+    {
+        ThrowIfFinished();
+        SelfMembershipStorage.Start(_connection);
+    }
+
+    internal void WriteSelfMembershipAssessment(SelfMembershipAssessment assessment)
+    {
+        ThrowIfFinished();
+
+        // Opened here rather than when the product starts, because the pass over the objects runs
+        // in between and writes each object's control edges in a transaction of its own. SQLite has
+        // no nested transactions, so the batch can only begin once that pass is finished.
+        _selfMembershipBatch ??= _connection.BeginTransaction();
+        SelfMembershipStorage.Write(_connection, _selfMembershipBatch, assessment);
+
+        if (++_selfMembershipWritten % SelfMembershipBatch != 0)
+            return;
+
+        _selfMembershipBatch.Commit();
+        _selfMembershipBatch.Dispose();
+        _selfMembershipBatch = _connection.BeginTransaction();
+    }
+
+    internal IReadOnlyList<long> SelfMembershipEdgeIds(string target, IEnumerable<string> trusteeSids)
+    {
+        ThrowIfFinished();
+        return ControlEdgeStorage.SelfMembershipEdgeIds(_connection, target, trusteeSids);
+    }
+
+    internal void CompleteSelfMembershipAssessments(SelfMembershipDiscoveryCoverage? coverage)
+    {
+        ThrowIfFinished();
+        SelfMembershipStorage.Complete(_connection, _selfMembershipBatch, coverage ?? new(1,
+            SelfMembershipDiscoveryMode.ExplicitRequests, false, _evidenceIsComplete, null, 0, 0, 0, 0, []));
+        _selfMembershipBatch?.Commit();
+        _selfMembershipBatch?.Dispose();
+        _selfMembershipBatch = null;
+    }
+
+    /// <summary>
     /// Creates a judgement store in <paramref name="bundleDirectory"/> and opens it for writing.
     /// </summary>
     /// <remarks>
@@ -275,6 +330,11 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
 
+        // Rolled back rather than committed: a coordinator that failed part way through the
+        // requester answers has no product to offer, and half a batch is not a partial answer but
+        // an arbitrary prefix of one.
+        RollBackSelfMembershipBatch();
+
         FinishWithState(JudgementRunState.Failed, failedUtc);
 
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
@@ -289,8 +349,23 @@ public sealed class JudgementWriter : IDisposable
         if (_disposed)
             return;
 
+        RollBackSelfMembershipBatch();
         _connection.Dispose();
         _disposed = true;
+    }
+
+    /// <summary>Discards an assessment batch that was never completed.</summary>
+    private void RollBackSelfMembershipBatch()
+    {
+        if (_selfMembershipBatch is null)
+            return;
+
+        try { _selfMembershipBatch.Rollback(); }
+        catch (InvalidOperationException) { }
+        catch (SqliteException) { }
+
+        _selfMembershipBatch.Dispose();
+        _selfMembershipBatch = null;
     }
 
     /// <summary>

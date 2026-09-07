@@ -3,6 +3,7 @@ using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
@@ -85,12 +86,60 @@ public static class JudgingRun
         DateTimeOffset evaluationAsOf,
         IProgress<JudgingProgress> progress,
         IRunLog log,
+        CancellationToken cancellationToken) =>
+        Judge(bundleDirectory, rules, (SelfMembershipDiscoveryBudget?)null, startedUtc, evaluationAsOf, progress, log, cancellationToken);
+
+    /// <summary>Judges with an explicitly configured automatic-discovery budget, without supplied requester identities.</summary>
+    public static Result<JudgementRunState> Judge(
+        string bundleDirectory,
+        IReadOnlyList<IRule> rules,
+        SelfMembershipDiscoveryBudget? discoveryBudget,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress,
+        IRunLog log,
+        CancellationToken cancellationToken)
+    {
+        discoveryBudget?.Validate();
+        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, discoveryBudget, startedUtc, evaluationAsOf,
+            progress, log, cancellationToken);
+    }
+
+    /// <summary>Judges a bundle and evaluates only the explicit bounded Self-Membership requests supplied.</summary>
+    public static Result<JudgementRunState> Judge(
+        string bundleDirectory,
+        IReadOnlyList<IRule> rules,
+        IReadOnlyList<SelfMembershipRequest> selfMembershipRequests,
+        SelfMembershipBudget selfMembershipBudget,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress,
+        IRunLog log,
+        CancellationToken cancellationToken) =>
+        JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, false, null, startedUtc,
+            evaluationAsOf, progress, log, cancellationToken);
+
+    private static Result<JudgementRunState> JudgeCore(
+        string bundleDirectory,
+        IReadOnlyList<IRule> rules,
+        IReadOnlyList<SelfMembershipRequest> selfMembershipRequests,
+        SelfMembershipBudget selfMembershipBudget,
+        bool automaticDiscovery,
+        SelfMembershipDiscoveryBudget? discoveryBudget,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress,
+        IRunLog log,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
+        ArgumentNullException.ThrowIfNull(selfMembershipRequests);
+        ArgumentNullException.ThrowIfNull(selfMembershipBudget);
         ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(log);
+        if (selfMembershipRequests.Count > selfMembershipBudget.Requests)
+            throw new ArgumentException($"The request batch contains {selfMembershipRequests.Count} requests; its explicit budget is {selfMembershipBudget.Requests}.", nameof(selfMembershipRequests));
 
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
@@ -320,6 +369,7 @@ public static class JudgingRun
 
         long objectsRead = 0;
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete);
+        writer.StartSelfMembershipAssessments();
         var controlContext = context with { ForestFqdn = bundle.Description.ForestFqdn };
         var domainSids = Memoised(domain =>
         {
@@ -328,6 +378,12 @@ public static class JudgingRun
             return value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
         });
 
+        var attributes = Memoised<ObjectAttributes?>(dn => bundle.ReadObjectAttributes(dn));
+        var scanWatch = new System.Diagnostics.Stopwatch();
+        var discovery = automaticDiscovery ? new SelfMembershipScheduler(discoveryBudget,
+            scope.Value!.AllDeclaredDomainsAreComplete, attributes, controlContext.SchemaGuids ?? SchemaGuidCatalog.Embedded,
+            bundle.Description.ForestFqdn, cancellationToken) : null;
+
         foreach (var subject in bundle.StreamObjects().Objects)
         {
             // Checked per object rather than per batch. A rule catalogue that has grown expensive
@@ -335,8 +391,12 @@ public static class JudgingRun
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
 
+            var permissions = bundle.ReadPermissions(subject.DistinguishedName);
             writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
-                bundle.ReadPermissions(subject.DistinguishedName), controlContext, writer.GenerationId, derivationGeneration, domainSids));
+                permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids));
+            scanWatch.Start();
+            discovery?.Observe(subject, permissions);
+            scanWatch.Stop();
 
             foreach (var tally in tallies)
                 tally.Offer(subject, context);
@@ -352,9 +412,98 @@ public static class JudgingRun
         progress.Report(new JudgingProgress(objectsRead));
         writer.CompleteControlEdges();
 
+        // ORDERED BY TARGET FIRST, WHICH IS A PERFORMANCE DECISION AND NOTHING ELSE. Every question
+        // about one group needs that group's permissions and its stored control edges, and both are
+        // reads that cost the same whether one requester is asked or four hundred. Grouping the
+        // questions by target means each is fetched once and reused while that target is in hand,
+        // so the caches below stay a single slot rather than growing with the forest.
+        //
+        // Measured 2026-09-07 on synthetic captures before this change: 10,000 objects with 25,000
+        // account/group pairs cost 211 seconds of discovery, and the cost per pair rose from 2.2 ms
+        // to 8.5 ms as the work grew - the same target's evidence was being re-read once per
+        // question. The answers were never affected: this changes the order rows are written in,
+        // not what any of them says.
+        string? loadedTarget = null;
+        ObjectPermissions? loadedPermissions = null;
+        var loadedEdges = new Dictionary<string, IReadOnlyList<long>>(StringComparer.Ordinal);
+
+        // WHERE THE REQUESTER PHASE SPENT ITS TIME, WRITTEN TO THE RUN LOG. Recorded rather than
+        // guessed: two rounds of optimisation were aimed at the wrong half of this loop before
+        // anything measured which half was expensive. A run that takes an unexpected hour should
+        // leave behind the reason, per docs/decisions/0088.
+        var readWatch = new System.Diagnostics.Stopwatch();
+        var assessWatch = new System.Diagnostics.Stopwatch();
+        var writeWatch = new System.Diagnostics.Stopwatch();
+        var assessed = 0L;
+
+        foreach (var request in (discovery?.Requests() ?? selfMembershipRequests)
+            .DistinctBy(value => (value.RequesterDn.ToUpperInvariant(), value.TargetDn.ToUpperInvariant(), value.Operation,
+                (value.MemberDn ?? string.Empty).ToUpperInvariant()))
+            .OrderBy(value => value.TargetDn, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(value => value.RequesterDn, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(value => value.Operation)
+            .ThenBy(value => value.MemberDn ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (loadedTarget is null || !string.Equals(loadedTarget, request.TargetDn, StringComparison.OrdinalIgnoreCase))
+            {
+                readWatch.Start();
+                loadedTarget = request.TargetDn;
+                loadedPermissions = bundle.ReadPermissions(request.TargetDn);
+                loadedEdges.Clear();
+                readWatch.Stop();
+            }
+
+            assessWatch.Start();
+            var requester = attributes(request.RequesterDn);
+            var target = attributes(request.TargetDn);
+            var member = attributes(request.MemberDn ?? request.RequesterDn);
+            var assessment = SelfMembershipEvaluator.Assess(request, requester, target, member,
+                loadedPermissions, trustee => trustee.DistinguishedName is { } dn ? attributes(dn) : null,
+                controlContext.SchemaGuids ?? SchemaGuidCatalog.Embedded, bundle.Description.ForestFqdn, seal.Hash,
+                writer.GenerationId, derivationGeneration, selfMembershipBudget, []);
+            assessWatch.Stop();
+            var possibleSids = assessment.Evidence.Where(item => item.Trustee.State != RequesterTrusteeState.DoesNotMatch)
+                .Select(item => item.Entry.Trustee.Sid == "S-1-5-10" ? assessment.TargetSid : item.Entry.Trustee.Sid)
+                .Where(sid => sid is not null).Cast<string>();
+
+            // Keyed on the trustees this answer actually matched, because two requesters on one
+            // group commonly match the same entries and would otherwise repeat an identical query.
+            writeWatch.Start();
+            var sids = possibleSids.Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToArray();
+            var key = string.Join('\u0000', sids);
+            if (!loadedEdges.TryGetValue(key, out var edges))
+            {
+                edges = writer.SelfMembershipEdgeIds(request.TargetDn, sids);
+                loadedEdges[key] = edges;
+            }
+
+            writer.WriteSelfMembershipAssessment(assessment with
+            {
+                HolderEdgeIds = edges,
+            });
+            writeWatch.Stop();
+            assessed++;
+        }
+        writer.CompleteSelfMembershipAssessments(discovery?.Coverage());
+
+        if (assessed > 0)
+        {
+            log.Note(JudgePhase, "self-membership",
+            [
+                new RunLogDetail("answers", assessed.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("scan-ms", ((long)scanWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("read-ms", ((long)readWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("assess-ms", ((long)assessWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("write-ms", ((long)writeWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+            ]);
+        }
+
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
+        cancellationToken.ThrowIfCancellationRequested();
         writer.Complete(DateTimeOffset.UtcNow);
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
@@ -437,6 +586,18 @@ public static class JudgingRun
             if (known.TryGetValue(argument, out var answer))
                 return answer;
 
+            answer = lookup(argument);
+            known[argument] = answer;
+            return answer;
+        };
+    }
+
+    private static Func<string, T> Memoised<T>(Func<string, T> lookup)
+    {
+        var known = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
+        return argument =>
+        {
+            if (known.TryGetValue(argument, out var answer)) return answer;
             answer = lookup(argument);
             known[argument] = answer;
             return answer;

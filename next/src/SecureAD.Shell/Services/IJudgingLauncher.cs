@@ -30,7 +30,20 @@ internal sealed record JudgingOutcome(
     JudgementRunState State,
     long ObjectsJudged,
     IReadOnlyDictionary<Severity, int> Findings,
-    IReadOnlyList<UnresolvedCount> CouldNotDecide);
+    IReadOnlyList<UnresolvedCount> CouldNotDecide)
+{
+    /// <summary>
+    /// What the requester scan covered, read from the store, or null where no requester product was
+    /// written.
+    /// </summary>
+    /// <remarks>
+    /// <b>Carried so the screen cannot mistake "not asked" for "nothing found".</b> Requester
+    /// answers are separate from findings and from rule completion: a judging can finish every rule
+    /// while the requester scan never ran, and an operator told only that judging completed would
+    /// read that as a forest where nobody can add themselves to anything.
+    /// </remarks>
+    public SelfMembershipSummary? Requesters { get; init; }
+}
 
 /// <summary>One thing that stopped a rule deciding, and how far it reached.</summary>
 /// <param name="Reason">What was missing or undecided, in the operator's words.</param>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <!--
     THE CONTROL GALLERY. Not part of the product.
@@ -48,6 +48,9 @@
       truth either way: this compiles the shell's own file.
     -->
     <Compile Include="..\..\src\SecureAD.Shell\ViewModels\FactState.cs" Link="FactState.cs" />
+    <Content Include="..\..\src\SecureAD.Shell\Views\Sections\ObjectSectionTemplates.xaml" Link="PreviewInputs\ObjectSectionTemplates.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\SecureAD.Shell\Views\ObjectView.xaml" Link="PreviewInputs\ObjectView.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src\SecureAD.Shell\Views\AssetsView.xaml" Link="PreviewInputs\AssetsView.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

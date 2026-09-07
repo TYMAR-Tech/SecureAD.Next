@@ -1817,7 +1817,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// a completion screen that scrolls is one nobody reads to the end of.
     /// </para>
     /// </remarks>
-    private static string Describe(JudgingOutcome judged) => judged.State switch
+    private static string Describe(JudgingOutcome judged) => (judged.State switch
     {
         JudgementRunState.Completed when judged.Findings.Count == 0 =>
             $"Judged {judged.ObjectsJudged:N0} objects. Every rule reached a verdict and none of "
@@ -1831,7 +1831,55 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             + Why(judged.CouldNotDecide),
         _ =>
             "The judging did not finish. The evidence is sealed and can be judged again.",
-    };
+    }) + Requesters(judged);
+
+    /// <summary>
+    /// What the own-account membership scan covered, in the words the completion screen uses.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Said out loud even when it did nothing.</b> These answers are about whether a particular
+    /// account could add or remove <i>itself</i> from a group. Saying nothing when the scan did not
+    /// run would leave an operator reading a completed judging as a forest where nobody can, which
+    /// is the one thing an audit tool must not imply.
+    /// </para>
+    /// <para>
+    /// <b>Finishing the scan is not a claim about the forest.</b> It means every captured
+    /// permission this run was allowed to read was examined; limitations name what could not be
+    /// decided from the evidence.
+    /// </para>
+    /// </remarks>
+    private static string Requesters(JudgingOutcome judged)
+    {
+        if (judged.Requesters is not { } requesters)
+            return string.Empty;
+
+        var limits = requesters.Discovery.Limitations.Count;
+        var caveat = limits == 0
+            ? string.Empty
+            : $" {limits:N0} coverage limitation(s) are recorded, so this is not every possible "
+                + "requester.";
+
+        return Environment.NewLine + requesters.Discovery.Verdict switch
+        {
+            "NotStarted" =>
+                "Own-account membership questions were not scheduled: no processing limit is "
+                + "configured for that scan. This is not a finding that nobody can add themselves "
+                + "to a group.",
+            "ExplicitRequestsOnly" =>
+                $"Stored {requesters.AssessmentsStored:N0} own-account membership answer(s) from "
+                + "explicitly requested questions. No automatic scan was run.",
+            "ProcessingStopped" =>
+                $"Stored {requesters.AssessmentsStored:N0} own-account membership answer(s), and "
+                + "the scan stopped at its configured limit before reading everything captured. "
+                + "What it found is kept and the stopping point is recorded." + caveat,
+            _ =>
+                $"Stored {requesters.AssessmentsStored:N0} own-account membership answer(s) from "
+                + $"{requesters.Discovery.PairsDiscovered:N0} discovered account/group pair(s). "
+                + $"{requesters.AuthorizationUnknown:N0} could not be decided from the evidence."
+                + caveat,
+        };
+    }
 
     /// <summary>
     /// What stopped the rules deciding, worst first, as sentences beneath the summary.

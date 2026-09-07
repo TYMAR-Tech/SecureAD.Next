@@ -58,6 +58,10 @@ protected-principal product and principal expansion.
 | `PrincipalExpansionOutcome` | Whether a principal was expanded, and if not, why not |
 | `ExpandedPrincipal` | One principal found inside another, with the path that reached it |
 | `PrincipalExpansion` | Everything inside one principal, and what the walk could not reach |
+| `RequesterTrusteeState` | Whether a trustee applies to one concrete requester in the bounded authorization slice |
+| `RequesterTrusteeReason` | The captured route or explicit limit behind that answer |
+| `RequesterTrusteeEvidence` | Direct identity or one direct same-domain global-group membership evidence |
+| `RequesterTrusteeReading` | Reads that bounded route without treating raw nesting as authorization |
 | `CapturedSchemaAttributeReader` | Reads the schema partition's attribute definitions out of sealed evidence, so the phase contacts no directory |
 | `SchemaAttributeDefinition` | One attribute definition as capture stored it |
 | `SchemaAttributeReading` | Those definitions with whether the schema partition was read at all, so emptiness cannot be mistaken for a forest that withholds nothing |
