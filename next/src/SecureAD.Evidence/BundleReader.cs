@@ -101,6 +101,8 @@ public sealed class BundleReader : IDisposable
 {
     private readonly SqliteConnection _connection;
     private bool _disposed;
+    private (long ObjectId, string Dn)? _streamedIdentity;
+    private bool? _streamedNamesAreUnambiguous;
 
     private BundleReader(
         string bundleDirectory, SqliteConnection connection, BundleDescription description)
@@ -283,7 +285,7 @@ public sealed class BundleReader : IDisposable
     /// <para>
     /// <b>For a caller that has to look at all of them.</b> <see cref="ReadObjectAttributes"/> is
     /// the right shape for one object a person clicked on and the wrong shape for a forest: it
-    /// issues a query per multi-valued table, which is nothing once and ruinous a million times.
+    /// fetches an object row and its batched values separately for each requested object.
     /// This walks the object table and each value table once, in step.
     /// </para>
     /// <para>
@@ -293,7 +295,8 @@ public sealed class BundleReader : IDisposable
     /// </para>
     /// </remarks>
     public BundleObjects StreamObjects() =>
-        new(Description.EveryDeclaredUnitRecordedAsRead, ObjectStreamReader.Stream(Connection));
+        new(Description.EveryDeclaredUnitRecordedAsRead,
+            ObjectStreamReader.Stream(Connection, (id, dn) => _streamedIdentity = (id, dn)));
 
     /// <summary>
     /// Reads how much of the forest this run covered, one entry per declared domain.
@@ -600,8 +603,35 @@ public sealed class BundleReader : IDisposable
     /// to a different question from an object with no entries, and is kept apart from it for the
     /// reason <see cref="DescriptorAvailability"/> gives.
     /// </returns>
-    public ObjectPermissions? ReadPermissions(string distinguishedName) =>
-        ObjectPermissionsReader.Read(Connection, distinguishedName);
+    public ObjectPermissions? ReadPermissions(string distinguishedName)
+    {
+        var connection = Connection;
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+
+        if (_streamedIdentity is { } identity
+            && string.Equals(identity.Dn, distinguishedName, StringComparison.Ordinal)
+            && StreamedNamesAreUnambiguous())
+            return ObjectPermissionsReader.ReadAt(connection, identity.ObjectId, identity.Dn);
+
+        return ObjectPermissionsReader.Read(connection, distinguishedName);
+    }
+
+    private bool StreamedNamesAreUnambiguous()
+    {
+        if (_streamedNamesAreUnambiguous is { } known)
+            return known;
+
+        // Checked once with SQLite's own NOCASE rules, not .NET's Unicode case folding.
+        // Ambiguous evidence keeps the original name lookup and its original selection.
+        using var command = Connection.CreateCommand();
+        command.CommandText =
+            "SELECT 1 FROM captured_object GROUP BY distinguished_name COLLATE NOCASE "
+            + "HAVING COUNT(*) > 1 LIMIT 1";
+        using var reader = command.ExecuteReader();
+        var unambiguous = !reader.Read();
+        _streamedNamesAreUnambiguous = unambiguous;
+        return unambiguous;
+    }
 
     /// <summary>
     /// Reads every attribute value this bundle holds for one object.

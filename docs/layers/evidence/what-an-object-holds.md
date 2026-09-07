@@ -56,6 +56,16 @@ attribute that is absent from `ObjectAttributes.Attributes` says the second, and
 So `ObjectAttribute.HasValue` is a fact about the object, and a null from
 `ObjectAttributes.Find` is a fact about this build.
 
+**The batched object read does not narrow that contract.** The object row is read once, then all
+multi-valued tables are read together in one query. Text and bytes occupy separate result columns;
+values are put back into ordinal order within each attribute. Empty tables still produce present,
+empty attributes. There is no change to sealed storage or to the streamed whole-bundle reader.
+`ObjectAttributesTests` checks every populated catalogued attribute against the original input,
+including duplicate and empty values, and separately pins multi-valued names to the predecessor's
+version-10 catalogue and Microsoft's schema rather than deriving those names from the new reader.
+A deliberately narrowed result fails the comparison. The timing results and their limits are
+recorded in [the judgement store](../judgement/the-judgement-store.md#what-discovery-costs--measured-2026-09-07-no-budget-set).
+
 **What an empty attribute does not distinguish.** An attribute with no values may mean the object
 holds no value, or may mean the reader was refused it. The directory does not tell those apart,
 and [`0022`](../../decisions/0022-objects-are-stored-as-typed-columns.md) rules that the

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Security.AccessControl;
+using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
@@ -38,10 +39,15 @@ internal static class Program
     /// <param name="Objects">Total captured objects, most of them filler the scan passes over.</param>
     /// <param name="Groups">Target groups carrying one Self-Membership entry each.</param>
     /// <param name="MembersPerGroup">Captured members of the trustee group; each becomes one pair.</param>
-    private sealed record Shape(int Objects, int Groups, int MembersPerGroup)
+    private sealed record Shape(int Objects, int Groups, int MembersPerGroup,
+        int Domains = 1, long? AccessControlEntries = null)
     {
+        public long Aces => AccessControlEntries ?? Groups;
+        public long MinimumObjects => Domains + ((long)Groups * (MembersPerGroup + 2L));
+
         public override string ToString() =>
-            $"{Objects,6:N0} objects, {Groups,5:N0} groups, {MembersPerGroup,4:N0} members";
+            $"{Objects,6:N0} objects, {Groups,5:N0} groups, {MembersPerGroup,4:N0} members, "
+            + $"{Domains} domains, {Aces:N0} ACEs";
     }
 
     private sealed record Measurement(Shape Shape, int Repeat, double ScanMs, double BaselineMs,
@@ -63,8 +69,8 @@ internal static class Program
             new Shape(5_000, 500, 5),
             new Shape(10_000, 1_000, 5),
             new Shape(20_000, 2_000, 5),
-            new Shape(10_000, 1_000, 25),
-            new Shape(10_000, 200, 100),
+            new Shape(27_001, 1_000, 25),
+            new Shape(20_401, 200, 100),
         };
 
         // ONE SHAPE ON DEMAND, because the full sweep runs for minutes and most questions do not
@@ -76,11 +82,32 @@ internal static class Program
             && int.TryParse(args[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var groups)
             && int.TryParse(args[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var members))
         {
-            shapes = [new Shape(objects, groups, members)];
+            var domains = args.Length >= 5 ? int.Parse(args[4], CultureInfo.InvariantCulture) : 1;
+            long? aces = args.Length >= 6 ? long.Parse(args[5], CultureInfo.InvariantCulture) : null;
+            shapes = [new Shape(objects, groups, members, domains, aces)];
+        }
+
+        // Production volume is opt-in. Relevance is synthetic, not a claim about the owner's
+        // memberships: 750 target/holder pairs and ten users per holder at full scale.
+        if (args.Length == 3 && args[1] == "--production")
+        {
+            var scale = double.Parse(args[2], CultureInfo.InvariantCulture);
+            if (!double.IsFinite(scale) || scale <= 0 || scale > 1)
+                throw new ArgumentOutOfRangeException(nameof(args), "Scale must be greater than 0 and at most 1.");
+            shapes = [new Shape((int)(347_000 * scale), Math.Max(1, (int)(750 * scale)),
+                10, 9, (long)(5_900_000 * scale))];
+        }
+
+        foreach (var shape in shapes)
+        {
+            if (shape.Domains <= 0 || shape.Groups < 0 || shape.MembersPerGroup < 0
+                || shape.Objects < shape.MinimumObjects || shape.Aces < shape.Groups)
+                throw new ArgumentException($"Invalid shape: {shape}. At least {shape.MinimumObjects:N0} objects are required.");
         }
 
         var root = Path.Combine(Path.GetTempPath(), "SecureAD-measure-"
-            + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
+            + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
+            + "-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
 
         Console.Out.WriteLine("Synthetic offline measurement. No directory is contacted; nothing is written");
@@ -98,11 +125,16 @@ internal static class Program
             built.Stop();
             Console.Out.WriteLine($"{built.Elapsed.TotalSeconds,5:N1} s, "
                 + $"{Directory.GetFiles(bundle).Sum(f => new FileInfo(f).Length) / 1024 / 1024,5:N0} MB");
+            VerifyShape(bundle, shape);
 
             for (var repeat = 1; repeat <= repeats; repeat++)
             {
                 var baseline = Judge(bundle, null);
                 var scan = Judge(bundle, Unbounded);
+                var expectedPairs = (long)shape.Groups * shape.MembersPerGroup;
+                if (!scan.Completed || scan.Pairs != expectedPairs || scan.Assessments != expectedPairs * 2
+                    || baseline.Pairs != 0 || baseline.Assessments != 0)
+                    throw new InvalidOperationException("The measured requester work does not match the generated shape.");
                 var measured = new Measurement(shape, repeat, scan.Ms, baseline.Ms, scan.Bytes,
                     scan.Stored, baseline.Stored, scan.Assessments, scan.Pairs, scan.Completed);
                 results.Add(measured);
@@ -114,8 +146,7 @@ internal static class Program
                     + $"  stored +{(measured.StoredBytes - measured.BaselineStoredBytes) / 1024,6:N0} KB");
             }
 
-            // Deleted immediately: a 20,000-object capture is large, and keeping every shape would
-            // measure the disk rather than the scan.
+            // Generate once and reuse across repetitions, then release the large synthetic capture.
             foreach (var line in Directory.EnumerateFiles(bundle, "*.log").SelectMany(File.ReadAllLines).Where(l => l.Contains("self-membership", StringComparison.Ordinal)).TakeLast(2)) Console.Out.WriteLine("      " + line.Trim());
             try { Directory.Delete(bundle, recursive: true); }
             catch (IOException) { }
@@ -126,10 +157,10 @@ internal static class Program
         var report = Path.Combine(root, "measurements.csv");
         File.WriteAllLines(report, new[]
         {
-            "Objects,Groups,MembersPerGroup,Repeat,WithScanMs,WithoutScanMs,CostMs,"
+            "Objects,Groups,MembersPerGroup,Domains,Aces,Repeat,WithScanMs,WithoutScanMs,CostMs,"
             + "ScanAllocatedBytes,StoredBytes,BaselineStoredBytes,StoredCostBytes,Assessments,Pairs,ScanCompleted",
         }.Concat(results.Select(r => string.Join(char.Parse(","),
-            r.Shape.Objects, r.Shape.Groups, r.Shape.MembersPerGroup, r.Repeat,
+            r.Shape.Objects, r.Shape.Groups, r.Shape.MembersPerGroup, r.Shape.Domains, r.Shape.Aces, r.Repeat,
             F(r.ScanMs), F(r.BaselineMs), F(r.ScanMs - r.BaselineMs),
             r.ScanBytes, r.StoredBytes, r.BaselineStoredBytes, r.StoredBytes - r.BaselineStoredBytes,
             r.Assessments, r.Pairs, r.Completed))));
@@ -210,59 +241,89 @@ internal static class Program
     /// <summary>Writes one sealed synthetic capture of the requested shape.</summary>
     private static string Build(string root, Shape shape)
     {
-        var bundle = Path.Combine(root, $"o{shape.Objects}-g{shape.Groups}-m{shape.MembersPerGroup}");
+        var bundle = Path.Combine(root, $"o{shape.Objects}-g{shape.Groups}-m{shape.MembersPerGroup}-d{shape.Domains}-a{shape.Aces}");
         Directory.CreateDirectory(bundle);
 
         using (var writer = BundleWriter.Create(bundle, When))
         {
-            writer.WriteCoverage(Partition(shape.Objects));
-            writer.WriteObject(Object(Domain, "domainDNS", "S-1-5-21-9-9-9", []));
-            var written = 1;
+            var written = 0;
+            var fillerCount = shape.Objects - shape.MinimumObjects;
+            var ordinaryAces = shape.Aces - shape.Groups;
+            var domains = Enumerable.Range(0, shape.Domains)
+                .Select(d => d == 0 ? "measure.lab" : $"domain{d}.measure.lab").ToArray();
 
-            for (var group = 0; group < shape.Groups; group++)
+            for (var domain = 0; domain < shape.Domains; domain++)
             {
-                var holderDn = $"CN=Holder{group},{Domain}";
-                var holderSid = $"S-1-5-21-9-9-9-{200_000 + group}";
-                var members = new List<string>(shape.MembersPerGroup);
+                var domainDn = domain == 0 ? Domain : $"DC=domain{domain},{Domain}";
+                var domainSid = $"S-1-5-21-9-{9 + domain}-9";
+                var parent = $"OU=Accounts,OU=Operations,OU=Directory,OU=Synthetic,{domainDn}";
+                var domainGroups = shape.Groups / shape.Domains + (domain < shape.Groups % shape.Domains ? 1 : 0);
+                var fillers = fillerCount / shape.Domains + (domain < fillerCount % shape.Domains ? 1 : 0);
+                var domainObjects = checked((int)(1 + ((long)domainGroups * (shape.MembersPerGroup + 2L)) + fillers));
+                var coverage = new PartitionCoverage(domainDn, NamingContextKind.Domain, "dc01." + domains[domain],
+                    ConnectionSecurityLevel.SignedAndSealed, 3, domainObjects, 1, [], false);
+                writer.WriteCoverage(coverage);
 
-                for (var member = 0; member < shape.MembersPerGroup; member++)
+                void Write(string dn, string objectClass, string sid, EvidenceAttribute[] extra,
+                    string? selfMembershipHolder = null)
                 {
-                    var dn = $"CN=User{group}-{member},{Domain}";
-                    members.Add(dn);
-                    writer.WriteObject(Object(dn, "user",
-                        $"S-1-5-21-9-9-9-{1_000_000 + (group * 1_000) + member}", [Enabled]));
+                    var evidence = new EvidenceObject(coverage, dn, Guid.NewGuid(),
+                    [
+                        new("objectClass", StoredAttributeCompleteness.Complete,
+                            [EvidenceValue.OfText("top"), EvidenceValue.OfText(objectClass)]),
+                        new("objectSid", StoredAttributeCompleteness.Complete,
+                            [EvidenceValue.OfBytes(Sid.ToBytes(sid)!)]),
+                        .. extra,
+                    ], When);
+                    var id = writer.WriteObject(evidence);
+                    var count = ordinaryAces / shape.Objects + (written < ordinaryAces % shape.Objects ? 1 : 0);
+                    if (count > 0 || selfMembershipHolder is not null)
+                    {
+                        var sddl = "O:SYG:SYD:"
+                            + (selfMembershipHolder is null ? "" : $"(OA;;SW;{SelfMembership};;{selfMembershipHolder})")
+                            + string.Concat(Enumerable.Range(0, checked((int)count))
+                                .Select(i => $"(A;;RP;;;{domainSid}-{10_000_000L + ((long)written * 1000) + i})"));
+                        var raw = new RawSecurityDescriptor(sddl);
+                        var bytes = new byte[raw.BinaryLength];
+                        raw.GetBinaryForm(bytes, 0);
+                        writer.WriteSecurityDescriptor(id, bytes, AceNormalizer.Normalize(
+                            evidence.ObjectGuid!.Value, SecurityDescriptorParser.Parse(bytes)));
+                    }
                     written++;
                 }
 
-                writer.WriteObject(Object(holderDn, "group", holderSid,
-                [
-                    Global,
-                    new("member", StoredAttributeCompleteness.Complete,
-                        [.. members.Select(EvidenceValue.OfText)]),
-                ]));
-                written++;
+                Write(domainDn, "domainDNS", domainSid, []);
+                for (var group = 0; group < domainGroups; group++)
+                {
+                    var holderDn = $"CN=Holder{group},{parent}";
+                    var holderSid = $"{domainSid}-{1000L + written + shape.MembersPerGroup}";
+                    var members = new List<string>(shape.MembersPerGroup);
+                    for (var member = 0; member < shape.MembersPerGroup; member++)
+                    {
+                        var dn = $"CN=User{group}-{member},{parent}";
+                        members.Add(dn);
+                        Write(dn, "user", $"{domainSid}-{1000L + written}", [Enabled]);
+                    }
 
-                var target = Object($"CN=Target{group},{Domain}", "group",
-                    $"S-1-5-21-9-9-9-{300_000 + group}",
-                    [Global, new("member", StoredAttributeCompleteness.Complete, [])]);
-                var id = writer.WriteObject(target);
-                var raw = new RawSecurityDescriptor($"O:SYG:SYD:(OA;;SW;{SelfMembership};;{holderSid})");
-                var bytes = new byte[raw.BinaryLength];
-                raw.GetBinaryForm(bytes, 0);
-                writer.WriteSecurityDescriptor(id, bytes, AceNormalizer.Normalize(
-                    target.ObjectGuid!.Value, SecurityDescriptorParser.Parse(bytes)));
-                written++;
+                    Write(holderDn, "group", holderSid,
+                    [
+                        Global,
+                        new("member", StoredAttributeCompleteness.Complete, [.. members.Select(EvidenceValue.OfText)]),
+                    ]);
+                    Write($"CN=Target{group},{parent}", "group", $"{domainSid}-{1000L + written}",
+                        [Global, new("member", StoredAttributeCompleteness.Complete, [])], holderSid);
+                }
+
+                for (long filler = 0; filler < fillers; filler++)
+                    Write($"CN=Filler{filler},{parent}", "user", $"{domainSid}-{1000L + written}", [Enabled]);
+                Console.Out.WriteLine($"      generated domain {domain + 1}/{shape.Domains}: {written:N0} objects total");
             }
 
-            for (var filler = written; filler < shape.Objects; filler++)
-            {
-                writer.WriteObject(Object($"CN=Filler{filler},{Domain}", "user",
-                    $"S-1-5-21-9-9-9-{5_000_000 + filler}", [Enabled]));
-            }
-
+            if (written != shape.Objects)
+                throw new InvalidOperationException("Generated object count differs from the requested shape.");
             writer.Complete(RunCoverage.Of(
-                CoverageId.ForDomains("measure.lab", ["measure.lab"]),
-                [DomainCoverage.Read("measure.lab")],
+                CoverageId.ForDomains("measure.lab", domains),
+                domains.Select(DomainCoverage.Read).ToArray(),
                 [
                     ForestPartitionCoverage.Read($"CN=Configuration,{Domain}", NamingContextKind.Configuration),
                     ForestPartitionCoverage.Read($"CN=Schema,CN=Configuration,{Domain}", NamingContextKind.Schema),
@@ -273,25 +334,36 @@ internal static class Program
         return bundle;
     }
 
+    private static void VerifyShape(string bundle, Shape shape)
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.EvidencePath(bundle), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*), COUNT(DISTINCT domain_fqdn), AVG(LENGTH(distinguished_name)), "
+            + "(SELECT COUNT(*) FROM ace) FROM captured_object";
+        using (var reader = command.ExecuteReader())
+        {
+            if (!reader.Read() || reader.GetInt64(0) != shape.Objects
+                || reader.GetInt64(1) != shape.Domains || reader.GetInt64(3) != shape.Aces)
+                throw new InvalidOperationException("Stored objects, domains or ACEs do not match the requested shape.");
+            Console.Out.WriteLine($"      verified {reader.GetInt64(0):N0} stored objects, {reader.GetInt64(1)} domains, "
+                + $"{reader.GetInt64(3):N0} stored ACEs; mean DN length {reader.GetDouble(2):F1}");
+        }
+        command.CommandText = "EXPLAIN QUERY PLAN SELECT object_id FROM captured_object "
+            + "WHERE distinguished_name = $dn COLLATE NOCASE LIMIT 1";
+        command.Parameters.AddWithValue("$dn", Domain);
+        using var plan = command.ExecuteReader();
+        while (plan.Read()) Console.Out.WriteLine("      DN lookup plan: " + plan.GetString(3));
+    }
+
     private static EvidenceAttribute Enabled { get; } =
         new("userAccountControl", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("512")]);
 
     private static EvidenceAttribute Global { get; } =
         new("groupType", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("-2147483646")]);
 
-    private static PartitionCoverage Partition(int objects) =>
-        new(Domain, NamingContextKind.Domain, "dc01.measure.lab",
-            ConnectionSecurityLevel.SignedAndSealed, 3, objects, 1, [], false);
-
-    private static EvidenceObject Object(string dn, string objectClass, string sid,
-        EvidenceAttribute[] extra) =>
-        new(Partition(1), dn, Guid.NewGuid(),
-        [
-            new("objectClass", StoredAttributeCompleteness.Complete,
-                [EvidenceValue.OfText("top"), EvidenceValue.OfText(objectClass)]),
-            new("objectSid", StoredAttributeCompleteness.Complete,
-                [EvidenceValue.OfBytes(Sid.ToBytes(sid)!)]),
-            .. extra,
-        ], When);
 }
 

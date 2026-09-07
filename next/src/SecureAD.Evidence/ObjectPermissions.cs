@@ -303,6 +303,12 @@ internal static class ObjectPermissionsReader
         if (found is not (var objectId, var dn))
             return null;
 
+        return ReadAt(connection, objectId, dn);
+    }
+
+    /// <summary>Reads an identity already established by this bundle's object stream.</summary>
+    internal static ObjectPermissions ReadAt(SqliteConnection connection, long objectId, string dn)
+    {
         var descriptor = DescriptorOf(connection, objectId);
         if (descriptor is null)
             return Absent(connection, objectId, dn);

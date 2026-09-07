@@ -179,6 +179,111 @@ public sealed class ObjectAttributesTests : IDisposable
     }
 
     /// <summary>
+    /// Every captured value, not only the attributes used by requester discovery. The expected
+    /// bytes and text come from the input, not from a second projection through the reader.
+    /// </summary>
+    [Fact]
+    public void EveryPopulatedCataloguedAttributeSurvivesOneRead()
+    {
+        var input = CapturedAttributeCatalog.All
+            .Where(a => a.LdapDisplayName is not "distinguishedName" and not "objectGUID")
+            .Select(a => new EvidenceAttribute(a.LdapDisplayName, StoredAttributeCompleteness.Complete,
+                Enumerable.Range(0, a.Cardinality == AttributeCardinality.MultiValued ? 3 : 1)
+                    .Select(i => a.Storage == AttributeStorage.Binary
+                        ? EvidenceValue.OfBytes(i == 1 ? [] : Sid.ToBytes(AliceSid)!)
+                        : EvidenceValue.OfText(i == 1 ? "" : a.LdapDisplayName + "-é-值"))
+                    .ToArray()))
+            .ToArray();
+        var evidence = Alice(input);
+        WriteObject(evidence);
+
+        var read = Read(AliceDn.ToUpperInvariant())!;
+        Assert.Equal(evidence.ObjectGuid, read.ObjectGuid);
+        Assert.Equal(Started, read.CapturedUtc);
+        Assert.Equal("contoso.com", read.DomainFqdn);
+        Assert.Equal(AliceDn, read.DistinguishedName);
+        Assert.Equal(CapturedAttributeCatalog.All.Count, read.Attributes.Count);
+        AssertCapturedValues(input, read);
+
+        // A deliberately narrowed result must fail this check, even if both catalogues agree.
+        var narrowed = read with
+        {
+            Attributes = read.Attributes.Where(a => a.LdapDisplayName != "msDS-KeyCredentialLink").ToArray(),
+        };
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertCapturedValues(input, narrowed));
+    }
+
+    /// <summary>
+    /// Independent names: the predecessor's version-10 CapturedAttributeCatalog identity, account,
+    /// group, GPO and password-settings lists, plus appliesTo from Microsoft's MS-ADA1 schema.
+    /// These are literals, not generated from the new reader, rules or catalogue. Losing a table
+    /// from all three still fails. Duplicate, empty and non-ASCII values must remain distinct.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IndependentlyNamedMultiValuedAttributesAreNeverUnfetched(bool populated)
+    {
+        string[] textNames = ["objectClass", "description", "memberOf", "servicePrincipalName",
+            "msDS-AllowedToDelegateTo", "msDS-KeyCredentialLink", "member",
+            "gPCMachineExtensionNames", "msDS-PSOAppliesTo", "appliesTo"];
+        var expected = textNames.Select(name => Text(name,
+            populated ? [name + "-é-值", "", name + "-é-值"] : []))
+            .Append(new EvidenceAttribute("sIDHistory", StoredAttributeCompleteness.Complete,
+                populated ? [EvidenceValue.OfBytes(Sid.ToBytes(AliceSid)!),
+                    EvidenceValue.OfBytes([]), EvidenceValue.OfBytes(Sid.ToBytes(AliceSid)!)] : []))
+            .ToArray();
+        WriteObject(Alice(expected));
+
+        var read = Read(AliceDn)!;
+        AssertCapturedValues(expected, read);
+        Assert.Equal(expected.Select(a => a.LdapDisplayName).Order(StringComparer.OrdinalIgnoreCase),
+            read.Attributes.Where(a => a.Cardinality == AttributeCardinality.MultiValued)
+                .Select(a => a.LdapDisplayName));
+        Assert.Null(read.Find("not-a-captured-attribute"));
+    }
+
+    [Fact]
+    public void AReadCannotMixValuesFromAnotherObjectOrEarlierRead()
+    {
+        using (var writer = BundleWriter.Create(_directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            writer.WriteObject(Alice(Text("member", "alice-member")));
+            writer.WriteObject(new EvidenceObject(SomeCoverage(), AdminsDn, null,
+                [Text("member", "other-member"), Text("description", "other-description")], Finished));
+            writer.Complete(OneDomainRead(), Finished);
+        }
+
+        using var reader = BundleReader.Open(_directory).Value;
+        var first = reader.ReadObjectAttributes(AliceDn)!;
+        var other = reader.ReadObjectAttributes(AdminsDn)!;
+        Assert.Equal("other-member", other.Find("member")!.OnlyValue!.Text);
+        Assert.Null(other.ObjectGuid);
+        Assert.Empty(other.Find("objectGUID")!.Values);
+        Assert.Equal(Finished, other.CapturedUtc);
+        Assert.Null(reader.ReadObjectAttributes("CN=Absent," + DomainDn));
+        Assert.Equal("alice-member", first.Find("member")!.OnlyValue!.Text);
+        Assert.Empty(reader.ReadObjectAttributes(AliceDn)!.Find("description")!.Values);
+    }
+
+    private static void AssertCapturedValues(IEnumerable<EvidenceAttribute> expected, ObjectAttributes read)
+    {
+        foreach (var input in expected)
+        {
+            var actual = read.Find(input.LdapDisplayName);
+            Assert.NotNull(actual);
+            Assert.Equal(input.Values.Count, actual.Values.Count);
+            for (var i = 0; i < input.Values.Count; i++)
+            {
+                Assert.Equal(i, actual.Values[i].Ordinal);
+                Assert.Equal(input.Values[i].Text, actual.Values[i].Text);
+                Assert.Equal(input.Values[i].Bytes, actual.Values[i].Bytes);
+            }
+        }
+    }
+
+    /// <summary>
     /// An attribute this build does not capture is a fact about this build, and is told apart from
     /// an attribute that captured nothing.
     /// </summary>

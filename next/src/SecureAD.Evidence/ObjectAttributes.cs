@@ -171,14 +171,22 @@ public sealed record ObjectAttributes(
 /// is a parameter.
 /// </para>
 /// <para>
-/// One query for the single-valued attributes and one per multi-valued table. The alternative - a
-/// single union over every value table - would be one round trip instead of a dozen against a
-/// local file that is already in the page cache, and would put every attribute's values through
-/// one column of one type, which is exactly the text-and-bytes confusion the schema keeps apart.
+/// One query for the single-valued attributes and one union over every multi-valued table.
+/// Text and bytes travel in separate result columns. Empty tables still contribute an attribute,
+/// so an unfetched value can never be mistaken for an absent one.
 /// </para>
 /// </remarks>
 internal static class ObjectAttributesReader
 {
+    private static readonly string MultiValuedQuery = string.Join(" UNION ALL ",
+        BundleSchema.MultiValuedTables.Select((attribute, index) =>
+            $"SELECT {index} AS attribute_index, ordinal, "
+            + (attribute.Storage == AttributeStorage.Binary
+                ? "NULL AS text_value, value AS byte_value"
+                : "value AS text_value, NULL AS byte_value")
+            + " FROM " + BundleSchema.ValueTableNameFor(attribute.LdapDisplayName)
+            + " WHERE object_id = $object"));
+
     public static ObjectAttributes? Read(SqliteConnection connection, string distinguishedName)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -190,12 +198,14 @@ internal static class ObjectAttributesReader
 
         var (objectId, dn, objectGuid, captured, completeness, domainFqdn, attributes) = stored.Value;
 
-        foreach (var attribute in BundleSchema.MultiValuedTables)
+        var values = StoredValuesFor(connection, objectId);
+        for (var i = 0; i < BundleSchema.MultiValuedTables.Count; i++)
         {
+            var attribute = BundleSchema.MultiValuedTables[i];
             attributes.Add(new ObjectAttribute(
                 attribute.LdapDisplayName,
                 AttributeCardinality.MultiValued,
-                StoredValuesFor(connection, attribute, objectId)));
+                values[i]));
         }
 
         return new ObjectAttributes(
@@ -287,21 +297,29 @@ internal static class ObjectAttributesReader
             AttributeCardinality.SingleValued,
             text is null ? [] : [new AttributeValue(0, text, null)]);
 
-    private static List<AttributeValue> StoredValuesFor(
-        SqliteConnection connection, CapturedAttribute attribute, long objectId)
+    private static List<AttributeValue>[] StoredValuesFor(
+        SqliteConnection connection, long objectId)
     {
-        var values = new List<AttributeValue>();
+        var tables = BundleSchema.MultiValuedTables;
+        var values = new List<AttributeValue>[tables.Count];
+        for (var i = 0; i < values.Length; i++)
+            values[i] = [];
 
         using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT ordinal, value FROM "
-            + BundleSchema.ValueTableNameFor(attribute.LdapDisplayName)
-            + " WHERE object_id = $object ORDER BY ordinal";
+        command.CommandText = MultiValuedQuery;
         command.Parameters.AddWithValue("$object", objectId);
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
-            values.Add(ValueAt(reader, 1, attribute.Storage, reader.GetInt32(0)));
+        {
+            var index = reader.GetInt32(0);
+            var storage = tables[index].Storage;
+            values[index].Add(ValueAt(reader, storage == AttributeStorage.Binary ? 3 : 2,
+                storage, reader.GetInt32(1)));
+        }
+
+        foreach (var attributeValues in values)
+            attributeValues.Sort(static (left, right) => left.Ordinal.CompareTo(right.Ordinal));
 
         return values;
     }

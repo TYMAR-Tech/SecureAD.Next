@@ -524,7 +524,7 @@ work were preserved. Schema 17, evaluator version 1 and control engine version 2
 | Review finding | Current status |
 |---|---|
 | R1 — ordered uncertainty | Corrected and regression-tested; definite answers require agreement of the possible ordered outcomes. |
-| R2 — no production requester scheduling | Open, deferred to product integration. The judging library accepts batches, but Shell/CLI callers still schedule none. |
+| R2 — no production requester scheduling | Shared automatic discovery, coverage persistence and minimum host notices are implemented in schema 18. Production enablement remains open: Shell/CLI pass no discovery budget pending approval of a numerical recommendation. Completed synthetic measurements are recorded below; they do not enable the feature. |
 | R3 — SELF holder resolution | Corrected and regression-tested through the real permission reader/coordinator; original SELF evidence is retained. |
 | R4 — stale/mixed-generation Shell rows | Corrected and regression-tested: old rows clear on failed reads/selection changes; differing judgement generations withhold both products. See the [Shell readback contract](../shell/the-assets-screen.md#requester-and-control-readback-safety--r4). |
 | R5 — supporting JSON and holder-edge validation | Corrected and regression-tested; malformed records and mismatched references fail the read, including through the Shell adapter. Persistence safety only, not feature acceptance. |
@@ -547,10 +547,11 @@ the distinction between the approved synthetic preview and outstanding real-prod
 This does not accept the whole requester feature, close P-145, or provide a live LDAP-success claim.
 **Continue with R2, then R7 and R8 in bounded slices.** The owner clarified that laptop/monitor
 checks will happen during normal verification, not in a separate session blocking this work.
-They remain unperformed, not implicitly accepted. Ordinary Shell/CLI re-judging still schedules
-no requester batch; that limitation must be retained until R2 is implemented. R2 scheduling,
-R7 presentation and R8 final cross-document acceptance reconciliation remain open; none was
-implemented in the R6 session.
+They remain unperformed, not implicitly accepted. At the end of the R6 session, ordinary Shell/CLI
+re-judging scheduled no requester batch and R2 had not been implemented. The later schema-18
+integration described below supplies automatic discovery but leaves it inactive in both hosts
+without an approved budget. R2 enablement, R7 presentation and R8 final cross-document acceptance
+reconciliation remain open; the historical R6 validation does not accept those later changes.
 
 #### R2 production scheduling boundary
 
@@ -643,20 +644,383 @@ answers meant 50,000 commits; they now commit in batches of 1,000, rolled back i
 way. Together these took the largest shape from 211.7 s to 180.9 s and the smallest from 1.1 s to
 0.5 s.
 
-**The dominant cost is elsewhere, and is recorded rather than guessed.** Judging now writes a
-per-phase breakdown to the run log — `scan-ms`, `read-ms`, `assess-ms`, `write-ms` — because three
-causes were proposed in one session and two were wrong. On 3,000 objects with 7,500 pairs the whole
-request loop is about 2.7 seconds and **the scan during the object pass is 13.4 seconds**. The scan
-resolves principals by distinguished name, and `ObjectAttributesReader.Read` issues one query for
-the object row and **a further query for each multi-valued attribute**, so a single by-name lookup
-costs several round trips. Holding lookups constant while tripling the object count left the cost
-unchanged (13.4 s against 13.8 s), which rules out a missing index or a table scan: the cost is the
-number of round trips per lookup, not the size of the table. **The fix is to read an object's
-multi-valued attributes in one round trip**, which benefits every by-name read in the product, not
-only discovery. It is not yet implemented.
+**Correction from the laptop measurement: the earlier object-count comparison was invalid.**
+Judging's `scan-ms`, `read-ms`, `assess-ms` and `write-ms` remain useful observations, including the
+13.4-second scan and 2.7-second request loop. However, the old generator always wrote every member,
+holder and target plus the domain root, even when this exceeded the requested object count.
+Both the nominal 3,000-object and 9,000-object runs with 750 groups and ten members therefore held
+**9,001 objects**. Their similar elapsed times did **not** rule out a table-size or collation cost.
+The nominal 10,000-object / 25,000-pair shape in the historical table actually held **27,001 objects**.
+The table preserves the recorded figures, not an endorsement of its original shape labels.
 
-**These figures are a floor, not a bound.** They stop at 20,000 objects against a production forest
-of roughly 347,000 with 5.9 million access control entries — see
+**The requested batched read is implemented without narrowing the attributes returned.**
+`ObjectAttributesReader.Read` still reads the object row, then reads every multi-valued table in
+one `UNION ALL` query with separate text and byte columns. Ordinal order is restored within each
+attribute. Empty attributes remain present; `Find` returning null cannot mean unfetched. The
+complete-input and independently named regression checks are described in
+[what an object holds](../evidence/what-an-object-holds.md).
+
+**A Release baseline was collected before the reader edit on this laptop**, through
+`SecureAD.Measurements.ObjectReadBenchmarks.ReadObjectAttributes`. It uses 1,000 generated objects,
+100 real by-name reads per invocation, and separate empty/populated cases. Setup and capture
+generation are outside the measured method. The same benchmark was used unchanged afterwards.
+
+| Input | Before mean | After mean | Change | Before / after standard deviation |
+|---|---|---|---|---|
+| Empty attributes | 174.5 µs | 167.4 µs | -4.1% | 16.79 / 9.70 µs |
+| Populated attributes | 129.3 µs | 130.5 µs | +0.9% | 4.15 / 4.09 µs |
+
+**No meaningful speedup is established.** These are short-run measurements with substantial
+uncertainty, not evidence for a processing budget. An initial union-wide database sort regressed
+the populated case to 170.1 µs; that version was replaced with per-attribute ordinal sorting before
+the after measurement above. The baseline CPU trace attributed 7.09% total samples to SQLite's
+parameterless `ExecuteReader`, including calls from both object and value reads. Later sampled
+symbol attribution was inconsistent, so no new dominant-cause claim is made from those names.
+
+**The harness now verifies what is stored, not what was requested.** Impossible shapes are refused;
+object, domain and physical ACE counts are read independently from the generated database before
+judging. Each configured scan must finish, discover exactly the generated number of pairs and store
+two assessments per pair; the scan-off run must store none. The name-lookup query plan on the new
+synthetic captures reports `SCAN captured_object USING COVERING INDEX ix_captured_object_dn`, not
+an indexed name seek. This is a remaining measured investigation, not permission to change sealed
+storage, collation semantics or the host budget.
+
+**Completed volume run on this laptop: Intel Core i7-1370P, 14 cores / 20 logical processors,
+about 32 GB RAM, .NET 10.0.11, Release.** The 0.1-scale capture was independently verified as
+34,700 objects, 590,000 physical ACEs and nine domains, with mean DN length 92.4 characters.
+Generation took 20.6 seconds; the sealed capture occupied 231 MB. All three scan-on runs completed
+with 750 discovered pairs and 1,500 assessments; every scan-off run stored none.
+
+| Repeat | Scan off | Scan on | Difference | Scan-on allocated bytes | Added judgement bytes |
+|---|---|---|---|---|---|
+| 1 | 72,601.7 ms | 64,448.7 ms | -8,153.0 ms | 4,910,620,072 | 3,768,320 |
+| 2 | 51,852.5 ms | 66,492.6 ms | 14,640.1 ms | 4,909,675,968 | 3,768,320 |
+| 3 | 78,729.0 ms | 86,858.2 ms | 8,129.3 ms | 4,909,654,888 | 3,768,320 |
+
+The median paired difference is 8,129.3 ms, but the spread and negative first difference prevent
+interpreting that as a reliable isolated discovery cost. Allocated bytes are cumulative allocation,
+not peak memory. Judgement storage was 12,836,864 bytes with scanning versus 9,068,544 without.
+The final run's phase log recorded scan 6,214 ms, read 354 ms, assess 578 ms and write 111 ms.
+The raw CSV remains in the system temporary directory under
+`SecureAD-measure-20260907-071634-0786180ac66b46f7b253a973ac03e6a3/measurements.csv`;
+the generated capture was deleted after the repetitions. A small nine-domain validation run also
+verified 1,000 objects / 17,000 ACEs / 90 pairs, and the old impossible
+`1 3000 750 10` command was observed failing before generation.
+
+**Full-volume run completed successfully on 2026-09-07; one observation, not a budget acceptance.**
+`1 --production 1` generated and independently verified **347,000 stored objects / 5,900,000
+physical ACEs / nine domains**, with mean DN length 93.4 characters. Generation took 197.7 seconds
+and the sealed capture occupied 2,341 MB. The harness exited with code 0. Scanning completed with
+exactly **7,500 discovered pairs and 15,000 stored assessments**; the scan-off run stored none.
+
+| Full-volume metric | Observed value |
+|---|---|
+| Judging with discovery off | 4,713,081.4 ms — 78 min 33 sec |
+| Judging with discovery on | 5,002,759.3 ms — 83 min 23 sec |
+| Paired elapsed difference, as recorded in CSV | 289,678.0 ms — 4 min 50 sec |
+| Scan-on cumulative allocated bytes | 49,104,321,136 |
+| Judgement bytes with discovery off | 89,944,064 |
+| Judgement bytes with discovery on | 127,713,280 |
+| Additional judgement bytes | 37,769,216 |
+| Scan completed / pairs / assessments | True / 7,500 / 15,000 |
+
+The final phase log recorded `scan-ms=338507`, `read-ms=18704`, `assess-ms=30886` and
+`write-ms=806`. Those phase times are measurements inside the scan-on run, not components that
+must sum to the difference between two separate whole runs. The allocation figure is cumulative
+managed allocation, **not peak memory or a required RAM capacity**. The CSV is retained beneath
+the system temporary directory at
+`SecureAD-measure-20260907-072851-5bd6899deaab4779986b8f83f2a80016/measurements.csv`.
+
+**The next investigation is the scan-off judging pipeline.** It already took nearly 79 minutes,
+with no requester discovery and with the harness scheduling **zero rules**. That time must not be
+attributed to the product's 17 rules, nor assumed to be explained by requester name lookups. Profile
+the real scan-off path on bounded, independently verified synthetic shapes, separating evidence
+streaming and permission reads, control-edge derivation, store writes and sealing. Vary object and
+ACE counts separately to identify which work grows, then change only a measured bottleneck and
+repeat the same measurement. The name-predicate index scan remains a lead, not a proven explanation
+of this baseline. No new full-volume run or production-code change is implied by recording this plan.
+
+**Bounded scan-off CPU profile completed, 2026-09-07.** The new
+`next/BenchmarkSuite1/ScanOffJudgingBenchmarks.cs` calls the actual `JudgingRun.Judge` with zero
+rules and a null discovery budget. Its four shapes vary objects and physical ACEs independently,
+retain nine domains and 18 target/holder group pairs with five members each, and use the same
+distinct synthetic read-property trustees as the volume harness. Capture generation and stored-count
+verification are outside the measured method. Independent SQL counts are checked against requested
+objects, domains and ACEs; three deliberately wrong expected counts are observed being rejected.
+Each measured judgement must complete; readback checks zero requester pairs and assessments.
+The fixture is deleted afterwards. The existing object-read benchmark and production code were not
+changed. The new benchmark is frozen after its successful run.
+
+Release BenchmarkDotNet monitoring job: one launch, one warmup, three measured iterations, one
+invocation per iteration. CPU trace session: `de9f9690-2482-4f91-8976-add999cd4b56`.
+
+| Objects | Physical ACEs | Mean | Reported error | Standard deviation |
+|---|---|---|---|---|
+| 1,000 | 17,000 | 329.6 ms | 1,011.7 ms | 55.46 ms |
+| 1,000 | 51,000 | 528.8 ms | 1,602.2 ms | 87.82 ms |
+| 3,000 | 17,000 | 707.2 ms | 2,037.4 ms | 111.68 ms |
+| 3,000 | 51,000 | 929.0 ms | 2,071.1 ms | 113.52 ms |
+
+Both object count and ACE count affect the observed means, but the short-run uncertainty is large.
+These timings neither establish a scaling law nor explain the 79-minute full-volume baseline.
+They are new workload measurements, not before/after optimization results.
+
+| Reported sampled function | Self CPU | Total CPU |
+|---|---|---|
+| `PrincipalClassificationRegistry.For` | 0.06% | 29.64% |
+| `SqliteCommand.ExecuteReader(CommandBehavior)` | 13.10% | 13.11% |
+| `ObjectPermissionsReader.DescriptorOf` | 0.04% | 3.92% |
+| `ObjectPermissionsReader.ObjectOf` | 0.00% | 3.05% |
+| `ObjectPermissionsReader.Lookup` | 0.03% | 1.79% |
+
+**Attribution limits matter.** These are sampled CPU percentages, not elapsed phase timings, and
+the trace also includes fixture setup and readback. Its call tree contains implausible getter/runner
+ancestry, while the reported classification hotspot has no line-level samples. Treat that
+classification attribution as provisional; do not change authority classifications or claim that
+classification explains 29.64% of the full-volume elapsed time.
+
+The more concrete source-mapped observations are in `ObjectPermissions.cs`: line 381, the by-name
+object query's `ExecuteReader`, carries 204 samples (2.96% of trace samples); line 644, the trustee
+lookup's `ExecuteReader`, carries 94 (1.36%). The object query uses
+`WHERE distinguished_name = $dn COLLATE NOCASE LIMIT 1`. Source inspection confirms that
+`JudgingRun.cs` line 394 calls `ReadPermissions(subject.DistinguishedName)` inside the whole-object
+loop even with discovery off and no rules. This places the previously observed name-predicate scan
+on the scan-off path too; it still does not quantify its full-volume share.
+
+**Permission-name query isolated, 2026-09-07: the repeated scan is now reproduced directly.**
+This follows the earlier repeated-read finding rather than reopening it. The batched attribute
+read was implemented, but it did not remove the separate permission reader's object-name lookup.
+The existing CPU trace was reused; no duplicate pipeline benchmark or full-volume run was started.
+
+The check loaded the product's Release SQLite provider (SQLite **3.53.3**) and called the actual
+`BundleSchema.CreateTables` and `BundleSchema.CreateDeferredIndexes` in disposable in-memory
+databases. Only synthetic `captured_object` rows were inserted, with verified inserted counts.
+Foreign keys were disabled for this isolated table fixture: it is **not a sealed capture or an
+end-to-end judging measurement**. No evidence file, production schema, host or protected artifact
+was changed. The SQL tested was the exact `ObjectPermissionsReader.ObjectOf` query:
+
+```sql
+SELECT object_id, distinguished_name FROM captured_object
+WHERE distinguished_name = $dn COLLATE NOCASE LIMIT 1
+```
+
+`PRAGMA index_xinfo(ix_captured_object_dn)` reports **BINARY** collation on `distinguished_name`.
+`EXPLAIN QUERY PLAN` reports:
+
+| Query | Observed plan |
+|---|---|
+| Actual permission-name query, `COLLATE NOCASE` | `SCAN captured_object USING COVERING INDEX ix_captured_object_dn` |
+| Case-sensitive diagnostic control | `SEARCH captured_object USING COVERING INDEX ix_captured_object_dn (distinguished_name=?)` |
+| Integer object-ID diagnostic control | `SEARCH captured_object USING INTEGER PRIMARY KEY (rowid=?)` |
+
+The index exists, but its name comparison does not match the query's case-insensitive comparison.
+This makes the actual query scan the index rather than seek to a name. **Removing `NOCASE` is not
+a fix:** the diagnostic control returned no object for the deliberately case-varied name, while
+the real query returned the correct object. First, middle, last, case-varied and absent probes
+were all checked for their expected returned object ID or absence.
+
+Native `sqlite3_stmt_status` counters measured work rather than laptop-dependent timings:
+`SQLITE_STMTSTATUS_FULLSCAN_STEP` (1) counts forward scan steps; `SQLITE_STMTSTATUS_VM_STEP` (4)
+counts executed SQLite virtual-machine instructions. The numbers below are observed counters,
+not elapsed-time estimates and not ambiguous profiler symbol attribution.
+
+| Rows | Last-name scan steps | Last-name VM steps | Absent-name scan steps | Absent-name VM steps |
+|---|---|---|---|---|
+| 1,000 | 999 | 3,011 | 999 | 3,008 |
+| 3,000 | 2,999 | 9,011 | 2,999 | 9,008 |
+| 10,000 | 9,999 | 30,011 | 9,999 | 30,008 |
+
+Case-varied last-name probes had exactly the same work as the last-name probes. The first-name
+probe used zero scan steps and 14 VM steps at all sizes, demonstrating why early-object probes
+alone miss the growth. The case-sensitive control used zero scan steps and 14 VM steps for each
+existing exact-case name at all sizes; absent and case-varied probes used 10 VM steps and returned
+nothing. That control isolates the collation mismatch but intentionally does **not** preserve the
+production behavior, so it is not an optimization candidate as written.
+
+The exact production query was then executed once for **every** name in each synthetic table;
+each result was checked against its expected object ID. A prepared statement was reused, so these
+counts exclude repeated statement preparation and do not time the complete permission reader.
+
+| Rows / successful lookups | Observed total scan steps | Observed total VM steps |
+|---|---|---|
+| 1,000 | 499,500 | 1,512,500 |
+| 3,000 | 4,498,500 | 13,537,500 |
+| 10,000 | 49,995,000 | 150,125,000 |
+
+The total scan work matches `N * (N - 1) / 2`: ten times as many objects produced about one hundred
+times as many scan steps in this isolated all-object lookup. **This establishes a concrete
+quadratic lookup mechanism on the scan-off path, not the fraction of the 79-minute run it caused.**
+
+**The bounded permission-read fix is implemented and remeasured, 2026-09-07.** The Evidence reader
+retains the most recently streamed object's internal row ID and exact name. An exact-name permission
+read uses that ID directly, passing through the unchanged descriptor parsing, trustee resolution
+and uncertainty logic. No public method signature, object-attribute contract or sealed schema changed.
+
+**Ambiguity is checked, not assumed away.** Once per reader, before the fast route is used, SQLite
+groups stored names under its own `NOCASE` comparison and checks for duplicates. That adds one
+name-index scan/sort, not one name scan per object. If any names are ambiguous, the entire reader
+keeps the original lookup. Case-varied and non-current names likewise retain the original lookup.
+This is one retained identity and one boolean, not a managed dictionary of the forest. The internal
+row ID avoids treating null or repeated GUIDs as interchangeable objects. The owning description is
+[what an object's permissions hold](../evidence/what-an-objects-permissions-hold.md).
+
+Five new regression cases passed against the old reader before the change and the same 40
+permission tests passed afterwards. They exercise null and shared GUIDs, duplicate names with exact
+or different case, non-ASCII case distinctions, escaped commas, earlier/missing objects, absent
+descriptors and disposal. Duplicate-name reads are compared with a separate, non-streaming reader
+using the original lookup, so bypassing the ambiguity guard would select a different descriptor and
+fail the comparison. No frozen fixture or existing benchmark was changed.
+
+The **same** `ScanOffJudgingBenchmarks.JudgeWithoutDiscovery` CPU collection and four parameter
+combinations were rerun unchanged. Before session: `de9f9690-2482-4f91-8976-add999cd4b56`;
+final after session: `d56c86d9-c201-493d-9fb3-ebc721aef546`. The pre-change figures below are the previously
+recorded baseline, not another newly generated estimate.
+
+| Objects | ACEs | Before mean | After mean | Mean change | Before / after error | Before / after standard deviation |
+|---|---|---|---|---|---|---|
+| 1,000 | 17,000 | 329.6 ms | 431.4 ms | +30.9% | 1,011.7 / 2,980.5 ms | 55.46 / 163.37 ms |
+| 1,000 | 51,000 | 528.8 ms | 511.0 ms | -3.4% | 1,602.2 / 1,701.3 ms | 87.82 / 93.25 ms |
+| 3,000 | 17,000 | 707.2 ms | 556.9 ms | -21.3% | 2,037.4 / 1,795.0 ms | 111.68 / 98.39 ms |
+| 3,000 | 51,000 | 929.0 ms | 741.4 ms | -20.2% | 2,071.1 / 1,858.6 ms | 113.52 / 101.88 ms |
+
+The larger bounded shapes have lower observed means; **the smallest regressed by 30.9% in the final
+run**, with high variance. The first after run (`d98f4649-bdca-43f8-a6e0-f1e487e3034a`) recorded means
+335.3 / 523.6 / 545.2 / 770.6 ms in the same row order. The full test suite then caught an optional
+null callback default; the callback was made an explicit required collaborator, without changing
+the gate, and the complete benchmark was rerun on that final code. Both observations are retained
+rather than selecting the more favorable small-case number. **The wide short-run uncertainty
+prevents calling these percentages established speedups or dismissing the regression.** The new
+traces contain the `ReadAt` route; the initial after trace also identifies the once-per-reader
+uniqueness check. Sampling metadata and call attribution vary, so CPU percentage changes are not
+used as an improvement metric or as proof of the remaining bottleneck. The deterministic change is removal
+of repeated name scans for the ordinary unique-name streamed path; ambiguous and arbitrary by-name
+reads intentionally retain their old cost.
+
+At completion of the bounded benchmark, no full-volume rerun had been launched. The recorded
+78/83-minute observations above remain the **pre-fix baseline**; the subsequent intermediate and
+full-volume comparisons are recorded below. No processing budget is approved.
+
+**Intermediate-scale remeasurement completed, 2026-09-07.** The unchanged Release harness was run
+with `3 --production 0.1`, the same settings as the earlier intermediate baseline. It regenerated
+and independently verified **34,700 objects, 590,000 physical ACEs and nine domains**, with 75
+target/holder group pairs, ten members per holder and mean DN length 92.4 characters. This uses
+the same synthetic generator and shape, not the earlier deleted capture file. Generation took
+23.5 seconds (previously 20.6); the sealed capture again occupied 231 MB.
+
+All three scan-on runs completed with exactly **750 pairs and 1,500 assessments**, and the scan-off
+runs stored none. The process exited with code 0 and deleted its generated capture. No production
+code or measurement setup changed during this remeasurement.
+
+| Repeat | Scan off | Scan on | Paired difference | Scan-on allocated bytes | Added judgement bytes |
+|---|---|---|---|---|---|
+| 1 | 14,972.3 ms | 18,796.8 ms | 3,824.5 ms | 4,866,962,096 | 3,768,320 |
+| 2 | 11,861.9 ms | 19,131.7 ms | 7,269.9 ms | 4,865,886,552 | 3,768,320 |
+| 3 | 12,475.0 ms | 20,630.4 ms | 8,155.4 ms | 4,865,886,872 | 3,768,320 |
+
+**Comparison with the recorded pre-fix intermediate baseline**, using the median of each metric's
+three observations. Elapsed differences are medians of paired differences, not the difference of
+the two elapsed medians. CSV values retain their own rounding.
+
+| Metric | Before median | After median | Change |
+|---|---|---|---|
+| Scan-off judging | 72,601.7 ms | 12,475.0 ms | -60,126.7 ms; **-82.82%** |
+| Scan-on judging | 66,492.6 ms | 19,131.7 ms | -47,360.9 ms; **-71.23%** |
+| Paired scan-on minus scan-off | 8,129.3 ms | 7,269.9 ms | -859.4 ms; -10.57% |
+| Scan-on cumulative allocated bytes | 4,909,675,968 | 4,865,886,872 | -43,789,096; -0.89% |
+| Judgement bytes with scanning | 12,836,864 | 12,836,864 | unchanged |
+| Judgement bytes without scanning | 9,068,544 | 9,068,544 | unchanged |
+| Added judgement bytes | 3,768,320 | 3,768,320 | unchanged |
+| Scan-on pairs / assessments | 750 / 1,500 | 750 / 1,500 | unchanged |
+
+Every new scan-off time is below every old scan-off time; the same holds for scan-on times. This
+is clear observed improvement **at this verified intermediate shape**, unlike the noisy small
+benchmark comparison. It does not erase the recorded smallest-case regression or establish a
+general speedup for arbitrary by-name/ambiguous reads. Added storage and result counts are equal;
+those facts alone are not a comparison of every judgement field across regenerated captures.
+
+The final phase log recorded `scan-ms=5881`, `read-ms=450`, `assess-ms=751`, `write-ms=284`
+(the preceding repetition: 5782 / 335 / 540 / 114 ms). Discovery still has separate work; its paired
+elapsed differences remain variable and must not be treated as a safe budget. Allocation is
+cumulative, not peak memory. The raw after CSV remains under the system temporary directory at
+`SecureAD-measure-20260907-163634-064bd62b59c449cabb31ff5b2175c13c/measurements.csv`;
+the before CSV is the previously recorded `SecureAD-measure-20260907-071634-0786180ac66b46f7b253a973ac03e6a3` run.
+
+**Post-fix full-volume measurement completed successfully, 2026-09-07.** The owner requested the
+run after reviewing the intermediate improvement. The unchanged Release harness ran
+`1 --production 1`, regenerating and independently verifying **347,000 stored objects, 5,900,000
+physical ACEs and nine domains**, with mean DN length 93.4 characters. It exited with code 0.
+The scan completed with exactly **7,500 pairs / 15,000 assessments**; the scan-off run stored none.
+The before and after CSVs agree on objects, groups, members per group, domains, ACEs, repetition
+count, scan completion and requester counts. These are matching synthetic shapes, not the same
+sealed capture file: each run generated its own input and deleted it afterwards.
+
+| Full-volume metric | Before fix | After fix | Change |
+|---|---|---|---|
+| Judging with discovery off | 4,713,081.4 ms (78 min 33 sec) | 111,315.8 ms (1 min 51 sec) | -4,601,765.6 ms; **-97.64%** |
+| Judging with discovery on | 5,002,759.3 ms (83 min 23 sec) | 491,347.0 ms (8 min 11 sec) | -4,511,412.3 ms; **-90.18%** |
+| Paired discovery-on minus discovery-off | 289,678.0 ms (4 min 50 sec) | 380,031.2 ms (6 min 20 sec) | **+90,353.2 ms; +31.19%** |
+| Scan-on cumulative allocated bytes | 49,104,321,136 | 48,666,289,792 | -438,031,344; -0.89% |
+| Judgement bytes with discovery on | 127,713,280 | 127,713,280 | unchanged |
+| Judgement bytes with discovery off | 89,944,064 | 89,944,064 | unchanged |
+| Additional judgement bytes | 37,769,216 | 37,769,216 | unchanged |
+| Scan-on completed / pairs / assessments | True / 7,500 / 15,000 | True / 7,500 / 15,000 | unchanged |
+| Capture generation, outside judging | 197.7 sec | 217.8 sec | +20.1 sec |
+| Sealed capture size, as reported | 2,341 MB | 2,341 MB | unchanged |
+
+The final scan-on phase log is retained separately from whole-run subtraction:
+
+| Phase log field | Before | After | Change |
+|---|---|---|---|
+| `scan-ms` | 338,507 | 355,766 | +17,259 ms |
+| `read-ms` | 18,704 | 20,078 | +1,374 ms |
+| `assess-ms` | 30,886 | 32,900 | +2,014 ms |
+| `write-ms` | 806 | 832 | +26 ms |
+
+**The common judging pipeline is substantially faster in this observed full-volume comparison;
+the discovery work is not.** Its paired elapsed difference increased by 90.4 seconds and all four
+recorded discovery-phase values increased. These regressions remain visible alongside the overall
+improvement. A phase measurement within one run is not a component guaranteed to sum to the
+difference between two whole runs. The remaining discovery cost is separate from the permission
+identity-reuse fix and must not be hidden by its benefit.
+
+Allocation is cumulative managed allocation, **not peak memory or a RAM requirement**. Equal
+counts and file sizes do not compare every judgement field across independently regenerated
+captures; the separate regression suite supplies the identity/case/absence correctness checks.
+Neither the earlier smallest-case regression nor uncertainty is erased by this full-volume result.
+
+Raw CSVs remain beneath the system temporary directory:
+- Before: `SecureAD-measure-20260907-072851-5bd6899deaab4779986b8f83f2a80016/measurements.csv`.
+- After: `SecureAD-measure-20260907-164746-70cc99867d12454192f04e6e0742634d/measurements.csv`.
+
+Both hosts still pass no budget; recording this comparison changes no production code, storage/schema
+or authority decision. SID-classification attribution remains provisional.
+
+**Owner-approved handoff: pause further discovery tuning and return to product work.** Preserve
+the validated permission-read fix, regression tests and existing measurement artifacts. The remaining
+discovery cost stays open under P-152; pausing tuning does not approve a budget or enable either host.
+Remeasure when subsequent work changes data access, candidate counts or processing volume, and before
+approving production limits, rather than after presentation-only changes. The owner subsequently
+requested a documentation checkpoint, commit and push before moving to a new session; that commit
+and push are explicitly authorized. The next bounded preparation is the
+[R7 presentation proposal](../shell/the-assets-screen.md#r7-next-bounded-presentation-proposal--awaiting-owner-approval),
+which requires explicit approval of the presentation before implementation. R2 enablement and final
+R8 acceptance remain open, and laptop/monitor checks remain normal outstanding product verification.
+
+Each full-volume measurement had one repetition, always scan-off before scan-on, supplying neither a variability estimate nor a
+stable isolated discovery cost. This completes the observed full-volume before/after comparison, **not**
+performance acceptance, a stable scaling curve or a processing-budget proposal. Both hosts remain
+unchanged with no discovery budget, and storage/schema and authorization changes remain unapproved.
+
+The solution build and all 3,754 tests passed with zero skipped after the reader, regression-test,
+harness and governing-document changes. This is correctness validation, not performance acceptance.
+
+After the bounded permission-read fix and required-callback correction, the full suite passed
+**3,759/3,759, zero skipped**. The five new cases account for the increase. The benchmark remained
+unchanged and its final after run completed successfully; correctness validation does not close
+the outstanding performance acceptance or justify a budget.
+
+**The historical figures are not a bound.** Their requested shapes stopped at 20,000 objects
+against a production forest of roughly 347,000 with 5.9 million access control entries — see
 [the forest this is built for](../../WHAT-THE-PRODUCT-IS.md#the-forest-this-is-built-for). A budget
 argued from them alone would be argued from a capture two orders of magnitude too small.
 
@@ -664,15 +1028,23 @@ argued from them alone would be argued from a capture two orders of magnitude to
 
 ```powershell
 dotnet run --project next/tools/SecureAD.Measure -c Release -- 3
-dotnet run --project next/tools/SecureAD.Measure -c Release -- 1 3000 750 10
+dotnet run --project next/tools/SecureAD.Measure -c Release -- 3 9001 750 10
+dotnet run --project next/tools/SecureAD.Measure -c Release -- 3 --production 0.1
+dotnet run --project next/tools/SecureAD.Measure -c Release -- 3 --production 1
 ```
 
-The first argument is how many times each shape is repeated; the remaining three — objects, groups,
-members per group — narrow the run to a single shape, which is how the phase breakdown above was
-obtained. **Build in Release or the numbers mean nothing.** Each capture is generated, judged twice,
-and deleted, so the harness needs free temporary space for one capture at a time rather than all of
-them; a summary is written to `measurements.csv` beneath the system temporary directory. It contacts
-no directory and reads nothing from a real forest.
+The first argument is how many times each shape is repeated; the next three — objects, groups,
+members per group — select a single shape. Two optional following arguments specify domains and
+ACEs. `--production` scales 347,000 objects and 5.9 million physical ACEs while retaining nine
+domains; the synthetic workload uses 750 target groups with ten members per holder at full scale.
+This is volume evidence, **not a reconstruction of production membership density, delegation,
+control-edge counts or chained paths**. Additional ACEs are ordinary read-property entries and
+have distinct synthetic trustees. Long DNs model naming depth, not a complete OU hierarchy.
+**Build in Release or the numbers mean nothing.** Each capture is generated once, reused for all
+scan-on/off repetitions, then deleted. Only one capture is needed at a time. `measurements.csv`
+remains beneath the printed temporary directory. Scan-on minus scan-off can be negative due to
+warmup and noise; never interpret that as a saving or a safe threshold. It contacts no directory
+and reads nothing from a real forest. Both production hosts still pass no discovery budget.
 
 The production
 Shell path is `NewAuditViewModel.JudgeAsync` through `IJudgingLauncher.RunAsync` and

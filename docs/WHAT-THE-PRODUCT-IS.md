@@ -144,21 +144,39 @@ rewriting historical generations. This approval does not establish a numerical a
 limit: measurements and approval of that recommendation still precede enabling a new production
 limit. Implementation and validation are not implied by approval; P-145 and R2 remain open.
 
-**R2 automatic discovery implemented in judgement schema 18, 2026-09-07.** Normal judging in both
-the Shell and the unattended command line now discovers own-account membership questions from each
-capture's own permissions and memberships, inside the existing single pass over the bundle, and
-stores the answers with a persisted record of what the scan covered. Denies and uncertain entries
+**R2 automatic discovery implemented in judgement schema 18, 2026-09-07, but not enabled in the
+production hosts.** The shared judging path can discover own-account membership questions from each
+capture's own permissions and memberships, inside the existing single pass over the bundle, when
+given a discovery budget, and store answers beside a persisted record of what the scan covered.
+Both the Shell and unattended command line currently pass no budget. Denies and uncertain entries
 are discovered rather than filtered to the safe cases; broad trustees and NULL DACLs are recorded as
 coverage limitations instead of being expanded into invented requesters; missing evidence,
 unsupported routes and processing stops stay separate; a failed or cancelled attempt publishes
 nothing and leaves the previous results as previous results. The authorization rules, the
-own-account constraint and the counted holder edges are unchanged. **No processing limit has been
-measured or approved, so the scan performs no work today and both hosts say so rather than staying
+own-account constraint and the counted holder edges are unchanged. **No numerical processing limit
+has been approved, so the scan performs no work today and both hosts say so rather than staying
 silent** — an empty requester product never reads as a forest where nobody can add themselves to a
 group. Older judgement results must be re-judged to gain this; no Evidence, Derivation, retained
 generation or frozen value was rewritten. Validated offline against synthetic sealed bundles with no
-directory contact; real-forest verification, the measured budget, broader presentation and final
+directory contact; real-forest verification, an approved budget, broader presentation and final
 acceptance remain outstanding, and P-145 and R2 remain open.
+
+**Owner-approved priority after the full-volume performance comparison:** pause further discovery
+tuning, preserve the validated permission-read fix, its regression tests and measurement artifacts,
+and return to the remaining R2/R7/R8 integration, presentation and acceptance work in bounded
+slices. Remeasure when work changes data access or processing volume, and before approving a
+production budget, rather than after every presentation change. The completed synthetic measurements
+and their limitations are recorded in [the judgement store](layers/judgement/the-judgement-store.md).
+This is not approval of a numerical limit, enabling automatic discovery, new authorization behavior,
+a new R7 presentation design or final feature acceptance. Laptop/monitor checks remain ordinary
+verification work, not an additional session that must precede continued development.
+
+**Session checkpoint requested by the owner:** update the governing documents, commit and push the
+validated work, then resume in a new session. This explicitly authorizes that checkpoint commit and
+push; it does not approve the still-proposed R7 requester-details presentation. The next session
+should read [the presentation proposal](layers/shell/the-assets-screen.md#r7-next-bounded-presentation-proposal--awaiting-owner-approval)
+and obtain its approval before changing displayed wording or layout. Keep further performance tuning
+paused unless later work changes the measured workload or a remaining cost blocks the bounded feature.
 
 **R6 presentation review:**
 comparison and accepted the proposed sizing, now implemented. The control table is capped

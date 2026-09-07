@@ -59,6 +59,107 @@ public sealed class ObjectPermissionsTests : IDisposable
         Assert.Null(Read("CN=Nobody," + DomainDn));
     }
 
+    [Fact]
+    public void StreamedPermissionIdentityDoesNotDependOnAGuid()
+    {
+        var sharedGuid = Guid.NewGuid();
+        string[] names = [AliceDn, "CN=Bob," + DomainDn, "CN=Carol," + DomainDn];
+        WriteBundle(writer =>
+        {
+            for (var i = 0; i < names.Length; i++)
+            {
+                var id = writer.WriteObject(ObjectAt(names[i]) with { ObjectGuid = i == 0 ? null : sharedGuid });
+                WriteDescriptor(writer, id, Descriptor(Allowing(AdminsSid, 16 + i)));
+            }
+        });
+
+        using var reader = BundleReader.Open(_directory).Value;
+        var index = 0;
+        foreach (var subject in reader.StreamObjects().Objects)
+        {
+            var permissions = reader.ReadPermissions(subject.DistinguishedName)!;
+            Assert.Equal(names[index], permissions.DistinguishedName);
+            Assert.Equal(16 + index, Assert.Single(permissions.Entries).AccessMask);
+            Assert.Equal(16 + index,
+                Assert.Single(reader.ReadPermissions(subject.DistinguishedName.ToLowerInvariant())!.Entries).AccessMask);
+            Assert.Null(reader.ReadPermissions("CN=Absent," + DomainDn));
+            index++;
+        }
+        Assert.Equal(3, index);
+        Assert.Equal(16, Assert.Single(reader.ReadPermissions(AliceDn)!.Entries).AccessMask);
+    }
+
+    /// <summary>
+    /// The original NOCASE lookup is the compatibility oracle for ambiguous stored names.
+    /// Bypassing it for a streamed row would attach a different descriptor to the same name.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AmbiguousStreamedNamesKeepTheOriginalPermissionSelection(bool sameSpelling)
+    {
+        var firstName = sameSpelling ? AliceDn : AliceDn.ToLowerInvariant();
+        WriteBundle(writer =>
+        {
+            var first = writer.WriteObject(ObjectAt(firstName));
+            WriteDescriptor(writer, first, Descriptor(Allowing(AdminsSid, 16)));
+            var second = writer.WriteObject(ObjectAt(AliceDn));
+            WriteDescriptor(writer, second, Descriptor(Denying(OrphanSid, 32)));
+        });
+
+        using var reference = BundleReader.Open(_directory).Value;
+        using var reader = BundleReader.Open(_directory).Value;
+        var count = 0;
+        foreach (var subject in reader.StreamObjects().Objects)
+        {
+            var expected = reference.ReadPermissions(subject.DistinguishedName)!;
+            var actual = reader.ReadPermissions(subject.DistinguishedName)!;
+            Assert.Equal(expected.DistinguishedName, actual.DistinguishedName);
+            Assert.Equal(expected.Entries.Select(e => (e.AceType, e.Trustee.Sid, e.AccessMask)),
+                actual.Entries.Select(e => (e.AceType, e.Trustee.Sid, e.AccessMask)));
+            count++;
+        }
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public void StreamedNamesRetainSqliteAsciiCaseSemanticsAndEscapedValues()
+    {
+        string[] names = ["CN=Älice," + DomainDn, "CN=älice," + DomainDn, @"CN=Smith\, John," + DomainDn];
+        WriteBundle(writer =>
+        {
+            for (var i = 0; i < names.Length; i++)
+            {
+                var id = writer.WriteObject(ObjectAt(names[i]));
+                WriteDescriptor(writer, id, Descriptor(Allowing(AdminsSid, 16 + i)));
+            }
+        });
+        using var reader = BundleReader.Open(_directory).Value;
+        var index = 0;
+        foreach (var subject in reader.StreamObjects().Objects)
+        {
+            Assert.Equal(16 + index, Assert.Single(reader.ReadPermissions(subject.DistinguishedName)!.Entries).AccessMask);
+            var asciiVariant = subject.DistinguishedName.Replace("CN=", "cn=", StringComparison.Ordinal);
+            Assert.Equal(16 + index, Assert.Single(reader.ReadPermissions(asciiVariant)!.Entries).AccessMask);
+            index++;
+        }
+        Assert.Equal(3, index);
+    }
+
+    [Fact]
+    public void StreamedObjectWithoutADescriptorIsNotAnAbsentObject()
+    {
+        WriteBundle(writer => writer.WriteObject(ObjectAt(AliceDn) with { ObjectGuid = null }));
+        using var reader = BundleReader.Open(_directory).Value;
+        var subject = Assert.Single(reader.StreamObjects().Objects);
+        var permissions = reader.ReadPermissions(subject.DistinguishedName);
+        Assert.NotNull(permissions);
+        Assert.Equal(DaclState.Unreadable, permissions.DaclState);
+        Assert.Null(reader.ReadPermissions("CN=Absent," + DomainDn));
+        reader.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => reader.ReadPermissions(AliceDn));
+    }
+
     // ---------------------------------------------------------------------------------------
     // The entries
     // ---------------------------------------------------------------------------------------

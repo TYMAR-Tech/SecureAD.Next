@@ -158,6 +158,26 @@ grants little.
 answer from an object with no entries, and is kept apart from it for the same reason
 `DescriptorAvailability` has three states.
 
+## Permission reads during an object stream
+
+The public read contract and sealed schema are unchanged. The owning bundle reader retains only
+the most recently streamed row's internal object ID and exact stored name, not a forest-sized cache.
+When `ReadPermissions` asks for that exact name, it can read the descriptor by the already known ID
+instead of searching all names again. No GUID is used as a substitute for stored object identity.
+
+Before enabling this route, the reader checks once that the bundle has no duplicate names under
+SQLite's own `NOCASE` comparison. That check can scan and sort the name index once. A bundle with
+any ambiguous name keeps the original lookup throughout, preserving its existing selection rather
+than attaching a different descriptor to the same name. Case-varied queries and names other than
+the remembered row also use the original lookup. The optimization does not broaden SQLite's ASCII
+case comparison into .NET Unicode case folding, nor turn an absent descriptor into an absent object.
+
+`ObjectPermissionsTests` pins these cases before and after the change: null/repeated GUIDs,
+exact/case-varied duplicate names, distinct non-ASCII names, escaped commas, non-current and missing
+objects, absent descriptors and disposed readers. Raw descriptor parsing, ACE order, trustee
+resolution and uncertainty reporting share the same implementation on both routes. The bounded
+before/after measurements and limits are in [the judgement store](../judgement/the-judgement-store.md).
+
 ---
 
 ## What is built

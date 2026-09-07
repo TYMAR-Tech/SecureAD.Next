@@ -230,6 +230,41 @@ R6's implementation is complete, not fully visually accepted in the real product
 R7 presentation, R8 final reconciliation and P-145 remain open. **Ordinary Shell/CLI re-judging still
 schedules no requester batch**, so it cannot populate this table merely by obtaining the sizing fix.
 
+### R7 next bounded presentation proposal — awaiting owner approval
+
+Following the completed performance comparison, the owner approved pausing further discovery tuning
+and returning to the remaining product work. This does not approve a new presentation design.
+The later R2 schema-18 integration exists, but both hosts still pass no discovery budget; the
+historical R6 statement above is not a claim that the automatic scheduler remains unimplemented.
+
+Source review confirms the current requester table shows requester, target, operation, authorization,
+own-account, readiness and limits. The row model exposes enum names as text and combines issue names
+with the common scope explanation. Unlike the holder-edge table, the requester table has no selected
+row binding or accompanying evidence view. This is the contained R7 presentation gap, not a reason
+to change the evaluator or enable scheduling.
+
+**Recommended design:** keep the existing table and approved R6 sizing. Use plain-language wording
+for its separate answers, and add an expandable explanation for the selected requester assessment
+beneath it. The explanation should show the stored identities, supporting permission entries and
+holder/membership route, plus why authorization is unknown or the operation is not ready. Preserve
+the distinction between authorization, the own-account restriction and readiness. Discovery-wide
+coverage limitations remain separate from an individual answer; missing captured evidence,
+unsupported analysis and processing stops must not be combined into a generic refusal.
+
+**Practical trade-off:** the compact table remains scannable, but checking the proof takes selecting
+a row and expanding its explanation. Showing all supporting evidence inside every row would make
+comparison harder and consume the laptop's available height. The existing section scrolling and
+table-height limits remain; no new screen or layout redesign is proposed.
+
+This is a proposal only. Obtain explicit owner approval before changing the template or displayed
+wording. Preserve the R4 generation-bound readback and failure clearing, the existing stored answers
+and holder counts. No authorization, persistence/schema, budget, directory access or laboratory
+operation is part of this proposed slice. R7 and final R8 acceptance remain open.
+
+The owner requested a commit/push checkpoint and a new-session handoff before answering this
+presentation proposal. The proposal therefore remains unapproved; a request to resume the work or
+create the checkpoint is not approval of its displayed wording or layout.
+
 ---
 
 ## Nothing on this screen is ever established-bad

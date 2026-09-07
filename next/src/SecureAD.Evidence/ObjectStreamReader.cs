@@ -9,9 +9,8 @@ namespace SecureAD.Evidence;
 /// <remarks>
 /// <para>
 /// <b>This exists because <see cref="ObjectAttributesReader"/> is the wrong shape for bulk.</b> That
-/// reader issues one query per multi-valued table for the single object a person clicked on, which
-/// is a dozen round trips against a file already in the page cache and costs nothing. Judging a
-/// forest would multiply the same dozen by millions.
+/// reader fetches the object row and its batched multi-valued attributes for a single object.
+/// Judging a forest must not repeat those queries for every object when it can walk each table once.
 /// </para>
 /// <para>
 /// <b>So the whole bundle is read as sequential passes instead: one over
@@ -39,9 +38,12 @@ internal static class ObjectStreamReader
     /// Every object the bundle holds, in <c>object_id</c> order, with every catalogued attribute.
     /// </summary>
     /// <param name="connection">An open connection to the evidence database.</param>
-    public static IEnumerable<ObjectAttributes> Stream(SqliteConnection connection)
+    /// <param name="rememberIdentity">Retains only the current row's identity for the owning reader.</param>
+    public static IEnumerable<ObjectAttributes> Stream(
+        SqliteConnection connection, Action<long, string> rememberIdentity)
     {
         ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(rememberIdentity);
 
         var columns = BundleSchema.SingleValuedColumns;
 
@@ -95,6 +97,7 @@ internal static class ObjectStreamReader
                         sidecar.ValuesFor(objectId)));
                 }
 
+                rememberIdentity(objectId, dn);
                 yield return new ObjectAttributes(
                     dn,
                     storedGuid is null ? null : Guid.Parse(storedGuid),
