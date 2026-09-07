@@ -786,8 +786,9 @@ and never did anything to track one. The status above comes from the witness in 
 
 ## Stage 6 — control edges
 
-Turn permissions into *this principal can take over that object*. The largest single piece, and what
-makes an AD audit tool worth having.
+Turn captured permissions into bounded statements about a principal's control over an object,
+including control that can contribute toward Tier 0. This is separate from ownership findings;
+chaining that control into paths to Tier 0 belongs to Stage 7, not this stage's completion claim.
 
 **Category choice settled under
 [`0110`](decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md).**
@@ -802,10 +803,11 @@ proved takeover. Expected edges are hidden by default with their count stated. T
 and its end-to-end witness are described in
 [the judgement store](layers/judgement/the-judgement-store.md#initial-control-edge-product--schema-15).
 
-**The next bounded slice is implemented in judgement schema 16, control engine 2.** Group objects
+**Group-membership candidates were introduced in judgement schema 16, control engine 2.** Group objects
 receive separate general membership-write and own-account-only Self-Membership candidates, with
-stored scope evidence and both existing views. Concrete self-membership requester operations stay
-unknown; this is not member expansion or a claim that every group is privileged. The
+stored scope evidence and both existing views. The named-holder Self-Membership candidates stay
+unknown; concrete requester assessments are a separate later product, not a promotion of those
+candidates. This is not member expansion or a claim that every group is privileged. The
 [membership implementation](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
 has automated coverage and an [isolated offline lab comparison](layers/judgement/the-judgement-store.md#schema-16-membership-slice--offline-lab-comparison-2026-09-06):
 all old primitives are unchanged, with 10,776 general membership writes and 10,761 unknown
@@ -814,9 +816,24 @@ that comparison did not measure the requester behavior. A subsequent
 [isolated live measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06)
 passed twelve self/other-account and no-grant checks for direct and group-held Self-Membership,
 then verified fresh captured evidence and both real presentation directions. Concrete requester
-analysis and member expansion remain unimplemented; the requester acceptance gate remains open.
+analysis and member expansion were unimplemented at that measurement; it does not accept the later
+requester implementation. General member expansion and the requester acceptance gate remain open.
 Catalogue 2 and the corrected schema-15 laboratory baseline are
 unchanged; old judgements require re-judging to obtain the wider slice.
+
+**Concrete requester analysis is implemented.** [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
+introduced the bounded requester assessment in schema 17; current schema 18 also stores automatic
+discovery coverage. Shared discovery is integrated into normal Shell/CLI judging, but both production
+hosts pass no budget, so it remains inactive. Explicit request batches are a library input, not an
+administrator-maintained selection list. No numerical production budget has been approved.
+
+The approved R7 table wording and expandable selected-answer evidence are implemented with R6 sizing
+and R4 generation/failure safeguards preserved. R8 reconciles the current delivered scope and verifies
+the real stored-result-to-object-screen workflow using synthetic evidence. These are implementation
+and offline-verification results, not real-product acceptance. See the
+[R8 current-state record](layers/judgement/the-judgement-store.md#r8-current-state-reconciliation).
+R2 enablement and real-product/laptop/monitor verification remain open; further discovery tuning is
+paused rather than replaced by an assumed budget.
 
 Ownership-derived control, credential and replication capabilities,
 full-control aggregation and effective member expansion remain outside these bounded slices.

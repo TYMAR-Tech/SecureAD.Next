@@ -126,6 +126,7 @@ those reads must not leave answers from two runs on the same object screen.
 - Every load clears both sets of rows, selected edge, next-page availability and prior success
   wording before attempting a read. A failed control read therefore cannot leave a previous
   requester's answer visible, including after paging, changing direction/filter or reconfiguration.
+  Since R7, the selected requester and its proof clear with those rows too.
 - A completed control product needs a generation identity. Where requester readback applies, a
   completed requester product also needs one and must match the control page, including an empty
   completed requester product. A generation change during paging or between reads withholds both
@@ -159,8 +160,8 @@ The additional `AssetsViewModelTests`, `SelfMembershipRequesterTests`, `JudgingE
 
 This corrects stale/mixed-generation readback, not requester scheduling, layout or full presentation.
 It does not add background monitoring of a judgement while a screen is idle, a visual acceptance
-result, new authorization logic or a new storage format. R2, R7 and final R8 reconciliation remain
-open in the [review register](../judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings);
+result, new authorization logic or a new storage format. R2, R7 and R8 remained open at that
+checkpoint; their current states are in the [review register](../judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings).
 the subsequent R6 sizing correction and its remaining acceptance limit are recorded below.
 
 The evidence expander carries the holder SID and scope, target identity, catalogue and generation
@@ -227,8 +228,10 @@ navigation is a labeled placeholder and filters/paging are disabled. The no-wind
 was launched for the implementation checks, and no AD operation or retained-data readback ran.
 
 R6's implementation is complete, not fully visually accepted in the real product. R2 scheduling,
-R7 presentation, R8 final reconciliation and P-145 remain open. **Ordinary Shell/CLI re-judging still
-schedules no requester batch**, so it cannot populate this table merely by obtaining the sizing fix.
+R7 presentation, R8 reconciliation and P-145 were open at the R6 checkpoint. R2 integration and
+R7 presentation were subsequently implemented, and R8 reconciles their current status below.
+**Ordinary Shell/CLI re-judging still schedules no requester questions without an approved discovery
+budget**, so obtaining the sizing or presentation fix alone cannot populate this table.
 
 ### R7 requester presentation
 
@@ -261,12 +264,13 @@ and expandable selected-answer evidence" after reviewing the plain-language desi
 This supersedes the pending approval recorded at the checkpoint; implementation and validation are
 recorded separately below. The R4 generation-bound readback and failure clearing, existing stored
 answers and holder counts are preserved. No authorization, persistence/schema, budget, directory
-access or laboratory operation is part of this slice. R7 real-product verification and final R8
-acceptance remain open.
+access or laboratory operation is part of this slice. R7 real-product verification and final
+feature acceptance remain open; the subsequent R8 correction reconciles status, not acceptance.
 
 The owner requested a commit/push checkpoint and a new-session handoff before answering this
 presentation proposal. It was unapproved at that checkpoint; the explicit answer above, not the
-request to resume or create the checkpoint, supplies approval. No new commit or push is authorized.
+request to resume or create the checkpoint, supplies approval. The owner later explicitly requested
+the R7 commit and push, completed as `a92d592`. The subsequent R8 instruction authorizes no new commit or push.
 
 **Implemented and offline-validated.** The table retains all seven columns, its 180-unit height cap,
 the control table's 240-unit cap and section scrolling. Authorization reads **Authorized / Not
@@ -311,7 +315,27 @@ focused tests also passed under code-coverage collection; its new report is
 `next/.vs/R7-61e46dd999344a57bc8a79744f22a199/coverage.cobertura.xml`. No further performance experiment,
 live-directory operation, protected-artifact access, frozen-evidence edit, commit or push was part
 of this slice. Real-product laptop/monitor review remains unperformed, not accepted. R2 remains
-inactive in both hosts without an approved numerical budget; R8 final reconciliation remains open.
+inactive in both hosts without an approved numerical budget. The later R8 current-state correction
+below does not promote these historical results into final feature acceptance.
+
+### Requester workflow verification — R8
+
+`SelfMembershipWorkflowTests` connects the stored product to this screen using newly generated
+synthetic sealed evidence, real judging, `BundleAssetSource` and `AssetsViewModel`. Its target-first
+and requester-first cases verify both own-account operations and independent readiness; selected
+proof retains direct, global-group and SELF evidence. Re-judging to a no-scan generation clears old
+selection, and malformed synthetic coverage clears requester proof while retaining valid holder
+rows. Requester answers do not increase the screen's holder counts. R6/R7's real-template checks
+remain the layout witnesses; the R8 workflow checks do not launch a visible window.
+
+The current presentation has two separate levels: Shell completion and CLI summary state what the
+capture-wide scan did, while this object section states whether selected requests were stored and
+shows each answer's limits and proof. It does not add a browser of every discovery limitation.
+No scan/no scheduled selection is not a refusal; unreadable data is not an empty successful read.
+The [R8 reconciliation record](../judgement/the-judgement-store.md#r8-current-state-reconciliation)
+owns the verification results and remaining gates. The documentation correction is complete for
+the delivered scope; physical laptop/monitor and real-product verification remain outstanding
+normal work. No new presentation, production limit or final acceptance was approved by R8.
 
 ---
 

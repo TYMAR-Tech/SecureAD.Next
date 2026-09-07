@@ -299,7 +299,10 @@ a proposal except where accepted decisions govern it.
 
 ### Isolated live Self-Membership measurement — 2026-09-06
 
-**AD behavior measured; requester analysis and member expansion still unimplemented.**
+**Historical AD behavior measurement: requester analysis and member expansion were unimplemented
+at this schema-16 checkpoint.** The later schema-17 requester implementation and schema-18
+integration do not turn this measurement into acceptance of that later code. Member expansion
+remains unimplemented.
 `next/tools/Test-LabSelfMembership.ps1` created fresh non-privileged objects under
 `OU=SecureAD-SelfMembership-saSM6d575afc,DC=ba,DC=ad,DC=lab` on `BADC.ba.ad.lab`.
 The two target groups have protected DACLs: Domain Admins and SYSTEM retain administrative access,
@@ -530,7 +533,7 @@ work were preserved. Schema 17, evaluator version 1 and control engine version 2
 | R5 — supporting JSON and holder-edge validation | Corrected and regression-tested; malformed records and mismatched references fail the read, including through the Shell adapter. Persistence safety only, not feature acceptance. |
 | R6 — requester grid sizing | Corrected and regression-tested after owner approval of the synthetic preview. Real-product laptop/monitor/forest checks remain outstanding; not fully visually accepted. See the [Shell sizing contract](../shell/the-assets-screen.md#requester-sizing--r6). |
 | R7 — incomplete requester presentation | Approved and implemented in the bounded Shell slice: separate plain-language answers and expandable selected requester evidence. 137 focused checks and the full 3,837-test suite passed; solution build succeeded. Real-product verification remains open; see the [Shell presentation record](../shell/the-assets-screen.md#r7-requester-presentation). |
-| R8 — contradictory product overview | Immediate historical/evaluator/scheduling distinctions corrected here and in the product overview; final cross-document reconciliation remains open for acceptance. |
+| R8 — contradictory product overview | Current-state reconciliation completed for the delivered scope across the product overview, roadmap, judgement and Shell specifications and P-145. Offline workflow verification is recorded below. This closes the documentation contradiction, not R2 enablement, real-product verification or requester/Stage 6 acceptance. |
 
 The R1/R3 authorization correction, R5 persistence safety and R4 Shell readback safety are complete.
 R4's unchanged focused selection passed 47/47 after 18 passed and 29 failed against the unfixed
@@ -545,30 +548,90 @@ skipped, and the solution build succeeded. The linked Shell document owns the me
 the distinction between the approved synthetic preview and outstanding real-product validation.
 
 This does not accept the whole requester feature, close P-145, or provide a live LDAP-success claim.
-**Continue with R2, then R7 and R8 in bounded slices.** The owner clarified that laptop/monitor
+**The R6 handoff called for R2, then R7 and R8 in bounded slices.** The owner clarified that laptop/monitor
 checks will happen during normal verification, not in a separate session blocking this work.
 They remain unperformed, not implicitly accepted. At the end of the R6 session, ordinary Shell/CLI
 re-judging scheduled no requester batch and R2 had not been implemented. The later schema-18
 integration described below supplies automatic discovery but leaves it inactive in both hosts
-without an approved budget. R2 enablement, R7 real-product verification and R8 final cross-document acceptance
-reconciliation remain open; the historical R6 validation does not accept those later changes.
+without an approved budget. R7 is implemented and the R8 current-state reconciliation below is
+complete. R2 enablement, real-product verification and final feature acceptance remain open;
+the historical R6 validation does not accept those later changes.
+
+#### R8 current-state reconciliation
+
+The owner authorized this bounded slice with "ok do r8" after the approved R7 implementation was
+committed and pushed as `a92d592`. R8 reconciles what is delivered, what is inactive and what has not
+been verified. It changes no production source, UI wording/layout, evaluator, storage schema,
+processing budget or host composition, and includes no new commit or push.
+
+| Question | Verified current state | What it does not establish |
+|---|---|---|
+| Is concrete requester analysis implemented? | Yes. The schema-17 assessment is retained in current schema 18; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
+| Does normal judging automatically produce requester answers? | Not with the shipping configuration. `App.xaml.cs` and CLI `Main` pass a null discovery budget; both hosts reach shared judging and report that no scan was scheduled. | That nobody is authorized, that discovery is unimplemented, or that a numerical budget has been approved. |
+| Does configured automatic discovery reach the hosts? | Synthetic test budgets reach the real Shell post-capture and both CLI judging paths, as covered by `SelfMembershipDiscoveryTests`. | Production enablement or a recommended budget; test limits are fixtures only. |
+| Can stored answers reach the actual object screen? | Yes. `BundleAssetSource` and `AssetsViewModel` read the same persisted answers in target-first and requester-first views, including selected proof. | A visible-window or physical laptop/monitor acceptance result. |
+| Do requester answers change holder counts? | No. Re-judging synthetic evidence with and without discovery preserves the actual screen's holder counts. | Expanded group-member capabilities or completed paths toward Tier 0. |
+| What happens on re-judging or unreadable data? | Reloading clears prior selection; new-generation empty results and corrupted synthetic coverage cannot leave old proof visible. Valid control rows can remain after a requester-only failure. | Background refresh of an idle screen or acceptance of results from a failed attempt. |
+| Where are discovery coverage and individual answers presented? | Shell completion and CLI summary report scan status and limitation counts. The object section reports selected-request availability and individual limits/proof. | A new object-screen browser of every capture-wide discovery limitation; R8 adds no presentation. |
+
+**Offline workflow witness:** `SelfMembershipWorkflowTests` adds 12 cases over newly generated
+synthetic sealed bundles. They use real Derivation, Judgement, generation publication, readers and
+the Assets object-screen path, rather than inserting constructed answers into the screen. Direct,
+same-domain global-group and SELF routes retain the original trustee and resolved explanation;
+own-account Add and Remove keep their different readiness answers. Holder counts and synthetic
+Evidence fingerprints remain unchanged. Re-judging with a null budget removes old selected proof;
+deliberately replacing a synthetic coverage record with JSON null and resealing that disposable
+test generation produces a visible requester-read failure without hiding valid holder edges.
+Only capture is substituted for the Shell post-capture checks; the CLI offline path has a capture
+callback that throws if invoked. Null budgets are passed through unchanged, separately from
+injected finished/stopped scan cases. The actual production null-budget call sites were reviewed,
+not changed. The new cases passed **12/12**; the broader requester, discovery, storage, readback and
+presentation selection passed **454/454**, none skipped.
+
+**Final offline validation:** the full `SecureAD.Next.Tests` project passed **3,849/3,849**, none
+skipped, and the solution build succeeded. The 12 new workflow cases also passed under
+`dotnet-coverage`; the new report is
+`next/.vs/R8-cbda14f1a62c40f9ac80281fa11e711f/coverage.cobertura.xml`. Existing R7 tests, production
+source, host budgets, schemas and measured performance artifacts are unchanged. This is a
+workflow/regression result, not another performance comparison or a numerical budget recommendation.
+No visible application window, live-directory operation, protected-artifact access, commit or push
+was part of R8.
+
+**Documentation findings corrected:** the roadmap still said concrete requester analysis was
+unimplemented; the overview mixed current schema-18/R7 behavior with schema-17-era statements;
+older approval and measurement handoffs read like current next steps. These medium-severity status
+contradictions are corrected or explicitly marked historical. P-145 was reviewed and remains open;
+its recorded offline comparison and acceptance conditions did not need changing. Frozen measurements
+and fixtures were not edited, no protected artifact was accessed, and no prose-shape test was added
+as a substitute for review. The existing R6/R7 real-template tests remain the offline layout witnesses.
+
+**R8 documentation correction is complete; final feature acceptance is not.** The remaining gates
+are explicit: a justified and owner-approved numerical discovery budget before R2 enablement;
+real-product and laptop/monitor verification; claim-specific requester laboratory acceptance;
+and P-145's remaining capabilities, Tier 0-target review and Stage 6 gates. The historical live
+Self-Membership experiment did not evaluate the later requester implementation. Stage 6 remains
+bounded permission-derived control, not ownership findings or completed chained-path analysis.
+Further tuning stays paused. A later enablement or acceptance decision must update these statuses
+when supported; it must not be inferred from this reconciliation.
 
 #### R2 production scheduling boundary
 
-**Contract and integration approved, 2026-09-07; implementation and numerical budget remain
-outstanding.** After an explanation tied to the actual production paths below, the owner answered
+**Contract and integration approved, 2026-09-07.** Implementation was outstanding at approval and
+was subsequently delivered in schema 18 below; the numerical budget is still unapproved.
+After an explanation tied to the actual production paths below, the owner answered
 "i approve proceed". This approves the shared permission-first scheduler, both own-account Add and
 Remove per concrete pair, schema-18 persisted discovery summary and typed limitation records,
 generation-bound summary/selection readback, and minimum Shell/CLI notices. Authorization and
 explicit-batch refusal do not change. No numerical automatic-discovery default is approved; measure
 and obtain approval before enabling a new production limit. This later answer supersedes the
-earlier coverage-contract approval boundary below, not the outstanding implementation/validation.
+earlier coverage-contract approval boundary below, not the outstanding production enablement and acceptance gates.
 
 ##### Delivered in schema 18 — 2026-09-07
 
 **Automatic discovery is implemented and reached by both hosts; it performs no work until a
 processing limit is configured, and says so.** `SelfMembershipScheduler` runs inside the existing
-single pass over captured objects, so discovery costs no extra read of the bundle. For each captured
+single pass over captured objects, without adding a second whole-catalogue stream. Requester and
+holder lookups still add work, measured separately below. For each captured
 group it examines Self-Membership entries that apply to the object itself, resolves the direct user
 or the explicit same-domain global-security-group members, resolves `SELF` through the target, and
 schedules **both Add and Remove for the requester's own account** on every concrete pair. Missing
@@ -612,11 +675,12 @@ current. `SelfMembershipCoverageTests` mutates the sealed store in twelve ways a
 controlled read failure in both directions. `SelfMembershipNoticeTests` checks the host wording.
 No AD contact, no application launch, no retained artifact or lab write.
 
-**Still open.** No numerical automatic-discovery budget has been measured or approved, so normal
-judging schedules nothing today; that measurement is the next bounded task. Nested, primary-group,
+**Still open.** The completed synthetic before/after measurements below do not justify an approved
+numerical automatic-discovery budget, so normal judging still schedules no requester questions.
+Further tuning is paused under the owner's recorded priority. Nested, primary-group,
 SID-history, foreign-principal and cross-domain routes remain unsupported and are recorded as such.
-Broad R7 presentation and R8 reconciliation remain deferred, real-forest verification has not
-occurred, and P-145 and R2 remain open.
+R7 presentation is implemented and R8 current-state reconciliation is complete. Real-product
+verification and final acceptance remain outstanding; P-145 and R2 enablement remain open.
 
 ##### What discovery costs — measured 2026-09-07, no budget set
 
@@ -1004,8 +1068,8 @@ requested a documentation checkpoint, commit and push before moving to a new ses
 and push were explicitly authorized for that checkpoint. The next bounded preparation was the
 [R7 presentation](../shell/the-assets-screen.md#r7-requester-presentation), subsequently explicitly
 approved, implemented and offline-validated in the continuation session. No further commit or push
-is authorized. R2 enablement and final
-R8 acceptance remain open, and laptop/monitor checks remain normal outstanding product verification.
+is authorized by that historical checkpoint. R8's later documentation correction does not close
+R2 enablement or final feature acceptance; laptop/monitor checks remain normal outstanding product verification.
 
 Each full-volume measurement had one repetition, always scan-off before scan-on, supplying neither a variability estimate nor a
 stable isolated discovery cost. This completes the observed full-volume before/after comparison, **not**
@@ -1047,7 +1111,14 @@ remains beneath the printed temporary directory. Scan-on minus scan-off can be n
 warmup and noise; never interpret that as a saving or a safe threshold. It contacts no directory
 and reads nothing from a real forest. Both production hosts still pass no discovery budget.
 
-The production
+##### Historical R2 prerequisite review — before schema-18 approval
+
+The following paragraphs record the earlier schema-17 proposal and prerequisite validation, not
+the current integration status. The schema-18 delivery, R7 implementation and R8 reconciliation
+above supersede their then-open implementation/presentation statements; their approval history,
+test counts and evidence provenance remain historical.
+
+The then-current production
 Shell path is `NewAuditViewModel.JudgeAsync` through `IJudgingLauncher.RunAsync` and
 `JudgingLauncher` to `JudgingRun.Judge`. Its only current launcher caller follows capture; an
 interactive offline requester action is not already present. CLI `Program.RunAsync` reaches
@@ -1097,7 +1168,7 @@ Decision 0102 requires retained partial expansion with an explicit stop reason; 
 the existing submitted-batch refusal into "take the first 100". A new discovery coverage contract,
 its storage/readback and the minimum host notices needed to avoid a complete-looking partial result
 require approval before implementation. Authorization and holder counts remain unchanged; broad
-R7 presentation and R8 reconciliation remain deferred.
+R7 presentation and R8 reconciliation were deferred at this checkpoint.
 
 **Recommended bounded production slice; not yet approved:** integrate one permission-first scheduler
 into normal judging, reached by both hosts. For each relevant captured Self-Membership entry, use
@@ -1141,7 +1212,7 @@ as the new attempt's results.
 This recommendation needs a versioned judgement-storage/readback extension for discovery scope,
 configured limits, unresolved inputs and stop reasons (not changes to Evidence or Derivation), plus
 minimum Shell/CLI coverage notices. Historical schema-17 results must not acquire an invented
-automatic-discovery coverage claim. Full requester presentation remains R7. Production acceptance
+automatic-discovery coverage claim. Full requester presentation was assigned to R7. The proposed integration verification
 must exercise the real Shell post-capture path and both CLI judging paths using synthetic sealed
 bundles, with no directory contact, and prove persisted results and generation replacement rather
 than merely inspecting calls or supplying a hard-coded library batch.
@@ -1153,13 +1224,13 @@ nothing staged. Only this document and the product overview changed in this prer
 no production code or tests changed. Fresh Test Explorer runs passed 526/526 focused requester,
 storage, readback, sizing and host regressions and 3,715/3,715 full-project tests, none skipped;
 the full solution build passed. These are preservation checks, not R2 before/after defect evidence
-or host-to-store acceptance of automatic discovery, which remains unimplemented pending approval.
+or host-to-store acceptance of automatic discovery, which was unimplemented pending approval at that checkpoint.
 The session-only diff was inspected and `git diff --check` passed. All 389 retained artifact/lab
 files, including ignored files, matched the fresh hash manifest; fresh Evidence remains SHA-256
 `137FF0CE603D5CC6463C76D1FA0432245A57C2FC1FF48481BDDDA9C6A8B8DA41`.
 Instructions, the gallery, historical fixtures and earlier fixes were preserved. No visual/live
 verification, application launch, directory operation, cleanup or commit occurred. R2, R7, R8 and
-P-145 remain open.
+P-145 were open at that checkpoint; current status is in the review register above.
 
 ### Captured-lab validation of the initial slice — 2026-09-06
 

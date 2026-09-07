@@ -48,5 +48,9 @@ artifacts are preserved; deleting laboratory objects requires the owner's separa
 
 ## Implementation
 
-Implemented in judgement schema 17. The governing judgement-store document records delivered
-behavior and validation. This does not add a new live acceptance result or close P-145.
+Introduced in judgement schema 17 and retained in current schema 18, which adds separately approved
+automatic discovery coverage. Both production hosts currently pass no discovery budget, leaving
+that scan inactive. The approved R7 requester presentation is implemented; the
+[R8 reconciliation](../layers/judgement/the-judgement-store.md#r8-current-state-reconciliation)
+records current behavior, offline verification and outstanding acceptance. These implementation
+updates do not change this decision, add a new live acceptance result or close P-145.

@@ -67,8 +67,9 @@ group-membership control, with object-first and named-holder-first views in the 
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Judgement schema 17 stores this product
-and the separately requested bounded Self-Membership requester assessments;
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 18 stores this
+product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
+coverage introduced in schema 18;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -85,24 +86,26 @@ The comparison preserved all 65,084 existing primitives and added 10,776 establi
 membership writes plus 10,761 unknown self-membership candidates. Re-judge schema-15 results to
 obtain it; this does not accept the whole stage-6 proposal or replace the historical baseline.
 
-**The bounded requester design is implemented in judgement schema 17.** The owner answered "continue then"
+**The bounded requester design was introduced in judgement schema 17 and is retained in schema 18.** The owner answered "continue then"
 after the plain-language explanation. [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 limits it to direct user grants and one explicit same-domain global-security-
 group membership. Requester assessments are stored separately from counted holder edges, with
 ordered deny evaluation, an own-account constraint and separate operation readiness. Missing inputs
 and unsupported routes remain unknown; the live measurements do not promote historical results.
 Explicit request batches are persisted and shown object-first and requester-first without increasing
-the named-holder count when supplied to the judging library. **The Shell and CLI do not yet supply
-these batches**, so ordinary re-judging does not schedule requester assessments. The authorization
+the named-holder count when supplied to the judging library. **Both hosts now reach the shared
+automatic scheduler, but pass no discovery budget**, so ordinary re-judging still schedules no
+requester assessments. Explicit batches remain a library input, not an administrator-maintained
+selection list or a production scheduling workaround. The authorization
 correction retains earlier uncertainty when it could change the ordered result and resolves SELF
 to the captured target group's identity and membership, not to the requester. R5 persistence safety
 is corrected: malformed stored requester records and mismatched holder references produce a
 controlled read failure, including through the Shell adapter, rather than empty or partial answers.
 R4 Shell readback safety is also corrected: failed reads and selection changes clear old answers,
 and control/requester results from different judging runs are withheld rather than combined.
-Requester-grid sizing is corrected and regression-tested; real-product laptop/monitor validation
-remains outstanding. Scheduling, full presentation and final acceptance reconciliation remain
-open; see the
+Requester-grid sizing and the approved R7 selected-answer presentation are implemented and
+regression-tested. R8 reconciles the delivered state, not final feature acceptance. Production
+enablement and real-product laptop/monitor validation remain outstanding; see the
 [review status](layers/judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings).
 This is not a complete token model, whole-feature acceptance or a new live acceptance result.
 
@@ -117,7 +120,25 @@ Implementation and offline validation are recorded in the
 The approved presentation is implemented: 137 focused checks and the full 3,837-test suite passed,
 and the solution builds. Selected evidence clears with failed or mismatched-generation reads.
 This is offline validation, not real-product acceptance; laptop/monitor checks remain outstanding
-normal verification, discovery is still inactive in both hosts, and R8 remains open.
+normal verification and discovery is still inactive in both hosts. The subsequent R8 correction
+reconciles these distinctions without accepting the whole feature.
+
+**R8 reconciliation authorized after R7:** after the R7 checkpoint was committed and pushed, the
+owner answered "ok do r8" to the bounded recommendation to check the stored-requester-to-screen
+workflow offline and reconcile current-state claims across governing documents. This does not
+approve discovery enablement, a processing budget, new UI wording/layout, further tuning or final
+feature acceptance. Unperformed real-product and laptop/monitor checks remain outstanding; no new
+commit or push is included in this instruction.
+
+**R8 current-state reconciliation:** requester authorization, persistence, safe readback and the
+approved presentation are implemented. Shared automatic discovery is implemented but inactive in
+the shipped Shell and CLI until a numerical processing budget is approved. The new offline
+workflow checks connect synthetic sealed evidence through real judging and file readers to both
+object-screen directions, including stored proof, holder-count preservation, re-judging and read
+failure clearing. They do not establish live-directory success, physical-display usability or
+completed chains toward Tier 0. The [R8 record](layers/judgement/the-judgement-store.md#r8-current-state-reconciliation)
+owns verification results and the remaining acceptance gates. R8's documentation correction is
+complete for the delivered scope; final requester/Stage 6 acceptance is not.
 
 **R2 owner requirement:** on 2026-09-06 the owner clarified that requester assessment "should always
 run on new captures" and asked for a clearer explanation of the proposed interaction. An
@@ -127,11 +148,12 @@ new Evidence is sealed. The judgement specification supplies the direction: star
 permission's trustee, resolve relevant captured members and validate scope. Decision 0111's concrete
 bounded requests do not require an administrator-maintained selection list. Discover questions from
 each capture's own permissions and memberships, within the accepted direct-user and single explicit
-same-domain global-security-group routes, including SELF resolved to the target. The remaining
-approval boundary is how incomplete discovery, unsupported inputs and budget stops are stored and
+global-security-group routes, including SELF resolved to the target. At that checkpoint, the remaining
+approval boundary was how incomplete discovery, unsupported inputs and budget stops would be stored and
 reported without implying negative authorization or complete coverage. This does not authorize a
 forest-wide pair cross-product, live lookups, authorization/storage changes or the withdrawn
-request-file proposal; current production scheduling is still absent.
+request-file proposal. Production integration was absent at that checkpoint; its later approval
+and delivered-but-inactive implementation are recorded below.
 When presented with a partial-coverage recommendation and a proposed 50-pair allowance, the owner
 asked work to stop for a plain-language explanation because the proposed implementation was unclear.
 That response is not approval of the allowance, partial-result policy or storage/readback changes.
@@ -143,7 +165,9 @@ of 100 submitted requests is not a measured forest-wide discovery limit and must
 as one. Establish a numerical recommendation through bounded offline measurements before changing
 production scheduling limits. No replacement number, silent batch truncation, authorization change
 or specific storage/readback extension is approved by this budget-direction answer. Missing captured
-evidence, unsupported analysis and processing-budget stops remain distinct; R2 is not implemented.
+evidence, unsupported analysis and processing-budget stops remain distinct. R2 was not implemented
+at this budget-direction approval; the later schema-18 integration below supplies it without
+approving a numerical production limit.
 
 **R2 contract and integration approved, 2026-09-07:** after the recommendation was explained against
 the actual Shell, CLI, evaluator and storage paths, the owner answered "i approve proceed".
@@ -171,8 +195,9 @@ has been approved, so the scan performs no work today and both hosts say so rath
 silent** — an empty requester product never reads as a forest where nobody can add themselves to a
 group. Older judgement results must be re-judged to gain this; no Evidence, Derivation, retained
 generation or frozen value was rewritten. Validated offline against synthetic sealed bundles with no
-directory contact; real-forest verification, an approved budget, broader presentation and final
-acceptance remain outstanding, and P-145 and R2 remain open.
+directory contact. The subsequent approved R7 presentation is implemented, and R8 reconciles the
+current state. Real-forest verification, an approved budget and final acceptance remain outstanding;
+P-145 and R2 production enablement remain open.
 
 **Owner-approved priority after the full-volume performance comparison:** pause further discovery
 tuning, preserve the validated permission-read fix, its regression tests and measurement artifacts,
@@ -189,11 +214,12 @@ validated work, then resume in a new session. This explicitly authorizes that ch
 push; it did not approve the then-proposed R7 requester-details presentation. The continuation session
 obtained explicit approval before implementation; see the
 [R7 presentation record](layers/shell/the-assets-screen.md#r7-requester-presentation).
-No further commit or push is authorized. Keep further performance tuning
+The owner subsequently requested a separate R7 commit and push, completed as `a92d592` on `main`.
+The current R8 instruction includes no further commit or push. Keep further performance tuning
 paused unless later work changes the measured workload or a remaining cost blocks the bounded feature.
 
-**R6 presentation review:**
-comparison and accepted the proposed sizing, now implemented. The control table is capped
+**R6 presentation review:** the owner reviewed the synthetic gallery comparison and accepted the
+proposed sizing, now implemented. The control table is capped
 at 240 WPF layout units, the requester table retains its 180-unit cap, notices use their text's
 height, and the section scrolls when the pane is short. The accepted trade-off is scrolling within
 each table as well as through the section to reach notices, evidence and requester answers.
