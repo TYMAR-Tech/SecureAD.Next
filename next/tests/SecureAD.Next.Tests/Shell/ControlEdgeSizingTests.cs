@@ -203,7 +203,7 @@ public sealed partial class ControlEdgeSizingTests
         Assert.Equal(label, Assert.IsType<TextBlock>(control.Columns[2].GetCellContent(row)).Text);
         Assert.InRange(control.ActualHeight, 120, 240.1);
         AssertInside(row, control);
-        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name != "RequesterEvidence"));
+        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "ControlEvidence"));
         expander.IsExpanded = true;
         Layout(pane, width, height);
         var text = Assert.Single(Descendants<TextBox>(expander));
@@ -245,7 +245,7 @@ public sealed partial class ControlEdgeSizingTests
         Assert.True(evidenceScroll.ScrollableHeight > 0, "Long requester proof must scroll within its bounded area.");
         evidenceScroll.ScrollToEnd();
         var outer = SectionScroll(pane, requester);
-        outer.ScrollToEnd();
+        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(expander, outer));
         Layout(pane, width, height);
         AssertInside(expander, outer);
         AssertInside(expander, pane);
@@ -259,7 +259,7 @@ public sealed partial class ControlEdgeSizingTests
         var vm = Model(60, 40);
         var pane = Pane(vm, mutation);
         Layout(pane, width, height);
-        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name != "RequesterEvidence"));
+        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "ControlEvidence"));
         expander.IsExpanded = expanded;
         Layout(pane, width, height);
         var (control, requester) = Tables(pane);
@@ -281,7 +281,7 @@ public sealed partial class ControlEdgeSizingTests
             var cell = Assert.IsType<TextBlock>(table.Columns[0].GetCellContent(row));
             Assert.Equal(table == requester ? vm.RequesterAssessments[^1].Requester : vm.Rows[^1].Holder, cell.Text);
         }
-        outer.ScrollToEnd();
+        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(requester, outer));
         Layout(pane, width, height);
         AssertInside(requester, outer);
         AssertInside(requester, pane);
@@ -370,7 +370,7 @@ public sealed partial class ControlEdgeSizingTests
 
     private static (DataGrid Control, DataGrid Requester) Tables(DependencyObject pane)
     {
-        var tables = Descendants<DataGrid>(pane).ToArray();
+        var tables = Descendants<DataGrid>(pane).Where(table => table.Name is "ControlPermissions" or "RequesterAssessmentsTable").ToArray();
         Assert.Equal(2, tables.Length);
         return (tables[0], tables[1]);
     }

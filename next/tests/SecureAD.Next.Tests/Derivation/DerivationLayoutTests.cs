@@ -15,6 +15,8 @@ public sealed class DerivationLayoutTests
     {
         [9] = "1EC635AEEBC498946B41C4F295BF963F5988B914C8D27E88497F3EC84283BFEF",
         [10] = "337F22D4D30400F866A667325815095115079A1A889BF259448EC1282D6FD3C4",
+        // Schema 11 adds lossless membership sources; observed from this build, not a historical forest.
+        [11] = "15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143",
     };
 
     [Fact]

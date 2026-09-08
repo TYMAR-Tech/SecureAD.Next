@@ -65,28 +65,46 @@ architectural question.
 **Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER, bounded
 group-membership control, password-reset permission, key-credential write permission, bounded replication permissions and bounded existing-owner control, with full-control permission summaries and object-first and named-holder-first
 views in the object screen.
+**Bounded effective-member attribution is implemented and synthetically verified.** The owner accepted
+the proposal, exact wording and 0102 timing clarification, then requested implementation. Derivation
+schema 11 stores source-linked membership inputs; judgement schema 24/control engine 8 stores budgeted
+members, unresolved links and representative independent routes, with resource applicability beneath
+existing group-held permissions without multiplying their counts. Member
+attribution is not a concrete requester assessment. Full-control supports, independent existing-owner
+control and Unknown/uncounted owner transitions retain their current behavior. Both production hosts
+remain without an approved expansion budget; discovery, live access and retrying the
+cancelled stage-status check are not authorized. The owner subsequently authorized documentation
+closeout, commit and push of this completed slice; that is not standing publication authorization.
+Synthetic verification and customer-shaped measurement
+must be reported separately from production-budget approval and final Stage 6 acceptance.
+Final offline verification passed 4,355/4,355 tests with the four stage-status tests explicitly excluded;
+targeted coverage passed 799/799, and the solution build succeeded. The
+[implementation record](layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+records the final artifacts and outstanding acceptance boundaries. No production expansion budget is approved.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 23 stores this
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 24 stores this
 product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
 coverage introduced in schema 18; schema 19/control engine 3 introduced reset permission, and
 schema 20/control engine 4 added key-credential write permission and the property-set evidence safeguard;
 schema 21/control engine 5 added the two replication capabilities on captured naming-context roots;
 schema 22/control engine 6 added existing-owner assessments and replay-validated ownership proof;
 schema 23/control engine 7 adds bounded full-control summaries with separate source proof and counting links;
+schema 24/control engine 8 adds explicitly budgeted member attribution, requiring current Derivation inputs;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
-Re-judging existing evidence obtains that correction without re-capture or re-derivation.
+At the catalogue-2 checkpoint, re-judging alone obtained that correction. The current member-attribution
+product requires current Derivation inputs: re-derive and re-judge an isolated copy, without re-capture.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
 records the implementation and before/after lab checks. P-145 now has initial-slice measurements,
-not an acceptance pass: the remaining capabilities, member expansion, Tier 0-target review and
+not an acceptance pass: the remaining capabilities, member-attribution scale measurements, Tier 0-target review and
 claim-specific laboratory gates remain outstanding. The
 [membership slice](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
 has automated coverage, an isolated offline comparison and an
 [isolated live Self-Membership measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06).
 The live direct/group-held tests and fresh readback passed. Those measurements did not include
-concrete requester evaluation and do not accept the schema-17 implementation below. General member
-expansion remains unimplemented.
+concrete requester evaluation and do not accept the schema-17 implementation below. The new bounded
+member-attribution product has separate synthetic verification; it does not widen requester semantics.
 The comparison preserved all 65,084 existing primitives and added 10,776 established general
 membership writes plus 10,761 unknown self-membership candidates. Re-judge schema-15 results to
 obtain it; this does not accept the whole stage-6 proposal or replace the historical baseline.
@@ -817,6 +835,10 @@ how much stored. Reaching one never drops the finding and never discards what wa
 expansion **incomplete**, records which budget stopped it, says so on screen, and refuses to present
 the partial number as a total. Microsoft publishes no safe threshold for this, so the product does
 not invent one and call it safe.
+The accepted timing clarification under `0102` is that deterministic replay covers traversal order
+and work-limited prefixes for the same evidence, semantic versions and configured node/link/storage
+budgets; elapsed-time cutoffs can stop at different fresh-run prefixes, while persisted partial
+results reopen exactly as stored. This clarification does not approve or change production limits.
 
 **Confidence flows one way** ([`0103`](decisions/0103-an-established-primitive-is-not-contaminated-by-an-unverified-compound.md)).
 *This principal can take ownership* is proven from the permissions. *Taking ownership then lets it

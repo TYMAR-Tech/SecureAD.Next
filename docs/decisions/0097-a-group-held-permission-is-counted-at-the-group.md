@@ -44,8 +44,21 @@ Three conditions.
 **A 400-member group and a 2-member group produce the same count of one.** The membership size is on
 the row, so the difference in exposure is visible without being multiplied into the total.
 
-**Which root a membership is attributed to is a separate defect**, recorded as `P-105`: `Walk`
-reports the last established root processed rather than the nearest, so three accounts directly in
-Enterprise Admins on `ad.lab` are each reported under `BUILTIN\Administrators`. An edge that names
-the wrong root sends an operator to remove the wrong membership. That is fixed before stage 6
-consumes `Walk`, not inside it.
+**Historical root-attribution defect:** `P-105` recorded that `Walk` reported the last established
+root rather than the nearest, putting three direct Enterprise Admins members under
+`BUILTIN\Administrators`. Decision 0106 fixed that selection; 0108 then required independent route
+summaries, including longer routes. Do not schedule P-105 again or confuse a selected protection basis
+with the complete membership explanation.
+
+## Bounded implementation status
+
+Judgement schema 24/control engine 8 now stores member attribution and original source-permission
+links from Derivation schema 11 membership inputs. Member and route volume does not multiply holder
+counts, and views read the stored result rather than recomputing membership. Resource applicability
+and concrete requester authorization remain separate. The current permission-only screen wording
+does not claim account takeover merely because an illustrative headline above uses that shorthand.
+Decision 0102's accepted timing clarification governs retained partial results; no production budget
+or host activation is approved. The
+[implementation record](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+owns validation, publication authorization and outstanding Stage 6 acceptance work. This implementation
+note does not change the counting decision.

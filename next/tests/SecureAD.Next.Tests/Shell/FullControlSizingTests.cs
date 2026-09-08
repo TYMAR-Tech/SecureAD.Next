@@ -37,7 +37,7 @@ public sealed partial class ControlEdgeSizingTests
             Assert.Single(Descendants<TextBlock>(control.Columns[^1].GetCellContent(supportRow))).Text);
         AssertInside(supportRow, control);
         vm.SelectedEdge = vm.Rows[0];
-        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name != "RequesterEvidence"));
+        var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "ControlEvidence"));
         expander.IsExpanded = true;
         Layout(pane, width, height);
         var text = Assert.Single(Descendants<TextBox>(expander));

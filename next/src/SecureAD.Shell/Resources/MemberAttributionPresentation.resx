@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>Members of the permission-holding group</value></data>
+  <data name="Counting" xml:space="preserve"><value>The permission is counted at the group. Members and membership routes do not add control-edge counts.</value></data>
+  <data name="Complete" xml:space="preserve"><value>Resolved members: {0}. Unresolved identities: 0. Membership expansion is complete for the captured evidence.</value></data>
+  <data name="Partial" xml:space="preserve"><value>Partial member expansion — {0} resolved members found; {1} unresolved identities retained; {2} membership candidates remain unconfirmed. These are not total effective-membership counts.</value></data>
+  <data name="BudgetStop" xml:space="preserve"><value>Expansion stopped because the configured {0} budget was reached. Results found before the stop are retained.</value></data>
+  <data name="NodeBudgetExceeded"><value>node</value></data>
+  <data name="LinkBudgetExceeded"><value>link</value></data>
+  <data name="StorageBudgetExceeded"><value>storage</value></data>
+  <data name="TimeBudgetExceeded"><value>processing-time</value></data>
+  <data name="Missing" xml:space="preserve"><value>Some membership evidence was unavailable: {0}. Additional members or routes may exist.</value></data>
+  <data name="UnknownApplicability" xml:space="preserve"><value>Membership is recorded, but its use for this resource could not be established: {0}.</value></data>
+  <data name="NotApplicable" xml:space="preserve"><value>This membership does not make the group usable in the recorded resource context.</value></data>
+  <data name="Applicable" xml:space="preserve"><value>Group route usable in the recorded resource context; not a complete access check.</value></data>
+  <data name="NotRun" xml:space="preserve"><value>Member expansion did not run. No expansion budget was approved. Group-held permissions remain visible and counted as before.</value></data>
+  <data name="NotStarted" xml:space="preserve"><value>This group was not expanded because the run’s expansion budget was exhausted. Its member count is unknown.</value></data>
+  <data name="Empty" xml:space="preserve"><value>No effective security-group members were found. Membership expansion is complete for the captured evidence.</value></data>
+  <data name="InvalidEvidence" xml:space="preserve"><value>Stored member evidence could not be validated. Member counts and routes are unavailable; this is not an empty result.</value></data>
+  <data name="SelectPermission"><value>Select a group-held permission to read its stored members.</value></data>
+  <data name="NoGroup"><value>The holder was not resolved as a captured permission-holding group. No member total is asserted.</value></data>
+  <data name="RoutesHeading"><value>Membership routes — grouped by initial membership</value></data>
+  <data name="RoutesCaveat" xml:space="preserve"><value>These are supporting membership chains, not an enumeration of every path. Removing a displayed membership is not a claim that all access is removed.</value></data>
+  <data name="Caveat" xml:space="preserve"><value>Membership attribution only. A member’s complete effective permissions and operation success have not been evaluated here. No directory operation was performed.</value></data>
+  <data name="Showing"><value>Showing {0} stored members</value></data>
+  <data name="Member"><value>Member</value></data>
+  <data name="MembershipEstablished"><value>Captured security-group membership</value></data>
+  <data name="MembershipNotEstablished"><value>Not current security-group membership</value></data>
+  <data name="MembershipUnknown"><value>Security-group membership unconfirmed</value></data>
+  <data name="IdentityStatus"><value>Identity status</value></data>
+  <data name="MembershipRoute"><value>Membership route</value></data>
+  <data name="ResourceApplicability"><value>Resource applicability</value></data>
+  <data name="AccountStatus"><value>Account status</value></data>
+  <data name="Resolved"><value>Resolved principal</value></data>
+  <data name="Unresolved"><value>Unresolved identity</value></data>
+  <data name="Disabled"><value>Disabled account</value></data>
+  <data name="Deleted"><value>Captured deleted principal — excluded from current-member totals</value></data>
+  <data name="AccountUnknown"><value>Authentication readiness not evaluated</value></data>
+  <data name="Primary"><value>Primary-group membership</value></data>
+  <data name="FirstPage"><value>First page</value></data>
+  <data name="NextPage"><value>Next page</value></data>
+  <data name="ReverseHeading"><value>Permissions through group membership</value></data>
+  <data name="SourcePermission"><value>{0} — {1}; {2}</value></data>
+  <data name="ReversePartial"><value>Partial stored group-permission attribution. Additional source permissions may exist. These rows do not add holder-edge counts.</value></data>
+  <data name="ReverseComplete"><value>Stored source group permissions. These rows do not add holder-edge counts and are not requester assessments.</value></data>
+  <data name="ReverseExpectedHidden"><value>Expected source permissions in the stored selection: {0} (hidden).</value></data>
+  <data name="ReverseExpectedShown"><value>Expected source permissions in the stored selection: {0} (shown).</value></data>
+  <data name="Evidence"><value>Budget: {0}; stop reason: {1}; visited nodes: {2}; traversed links: {3}; stored expansion records: {4}; elapsed: {5}; processing position: {6}; judgement generation: {7}; derivation generation: {8}.</value></data>
+</root>

@@ -85,6 +85,8 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     {
         Rows = [];
         SelectedEdge = null;
+        ThroughMembership = [];
+        HasMoreThroughMembership = false;
         HasMore = false;
         SelectedRequesterAssessment = null;
         RequesterAssessments = [];
@@ -130,6 +132,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         SelectedEdge = Rows.FirstOrDefault();
         HasMore = page.HasMore;
         _after = page.LastId;
+        FirstMembershipPermissionPage();
     }
 
     private bool LoadRequesterAssessments(Guid? generation)
@@ -265,6 +268,8 @@ internal sealed class ControlEdgeRowViewModel
     /// <summary>Shows a stored full-control assessment without recomputing rights in the screen.</summary>
     public ControlEdgeRowViewModel(FullControlAssessment value) { _summary = value; }
     public long DisplayOrder => _summary is { } value ? value.Id * 2 - 1 : edge.Id * 2;
+    public string HolderSid => _summary?.Source.Holder.Sid ?? edge.HolderSid;
+    public string? HolderScope => _summary is { } value ? value.Source.HolderScope : edge.HolderScope;
     public string CountStatus => _summary is { } value ? Text(value.IsCounted ? "CountedOnce" : "NotCounted")
         : Text(_included ? "FullControlIncluded" : edge.IsCounted ? "CountedOnce" : "NotCounted");
     public string Holder => _summary is { } value ? value.Source.Holder.Name ?? value.Source.Holder.Sid : (edge.HolderName ?? edge.HolderSid)
@@ -274,7 +279,8 @@ internal sealed class ControlEdgeRowViewModel
         ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationGroup"), Holder, edge.HolderSid, edge.HolderScope ?? "SID-scoped", edge.Target)
         : "";
     public string Target => _summary?.Source.Target ?? edge.Target;
-    public string Capability => _summary is not null ? Text("FullControlLabel") : edge.Capability switch
+    public string Capability => _summary is not null ? Text("FullControlLabel") : CapabilityText(edge.Capability);
+    internal static string CapabilityText(ControlCapability capability) => capability switch
     {
         ControlCapability.CanWriteDacl => "Can change permissions (WRITE_DAC)",
         ControlCapability.CanSetOwner => "Holds WRITE_OWNER — takeover not proven",

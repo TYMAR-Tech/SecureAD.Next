@@ -138,6 +138,10 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    public Result<MemberAttributionDetail> ReadMemberAttribution(string bundleDirectory, string holderSid, string? holderScope, string target) =>
+        Result<MemberAttributionDetail>.Success(new(false, null, []) { GenerationId = ControlEdges.GenerationId ?? Guid.Empty });
+    public Result<MemberPermissionPage> ReadPermissionsThroughMembership(string bundleDirectory, string memberSid, string? memberScope, bool includeExpected, long afterId) =>
+        Result<MemberPermissionPage>.Success(new(false, false, ControlEdges.GenerationId ?? Guid.Empty, [], false, afterId));
     public ControlEdgePage ControlEdges { get; set; } = new([], 0, 0, 0, 0, false, false, false, 0);
     public SelfMembershipAssessmentSet SelfMembershipAssessments { get; set; } = new([], false, null);
     public List<(string Bundle, string? Target, string? Holder)> ControlQueries { get; } = [];

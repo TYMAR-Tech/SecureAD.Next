@@ -441,7 +441,9 @@ public sealed class VouchedValueReachabilityGateTests
         var found = BooleanVouchers().ToList();
 
         // Retain the pre-aggregation inventory and account explicitly for the new per-right proof voucher.
-        Assert.Equal(57 + 1, found.Count);
+        Assert.Equal(57 + 1 + 4, found.Count);
+        foreach (var name in new[] { "CapturedMembershipInput", "MemberAttribution", "MemberAttributionDetail", "MemberPermissionPage" })
+            Assert.Contains(found, v => v.Type.Name == name && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "FullControlRight" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "PrincipalClassification" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlEdge" && v.Name == "IsComplete");
@@ -575,6 +577,17 @@ public sealed class VouchedValueReachabilityGateTests
     /// </summary>
     private static IEnumerable<object> ConstructEveryWay(Type type)
     {
+        // The generic linear vectors cannot coordinate the nested expansion's stop/limits with
+        // the outer availability flag. Exercise the real public getters; do not exempt them.
+        if (type == typeof(SecureAD.Judgement.MemberAttributionDetail))
+        {
+            var expansion = new SecureAD.Judgement.MemberAttribution("S-1-5-21-1-2-3-2000", null, null,
+                Guid.Empty, Guid.Empty, new(10, 10, 10, TimeSpan.FromSeconds(1)), SecureAD.Judgement.MemberAttributionStop.None,
+                0, 0, 0, TimeSpan.Zero, null, [], [], [], []);
+            yield return new SecureAD.Judgement.MemberAttributionDetail(true, expansion, []);
+            yield return new SecureAD.Judgement.MemberAttributionDetail(false, expansion, []);
+            yield return new SecureAD.Judgement.MemberAttributionDetail(true, expansion with { Stop = SecureAD.Judgement.MemberAttributionStop.NodeBudgetExceeded }, []);
+        }
         foreach (var path in CreationPathsOf(type))
         {
             foreach (var arguments in ArgumentVectors(path.Parameters))

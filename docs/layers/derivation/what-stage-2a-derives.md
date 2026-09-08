@@ -58,6 +58,7 @@ protected-principal product and principal expansion.
 | `PrincipalExpansionOutcome` | Whether a principal was expanded, and if not, why not |
 | `ExpandedPrincipal` | One principal found inside another, with the path that reached it |
 | `PrincipalExpansion` | Everything inside one principal, and what the walk could not reach |
+| `CapturedMembershipInput` | Source-linked membership attributes from one selected derivation, with capture completeness separate from attribute visibility |
 | `RequesterTrusteeState` | Whether a trustee applies to one concrete requester in the bounded authorization slice |
 | `RequesterTrusteeReason` | The captured route or explicit limit behind that answer |
 | `RequesterTrusteeEvidence` | Direct identity or one direct same-domain global-group membership evidence |
@@ -77,6 +78,16 @@ them through `InternalsVisibleTo`, as they do for the command line and the windo
 ---
 
 ## Three products, because one graph answers three questions
+
+**Schema 11 membership inputs:** the existing closures remain independent. An additive input product
+retains projected captured objects and the original `member`, `memberOf` and `primaryGroupID` sources
+before unresolved pairs and foreign stubs are folded. `membership_input_manifest` records the expected
+source count, capture coverage and source hash; `membership_input_source` records ordered source proof.
+`DerivationReader.ReadMembershipInput` verifies these against the selected immutable generation.
+Capture completeness does not certify attribute visibility; absent membership values remain uncertain.
+The foreign-stub exclusion now also applies when establishing the forest-root domain SID, matching
+the pre-existing issuing-domain exclusion. Member-attribution tests cover this correction without
+altering historical protection, ownership or principal-catalogue rules.
 
 An earlier draft of the specification treated group expansion as one closure. That is unsafe, and
 the reason is a single arrangement that three different true sentences describe:

@@ -7,7 +7,7 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
-    internal const int EngineVersion = 7;
+    internal const int EngineVersion = 8;
 
     public static void CreateTables(SqliteConnection connection)
     {
@@ -36,6 +36,7 @@ internal static class ControlEdgeStorage
             CREATE UNIQUE INDEX ux_control_identity ON control_edge(target COLLATE NOCASE, holder_sid COLLATE NOCASE, COALESCE(holder_scope,'') COLLATE NOCASE, capability);
             """);
         FullControlStorage.CreateTables(connection);
+        MemberAttributionStorage.CreateTables(connection);
     }
 
     public static void Start(SqliteConnection connection, bool captureComplete) => Execute(connection, null,

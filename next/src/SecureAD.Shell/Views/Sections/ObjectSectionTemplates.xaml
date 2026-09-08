@@ -34,6 +34,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="{Binding SupportedScope}" TextWrapping="Wrap" Margin="0,0,0,8" />
                 <TextBlock Grid.Row="1" Text="{Binding Coverage}" TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -45,7 +47,7 @@
                     <Button Content="First page" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
                     <Button Content="Next page" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
                 </StackPanel>
-                <DataGrid Grid.Row="4" ItemsSource="{Binding Source={StaticResource GroupedControlRows}}" SelectedItem="{Binding SelectedEdge}"
+                <DataGrid Grid.Row="4" x:Name="ControlPermissions" ItemsSource="{Binding Source={StaticResource GroupedControlRows}}" SelectedItem="{Binding SelectedEdge}"
                           AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MinHeight="120" MaxHeight="240">
                     <DataGrid.GroupStyle>
                         <GroupStyle>
@@ -82,14 +84,14 @@
                         </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
-                <Expander Grid.Row="5" Header="View control evidence and preconditions" Margin="0,8,0,0">
+                <Expander Grid.Row="5" x:Name="ControlEvidence" Header="View control evidence and preconditions" Margin="0,8,0,0">
                     <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
                         <TextBox Text="{Binding SelectedEdge.Evidence, Mode=OneWay}" IsReadOnly="True"
                                  TextWrapping="Wrap" BorderThickness="0" />
                     </ScrollViewer>
                 </Expander>
                 <TextBlock Grid.Row="6" Text="{Binding RequesterCoverage}" TextWrapping="Wrap" Margin="0,8,0,4" />
-                <DataGrid Grid.Row="7" ItemsSource="{Binding RequesterAssessments}"
+                <DataGrid Grid.Row="7" x:Name="RequesterAssessmentsTable" ItemsSource="{Binding RequesterAssessments}"
                           SelectedItem="{Binding SelectedRequesterAssessment, Mode=TwoWay}" AutoGenerateColumns="False"
                           IsReadOnly="True" CanUserAddRows="False" MaxHeight="180">
                     <DataGrid.Columns>
@@ -117,6 +119,65 @@
                         <TextBox Text="{Binding SelectedRequesterAssessment.Evidence, Mode=OneWay}"
                                  IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" />
                     </ScrollViewer>
+                </Expander>
+                <StackPanel Grid.Row="9" DataContext="{Binding MemberPanel}" Margin="0,12,0,0">
+                    <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Counting}" TextWrapping="Wrap" Margin="0,4,0,4" />
+                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                    <Expander x:Name="MemberEvidence" Header="{Binding RoutesHeading}" Margin="0,6,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{Binding RoutesCaveat}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Showing}" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                                <Button Content="{Binding FirstPageLabel}" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
+                                <Button Content="{Binding NextPageLabel}" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
+                            </StackPanel>
+                            <DataGrid x:Name="MemberPrincipals" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MaxHeight="220">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Binding="{Binding Member}" Width="*">
+                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.MemberHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Binding="{Binding IdentityStatus}" Width="*">
+                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.IdentityHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Binding="{Binding Routes}" Width="2*">
+                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.RouteHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Binding="{Binding Applicability}" Width="2*">
+                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.ApplicabilityHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Binding="{Binding AccountStatus}" Width="*">
+                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.AccountHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBox Text="{Binding SelectedRow.Routes, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
+                            <TextBox Text="{Binding Evidence, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
+                        </StackPanel>
+                    </Expander>
+                    <TextBlock Text="{Binding Caveat}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                </StackPanel>
+                <Expander Grid.Row="10" x:Name="ThroughMembershipEvidence" Header="{Binding ThroughMembershipHeading}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ThroughMembershipCoverage}" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                            <Button Content="{Binding MemberPanel.FirstPageLabel}" Command="{Binding FirstMembershipPermissionPageCommand}" Margin="0,0,8,0" />
+                            <Button Content="{Binding MemberPanel.NextPageLabel}" Command="{Binding NextMembershipPermissionPageCommand}" IsEnabled="{Binding HasMoreThroughMembership}" />
+                        </StackPanel>
+                        <DataGrid x:Name="GroupPermissionReferences" ItemsSource="{Binding ThroughMembership}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MaxHeight="220">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Holder" Binding="{Binding HolderSid}" Width="*" />
+                                <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="2*" />
+                                <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="*" />
+                                <DataGridTextColumn Header="Membership" Binding="{Binding Membership}" Width="*" />
+                                <DataGridTextColumn Binding="{Binding ResourceApplicability}" Width="*">
+                                    <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.MemberPanel.ApplicabilityHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Text="{Binding MemberPanel.Caveat}" TextWrapping="Wrap" />
+                    </StackPanel>
                 </Expander>
             </Grid>
         </ScrollViewer>

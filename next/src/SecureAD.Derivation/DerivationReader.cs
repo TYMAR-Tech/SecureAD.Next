@@ -260,6 +260,13 @@ public sealed class DerivationReader : IDisposable
     /// <summary>What the derivation recorded about itself.</summary>
     public DerivationDescription Description { get; }
 
+    /// <summary>Reads validated, source-linked membership inputs without expanding a group.</summary>
+    public CapturedMembershipInput ReadMembershipInput()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return MembershipInputStorage.Read(_connection, Description.GenerationId);
+    }
+
     /// <summary>
     /// Verifies the derivation's seal and, only if it is intact and this build understands the
     /// store, opens it for reading.

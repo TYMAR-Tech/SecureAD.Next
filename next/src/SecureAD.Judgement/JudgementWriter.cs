@@ -84,6 +84,13 @@ public sealed class JudgementWriter : IDisposable
         ControlEdgeStorage.Complete(_connection);
     }
 
+    internal void WriteMemberAttributions(SecureAD.Derivation.CapturedMembershipInput input,
+        MemberAttributionBudget budget, string forest, IReadOnlyDictionary<string, NamingContextKind> namingContexts, CancellationToken cancellationToken)
+    {
+        ThrowIfFinished();
+        MemberAttributionStorage.Write(_connection, input, budget, GenerationId, forest, namingContexts, cancellationToken);
+    }
+
     /// <summary>
     /// How many requester answers share one commit.
     /// </summary>

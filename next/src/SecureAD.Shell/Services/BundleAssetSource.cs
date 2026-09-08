@@ -62,6 +62,30 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
     }
 
     private BundleReader? _open;
+
+    /// <inheritdoc/>
+    public Result<MemberAttributionDetail> ReadMemberAttribution(string bundleDirectory, string holderSid, string? holderScope, string target) =>
+        ReadMemberProduct(bundleDirectory, reader => reader.ReadMemberAttribution(holderSid, holderScope, target));
+
+    /// <inheritdoc/>
+    public Result<MemberPermissionPage> ReadPermissionsThroughMembership(string bundleDirectory, string memberSid, string? memberScope, bool includeExpected, long afterId) =>
+        ReadMemberProduct(bundleDirectory, reader => reader.ReadPermissionsThroughMembership(memberSid, memberScope, includeExpected, afterId));
+
+    private static Result<T> ReadMemberProduct<T>(string bundleDirectory, Func<JudgementReader, T> read)
+    {
+        var opened = JudgementReader.Open(bundleDirectory);
+        if (!opened.IsSuccess) return Result<T>.Failure(opened.Error);
+        using var reader = opened.Value;
+        try { return Result<T>.Success(read(reader)); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException
+            or Microsoft.Data.Sqlite.SqliteException or System.Text.Json.JsonException or ArgumentException)
+        {
+            return Result<T>.Failure(AuditError.Create(ErrorCategory.Shell, "MemberAttributionUnreadable", ErrorSeverity.Failed,
+                (new System.Resources.ResourceManager("SecureAD.Shell.Resources.MemberAttributionPresentation", typeof(BundleAssetSource).Assembly)
+                    .GetString("InvalidEvidence", System.Globalization.CultureInfo.CurrentUICulture)
+                    ?? throw new System.Resources.MissingManifestResourceException("InvalidEvidence")) + " " + error.Message, bundleDirectory));
+        }
+    }
     private string? _openPath;
 
     /// <summary>

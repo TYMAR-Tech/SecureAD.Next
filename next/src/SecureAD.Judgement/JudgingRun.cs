@@ -101,7 +101,7 @@ public static class JudgingRun
         CancellationToken cancellationToken)
     {
         discoveryBudget?.Validate();
-        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, discoveryBudget, startedUtc, evaluationAsOf,
+        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, discoveryBudget, null, startedUtc, evaluationAsOf,
             progress, log, cancellationToken);
     }
 
@@ -116,8 +116,20 @@ public static class JudgingRun
         IProgress<JudgingProgress> progress,
         IRunLog log,
         CancellationToken cancellationToken) =>
-        JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, false, null, startedUtc,
+        JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, false, null, null, startedUtc,
             evaluationAsOf, progress, log, cancellationToken);
+
+    /// <summary>Judges with an explicit offline member-attribution budget; requester discovery remains inactive.</summary>
+    public static Result<JudgementRunState> JudgeWithMemberAttribution(
+        string bundleDirectory, IReadOnlyList<IRule> rules, MemberAttributionBudget memberBudget,
+        DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
+        IRunLog log, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(memberBudget);
+        memberBudget.Validate();
+        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, memberBudget,
+            startedUtc, evaluationAsOf, progress, log, cancellationToken);
+    }
 
     private static Result<JudgementRunState> JudgeCore(
         string bundleDirectory,
@@ -126,6 +138,7 @@ public static class JudgingRun
         SelfMembershipBudget selfMembershipBudget,
         bool automaticDiscovery,
         SelfMembershipDiscoveryBudget? discoveryBudget,
+        MemberAttributionBudget? memberBudget,
         DateTimeOffset startedUtc,
         DateTimeOffset evaluationAsOf,
         IProgress<JudgingProgress> progress,
@@ -381,6 +394,20 @@ public static class JudgingRun
 
         using var _ = derivation;
 
+        if (memberBudget is not null && derivation is null)
+            return Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable"), bundleDirectory);
+        CapturedMembershipInput? memberInput = null;
+        if (memberBudget is not null && derivation is not null)
+        {
+            try { memberInput = derivation.ReadMembershipInput(); }
+            catch (Exception error) when (error is InvalidOperationException or System.Text.Json.JsonException or Microsoft.Data.Sqlite.SqliteException)
+            {
+                var refusal = Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable") + " " + error.Message, bundleDirectory);
+                log.Record(JudgePhase, refusal.Error!, []);
+                return refusal;
+            }
+        }
+
         var namingContexts = bundle.ReadNamingContexts();
         if (!namingContexts.IsSuccess)
         {
@@ -461,6 +488,14 @@ public static class JudgingRun
         // the operator looking at a count short of what was actually read.
         progress.Report(new JudgingProgress(objectsRead));
         writer.CompleteControlEdges();
+
+        if (memberInput is not null && memberBudget is not null)
+        {
+            var memberWatch = System.Diagnostics.Stopwatch.StartNew();
+            writer.WriteMemberAttributions(memberInput, memberBudget, bundle.Description.ForestFqdn, namingContexts.Value, cancellationToken);
+            log.Note("MemberAttribution", "finished", [new RunLogDetail("elapsedMs",
+                memberWatch.Elapsed.TotalMilliseconds.ToString("F1", CultureInfo.InvariantCulture))]);
+        }
 
         // ORDERED BY TARGET FIRST, WHICH IS A PERFORMANCE DECISION AND NOTHING ELSE. Every question
         // about one group needs that group's permissions and its stored control edges, and both are

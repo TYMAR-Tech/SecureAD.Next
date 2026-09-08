@@ -35,10 +35,18 @@ reached.
 5. **The screen states that the expansion shown is partial.**
 6. **A count from an incomplete expansion is never presented as total effective membership.** This is
    commitment 3 exactly: say what you know with its uncertainty, except when claiming completeness.
-7. **The same input and the same configured budget stop deterministically**, so two runs of the same
-   evidence never disagree.
+7. **Traversal order and work-limited results are deterministic** for the same evidence, semantic
+   versions and configured node/link/storage budgets. An elapsed-time cutoff can retain a different
+   length prefix on a fresh execution, because machine speed and workload vary. The actual partial
+   result, processing position, elapsed measurement and stop reason are persisted; reopening that
+   stored result is identical and never restarts the walk.
 8. **The export carries the configured budget and the stop reason**, so a result read years later
    says what it was allowed to do.
+
+**Accepted timing clarification:** during bounded effective-member preparation, the owner accepted
+the distinction in condition 7 and subsequently authorized implementation. It does not permit a
+timed partial result to claim completeness, discard discoveries or change holder-edge counts. No
+production expansion budget was approved.
 
 ## Consequences
 

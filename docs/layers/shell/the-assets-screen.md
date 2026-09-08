@@ -453,8 +453,39 @@ safeguards remain. New real-template tests verify the summary, support count tex
 read-only proof at the three existing sizes. A deliberately unbound count-status cell makes the
 check fail. These are no-window synthetic checks, not acceptance of ordinary laptop/external-monitor
 verification. The [implementation record](../judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
-owns the final suite/coverage results and remaining Stage 6 gates. No live directory operation,
-discovery enablement or effective member expansion was added.
+owns the final suite/coverage results and remaining Stage 6 gates. That full-control slice added no
+live directory operation, discovery enablement or effective member expansion; the subsequent bounded
+member-attribution presentation is described below.
+
+### Stored group-member attribution
+
+The accepted member presentation is implemented over judgement schema 24/control engine 8 and
+Derivation schema 11 inputs. Selecting a source permission in either existing direction exposes
+**Members of the permission-holding group**. Counts distinguish resolved members, unresolved identities
+and unconfirmed membership candidates; a partial expansion states that these are not total effective
+membership counts and names missing evidence or the configured stopping budget. Counts describe
+principals, including nested groups, not a user-only workforce total. The source permission remains
+counted at its holder, regardless of member or route volume.
+
+Stored representative chains are grouped by initial membership under **Membership routes — grouped
+by initial membership**. Primary-group links and disabled accounts are identified. The route caveat
+does not promise every path was enumerated or that removing displayed memberships removes all access.
+Member paging reads stored rows; opening or paging a screen never starts expansion or contacts a DC.
+
+**Permissions through group membership** is a separate reverse source-permission view. Its capability
+text retains the original permission's evaluation and count status, including Unknown/uncounted
+owner-change control and **Included in full-control count — not counted again**. Membership and group
+usability do not establish a complete requester access check. Expected source counts remain stated
+when hidden, and partial selection coverage is not presented as a complete total.
+
+Not-run, unresolved-holder, incomplete and corrupt evidence have distinct notices. Generation changes
+and member-proof failures clear the affected member detail rather than inventing an empty answer;
+independently valid holder counts remain visible. With no approved budget, the notice states that
+member expansion did not run. Both production hosts remain inactive for member expansion and requester
+discovery. Real-template checks at 900×430, 1300×650 and 1600×900 and the deliberately unbound member-cell
+control are synthetic verification, not physical laptop/external-monitor acceptance. The
+[member-attribution implementation record](../judgement/the-judgement-store.md#bounded-effective-member-attribution)
+owns final results and remaining gates.
 
 ## Nothing on this screen is ever established-bad
 

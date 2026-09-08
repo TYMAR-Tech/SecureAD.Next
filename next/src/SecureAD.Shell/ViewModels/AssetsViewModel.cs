@@ -713,12 +713,16 @@ internal sealed partial class AssetsViewModel : ObservableObject
         var principalScope = principalSid is not null && SecureAD.Kernel.Security.Sid.IsBuiltinDomain(principalSid)
             ? values?.DomainFqdn : null;
         if (Opened.Section(ObjectSectionCatalog.ControlEdges) is ControlEdgesSectionViewModel controls)
+        {
             controls.Configure(principalSid is not null, string.Equals(objectClass, "user", StringComparison.OrdinalIgnoreCase),
                 (byHolder, includeExpected, afterId) =>
                 _assets.ReadControlEdges(bundleDirectory, byHolder ? null : distinguishedName,
                     byHolder ? principalSid : null, principalScope, includeExpected, afterId),
                 byRequester => _assets.ReadSelfMembershipAssessments(bundleDirectory, byRequester ? null : distinguishedName,
                     byRequester ? distinguishedName : null));
+            controls.ConfigureMemberAttribution(row => _assets.ReadMemberAttribution(bundleDirectory, row.HolderSid, row.HolderScope, row.Target),
+                principalSid is null ? null : (expected, after) => _assets.ReadPermissionsThroughMembership(bundleDirectory, principalSid, principalScope, expected, after));
+        }
 
         Opened.Show(section);
         Announce();

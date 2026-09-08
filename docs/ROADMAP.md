@@ -818,14 +818,16 @@ that comparison did not measure the requester behavior. A subsequent
 passed twelve self/other-account and no-grant checks for direct and group-held Self-Membership,
 then verified fresh captured evidence and both real presentation directions. Concrete requester
 analysis and member expansion were unimplemented at that measurement; it does not accept the later
-requester implementation. General member expansion and the requester acceptance gate remain open.
+requester implementation. The later bounded member-attribution implementation is recorded below;
+its production enablement and the separate requester acceptance gate remain open.
 Catalogue 2 and the corrected schema-15 laboratory baseline are
 unchanged; old judgements require re-judging to obtain the wider slice.
 
 **Concrete requester analysis is implemented.** [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 introduced the bounded requester assessment in schema 17; schema 18 added automatic
-discovery coverage. Shared discovery is integrated into normal Shell/CLI judging, but both production
-hosts pass no budget, so it remains inactive. Explicit request batches are a library input, not an
+discovery coverage. Shared discovery is implemented in judging, but Shell supplies no discovery budget
+and the current CLI capture workflow does not invoke judging. Neither production host activates it.
+Explicit request batches are a library input, not an
 administrator-maintained selection list. No numerical production budget has been approved.
 
 The approved R7 table wording and expandable selected-answer evidence are implemented with R6 sizing
@@ -879,13 +881,45 @@ Existing-owner and requester boundaries remain separate; the owner-change compou
 and uncounted. Principal catalogue 2 is unchanged. The full offline suite passed 4,305/4,305, the
 solution build succeeded, and targeted coverage passed 796/796. See the
 [implementation record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
-for proof-integrity corrections, preserved measurements and remaining gates. No publication of this
-slice, live ownership work or discovery enablement is authorized by the implementation request.
+for proof-integrity corrections, preserved measurements and remaining gates. The implementation request
+did not authorize publication, live ownership work or discovery enablement; the owner subsequently
+authorized publication of that completed full-control slice.
 
-General ownership modifications, validated-write-only key-credential access, constrained secret reveal,
-unresolved full-control scope/authorization cases and effective member expansion remain outside these bounded slices.
-The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
-passing automated tests does not discharge them.
+**Bounded effective-member attribution is implemented and synthetically verified in judgement schema
+24/control engine 8, using Derivation schema 11 and unchanged principal catalogue 2.** Source-linked
+membership inputs, unresolved identities, nested/security-enabled and primary-group relationships,
+representative independent routes and separate resource applicability are persisted. Group-held
+permission counts do not multiply by members or routes. Reverse views retain the source permission's
+evaluation and full-control count status; established membership cannot promote an Unknown permission.
+Only an explicitly budgeted offline library entry point runs the expansion; normal host enablement
+remains unapproved. Verification passed 4,355/4,355 offline tests with four stage-status tests explicitly
+excluded, 799/799 targeted coverage tests and a successful solution build. The
+[member-attribution record](layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+owns the final artifacts, approved timing clarification and publication authorization.
+
+### Remaining Stage 6 work
+
+1. Measure customer-shaped synthetic expansion, storage and forward/reverse readback, including
+   full-control proof validation, against approximately 347,000 objects, 5.9 million ACEs and nine
+   domains. No production budget or customer-scale performance acceptance follows from small fixtures.
+2. Resolve supported authorization-context gaps on evidence: non-domain/serving-DC scope (P-90),
+   constrained ownership changes, validated-write-only key-credential access, constrained secret reveal
+   and unresolved full-control cases. Unsupported cases remain Unknown; do not infer a complete token
+   or widen the accepted bounded requester semantics.
+3. Complete the claim-specific controlled evidence gates: serving-DC behavior, WRITE_OWNER-only and
+   resulting-owner cases, AdminSDHolder owner-only restoration, and the remaining requester acceptance
+   cases. Existing direct/single-group Self-Membership observations are historical evidence, not
+   acceptance of every later implementation. New live work requires separate authorization.
+4. Obtain separately approved production discovery/member-expansion budgets and host activation only
+   after the measurements and behavior gates justify them. Both products remain inactive in normal
+   host flows without approval; CLI end-to-end orchestration is separately tracked in the workflow.
+5. Complete normal laptop/external-monitor verification and P-145's Tier 0-target, planted-positive,
+   expectedness and visible-volume review before final Stage 6 acceptance. The cancelled stage-status
+   script/self-test remains unverified and must not be retried without authorization.
+
+These are implementation, measurement and acceptance boundaries, not a reopening of accepted catalogue
+policy. P-142/P-143 asset-classification/declaration mechanisms are explicitly scheduled after Stage 6;
+P-144 is an unscheduled rule candidate. Chained paths, proven remediation and reports remain later stages.
 
 *Criteria:* `AC-24`, `AC-27`, `AC-37`, `AC-55`, `AC-56`, `AC-76`.
 

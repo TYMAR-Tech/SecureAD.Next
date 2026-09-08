@@ -62,6 +62,12 @@ internal sealed class DerivationWriter : IDisposable
     /// </remarks>
     public Guid GenerationId { get; }
 
+    internal void WriteMembershipInput(IReadOnlyList<ObjectAttributes> sources, bool captureComplete)
+    {
+        ThrowIfFinished();
+        MembershipInputStorage.Write(_connection, sources, captureComplete);
+    }
+
     /// <summary>
     /// Creates a derivation store beside the evidence it was derived from.
     /// </summary>

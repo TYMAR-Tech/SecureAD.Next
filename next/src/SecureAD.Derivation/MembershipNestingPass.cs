@@ -42,6 +42,9 @@ internal sealed record NestingFacts(
     int CollapsedStubs,
     string? ForestHeuristics)
 {
+    /// <summary>Original membership sources, before unresolved endpoints or foreign stubs are folded.</summary>
+    public IReadOnlyList<ObjectAttributes> MembershipSources { get; init; } = [];
+
     /// <summary>The SID prefix of the forest-root domain, derived from sealed Evidence.</summary>
     public string? ForestRootDomainSid { get; init; }
 
@@ -164,10 +167,13 @@ internal static class MembershipNestingPass
         // error it would produce is the dangerous direction: a live delegation reported as inert.
         var domainSids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var domainsWithConflictingSids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var membershipSources = new List<ObjectAttributes>();
 
         foreach (var subject in objects)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (CapturedMembershipInput.Project(subject) is { } membershipSource)
+                membershipSources.Add(membershipSource);
 
             var ownNameId = names.IdOf(subject.DistinguishedName);
             var ownSid = SidTextOf(subject, "objectSid");
@@ -187,7 +193,11 @@ internal static class MembershipNestingPass
                 continue;
             }
 
-            if (string.Equals(subject.DomainFqdn, forestFqdn, StringComparison.OrdinalIgnoreCase))
+            var classes = ClassesOf(subject);
+            var isStub = classes.Any(
+                c => string.Equals(c, "foreignSecurityPrincipal", StringComparison.OrdinalIgnoreCase));
+
+            if (!isStub && string.Equals(subject.DomainFqdn, forestFqdn, StringComparison.OrdinalIgnoreCase))
             {
                 var candidate = DomainSidOf(ownSid);
                 if (candidate is not null)
@@ -203,14 +213,9 @@ internal static class MembershipNestingPass
                 }
             }
 
-            var classes = ClassesOf(subject);
-
             // A stub stands in for a principal rather than being one. Where a real object and a
             // stub carry the same SID, the real object's facts are the ones worth keeping - its
             // objectClass, its groupType, its GUID. A stub has none of those to offer.
-            var isStub = classes.Any(
-                c => string.Equals(c, "foreignSecurityPrincipal", StringComparison.OrdinalIgnoreCase));
-
             NoteDomainSid(subject.DomainFqdn, ownSid, isStub, domainSids, domainsWithConflictingSids);
 
             var rank = isStub ? StubRank : PrincipalRank;
@@ -292,6 +297,7 @@ internal static class MembershipNestingPass
             forestHeuristics)
         {
             ForestRootDomainSid = forestRootDomainSid,
+            MembershipSources = membershipSources,
 
             // Dropped last rather than never recorded, so a conflict is decided on everything the
             // pass saw rather than on whichever object happened to arrive first.

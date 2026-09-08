@@ -309,6 +309,17 @@ The table below sits between the two markers around it, so the test parses only 
 | FullControlAssessment | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | FullControlRight | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | FullControlSource | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttribution | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionBudget | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionDetail | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionLink | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionMember | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionRoute | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionState | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberAttributionStop | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberPermissionPage | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberPermissionReference | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| MemberResourceApplicability | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlEvaluationState | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlExpectedness | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlExpectednessReason | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
@@ -409,6 +420,7 @@ The table below sits between the two markers around it, so the test parses only 
 | PrincipalExpansionOutcome | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | ExpandedPrincipal | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | PrincipalExpansion | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| CapturedMembershipInput | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | RequesterTrusteeState | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | RequesterTrusteeReason | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | RequesterTrusteeEvidence | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |

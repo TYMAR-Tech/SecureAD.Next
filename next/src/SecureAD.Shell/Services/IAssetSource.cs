@@ -33,6 +33,12 @@ internal interface IAssetSource
     /// <summary>Reads stored concrete Self-Membership requester assessments in either direction.</summary>
     Result<SelfMembershipAssessmentSet> ReadSelfMembershipAssessments(string bundleDirectory, string? target, string? requester);
 
+    /// <summary>Reads stored group-member attribution for a source permission.</summary>
+    Result<MemberAttributionDetail> ReadMemberAttribution(string bundleDirectory, string holderSid, string? holderScope, string target);
+
+    /// <summary>Reads group-held source permissions through persisted member attribution.</summary>
+    Result<MemberPermissionPage> ReadPermissionsThroughMembership(string bundleDirectory, string memberSid, string? memberScope, bool includeExpected, long afterId);
+
     /// <summary>Reads the directory tree of the bundle in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     Result<DirectoryTree> ReadTree(string bundleDirectory);

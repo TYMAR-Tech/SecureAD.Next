@@ -83,7 +83,7 @@ internal static class DerivationSchema
     /// </remarks>
     // Version 9 introduced schema-scoped owner acceptance under 0109. Version 10 adds the
     // independent membership routes and their completeness under 0108; old paths are not totals.
-    public const int Version = 10;
+    public const int Version = 11;
 
 
     private static readonly string[] TableDdl =
@@ -558,6 +558,7 @@ internal static class DerivationSchema
         ArgumentNullException.ThrowIfNull(connection);
         Execute(connection, TableDdl);
         SecureAD.Storage.MembershipRouteStorage.CreateTables(connection);
+        MembershipInputStorage.CreateTables(connection);
     }
 
     /// <summary>

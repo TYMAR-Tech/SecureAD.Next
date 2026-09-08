@@ -565,8 +565,27 @@ while broken or Unknown summaries suppress nothing. The
 [full-control record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
 owns corrected findings, the 4,305/4,305 full offline suite, successful build and 796/796 targeted
 coverage. P-145 remains open, including customer-scale readback cost and the claim-specific gates.
-Laptop/monitor checks remain normal outstanding verification. This implementation request authorizes
-neither live access, discovery enablement, further capabilities, member expansion, commit nor push.
+Laptop/monitor checks remain normal outstanding verification. At that full-control implementation
+checkpoint, the request authorized neither live access, discovery enablement, further capabilities,
+member expansion, commit nor push; later approvals are recorded separately below.
+
+**Current member-attribution checkpoint:** the approved bounded component is implemented and
+synthetically verified in judgement schema 24/control engine 8, with Derivation schema 11 and unchanged
+principal catalogue 2. It retains group-held counting, independent routes, unresolved identities and
+resource scope, and the reverse view retains original permission evaluation/support-count status.
+The [member-attribution record](layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+holds the 4,355/4,355 offline regression result (four stage-status tests explicitly excluded), successful
+solution build, 799/799 targeted coverage and preserved final artifacts. The owner subsequently requested
+documentation closeout, commit and push of this completed slice; this is not permission for live work,
+production budgets, discovery activation or later publication.
+
+P-145 remains open. Its remaining work is collected in
+[Remaining Stage 6 work](ROADMAP.md#remaining-stage-6-work): customer-shaped expansion/readback
+measurement, unresolved scope and constrained authorization cases, controlled live evidence gates,
+separate budget/activation approval, normal display verification and the final Tier 0/visible-volume
+review. P-90 is not closed by retaining Unknown non-domain contexts. P-142/P-143 remain after Stage 6;
+P-144 remains an unscheduled rule candidate. The cancelled stage-status script/self-test remains
+unverified and will not be retried under this publication request.
 
 ---
 

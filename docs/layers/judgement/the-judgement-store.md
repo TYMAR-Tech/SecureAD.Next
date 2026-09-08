@@ -38,6 +38,17 @@ finished and sealed separately from the evidence it judged.
 | `FullControlAssessment` | A full-control summary assessment with separate permission proof and support links |
 | `FullControlRight` | One required right and its ordered alternative sources, with an explicit completeness voucher |
 | `FullControlSource` | Captured descriptor, holder, scope and expectedness inputs used to replay a summary |
+| `MemberAttribution` | One stored holder expansion with member identities, retained links, representative routes and explicit completeness |
+| `MemberAttributionBudget` | Configured node, link, stored-record and processing-time limits; no production default |
+| `MemberAttributionDetail` | Generation-bound member evidence and separately stored resource applicability |
+| `MemberAttributionLink` | An explicit or primary membership link retaining its source DN, attribute and ordinal |
+| `MemberAttributionMember` | A distinct resolved, unresolved or unconfirmed member, with captured identity evidence |
+| `MemberAttributionRoute` | A representative chain grouped by initial membership and linked to its parent route |
+| `MemberAttributionState` | Established, not established or unknown membership/applicability, never a concrete access check |
+| `MemberAttributionStop` | Explicit not-run and node/link/storage/time stopping reasons |
+| `MemberPermissionPage` | A bounded reverse page of source permissions with generation and completeness |
+| `MemberPermissionReference` | A source group-held permission, not a newly counted member edge |
+| `MemberResourceApplicability` | Stored group-route usability for one member in one resource context |
 | `ControlEvaluationState` | Whether a capability is established, not established or unknown |
 | `ControlExpectedness` | Whether control is expected, unexpected or not yet classified |
 | `ControlExpectednessReason` | The stored reason for that separate classification |
@@ -2126,7 +2137,7 @@ This authorizes publication of this completed full-control slice and its documen
 not standing authorization for later commits, pushes or additional implementation. Git history identifies
 the resulting publication commit. The local ignored coverage reports remain outside the commit.
 
-**Recommended next bounded session: effective-member expansion preparation, not implementation.**
+**Historical next-session boundary at full-control publication: effective-member expansion preparation, not implementation.**
 Start from schema 23/control engine 7/principal catalogue 2, Stage 6 §7.1 and accepted decisions
 0097/0102, with the existing scope, expectedness and requester boundaries. Recommend how captured
 membership evidence attributes group-held permissions to members without multiplying the counted
@@ -2135,6 +2146,138 @@ storage/counting behavior, exact screen wording and synthetic verification for a
 Choose no production budget without measurements against the documented forest shape. The cancelled
 stage-status check and normal laptop/monitor verification remain outstanding; publication does not
 discharge them or the live ownership, serving-DC evidence, customer-scale readback and final Stage 6 gates.
+
+## Bounded effective-member attribution
+
+The owner accepted the bounded proposal, exact presentation and 0102 timing clarification, then
+requested implementation and continuation. That implementation request did not authorize a production
+budget, live verification, discovery enablement, commit or push. Subsequent publication authorization
+is recorded below and does not change the other boundaries.
+
+**Versions and inputs:** Derivation schema **11**, judgement schema **24**, control engine **8**;
+principal catalogue **2** and Evidence are unchanged. Re-derive and re-judge an isolated copy to obtain
+the product. Historical generations are not migrated, reclassified or substituted after a failed
+current generation. `JudgingRun.JudgeWithMemberAttribution` requires an explicit budget and current
+source-linked inputs; existing host entry points supply no member budget. Requester discovery remains
+inactive independently.
+
+**What is stored:** one expansion per scoped permission holder, shared across targets/capabilities;
+source-linked members and unresolved DN/SID endpoints; graph links and representative chains grouped
+by initial membership; shared resource-context answers; and references to original permissions and
+full-control assessments. Unknown or ambiguous holders retain unanswered coverage rather than being
+omitted from reverse completeness. Original current identities, primary-group links and foreign
+references remain distinguishable. Security-enabled nesting participates; distribution-only routes
+do not become current authorization. Cycles terminate without counting a group as its own member.
+Disabled accounts retain membership evidence, not authentication readiness. Application partitions
+and tombstone capture are not added: the current Evidence format has Domain/Configuration/Schema
+contexts and no `isDeleted` attribute. Missing identities are not declared deleted. Explicit deletion
+record semantics are tested separately from what current capture can establish.
+
+**Scope and counting:** membership remains target-independent. Resource applicability follows the
+captured naming context and retained group routes, not an inferred domain from an arbitrary DN.
+Missing servicing context for non-domain partitions, unsupported nesting and foreign authorization
+remain Unknown. This is not a complete requester token/access check. Full-control summaries retain
+supporting permissions and alternative grants; Unknown/broken summaries suppress nothing. Existing-owner
+control retains its independent count. Owner-change control stays Unknown/uncounted. Member identities,
+paths and reverse references never add counted holder edges, and expectedness is not transferred.
+
+**Budgets:** visited nodes, traversed links, logical stored expansion records and elapsed processing
+are explicit batch limits. A stored-record unit is a member, retained graph link, representative route
+or member/resource-context answer; context slots are reserved before discovering the member. Fixed
+coverage manifests, existing source-permission references and database indexes are not member
+multiplication and remain separately measurable storage costs. Input indexing is a separate linear
+preparation cost, not an all-groups transitive closure. Stop reasons retain the discovered prefix and
+processing position; work order is deterministic, while timed fresh executions may retain different
+prefix lengths under the accepted 0102 clarification. The screen reads persisted results, never starts
+another membership walk. Cancellation does not publish a partially written generation.
+
+**Readback and presentation:** manifests, proof hashes, generation, scoped identities, context links,
+member indexes and original permission linkage are checked. Missing/corrupt evidence is refused rather
+than rendered empty; independently valid holder counts survive a member-detail refusal. Both directions
+show **Members of the permission-holding group**, separate resolved/unresolved/unconfirmed counts and
+the approved partial-result warning. **Permissions through group membership** is a separate paged
+source-permission view, not a broadened named-holder query. Expected source counts describe the stored
+selection and remain stated when hidden. Source permission references are deduplicated before paging;
+resource uncertainty outside the current page still affects selection completeness.
+
+Reverse rows also retain the **source permission's** evaluation and count status. Established
+membership or group usability never promotes an Unknown permission. The reverse presentation reuses
+the existing capability labels, including the unverified/uncounted owner-change label, and keeps
+**Included in full-control count — not counted again** on supporting permissions. Separate regression
+tests cover Unknown owner-change control, Unknown full-control presentation and retained support labels.
+
+**Final synthetic/offline verification:** the solution build succeeded. The source-verified Release
+regression selection passed **4,355/4,355**, none skipped within the selection; the four
+`StageStatusGateTests` tests were explicitly excluded as an additional precaution, so this is not a
+claim that the cancelled stage-status check or its self-test passed. Final targeted coverage passed
+**799/799**, none skipped, with exit code 0. Both TRX reports record `Completed` and zero aborted or
+not-executed tests. SDK **10.0.400** was used under the unchanged SDK policy; tests and coverage ran
+with `--no-build --no-restore` after the Release assembly was checked against 38 changed source/resource
+inputs. The coverage command took **53.7 seconds**, excluding the preceding build. These are synthetic
+verification timings, not customer-scale performance evidence, and build success does not claim that
+all analyzer warnings were resolved.
+
+Final artifacts are in
+`next/.vs/MemberAttribution-Final-fcecad10067a499a9091cbd45d44cc85/`: `offline.trx`, `offline.log`,
+`offline-summary.json`, `targeted.trx`, `coverage-run.log`, `coverage-summary.json` and
+`coverage.cobertura.xml`. The test assembly SHA-256 is
+`4C4356CC0D061CBDBBC24E8ADB60E60EBD10C728FFEBB934C820BD9F85A63D82`.
+Selection-specific executable-line hits are CapturedMembershipInput **19/19**, MembershipInputStorage
+**56/61**, MemberAttribution **34/34**, MemberAttributionDeriver **123/124**, MemberAttributionScope
+**79/81**, MemberAttributionStorage **214/217**, and MemberAttributionPanelViewModel **77/82**. These
+line observations are not complete branch coverage.
+
+Earlier in this implementation, the focused membership/scope/safety/presentation and historical control
+sizing selection passed **93/93**. The pre-reverse-label-correction 4,352-test regression and 796-test
+coverage artifacts remain preserved in `next/.vs/MemberAttribution-ec12b694eae84902a7212d4018ce155d/`,
+including the stopped initial CLI build log, which produced no test verdict. The final results above
+supersede those intermediate results without overwriting them. The background terminal wrapper marked
+completed commands as cancelled; the saved exit-code-0 summaries and completed TRX counters were checked
+directly before recording success. No successful test selection was inferred from that wrapper label.
+
+New layout checkpoints, observed from
+this build rather than a historical forest, are Derivation 11
+`15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143` and judgement 24
+`1C01DAC6A8A39F345A696C0B7C39119F6ED0F13C95786DF5BD642CBEB606ACFF`. Every published earlier checkpoint
+is unchanged. Historical sizing checks retain their assertions but select the original named tables
+and scroll to the relevant evidence rather than assuming it is the last section. New member-template
+checks cover 900×430, 1300×650 and 1600×900 and reject an unbound member cell.
+
+**Outstanding:** customer-shaped synthetic measurement and customer-scale readback acceptance, any
+production budget, normal laptop/external-monitor checks, serving-DC evidence, live ownership/SDProp
+gates, Tier 0 review and final Stage 6 acceptance. Small fixtures and coverage are not performance
+acceptance for approximately 347,000 objects, 5.9 million ACEs and nine domains. Measure input indexing,
+expansion, contextualization, writes, cold/warm forward/reverse validation and paging separately;
+vary fan-out, nesting depth, shared routes, cycles and unresolved identities and retain dataset seeds,
+machine/build identity, budgets, allocation/memory, I/O, storage and repeated timings. No limit is
+selected here. The cancelled stage-status script/self-test remains unverified and is not retried.
+Historical tests, frozen hashes and all earlier ignored measurement artifacts are preserved.
+
+**Pre-publication handoff:** the instruction-file change present at implementation start was left
+untouched, and all implementation changes were uncommitted at that handoff. The owner subsequently
+requested documentation closeout, commit and push of the completed slice. This authorizes publication
+to `origin/main`, including the related source, tests, documentation and already-present instruction
+update; it is not standing authorization for later publication. Git history identifies the resulting
+commit. Ignored coverage and measurement artifacts remain local and outside the commit.
+
+Publication closeout passed **53/53** documentation, workflow, record, link, type-ownership and encoding
+checks, and the solution build succeeded. The Release test assembly still matches the final verified
+SHA-256 above; no code changed during this documentation closeout. The four stage-status tests and the
+cancelled script/self-test were not run. The fetched remote and local `main` matched before staging.
+
+**New-session boundary:** begin from the published member-attribution checkpoint: judgement 24,
+control engine 8, Derivation 11, principal catalogue 2, and the final artifact directory above. Read
+the repository instructions, product document, roadmap's remaining Stage 6 list, Stage 6 §7/§7.1 and
+this implementation record before proposing work. The next proposed bounded task is customer-shaped
+synthetic/offline measurement of member attribution and full-control readback. First inspect the
+existing measurement infrastructure and propose explicit scenarios, execution scope and new artifact
+locations for approval before generating/running large fixtures or changing measurement code. Use the
+approximately 347,000-object, 5.9-million-ACE, nine-domain shape; no numerical production budget comes
+from a small fixture. Preserve all stored-proof/counting/requester boundaries and historical artifacts.
+No new capability, production activation, live-directory access, commit or push is authorized by this
+handoff. The cancelled stage-status script/self-test remains unverified; physical display checks remain
+normal verification, not a separate prerequisite session. Publication closes none of the scope,
+serving-DC, live ownership/SDProp, customer-scale, Tier 0 or final Stage 6 acceptance gates.
 
 ## Opening checks three different ways of being wrong
 

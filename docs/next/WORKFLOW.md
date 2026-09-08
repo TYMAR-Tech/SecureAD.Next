@@ -128,6 +128,15 @@ The stage implementation is shared, but orchestration is not yet shared:
 | CLI capture | discover/preflight → capture → derive | It does not invoke Judgement |
 | CLI `--derive` | open existing Evidence → derive | Deliberately offline; no directory discovery occurs first |
 | Developer judging script | open existing Evidence/Derivation → judge | Developer-only entry point, not the target product workflow |
+| Budgeted member-attribution library entry point | open current Evidence/Derivation → `JudgeWithMemberAttribution` → persisted attribution/readback | Offline synthetic validation and budget measurement; no production default or host activation |
+
+The bounded member-attribution component is implemented in judgement schema 24/control engine 8 with
+Derivation schema 11 inputs; this is not a claim that its production workflow is enabled. Existing
+Shell judging supplies no member-expansion or requester-discovery budget. CLI capture still stops after
+derivation and therefore activates neither product. The member views read an existing stored product
+and do not start expansion. Any production activation requires separate approval and must follow this
+workflow rather than introducing a second orchestrator. See the
+[implementation and validation boundary](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution).
 
 Wave 7 replaces host-specific orchestration with one host-neutral application workflow. The replacement
 must delete the stage sequencing from `NewAuditViewModel` and `SecureAD.Cli.Program` in the same change;

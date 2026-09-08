@@ -190,6 +190,32 @@ public sealed class JudgementReader : IDisposable
         return SelfMembershipCoverageStorage.Read(_connection, Description);
     }
 
+    /// <summary>Reads persisted membership beneath a named holder's permission, without walking the directory graph.</summary>
+    public MemberAttributionDetail ReadMemberAttribution(string holderSid, string? holderScope, string target)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(holderSid);
+        ArgumentException.ThrowIfNullOrWhiteSpace(target);
+        FullControlStorage.ValidateSelection(_connection, Description, "target = $value COLLATE NOCASE", target, null, null);
+        return MemberAttributionStorage.Read(_connection, Description, holderSid, holderScope, target)
+            with { GenerationId = Description.GenerationId };
+    }
+
+    /// <summary>Reads source group permissions through stored membership, separately from named-holder edge counts.</summary>
+    public MemberPermissionPage ReadPermissionsThroughMembership(string memberSid, string? memberScope, bool includeExpected, long afterId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(memberSid);
+        ArgumentOutOfRangeException.ThrowIfNegative(afterId);
+        var page = MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
+        foreach (var permission in page.Permissions.DistinctBy(value => (value.Target, value.HolderSid, value.HolderScope)))
+        {
+            FullControlStorage.ValidateSelection(_connection, Description, "target = $value COLLATE NOCASE", permission.Target, null, null);
+            ControlEdgeStorage.ReadHolderEdges(_connection, Description, permission.Target, permission.HolderSid, permission.HolderScope);
+        }
+        return page;
+    }
+
     /// <summary>
     /// Verifies the judgement's seal and, only if it is intact and it belongs to this bundle, opens
     /// it for reading.

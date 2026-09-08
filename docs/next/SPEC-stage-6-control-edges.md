@@ -31,7 +31,7 @@ The [judgement-store document](../layers/judgement/the-judgement-store.md#p-150-
 records the code boundary and measured lab comparison. P-145 and the claim-specific gates below
 remain open. The remaining sections are still a proposal except where an accepted decision is cited.
 
-**Current bounded implementation:** judgement schema **23**, control engine **7**, retains that
+**Current bounded implementation:** judgement schema **24**, control engine **8**, retains that
 initial slice and the later membership/requester/password-reset products, and adds the explicitly
 approved `CanWriteKeyCredentialLink` capability as `CredentialExposure`, plus the two approved
 replication capabilities as `ReplicationControl`. The approved ownership slice adds
@@ -41,10 +41,13 @@ and counting links while retaining primitive permissions and alternative sources
 not tested operations, credential extraction or sign-ins. Replication is grouped visibly by holder
 and exact naming-context root within each page; no DC expectedness exception is added.
 Automatic Self-Membership discovery remains inactive in both hosts without an approved budget.
+Bounded member attribution now stores member/route proof and separate resource applicability from
+Derivation schema 11 inputs. It runs only through an explicitly budgeted offline judging entry point;
+both production hosts remain without a member-expansion budget. Counts remain at the named holder.
 Validated-write-only key-credential access, constrained secret reveal,
-general ownership modifications and effective member expansion remain unfinished; unresolved full-control
+general ownership modifications and production member-expansion budget/scale acceptance remain unfinished; unresolved full-control
 scope/authorization cases remain Unknown rather than being guessed.
-The [implementation record](../layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+The [implementation record](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
 owns behavior and validation. Approval of this bounded slice does not accept the entire proposal
 or close P-145.
 
@@ -62,8 +65,8 @@ and schema entries below are refreshed for the approved bounded full-control sli
 | `BroadPrincipalCanTakeOverObject` (`SEC-060`) | `next/src/SecureAD.Judgement/` | Reports that a principal broad in every organisation can take over an object, conditioning `WriteOwner` on whether the owner's implicit rights survive. |
 | `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 3 and registered in `RuleCatalogue.All`; owner acceptance retains `0109`'s schema-only scope and rights qualification uses `OwnerRightsReading`. |
 | `ObjectTakeoverEvidence`, `ObjectOwnershipEvidence` | `next/src/SecureAD.Evidence/Findings/` | Typed evidence carriers, each with an `IsComplete` voucher. |
-| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 23. Findings, membership routes, bounded control evidence including owner-source proof, separate full-control summaries/support links and separately stored requester assessments/discovery coverage. |
-| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 7. |
+| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 24. Findings, membership routes, bounded control evidence including owner-source proof, separate full-control summaries/support links, budgeted member attribution and separately stored requester assessments/discovery coverage. |
+| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 8. |
 | `FullControlAssessment`, `FullControlEvaluator`, `FullControlStorage` | `next/src/SecureAD.Judgement/` | Bounded all-rights summary, original ordered source/check proof, independent expectedness replay and summary-versus-support counting. Primitive records are retained. |
 | `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
 | **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
@@ -575,7 +578,7 @@ accepted criteria and are cited rather than re-decided.
 | `primaryGroupID` membership | included; a user whose primary group is Domain Admins is found | `AC-63` |
 | Foreign security principals | retained as a SID-based node, never dropped | `JUDGEMENT-HALF.md`, unresolved trustee rule |
 | Unresolved SIDs | retained, and they make the expansion incomplete | `AC-56` |
-| `sIDHistory` | **open** | see the expectedness question 2 above and `Q9` |
+| `sIDHistory` | separate authorization identity, not ordinary membership; unsupported attribution remains Unknown and it never confers expectedness | `0099`, `0111`; see `Q9` |
 | Domain-local scope across a trust | authorisation usability is context-dependent, so scope is evaluated, not assumed | `AC-41`, `AC-53` |
 | Builtin groups with equal SIDs in different naming contexts | distinct directory objects; trustee matching stays SID-and-context based | `AC-42` |
 | Disabled accounts | counted, and flagged; a disabled account is a credential that can be re-enabled by anyone holding these very edges | this document |
@@ -592,6 +595,16 @@ ExpansionComplete       whether every input the walk needed arrived
 
 A single `MemberCount` would look authoritative while unresolved foreign principals sat outside it,
 which is the *silently smaller number* failure this repository has already paid for once.
+
+**Current bounded implementation:** schema 24/control engine 8 stores `MemberAttribution` from
+source-linked Derivation schema 11 inputs. It adds an explicit `UnconfirmedMemberCount` for resolved
+identities whose security-membership route remains uncertain. `IsComplete` on the expansion is the
+implemented membership voucher; detail readback separately includes resource applicability. Missing
+generation-bound evidence is refused, never mixed with another generation. Current capture has no
+tombstone attribute or application-partition support; this slice does not add either, and an uncaptured
+principal is not declared deleted. The implementation record owns these bounded details and the
+permission-only wording; the table above is not a claim that every proposed authorization context is
+implemented. Both production hosts remain without an approved member-expansion budget.
 
 ---
 
@@ -741,8 +754,13 @@ expansion. Microsoft publishes no product-specific safe threshold, so this docum
 one. Expansion runs against explicit budgets - nodes, links, elapsed time, stored records - keeps
 everything found, never drops the counted group edge, sets `ExpansionComplete = false` with a stop
 reason, states on screen that the view is partial, and never presents a partial count as total
-effective membership. The same input and budget must stop deterministically, and the export carries
-both.
+effective membership. Under the accepted timing clarification, the same evidence, semantic versions
+and configured node/link/storage budgets produce deterministic traversal and work-limited results.
+Fresh elapsed-time-limited executions can retain different prefix lengths; the actual prefix,
+processing position, elapsed measurement and stop reason are stored and replayed unchanged. Future
+export carries the configured budget and stop reason; this slice does not implement export. No
+production limit is inferred from the lab: the documented measurement shape is approximately
+347,000 objects, 5.9 million ACEs and nine domains.
 
 **Q7. Who may be named as the new owner.** Microsoft states that a holder of `WRITE_OWNER` "can set
 any valid user or group SID as the owner of an object", and the `TOKEN_OWNER` constraint governs the
@@ -831,11 +849,17 @@ the presence of an entry proves that `OWNER RIGHTS` matters without proving the 
 Each case is run with `BlockOwnerImplicitRights` at 0 and at 1. The result is labelled
 **lab-verified**, never *specified*, exactly as `AC-64` requires for its own blocked claim.
 
-**The Self-Membership gate, for 5.2.** Six cases, because the interesting one is the group grant:
+**The Self-Membership gate, for 5.2.** The original six-case research matrix is retained because the
+interesting case is the group grant:
 `Self-Membership` granted directly to a user; granted to a group containing the user; granted through
 a nested group; the requester adding itself; the requester adding a different account; the requester
-removing itself versus removing another member. Record which succeed. Until this is recorded, a
-group-held `Self-Membership` entry produces `Unknown` for expanded members.
+removing itself versus removing another member. Record which succeed. **The current bounded requester
+semantics are settled by accepted decision 0111:** explicit direct-user and one same-domain global
+security-group route are supported, with separate authorization, own-account and readiness answers.
+Nested, primary-group, SID-history, foreign and ambiguous-context requester routes remain Unknown
+where relevant. The recorded direct/single-group observations do not accept every later implementation;
+remaining controlled requester verification stays outstanding. General member attribution does not
+promote a Self-Membership candidate or widen that requester boundary.
 
 **The AdminSDHolder owner gate, for section 3.** Change **only** the owner of an AdminSDHolder-protected
 group, leave the DACL untouched, run `RunProtectAdminGroupsTask`, and record whether the owner is

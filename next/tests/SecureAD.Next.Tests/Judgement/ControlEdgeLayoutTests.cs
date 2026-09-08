@@ -31,6 +31,8 @@ public sealed class ControlEdgeLayoutTests
         // Schema 23 stores full-control source/proof/support and a separate object assessment manifest.
         // Recorded from this build's observed layout, not an external historical anchor.
         [23] = "049DB54C430BFFEC233CF89D36E888DABDF4858E281FA94C758E7377FBF177D7",
+        // Schema 24 adds member attribution; observed from this build, not a historical forest.
+        [24] = "1C01DAC6A8A39F345A696C0B7C39119F6ED0F13C95786DF5BD642CBEB606ACFF",
     };
 
     [Fact]

@@ -160,6 +160,7 @@ public static class Stage2aRun
         // Every derived product names principals by this dictionary, so it is persisted before any
         // phase can write a product that references it.
         WriteFacts(writer, facts);
+        writer.WriteMembershipInput(facts.MembershipSources, bundle.StreamObjects().IsComplete);
 
         // After the facts because it needs the domain SIDs the pass established, and before any
         // phase that could fail, because it is the one product that makes a later reader able to
