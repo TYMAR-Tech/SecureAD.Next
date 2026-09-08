@@ -31,14 +31,18 @@ The [judgement-store document](../layers/judgement/the-judgement-store.md#p-150-
 records the code boundary and measured lab comparison. P-145 and the claim-specific gates below
 remain open. The remaining sections are still a proposal except where an accepted decision is cited.
 
-**Current bounded implementation:** judgement schema **20**, control engine **4**, retains that
+**Current bounded implementation:** judgement schema **22**, control engine **6**, retains that
 initial slice and the later membership/requester/password-reset products, and adds the explicitly
-approved `CanWriteKeyCredentialLink` capability as `CredentialExposure`. The existing screen shows
-password-reset and key-credential write permission evidence, not tested operations or sign-ins.
+approved `CanWriteKeyCredentialLink` capability as `CredentialExposure`, plus the two approved
+replication capabilities as `ReplicationControl`. The approved ownership slice adds
+`IsOwnerAndCanRewriteDacl` as `DirectoryControl` and evaluated proof for the still-Unknown,
+uncounted owner-transition compound. The existing screen shows permission evidence,
+not tested operations, credential extraction or sign-ins. Replication is grouped visibly by holder
+and exact naming-context root within each page; no DC expectedness exception is added.
 Automatic Self-Membership discovery remains inactive in both hosts without an approved budget.
-Validated-write-only key-credential access, replication,
-existing-owner control, full-control aggregation and effective member expansion remain unfinished.
-The [implementation record](../layers/judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
+Validated-write-only key-credential access, constrained secret reveal,
+general ownership modifications, full-control aggregation and effective member expansion remain unfinished.
+The [implementation record](../layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation)
 owns behavior and validation. Approval of this bounded slice does not accept the entire proposal
 or close P-145.
 
@@ -47,17 +51,17 @@ or close P-145.
 ## 1. What already exists, verified against the code
 
 Not from the roadmap, and not from the punch list. Originally checked on 2026-09-05; the control-edge
-and schema entries below are refreshed for the approved key-credential write slice.
+and schema entries below are refreshed for the approved bounded ownership slice.
 
 | What | Where | What it does |
 |---|---|---|
 | `EffectiveAccessCalculator` | `next/src/SecureAD.Evidence/EffectiveAccessCalculator.cs` | Works out what each trustee actually holds over one object: applies deny entries the way Active Directory applies them, ignores inherit-only entries, and keeps scoped entries apart from whole-object ones. Returns an outcome and an `IsComplete` voucher. |
 | `GenericRightsExpander` | `next/src/SecureAD.Kernel/Security/GenericRightsExpander.cs` | Expands generic rights to the specific rights Active Directory maps them to, and names `WriteDacl` (`0x00040000`) and `WriteOwner` (`0x00080000`). |
 | `BroadPrincipalCanTakeOverObject` (`SEC-060`) | `next/src/SecureAD.Judgement/` | Reports that a principal broad in every organisation can take over an object, conditioning `WriteOwner` on whether the owner's implicit rights survive. |
-| `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 2 and registered in `RuleCatalogue.All`; their shared owner predicate includes `0109`'s schema-only acceptance. |
+| `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 3 and registered in `RuleCatalogue.All`; owner acceptance retains `0109`'s schema-only scope and rights qualification uses `OwnerRightsReading`. |
 | `ObjectTakeoverEvidence`, `ObjectOwnershipEvidence` | `next/src/SecureAD.Evidence/Findings/` | Typed evidence carriers, each with an `IsComplete` voucher. |
-| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 20. Findings, membership routes, bounded control evidence and separately stored requester assessments/discovery coverage. |
-| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset and key-credential write permission slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 4. |
+| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 22. Findings, membership routes, bounded control evidence including owner-source proof and separately stored requester assessments/discovery coverage. |
+| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 6. |
 | `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
 | **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
 
@@ -401,7 +405,7 @@ Renaming was not enough; the review was right that the boundary needs stating.
 | Question | Answer |
 |---|---|
 | What does `CanReplicateSecretDomainData` mean? | The secrets reachable through `DS-Replication-Get-Changes` together with `DS-Replication-Get-Changes-All`, which Microsoft describes as allowing replication of secret domain data. Nothing wider. |
-| Are RODC filtered-set attributes included? | **No.** They require `DS-Replication-Get-Changes-In-Filtered-Set`, which is a distinct extended right with its own GUID. |
+| Are RODC filtered-set attributes included? | Filtered-set authorization is recorded separately as `CanReplicateFilteredAttributes`. It requires `Get-Changes` together with either `Get-Changes-All` or `Get-Changes-In-Filtered-Set`. Holding `Get-Changes` and `Get-Changes-All` therefore establishes both capabilities. This does not promise that every attribute contains a secret or that replication was performed. |
 | Does the filtered-set right produce its own capability? | Yes - `CanReplicateFilteredAttributes`, whose predicate is exactly `AC-77`: `Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set)`. It is a separate primitive and is never folded into the compound above. The catalogue formula, the capability name and `AC-77` state the same predicate, and the derivation records which qualifying right completed it. |
 | So the two replication capabilities overlap? | Yes, deliberately, and `AC-77` already says so: a principal holding `Get-Changes` and `Get-Changes-All` establishes both, while a principal holding `Get-Changes` and `Get-Changes-In-Filtered-Set` alone establishes only `CanReplicateFilteredAttributes` and **not** `CanReplicateSecretDomainData`. They answer different questions - what secrets are reachable, and whether the filtered set is reachable - so neither subsumes the other. |
 | Which naming contexts? | The extended rights apply to `Domain-DNS`, `Configuration` and `DMD` (the schema). The capability records **which** naming context it was established against, and a Configuration or schema target is named as such rather than reported as domain secrets. |
@@ -552,7 +556,7 @@ accepted criteria and are cited rather than re-decided.
 | `primaryGroupID` membership | included; a user whose primary group is Domain Admins is found | `AC-63` |
 | Foreign security principals | retained as a SID-based node, never dropped | `JUDGEMENT-HALF.md`, unresolved trustee rule |
 | Unresolved SIDs | retained, and they make the expansion incomplete | `AC-56` |
-| `sIDHistory` | **open**; see the expectedness question 2 above and `Q9` |
+| `sIDHistory` | **open** | see the expectedness question 2 above and `Q9` |
 | Domain-local scope across a trust | authorisation usability is context-dependent, so scope is evaluated, not assumed | `AC-41`, `AC-53` |
 | Builtin groups with equal SIDs in different naming contexts | distinct directory objects; trustee matching stays SID-and-context based | `AC-42` |
 | Disabled accounts | counted, and flagged; a disabled account is a credential that can be re-enabled by anyone holding these very edges | this document |

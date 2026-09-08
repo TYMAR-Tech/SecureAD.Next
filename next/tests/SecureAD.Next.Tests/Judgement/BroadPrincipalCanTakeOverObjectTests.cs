@@ -239,13 +239,13 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
     /// principal can rewrite permissions the platform prevents them from rewriting.
     /// </remarks>
     [Fact]
-    public void TakeOwnershipIsNotReportedOnAComputerInAHardenedForest()
+    public void TakeOwnershipOnAComputerWithoutAServerBaselineIsUnanswered()
     {
         var verdict = Judge(
             Computer(), [Allow(Everyone, WriteOwner)], NoMembers, Hardened());
 
         Assert.Empty(verdict.Findings);
-        Assert.True(verdict.IsComplete);
+        Assert.Contains(verdict.Unresolved, input => input.Reason == UnresolvedReason.OwnerServerBehaviorNotRecorded);
     }
 
     /// <summary>
@@ -295,7 +295,7 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
         Assert.Empty(verdict.Findings);
         Assert.False(verdict.IsComplete);
         Assert.Contains(
-            verdict.Unresolved, u => u.Reason == UnresolvedReason.ForestMaskUnknown);
+            verdict.Unresolved, u => u.Reason == UnresolvedReason.OwnerHeuristicNotRead);
     }
 
     /// <summary>

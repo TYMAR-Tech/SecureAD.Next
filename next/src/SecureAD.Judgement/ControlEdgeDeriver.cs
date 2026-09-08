@@ -82,22 +82,14 @@ internal static class ControlEdgeDeriver
                     generation, derivationGeneration, true, evidence, [], routes) { DescriptorOutcome = effective.Outcome.ToString() };
                 edges.Add(edge);
                 if (capability == ControlCapability.CanSetOwner)
-                    edges.Add(edge with
-                    {
-                        Capability = ControlCapability.CanBecomeOwnerAndRewriteDacl,
-                        EvaluationState = ControlEvaluationState.Unknown,
-                        Expectedness = Same(trustee.Sid, "S-1-5-18") ? ControlExpectedness.Unknown : edge.Expectedness,
-                        ExpectednessReason = Same(trustee.Sid, "S-1-5-18") ? ControlExpectednessReason.UnknownCapabilityScope : edge.ExpectednessReason,
-                        Uncertainty = unknown | ControlUncertainty.OwnerTransitionLabRequired | ControlUncertainty.OwnerRightsOperationNotEvaluated,
-                        IsCounted = false,
-                        Preconditions = [new("CanSetOwner", evaluation, "MS-ADTS-5.1.3.3.2;stored descriptor"),
-                            new("CanSetTakeoverOwnerSid", ControlEvaluationState.Unknown, "0103;SPEC-stage-6 section 13.1 laboratory gate"),
-                            new("OwnerWouldReceiveWriteDacl", ControlEvaluationState.Unknown, "Specific owner/modification evaluation not yet implemented")],
-                    });
+                    edges.Add(OwnershipControlDeriver.Transition(edge, subject, permissions, context, trustee, domainSid));
             }
         }
         uncertainty |= AddScopedEdges(subject, permissions, normalized, context, generation, derivationGeneration,
             domainSid, effective.Outcome, uncertainty, edges);
+        uncertainty |= ReplicationControlDeriver.Add(subject, permissions, normalized, context, generation,
+            derivationGeneration, domainSid, effective.Outcome, uncertainty, edges);
+        uncertainty |= OwnershipControlDeriver.Add(subject, permissions, context, generation, derivationGeneration, domainSid, edges);
         return new(subject.DistinguishedName, targetSid, targetScope, effective.Outcome.ToString(), uncertainty, edges);
     }
 
@@ -193,7 +185,7 @@ internal static class ControlEdgeDeriver
         return targetUncertainty;
     }
 
-    private static (ControlEvaluationState State, string Source) OperationScope(PermissionEntry entry, int right,
+    internal static (ControlEvaluationState State, string Source) OperationScope(PermissionEntry entry, int right,
         string name, string? targetClass, SchemaGuidCatalog catalogue)
     {
         if (!entry.HasObjectType) return (ControlEvaluationState.Established, "Unscoped entry reaches all operations of this access-mask kind.");
@@ -227,7 +219,7 @@ internal static class ControlEdgeDeriver
 
     internal static (ControlExpectedness State, ControlExpectednessReason Reason) Expected(PermissionTrustee holder,
         ObjectAttributes target, string? forest, MembershipRouteSummary routes, bool descriptorComplete, bool effectiveDirectAce,
-        Func<string, string?> domainSid)
+        Func<string, string?> domainSid, bool replication = false)
     {
         var definition = PrincipalClassificationRegistry.For(holder.Sid);
         if (definition.IsBroad) return (ControlExpectedness.Unexpected, ControlExpectednessReason.UnexpectedBroadPrincipal);
@@ -246,6 +238,8 @@ internal static class ControlEdgeDeriver
             holderDomain = target.DomainFqdn;
         }
         var direct = VerifiedScopeAnswer(holder.Sid, definition.ControlPlaneScope, holderDomain, target, forest, domainSid);
+        if (replication && definition.ControlPlaneScope == PrincipalAuthorityScope.Schema && direct.State == ControlExpectedness.Expected)
+            direct = (ControlExpectedness.Unknown, ControlExpectednessReason.UnknownCapabilityScope);
         if (direct.State == ControlExpectedness.Expected) return direct;
         // These chains carry a separate authorization answer. Never consult protection, the selected basis,
         // or OwnerAcceptance. Positive current membership can establish scope; SID history cannot.
@@ -258,6 +252,11 @@ internal static class ControlEdgeDeriver
             if (rootDefinition.ControlPlaneScope is PrincipalAuthorityScope.Descriptor or PrincipalAuthorityScope.RequiredDomainControllerOperations) continue;
             var domain = root.Scope ?? (root.DistinguishedName is { } dn ? DnHelper.DnToFqdn(dn) : null);
             var answer = VerifiedScopeAnswer(root.Sid, rootDefinition.ControlPlaneScope, domain, target, forest, domainSid);
+            if (replication && rootDefinition.ControlPlaneScope == PrincipalAuthorityScope.Schema && answer.State == ControlExpectedness.Expected)
+            {
+                direct = (ControlExpectedness.Unknown, ControlExpectednessReason.UnknownCapabilityScope);
+                continue;
+            }
             if (answer.State == ControlExpectedness.Expected) return answer;
         }
         if (!routes.IsComplete) return (ControlExpectedness.Unknown, ControlExpectednessReason.UnknownMembershipIncomplete);
@@ -303,7 +302,7 @@ internal static class ControlEdgeDeriver
     private static string DomainDn(string domain) => string.Join(',', domain.Split('.').Select(part => "DC=" + part));
     private static bool IsConfiguration(string dn, string? forest) => !string.IsNullOrWhiteSpace(forest)
         && IsWithin(dn, "CN=Configuration," + DomainDn(forest));
-    private static bool IsDomainTarget(ObjectAttributes target, string? forest) => !string.IsNullOrWhiteSpace(forest)
+    internal static bool IsDomainTarget(ObjectAttributes target, string? forest) => !string.IsNullOrWhiteSpace(forest)
         && !string.IsNullOrWhiteSpace(target.DomainFqdn)
         && Same(DnHelper.DnToFqdn(target.DistinguishedName), target.DomainFqdn)
         && !IsConfiguration(target.DistinguishedName, forest);

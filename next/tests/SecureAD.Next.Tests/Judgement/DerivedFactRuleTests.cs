@@ -442,11 +442,10 @@ public sealed class DerivedFactRuleTests
     }
 
     /// <summary>
-    /// A judging with no derived-fact rule records no derivation generation, so the field states a
-    /// fact rather than being filled in for tidiness.
+    /// Ownership control consumes the available derivation even when no finding rule requests it.
     /// </summary>
     [Fact]
-    public void Judging_RecordsNoDerivationGenerationWhenNoRuleAskedForOne()
+    public void Judging_RecordsOwnershipInputsEvenWhenNoRuleAskedForDerivation()
     {
         var directory = CapturedButNotDerived();
 
@@ -470,7 +469,8 @@ public sealed class DerivedFactRuleTests
                 CancellationToken.None).IsSuccess);
 
         using var judgement = JudgementReader.Open(directory).Value!;
-        Assert.Null(judgement.Read().Description.DerivationGenerationId);
+        using var derivation = DerivationReader.Open(directory).Value!;
+        Assert.Equal(derivation.Read().Description.GenerationId, judgement.Read().Description.DerivationGenerationId);
     }
 
     /// <summary>

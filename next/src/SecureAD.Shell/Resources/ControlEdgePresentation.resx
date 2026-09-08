@@ -10,4 +10,19 @@
   <data name="KeyCredentialLinkLabel" xml:space="preserve"><value>Key-credential write permission</value></data>
   <data name="KeyCredentialLinkAttribute" xml:space="preserve"><value>Attribute: msDS-KeyCredentialLink.</value></data>
   <data name="KeyCredentialLinkCaveat" xml:space="preserve"><value>Permission evidence only. A key-credential write and subsequent sign-in have not been tested. This does not establish account takeover or a completed path to Tier 0.</value></data>
+  <data name="ReplicationSecretLabel" xml:space="preserve"><value>Secret-data replication permission</value></data>
+  <data name="ReplicationFilteredLabel" xml:space="preserve"><value>Filtered-attribute replication permission</value></data>
+  <data name="ReplicationCategory" xml:space="preserve"><value>Category: ReplicationControl.</value></data>
+  <data name="ReplicationScope" xml:space="preserve"><value>Naming context: {0} ({1}).</value></data>
+  <data name="ReplicationCaveat" xml:space="preserve"><value>Permission evidence only. No replication operation or credential extraction was performed. This does not establish account takeover or a completed path to Tier 0.</value></data>
+  <data name="ReplicationGroup" xml:space="preserve"><value>Replication permissions — {0} [{1}; {2}] — {3}</value></data>
+  <data name="DomainControllerAsset" xml:space="preserve"><value>Domain controller asset</value></data>
+  <data name="DomainControllerUnknown" xml:space="preserve"><value>Domain-controller classification is unconfirmed; captured evidence is missing or conflicting.</value></data>
+  <data name="ExistingOwnerLabel" xml:space="preserve"><value>Existing-owner permission control</value></data>
+  <data name="OwnerTransitionLabel" xml:space="preserve"><value>Owner-change permission control — not verified; not counted</value></data>
+  <data name="OwnershipCaveat" xml:space="preserve"><value>Ownership and permission evidence only. No owner or permission change was performed. This does not establish account takeover or a completed path to Tier 0.</value></data>
+  <data name="OwnershipCategory" xml:space="preserve"><value>Category: DirectoryControl; this does not classify the target as Tier 0.</value></data>
+  <data name="OwnerServerBehaviorNotRecorded" xml:space="preserve"><value>The serving domain controller's owner-right behavior was not recorded. This ownership conclusion remains unknown; no owner or permission change was tested.</value></data>
+  <data name="OwnerHeuristicNotRead" xml:space="preserve"><value>The captured evidence does not contain the forest's implicit-owner-right setting. This ownership conclusion remains unknown.</value></data>
+  <data name="OwnerRightsNotEvaluated" xml:space="preserve"><value>Some class, permission or requester evidence needed for the named ownership change could not be evaluated. The change is neither established nor ruled out.</value></data>
 </root>

@@ -542,6 +542,25 @@ later, from reading the predecessor's dashboard against the collapsed rule.
 
 ---
 
+## Stage 6 control checkpoint
+
+The approved schema-21/control-engine-5 slice
+now stores both replication capabilities with exact root scope and visible holder/root grouping.
+The [implementation record](layers/judgement/the-judgement-store.md#replication-permissions--bounded-implementation)
+records synthetic/offline verification. P-145 still requires remaining capabilities, Tier 0-target
+review and claim-specific laboratory gates. P-151/P-152 retain their historical measurements; no
+new performance acceptance, discovery tuning or numerical budget is inferred. Both hosts still
+pass no production discovery budget.
+
+The subsequent schema-22/control-engine-6 ownership slice is also complete under its bounded approval;
+principal catalogue 2 remains unchanged. The [ownership record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation)
+holds the shared-check corrections, 4,182/4,182 offline suite and 623/623 targeted coverage results.
+The owner requested publication of both completed slices. This closes neither the live owner-write
+and SDProp gates nor final P-145 acceptance. The recommended next work is full-control aggregation
+preparation with a concrete recommendation for approval, not implementation or discovery enablement.
+
+---
+
 ## Closed
 
 Findings checked against the code and confirmed already fixed are **not listed here**. Git history and

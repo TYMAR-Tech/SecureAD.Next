@@ -65,6 +65,12 @@ public enum UnresolvedReason
 
     /// <summary>The captured forest identity is missing, so schema-scoped ownership cannot be judged.</summary>
     ForestIdentityUnreadable,
+    /// <summary>Owner-right authorization depends on serving DC behavior not recorded in the evidence.</summary>
+    OwnerServerBehaviorNotRecorded,
+    /// <summary>The forest's implicit-owner-right heuristic was not captured.</summary>
+    OwnerHeuristicNotRead,
+    /// <summary>The named ownership modification has unresolved class, scope or requester applicability.</summary>
+    OwnerRightsNotEvaluated,
 }
 
 /// <summary>

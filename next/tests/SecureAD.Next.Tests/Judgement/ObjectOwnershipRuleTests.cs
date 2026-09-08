@@ -224,10 +224,10 @@ public sealed class ObjectOwnershipRuleTests
     }
 
     /// <summary>
-    /// A computer object in a forest that has blocked implicit owner rights is not reported.
+    /// A heuristic alone cannot establish the applicable server's behavior.
     /// </summary>
     [Fact]
-    public void AComputerInAHardenedForestIsNotReported()
+    public void AComputerInAHardenedForestWithoutAServerBaselineIsUnanswered()
     {
         var subject = Computer();
 
@@ -235,7 +235,7 @@ public sealed class ObjectOwnershipRuleTests
             subject, Context(subject, Person, ProtectionFor(subject, isProtected: false), ownerRights: Hardened()));
 
         Assert.Empty(verdict.Findings);
-        Assert.True(verdict.IsComplete);
+        Assert.Contains(verdict.Unresolved, input => input.Reason == UnresolvedReason.OwnerServerBehaviorNotRecorded);
     }
 
     /// <summary>
@@ -274,7 +274,7 @@ public sealed class ObjectOwnershipRuleTests
         Assert.Empty(verdict.Findings);
         Assert.False(verdict.IsComplete);
         Assert.Contains(
-            verdict.Unresolved, u => u.Reason == UnresolvedReason.ForestMaskUnknown);
+            verdict.Unresolved, u => u.Reason == UnresolvedReason.OwnerHeuristicNotRead);
     }
 
     // ---- the state of the owning account ----
@@ -553,6 +553,37 @@ public sealed class ObjectOwnershipRuleTests
         Assert.Equal(highFindings, high.Findings.Count);
     }
 
+    [Theory]
+    [InlineData(0x10, 0, 0)]
+    [InlineData(0x40000, 0, 1)]
+    [InlineData(0x10, 8, 1)]
+    public void OwnerRightsQualificationReachesThePublicRule(int mask, byte propagation, int expectedFindings)
+    {
+        var subject = Container();
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(subject,
+            Context(subject, Person, ProtectionFor(subject, false), entries: [Entry(OwnerRights, mask) with { PropagationFlags = propagation }]));
+        Assert.Equal(expectedFindings, verdict.Findings.Count);
+    }
+
+    [Fact]
+    public void MissingOwnerAcceptanceFactIsNotNegativeMembershipEvidence()
+    {
+        var subject = Container();
+        var context = Context(subject, Person, Protection()) with { ProtectedPrincipals = Protection() };
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(subject, context);
+        Assert.Contains(verdict.Unresolved, item => item.Reason == UnresolvedReason.NotDerived);
+    }
+
+    [Fact]
+    public void AComputerDerivedClassCannotBypassTheMissingServerBaseline()
+    {
+        var subject = Computer();
+        subject = subject with { Attributes = subject.Attributes.Select(attribute => attribute.LdapDisplayName == "objectClass"
+            ? attribute with { Values = [.. attribute.Values, new(3, "customComputerClass", null)] } : attribute).ToArray() };
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(subject, Context(subject, Person, ProtectionFor(subject, false)));
+        Assert.Contains(verdict.Unresolved, item => item.Reason == UnresolvedReason.OwnerServerBehaviorNotRecorded);
+    }
+
     // ---- fixtures ----
 
     private static RuleVerdict JudgeLow(
@@ -578,7 +609,8 @@ public sealed class ObjectOwnershipRuleTests
                 DescriptorAvailability.Read,
                 new PermissionTrustee(ownerSid, null, null, Forest, null, null, null),
                 entries ?? []),
-            ProtectedPrincipals = protection,
+            ProtectedPrincipals = protection.Lookup(ownerSid, Sid.IsBuiltinDomain(ownerSid) ? Forest : null) is not null ? protection
+                : protection with { Principals = [.. protection.Principals, .. OwnerProtection(ownerSid, OwnerAcceptance.NotAccepted).Principals] },
             MembersOfPrincipal = (sid, _) => new PrincipalExpansion(sid, expansionOutcome, []),
             OwnerImplicitRights = ownerRights ?? Unhardened(),
         };

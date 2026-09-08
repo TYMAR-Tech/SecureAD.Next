@@ -93,7 +93,7 @@ public sealed class ControlEdgeDeriverTests
         Assert.Equal(ControlEvaluationState.Established, primitive.EvaluationState);
         var compound = Assert.Single(result.Edges.Where(edge => !edge.IsCounted));
         Assert.Equal(ControlEvaluationState.Unknown, compound.EvaluationState);
-        Assert.Equal(3, compound.Preconditions.Count);
+        Assert.Equal(15, compound.Preconditions.Count);
         Assert.Contains(compound.Preconditions, condition => condition.Name == "CanSetOwner" && condition.State == ControlEvaluationState.Established);
     }
 

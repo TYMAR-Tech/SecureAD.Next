@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidProof" xml:space="preserve"><value>Stored replication scope or supporting permission evidence is missing or contradictory.</value></data>
+  <data name="HolderUnavailable" xml:space="preserve"><value>Presentation only: captured holder identity unavailable.</value></data>
+  <data name="HolderSignals" xml:space="preserve"><value>Presentation only: {0}; {1}; SERVER_TRUST_ACCOUNT={2}; DC primary group={3}; DC OU={4}; inputs complete={5}.</value></data>
+</root>

@@ -7,6 +7,8 @@ using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
+using System.Globalization;
+using System.Resources;
 
 namespace SecureAD.Evidence;
 
@@ -276,6 +278,38 @@ public sealed class BundleReader : IDisposable
     /// obligation to keep it in step with nothing.
     /// </remarks>
     public DirectoryTree ReadTree() => DirectoryTreeReader.Read(Connection);
+
+    /// <summary>
+    /// Reads the exact roots and kinds of captured naming contexts from partition coverage.
+    /// Absence means no captured root, not an empty partition or permission denial.
+    /// Conflicting kinds for one root are refused rather than resolved by row order.
+    /// </summary>
+    public Result<IReadOnlyDictionary<string, NamingContextKind>> ReadNamingContexts()
+    {
+        var resources = new ResourceManager("SecureAD.Evidence.Resources.NamingContextReading", typeof(BundleReader).Assembly);
+        string Text(string name) => resources.GetString(name, CultureInfo.CurrentUICulture) ?? throw new MissingManifestResourceException(name);
+        try
+        {
+            using var command = Connection.CreateCommand();
+            command.CommandText = "SELECT DISTINCT naming_context_dn, naming_context_kind FROM partition_coverage ORDER BY naming_context_dn";
+            using var reader = command.ExecuteReader();
+            var roots = new Dictionary<string, NamingContextKind>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+            {
+                var dn = reader.GetString(0);
+                if (string.IsNullOrWhiteSpace(dn) || !Enum.TryParse<NamingContextKind>(reader.GetString(1), out var kind)
+                    || !Enum.IsDefined(kind) || roots.TryGetValue(dn, out var previous) && previous != kind)
+                    return Result<IReadOnlyDictionary<string, NamingContextKind>>.Failure(ScopeError("NamingContextScopeInvalid", Text("Invalid")));
+                roots[dn] = kind;
+            }
+            return Result<IReadOnlyDictionary<string, NamingContextKind>>.Success(roots);
+        }
+        catch (SqliteException error)
+        {
+            return Result<IReadOnlyDictionary<string, NamingContextKind>>.Failure(ScopeError("NamingContextScopeUnreadable",
+                string.Format(CultureInfo.CurrentCulture, Text("Unreadable"), error.Message)));
+        }
+    }
 
     /// <summary>
     /// Every object in the bundle, streamed, beside whether the run that captured them read

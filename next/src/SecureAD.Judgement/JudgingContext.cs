@@ -196,6 +196,10 @@ public sealed record JudgingContext(
     /// </summary>
     public string? ForestFqdn { get; init; }
 
+    // Capture-unit identity, not a suffix-based guess at the target's resource domain.
+    internal IReadOnlyDictionary<string, NamingContextKind>? NamingContexts { get; init; }
+    internal Func<string, ObjectAttributes?>? ControlPrincipals { get; init; }
+
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only
     /// judging hands over.

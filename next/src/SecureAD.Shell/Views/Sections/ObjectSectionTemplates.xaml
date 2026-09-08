@@ -16,6 +16,13 @@
 
     <DataTemplate DataType="{x:Type vm:ControlEdgesSectionViewModel}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer.Resources>
+                <CollectionViewSource x:Key="GroupedControlRows" Source="{Binding Rows}">
+                    <CollectionViewSource.GroupDescriptions>
+                        <PropertyGroupDescription PropertyName="Group" />
+                    </CollectionViewSource.GroupDescriptions>
+                </CollectionViewSource>
+            </ScrollViewer.Resources>
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -38,8 +45,27 @@
                     <Button Content="First page" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
                     <Button Content="Next page" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
                 </StackPanel>
-                <DataGrid Grid.Row="4" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedEdge}"
+                <DataGrid Grid.Row="4" ItemsSource="{Binding Source={StaticResource GroupedControlRows}}" SelectedItem="{Binding SelectedEdge}"
                           AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MinHeight="120" MaxHeight="240">
+                    <DataGrid.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Name}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </DataGrid.GroupStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Holder" Binding="{Binding Holder}" Width="*" />
                         <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*" />

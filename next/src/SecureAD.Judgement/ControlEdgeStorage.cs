@@ -7,7 +7,7 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
-    internal const int EngineVersion = 4;
+    internal const int EngineVersion = 6;
 
     public static void CreateTables(SqliteConnection connection)
     {
@@ -63,6 +63,8 @@ internal static class ControlEdgeStorage
             ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
         foreach (var edge in result.Edges)
         {
+            ReplicationControlDeriver.ValidateStored(edge);
+            OwnershipControlDeriver.ValidateStored(edge);
             Execute(connection, transaction, """
                 INSERT INTO control_edge (target,target_guid,target_class,holder_sid,holder_name,holder_scope,capability,edge_class,
                     evaluation,uncertainty,expectedness,expectedness_reason,catalogue_version,generation,derivation_generation,counted,ace_count,precondition_count)
@@ -168,6 +170,8 @@ internal static class ControlEdgeStorage
                 MembershipRoutes = MembershipRouteStorage.Read(connection, "control:" + edge.Id)["control:" + edge.Id] };
             if (rows[i].Evidence.Count != evidenceCounts[edge.Id].Aces || rows[i].Preconditions.Count != evidenceCounts[edge.Id].Conditions)
                 throw new InvalidOperationException("Control-edge supporting evidence is missing.");
+            ReplicationControlDeriver.ValidateStored(rows[i]);
+            OwnershipControlDeriver.ValidateStored(rows[i]);
         }
         return new(rows, unexpected, unknown, expected, unanswered, true, capture, more, rows.Count == 0 ? afterId : rows[^1].Id);
     }

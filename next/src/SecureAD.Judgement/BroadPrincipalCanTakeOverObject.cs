@@ -43,10 +43,7 @@ public sealed class BroadPrincipalCanTakeOverObject : IRule
 {
     private const string RuleId = "SEC-060";
 
-    private const int RuleVersion = 1;
-
-    /// <summary><c>OWNER RIGHTS</c>, the entry that switches off an owner's implicit rights.</summary>
-    private const string OwnerRightsSid = "S-1-3-4";
+    private const int RuleVersion = 2;
 
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
@@ -104,22 +101,22 @@ public sealed class BroadPrincipalCanTakeOverObject : IRule
         if (subject.ObjectGuid is not { } objectGuid)
             return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
-        var ownerRights = RetainsOwnerRights(subject, permissions, context);
-
-        // The forest setting decides whether a WriteOwner grant is takeover-class at all, and it
-        // was never read. Refusing is the only honest answer: reporting would risk a false finding
-        // and staying silent would hide a real one.
-        if (ownerRights is null)
-        {
-            return RuleVerdict.CouldNotResolve([new UnresolvedInput(
-                DerivedFactKind.PrincipalExpansion, UnresolvedReason.ForestMaskUnknown)]);
-        }
-
         var pending = new Dictionary<string, PendingTakeover>(StringComparer.OrdinalIgnoreCase);
         var unresolved = new List<UnresolvedInput>();
 
         foreach (var holder in access.Holders)
         {
+            if ((holder.Mask & (GenericRightsExpander.WriteDacl | GenericRightsExpander.WriteOwner)) == 0)
+                continue;
+            // Independent WRITE_DAC must not inherit uncertainty from a hypothetical owner change.
+            var ownerUncertainty = ControlUncertainty.None;
+            var ownerRights = (holder.Mask & GenericRightsExpander.WriteDacl) != 0
+                ? true : RetainsOwnerRights(subject, permissions, context, holder.Trustee, out ownerUncertainty);
+            if (ownerRights is null)
+            {
+                unresolved.Add(new(DerivedFactKind.PrincipalExpansion, OwnerRightsReading.Reason(ownerUncertainty)));
+                continue;
+            }
             if (TakeoverRightOf(holder.Mask, ownerRights.Value) is not { } right)
                 continue;
 
@@ -143,56 +140,20 @@ public sealed class BroadPrincipalCanTakeOverObject : IRule
     }
 
     /// <summary>
-    /// Whether an owner of this object would keep the implicit right to rewrite its permissions.
+    /// Uses the same bounded owner-rights check as ownership findings and stored capabilities.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Two things switch it off, and an earlier draft of the specification named only one.</b>
-    /// An <c>OWNER RIGHTS</c> entry on the object, and the forest setting
-    /// <c>BlockOwnerImplicitRights</c> under the three conditions MS-ADTS 6.1.3.4 gives together.
-    /// </para>
-    /// <para>
-    /// <b>The membership condition is answered without a walk, and that is sound rather than
-    /// convenient.</b> The block does not apply where the principal is in <c>Domain Admins</c> or
-    /// <c>Enterprise Admins</c>. Every principal this rule reports is broad in every organisation -
-    /// <i>Everyone</i>, <i>Domain Users</i> and the rest - and none of them is one of those two
-    /// groups. Passing <c>false</c> is therefore a statement about the principals this rule
-    /// considers, not an assumption about principals in general.
-    /// </para>
-    /// </remarks>
-    /// <returns>
-    /// Whether an owner keeps the right, or null where the forest setting was never read and the
-    /// object is one the setting could apply to.
-    /// </returns>
     private static bool? RetainsOwnerRights(
-        ObjectAttributes subject, ObjectPermissions permissions, JudgingContext context)
+        ObjectAttributes subject, ObjectPermissions permissions, JudgingContext context, PermissionTrustee holder, out ControlUncertainty uncertainty)
     {
-        // An OWNER RIGHTS entry settles it without needing the forest at all, and it settles it in
-        // the same direction whatever the forest says.
-        if (permissions.Entries.Any(entry =>
-                string.Equals(entry.Trustee.Sid, OwnerRightsSid, StringComparison.OrdinalIgnoreCase)))
+        var answer = OwnerRightsReading.Check(permissions, holder, OwnerRightsReading.TargetSid(subject),
+            OwnerRightsReading.ComputerClass(subject), context.OwnerImplicitRights, ControlEvaluationState.Unknown);
+        uncertainty = answer.Uncertainty;
+        return answer.State switch
         {
-            return false;
-        }
-
-        var isComputer = string.Equals(
-            AttributeReading.LastText(subject, "objectClass"),
-            "computer",
-            StringComparison.OrdinalIgnoreCase);
-
-        // The setting cannot apply to anything but a computer object, so a forest nobody read is
-        // not a doubt about an organizational unit, a group or a user. This is what keeps the rule
-        // answerable across the directory in a hardened forest.
-        if (!isComputer)
-            return true;
-
-        if (context.OwnerImplicitRights is not { } setting || !setting.IsComplete)
-            return null;
-
-        return !DirectoryHeuristics.BlocksImplicitOwnerRights(
-            setting,
-            objectIsComputerClass: true,
-            ownerIsDomainOrEnterpriseAdmin: false);
+            ControlEvaluationState.Established => true,
+            ControlEvaluationState.NotEstablished => false,
+            _ => null,
+        };
     }
 
     /// <summary>

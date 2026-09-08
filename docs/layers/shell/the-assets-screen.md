@@ -101,7 +101,7 @@ a principal SID, **Rights held by this principal** switches to the named-holder 
 stored edge set. This is not expansion of the rights the principal receives through group membership.
 
 The current slices cover WRITE_DAC, WRITE_OWNER, bounded group-membership rights, password-reset
-permission and key-credential write permission. General
+permission, key-credential write permission, bounded replication permissions and existing-owner control. General
 membership writes and own-account-only Self-Membership candidates have different labels. The latter
 remain unknown because no concrete requester operation is evaluated. The evidence view shows their
 `MembershipEscalation` category, evaluation, constraints and research status without calling the
@@ -356,7 +356,7 @@ action or new security finding was added.
 directions, old-engine/category refusal and stale-proof clearing. Additional `ControlEdgeSizingTests`
 cases bind the label and caveat through the unchanged real template at the three existing pane
 sizes, without a visible window. The [judgement-store implementation record](../judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
-owns results and limitations. Introduced in schema 19 and retained in current schema 20; real-product visual checks
+owns results and limitations. Introduced in schema 19 and retained in current schema 22; real-product visual checks
 remain normal outstanding verification, not implied by these offline checks.
 
 ### Key-credential write permission
@@ -382,6 +382,47 @@ owns validation and limits. Re-judge to obtain schema 20/control engine 4; ordin
 verification remains outstanding and is not a separate blocking session.
 
 ---
+
+### Replication permissions
+
+The owner approved the bounded implementation, wording and visible grouping. Schema 21/control
+engine 5 adds **Secret-data replication permission** and **Filtered-attribute replication permission**
+to the existing table. Evidence identifies **Naming context: {exact root DN} ({partition kind}).**
+and **Category: ReplicationControl.** The caveat is **Permission evidence only. No replication
+operation or credential extraction was performed. This does not establish account takeover or a
+completed path to Tier 0.**
+
+Non-collapsing groups are headed **Replication permissions — {holder} [{SID}; {scope}] — {root}**.
+Other capability categories remain outside those groups. Groups cover the current page only and
+the scope notice says so; the original page IDs, counts, expected filter and generation/failure
+safeguards remain. A proven captured DC holder is labeled **Domain controller asset**; missing or
+conflicting evidence is described as unconfirmed in selected evidence, not as a suppression reason.
+Classification uses the existing DC signals without changing their use by other rules. The badge
+requires a captured computer identity, readable UAC/primary-group values and agreeing signals.
+
+The group collection is bound in the instantiated section's resources, not the template's shared
+resources. Real-template tests exposed the latter as an empty-table defect and passed unchanged
+after correction. No column or pane-size change was made. Six label/caveat sizing cases and an
+actual group-header/item-count case join the existing no-window checks. The ordinary laptop/monitor
+checks remain outstanding. The [implementation record](../judgement/the-judgement-store.md#replication-permissions--bounded-implementation)
+owns validation and the remaining Stage 6 gates.
+
+### Ownership permission control
+
+Schema 22/control engine 6 uses the approved **Existing-owner permission control** and
+**Owner-change permission control — not verified; not counted** labels in both existing directions.
+The selected evidence retains the owner source, named modification, ordered permissions and each
+independent prerequisite. The caveat is **Ownership and permission evidence only. No owner or
+permission change was performed. This does not establish account takeover or a completed path to
+Tier 0.** The layout and page-local replication groups are unchanged.
+
+Only established existing-owner capabilities are counted. Blocked/unknown owner assessments are
+uncounted detail; missing ownership evidence still makes coverage incomplete. Accepted and
+proven-deleted owners do not produce ownership edges. Owner-change compounds retain 0103's Unknown
+laboratory gate. Real-reader tests cover both directions, stale versions and damaged-proof clearing;
+six real-template sizing cases cover the two labels at the existing sizes. Normal laptop/monitor
+checks remain outstanding. The [implementation record](../judgement/the-judgement-store.md#ownership-control--bounded-implementation)
+owns verification and limits.
 
 ## Nothing on this screen is ever established-bad
 

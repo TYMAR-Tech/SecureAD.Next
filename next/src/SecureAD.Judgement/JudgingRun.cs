@@ -350,7 +350,43 @@ public static class JudgingRun
             }
         }
 
+        // Ownership is a control product even when no scheduled finding requests derivation.
+        // Optional inputs never turn an evidence-only judging into a falsely complete owner answer.
+        if (derivation is null)
+        {
+            var ownershipInputs = DerivationReader.Open(bundleDirectory);
+            if (ownershipInputs.IsSuccess)
+            {
+                derivation = ownershipInputs.Value;
+                var stored = derivation.Read();
+                derivationGeneration = stored.Description.GenerationId;
+                context = context with { ProtectedPrincipals = stored.ProtectedPrincipals.Value };
+            }
+        }
+        if (context.MembersOfPrincipal is null && derivation?.NestingWasDerived() == true)
+        {
+            var reader = derivation;
+            var expansions = new Dictionary<(string Sid, string Scope), PrincipalExpansion>();
+            context = context with
+            {
+                MembersOfPrincipal = (sid, scope) =>
+                {
+                    var key = (sid, scope);
+                    if (!expansions.TryGetValue(key, out var result))
+                        expansions[key] = result = reader.MembersOf(sid, scope);
+                    return result;
+                },
+            };
+        }
+
         using var _ = derivation;
+
+        var namingContexts = bundle.ReadNamingContexts();
+        if (!namingContexts.IsSuccess)
+        {
+            log.Record(JudgePhase, namingContexts.Error, []);
+            return Result<JudgementRunState>.Failure(namingContexts.Error);
+        }
 
         using var writer = JudgementWriter.Create(
             bundleDirectory,
@@ -371,10 +407,14 @@ public static class JudgingRun
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete);
         writer.StartSelfMembershipAssessments();
         // Control capabilities always consume captured schema, even when no rule requests derived facts.
+        var attributes = Memoised<ObjectAttributes?>(dn => bundle.ReadObjectAttributes(dn));
         var controlContext = context with
         {
             ForestFqdn = bundle.Description.ForestFqdn,
             SchemaGuids = context.SchemaGuids ?? bundle.ReadSchemaGuids(),
+            OwnerImplicitRights = context.OwnerImplicitRights ?? DirectoryHeuristics.OwnerImplicitRights(bundle.ReadForestHeuristics()),
+            NamingContexts = namingContexts.Value,
+            ControlPrincipals = attributes,
         };
         var domainSids = Memoised(domain =>
         {
@@ -383,8 +423,8 @@ public static class JudgingRun
             return value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
         });
 
-        var attributes = Memoised<ObjectAttributes?>(dn => bundle.ReadObjectAttributes(dn));
         var scanWatch = new System.Diagnostics.Stopwatch();
+        var unobservedRoots = controlContext.NamingContexts.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var discovery = automaticDiscovery ? new SelfMembershipScheduler(discoveryBudget,
             scope.Value!.AllDeclaredDomainsAreComplete, attributes, controlContext.SchemaGuids ?? SchemaGuidCatalog.Embedded,
             bundle.Description.ForestFqdn, cancellationToken) : null;
@@ -396,6 +436,7 @@ public static class JudgingRun
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
 
+            unobservedRoots.Remove(subject.DistinguishedName);
             var permissions = bundle.ReadPermissions(subject.DistinguishedName);
             writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
                 permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids));
@@ -411,6 +452,10 @@ public static class JudgingRun
             if (objectsRead % ProgressEvery == 0)
                 progress.Report(new JudgingProgress(objectsRead));
         }
+
+        foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
+            writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",
+                ControlUncertainty.ReplicationRootNotEstablished | ControlUncertainty.DescriptorUnreadable, []));
 
         // The last report is unconditional, so a run that ends between two reports does not leave
         // the operator looking at a count short of what was actually read.

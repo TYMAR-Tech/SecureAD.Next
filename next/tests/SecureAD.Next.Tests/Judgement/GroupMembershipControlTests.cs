@@ -196,7 +196,8 @@ public sealed class GroupMembershipControlTests
     {
         Assert.False(Membership(null).IsComplete);
         Assert.False(Membership(Permissions() with { DaclState = DaclState.Unreadable }).IsComplete);
-        var empty = Membership(Permissions() with { DaclState = DaclState.Empty });
+        var empty = Membership(Permissions() with { DaclState = DaclState.Empty,
+            Owner = new("S-1-5-18", "SYSTEM", null, null, null, WellKnownSidRole.Principal, null) });
         Assert.True(empty.IsComplete);
         Assert.Empty(empty.Edges);
         var open = Membership(Permissions() with { DaclState = DaclState.Null });

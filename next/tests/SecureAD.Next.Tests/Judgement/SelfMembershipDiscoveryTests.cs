@@ -95,14 +95,14 @@ public sealed class SelfMembershipDiscoveryTests
 
     internal static string Bundle(string? sddl = null, bool membership = true, int users = 1,
         string[]? members = null, long? groupType = -2147483646, bool targetDescriptor = true, string? userDescriptor = null,
-        Action<BundleWriter, PartitionCoverage>? writeAdditional = null)
+        Action<BundleWriter, PartitionCoverage>? writeAdditional = null, string? rootDescriptor = null, bool rootObject = true)
     {
         var directory = TempDirectories.Create("self-membership-discovery");
         var coverage = new PartitionCoverage("DC=contoso,DC=com", NamingContextKind.Domain, "dc01.contoso.com",
             ConnectionSecurityLevel.SignedAndSealed, 3, 100, 1, [], false);
         using var writer = BundleWriter.Create(directory, Started);
         writer.WriteCoverage(coverage);
-        Write("DC=contoso,DC=com", "domainDNS", "S-1-5-21-1-2-3", [], "O:SYG:SYD:");
+        if (rootObject) Write("DC=contoso,DC=com", "domainDNS", "S-1-5-21-1-2-3", [], rootDescriptor ?? "O:SYG:SYD:");
         for (var index = 0; index < users; index++)
             Write(UserName(index), "user", $"S-1-5-21-1-2-3-{1100 + index}",
                 [new("userAccountControl", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("512")])], userDescriptor ?? "O:SYG:SYD:");

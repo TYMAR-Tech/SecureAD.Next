@@ -47,9 +47,6 @@ internal enum ObjectOwnershipOutcome
 /// </remarks>
 internal static class ObjectOwnershipReading
 {
-    /// <summary><c>OWNER RIGHTS</c>, which switches off an owner's implicit rights.</summary>
-    private const string OwnerRightsSid = "S-1-3-4";
-
     /// <summary>
     /// Identifiers that are accepted owners wherever they appear, whoever is inside them.
     /// </summary>
@@ -99,6 +96,25 @@ internal static class ObjectOwnershipReading
     public static ObjectOwnershipDecision Decide(
         ObjectAttributes subject, JudgingContext context)
     {
+        var eligibility = Eligibility(subject, context);
+        if (eligibility.Outcome != ObjectOwnershipOutcome.OwnerIsNotAdministrative || eligibility.Evidence?.IsOrphaned == true)
+            return eligibility;
+        var permissions = context.Permissions?.Invoke(subject.DistinguishedName);
+        if (permissions?.Owner is not { } owner)
+            return Unresolved(UnresolvedReason.IdentityUnreadable);
+        var rights = OwnerRightsReading.Check(permissions, owner, OwnerRightsReading.TargetSid(subject),
+            OwnerRightsReading.ComputerClass(subject), context.OwnerImplicitRights, ControlEvaluationState.NotEstablished);
+        return rights.State switch
+        {
+            ControlEvaluationState.Established => eligibility,
+            ControlEvaluationState.NotEstablished => new(ObjectOwnershipOutcome.OwnerHoldsNoImplicitRights, null, null),
+            _ => Unresolved(OwnerRightsReading.Reason(rights.Uncertainty)),
+        };
+    }
+
+    /// <summary>Reuses the accepted owner policy without treating rights qualification as owner acceptance.</summary>
+    internal static ObjectOwnershipDecision Eligibility(ObjectAttributes subject, JudgingContext context)
+    {
         ArgumentNullException.ThrowIfNull(subject);
         ArgumentNullException.ThrowIfNull(context);
 
@@ -116,25 +132,14 @@ internal static class ObjectOwnershipReading
         if (permissions.Owner?.Sid is not { Length: > 0 } ownerSid)
             return Unresolved(UnresolvedReason.IdentityUnreadable);
 
+        if (IsAdministrativeByIdentifier(ownerSid))
+            return Administrative();
+
         if (context.ProtectedPrincipals is not { } protection)
             return Unresolved(UnresolvedReason.NotDerived);
 
         if (context.MembersOfPrincipal is not { } expand)
             return Unresolved(UnresolvedReason.NotDerived);
-
-        // An owner that cannot rewrite the list is not what either rule reports, and saying it
-        // could would be false. Checked before administrativeness because it ends the question
-        // whoever the owner turns out to be.
-        if (!RetainsImplicitRights(subject, permissions, context, out var unknownForest))
-        {
-            return unknownForest
-                ? Unresolved(UnresolvedReason.ForestMaskUnknown)
-                : new ObjectOwnershipDecision(
-                    ObjectOwnershipOutcome.OwnerHoldsNoImplicitRights, null, null);
-        }
-
-        if (IsAdministrativeByIdentifier(ownerSid))
-            return Administrative();
 
         // AN ACCEPTED OWNER THROUGH MEMBERSHIP IS ALSO UNREPORTED, AND THIS IS A CORRECTION TO THE
         // PREDECESSOR. Its SEC-031 decided administrativeness from the identifier alone and
@@ -184,6 +189,11 @@ internal static class ObjectOwnershipReading
             permissions.Owner,
             subject.DomainFqdn);
 
+        if (expansion.Outcome == PrincipalExpansionOutcome.PrincipalNotFound)
+            return Unresolved(UnresolvedReason.IdentityUnreadable);
+        if (protection.Lookup(ownerSid, scope) is null && expansion.Outcome != PrincipalExpansionOutcome.PrincipalDoesNotExist)
+            return Unresolved(UnresolvedReason.NotDerived);
+
         var standing = expansion.Outcome switch
         {
             PrincipalExpansionOutcome.PrincipalDoesNotExist => ObjectOwnerStanding.DoesNotExist,
@@ -203,60 +213,6 @@ internal static class ObjectOwnershipReading
 
         return new ObjectOwnershipDecision(
             ObjectOwnershipOutcome.OwnerIsNotAdministrative, evidence, null);
-    }
-
-    /// <summary>
-    /// Whether this object's owner keeps the implicit right to rewrite its permission list.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Two things switch it off.</b> An <c>OWNER RIGHTS</c> (<c>S-1-3-4</c>) entry on the object,
-    /// and the forest setting <c>BlockOwnerImplicitRights</c> under the three conditions MS-ADTS
-    /// 6.1.3.4 gives together. An earlier draft of the specification named only the first and called
-    /// it <i>the one thing that would make this rule lie</i>; that was wrong, and <c>P-138</c>
-    /// records the correction.
-    /// </para>
-    /// <para>
-    /// <b>The forest setting only ever applies to computer objects</b>, so a forest nobody read is
-    /// not a doubt about an organizational unit, a group or a user. That is what keeps these rules
-    /// answerable across the directory in a hardened forest, and reading the setting as a general
-    /// switch would have silenced them across most of it.
-    /// </para>
-    /// </remarks>
-    private static bool RetainsImplicitRights(
-        ObjectAttributes subject,
-        ObjectPermissions permissions,
-        JudgingContext context,
-        out bool forestUnknown)
-    {
-        forestUnknown = false;
-
-        if (permissions.Entries.Any(entry => string.Equals(
-                entry.Trustee.Sid, OwnerRightsSid, StringComparison.OrdinalIgnoreCase)))
-        {
-            return false;
-        }
-
-        var isComputer = string.Equals(
-            AttributeReading.LastText(subject, "objectClass"),
-            "computer",
-            StringComparison.OrdinalIgnoreCase);
-
-        if (!isComputer)
-            return true;
-
-        if (context.OwnerImplicitRights is not { } setting || !setting.IsComplete)
-        {
-            forestUnknown = true;
-            return false;
-        }
-
-        // The owner of a computer object created by a non-administrator is that person, who is by
-        // definition not in Domain Admins or Enterprise Admins - which is the condition being
-        // tested here rather than assumed. Where the owner IS in one of those groups the check
-        // above has already returned administrative.
-        return !DirectoryHeuristics.BlocksImplicitOwnerRights(
-            setting, objectIsComputerClass: true, ownerIsDomainOrEnterpriseAdmin: false);
     }
 
     private static bool IsAdministrativeByIdentifier(string sid)

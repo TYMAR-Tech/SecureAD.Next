@@ -22,6 +22,12 @@ public enum ControlCapability
     CanResetPassword,
     /// <summary>WRITE_PROPERTY reaches msDS-KeyCredentialLink; mutation and authentication success are not evaluated.</summary>
     CanWriteKeyCredentialLink,
+    /// <summary>Get-Changes and Get-Changes-All on the recorded naming-context root.</summary>
+    CanReplicateSecretDomainData,
+    /// <summary>Get-Changes and either Get-Changes-All or Get-Changes-In-Filtered-Set on the recorded root.</summary>
+    CanReplicateFilteredAttributes,
+    /// <summary>The captured non-accepted owner can perform the recorded bounded DACL modification.</summary>
+    IsOwnerAndCanRewriteDacl,
 }
 /// <summary>Semantic categories accepted under 0110, never an ordered risk score.</summary>
 public enum ControlEdgeClass
@@ -122,6 +128,16 @@ public enum ControlUncertainty
     PasswordResetScopeNotEvaluated = 8192,
     /// <summary>The key-credential property's attribute, property-set or class scope could not be established.</summary>
     KeyCredentialLinkScopeNotEvaluated = 16384,
+    /// <summary>The captured naming-context root or its class could not be established.</summary>
+    ReplicationRootNotEstablished = 32768,
+    /// <summary>A required replication right has unresolved scope or applicability.</summary>
+    ReplicationRightNotEstablished = 65536,
+    /// <summary>Captured ownership identity or complete owner-acceptance evidence was not established.</summary>
+    OwnerEligibilityNotEstablished = 131072,
+    /// <summary>The applicable serving DC's owner-right behavior was not recorded.</summary>
+    OwnerServerBehaviorNotRecorded = 262144,
+    /// <summary>The implicit-right branch needs the forest heuristic, which was not read.</summary>
+    OwnerHeuristicNotRead = 524288,
 }
 
 /// <summary>A named condition, with its own evaluation; uncertainty never flows back into its primitive.</summary>
@@ -151,11 +167,16 @@ public sealed record ControlEdge(
 {
     /// <summary>The descriptor-level source, including a NULL DACL that has no granting ACE.</summary>
     public string DescriptorOutcome { get; init; } = "NotRecorded";
+    /// <summary>The captured partition kind, kept separate from the capability name.</summary>
+    public string? ReplicationNamingContextKind => Preconditions.SingleOrDefault(item => item.Name == "NamingContextKind")?.EvidenceSource;
+    /// <summary>Presentation-only captured holder classification; never a prerequisite or expectedness exemption.</summary>
+    public ControlEvaluationState? HolderDomainControllerAsset => Preconditions.SingleOrDefault(item => item.Name == "HolderDomainControllerAsset")?.State;
     /// <summary>The capability's semantic category, not a severity or target privilege classification.</summary>
     public ControlEdgeClass EdgeClass => Capability switch
     {
         ControlCapability.CanModifyGroupMembership or ControlCapability.CanAddSelfToGroup => ControlEdgeClass.MembershipEscalation,
         ControlCapability.CanResetPassword or ControlCapability.CanWriteKeyCredentialLink => ControlEdgeClass.CredentialExposure,
+        ControlCapability.CanReplicateSecretDomainData or ControlCapability.CanReplicateFilteredAttributes => ControlEdgeClass.ReplicationControl,
         _ => ControlEdgeClass.DirectoryControl,
     };
     /// <summary>Whether the capability evaluation has no unresolved input; expectedness is separate.</summary>
@@ -163,7 +184,8 @@ public sealed record ControlEdge(
     /// <summary>Whether an additional transition is required.</summary>
     public string Feasibility => Capability is ControlCapability.CanBecomeOwnerAndRewriteDacl or ControlCapability.CanAddSelfToGroup ? "Conditional" : "Direct";
     /// <summary>Unverified owner transitions and self-membership requester operations remain blocked.</summary>
-    public string ResearchStatus => Capability is ControlCapability.CanBecomeOwnerAndRewriteDacl or ControlCapability.CanAddSelfToGroup ? "ResearchBlocked" : "Verified";
+    public string ResearchStatus => Capability is ControlCapability.CanBecomeOwnerAndRewriteDacl or ControlCapability.CanAddSelfToGroup
+        || Capability == ControlCapability.IsOwnerAndCanRewriteDacl && EvaluationState == ControlEvaluationState.Unknown ? "ResearchBlocked" : "Verified";
     /// <summary>Evidence quality, never a substitute for establishing a capability.</summary>
     public string Confidence => IsComplete ? "High" : "Low";
 }

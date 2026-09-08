@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using SecureAD.Judgement;
 
 namespace SecureAD.Shell.Services;
@@ -27,6 +29,8 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal static class UnresolvedWording
 {
+    private static readonly ResourceManager Ownership = new("SecureAD.Shell.Resources.ControlEdgePresentation", typeof(UnresolvedWording).Assembly);
+
     /// <summary>
     /// What to tell an operator about <paramref name="token"/>, as a judging recorded it.
     /// </summary>
@@ -86,6 +90,9 @@ internal static class UnresolvedWording
             UnresolvedReason.ForestIdentityUnreadable =>
                 "The captured forest could not be identified, so schema-scoped owner acceptance "
                 + "could not be checked. Check the run's recorded forest identity before judging again.",
+
+            UnresolvedReason.OwnerServerBehaviorNotRecorded or UnresolvedReason.OwnerHeuristicNotRead or UnresolvedReason.OwnerRightsNotEvaluated =>
+                Ownership.GetString(reason.ToString(), CultureInfo.CurrentUICulture) ?? throw new MissingManifestResourceException(reason.ToString()),
 
             _ => $"{token} was undecided, and this version has no plainer way to say why.",
         };

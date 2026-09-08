@@ -252,17 +252,25 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
 {
     private static readonly ResourceManager Presentation = new("SecureAD.Shell.Resources.ControlEdgePresentation", typeof(ControlEdgeRowViewModel).Assembly);
 
-    public string Holder => edge.HolderName ?? edge.HolderSid;
+    public string Holder => (edge.HolderName ?? edge.HolderSid)
+        + (edge.EdgeClass == ControlEdgeClass.ReplicationControl && edge.HolderDomainControllerAsset == ControlEvaluationState.Established
+            ? " — " + Text("DomainControllerAsset") : "");
+    public string Group => edge.EdgeClass == ControlEdgeClass.ReplicationControl
+        ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationGroup"), Holder, edge.HolderSid, edge.HolderScope ?? "SID-scoped", edge.Target)
+        : "";
     public string Target => edge.Target;
     public string Capability => edge.Capability switch
     {
         ControlCapability.CanWriteDacl => "Can change permissions (WRITE_DAC)",
         ControlCapability.CanSetOwner => "Holds WRITE_OWNER — takeover not proven",
-        ControlCapability.CanBecomeOwnerAndRewriteDacl => "Owner-to-DACL takeover — supporting compound, not counted",
+        ControlCapability.CanBecomeOwnerAndRewriteDacl => Text("OwnerTransitionLabel"),
+        ControlCapability.IsOwnerAndCanRewriteDacl => Text("ExistingOwnerLabel"),
         ControlCapability.CanModifyGroupMembership => "General group-membership changes — no own-account restriction",
         ControlCapability.CanAddSelfToGroup => "Self-Membership candidate — own account only; requester not verified",
         ControlCapability.CanResetPassword => Text("PasswordResetLabel"),
         ControlCapability.CanWriteKeyCredentialLink => Text("KeyCredentialLinkLabel"),
+        ControlCapability.CanReplicateSecretDomainData => Text("ReplicationSecretLabel"),
+        ControlCapability.CanReplicateFilteredAttributes => Text("ReplicationFilteredLabel"),
         _ => "Unsupported capability",
     };
     public string Evaluation => edge.EvaluationState.ToString();
@@ -270,7 +278,13 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
     public string Evidence => $"Holder: {edge.HolderSid}; scope: {edge.HolderScope ?? "SID-scoped"}\n"
         + $"Object: {edge.TargetGuid?.ToString() ?? "stable identity not captured"}\n"
         + (edge.Capability == ControlCapability.CanWriteKeyCredentialLink ? Text("KeyCredentialLinkAttribute") + "\n" : "")
-        + (edge.EdgeClass == ControlEdgeClass.CredentialExposure ? Text("CredentialExposureCategory") + "\n"
+        + (edge.EdgeClass == ControlEdgeClass.ReplicationControl
+            ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationScope"), edge.Target, edge.ReplicationNamingContextKind) + "\n"
+                + Text("ReplicationCategory") + "\n"
+                + (edge.HolderDomainControllerAsset == ControlEvaluationState.Established ? Text("DomainControllerAsset") + "\n"
+                    : edge.HolderDomainControllerAsset == ControlEvaluationState.Unknown ? Text("DomainControllerUnknown") + "\n" : "")
+            : edge.Capability is ControlCapability.IsOwnerAndCanRewriteDacl or ControlCapability.CanBecomeOwnerAndRewriteDacl ? Text("OwnershipCategory") + "\n"
+            : edge.EdgeClass == ControlEdgeClass.CredentialExposure ? Text("CredentialExposureCategory") + "\n"
             : $"Category: {edge.EdgeClass}; this does not classify the target group as privileged.\n")
         + $"Evaluation: {edge.EvaluationState}; feasibility: {edge.Feasibility}; research: {edge.ResearchStatus}; counted: {edge.IsCounted}\n"
         + $"Expectedness: {edge.ExpectednessReason}; principal catalogue {edge.PrincipalCatalogueVersion}\n"
@@ -292,6 +306,8 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
         {
             ControlCapability.CanResetPassword => "\n" + Text("PasswordResetCaveat"),
             ControlCapability.CanWriteKeyCredentialLink => "\n" + Text("KeyCredentialLinkCaveat"),
+            ControlCapability.CanReplicateSecretDomainData or ControlCapability.CanReplicateFilteredAttributes => "\n" + Text("ReplicationCaveat"),
+            ControlCapability.IsOwnerAndCanRewriteDacl or ControlCapability.CanBecomeOwnerAndRewriteDacl => "\n" + Text("OwnershipCaveat"),
             _ => "",
         });
 

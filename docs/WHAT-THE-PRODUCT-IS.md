@@ -63,15 +63,17 @@ order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longe
 architectural question.
 
 **Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER, bounded
-group-membership control, password-reset permission and key-credential write permission, with object-first and named-holder-first
+group-membership control, password-reset permission, key-credential write permission, bounded replication permissions and bounded existing-owner control, with object-first and named-holder-first
 views in the object screen.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 20 stores this
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 22 stores this
 product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
 coverage introduced in schema 18; schema 19/control engine 3 introduced reset permission, and
-schema 20/control engine 4 adds key-credential write permission and the property-set evidence safeguard;
+schema 20/control engine 4 added key-credential write permission and the property-set evidence safeguard;
+schema 21/control engine 5 added the two replication capabilities on captured naming-context roots;
+schema 22/control engine 6 adds existing-owner assessments and replay-validated ownership proof;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -106,7 +108,7 @@ permission" and the permission-only/no-tested-sign-in caveat. It does not add a 
 member expansion, live directory operation, discovery budget or final Stage 6 acceptance.
 
 **The approved password-reset capability was introduced in schema 19/control engine 3 and is retained
-in current schema 20/control engine 4.** Normal
+in current schema 22/control engine 6.** Normal
 judging evaluates applicable captured reset rights and stores `CanResetPassword` as `CredentialExposure`,
 independently of the inactive Self-Membership discovery budget. The existing table shows
 "Password-reset permission" and keeps evaluation, expectedness and supporting evidence separate.
@@ -128,10 +130,63 @@ password-reset security finding and final Stage 6/P-145 acceptance remain outsta
 
 The owner subsequently requested documentation review, a commit/push of this completed slice and a
 new-session handoff. That is separate publication authorization, not standing permission to publish
-future work. The next recommended session is bounded preparation for the two replication capabilities;
-their concrete implementation scope and new screen wording have not yet been approved.
+future work.
+The next recommended session was bounded replication preparation. The owner subsequently approved
+the concrete implementation, wording and grouping ("i approve"), then requested "implement it".
 
-**The bounded requester design was introduced in judgement schema 17 and is retained in schema 20.** The owner answered "continue then"
+**Replication permissions are stored conclusions for future rules, not new security findings.**
+Capture already records the facts. This Stage 6 slice evaluates those facts into
+`CanReplicateSecretDomainData` and `CanReplicateFilteredAttributes` as `ReplicationControl`, with
+original entries, exact partition roots, component-right checks and uncertainty. Both existing views
+show the approved **"Secret-data replication permission"** and **"Filtered-attribute replication
+permission"** labels, with non-collapsing holder/root groups limited to the current page. DC holders
+are not suppressed or granted an expectedness exemption. Missing/conflicting DC classification
+evidence remains unconfirmed. Configuration/Schema scope is explicit; non-domain servicing contexts
+remain unverified under P-90, except descriptor-native SYSTEM and NULL-DACL Everyone evidence.
+The [implementation record](layers/judgement/the-judgement-store.md#replication-permissions--bounded-implementation)
+owns validation and limits. This does not perform replication, extract credentials, establish takeover
+or complete a path to Tier 0. Separate rules/findings and final Stage 6 acceptance remain outstanding.
+
+**Preserved replication checkpoint:** the full offline suite passed **4,116/4,116**,
+the solution builds, and the final targeted coverage selection passed **653/653**, including the
+last BUILTIN scope correction. The earlier cancelled coverage attempt is preserved, not counted as
+successful. The next recommended bounded session was **ownership-control preparation**, starting from
+the existing requirements and accepted decisions, with explicit approval before the next implementation
+or live laboratory work. The implementation record above owns the report, warnings and remaining gates.
+
+**The bounded ownership implementation and wording are explicitly approved.** The owner selected
+"Approve the bounded implementation and wording; offline only", then requested "implement it".
+Schema 22/control engine 6 adds `IsOwnerAndCanRewriteDacl`, shown as **Existing-owner permission
+control**, and records the missing steps behind **Owner-change permission control — not verified;
+not counted**. Accepted owners and proven-deleted owners produce no ownership edge; incomplete
+owner acceptance stays unanswered. Both viewing directions consume the same stored proof.
+`CanSetOwner` stays independent and the AD DS owner-transition gate remains Unknown and uncounted.
+The shared checks distinguish ordered OWNER RIGHTS permissions, complete class ancestry and missing
+serving-DC behavior. No behavior baseline is inferred from a machine name or a heuristic alone.
+SEC-031/032 are now version 3 and SEC-060 version 2; rule identities and severities are unchanged.
+The [ownership implementation record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation)
+owns verification and limitations. This approval includes focused shared-check corrections, not live
+operations, discovery enablement, member expansion, new findings, final Stage 6 acceptance or publication.
+
+**Ownership is at a verified offline checkpoint:** the full suite passed **4,182/4,182**, the solution
+build succeeded, and the targeted coverage selection passed **623/623**. The linked implementation
+record owns the saved report, line observations and closeout checks. Live owner-write/SDProp gates and
+normal laptop/monitor checks remain outstanding; this is not final Stage 6 acceptance.
+
+**Publication authorization:** the owner subsequently requested "ensure docs are update then commit
+and push and give new session handoff". This authorizes publication of the completed replication and
+ownership slices and their reviewed documentation/instruction changes, not standing permission to
+publish future work. Local ignored coverage outputs and historical evidence remain untouched.
+
+**Recommended next session: bounded full-control aggregation preparation (`HasFullControl`).** Start
+from Stage 6 §5 and §7 and the accepted control/counting decisions. Recommend how to recognize full
+control from one or several effective grants after denies, show one summary without double-counting
+its underlying permissions, and retain every primitive/source route for later Tier 0 analysis.
+Present concrete storage/counting behavior, wording and synthetic verification for explicit approval
+before implementation. No live directory work, discovery enablement, member expansion, ownership-gate
+closure or Stage 7 paths are authorized by this handoff.
+
+**The bounded requester design was introduced in judgement schema 17 and is retained in schema 22.** The owner answered "continue then"
 after the plain-language explanation. [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 limits it to direct user grants and one explicit same-domain global-security-
 group membership. Requester assessments are stored separately from counted holder edges, with

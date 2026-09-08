@@ -137,7 +137,7 @@ public sealed class ControlEdgeStorageTests
         Assert.Equal(1, byObject.UnknownCount);
         Assert.Equal(2, byObject.Edges.Count);
         Assert.Single(byObject.Edges[0].Evidence);
-        Assert.Equal(3, byObject.Edges[1].Preconditions.Count);
+        Assert.Equal(15, byObject.Edges[1].Preconditions.Count);
         Assert.False(byObject.Edges[1].IsCounted);
     }
 

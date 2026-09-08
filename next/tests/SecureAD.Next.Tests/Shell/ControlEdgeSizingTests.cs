@@ -135,6 +135,61 @@ public sealed class ControlEdgeSizingTests
             "key-credential write permission");
     });
 
+    [Theory]
+    [InlineData(900, 430, ControlCapability.CanReplicateSecretDomainData, "Secret-data replication permission")]
+    [InlineData(1300, 650, ControlCapability.CanReplicateSecretDomainData, "Secret-data replication permission")]
+    [InlineData(1600, 900, ControlCapability.CanReplicateSecretDomainData, "Secret-data replication permission")]
+    [InlineData(900, 430, ControlCapability.CanReplicateFilteredAttributes, "Filtered-attribute replication permission")]
+    [InlineData(1300, 650, ControlCapability.CanReplicateFilteredAttributes, "Filtered-attribute replication permission")]
+    [InlineData(1600, 900, ControlCapability.CanReplicateFilteredAttributes, "Filtered-attribute replication permission")]
+    public void ReplicationWordingAndProofRemainReachableInTheGroupedTemplate(int width, int height, ControlCapability capability, string label) => OnSta(() =>
+    {
+        var edge = ReplicationEdges().Single(item => item.Capability == capability);
+        VerifyCredentialEvidence(edge, width, height, label,
+            "Permission evidence only. No replication operation or credential extraction was performed.", "replication permissions");
+    });
+
+    [Fact]
+    public void RealTableGroupsReplicationSeparatelyWithoutHidingRows() => OnSta(() =>
+    {
+        var edges = ReplicationEdges();
+        var vm = Model(0, 0);
+        var other = edges[0] with { Capability = ControlCapability.CanWriteDacl };
+        vm.Configure(true, false,
+            (_, _, _) => Result<ControlEdgePage>.Success(new([.. edges, other], 0, 3, 0, 0, true, true, true, 3) { GenerationId = Guid.Empty }),
+            _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, Guid.Empty)));
+        var pane = Pane(vm);
+        Layout(pane, 1300, 650);
+        var grid = Tables(pane).Control;
+        Assert.Equal(3, grid.Items.Count);
+        Assert.Collection(grid.Items.Groups!.Cast<CollectionViewGroup>(),
+            group => Assert.Equal(2, group.ItemCount), group => Assert.Equal(1, group.ItemCount));
+        Assert.Contains(Descendants<TextBlock>(grid), text => text.Text.StartsWith("Replication permissions —", StringComparison.Ordinal));
+        Assert.Contains("groups cover this page only", Notice(pane, nameof(vm.SupportedScope)).Text);
+    });
+
+    [Theory]
+    [InlineData(900, 430, ControlCapability.IsOwnerAndCanRewriteDacl, "Existing-owner permission control")]
+    [InlineData(1300, 650, ControlCapability.IsOwnerAndCanRewriteDacl, "Existing-owner permission control")]
+    [InlineData(1600, 900, ControlCapability.IsOwnerAndCanRewriteDacl, "Existing-owner permission control")]
+    [InlineData(900, 430, ControlCapability.CanBecomeOwnerAndRewriteDacl, "Owner-change permission control — not verified; not counted")]
+    [InlineData(1300, 650, ControlCapability.CanBecomeOwnerAndRewriteDacl, "Owner-change permission control — not verified; not counted")]
+    [InlineData(1600, 900, ControlCapability.CanBecomeOwnerAndRewriteDacl, "Owner-change permission control — not verified; not counted")]
+    public void OwnershipWordingAndProofRemainReachable(int width, int height, ControlCapability capability, string label) => OnSta(() =>
+    {
+        var descriptor = capability == ControlCapability.IsOwnerAndCanRewriteDacl
+            ? $"O:{Judgement.SelfMembershipDiscoveryTests.UserSid}G:SYD:"
+            : $"O:SYG:SYD:(A;;WO;;;{Judgement.SelfMembershipDiscoveryTests.UserSid})";
+        var directory = OwnershipWorkflowTests.Prepared(descriptor);
+        using var reader = JudgementReader.Open(directory).Value;
+        var edge = reader.ReadControlEdges(Judgement.SelfMembershipDiscoveryTests.TargetDn, null, null, true, 0).Edges.Single(item => item.Capability == capability);
+        VerifyCredentialEvidence(edge, width, height, label, "No owner or permission change was performed.", "existing-owner permission control");
+    });
+
+    private static IReadOnlyList<ControlEdge> ReplicationEdges() => Judgement.ReplicationControlTests.Evaluate(
+        Judgement.ControlEdgeDeriverTests.Permissions(Judgement.ReplicationControlTests.Right(0, Judgement.ReplicationControlTests.ChangesGuid),
+            Judgement.ReplicationControlTests.Right(1, Judgement.ReplicationControlTests.AllGuid))).Edges;
+
     private static void VerifyCredentialEvidence(ControlEdge edge, int width, int height, string label, string caveat, string scope)
     {
         var vm = Model(0, 0);
@@ -284,7 +339,11 @@ public sealed class ControlEdgeSizingTests
         if (mutation == "unbound-requester-evidence") requesterEvidence.Descendants(Wpf + "TextBox").Single().Attribute("Text")!.Remove();
         if (mutation == "collapsed-requester-evidence") requesterEvidence.SetAttributeValue("Height", "0");
         if (mutation == "no-section-scroll" && grid.Parent!.Name == Wpf + "ScrollViewer")
-            grid.Parent.ReplaceWith(new XElement(grid));
+        {
+            var replacement = new XElement(grid);
+            replacement.AddFirst(new XElement(Wpf + "Grid.Resources", grid.Parent.Element(Wpf + "ScrollViewer.Resources")!.Elements()));
+            grid.Parent.ReplaceWith(replacement);
+        }
         var objectView = XDocument.Load(Path.Combine(shell, "Views", "ObjectView.xaml")).Root!;
         objectView.Attribute(Xaml + "Class")!.Remove();
         objectView.Attribute(Xaml + "ClassModifier")!.Remove();

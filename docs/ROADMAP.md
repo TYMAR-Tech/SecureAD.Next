@@ -67,7 +67,8 @@ owned by somebody who is not an administrator, and `SEC-032` reports the same co
 ad.lab observation of the owner being restored. The owner selected `Medium` for SEC-032, and
 `ObjectOwnershipRules.cs` and its rule card use that severity. The rule's timing limitation remains
 documented; the older roadmap paragraph describing an ongoing experiment was stale. Both ownership
-rules are now version 2 following the scoped-acceptance correction under `0109`.
+rules reached version 2 following the scoped-acceptance correction under `0109`; the bounded ownership
+slice below advances them to version 3 without changing severity.
 
 **Stage 2's witness is `DashboardViewModel` and not `Dashboard`, deliberately.** A `Dashboard`
 member already exists in `ShellSection` as a navigation tab with nothing behind it, on the owner's
@@ -853,12 +854,29 @@ selection passed **270/270**. Historical layout hashes and the product layout ar
 [implementation record](layers/judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
 for permission-only limits, reproduced defects and the local coverage report.
 
-**Next recommended bounded work: replication preparation**, covering `CanReplicateSecretDomainData`
-and `CanReplicateFilteredAttributes` together. Start from current requirements and accepted decisions,
-verify qualifying rights and naming-context scope, and obtain approval of the concrete implementation
-slice and new screen wording before editing. This recommendation does not authorize implementation.
+**Replication permission capabilities are implemented in schema 21/control engine 5**, after explicit
+approval of the bounded scope, wording and grouping. `CanReplicateSecretDomainData` and
+`CanReplicateFilteredAttributes` retain ordered component checks, original proof and exact captured
+root scope as `ReplicationControl`. Both views group replication visibly by holder/root within each
+page; DC classification does not suppress edges. Non-domain resource-context gaps remain unknown.
+See the [implementation record](layers/judgement/the-judgement-store.md#replication-permissions--bounded-implementation).
+This supplies conclusions for future rules; it does not introduce a finding or perform replication.
 
-Ownership-derived control, validated-write-only key-credential access, replication,
+**Bounded ownership control is implemented in schema 22/control engine 6**, after approval of the
+implementation, shared-check corrections and wording. Existing owners receive stored evaluations
+with owner-field and ordered permission proof; accepted and proven-deleted owners produce no edge.
+Only established existing-owner capabilities are counted; unanswered assessments retain coverage.
+The owner-change compound remains Unknown and uncounted under 0103. Serving-DC behavior is not
+inferred from a heuristic. SEC-031/032 version 3 and SEC-060 version 2 share the corrected check,
+with unchanged identities and severities. See the [ownership implementation record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation).
+
+**Recommended next bounded session: full-control aggregation preparation (`HasFullControl`).**
+Start with Stage 6 §5/§7 and accepted decisions; propose exact effective-right checks, preservation
+of primitive/source evidence, summary-versus-primitive counting, wording and offline verification.
+Obtain explicit approval before implementing. The current publication request covers the completed
+replication/ownership slices only; it does not close live ownership gates or enable discovery.
+
+General ownership modifications, validated-write-only key-credential access, constrained secret reveal,
 full-control aggregation and effective member expansion remain outside these bounded slices.
 The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
 passing automated tests does not discharge them.

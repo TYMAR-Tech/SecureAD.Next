@@ -185,8 +185,8 @@ protected account and an unresolved membership elsewhere in the captured graph.
 
 ### Initial control-edge product — schema 15
 
-**Historical baseline; current schema 20 also includes the later membership, requester,
-password-reset and key-credential write products described below.**
+**Historical baseline; current schema 21 also includes the later membership, requester,
+password-reset, key-credential write and replication products described below.**
 
 `JudgingRun` now calls `ControlEdgeDeriver` for each streamed object and persists its result through
 `JudgementWriter`. `ControlEdgeStorage` records product completion, per-object descriptor coverage,
@@ -568,7 +568,7 @@ processing budget or host composition, and includes no new commit or push.
 
 | Question | Verified current state | What it does not establish |
 |---|---|---|
-| Is concrete requester analysis implemented? | Yes. The schema-17 assessment and schema-18 discovery coverage are retained in current schema 20; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
+| Is concrete requester analysis implemented? | Yes. The schema-17 assessment and schema-18 discovery coverage are retained in current schema 21; authorization, own-account restriction and readiness are separately stored. | A complete access token, general membership-write evaluation or live operation success. |
 | Does normal judging automatically produce requester answers? | Not with the shipping configuration. `App.xaml.cs` and CLI `Main` pass a null discovery budget; both hosts reach shared judging and report that no scan was scheduled. | That nobody is authorized, that discovery is unimplemented, or that a numerical budget has been approved. |
 | Does configured automatic discovery reach the hosts? | Synthetic test budgets reach the real Shell post-capture and both CLI judging paths, as covered by `SelfMembershipDiscoveryTests`. | Production enablement or a recommended budget; test limits are fixtures only. |
 | Can stored answers reach the actual object screen? | Yes. `BundleAssetSource` and `AssetsViewModel` read the same persisted answers in target-first and requester-first views, including selected proof. | A visible-window or physical laptop/monitor acceptance result. |
@@ -1671,7 +1671,7 @@ outstanding. Implementation and validation were performed without committing or 
 subsequently requested documentation review and publication of the completed slice; that request
 authorizes this commit/push only and does not broaden the implementation or verification boundary.
 
-**Next-session boundary:** prepare `CanReplicateSecretDomainData` and `CanReplicateFilteredAttributes`
+**Historical next-session boundary:** prepare `CanReplicateSecretDomainData` and `CanReplicateFilteredAttributes`
 together from the Stage 6 catalogue, judgement-half authorization requirements and accepted decisions
 0097–0101, 0104, 0105 and 0110. Verify operation-specific right combinations, naming-context-root
 targets, missing evidence, deny ordering, scoped expectedness and domain-controller presentation.
@@ -1681,6 +1681,297 @@ production budgets, ownership transitions, separate security findings and Stage 
 folded into that preparation.
 
 ---
+
+## Replication permissions — bounded implementation
+
+**Explicit approval:** after reviewing the preparation recommendation, the owner said "i approve",
+asked whether this feeds a rule, and subsequently requested "implement it". This builds stored
+permission conclusions for later rules, not a new finding, severity, live operation or Stage 7 path.
+The approved labels are **Secret-data replication permission** and **Filtered-attribute replication
+permission**, with visible non-collapsing holder/naming-context grouping in both existing directions.
+
+### Evaluation and target boundary
+
+`ReplicationControlDeriver` shares `ControlEdgeDeriver.OperationScope` and
+`EffectiveAccessCalculator` for each ordered Control Access (`0x100`) check. Broad and GUID-scoped
+entries are evaluated together in original order. Rights for different holders, roots or generations
+are never joined. The real permission reader expands Generic All; Generic Write, property writes,
+validated writes, WRITE_DAC and WRITE_OWNER do not independently establish replication.
+
+- `CanReplicateSecretDomainData`: Get-Changes AND Get-Changes-All.
+- `CanReplicateFilteredAttributes`: Get-Changes AND (Get-Changes-All OR Get-Changes-In-Filtered-Set).
+- Both alternatives survive as component checks and original proof when both exist. A proven
+  alternative does not inherit uncertainty from an unnecessary alternative. An unresolved required
+  component remains Unknown. Known denial wins a conjunction; a known grant wins a disjunction.
+- Applicable denies, unsupported/conditional entries and unknown scope before a terminal entry
+  remain limitations. Later entries cannot reverse a completed single-right check. Cross-trustee
+  denial stays unknown when applicable membership is not established; this is not a complete token
+  model. NULL, empty and unread/unparsed DACLs remain distinct. Original SELF entries are retained
+  while evaluation uses the target identity, as in the earlier slices.
+- `BundleReader.ReadNamingContexts` supplies exact roots and kinds from `partition_coverage`.
+  A root-looking name or class on a child is insufficient. Root class/identity gaps remain unknown.
+  Captured roots absent from the object stream receive explicit unanswered-object coverage, so a
+  named-holder query cannot report complete silence for a missing root.
+- Domain, Configuration and Schema identities remain separate. Non-domain servicing/token
+  contexts remain unverified under P-90 for ordinary holders; descriptor-native SYSTEM and a NULL
+  DACL's Everyone result retain their bounded meanings. No application/DNS partition capture or
+  constrained `EXOP_REPL_SECRETS` route is added. Uncaptured partitions are not established coverage.
+
+The external authorization anchor is [MS-DRSR §5.101](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-drsr/15bbda52-7742-4ce3-9327-018647b0fc26),
+read during preparation. Every component check is against `ncRoot`. The right GUIDs are
+`1131f6aa-9c07-11d1-f79f-00c04fc2dcd2`, `1131f6ad-9c07-11d1-f79f-00c04fc2dcd2` and
+`89e95b76-444d-4c62-991a-0facbeda640c`, respectively. Microsoft's
+[filtered-set description](https://learn.microsoft.com/windows/win32/ad/rodc-and-active-directory-schema)
+supports potential credential-like application data, not an assertion that every filtered attribute
+is a high-impact secret. Section 5.3's contradictory exclusive-right sentence is corrected to AC-77.
+
+### Persistence, expectedness and presentation
+
+Judgement **schema 21 / control engine 5** identifies the enlarged evaluated set. Principal catalogue
+**2**, Evidence/Derivation schemas and existing control table layout remain unchanged. The new
+schema-21 layout checkpoint retains the schema-20 hash; no historical checkpoint was replaced.
+Re-judge existing evidence; older schema/engine results are not treated as having evaluated replication.
+
+The two capabilities are `ReplicationControl`, with one counted holder/root/capability each.
+Supporting ACEs, duplicate grants, group members and alternative qualifying rights do not multiply
+counts. Three rights establishing both capabilities therefore produce two counted edges. The existing
+proof table stores each component outcome/GUID, root DN/kind and presentation-only holder DC evidence.
+The latter is an observation, not an authorization prerequisite. `ControlEdge.ReplicationNamingContextKind`
+and `ControlEdge.HolderDomainControllerAsset` expose those separately in readback. Root, required proof,
+category and generation contradictions fail readback. Stored component checks are replayed against
+the retained ordered ACEs; changing a granting mask to Read Property cannot leave an Established row.
+
+Expectedness remains independent: broad principals stay visible; SYSTEM requires effective direct
+evidence; missing membership still means Unknown. Replication no longer inherits Schema Admins'
+schema-administration expectation merely from target location: restricted scope remains unknown
+without independent proof, while a separate unrestricted authority route can still establish expectation.
+No catalogue entry is widened. Domain controller accounts receive no expectedness exception.
+
+The screen uses existing columns, sizing, filters, page IDs and selected evidence. Replication groups
+are visible, non-collapsing and page-local; other capability categories are kept outside those groups.
+The notice explicitly permits continuation on another page. The DC asset badge requires a captured
+computer identity with readable UAC/primary-group values and agreeing existing DC signals. Missing,
+malformed or conflicting signals stay unconfirmed; existing rules' DC interpretation is not changed.
+The caveat states **Permission evidence only. No replication operation or credential extraction was
+performed. This does not establish account takeover or a completed path to Tier 0.**
+
+### Findings and verification
+
+| Finding | Severity/status | Evidence and correction |
+|---|---|---|
+| REP-1: §5.3 excluded the Get-Changes-All filtered-set alternative | High — corrected documentation | The sentence contradicted both AC-77 and MS-DRSR §5.101. The corrected wording retains separate capabilities and both alternatives. |
+| REP-2: template-level grouped source produced an empty table | High — corrected before completion | 19 real-template sizing cases failed, including existing labels. Moving the source to the instantiated section resources restored the rows without weakening their assertions. |
+| REP-3: missing captured root could disappear from holder coverage | Medium — corrected during review | The object stream cannot visit an absent root. Remaining captured roots now produce unanswered-object rows; the real-reader regression verifies incomplete coverage. |
+| REP-4: stored component labels could outlive their granting masks | High — corrected during review | Readback now replays component checks against original ordered entries. The synthetic mask-to-Read-Property mutation fails through the real screen adapter. |
+| REP-5: test integration errors | Low — corrected | One fixture incorrectly expected a later All grant to survive an earlier unscoped deny; one workflow import was missing. The no-scroll mutation retains resources so it fails for geometry, not XAML parsing. The root-conflict fixture now uses a second synthetic controller so the writer's duplicate-pass guard does not prevent testing the reader. New test analyzer warnings were corrected without suppression. |
+| REP-6: root-reader contract and concept-name guards | Medium — corrected | The first full run passed 4,108/4,110. Architecture guards required an explicit `Result<T>` for root reads and an operation-specific name instead of the reserved `Evaluate` name. `ReadNamingContexts` now reports structured failures, checked before opening the judgement writer; `CheckRight` names the actual operation. Neither guard was weakened. |
+| REP-7: BUILTIN replication missed the verified-domain safeguard | High — corrected | Final sibling review added missing/contradictory/verified target-domain cases. The first two reproduced false Established results while the positive control passed. Reusing `ControlEdgeDeriver.IsDomainTarget` keeps those candidates Unknown with `ResourceContextUnverified`; all three then passed unchanged, including proof validation. Catalogue 2 is unchanged. |
+
+Final focused cases: **49** synthetic operation cases, **35** sealed-bundle workflow cases,
+**32** real-template sizing/grouping cases and **8** layout/version-mutation checks passed.
+The workflow includes both viewing directions, generic mappings, duplicate/member counts, alternatives,
+Configuration/Schema scope, proven/conflicting DC identities, old schema/engine refusal, damaged proof,
+missing roots and a 103-edge page-boundary fixture. These are synthetic/offline results, not a live
+authorization or performance measurement. Historical key-credential results above are not a pass
+for this enlarged product.
+
+**Final validation:** the full offline suite passed **4,116/4,116**, none skipped, and the solution
+build succeeded after the BUILTIN correction. Before that correction, the full suite passed 4,113/4,113;
+the added three-case regression is what exposed the scope gap rather than an existing test failure.
+
+**Earlier coverage checkpoint:** the completed selection below passed **650/650** before REP-7.
+Its report is `next/.vs/Replication-b51bb1b3e32a4d2ea54a3195e9a8e5bf/coverage.cobertura.xml`, beside
+`replication.trx` and `coverage-run.log`. Parsed executable-line hits were ReplicationControlDeriver
+**144/148**, ControlEdgeDeriver **235/240**, ControlEdgeStorage **165/165**, BundleReader **172/356**
+and ControlEdgesSectionViewModel **207/215**. These are observations of that selection/version,
+not complete branch coverage or proof of the later guard. The SDK was **10.0.400** under the unchanged
+`latestFeature` policy. That incremental coverage build recorded **155 compiler/analyzer warning
+occurrences**, including repeated project emissions; no warning-free-build claim is made. An earlier
+completed attempt recorded 340 occurrences before the new test warnings were corrected; incremental
+build scopes differ, so those counts are not a measured warning-reduction claim. Both reports survive.
+
+The subsequent coverage rerun including REP-7 was **cancelled by the user and not automatically restarted**. Its directory,
+`next/.vs/Replication-9345845ac735443caae9d29c0896f6ec`, contains an incomplete coverage output and build
+log but no test-result file. It is not a passing coverage result and does not establish coverage of
+the final guard. A report-reading attempt initially used the wrong relative directory; its failed
+reads and 0/0 output were discarded and replaced by absolute-path reads requiring executable lines.
+The full-suite and solution-build results above remained valid independently of that coverage gap.
+
+**Coverage gap closed at the session checkpoint.** The owner requested completion of the remaining
+work before moving to a new session. The solution build succeeded again, and the Release test binary
+was checked against the changed source/resource inputs before coverage ran with `--no-build --no-restore`.
+Output was streamed while also being retained in a new log, rather than hidden until completion.
+The final selection passed **653/653**, none skipped, in **40.1 seconds** for the coverage command
+(the preceding build is not included in that time). All three
+`BuiltinReplicationRequiresVerifiedTargetDomainContext` cases passed, and the report confirms hits
+on both the guard and its `ResourceContextUnverified` assignment at lines 95–96.
+
+The new report is
+`next/.vs/Replication-Final-63b2903202cd4d149e113f3fea66381d/coverage.cobertura.xml`, beside
+`replication.trx`, `coverage-run.log` and `run-summary.json`. The summary records exit code 0,
+elapsed time and the test assembly SHA-256. Parsed executable-line hits are ReplicationControlDeriver
+**146/150**, ControlEdgeDeriver **236/240**, ControlEdgeStorage **165/165**, BundleReader **172/356**
+and ControlEdgesSectionViewModel **207/215**. These are selection-specific executable-line observations,
+not complete branch coverage or live authorization verification. Skipping a redundant build does not
+resolve the earlier analyzer warnings or justify a warning-free-build claim. All earlier and cancelled
+reports remain preserved. No production code changed during this final coverage closeout.
+
+**Historical next-session starting point at the replication checkpoint:** bounded ownership-control preparation, not another replication
+implementation pass. Start from Stage 6 §5.1 and the accepted ownership/control decisions, distinguish
+existing ownership findings from existing-owner and owner-transition capabilities, and present the
+concrete implementation and laboratory-verification recommendation for explicit approval. No live
+directory work or new capability implementation is authorized by this handoff. The working tree
+contains the completed, uncommitted replication slice and the owner's instruction-file edit; preserve
+both. The Git checkpoint remains `main` / `1d94b39`; no commit or push was requested.
+
+Discovery tuning remains paused and both hosts still pass no production discovery budget. P-151/P-152
+measurements remain tied to their recorded product version. Separate findings (including password
+reset), ownership gates, effective member expansion, Tier 0-target review, laptop/monitor verification
+and final Stage 6/P-145 acceptance remain outstanding. No live directory or protected artifact was
+accessed; no frozen measurement was changed; no commit or push is authorized by this implementation.
+
+---
+
+## Ownership control — bounded implementation
+
+**Approval:** the owner selected "Approve the bounded implementation and wording; offline only",
+then requested "implement it". This implements the bounded recommendation against Stage 6 §5.1
+and Accepted decisions 0095–0098, 0103, 0107 and 0109; it does not accept the whole proposal.
+
+### Claims and scope
+
+`IsOwnerAndCanRewriteDacl` records existing-owner permission control as `DirectoryControl`.
+`ObjectOwnershipReading.Eligibility` supplies the existing accepted-owner policy independently of
+rights qualification. Accepted owners and proven-deleted owners produce no ownership edge. Unknown
+identity, absent owner-acceptance facts and incomplete membership do not prove a non-administrative
+acting owner. An established existing-owner capability is counted once at that owner; group members
+are not expanded into additional edges. Blocked and unknown assessments are stored but uncounted;
+unknown assessments still make object coverage incomplete, including in named-holder queries.
+
+`CanSetOwner` retains its independent permission conclusion. The supporting
+`CanBecomeOwnerAndRewriteDacl` now has evaluated owner-right prerequisites but remains **Unknown and
+uncounted**, because 0103's `CanSetTakeoverOwnerSid` laboratory gate has not been discharged.
+Neither a proven owner-right branch nor an existing ownership finding discharges that gate.
+
+`OwnerRightsReading` is shared with SEC-031/032 and SEC-060. Independent WRITE_DAC, OWNER RIGHTS
+and implicit rights remain separate proof branches. Grants and denies keep their stored order;
+inherit-only entries do not govern the current object, scoped/unsupported entries retain uncertainty,
+and a completed right check does not inherit uncertainty from irrelevant later entries. An earlier
+OWNER RIGHTS deny cannot be bypassed by calling a later ordinary allow an independent grant.
+NULL, empty and unread/incomplete descriptors remain different inputs; no implicit grant is
+represented by an invented ACE.
+
+The named modification is `AddWholeObjectWriteDaclAllowForOwner`: add a whole-object WRITE_DAC
+allow for the named owner, removing no existing entries. This is evaluated evidence, not an executed
+change or arbitrary permission-rewrite claim. The implicit branch checks the captured class ancestry,
+character 29 (including malformed → 1), and the specific DA/EA exemption independently of expectedness.
+The production evidence/context has **no serving-DC owner-right behavior baseline**. A heuristic alone
+does not select one. Affected implicit computer-owner questions remain Unknown; unrelated non-computer
+and independently established explicit routes are not automatically made Unknown. Synthetic evaluator
+cases name classic updated behavior explicitly; they are not production observations. The newer
+modification-specific branch remains unsupported for this template, separately from missing evidence.
+Privilege-based takeover and arbitrary modification templates remain outside this slice.
+
+The external anchors are [MS-ADTS 6.1.3.4](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/fb7c101d-ec8b-4fbf-bca8-7d7c2d747d0c),
+[dSHeuristics](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/e5899be4-862e-496f-9a38-33950617d2c5),
+[MS-DTYP 2.5.3.2](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/4f1bbcbb-814a-4c70-a11e-2a5b8779a6f9)
+and [Owner of a New Object](https://learn.microsoft.com/windows/win32/secauthz/owner-of-a-new-object),
+read during the approved preparation. No claim is anchored solely to code/test/document agreement.
+
+### Persistence and presentation
+
+Judgement **schema 22 / control engine 6** identifies the changed semantics. Principal catalogue **2**,
+Evidence/Derivation schemas and table layout are unchanged. A new layout checkpoint preserves every
+historical hash. Re-judge on an isolated copy to obtain the product; schema 21/engine 5 is not silently
+treated as ownership coverage. Optional ownership derivation inputs pass the existing evidence and
+generation checks even when no finding rule asks for them; absent inputs produce unanswered ownership,
+not a requirement to enable requester discovery.
+
+The existing proof table holds a typed `OwnerSource` snapshot (owner, target identity/class ancestry,
+descriptor state/completeness, heuristic and eligibility/context inputs) and named checks. Original
+ordered ACEs remain alongside it. Both write and read paths replay the rights evaluation and reject
+missing/contradictory source, changed outcomes/counting, inconsistent target/owner identity or altered
+granting masks. Existing generation/category checks remain in force. This detects inconsistent proof;
+the bundle seal is corruption detection, not a claim of cryptographic authenticity.
+
+Both existing directions use **Existing-owner permission control** and **Owner-change permission
+control — not verified; not counted**. The caveat is **Ownership and permission evidence only. No owner
+or permission change was performed. This does not establish account takeover or a completed path to
+Tier 0.** No layout or replication grouping changes were made. Expectedness remains separate from
+authorization; no catalogue entry or domain-controller exception was added.
+
+SEC-031/032 retain their identities and Low/Medium severities at version **3**; SEC-060 retains its
+identity and High severity at version **2**. Related shared-check corrections do not create a new
+finding or revise the historical stored findings. Proven-deleted owners remain ownership findings.
+
+### Findings and verification
+
+| Finding | Severity/status | Evidence and correction |
+|---|---|---|
+| OWN-1: coarse ownership helpers were not §5.1 authorization evidence | High — corrected | Both helpers treated any OWNER RIGHTS entry as suppression and inspected only the last class name. The shared ordered check and public-rule inheritance/derived-class controls replace those shortcuts. |
+| OWN-2: a heuristic stood in for a serving-DC behavior baseline | High — corrected within the bounded slice | Production supplies no such baseline. Affected implicit computer-owner cases are Unknown, with unread heuristic and unrecorded behavior distinguished; direct grants remain independently answerable. |
+| OWN-3: older rule fixtures omitted the owner's acceptance fact | Medium — corrected test inputs | The first focused run passed 257/268. Subject-only fixtures now supply the separate owner fact; an explicit missing-owner-fact negative control still refuses the claim. Tests no longer call computer-owner coverage complete from the heuristic alone. |
+| OWN-4: irrelevant later unsupported OWNER RIGHTS entry affected a completed grant | Medium — corrected | Presence is established by a known applicable entry. Paired before/after controls retain uncertainty before a terminal grant and exclude irrelevant uncertainty after it. |
+| OWN-5: integration type mismatches | Low — corrected | New tests used a nonexistent completeness enum value, and proof reconstruction initially used the wrong constructor argument/import. Compilation checks exposed these; corrected without suppression. |
+| OWN-6: full-suite integration expectations and operator wording | Medium — corrected | The first full run passed 4,178/4,181. Ownership gaps now have their own operator explanations instead of protection-specific wording; the membership fixture supplies an owner when asserting whole-product completeness; the generation test asserts the Derivation now consumed by ownership even without a finding rule. |
+| OWN-7: agreement between a cached heuristic and its label was insufficient | High — corrected | Readback validates the raw character and documented numeric fallback. A mutation changing both the stored value and its prerequisite label is rejected rather than accepted because they agree. |
+| OWN-8: malformed Markdown tables in the modified-document scope | Low — corrected formatting | Stage 6 §7.1's sIDHistory row lacked its Source cell, and two predecessor finding-key examples contained unescaped pipes. Column/escape repairs preserve the stated treatment and rendered historical keys. The check's deliberately broken row fails and its escaped-pipe control passes. |
+
+Focused verification passed **276/276**: ownership evaluator, public ownership rules, sealed-bundle
+readback, stored proof, both screen directions, real-template sizing, and replication regressions.
+New cases cover zero/non-WD/allow/deny OWNER RIGHTS, both orders, inherit-only/unsupported entries,
+missing owner/acceptance/behavior, orphan and accepted owners, group counts, original ACE-free owner
+evidence, old schema/engine refusal, proof mutation and a 103-target holder query across the page boundary.
+This focused result alone does not accept the entire product.
+
+**Final offline checkpoint:** the full suite passed **4,182/4,182**, none skipped, and the solution
+build succeeded. The targeted coverage selection passed **623/623**, none skipped, in **21.5 seconds**
+for the coverage command, excluding the preceding build. It used SDK **10.0.400** under the unchanged
+`latestFeature` policy and the current Release test binary with `--no-build --no-restore` after checking
+source/resource timestamps. These are synthetic/offline results, not live authorization or production
+performance measurements. A successful build is not a claim that existing analyzer warnings were resolved.
+
+The report is `next/.vs/Ownership-562f252ff37742fba28529ec6f76f55a/coverage.cobertura.xml`, beside
+`ownership.trx`, `coverage-run.log` and `run-summary.json`. The test assembly SHA-256 is
+`5A2EC387D12C95532FA2FC7CD16520E155AD29E894F5C305FB958A00C05173E2`.
+Executable-line hits, grouped by source file, are OwnerRightsReading **87/88**,
+OwnershipControlDeriver **117/123**, ObjectOwnershipReading **80/83**,
+BroadPrincipalCanTakeOverObject **133/146**, ControlEdgeDeriver **217/230**,
+ControlEdgeStorage **167/167** and ControlEdgesSectionViewModel **212/218**.
+These are selection-specific line observations, not complete branch coverage. Coverage had completed
+before the interrupted handoff; closeout confirmed the saved counters, assembly hash and input timestamps
+rather than overwriting or needlessly rerunning that report. All earlier replication reports remain intact.
+
+The stage-status check and its negative controls pass. The bounded modified-document table check
+also passes with explicit broken-row and escaped-pipe controls; it scans the actual changed documents,
+not only the old areas directory. `git diff --check` is clean.
+
+**Publication and next-session boundary:** this bounded implementation is complete, with judgement
+schema **22**, control engine **6** and principal catalogue **2**. The owner subsequently requested
+documentation review, commit/push and a new-session handoff. That request authorizes publication of
+the completed replication and ownership slices, including the preserved instruction-file edit; it is
+not standing authorization for future commits or pushes. `main` / `1d94b39` is the pre-publication
+baseline; Git history and the publication handoff identify the resulting commit. Coverage reports
+under `next/.vs/` remain local and ignored, not missing files a new session should regenerate blindly.
+Preserve all historical evidence, measurements and earlier completed/cancelled coverage reports.
+
+**Recommended next session: bounded `HasFullControl` preparation.** Read Stage 6 §5 and §7, the
+accepted control/expectedness/counting decisions, and this checkpoint before inspecting the code.
+Propose a full-control summary only when the complete effective generic-all mapping is established,
+including rights assembled from several grants. Keep the underlying primitives, source facts and
+independent routes; do not count both an established summary and the primitives it summarizes.
+A deny that breaks full control must leave surviving rights visible. Present the concrete implementation,
+counting/readback behavior, exact screen wording and synthetic verification recommendation for explicit
+approval before editing. Preparation does not accept the whole Stage 6 proposal or authorize a new
+capability implementation, live operation, discovery budget, member expansion or Stage 7 path work.
+
+**Remaining gates:** no live directory access or owner/permission changes were performed. Stage 6
+§13.1's WRITE_OWNER-only tests (self, unrelated account, member group), eight resulting-owner cases
+at heuristic 0 and 1, and the separate AdminSDHolder owner-only restoration observation still require
+separate authorization and recorded serving-DC behavior. Those would verify only their own claims.
+Laptop/external-monitor checks, effective member expansion, constrained routes, new findings, Tier 0
+review and final P-145/Stage 6 acceptance remain outstanding. Discovery stays inactive in both hosts;
+no production budget is authorized. Only publication of the completed slices is authorized above.
 
 ## Opening checks three different ways of being wrong
 

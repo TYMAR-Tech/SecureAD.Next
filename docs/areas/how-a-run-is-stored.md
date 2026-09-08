@@ -33,6 +33,15 @@ wins and the disagreement is a finding.
 
 ## What is built
 
+`BundleReader.ReadNamingContexts` reads exact root DNs and their kinds from existing
+`partition_coverage` rows without reconstructing the directory tree. An absent row is not proof of
+an empty partition or denied replication permission; conflicting duplicate root identities are
+refused. The reader returns `Result<IReadOnlyDictionary<string, NamingContextKind>>`, distinguishing
+successful observation from unavailable or contradictory scope. Judging checks that result before
+opening its writer. `ReplicationWorkflowTests.ConflictingCapturedRootKindsRefuseJudgingRatherThanReturnEmptyScope`
+checks the refusal using distinct synthetic capture units. `ReplicationWorkflowTests.ReaderReturnsTheExactCapturedRootAndDoesNotModifyEvidence`
+exercises this public reader against newly generated sealed evidence. No Evidence format changed.
+
 Each capability names the test that proves it. **The test is the evidence; this table is only the
 index.** A capability whose test does not exist, or does not pass, fails the build — so nothing
 here can claim something the product does not do.
