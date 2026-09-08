@@ -35,6 +35,9 @@ finished and sealed separately from the evidence it judged.
 | `ControlEdge` | A stored capability attributed to its named trustee, with evidence and independent expectedness |
 | `ControlEdgeClass` | Semantic categories, never severity or an ordered risk score |
 | `ControlEdgePage` | A bounded page with generation, coverage and counts, including hidden expected edges |
+| `FullControlAssessment` | A full-control summary assessment with separate permission proof and support links |
+| `FullControlRight` | One required right and its ordered alternative sources, with an explicit completeness voucher |
+| `FullControlSource` | Captured descriptor, holder, scope and expectedness inputs used to replay a summary |
 | `ControlEvaluationState` | Whether a capability is established, not established or unknown |
 | `ControlExpectedness` | Whether control is expected, unexpected or not yet classified |
 | `ControlExpectednessReason` | The stored reason for that separate classification |
@@ -1955,7 +1958,7 @@ baseline; Git history and the publication handoff identify the resulting commit.
 under `next/.vs/` remain local and ignored, not missing files a new session should regenerate blindly.
 Preserve all historical evidence, measurements and earlier completed/cancelled coverage reports.
 
-**Recommended next session: bounded `HasFullControl` preparation.** Read Stage 6 §5 and §7, the
+**Historical next-session boundary: bounded `HasFullControl` preparation.** Read Stage 6 §5 and §7, the
 accepted control/expectedness/counting decisions, and this checkpoint before inspecting the code.
 Propose a full-control summary only when the complete effective generic-all mapping is established,
 including rights assembled from several grants. Keep the underlying primitives, source facts and
@@ -1972,6 +1975,166 @@ separate authorization and recorded serving-DC behavior. Those would verify only
 Laptop/external-monitor checks, effective member expansion, constrained routes, new findings, Tier 0
 review and final P-145/Stage 6 acceptance remain outstanding. Discovery stays inactive in both hosts;
 no production budget is authorized. Only publication of the completed slices is authorized above.
+
+## Full-control aggregation — bounded implementation
+
+**Approval and baseline:** after the bounded recommendation covering implementation, counting,
+wording and synthetic verification, the owner requested "implement it", then "continue".
+Work started from clean `main` / `8e0865d`, judgement schema 22, control engine 6, principal catalogue 2.
+This authorizes the bounded implementation below, not the whole Stage 6 proposal, live operations,
+discovery enablement, member expansion, commit or push.
+
+### What the summary establishes
+
+`HasFullControl` is represented by `FullControlAssessment`, not a new primitive `ControlCapability`.
+`FullControlEvaluator.AssessFullControl` requires all thirteen specific rights in the AD
+`GENERIC_ALL_MAPPING` (`0x000F01FF`) for the same named holder, resource context and target.
+One grant or several may supply them. Original primitive conclusions remain unchanged.
+
+The external anchors remain MS-ADTS 6.1.3 for the mapping and MS-DTYP 2.4.3 for stored generic bits,
+already recorded in the permission model. **Captured raw generic bits are not expanded into
+authorization.** Stored order is retained: a deny before a grant can prevent it; a later deny does
+not undo an earlier completed grant. A grant after a deny is not credited as an independent way
+around that deny. Inherit-only entries do not grant rights on the current object.
+
+The whole-object mask alone is insufficient because that question excludes scoped entries.
+Separate checks retain scoped denies. Known named-operation scopes can break full control;
+unresolved property-set, object-type, target-class or authorization applicability remains Unknown.
+Scoped grants are not unioned into whole-object authority. Raw-mask full-control candidates, including
+several potential contributing grants, receive an assessment; ordinary partial-right-only holders
+retain their existing primitive records rather than gaining a redundant full-control row.
+Unread descriptors still retain object-level unanswered coverage even when no holder can be identified.
+
+`FullControlRight` carries an explicit completeness voucher beside its source lists. Each required
+right retains alternative granting ordinals and denying or unresolved ordinals. The conjunction of
+these checks preserves alternative source combinations without enumerating every possible grant set.
+A stored witness can establish two source-disjoint complete routes; absence of that witness is not
+a claim that no alternatives exist. A complete NULL DACL establishes Everyone through descriptor
+evidence without an invented ACE. Empty, unread and incomplete descriptors remain different inputs.
+
+This is named-holder permission analysis, not a user-token expansion or an executed AD operation.
+Existing SELF resolution remains bounded to the captured target; group memberships do not combine
+different holders' grants. Implicit ownership is not used to fill a missing full-control right.
+Existing-owner assessments remain independent. `CanBecomeOwnerAndRewriteDacl` stays Unknown and
+uncounted, including when full-control permissions are established.
+
+### Stored evidence, counts and both views
+
+Judgement **schema 23 / control engine 7** identifies the new product. Principal catalogue **2**
+and Evidence/Derivation schemas are unchanged. Re-judge on an isolated copy to obtain it; schema 22
+and engine 6 do not silently become full-control coverage. No new finding or rule version is added.
+
+The existing primitive and coverage-table layouts are retained. Four additional tables hold:
+
+| Table | Purpose |
+|---|---|
+| `full_control_manifest` | The expected assessment count for each evaluated object, including zero |
+| `full_control_source` | One original ordered ACE snapshot per object with candidates, shared by its assessments |
+| `full_control_assessment` | Typed source/check proof, holder/context, generations, state and independent expectedness |
+| `full_control_support` | Explicit links to established primitive capabilities included in the summary count |
+
+Writes are atomic with the object's primitive records. Readback replays rights and expectedness from
+captured forest, issuing-domain and current membership-route inputs, rather than trusting the stored
+label. It checks source identity/masks, support links, generation, category and manifest consistency.
+A missing whole assessment and a contradictory stored "complete" flag are refused, not rendered as
+smaller or complete counts. Matching summaries outside the visible page are validated before counts
+are returned. This is consistency/corruption detection, not cryptographic authenticity.
+
+The headline counts established summaries plus previously count-eligible primitives not linked to
+an established summary. **Primitive `IsCounted` remains its original eligibility flag; the readback
+projection and displayed count status express inclusion in a summary.** Summary IDs and primitive
+IDs remain distinct, with one combined paging cursor and one generation in both directions.
+Counts describe the entire selection, not only the visible page.
+
+Only established WRITE_DAC/WRITE_OWNER, applicable general-membership, password-reset,
+key-credential and replication capabilities can be supports. They keep their own evidence,
+expectedness and categories. Both replication capabilities remain distinct and visibly grouped by
+holder and exact naming-context root; neither subsumes the other. Unknown summary assessments add
+no count and suppress nothing. Other unknown candidates retain the existing counting policy.
+Existing-owner control retains its independent count; owner-change and requester assessments retain
+their separate uncounted boundaries. No member counts are manufactured.
+
+Broad principals remain unexpected. SYSTEM requires applicable complete descriptor proof and does
+not transfer its expectedness. Restricted schema/DC capability scopes do not become unrestricted
+through aggregation, and a summary cannot hide a supporting classification that is not expected.
+No principal-catalogue change or DC expectedness exception is introduced.
+
+Both screens use **Full-control permissions**, **Counted once**, and
+**Included in full-control count — not counted again**. Broken/unknown summaries state that available
+permissions remain visible and, where eligible, counted separately. Their evidence heading is
+**Supporting permissions and alternative grant routes**. A proved independent-route witness says
+**Removing one complete grant route alone leaves another route to full-control permissions.**
+The caveat is **Permission evidence only. No directory operation was performed. This does not
+establish operation success, account takeover or a completed path to Tier 0.**
+
+Original target identity, ACE ordinals, masks and inheritance flags identify evidence within this
+capture. They are not represented as cross-run `RemediationActionId` values. Inheritance origins
+are not guessed, and this slice builds no repair executor, action-cut analysis or Tier 0 path.
+
+### Findings and verification — 2026-09-08
+
+| Finding | Severity/status | Evidence and correction |
+|---|---|---|
+| FC-1: summary expectedness replay trusted its label | High — corrected | Captured classification inputs now drive replay; changing both the stored label and its proof label is rejected. |
+| FC-2: adding a manifest column changed an existing table contract | Medium — corrected | The unchanged Self-Membership corruption fixture exposed the six-column contract. The manifest moved to its own table; the existing test was preserved. |
+| FC-3: new proof collections needed a completeness voucher and public registration | Medium — corrected | Added the consumed per-right voucher and registered all three public proof types. The voucher inventory retains its 57 baseline plus the named addition; a capability-specific method name respects the concept registry. |
+| FC-4: a stored complete flag could contradict an Unknown summary | High — corrected | A new corruption control failed before the fix, then passed when readback began refusing the contradiction. |
+| FC-5: new storage fixtures used a legacy path and hit an earlier foreign-key guard | Low — corrected | Tests now read the selected immutable generation; the malformed-file fixture explicitly bypasses foreign keys only to exercise readback refusal. Production constraints were not weakened. |
+| FC-6: summary readback cost has no customer-scale acceptance | Medium — open | Proof validation precedes counts, including off-page summaries. Synthetic correctness/coverage does not establish cost for the 347,000-object, 5.9-million-ACE forest. No budget, limit or performance acceptance is inferred. |
+
+The **full offline suite passed 4,305/4,305**, none skipped, and the solution build succeeded.
+This preserves the earlier 4,182-test checkpoint and adds synthetic coverage; it does not revise its
+recorded outputs. The final targeted coverage selection passed **796/796**, none skipped, with
+exit code 0 in **52.0 seconds** for the coverage command, excluding the preceding build.
+SDK **10.0.400** was used under the unchanged `latestFeature` policy. Coverage used the current
+Release `net10.0-windows/win-x64` test assembly with `--no-build --no-restore` after source/resource
+timestamp checks. A successful build does not claim that existing analyzer warnings were resolved.
+
+The report is `next/.vs/FullControl-1c3b6e2ccd6746f2a3ca86a1c7e06da9/coverage.cobertura.xml`, beside
+`full-control.trx`, `coverage-run.log` and `run-summary.json`. Its test assembly SHA-256 is
+`AA4B8600E96EF897A40347849664BB3264C4DA2D1ED841DEAA9864DB52E010AC`.
+Executable-line hits grouped by source file are FullControlAssessment **38/38**,
+FullControlDeriver **36/41**, FullControlEvaluator **120/130**, FullControlStorage **105/106**,
+ControlEdgeDeriver **230/234**, ControlEdgeStorage **208/208**, and
+ControlEdgesSectionViewModel **238/244**. These are selection-specific line observations, not
+complete branch coverage or a performance benchmark. The earlier 795-test coverage report in
+`next/.vs/FullControl-bcc394c2412b4952972ad8d100dfdf6f/` is preserved and predates FC-4's correction.
+No ownership/replication report was overwritten or regenerated.
+
+The new schema-23 layout checkpoint is
+`049DB54C430BFFEC233CF89D36E888DABDF4858E281FA94C758E7377FBF177D7`, recorded from this build rather
+than an external historical store. Its provisional in-session value changed when FC-2 moved the
+manifest; every published schema-15 through schema-22 hash remains unchanged. Negative controls
+cover missing source/support/whole assessments, changed grant masks, labels, generations and coverage,
+off-page proof corruption, layout drift and an unbound count-status cell. A 103-object holder query
+checks combined paging and counts. Sealed-bundle judging verifies split full-control grants and the
+independent existing-owner count. Real-template sizing passes at 900×430, 1300×650 and 1600×900.
+
+The stage-status check and its self-test were requested during documentation closeout, but the
+terminal command was cancelled by the user. No result from that invocation is claimed and it was
+not retried; it remains an unverified documentation check, separate from the completed build/tests.
+
+**Implementation boundary before publication:** no live directory access, discovery enablement, commit or push occurred.
+The serving-DC behavior evidence, WRITE_OWNER-only and resulting-owner tests, AdminSDHolder owner-only
+restoration observation, effective member expansion, constrained routes, Tier 0 review and final
+P-145/Stage 6 acceptance remain outstanding. Laptop/external-monitor checks are normal product
+verification and remain unperformed, not accepted by template sizing. New live work, capabilities,
+discovery budgets or publication require separate authorization.
+
+**Publication authorization:** the owner subsequently requested "commit and push then state next step".
+This authorizes publication of this completed full-control slice and its documentation to `origin/main`,
+not standing authorization for later commits, pushes or additional implementation. Git history identifies
+the resulting publication commit. The local ignored coverage reports remain outside the commit.
+
+**Recommended next bounded session: effective-member expansion preparation, not implementation.**
+Start from schema 23/control engine 7/principal catalogue 2, Stage 6 §7.1 and accepted decisions
+0097/0102, with the existing scope, expectedness and requester boundaries. Recommend how captured
+membership evidence attributes group-held permissions to members without multiplying the counted
+group edge; preserve independent routes, scope and incomplete-input distinctions. Present the concrete
+storage/counting behavior, exact screen wording and synthetic verification for approval before editing.
+Choose no production budget without measurements against the documented forest shape. The cancelled
+stage-status check and normal laptop/monitor verification remain outstanding; publication does not
+discharge them or the live ownership, serving-DC evidence, customer-scale readback and final Stage 6 gates.
 
 ## Opening checks three different ways of being wrong
 

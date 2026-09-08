@@ -63,17 +63,18 @@ order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longe
 architectural question.
 
 **Stage 6 has started, not finished.** Judging stores WRITE_DAC/WRITE_OWNER, bounded
-group-membership control, password-reset permission, key-credential write permission, bounded replication permissions and bounded existing-owner control, with object-first and named-holder-first
+group-membership control, password-reset permission, key-credential write permission, bounded replication permissions and bounded existing-owner control, with full-control permission summaries and object-first and named-holder-first
 views in the object screen.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 22 stores this
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 23 stores this
 product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
 coverage introduced in schema 18; schema 19/control engine 3 introduced reset permission, and
 schema 20/control engine 4 added key-credential write permission and the property-set evidence safeguard;
 schema 21/control engine 5 added the two replication capabilities on captured naming-context roots;
-schema 22/control engine 6 adds existing-owner assessments and replay-validated ownership proof;
+schema 22/control engine 6 added existing-owner assessments and replay-validated ownership proof;
+schema 23/control engine 7 adds bounded full-control summaries with separate source proof and counting links;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
 Re-judging existing evidence obtains that correction without re-capture or re-derivation.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
@@ -178,15 +179,26 @@ and push and give new session handoff". This authorizes publication of the compl
 ownership slices and their reviewed documentation/instruction changes, not standing permission to
 publish future work. Local ignored coverage outputs and historical evidence remain untouched.
 
-**Recommended next session: bounded full-control aggregation preparation (`HasFullControl`).** Start
-from Stage 6 §5 and §7 and the accepted control/counting decisions. Recommend how to recognize full
-control from one or several effective grants after denies, show one summary without double-counting
-its underlying permissions, and retain every primitive/source route for later Tier 0 analysis.
-Present concrete storage/counting behavior, wording and synthetic verification for explicit approval
-before implementation. No live directory work, discovery enablement, member expansion, ownership-gate
-closure or Stage 7 paths are authorized by this handoff.
+**Bounded full-control aggregation (`HasFullControl`) is implemented after explicit approval.**
+The owner requested "implement it" after the recommendation, then "continue". Schema 23/control
+engine 7 shows **Full-control permissions** only as a permission-summary assessment, not a new
+primitive or an executed operation. All thirteen specific mapped rights must survive ordered
+evaluation; raw generic bits are not expanded into grants, and unresolved scoped denies remain Unknown.
+One or several grants can establish one counted summary. Supporting permissions and alternative
+routes remain stored and visible, without being counted again. A broken or Unknown summary does
+not suppress surviving permissions. Existing-owner control remains independent; owner-change
+control remains Unknown and uncounted. Principal catalogue 2 is unchanged.
+The [implementation record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+owns the 4,305/4,305 offline suite, successful build, 796/796 targeted coverage, proof-integrity
+corrections and remaining gates. Historical tests, hashes and measurement reports are preserved.
+No live access, discovery enablement, member expansion, new findings, Stage 7 paths, final Stage 6
+acceptance, commit or push was included in the implementation approval. The owner subsequently
+requested "commit and push then state next step", authorizing publication of this completed slice
+only. The next recommended bounded session is **effective-member expansion preparation**, preserving
+group-held counts and captured route evidence, with approval before implementation. The linked
+checkpoint owns that boundary. Laptop/monitor checks remain normal outstanding verification.
 
-**The bounded requester design was introduced in judgement schema 17 and is retained in schema 22.** The owner answered "continue then"
+**The bounded requester design was introduced in judgement schema 17 and is retained in schema 23.** The owner answered "continue then"
 after the plain-language explanation. [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 limits it to direct user grants and one explicit same-domain global-security-
 group membership. Requester assessments are stored separately from counted holder edges, with

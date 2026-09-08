@@ -440,7 +440,9 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        Assert.Equal(57, found.Count);
+        // Retain the pre-aggregation inventory and account explicitly for the new per-right proof voucher.
+        Assert.Equal(57 + 1, found.Count);
+        Assert.Contains(found, v => v.Type.Name == "FullControlRight" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "PrincipalClassification" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlEdge" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlObjectEvaluation" && v.Name == "IsComplete");

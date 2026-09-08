@@ -72,6 +72,14 @@
                         <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="2*" />
                         <DataGridTextColumn Header="Established?" Binding="{Binding Evaluation}" Width="Auto" />
                         <DataGridTextColumn Header="Expected?" Binding="{Binding Expectedness}" Width="Auto" />
+                        <DataGridTemplateColumn Width="2*">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate><TextBlock Text="{Binding DataContext.CountHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate><TextBlock Text="{Binding CountStatus}" TextWrapping="Wrap" /></DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
                 <Expander Grid.Row="5" Header="View control evidence and preconditions" Margin="0,8,0,0">

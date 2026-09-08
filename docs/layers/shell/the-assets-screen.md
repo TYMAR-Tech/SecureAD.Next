@@ -356,7 +356,7 @@ action or new security finding was added.
 directions, old-engine/category refusal and stale-proof clearing. Additional `ControlEdgeSizingTests`
 cases bind the label and caveat through the unchanged real template at the three existing pane
 sizes, without a visible window. The [judgement-store implementation record](../judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
-owns results and limitations. Introduced in schema 19 and retained in current schema 22; real-product visual checks
+owns results and limitations. Introduced in schema 19 and retained in current schema 23; real-product visual checks
 remain normal outstanding verification, not implied by these offline checks.
 
 ### Key-credential write permission
@@ -368,7 +368,7 @@ Its resource-backed evidence identifies **Attribute: msDS-KeyCredentialLink.** a
 **Permission evidence only. A key-credential write and subsequent sign-in have not been tested.
 This does not establish account takeover or a completed path to Tier 0.**
 
-The scope notice includes this capability while retaining validated-write-only key-credential
+At the schema-20 checkpoint, the scope notice included this capability while retaining validated-write-only key-credential
 access, ownership-derived control, replication, full-control aggregation and effective member
 expansion as unfinished. Existing password-reset wording and requester distinctions are preserved.
 No XAML, column, table sizing, paging, selection or readback-safety behavior changed.
@@ -423,6 +423,38 @@ laboratory gate. Real-reader tests cover both directions, stale versions and dam
 six real-template sizing cases cover the two labels at the existing sizes. Normal laptop/monitor
 checks remain outstanding. The [implementation record](../judgement/the-judgement-store.md#ownership-control--bounded-implementation)
 owns verification and limits.
+
+### Full-control permission summaries
+
+The owner approved the bounded recommendation, then requested implementation. Schema 23/control
+engine 7 adds **Full-control permissions** assessments to the same object-first and named-holder-first
+table, with a visible **Count status** column. Established summaries say **Counted once**;
+their supporting permission rows say **Included in full-control count — not counted again**.
+Primitive evidence and categories remain visible, including both separately named replication
+capabilities in their page-local holder/root groups. Existing-owner control retains its independent
+count; owner-change and requester assessments retain their uncounted boundaries.
+
+The headline explains: **Counts include established full-control summaries instead of their
+supporting permissions. Unknown full-control assessments add no count. Other unknown candidates
+retain their existing counting behavior.** Broken/Unknown summary evidence states that surviving
+permissions remain visible and, where eligible, counted separately. Unknown assessments remain
+unanswered coverage, not a complete negative answer. Expectedness still has its own column/filter
+and a stated hidden count.
+
+Both directions consume stored assessments/support links and a common combined paging cursor;
+no authorization is recomputed in the screen. The source lists retain original ordered permissions
+and alternative grants under **Supporting permissions and alternative grant routes**. A stored
+independent-route witness uses **Removing one complete grant route alone leaves another route to
+full-control permissions.** The caveat is **Permission evidence only. No directory operation was
+performed. This does not establish operation success, account takeover or a completed path to Tier 0.**
+
+The count cell wraps; the existing table and evidence-height bounds, selection and generation/failure
+safeguards remain. New real-template tests verify the summary, support count text, header and long
+read-only proof at the three existing sizes. A deliberately unbound count-status cell makes the
+check fail. These are no-window synthetic checks, not acceptance of ordinary laptop/external-monitor
+verification. The [implementation record](../judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+owns the final suite/coverage results and remaining Stage 6 gates. No live directory operation,
+discovery enablement or effective member expansion was added.
 
 ## Nothing on this screen is ever established-bad
 

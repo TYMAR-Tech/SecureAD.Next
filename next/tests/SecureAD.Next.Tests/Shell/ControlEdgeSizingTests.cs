@@ -14,7 +14,7 @@ using Xunit.Sdk;
 
 namespace SecureAD.Next.Tests.Shell;
 
-public sealed class ControlEdgeSizingTests
+public sealed partial class ControlEdgeSizingTests
 {
     private static readonly XNamespace Wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
     private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -332,6 +332,8 @@ public sealed class ControlEdgeSizingTests
             .Root!.Elements(Wpf + "DataTemplate").Single(element => (string?)element.Attribute("DataType") == "{x:Type vm:ControlEdgesSectionViewModel}"));
         template.Attribute("DataType")!.Remove();
         var grid = template.Descendants(Wpf + "Grid").Single();
+        if (mutation == "unbound-full-control-count") template.Descendants(Wpf + "TextBlock")
+            .Single(element => (string?)element.Attribute("Text") == "{Binding CountStatus}").Attribute("Text")!.Remove();
         if (mutation == "unbounded-control") grid.Elements(Wpf + "DataGrid").First().Attribute("MaxHeight")?.Remove();
         if (mutation == "collapsed-requester") grid.Elements(Wpf + "DataGrid").Last().SetAttributeValue("Height", "0");
         if (mutation == "unbound-requester-selection") grid.Elements(Wpf + "DataGrid").Last().Attribute("SelectedItem")!.Remove();

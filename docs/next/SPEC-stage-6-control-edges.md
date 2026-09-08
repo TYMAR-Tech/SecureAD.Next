@@ -31,18 +31,20 @@ The [judgement-store document](../layers/judgement/the-judgement-store.md#p-150-
 records the code boundary and measured lab comparison. P-145 and the claim-specific gates below
 remain open. The remaining sections are still a proposal except where an accepted decision is cited.
 
-**Current bounded implementation:** judgement schema **22**, control engine **6**, retains that
+**Current bounded implementation:** judgement schema **23**, control engine **7**, retains that
 initial slice and the later membership/requester/password-reset products, and adds the explicitly
 approved `CanWriteKeyCredentialLink` capability as `CredentialExposure`, plus the two approved
 replication capabilities as `ReplicationControl`. The approved ownership slice adds
 `IsOwnerAndCanRewriteDacl` as `DirectoryControl` and evaluated proof for the still-Unknown,
-uncounted owner-transition compound. The existing screen shows permission evidence,
+uncounted owner-transition compound. The approved full-control slice adds separate summary proof
+and counting links while retaining primitive permissions and alternative sources. The existing screen shows permission evidence,
 not tested operations, credential extraction or sign-ins. Replication is grouped visibly by holder
 and exact naming-context root within each page; no DC expectedness exception is added.
 Automatic Self-Membership discovery remains inactive in both hosts without an approved budget.
 Validated-write-only key-credential access, constrained secret reveal,
-general ownership modifications, full-control aggregation and effective member expansion remain unfinished.
-The [implementation record](../layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation)
+general ownership modifications and effective member expansion remain unfinished; unresolved full-control
+scope/authorization cases remain Unknown rather than being guessed.
+The [implementation record](../layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
 owns behavior and validation. Approval of this bounded slice does not accept the entire proposal
 or close P-145.
 
@@ -51,7 +53,7 @@ or close P-145.
 ## 1. What already exists, verified against the code
 
 Not from the roadmap, and not from the punch list. Originally checked on 2026-09-05; the control-edge
-and schema entries below are refreshed for the approved bounded ownership slice.
+and schema entries below are refreshed for the approved bounded full-control slice.
 
 | What | Where | What it does |
 |---|---|---|
@@ -60,8 +62,9 @@ and schema entries below are refreshed for the approved bounded ownership slice.
 | `BroadPrincipalCanTakeOverObject` (`SEC-060`) | `next/src/SecureAD.Judgement/` | Reports that a principal broad in every organisation can take over an object, conditioning `WriteOwner` on whether the owner's implicit rights survive. |
 | `ObjectOwnershipRules` (`SEC-031`, `SEC-032`) | `next/src/SecureAD.Judgement/` | Report unaccepted ownership at `Low` for ordinary objects and `Medium` for protected objects. Both are version 3 and registered in `RuleCatalogue.All`; owner acceptance retains `0109`'s schema-only scope and rights qualification uses `OwnerRightsReading`. |
 | `ObjectTakeoverEvidence`, `ObjectOwnershipEvidence` | `next/src/SecureAD.Evidence/Findings/` | Typed evidence carriers, each with an `IsComplete` voucher. |
-| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 22. Findings, membership routes, bounded control evidence including owner-source proof and separately stored requester assessments/discovery coverage. |
-| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 6. |
+| `JudgementSchema` | `next/src/SecureAD.Judgement/JudgementSchema.cs` | Version 23. Findings, membership routes, bounded control evidence including owner-source proof, separate full-control summaries/support links and separately stored requester assessments/discovery coverage. |
+| `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 7. |
+| `FullControlAssessment`, `FullControlEvaluator`, `FullControlStorage` | `next/src/SecureAD.Judgement/` | Bounded all-rights summary, original ordered source/check proof, independent expectedness replay and summary-versus-support counting. Primitive records are retained. |
 | `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
 | **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
 
@@ -210,8 +213,8 @@ An edge class not on this list is stage 7 work or later, and is named in section
 | `CanReplicateSecretDomainData` | `ReplicationControl` | `DS-Replication-Get-Changes` **and** `DS-Replication-Get-Changes-All` on a naming-context root | `Established`. Target is the naming context, never an object beneath it (`AC-78`). Scope defined in 5.3 |
 | `CanReplicateFilteredAttributes` | `ReplicationControl` | `DS-Replication-Get-Changes` **and either** `DS-Replication-Get-Changes-All` **or** `DS-Replication-Get-Changes-In-Filtered-Set` (`89e95b76-444d-4c62-991a-0facbeda640c`) | `Established`, exactly the `AC-77` predicate. The derivation records **which** qualifying right completed the compound |
 
-**`HasFullControl` is an aggregate label and is not in the table.** It is displayed when the expanded
-mask satisfies `GENERIC_ALL_MAPPING`, and the primitives it summarises stay in the graph underneath
+**`HasFullControl` is an aggregate label and is not in the table.** It is established when the effective
+specific rights satisfy `GENERIC_ALL_MAPPING`, and the primitives it summarises stay in the graph underneath
 it. The first draft said full control *supersedes* the primitives on the same object, and the review
 was right that this loses information the product needs: a later deny may remove one primitive and
 not another, a remediation may close the entry granting `WRITE_DAC` while a separate `WRITE_OWNER`
@@ -222,6 +225,15 @@ mechanism for keeping the screen quiet - not discarding derivations.
 
 **So: aggregate for presentation, never collapse the evidence graph.**
 
+**Approved bounded implementation:** schema 23/control engine 7 compares the thirteen specific
+rights in `0x000F01FF`, after stored-order grants/denies and separate scope checks. It does **not**
+expand raw generic bits in captured ACEs into authorization: MS-DTYP 2.4.3 and the existing permission
+model prohibit that shortcut. A whole-object mask alone cannot dismiss a scoped deny. Unresolved
+scope, incomplete evidence or unsupported authorization remains Unknown. Original source entries
+and alternative grants remain available beneath both established and broken/unknown assessments.
+Captured source identity is retained without inventing inheritance origins or claiming that cross-run
+remediation actions and path-cut analysis have been implemented; the latter remain future work.
+
 **The identity of a counted edge, stated so that aggregation is deterministic.** The first draft said
 no configuration may produce two counted edges for one holder, one object and *one grant*, and the
 review was right that this does not survive full control being assembled from several entries. The
@@ -231,7 +243,7 @@ key is:
 (Holder, Target, Capability, DerivationGenerationId)
 ```
 
-- **One entry granting `GENERIC_ALL`**: one aggregate edge; the primitives it expands to are
+- **One entry carrying the specific `GENERIC_ALL_MAPPING` rights**: one aggregate edge; the primitives it supports are
   derivations beneath it, each with its own source fact.
 - **Several entries jointly satisfying the generic-all mapping**: still one aggregate edge, because
   the key does not mention the grant. It references a **set** of derivations, and each derivation
@@ -541,6 +553,13 @@ beneath it. Where the aggregate is not established - because a deny removed one 
 primitives, or because the mapping was never satisfied - the surviving primitives are counted
 independently. The identity that governs this is in section 5, and it deliberately does not mention
 the grant, because full control can be assembled from several entries.
+
+In the approved bounded implementation, this is a stored summary/support projection rather than a
+rewrite of primitive proof flags. Only independently established permission capabilities become
+supports. Their category rows remain visible and state **Included in full-control count — not counted
+again**. Existing-owner control retains its independent count; owner-change and concrete requester
+assessments retain their uncounted boundaries. Unknown summaries suppress nothing. Both viewing
+directions share the same generation, links and selection-wide counts, including expected hidden counts.
 
 ### 7.1 What *effective member* means, in full
 

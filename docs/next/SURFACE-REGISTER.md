@@ -306,6 +306,9 @@ The table below sits between the two markers around it, so the test parses only 
 | ControlEdge | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlEdgeClass | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlEdgePage | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| FullControlAssessment | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| FullControlRight | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| FullControlSource | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlEvaluationState | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlExpectedness | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | ControlExpectednessReason | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |

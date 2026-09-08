@@ -556,8 +556,17 @@ The subsequent schema-22/control-engine-6 ownership slice is also complete under
 principal catalogue 2 remains unchanged. The [ownership record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation)
 holds the shared-check corrections, 4,182/4,182 offline suite and 623/623 targeted coverage results.
 The owner requested publication of both completed slices. This closes neither the live owner-write
-and SDProp gates nor final P-145 acceptance. The recommended next work is full-control aggregation
-preparation with a concrete recommendation for approval, not implementation or discovery enablement.
+and SDProp gates nor final P-145 acceptance.
+
+The subsequent approved full-control slice is implemented in schema 23/control engine 7, with
+principal catalogue 2 unchanged. Separate summary/proof/support records preserve primitive evidence
+and alternative grants; established summaries replace their supporting permissions in headline counts,
+while broken or Unknown summaries suppress nothing. The
+[full-control record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+owns corrected findings, the 4,305/4,305 full offline suite, successful build and 796/796 targeted
+coverage. P-145 remains open, including customer-scale readback cost and the claim-specific gates.
+Laptop/monitor checks remain normal outstanding verification. This implementation request authorizes
+neither live access, discovery enablement, further capabilities, member expansion, commit nor push.
 
 ---
 

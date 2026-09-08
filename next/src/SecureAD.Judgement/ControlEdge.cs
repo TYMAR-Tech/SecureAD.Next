@@ -199,8 +199,11 @@ public sealed record ControlObjectEvaluation(
     ControlUncertainty Uncertainty,
     IReadOnlyList<ControlEdge> Edges)
 {
+    /// <summary>Full-control candidates with their complete permission proof, separate from primitive edges.</summary>
+    public IReadOnlyList<FullControlAssessment> FullControlAssessments { get; init; } = [];
     /// <summary>Whether supported primitives were evaluated without gaps; excludes the separately gated compound.</summary>
-    public bool IsComplete => Uncertainty == ControlUncertainty.None && Edges.All(edge => edge.IsComplete || !edge.IsCounted);
+    public bool IsComplete => Uncertainty == ControlUncertainty.None && Edges.All(edge => edge.IsComplete || !edge.IsCounted)
+        && FullControlAssessments.All(value => value.EvaluationState != ControlEvaluationState.Unknown && value.Uncertainty == ControlUncertainty.None);
 }
 
 /// <summary>One bounded page with stored coverage and counts, including expected edges hidden by default.</summary>
@@ -219,6 +222,10 @@ public sealed record ControlEdgePage(
 
     /// <summary>The selected immutable generation, used to refuse mixed-generation paging.</summary>
     public Guid? GenerationId { get; init; }
+    /// <summary>Assessment rows on this page; only established summaries contribute to headline counts.</summary>
+    public IReadOnlyList<FullControlAssessment> FullControlAssessments { get; init; } = [];
+    /// <summary>Primitive row IDs included in an established summary's count, including summaries on another page.</summary>
+    public IReadOnlyDictionary<long, long> FullControlSupports { get; init; } = new Dictionary<long, long>();
     /// <summary>Completeness of the supported primitive slice, not of all stage-6 capabilities.</summary>
     public bool IsComplete => ProductWasDerived && CaptureIsComplete && UnansweredObjects == 0;
     /// <summary>The boundary stated wherever this partial capability catalogue is shown.</summary>

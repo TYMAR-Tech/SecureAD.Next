@@ -90,7 +90,11 @@ internal static class ControlEdgeDeriver
         uncertainty |= ReplicationControlDeriver.Add(subject, permissions, normalized, context, generation,
             derivationGeneration, domainSid, effective.Outcome, uncertainty, edges);
         uncertainty |= OwnershipControlDeriver.Add(subject, permissions, context, generation, derivationGeneration, domainSid, edges);
-        return new(subject.DistinguishedName, targetSid, targetScope, effective.Outcome.ToString(), uncertainty, edges);
+        return new(subject.DistinguishedName, targetSid, targetScope, effective.Outcome.ToString(), uncertainty, edges)
+        {
+            FullControlAssessments = FullControlDeriver.Derive(subject, permissions, normalized, context,
+                generation, derivationGeneration, domainSid, targetSid, edges),
+        };
     }
 
     private static ControlUncertainty AddScopedEdges(ObjectAttributes subject, ObjectPermissions original,
@@ -219,7 +223,7 @@ internal static class ControlEdgeDeriver
 
     internal static (ControlExpectedness State, ControlExpectednessReason Reason) Expected(PermissionTrustee holder,
         ObjectAttributes target, string? forest, MembershipRouteSummary routes, bool descriptorComplete, bool effectiveDirectAce,
-        Func<string, string?> domainSid, bool replication = false)
+        Func<string, string?> domainSid, bool replication = false, bool fullControl = false)
     {
         var definition = PrincipalClassificationRegistry.For(holder.Sid);
         if (definition.IsBroad) return (ControlExpectedness.Unexpected, ControlExpectednessReason.UnexpectedBroadPrincipal);
@@ -238,7 +242,7 @@ internal static class ControlEdgeDeriver
             holderDomain = target.DomainFqdn;
         }
         var direct = VerifiedScopeAnswer(holder.Sid, definition.ControlPlaneScope, holderDomain, target, forest, domainSid);
-        if (replication && definition.ControlPlaneScope == PrincipalAuthorityScope.Schema && direct.State == ControlExpectedness.Expected)
+        if ((replication || fullControl) && definition.ControlPlaneScope == PrincipalAuthorityScope.Schema && direct.State == ControlExpectedness.Expected)
             direct = (ControlExpectedness.Unknown, ControlExpectednessReason.UnknownCapabilityScope);
         if (direct.State == ControlExpectedness.Expected) return direct;
         // These chains carry a separate authorization answer. Never consult protection, the selected basis,
@@ -252,7 +256,7 @@ internal static class ControlEdgeDeriver
             if (rootDefinition.ControlPlaneScope is PrincipalAuthorityScope.Descriptor or PrincipalAuthorityScope.RequiredDomainControllerOperations) continue;
             var domain = root.Scope ?? (root.DistinguishedName is { } dn ? DnHelper.DnToFqdn(dn) : null);
             var answer = VerifiedScopeAnswer(root.Sid, rootDefinition.ControlPlaneScope, domain, target, forest, domainSid);
-            if (replication && rootDefinition.ControlPlaneScope == PrincipalAuthorityScope.Schema && answer.State == ControlExpectedness.Expected)
+            if ((replication || fullControl) && rootDefinition.ControlPlaneScope == PrincipalAuthorityScope.Schema && answer.State == ControlExpectedness.Expected)
             {
                 direct = (ControlExpectedness.Unknown, ControlExpectednessReason.UnknownCapabilityScope);
                 continue;

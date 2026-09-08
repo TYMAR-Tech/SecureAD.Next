@@ -28,6 +28,9 @@ public sealed class ControlEdgeLayoutTests
         [21] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
         // Schema 22 adds ownership semantics and structured owner-source proof in the existing proof table.
         [22] = "D7F06AA5FB0ECA8E137F13E92ECEE979A19BAC3E8E59C6E1CF2F95A0C2CA8CBC",
+        // Schema 23 stores full-control source/proof/support and a separate object assessment manifest.
+        // Recorded from this build's observed layout, not an external historical anchor.
+        [23] = "049DB54C430BFFEC233CF89D36E888DABDF4858E281FA94C758E7377FBF177D7",
     };
 
     [Fact]
@@ -45,6 +48,9 @@ public sealed class ControlEdgeLayoutTests
     [InlineData("DROP INDEX ux_self_membership_identity")]
     [InlineData("ALTER TABLE self_membership_discovery ADD COLUMN unversioned TEXT")]
     [InlineData("DROP TABLE self_membership_discovery")]
+    [InlineData("DROP TABLE full_control_support")]
+    [InlineData("DROP INDEX ux_full_control_identity")]
+    [InlineData("ALTER TABLE full_control_source ADD COLUMN unversioned TEXT")]
     public void LayoutCheckpointRejectsUnversionedChanges(string mutation)
     {
         using var connection = Create();

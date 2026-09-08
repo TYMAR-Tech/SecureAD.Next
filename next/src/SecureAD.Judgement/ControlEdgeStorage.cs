@@ -7,7 +7,7 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
-    internal const int EngineVersion = 6;
+    internal const int EngineVersion = 7;
 
     public static void CreateTables(SqliteConnection connection)
     {
@@ -35,6 +35,7 @@ internal static class ControlEdgeStorage
             CREATE INDEX ix_control_holder ON control_edge(holder_sid, holder_scope, id);
             CREATE UNIQUE INDEX ux_control_identity ON control_edge(target COLLATE NOCASE, holder_sid COLLATE NOCASE, COALESCE(holder_scope,'') COLLATE NOCASE, capability);
             """);
+        FullControlStorage.CreateTables(connection);
     }
 
     public static void Start(SqliteConnection connection, bool captureComplete) => Execute(connection, null,
@@ -58,6 +59,7 @@ internal static class ControlEdgeStorage
     public static void Write(SqliteConnection connection, ControlObjectEvaluation result)
     {
         using var transaction = connection.BeginTransaction();
+        var storedEdges = new List<ControlEdge>();
         Execute(connection, transaction, "INSERT INTO control_object VALUES ($target,$sid,$scope,$outcome,$uncertainty,$complete)",
             ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
             ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
@@ -79,6 +81,7 @@ internal static class ControlEdgeStorage
             identity.Transaction = transaction;
             identity.CommandText = "SELECT last_insert_rowid()";
             var id = (long)identity.ExecuteScalar()!;
+            storedEdges.Add(edge with { Id = id });
             foreach (var ace in edge.Evidence)
                 Execute(connection, transaction, """
                     INSERT INTO control_ace VALUES ($id,$ordinal,$type,$sid,$name,$dn,$domain,$role,$mask,$object,$inheritedobject,
@@ -97,6 +100,7 @@ internal static class ControlEdgeStorage
             }
             MembershipRouteStorage.Write(connection, transaction, "control:" + id, edge.MembershipRoutes);
         }
+        FullControlStorage.Write(connection, transaction, result, storedEdges);
         transaction.Commit();
     }
 
@@ -116,8 +120,16 @@ internal static class ControlEdgeStorage
         if (!derived) return new([], 0, 0, 0, 0, false, capture, false, afterId);
         var predicate = target is not null ? "target = $value COLLATE NOCASE"
             : holderSid is not null ? "holder_sid = $value COLLATE NOCASE AND COALESCE(holder_scope,'') = $scope COLLATE NOCASE" : "1=1";
+        FullControlStorage.ValidateSelection(connection, description, predicate, target, holderSid, holderScope);
         using var counts = connection.CreateCommand();
-        counts.CommandText = $"SELECT expectedness,COUNT(*) FROM control_edge WHERE counted=1 AND {predicate} GROUP BY expectedness";
+        counts.CommandText = $"""
+            SELECT expectedness,COUNT(*) FROM (
+                SELECT target,holder_sid,holder_scope,expectedness FROM control_edge e
+                WHERE counted=1 AND NOT EXISTS (SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id)
+                UNION ALL
+                SELECT target,holder_sid,holder_scope,expectedness FROM full_control_assessment WHERE evaluation='Established'
+            ) WHERE {predicate} GROUP BY expectedness
+            """;
         BindFilter(counts, target, holderSid, holderScope);
         long expected = 0, unexpected = 0, unknown = 0;
         using (var read = counts.ExecuteReader())
@@ -140,10 +152,47 @@ internal static class ControlEdgeStorage
             if ((long)observed.ExecuteScalar()! == 0) return new([], 0, 0, 0, 1, false, capture, false, afterId);
         }
         using var query = connection.CreateCommand();
-        query.CommandText = $"SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object USING(target) WHERE {predicate} AND id > $after"
-            + (includeExpected ? "" : " AND expectedness <> 'Expected'") + " ORDER BY id LIMIT 101";
+        query.CommandText = $"""
+            SELECT display_id,edge_id,assessment_id FROM (
+                SELECT id*2 AS display_id,id AS edge_id,NULL AS assessment_id,target,holder_sid,holder_scope,expectedness FROM control_edge
+                UNION ALL
+                SELECT id*2-1,NULL,id,target,holder_sid,holder_scope,expectedness FROM full_control_assessment
+            ) WHERE {predicate} AND display_id > $after
+            """ + (includeExpected ? "" : " AND expectedness <> 'Expected'") + " ORDER BY display_id LIMIT 101";
         BindFilter(query, target, holderSid, holderScope);
         query.Parameters.AddWithValue("$after", afterId);
+        var items = new List<(long Display, long? Edge, long? Assessment)>();
+        using (var read = query.ExecuteReader())
+            while (read.Read()) items.Add((read.GetInt64(0), read.IsDBNull(1) ? null : read.GetInt64(1), read.IsDBNull(2) ? null : read.GetInt64(2)));
+        var more = items.Count > 100;
+        if (more) items.RemoveAt(100);
+        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadEdge(connection, description, item.Edge!.Value)).ToArray();
+        var assessments = items.Where(item => item.Assessment.HasValue).Select(item => FullControlStorage.Read(connection, description, item.Assessment!.Value)).ToArray();
+        return new(rows, unexpected, unknown, expected, unanswered, true, capture, more, items.Count == 0 ? afterId : items[^1].Display)
+        {
+            FullControlAssessments = assessments,
+            FullControlSupports = FullControlStorage.Supports(connection, rows),
+        };
+    }
+
+    internal static IReadOnlyList<ControlEdge> ReadHolderEdges(SqliteConnection connection, JudgementDescription description,
+        string target, string holder, string? scope)
+    {
+        using var query = connection.CreateCommand();
+        query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND holder_sid=$holder COLLATE NOCASE AND COALESCE(holder_scope,'')=$scope COLLATE NOCASE ORDER BY id";
+        query.Parameters.AddWithValue("$target", target);
+        query.Parameters.AddWithValue("$holder", holder);
+        query.Parameters.AddWithValue("$scope", scope ?? "");
+        var ids = new List<long>();
+        using (var read = query.ExecuteReader()) while (read.Read()) ids.Add(read.GetInt64(0));
+        return ids.Select(id => ReadEdge(connection, description, id)).ToArray();
+    }
+
+    private static ControlEdge ReadEdge(SqliteConnection connection, JudgementDescription description, long id)
+    {
+        using var query = connection.CreateCommand();
+        query.CommandText = "SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object USING(target) WHERE id=$id";
+        query.Parameters.AddWithValue("$id", id);
         var rows = new List<ControlEdge>();
         var evidenceCounts = new Dictionary<long, (int Aces, int Conditions)>();
         using (var read = query.ExecuteReader())
@@ -161,8 +210,6 @@ internal static class ControlEdgeStorage
                 rows.Add(edge);
                 evidenceCounts.Add(edge.Id, (read.GetInt32(17), read.GetInt32(18)));
             }
-        var more = rows.Count > 100;
-        if (more) rows.RemoveAt(100);
         for (var i = 0; i < rows.Count; i++)
         {
             var edge = rows[i];
@@ -173,7 +220,8 @@ internal static class ControlEdgeStorage
             ReplicationControlDeriver.ValidateStored(rows[i]);
             OwnershipControlDeriver.ValidateStored(rows[i]);
         }
-        return new(rows, unexpected, unknown, expected, unanswered, true, capture, more, rows.Count == 0 ? afterId : rows[^1].Id);
+        if (rows.Count != 1) throw FullControlEvaluator.InvalidProof();
+        return rows[0];
     }
 
     private static IReadOnlyList<PermissionEntry> ReadAces(SqliteConnection connection, long id)
@@ -202,7 +250,7 @@ internal static class ControlEdgeStorage
     }
 
     private static string? Text(SqliteDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
-    private static void BindFilter(SqliteCommand command, string? target, string? sid, string? scope)
+    internal static void BindFilter(SqliteCommand command, string? target, string? sid, string? scope)
     {
         if (target is not null || sid is not null) command.Parameters.AddWithValue("$value", target ?? sid!);
         if (target is null && sid is not null) command.Parameters.AddWithValue("$scope", scope ?? "");

@@ -870,14 +870,20 @@ The owner-change compound remains Unknown and uncounted under 0103. Serving-DC b
 inferred from a heuristic. SEC-031/032 version 3 and SEC-060 version 2 share the corrected check,
 with unchanged identities and severities. See the [ownership implementation record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation).
 
-**Recommended next bounded session: full-control aggregation preparation (`HasFullControl`).**
-Start with Stage 6 §5/§7 and accepted decisions; propose exact effective-right checks, preservation
-of primitive/source evidence, summary-versus-primitive counting, wording and offline verification.
-Obtain explicit approval before implementing. The current publication request covers the completed
-replication/ownership slices only; it does not close live ownership gates or enable discovery.
+**Bounded full-control aggregation is implemented in schema 23/control engine 7**, after the owner
+approved the preparation by requesting implementation. `HasFullControl` is a summary assessment,
+not a replacement primitive: it requires the complete specific-right mapping after ordered denies
+and scoped checks, retains alternative sources and does not double-count linked supporting permissions.
+Broken or Unknown summaries leave surviving permissions visible and independently countable.
+Existing-owner and requester boundaries remain separate; the owner-change compound stays Unknown
+and uncounted. Principal catalogue 2 is unchanged. The full offline suite passed 4,305/4,305, the
+solution build succeeded, and targeted coverage passed 796/796. See the
+[implementation record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+for proof-integrity corrections, preserved measurements and remaining gates. No publication of this
+slice, live ownership work or discovery enablement is authorized by the implementation request.
 
 General ownership modifications, validated-write-only key-credential access, constrained secret reveal,
-full-control aggregation and effective member expansion remain outside these bounded slices.
+unresolved full-control scope/authorization cases and effective member expansion remain outside these bounded slices.
 The claim-specific laboratory gates and P-145's review of actual unexpected edges remain outstanding;
 passing automated tests does not discharge them.
 

@@ -16,6 +16,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     private bool _configuring;
     private long _after;
     private Guid? _generation;
+    public string CountHeader => ControlEdgeRowViewModel.Text("CountHeader");
     [ObservableProperty] private bool _byHolder;
     [ObservableProperty] private bool _includeExpected;
     [ObservableProperty] private bool _hasPrincipal;
@@ -122,7 +123,10 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             ? $"{page.UnexpectedCount} unexpected; {page.UnknownCount} expectedness unknown; {page.ExpectedCount} expected "
                 + (IncludeExpected ? "(shown)." : "(hidden).")
             : "Expected edges hidden: unknown (product not derived).";
-        Rows = page.Edges.Select(edge => new ControlEdgeRowViewModel(edge)).ToArray();
+        if (page.ProductWasDerived) Counts += " " + ControlEdgeRowViewModel.Text("FullControlCounts");
+        Rows = page.Edges.Select(edge => new ControlEdgeRowViewModel(edge, page.FullControlSupports.ContainsKey(edge.Id)))
+            .Concat(page.FullControlAssessments.Select(value => new ControlEdgeRowViewModel(value)))
+            .OrderBy(row => row.DisplayOrder).ToArray();
         SelectedEdge = Rows.FirstOrDefault();
         HasMore = page.HasMore;
         _after = page.LastId;
@@ -248,18 +252,29 @@ internal sealed class SelfMembershipAssessmentRowViewModel(SelfMembershipAssessm
 }
 
 /// <summary>A stored statement and its proof; compound support is labelled and never added to the counted total.</summary>
-internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
+internal sealed class ControlEdgeRowViewModel
 {
     private static readonly ResourceManager Presentation = new("SecureAD.Shell.Resources.ControlEdgePresentation", typeof(ControlEdgeRowViewModel).Assembly);
+    private readonly ControlEdge? _edge;
+    private readonly FullControlAssessment? _summary;
+    private readonly bool _included;
+    private ControlEdge edge => _edge ?? throw new InvalidOperationException();
 
-    public string Holder => (edge.HolderName ?? edge.HolderSid)
+    /// <summary>Shows a primitive without changing its stored counting or authorization proof.</summary>
+    public ControlEdgeRowViewModel(ControlEdge value, bool included = false) { _edge = value; _included = included; }
+    /// <summary>Shows a stored full-control assessment without recomputing rights in the screen.</summary>
+    public ControlEdgeRowViewModel(FullControlAssessment value) { _summary = value; }
+    public long DisplayOrder => _summary is { } value ? value.Id * 2 - 1 : edge.Id * 2;
+    public string CountStatus => _summary is { } value ? Text(value.IsCounted ? "CountedOnce" : "NotCounted")
+        : Text(_included ? "FullControlIncluded" : edge.IsCounted ? "CountedOnce" : "NotCounted");
+    public string Holder => _summary is { } value ? value.Source.Holder.Name ?? value.Source.Holder.Sid : (edge.HolderName ?? edge.HolderSid)
         + (edge.EdgeClass == ControlEdgeClass.ReplicationControl && edge.HolderDomainControllerAsset == ControlEvaluationState.Established
             ? " — " + Text("DomainControllerAsset") : "");
-    public string Group => edge.EdgeClass == ControlEdgeClass.ReplicationControl
+    public string Group => _summary is not null ? "" : edge.EdgeClass == ControlEdgeClass.ReplicationControl
         ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationGroup"), Holder, edge.HolderSid, edge.HolderScope ?? "SID-scoped", edge.Target)
         : "";
-    public string Target => edge.Target;
-    public string Capability => edge.Capability switch
+    public string Target => _summary?.Source.Target ?? edge.Target;
+    public string Capability => _summary is not null ? Text("FullControlLabel") : edge.Capability switch
     {
         ControlCapability.CanWriteDacl => "Can change permissions (WRITE_DAC)",
         ControlCapability.CanSetOwner => "Holds WRITE_OWNER — takeover not proven",
@@ -273,9 +288,9 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
         ControlCapability.CanReplicateFilteredAttributes => Text("ReplicationFilteredLabel"),
         _ => "Unsupported capability",
     };
-    public string Evaluation => edge.EvaluationState.ToString();
-    public string Expectedness => edge.Expectedness.ToString();
-    public string Evidence => $"Holder: {edge.HolderSid}; scope: {edge.HolderScope ?? "SID-scoped"}\n"
+    public string Evaluation => (_summary?.EvaluationState ?? edge.EvaluationState).ToString();
+    public string Expectedness => (_summary?.Expectedness ?? edge.Expectedness).ToString();
+    public string Evidence => _summary is { } value ? SummaryEvidence(value) : $"Holder: {edge.HolderSid}; scope: {edge.HolderScope ?? "SID-scoped"}\n"
         + $"Object: {edge.TargetGuid?.ToString() ?? "stable identity not captured"}\n"
         + (edge.Capability == ControlCapability.CanWriteKeyCredentialLink ? Text("KeyCredentialLinkAttribute") + "\n" : "")
         + (edge.EdgeClass == ControlEdgeClass.ReplicationControl
@@ -286,7 +301,8 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
             : edge.Capability is ControlCapability.IsOwnerAndCanRewriteDacl or ControlCapability.CanBecomeOwnerAndRewriteDacl ? Text("OwnershipCategory") + "\n"
             : edge.EdgeClass == ControlEdgeClass.CredentialExposure ? Text("CredentialExposureCategory") + "\n"
             : $"Category: {edge.EdgeClass}; this does not classify the target group as privileged.\n")
-        + $"Evaluation: {edge.EvaluationState}; feasibility: {edge.Feasibility}; research: {edge.ResearchStatus}; counted: {edge.IsCounted}\n"
+        + $"Evaluation: {edge.EvaluationState}; feasibility: {edge.Feasibility}; research: {edge.ResearchStatus}; counted: {edge.IsCounted && !_included}\n"
+        + CountStatus + "\n"
         + $"Expectedness: {edge.ExpectednessReason}; principal catalogue {edge.PrincipalCatalogueVersion}\n"
         + $"Generation: {edge.GenerationId}; derivation: {edge.DerivationGenerationId?.ToString() ?? "not used"}\n"
         + $"Uncertainty: {edge.Uncertainty}\n"
@@ -311,6 +327,23 @@ internal sealed class ControlEdgeRowViewModel(ControlEdge edge)
             _ => "",
         });
 
-    private static string Text(string key) => Presentation.GetString(key, CultureInfo.CurrentUICulture)
+    private static string SummaryEvidence(FullControlAssessment value) => Text(value.EvaluationState switch
+        {
+            ControlEvaluationState.Established => "FullControlEstablished",
+            ControlEvaluationState.NotEstablished => "FullControlNotEstablished",
+            _ => "FullControlUnknown",
+        }) + "\n" + Text("FullControlEvidenceHeading") + "\n"
+        + string.Format(CultureInfo.CurrentCulture, Text("FullControlProofHeader"), value.GenerationId,
+            value.DerivationGenerationId?.ToString() ?? Text("NotUsed"), value.PrincipalCatalogueVersion,
+            value.ExpectednessReason, value.Uncertainty)
+        + "\n" + string.Join("\n", value.Rights.Select(right => string.Format(CultureInfo.CurrentCulture,
+            Text("FullControlRightProof"), right.Mask, right.ObjectType ?? Text("WholeObject"), right.State,
+            string.Join(", ", right.GrantOrdinals), string.Join(", ", right.BlockingOrdinals))))
+        + "\n" + Text("FullControlAlternativeProof")
+        + (value.HasIndependentGrantRoutes ? "\n" + Text("FullControlIndependentRoutes") : "")
+        + "\n" + System.Text.Json.JsonSerializer.Serialize(value.Source, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })
+        + "\n" + Text("FullControlCaveat");
+
+    internal static string Text(string key) => Presentation.GetString(key, CultureInfo.CurrentUICulture)
         ?? throw new MissingManifestResourceException(key);
 }
