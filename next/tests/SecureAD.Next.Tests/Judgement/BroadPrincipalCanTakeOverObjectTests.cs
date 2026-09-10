@@ -389,6 +389,49 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
         Assert.Equal(ObjectTakeoverRight.WriteDacl, evidence.Right);
     }
 
+    /// <summary>
+    /// Finding nothing in an entry list that came back short is a refusal, not a clean object.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>P-159</c>.</b> The rule already refuses an unreadable descriptor and a null DACL,
+    /// because a production domain returned 19,927 of 100,000 objects with no readable descriptor
+    /// and calling those safe would have been the worst thing it could say. What it did not refuse
+    /// was a descriptor that <i>was</i> read and whose declared entries did not all arrive: the
+    /// incompleteness was folded into <c>objectIsComplete</c>, which only ever reached the findings,
+    /// so an object with a short list and nothing in it came back judged and clean.
+    /// </para>
+    /// <para>
+    /// The entries that did not arrive are exactly the ones that might have granted takeover, which
+    /// is why silence over them cannot be a statement about the object.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void NothingFoundInAShortEntryListIsRefused()
+    {
+        var verdict = JudgeWithShortEntryList(Container(), Allow(Everyone, ReadProperty));
+
+        Assert.Empty(verdict.Findings);
+        Assert.False(verdict.IsComplete);
+    }
+
+    /// <summary>
+    /// A whole entry list with nothing dangerous in it is still a clean object, so the refusal is
+    /// not a blanket one.
+    /// </summary>
+    /// <remarks>
+    /// Without this the change above would pass just as well if the rule had stopped reaching a
+    /// verdict at all, which is the scanner self-test failure wearing different clothes.
+    /// </remarks>
+    [Fact]
+    public void NothingFoundInAWholeEntryListIsStillClean()
+    {
+        var verdict = Judge(Container(), Allow(Everyone, ReadProperty));
+
+        Assert.Empty(verdict.Findings);
+        Assert.True(verdict.IsComplete);
+    }
+
     // ---- fixtures ----
 
     private static RuleVerdict Judge(
@@ -454,17 +497,36 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
             : new PrincipalExpansion(sid, PrincipalExpansionOutcome.Expanded, []);
 
     private static ObjectPermissions Permissions(
-        DescriptorAvailability availability, IReadOnlyList<PermissionEntry> entries) => new(
+        DescriptorAvailability availability, IReadOnlyList<PermissionEntry> entries) =>
+        Permissions(availability, entries, DaclCompleteness.Complete);
+
+    private static ObjectPermissions Permissions(
+        DescriptorAvailability availability,
+        IReadOnlyList<PermissionEntry> entries,
+        DaclCompleteness completeness) => new(
         Target,
         availability,
         availability is DescriptorAvailability.Unreadable ? "access denied" : null,
         Owner: null,
         availability is DescriptorAvailability.Read ? DaclState.Present : DaclState.Unreadable,
-        DaclCompleteness.Complete,
+        completeness,
         DaclWasCanonical: true,
         IsDaclProtected: false,
         entries,
         Errors: []);
+
+    /// <summary>A judging of an object whose descriptor was read and came back short.</summary>
+    private static RuleVerdict JudgeWithShortEntryList(
+        ObjectAttributes subject, params PermissionEntry[] entries) =>
+        new BroadPrincipalCanTakeOverObject().Judge(
+            subject,
+            JudgingContext.At(Started) with
+            {
+                Permissions = _ => Permissions(
+                    DescriptorAvailability.Read, entries, DaclCompleteness.Unknown),
+                MembersOfPrincipal = NoMembers,
+                OwnerImplicitRights = Unhardened(),
+            });
 
     private static int _ordinal;
 

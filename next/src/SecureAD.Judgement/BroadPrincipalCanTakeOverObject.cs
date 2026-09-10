@@ -134,8 +134,17 @@ public sealed class BroadPrincipalCanTakeOverObject : IRule
                 subject, objectGuid, p, p.Complete && objectIsComplete, context.PrincipalNames))
             .ToList();
 
-        return findings.Count == 0 && unresolved.Count > 0
-            ? RuleVerdict.CouldNotResolve(unresolved)
+        // Finding nothing is a statement about the object only when the object was read in full. A
+        // DACL that declared more entries than arrived may have declared the very entry this rule
+        // looks for, so silence over a short list is a refusal rather than a clean verdict - P-159.
+        // Where there are findings the incompleteness rides on them instead, for the reason above:
+        // a verdict cannot carry both, and returning both cost two real findings once already.
+        return findings.Count == 0 && (unresolved.Count > 0 || !access.IsComplete)
+            ? RuleVerdict.CouldNotResolve(unresolved.Count > 0
+                ? unresolved
+                : [new UnresolvedInput(
+                    DerivedFactKind.PrincipalExpansion,
+                    UnresolvedReason.SecurityDescriptorIncomplete)])
             : RuleVerdict.Judged(findings);
     }
 

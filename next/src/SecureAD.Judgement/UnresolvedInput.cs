@@ -60,6 +60,18 @@ public enum UnresolvedReason
     /// </summary>
     SecurityDescriptorUnreadable,
 
+    /// <summary>
+    /// The descriptor was read, but not every entry it declared arrived, so an entry that was never
+    /// seen may grant exactly what the rule was looking for.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from <see cref="SecurityDescriptorUnreadable"/> deliberately, and for the reason
+    /// <c>docs/decisions/0091</c> gives about keeping an uncaptured attribute apart from a disputed
+    /// claim: telling an operator the descriptor could not be read, when it was read and came back
+    /// short, sends him to look for a capture failure that did not happen.
+    /// </remarks>
+    SecurityDescriptorIncomplete,
+
     /// <summary>The object carried no usable SID, so it could not be matched against anything.</summary>
     IdentityUnreadable,
 

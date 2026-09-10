@@ -127,9 +127,18 @@ public sealed class LapsPasswordReadAccess : IRule
         var pending = new Dictionary<string, PendingFinding>(StringComparer.OrdinalIgnoreCase);
         var unresolved = new List<UnresolvedInput>();
 
+        // The calculator's answer is kept, not just its holders. Until 2026-09-10 this took
+        // .Holders and dropped EveryDeclaredEntryArrived on the floor, so an object whose DACL came
+        // back short read exactly like one that granted nothing - P-159.
+        var everyEntryArrived = true;
+
         foreach (var attribute in attributes)
         {
-            foreach (var grant in EffectiveGrants(permissions, attribute.Guid!))
+            var access = EffectiveAccessCalculator.Over(permissions, attribute.Guid!);
+
+            everyEntryArrived &= access.IsComplete;
+
+            foreach (var grant in GrantsFrom(access))
             {
                 Collect(
                     subject, expand, attribute.Name, grant, pending, unresolved);
@@ -154,9 +163,15 @@ public sealed class LapsPasswordReadAccess : IRule
             .ToList();
 
         // Unresolved only where there is nothing to report. Where there is, the incompleteness has
-        // already been said on every finding, and saying it twice would cost the findings.
-        return findings.Count == 0 && unresolved.Count > 0
-            ? RuleVerdict.CouldNotResolve(unresolved)
+        // already been said on every finding, and saying it twice would cost the findings. A short
+        // entry list joins that condition: finding nothing in a list that is missing entries is not
+        // a statement that nobody can read the password.
+        return findings.Count == 0 && (unresolved.Count > 0 || !everyEntryArrived)
+            ? RuleVerdict.CouldNotResolve(unresolved.Count > 0
+                ? unresolved
+                : [new UnresolvedInput(
+                    DerivedFactKind.PrincipalExpansion,
+                    UnresolvedReason.SecurityDescriptorIncomplete)])
             : RuleVerdict.Judged(findings);
     }
 
@@ -196,10 +211,9 @@ public sealed class LapsPasswordReadAccess : IRule
     /// that machine. Recorded as <c>F-S45-1</c>.
     /// </para>
     /// </remarks>
-    private static IEnumerable<EffectiveGrant> EffectiveGrants(
-        ObjectPermissions permissions, string attributeGuid)
+    private static IEnumerable<EffectiveGrant> GrantsFrom(EffectiveAccessResult result)
     {
-        foreach (var access in EffectiveAccessCalculator.Over(permissions, attributeGuid).Holders)
+        foreach (var access in result.Holders)
         {
             var rights = RightsOf(access.Mask);
 

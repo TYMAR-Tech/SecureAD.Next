@@ -654,6 +654,50 @@ public sealed class LapsPasswordReadAccessTests
         Context(permissions, (sid, _) => expand(sid), schema);
 
     /// <summary>
+    /// Finding no reader in an entry list that came back short is a refusal, not a clean machine.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>P-159</c>.</b> This rule already refuses an unreadable descriptor and a null DACL, and
+    /// the comment above says why: a production domain returned 19,927 of 100,000 objects with no
+    /// readable descriptor. What it did not refuse was a descriptor that <i>was</i> read and came
+    /// back short, because it took <c>EffectiveAccessCalculator</c>'s holders and dropped
+    /// <c>EveryDeclaredEntryArrived</c> on the floor - the voucher that exists for exactly this.
+    /// </para>
+    /// <para>
+    /// An entry that never arrived is the one that might have granted the password read, so silence
+    /// over a short list cannot be a statement that nobody can read it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void NoReaderFoundInAShortEntryListIsRefused()
+    {
+        var verdict = VerdictOverShortEntryList(
+            [Allow(Delegated, ReadProperty, PasswordGuid)], Nested(Delegated));
+
+        Assert.Empty(verdict.Findings);
+        Assert.False(verdict.IsComplete);
+    }
+
+    /// <summary>
+    /// And a whole entry list with no reader in it is still a clean machine, so the refusal is not
+    /// a blanket one.
+    /// </summary>
+    /// <remarks>
+    /// Without this the change above would pass equally well if the rule had stopped reaching a
+    /// verdict at all.
+    /// </remarks>
+    [Fact]
+    public void NoReaderFoundInAWholeEntryListIsStillClean()
+    {
+        var verdict = Verdict(
+            [Allow(Delegated, ReadProperty, PasswordGuid)], Nested(Delegated));
+
+        Assert.Empty(verdict.Findings);
+        Assert.True(verdict.IsComplete);
+    }
+
+    /// <summary>
     /// The scope-aware form, for the tests that care which scope a principal is keyed under.
     /// </summary>
     private static JudgingContext Context(
@@ -685,17 +729,33 @@ public sealed class LapsPasswordReadAccessTests
 
     private static ObjectPermissions Permissions(
         DescriptorAvailability availability, IReadOnlyList<PermissionEntry> entries) =>
+        Permissions(availability, entries, DaclCompleteness.Complete);
+
+    private static ObjectPermissions Permissions(
+        DescriptorAvailability availability,
+        IReadOnlyList<PermissionEntry> entries,
+        DaclCompleteness completeness) =>
         new(
             Machine,
             availability,
             availability is DescriptorAvailability.Unreadable ? "access denied" : null,
             Owner: null,
             availability is DescriptorAvailability.Read ? DaclState.Present : DaclState.Unreadable,
-            DaclCompleteness.Complete,
+            completeness,
             DaclWasCanonical: true,
             IsDaclProtected: false,
             entries,
             Errors: []);
+
+    /// <summary>A judging of a computer whose descriptor was read and came back short.</summary>
+    private static RuleVerdict VerdictOverShortEntryList(
+        IReadOnlyList<PermissionEntry> entries, Func<string, PrincipalExpansion> expand) =>
+        new LapsPasswordReadAccess().Judge(
+            Computer(4096),
+            Context(
+                _ => Permissions(
+                    DescriptorAvailability.Read, entries, DaclCompleteness.Unknown),
+                expand));
 
     private static PermissionEntry Allow(string sid, int mask, string? objectTypeGuid) =>
         Entry("AccessAllowedObject", sid, mask, objectTypeGuid, Forest);

@@ -83,6 +83,16 @@ internal static class UnresolvedWording
                 "Permissions could not be read for these objects, so their current state is "
                 + "unknown. Capturing with an account that can read them would settle it.",
 
+            // "May settle it" rather than "would", approved by the owner on 2026-09-10 and worth
+            // keeping honest: a short list comes from the stored descriptor failing to parse all
+            // the way through, and a second capture may return intact bytes or exactly the same
+            // ones. The neighbouring wordings promise a remedy only where there is one, and one of
+            // them says plainly that capturing again will not help.
+            UnresolvedReason.SecurityDescriptorIncomplete =>
+                "Permissions were read for these objects but the list came back short, so an entry "
+                + "nobody saw may grant what this check looks for. These are not reported as clean; "
+                + "capturing them again may settle it.",
+
             UnresolvedReason.IdentityUnreadable =>
                 "These objects carried no readable security identifier, so they could not be "
                 + "matched against anything.",
