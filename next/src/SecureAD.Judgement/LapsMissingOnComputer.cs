@@ -95,9 +95,10 @@ public sealed class LapsMissingOnComputer : IRule
 
         // No live machine, so no local administrator password for anything to rotate. The forest
         // raised this: the first ad.lab run reported two disabled leftover accounts and told an
-        // operator to deploy LAPS to machines that do not exist.
-        if (LapsAttributes.IsDisabled(subject))
-            return RuleVerdict.Judged([]);
+        // operator to deploy LAPS to machines that do not exist. An account whose state could not be
+        // read is refused rather than silenced - see P-158 and LapsAttributes.RefusalFor.
+        if (LapsAttributes.RefusalFor(subject) is { } accountState)
+            return accountState;
 
         if (context.AttributeVisibility is not { } visibility)
             return RuleVerdict.CouldNotResolve([new UnresolvedInput(

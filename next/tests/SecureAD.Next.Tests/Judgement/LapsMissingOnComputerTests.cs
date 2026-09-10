@@ -247,6 +247,40 @@ public sealed class LapsMissingOnComputerTests
         }));
 
     /// <summary>
+    /// A computer whose account state could not be read is refused, not passed over in silence.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the negative control for the test above, and it did not exist until
+    /// <c>P-158</c>.</b> Until 2026-09-10 both cases behaved identically, and the reason is worth
+    /// keeping: <c>IsDisabled</c> read a nullable <c>uint</c> and asked
+    /// <c>(flags &amp; AccountDisabled) != 0</c>, which under C#'s lifted comparison is <c>true</c>
+    /// when the attribute is absent. A machine the capture never read was therefore classified as
+    /// disabled, and this rule stayed silent about it - so a screen that says nothing said the same
+    /// thing about a stale account and about a live machine nobody had looked at.
+    /// </para>
+    /// <para>
+    /// The assertion is on the execution rather than on the findings, because both cases produce no
+    /// findings and that is the whole point. What separates them is that this one is counted as not
+    /// judged and names the attribute it wanted.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AComputerWhoseAccountStateCouldNotBeReadIsRefusedRatherThanPassed()
+    {
+        var judged = JudgeWhole(Machine() with { UserAccountControl = null }, confidential: false);
+
+        var execution = Assert.Single(judged.RulesRun);
+
+        Assert.Equal(
+            (0, 1, 0, true),
+            (execution.FindingsProduced,
+             execution.ObjectsNotJudged,
+             execution.ObjectsJudged,
+             execution.MissingInputs.Any(input => input.Attribute == "userAccountControl")));
+    }
+
+    /// <summary>
     /// An enabled computer with the same shape is still reported, so the exclusion is not a blanket
     /// one.
     /// </summary>
@@ -273,7 +307,7 @@ public sealed class LapsMissingOnComputerTests
         public string? OperatingSystemVersion { get; init; } = ModernServerBuild;
         public string? WindowsLapsExpiration { get; init; }
         public string? LegacyLapsExpiration { get; init; }
-        public uint UserAccountControl { get; init; } = 0x1000;
+        public uint? UserAccountControl { get; init; } = 0x1000;
         public int? PrimaryGroupId { get; init; }
     }
 

@@ -109,9 +109,10 @@ public sealed class LapsRotationStale : IRule
             return RuleVerdict.Judged([]);
 
         // The owner's decision of 2026-09-03, and it applies here more plainly than anywhere: a
-        // disabled computer account has no running machine, so nothing is failing to rotate.
-        if (LapsAttributes.IsDisabled(subject))
-            return RuleVerdict.Judged([]);
+        // disabled computer account has no running machine, so nothing is failing to rotate. An
+        // account whose state could not be read is refused rather than silenced - see P-158.
+        if (LapsAttributes.RefusalFor(subject) is { } accountState)
+            return accountState;
 
         if (context.AttributeVisibility is not { } visibility)
             return RuleVerdict.CouldNotResolve([new UnresolvedInput(

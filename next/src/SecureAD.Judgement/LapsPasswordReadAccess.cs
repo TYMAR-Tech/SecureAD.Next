@@ -87,9 +87,10 @@ public sealed class LapsPasswordReadAccess : IRule
 
         // No live machine, so no local administrator password for anything to read. Consistent with
         // SEC-091, and for the same reason: the exposure lives on the machine's local security
-        // database, and a stale account in the directory has no machine attached to it.
-        if (LapsAttributes.IsDisabled(subject))
-            return RuleVerdict.Judged([]);
+        // database, and a stale account in the directory has no machine attached to it. An account
+        // whose state could not be read is refused rather than silenced - see P-158.
+        if (LapsAttributes.RefusalFor(subject) is { } accountState)
+            return accountState;
 
         if (context.SchemaGuids is not { } schema || context.MembersOfPrincipal is not { } expand)
         {

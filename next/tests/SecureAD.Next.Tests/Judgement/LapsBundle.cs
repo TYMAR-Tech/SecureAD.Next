@@ -61,7 +61,7 @@ internal static class LapsBundle
         string? operatingSystemVersion,
         string? windowsLapsExpiration,
         string? legacyLapsExpiration,
-        uint userAccountControl,
+        uint? userAccountControl,
         bool confidential,
         bool windowsLapsInSchema,
         DateTimeOffset started,
@@ -84,9 +84,16 @@ internal static class LapsBundle
             var attributes = new List<EvidenceAttribute>
             {
                 Multi("objectClass", objectClasses),
-                Text("userAccountControl", userAccountControl.ToString(CultureInfo.InvariantCulture)),
                 Text("sAMAccountName", NameOf(dn)),
             };
+
+            // Null writes no attribute at all, which is the state P-158 is about: a computer whose
+            // account control the capture never read. It must not be confused with a zero value.
+            if (userAccountControl is { } accountControl)
+            {
+                attributes.Add(
+                    Text("userAccountControl", accountControl.ToString(CultureInfo.InvariantCulture)));
+            }
 
             if (operatingSystem is not null)
                 attributes.Add(Text("operatingSystem", operatingSystem));

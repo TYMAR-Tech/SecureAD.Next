@@ -114,8 +114,56 @@ public static class LapsAttributes
     /// </para>
     /// </remarks>
     /// <param name="subject">The object being judged.</param>
-    public static bool IsDisabled(ObjectAttributes subject) =>
-        (AttributeReading.UnsignedInteger(subject, "userAccountControl") & AccountDisabled) != 0;
+    public static AccountState StateOf(ObjectAttributes subject) =>
+        AttributeReading.UnsignedInteger(subject, AccountControlAttribute) is not { } flags
+            ? AccountState.Unknown
+            : (flags & AccountDisabled) != 0 ? AccountState.Disabled : AccountState.Enabled;
+
+    /// <summary>The attribute the answer rests on, named once so a refusal can cite it.</summary>
+    public const string AccountControlAttribute = "userAccountControl";
+
+    /// <summary>
+    /// What a LAPS rule must do about this account before it judges anything, or <c>null</c> to
+    /// carry on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Held in one place because it is one decision, taken once, and applied by four rules. A
+    /// disabled account is silence - the owner's decision above. An account whose state could not be
+    /// read is a refusal, and that is the correction recorded as <c>P-158</c>.
+    /// </para>
+    /// <para>
+    /// <b>The two must not be the same answer.</b> Until 2026-09-10 they were:
+    /// <c>IsDisabled</c> read a nullable <c>uint</c> and compared it with
+    /// <c>(flags &amp; AccountDisabled) != 0</c>, and a lifted comparison against <c>null</c> is
+    /// <c>true</c> in C#. So a computer whose <c>userAccountControl</c> was never captured was
+    /// reported as disabled, and four rules fell silent about a machine they knew nothing about. The
+    /// screen then said what it says about a machine that is genuinely fine, which is the one thing
+    /// this product must not do - <c>docs/decisions/0002</c>, and the reason gate 4 exists.
+    /// </para>
+    /// </remarks>
+    /// <param name="subject">The object being judged.</param>
+    public static RuleVerdict? RefusalFor(ObjectAttributes subject) => StateOf(subject) switch
+    {
+        AccountState.Unknown => RuleVerdict.CouldNotJudge([AccountControlAttribute]),
+        AccountState.Disabled => RuleVerdict.Judged([]),
+        _ => null,
+    };
+
+    /// <summary>Whether the computer account is live, as far as the capture can say.</summary>
+    public enum AccountState
+    {
+        /// <summary>The account is not disabled, so the LAPS rules apply to it.</summary>
+        Enabled,
+
+        /// <summary>Disabled, so there is no running machine and no local password to rotate.</summary>
+        Disabled,
+
+        /// <summary>
+        /// The attribute was not captured, so neither can be said. Never read as either answer.
+        /// </summary>
+        Unknown,
+    }
 
     /// <summary>
     /// What a rule may do about an attribute, given what this forest's schema said about it.

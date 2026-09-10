@@ -91,9 +91,10 @@ public sealed class WindowsLapsNotAppliedOnCapableComputer : IRule
             return RuleVerdict.Judged([]);
 
         // Excluded for the reason SEC-091 gives: a disabled computer account has no running machine
-        // behind it, so there is nothing for a policy to reach and nothing to migrate.
-        if (LapsAttributes.IsDisabled(subject))
-            return RuleVerdict.Judged([]);
+        // behind it, so there is nothing for a policy to reach and nothing to migrate. An account
+        // whose state could not be read is refused rather than silenced - see P-158.
+        if (LapsAttributes.RefusalFor(subject) is { } accountState)
+            return accountState;
 
         if (context.AttributeVisibility is not { } visibility)
             return RuleVerdict.CouldNotResolve([new UnresolvedInput(
