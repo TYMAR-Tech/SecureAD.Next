@@ -55,6 +55,17 @@ protected-principal product and principal expansion.
 | `PrincipalAuthorityScope` | The boundary of a catalogue claim, not proof of a held permission |
 | `PrincipalClassification` | Independent identifier-level answers for breadth, SID history, ownership, control-plane scope and Tier 0 |
 | `PrincipalClassificationRegistry` | Shared versioned identifier data with separate predicates under decision 0101 |
+| `Tier0IdentityScope` | Domain, forest-root or BUILTIN resource context required by a canonical Tier-0 identifier |
+| `Tier0State` | Established, not established or unknown classification, separate from expectedness |
+| `Tier0Basis` | Core identity, effective membership or separately qualified direct control |
+| `Tier0Limitations` | Explicit missing input, unsupported qualification and processing limits |
+| `Tier0InputBinding` | Evidence and Derivation seals, generation, forest-root context and semantic versions |
+| `Tier0Target` | Capture-local GUID/DN/naming-context identity with domain and scoped SID |
+| `Tier0Evidence` | An original attribute value and ordinal supporting a classification |
+| `Tier0Support` | One independently qualified root/basis with immutable source witnesses |
+| `Tier0Coverage` | Capture, supported-analysis and processing completeness kept separate |
+| `Tier0Classification` | One object's source-bound answer and retained independent supports |
+| `Tier0Classifier` | Qualifies canonical core identities and supplied same-domain membership witnesses without graph expansion |
 | `PrincipalExpansionOutcome` | Whether a principal was expanded, and if not, why not |
 | `ExpandedPrincipal` | One principal found inside another, with the path that reached it |
 | `PrincipalExpansion` | Everything inside one principal, and what the walk could not reach |
@@ -538,6 +549,36 @@ version beside their expectedness reason. Catalogue version 2 records the P-150 
 BUILTIN domain expectedness in Judgement; it does not change the derivation schema, stored membership
 routes, owner acceptance or protection. Existing derivations can be reused when re-judging for that
 correction. The measured result is in [the judgement store](../judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+
+### Shared Tier-0 foundation — decision 0112
+
+Catalogue **3** corrects the Tier-0 predicate centrally against 0006 and the explicit 0099 reconciliation
+in [0112](../../decisions/0112-shared-tier-0-classification-and-ownership-contracts.md). Other registry
+predicates retain their answers. Identifier scope and expected object class are carried by that same
+registry, never a second ownership list. Forest-root identities require the supplied captured root
+context; syntax alone does not establish an object's identity or administrative authority.
+
+`Tier0Classifier.Classify` consumes a versioned source binding, a capture-local target, schema-11
+membership input and optional existing membership-route witnesses. It checks unique SID/DN identity,
+captured object class, issuing-domain identity and the applicable domain naming context. The supported
+membership adapter rechecks supplied same-domain chains against captured `member`, `memberOf`,
+`primaryGroupID` and security group types. It does not trust a protection flag or catalogue-entry ID to
+make the root Tier 0. Independent positive supports retain their original attribute values/ordinals;
+duplicate witnesses do not multiply them. Cancellation interrupts the call rather than returning a
+negative result. Under [0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md),
+`ClassifyMany` supplies the audit path with one reusable DN/scoped-SID/domain-root index. Single-object
+and batch calls use the same evaluator. Tests compare their complete serialized proof and verify one
+enumeration of the captured population; this is functional validation, not a production timing claim.
+
+**This is not the complete Tier-0 population.** Existing route summaries
+are protection-rooted and incomplete for this purpose. Missing routes remain Unknown. Cross-domain
+membership, evidence-backed DC/CA asset classification, operational direct control and dependency
+qualification are not implemented by this producer. Its coverage always states these unsupported or
+incomplete bases, even when a core or effective-membership witness is established. There is no new
+Derivation table, graph walk, requester expansion or production budget. Source-binding validation is
+structural; callers must first verify the consumed stores and seals. The shared contracts are public
+for cross-layer consumption and are now reached from the scoped audit path. Missing/unsupported
+classification remains visible in persisted coverage; no new membership expansion is activated.
 
 ### Independent membership routes — schema 10, decision 0108
 

@@ -72,6 +72,7 @@ public sealed class ShellLayerTypesTests
     private static readonly string[] NewAuditFiles =
     [
         "ViewModels/NewAuditViewModel.cs",
+        "ViewModels/AuditProgressViewModel.cs",
         "ViewModels/AuditRowViewModel.cs",
         "ViewModels/ExcludedDomainViewModel.cs",
         "ViewModels/ExclusionAttestationViewModel.cs",
@@ -226,7 +227,8 @@ public sealed class ShellLayerTypesTests
     [Fact]
     public void TheCheckReadsBothDocumentsAndBothComponents()
     {
-        Assert.Equal(31, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(31 + 1, NewAuditFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("AuditProgressViewModel", NewAuditFiles.SelectMany(DeclaredTypeNames));
         Assert.Equal(9, HomeFiles.SelectMany(DeclaredTypeNames).Distinct(StringComparer.Ordinal).Count());
         // 29 to 31 on 2026-09-03, when the LAPS inventory added LapsComputerViewModel and
         // LapsCountViewModel to the assets component; 31 to 32 when the rules listing added

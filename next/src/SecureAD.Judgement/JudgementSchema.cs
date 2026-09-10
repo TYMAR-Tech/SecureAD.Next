@@ -32,11 +32,22 @@ public static class JudgementSchema
     /// The schema version stamped into every judgement store.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Recorded so a reader can refuse a store it does not understand rather than misreading one.
     /// Unlike the evidence version this is cheap to raise: a store that cannot be read is deleted
     /// and the bundle judged again, and nothing is lost because the evidence was never touched.
+    /// </para>
+    /// <para>
+    /// <b>28 is required because stored meaning changed while stored shape did not.</b> Under
+    /// decision 0116 discovery runs before detailed assessment and decides its scope, so
+    /// <c>ControlEdgePage</c>'s counts cover the objects that were assessed rather than the whole
+    /// captured forest. A 27 file and a 28 file would otherwise be indistinguishable while meaning
+    /// different things, and a reader would present a scoped count as a forest-wide total - which is
+    /// the product telling a customer something false. Older generations are re-judged for current
+    /// readback rather than migrated or relabelled.
+    /// </para>
     /// </remarks>
-    public const int Version = 24;
+    public const int Version = 28;
 
     private static readonly string[] TableDdl =
     [

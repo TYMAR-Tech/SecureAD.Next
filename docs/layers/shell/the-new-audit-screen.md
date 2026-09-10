@@ -1,6 +1,6 @@
 # The New Audit screen
 
-**Code:** `next/src/SecureAD.Shell/ViewModels/NewAuditViewModel.cs`, `AuditRowViewModel.cs`,
+**Code:** `next/src/SecureAD.Shell/ViewModels/NewAuditViewModel.cs`, `AuditProgressViewModel.cs`, `AuditRowViewModel.cs`,
 `ExcludedDomainViewModel.cs`, `ExclusionAttestationViewModel.cs`, `DomainDetailsViewModel.cs`,
 `next/src/SecureAD.Shell/Services/AuditPlan.cs`, `AuditReview.cs`, `ExclusionAttestation.cs`,
 `INewAuditDialog.cs`, `NewAuditDialog.cs`, `IJudgingLauncher.cs`, `JudgingLauncher.cs`,
@@ -27,6 +27,7 @@ describes `Audit`. Where the run library is chosen is [`the home screen`](the-ho
 | Type | What it is |
 |---|---|
 | `NewAuditViewModel` | The New Audit window: what would be read, from where, and the one place a run is started |
+| `AuditProgressViewModel` | Current phase, real counter text, monotonic elapsed/last-update ages and stopping/terminal presentation |
 | `AuditScreen` | The screens of the New Audit window, in the order they are reached |
 | `AuditRowViewModel` | One row of the New Audit table, whatever kind of domain it is about |
 | `DomainRowViewModel` | One domain's row of the New Audit table |
@@ -184,7 +185,7 @@ another wait he never agreed to.
 no objects at all; there is nothing there for a rule to read, so nothing is judged and nothing is
 offered.
 
-**A judging that fails does not fail the run.** The evidence is the expensive half and the half that
+**A judging failure does not invalidate sealed Evidence, but it is not a successful completed audit.** The evidence is the expensive half and the half that
 cannot be recovered — it took hours and read a forest that has moved on since. A judging can be made
 again from the same bundle whenever the defect behind it is fixed, so a failed judging is reported
 and the evidence is still offered. Throwing the capture away would cost the operator the part he
@@ -198,6 +199,55 @@ makes a security decision on that difference.
 **The work happens off the interface thread and reports as it goes.** The predecessor took four to
 five hours over the owner's production forest, and a window frozen for an afternoon is
 indistinguishable from one that has crashed.
+
+### Visible phase progress — approved correction
+
+The owner reported that a copied lab bundle eventually judged in 222 seconds while the Shell appeared
+stuck after sealing. Inspection found that the launchers already forwarded progress, but the view
+bound neither the derivation/judging reports nor their counters, kept a static capture message on
+screen, and discarded the derivation sub-phase name. The owner approved a pinned phase panel, real
+counters, elapsed/last-update times and separate outcomes, then authorized this bounded correction.
+
+The panel sits above the scrolling review. It covers discovery/preflight messages, **Capturing and
+sealing evidence**, derivation sub-phases, judging input preparation/object evaluation, requester
+finalization, findings writes, publication and final readback. Capture still has no per-object progress
+channel; it remains indeterminate rather than manufacturing a total. Derivation shows objects read
+during its evidence-reading phase. Judging shows unique objects processed, not the sum of per-rule
+evaluation counts. No percentage, denominator or completion-time estimate is invented.
+
+An owned, awaited periodic UI refresh updates monotonic elapsed time and the age of the last received
+phase/progress event. A timer tick never advances the work counter or resets that event age. The caveat
+states that elapsed time is not progress evidence. Cancellation shows stopping until the work exits;
+late callbacks are guarded by the run and active phase. Starting another attempt clears old reports,
+findings and bundle identity. Separate capture, derivation and judging reports remain visible, including
+degraded/refused/stopped outcomes: **Sealed** is a capture result, not judging completion.
+
+This changes transient progress and presentation only. Judgement schema 24/control engine 8,
+Derivation schema 11, catalogue 2, permission counting and production activation budgets are unchanged.
+It is not the performance/storage fix or the broader logging-hardening session. Tests use held-open
+synthetic launchers, controlled clocks, real offline launchers and production XAML at 900×430,
+1300×650 and 1600×900; an unbound phase-label mutation must fail the view check. Real lab/display
+verification remains outstanding. No new live directory operation is authorized by this correction.
+
+**Verification:** solution build succeeded; the source-verified Release offline selection passed
+**4,372/4,372** with no failures or skipped tests within that selection. The four stage-status tests
+were explicitly excluded, and the cancelled stage-status script/self-test was not retried. Targeted
+coverage passed **179/179**, with both saved command summaries recording exit code 0 and both TRX
+reports recording `Completed`. SDK 10.0.400 and `--no-build --no-restore` were used after checking the
+assembly against changed inputs. The test assembly SHA-256 is
+`F3B05402A7FD2FBBA97344F886D9029F06F0903463C3AE54378BD5E3734C168F`.
+
+The local-only validation folder has identifier `AuditProgress-a10bb329cef741b882f1382063032938` beneath
+the development workspace's ignored Visual Studio directory. It contains the offline/targeted TRX
+reports, logs, command summaries and Cobertura report; these are not shipped repository inputs.
+Selection-specific executable-line observations are AuditProgressViewModel 41/41, NewAuditViewModel
+698/789, JudgingLauncher 52/56 and DerivationLauncher 33/35. These are not full branch coverage or a
+production-scale performance result. No existing golden hashes, schemas or historical artifacts changed.
+
+The older `ProsePathCitationTests` portability failure reported from the lab clone is not resolved by
+this local pass: the earlier ignored reports exist on this machine. Fixing portable evidence references,
+broader logging hardening, judging/storage profiling and real Release/display validation remain separate
+follow-up work. This progress implementation remains uncommitted until separately authorized.
 
 **`IsJudging` is held apart from `IsCapturing`**, because
 [`0072`](../../decisions/0072-analysis-and-capture-do-not-run-at-the-same-time.md) turns on whether a

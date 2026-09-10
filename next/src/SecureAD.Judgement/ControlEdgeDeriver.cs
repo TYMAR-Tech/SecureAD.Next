@@ -14,7 +14,7 @@ internal static class ControlEdgeDeriver
     private const int ControlAccess = 0x100;
 
     public static ControlObjectEvaluation Derive(ObjectAttributes subject, ObjectPermissions? permissions,
-        JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid)
+        JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid, bool includeOwnerTransitions = true)
     {
         var sidValue = subject.Find("objectSid")?.OnlyValue;
         var targetSid = sidValue?.Bytes is { } bytes ? Sid.ToText(bytes) : sidValue?.Text;
@@ -81,7 +81,7 @@ internal static class ControlEdgeDeriver
                     capability, evaluation, unknown, expected.State, expected.Reason, PrincipalClassificationRegistry.Version,
                     generation, derivationGeneration, true, evidence, [], routes) { DescriptorOutcome = effective.Outcome.ToString() };
                 edges.Add(edge);
-                if (capability == ControlCapability.CanSetOwner)
+                if (includeOwnerTransitions && capability == ControlCapability.CanSetOwner)
                     edges.Add(OwnershipControlDeriver.Transition(edge, subject, permissions, context, trustee, domainSid));
             }
         }

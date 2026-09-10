@@ -17,7 +17,7 @@ public sealed class PrincipalClassificationRegistryTests
         Assert.True(answer.IsSensitiveSidHistory);
         Assert.Equal(PrincipalAuthorityScope.None, answer.ControlPlaneScope);
         Assert.Equal(PrincipalAuthorityScope.None, answer.OwnerScope);
-        Assert.Equal(rid is 549 or 551 ? true : (bool?)null, answer.IsTier0Asset);
+        Assert.Equal(rid is 548 or 549 or 550 or 551 ? true : (bool?)null, answer.IsTier0Asset);
         Assert.Equal(PrincipalClassificationRegistry.Version, answer.CatalogueVersion);
     }
 
@@ -35,14 +35,14 @@ public sealed class PrincipalClassificationRegistryTests
     }
 
     [Fact]
-    public void SchemaAuthorityIsNotUnrestrictedAndDcGroupsAreNotDcAssets()
+    public void SchemaAuthorityIsNotUnrestrictedAndTier0DcGroupsAreNotExpectedControllers()
     {
         var schema = PrincipalClassificationRegistry.For("S-1-5-21-1-2-3-518");
         Assert.Equal(PrincipalAuthorityScope.Schema, schema.OwnerScope);
         Assert.Equal(PrincipalAuthorityScope.Schema, schema.ControlPlaneScope);
         Assert.False(PrincipalClassificationRegistry.AcceptedOwnerRootRids.Contains(518));
         var controllers = PrincipalClassificationRegistry.For("S-1-5-21-1-2-3-516");
-        Assert.Equal(false, controllers.IsTier0Asset);
+        Assert.Equal(true, controllers.IsTier0Asset);
         Assert.Equal(PrincipalAuthorityScope.None, controllers.ControlPlaneScope);
     }
 

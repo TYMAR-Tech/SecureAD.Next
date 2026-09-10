@@ -908,3 +908,172 @@ review cycle removed.**
 | `AC-S6-23` | A replication capability never targets a child object beneath the naming-context root. |
 | `AC-S6-24` | An owner-right precondition that could not be read never becomes `NotEstablished`. |
 | `AC-S6-25` | An explicit `WRITE_DAC` grant to the owner remains `Established` even where `BlockOwnerImplicitRights` blocks the implicit route. |
+
+---
+
+## 15. Proposed shared Tier-0 and ownership contracts
+
+**Status: accepted bounded foundation under [0112](../decisions/0112-shared-tier-0-classification-and-ownership-contracts.md);
+first-slice contracts and supported adapters implemented.** The owner
+approved the [shared application-wide direction](../WHAT-THE-PRODUCT-IS.md#how-judging-works): automatic
+detailed ownership assessment for core Tier 0 and its identified controllers/dependencies, explicit
+offline single-object assessment elsewhere, and one shared meaning of target importance. The earlier
+identifier-only proposal is superseded by this shared model. Catalogue 3 corrects the central Tier-0
+predicate. The selector library is implemented under
+[0113](../decisions/0113-automatic-ownership-scope-follows-shared-relations.md); the approved
+[0114 integration](../decisions/0114-scoped-ownership-assessment-during-judging.md) now uses it during
+judging with schema 26/control engine 9 and status-only UI. The separate on-demand target store and
+object runner remain subsequent work. Their action wording/layout still requires separate approval.
+
+### One authority, separate claims
+
+[0006](../decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) remains the core Tier-0 policy;
+its membership is not copied here or into an ownership selector. The shared principal registry remains
+the identifier classifier, with evidence-backed object context required before applying its answer to
+a captured target. Protection, accepted ownership, expected administration and rule severity remain
+independent under [0101](../decisions/0101-one-versioned-principal-registry.md).
+
+**The explicit reconciliation is recorded in 0112.** Registry version 2 omitted
+some 0006 members, and 0099's statement that the Domain Controllers group is not a Tier-0 object
+conflicted with 0006. Catalogue 3 retains 0006's group classification and the corrected 0099 clarifies:
+a group's classification is not a claim that the group is itself a domain-controller computer, nor
+does it grant expectedness to that group. The owner explicitly approved the policy reconciliation and
+affected classifier expectation changes. Frozen historical fixtures and benchmarks remain unchanged.
+
+The broader judgement design supplies useful distinctions, not a replacement seed list. Its outdated
+exclusions must not re-enter through the new model. Shared contract version 1 distinguishes:
+
+| Contract | Required meaning |
+|---|---|
+| `Tier0Classification` | A particular captured object's classification, supported by one or more independently evidenced bases: `Core`, `EffectiveMembership` or `DirectControl`. |
+| Classification state | `Established`, `NotEstablished` or `Unknown`, separate from coverage. One established basis can support a positive result despite missing alternative routes. A negative result is limited to the declared supported model and requires complete relevant evaluation; no matching identifier or missing route alone cannot establish it. |
+| Classification support | Basis, supporting object/root identity, original evidence references, applicable domain/forest/resource scope, qualification state and semantic versions. Retain independent supports rather than selecting one explanation and losing alternatives. |
+| `Tier0RelevanceRelation` | A directed, source-linked relationship from a possible controller or dependency to the object it could affect, with its relationship kind, prerequisites, qualification state and limitations. A relation is not itself a Tier-0 classification or a completed path. |
+| `Tier0Coverage` | Which inputs and relationship kinds were examined, which were unavailable or unsupported, whether processing completed, and typed limitations. Input completeness, supported analysis and processing completion are separate answers. |
+
+`DirectControl` is not inferred from every `ControlEdge` marked `Established`. That state establishes
+the edge's named permission, not necessarily the operation that would confer control. Qualification
+must name the capability, applicable target class/resource scope and established prerequisites. Until
+that qualification is supported, retain the relation with an explicit limitation instead of promoting
+the holder. In particular, an unverified owner transition cannot establish `DirectControl`.
+
+Effective membership consumes captured security-membership evidence and independently qualifies the
+root against the canonical Tier-0 classifier. Existing protection-rooted route summaries are reusable
+witnesses, not the complete Tier-0 membership population. Their absence proves neither non-membership
+nor lack of importance. Distribution-only, ambiguous or unsupported routes cannot silently establish
+effective authority. No requester expansion, new membership walk or production budget is enabled by
+introducing these contracts.
+
+Identifier/object-context facts belong with the shared classifier in Derivation. Interpretation of
+judged capabilities and the resulting shared relevance product belong in Judgement, outside
+ownership-specific code. Judgement already depends on Derivation; this proposal adds no reverse
+dependency, project or parallel principal catalogue. Other features consume the same classified facts
+and relations rather than implementing their own importance predicates.
+
+### Ownership consumes the shared result
+
+The ownership selector starts from established core targets and follows qualified incoming controller
+and dependency relations toward them. A relation from an administrator to an ordinary object does not
+make that ordinary object relevant merely because its controller is Tier 0. Conditional relations,
+including retained WRITE_OWNER candidates, remain available for relevance without claiming proven
+authorization or reachability. Relevance may continue through identified controllers; this does not
+recursively assign confirmed Tier-0 classification to every intermediate object.
+
+The selector records `Included`, `OutsideComputedScope` or `Undetermined` for a target, together with
+shared supporting relation references and coverage. Incomplete discovery cannot produce a definitive
+outside-scope answer. Keep discovered positives and record the uncertainty; do not silently expand
+detailed ownership work to the whole forest. Later traversal must deduplicate visited objects and
+relations rather than enumerate all paths or evaluate the same target once per route. Any processing
+budget and its validation require separate approval; no production threshold is supplied here.
+
+`OwnershipAssessmentResult` version 1 keeps these dimensions separate:
+
+- **Origin:** `AutomaticAudit` or `ExplicitObjectRequest`; requesting an outside-scope object does not
+  alter the recorded automatic scope or relabel the result as automatic.
+- **Selection:** the target's automatic scope decision and inclusion reasons, with scope coverage.
+- **Execution:** not assessed, completed, completed with limitations, cancelled or failed. Running
+  state belongs to an attempt, not a published completed result. Completed with no eligible candidates
+  is a recorded assessed outcome, not an absent result.
+- **Assessment:** each candidate's conclusion, prerequisites and compact shared source proof. Unknown
+  is distinct from not assessed and not established. An absent legacy assessment is not retroactively
+  labelled outside automatic scope.
+- **Read availability:** available, missing, stale, unsupported version or invalid proof. Failure to
+  read a result is not a conclusion about the directory.
+
+The audit and explicit request use one evaluator. The ownership assignment/server-behavior gate stays
+open under [0103](../decisions/0103-an-established-primitive-is-not-contaminated-by-an-unverified-compound.md).
+Current-owner findings, existing-owner control, primitive permissions, full-control supports,
+expectedness and group-held counting remain separate and preserved. A matching WRITE_DAC/full-control
+route is not a reason to delete an alternative ownership relation.
+
+### Bound identity and immutable publication
+
+Every shared result names the Evidence seal, consumed Derivation generation and seal where applicable,
+target identity, resource context and classifier/policy/evaluator/contract versions. Identity includes
+the captured object GUID when available, captured DN and naming context, with domain and SID scope
+where applicable; a SID or display name alone is not a cache key. Unresolved or ambiguous identity
+cannot produce a reusable successful assessment. Missing Derivation input is explicitly unavailable,
+not an invitation to derive silently or substitute another generation.
+
+Automatic scope and assessment results are written into the private Judgement generation before its
+normal publication. Its generation ID binds internal records; the enclosing seal is verified on read,
+not embedded into its own hashed payload. Relevant evaluation time and owner-rights settings remain
+part of the reproducible input context.
+
+Explicit requests publish a separate, small, target-specific immutable generation containing only the
+target's required source proof and results. It also binds the selected source Judgement generation and
+seal and relevant audit context. It neither appends to a published audit nor copies/reseals the audit
+database. Reuse the existing seal-and-manifest publication pattern with target-scoped paths: unique
+attempt staging, immutable result database and seal, then atomic replacement of the small manifest
+for that complete input/target/version key. Serialize publication for the same key; a late attempt
+cannot replace a newer request's selection. Never use a raw DN as a filesystem path.
+
+Before publication and when reading, verify seals, input bindings, target/resource identity, supported
+versions, permission associations and evaluator replay. A changed input or version is stale; invalid
+proof is rejected even if an attacker recomputed the result-file hash. Cancellation or failure before
+publication leaves the previous selected result intact. Cancellation arriving after the atomic
+publication point must not relabel a successfully published result as unpublished. Any retained
+attempt outcome is separate from the successful-result manifest and never masquerades as a verdict.
+Readers display only matching, validated stored results. Opening a page performs no assessment or
+publication; no UI action or wording is approved by this contract.
+
+### First bounded implementation slice approved under 0112
+
+1. Record the explicit policy reconciliation and shared contracts in the governing decision record;
+   recheck numbering before creating it. Correct conflicting policy prose without changing expectedness.
+2. Correct the canonical identifier classifier centrally and version the changed answer. Validate
+   identity/context before applying it to an object. All other registry predicates retain their answers;
+   any changed catalogue-version metadata is an explicit compatibility delta, not a hidden no-change claim.
+3. Implement the shared classification, support, directed-relation and coverage models with validated
+   evidence bindings. Add supported adapters for canonical core classifications and existing membership
+   witnesses. Record unsupported asset, membership, capability and dependency qualification explicitly;
+   do not claim the partial producer is a complete Tier-0 population.
+4. Implement the ownership scope/result contracts and binding validation, without connecting them to
+   the audit loop, persistence writer, object command or Shell. Define no second Tier-0 membership list.
+5. Add offline tests anchored to governing policy and independently arranged evidence: known members,
+   lookalike identities/wrong forest or BUILTIN scope, multiple membership supports, missing routes,
+   distribution-only witnesses, reversed relevance direction, conditional control, and mismatched
+   target/generation/version bindings. Verify other registry predicates and existing ownership behavior
+   separately. A policy-mirroring test alone is not the complete validation argument.
+
+The [implemented foundation](../layers/judgement/the-judgement-store.md#shared-tier-0-relevance-and-ownership-contracts--decision-0112)
+establishes the shared contracts and supported evidence interpretation, not automatic
+ownership selection during audits or a completed path engine. The later
+[offline selector slice](../layers/judgement/the-judgement-store.md#offline-ownership-scope-selector--decision-0113)
+implements the reverse walk over supplied shared facts, with versioned results and partial cancellation.
+It selects established shared classifications and their identified candidate controllers, without
+claiming a complete forest scope from partial producers. The
+[schema-26 audit integration](../layers/judgement/the-judgement-store.md#scoped-ownership-during-judging--schema-26)
+now persists scope/coverage, appends selected-target assessments using shared proof, validates stored
+seed/inclusion witnesses on readback and displays the approved statuses. Later slices implement the
+separate target-specific publication/cache and explicit object execution. Their tests must cover
+audit/object parity, retained alternative supports, interrupted scope,
+corrupt/resealed proof, concurrent publication, cancellation and stale-result isolation. Exact UI
+wording/layout requires its own approval before Shell edits. Schema changes occur with their actual
+writers/readers, not speculatively during contract preparation.
+
+Validation stays synthetic/offline. Preserve frozen benchmarks, historical fixtures and retained
+captures; do not weaken old comparers to hide deliberately changed assessment counts. No new measurement
+harness, expensive export, excluded stage-status test, live access, recapture, production requester or
+member activation, production budget, commit or push is authorized. The first slice makes no runtime,
+storage-saving or production-acceptance claim.

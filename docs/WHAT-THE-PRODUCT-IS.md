@@ -46,6 +46,26 @@ unattended path, and the GUI is the worked path.
 
 ## How judging works
 
+**Release-run feedback changes the immediate priority.** The owner's lab investigation of
+`ad.lab-20260908-062400` reported judging completing in 222 seconds for 8,407 objects, with a 654 MB
+judgement store and 27 findings. The apparent hang was slow, silent judging after Evidence sealed,
+not proof of a stuck worker. These are lab-reported observations, not a measurement rerun on this
+development machine; comparisons with the older 13-second run include substantial changes in stored
+control evidence and require profiling before assigning cost to individual additions or rules.
+
+The owner authorized visible progress through all available audit phases and approved a pinned phase
+panel, real counters, elapsed/last-update ages and separate outcomes. The
+[New Audit progress correction](layers/shell/the-new-audit-screen.md#visible-phase-progress--approved-correction)
+records the implementation and limits. Performance/storage profiling and logging hardening remain
+separate work. Profiling can use sealed copies and representative synthetic data without contacting
+a directory; production-shaped synthetic results alone do not establish customer acceptance. Preserve
+original lab runs and historical artifacts. The reported clean-clone `ProsePathCitationTests` failure
+on local ignored coverage references remains a separate documentation-portability issue; a local pass
+where those artifacts exist does not resolve it. No publication or live work is authorized here.
+The progress correction built successfully and passed 4,372 offline tests (four stage-status tests
+excluded) plus 179 targeted coverage tests. Its detailed verification record is in the linked New Audit
+page. It adds no production budget and makes no improvement claim for the reported judging runtime.
+
 Decided, built and measured — see [`layers/judgement/`](layers/judgement/).
 
 - **One pass over the bundle, not one per rule.** Every object is streamed once and offered to every
@@ -84,7 +104,7 @@ records the final artifacts and outstanding acceptance boundaries. No production
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
 candidates remain Unknown, and no general member capabilities are expanded.
-The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 24 stores this
+The owner-to-DACL transition remains unknown and uncounted. Current judgement schema 27 stores this
 product, the bounded Self-Membership requester assessments introduced in schema 17, and discovery
 coverage introduced in schema 18; schema 19/control engine 3 introduced reset permission, and
 schema 20/control engine 4 added key-credential write permission and the property-set evidence safeguard;
@@ -93,6 +113,168 @@ schema 22/control engine 6 added existing-owner assessments and replay-validated
 schema 23/control engine 7 adds bounded full-control summaries with separate source proof and counting links;
 schema 24/control engine 8 adds explicitly budgeted member attribution, requiring current Derivation inputs;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
+Schema 25 implements the approved [shared permission-proof storage](layers/judgement/the-judgement-store.md#shared-permission-proof-storage--schema-25),
+with unchanged control engine, catalogue and input formats. Complete lab public-model comparison passes,
+and the database is 20.8% smaller including indexes and references. Exhaustive export allocation
+increased; no runtime or memory improvement is claimed. Production-shaped validation remains outstanding,
+and this work authorizes no production expansion budget or publication.
+
+**Scoped ownership during audits is implemented; explicit object requests remain pending.**
+The owner approved **core Tier 0 plus its identified controllers and dependencies** as the default
+scope for detailed ownership-takeover assessment during an audit. Other objects remain unassessed
+until the pending explicit single-object workflow is implemented; that workflow will use the existing
+captured evidence rather than contact the directory.
+The scope must be determined automatically; this slice adds no user-maintained importance or target
+list. Importance follows control relationships toward Tier 0, not everything an administrator owns
+or manages. Expected administrative authority remains separate from target importance.
+
+**One Tier-0 definition:** the owner explicitly requires reuse of the existing authoritative
+[Tier-0 policy](decisions/0006-tier-0-and-expected-admin-are-separate-sets.md) and its shared
+classification implementation. Ownership assessment must not introduce another Tier-0 list or
+copy the definition into its own selector. Any gap in evidence-backed classification must be
+resolved centrally against that policy. Additional controller/dependency inclusion is an assessment
+scope reason, not a second Tier-0 definition or a change to expected-admin policy.
+
+**Shared across the application, not owned by ownership assessment:** the owner agreed that target
+importance must come from one shared, evidence-backed Tier-0 model, reusable by ownership assessment,
+later path analysis and other features asking the same question. Reuse the broader design's
+distinctions between core targets, effective security-group membership, qualifying established direct
+control and longer or conditional reachability. Ownership consumes those shared facts and decides
+which targets receive detailed assessment; it does not create a parallel definition of importance.
+Being included because of a possible route or dependency does not establish that an object is Tier 0.
+These answers remain separate from protection, accepted ownership, expected administration and rule
+severity; they must not collapse into a universal privileged-or-important flag.
+
+The [broader judgement design](layers/specs/JUDGEMENT-HALF.md#three-tier-0-bases-with-different-remediations)
+already describes these distinctions, but is not a completed shared classifier. Its outdated seed
+exclusions must not override the authoritative Tier-0 policy. Existing membership and control evidence
+are reusable inputs, not proof that the combined classification is implemented. This agreement settles
+the shared direction, not approval of the earlier identifier-only implementation proposal, unresolved
+classification semantics or UI changes; revise the bounded implementation proposal against this model
+before editing runtime behavior. It does not require building the complete path engine first.
+
+The [revised shared-contract proposal](next/SPEC-stage-6-control-edges.md#15-proposed-shared-tier-0-and-ownership-contracts)
+defines classification and relevance separately, their evidence/version bindings, ownership assessment
+states and target-specific immutable publication. Its first implementation slice is central policy
+reconciliation, shared contracts, supported evidence adapters and offline tests; audit selection,
+persisted-format changes, object execution and UI integration were later work at that checkpoint. The owner explicitly
+approved that bounded implementation slice, including the 0006/0099 reconciliation, under
+[0112](decisions/0112-shared-tier-0-classification-and-ownership-contracts.md). This is implementation
+approval for the shared foundation, not approval to activate scoped audits or change the UI.
+
+**The bounded shared foundation is implemented.** Catalogue 3 corrects the canonical Tier-0 identifier
+predicate without changing expectedness or owner acceptance. The shared adapter qualifies captured
+core identities and supplied same-domain membership witnesses, retaining independent evidence and
+explicitly incomplete coverage. It does not yet classify all assets, expand membership or qualify
+operational direct control/dependencies. Shared directed relations and ownership result/binding
+contracts are built and now consumed by the schema-26 audit integration below. The
+[implementation record](layers/judgement/the-judgement-store.md#shared-tier-0-relevance-and-ownership-contracts--decision-0112)
+records that foundation checkpoint; its catalogue-2 compatibility does not override the current schema-version policy.
+
+**The offline selector is implemented as a library** under
+[0113](decisions/0113-automatic-ownership-scope-follows-shared-relations.md). It consumes the shared
+classifications and follows incoming captured controller relationships, retaining conditional links,
+alternative reasons and explicit incomplete results on cancellation. It blocks ambiguous identities,
+handles cycles without repeating target visits, and keeps selector version 1 separate from the
+classification version. The [selector implementation record](layers/judgement/the-judgement-store.md#offline-ownership-scope-selector--decision-0113)
+states the supported inputs and validation. The selector-only slice added no membership expansion or
+production limit; the subsequent integration now uses it during judging.
+
+**Audit integration and status-only presentation are implemented** under
+[0114](decisions/0114-scoped-ownership-assessment-during-judging.md): retain basic permissions and the
+single rule pass, select ownership scope, assess selected targets, persist coverage and then publish.
+The approved change uses schema 26/control engine 9 and requires re-judging older schema generations
+for current readback without rewriting those older files. The owner approved explicit assessed,
+not-assessed and unavailable-input status wording plus the two scope/assessment progress labels.
+No on-demand action button, live work, production expansion budget or performance claim is included.
+The [schema-26 implementation record](layers/judgement/the-judgement-store.md#scoped-ownership-during-judging--schema-26)
+describes proof-preserving staging, readback validation and the remaining acceptance limits. Shared
+classification remains partial: incomplete scope is visible, never a declaration that unassessed
+objects are safe. Subsequent single-run local diagnosis and read-only storage assessment are recorded
+in the [proposed bounded proof-storage redesign and validation plan](layers/judgement/the-judgement-store.md#proposed-bounded-proof-storage-redesign-and-validation-plan).
+They establish diagnostic costs, not a controlled speedup, guaranteed storage saving or production
+acceptance. The owner requested this plan before further code changes. Its recommended first slice
+shares exact repeated descriptions and complete membership explanations without narrowing basic
+auditing or changing its answers. The owner then explicitly approved S1 and exactly one before/one
+after lab judging execution under [0115](decisions/0115-share-judgement-explanations-and-membership-proof.md).
+S1 is implemented locally as schema 27 and both approved passes are complete. The paired comparison
+preserved the checked proof/products and reduced the new database by 10.51%, but measured elapsed time
+rose 9.22% and cumulative allocation rose 20.47%. **Performance acceptance is on hold; this is not a
+speed improvement or production acceptance.** The candidate and both runs are retained for review,
+with no additional timed judging run authorized. Transaction batching,
+validation-lifetime changes, graph-memory work and production-scale measurements remain separate work.
+
+This changes the expensive hypothetical owner-transition work, not the existing current-owner
+findings or the underlying WRITE_OWNER, WRITE_DAC and full-control evidence. Unassessed objects must
+say that they were not assessed automatically, never appear safe. Unknown relevance, unsupported
+dependencies and incomplete traversal must retain explicit coverage limitations. This is not approval
+to build or claim a complete Tier-0 path engine as a prerequisite to the bounded ownership change.
+The audit and object request must share one evaluator, retain alternative relationships and unresolved
+prerequisites, and persist generation-bound results rather than recomputing silently when a page opens.
+An object request is offline analysis, not a fresh directory observation, and must not rewrite sealed
+Evidence or an already-published Judgement generation.
+
+The ownership assignment/server-behavior verification gate remains open: requesting analysis cannot
+turn missing evidence into a proven takeover. New audits use scoped assessment. Explicit single-object
+execution and its separate target-specific publication remain unimplemented. The status-only UI
+changes are approved and implemented; an on-demand action and any further wording/layout changes
+retain their separate approval boundary.
+No live access, recapture, production expansion budget, commit or push is authorized.
+
+**Owner-confirmed next direction: Tier-0-driven detailed assessment, not implemented yet.**
+The owner clarified that captured owners and permissions already exist in Evidence; asking to
+"preserve capture" must not be presented as new work or a reason to build another complete permission
+copy. An unrelated ordinary account such as `jimmy.strand` needs those captured facts and applicable
+ordinary rule checks, not automatic detailed control/full-control or hypothetical ownership assessment.
+Those detailed questions become relevant when discovery working backward from Tier-0 assets reaches
+the account, or through an explicit investigation. Ownership is one possible control mechanism along
+a route, not a separate justification for deeply assessing the whole forest.
+
+Build the minimal shared path-discovery mechanism and use it to drive assessment admission in the
+same slice. Use the existing authoritative Tier-0 definition, captured owner/ACL facts and source-bound
+membership inputs; do not require an already-expanded forest-wide control store to discover scope.
+Possible/conditional relationships can justify inspection before takeover is proven, avoiding a
+circular dependency. Retain uncertainty and independent reasons, and do not label unreached objects
+safe when coverage is incomplete. Full path visualization, ranking, remediation and all-path enumeration
+are not prerequisites. Ordinary audit findings remain separate from scoped detailed-control products.
+
+The owner requested that this be recorded with an implementation plan for a new session. The
+[Tier-0-driven assessment plan](next/PLAN-tier-0-driven-assessment.md) records the pipeline replacement,
+contract/read-count consequences, ordinary-versus-reached account acceptance cases, approval gates and
+preservation/measurement limits. This is a broader behavior change than 0114's ownership-only gating
+or 0115's storage sharing. Exact new contracts and UI wording/layout must follow the repository's
+approval process; no further timed runs or new harnesses are authorized.
+
+The concrete contract is accepted as
+[0116](decisions/0116-discovery-first-assessment-admission.md). It settles four points the plan left
+open: broad principals are recorded as one explicit unresolved candidate rather than expanded into
+individual accounts; Judgement schema 28 is required because control-edge counts change meaning from
+forest-wide to assessed-scope while their shape does not; the added scope wording is approved in
+substance with its exact rendering confirmed before the Shell edit; and discovery retains the
+controller/target route it already computes instead of discarding it after admission.
+
+**As of 2026-09-10 this is built, and reachable only through an explicit entry point.**
+`JudgingRun.JudgeWithTier0Discovery` runs the gated pipeline; `JudgingRun.Judge` still assesses every
+streamed object, and that remains the default. The reason is not engineering. Under gating the stored
+control counts cover the assessed scope, and the screen has no wording yet saying so, in which case an
+administrator reading "2 unexpected permissions" would take it for two in the forest. **Do not flip
+the default until the scope wording and its placement are approved.**
+
+Decision [0117](decisions/0117-naming-context-roots-are-tier-0-assets.md) was accepted alongside it.
+A naming-context root holds no SID, so no controller route can reach it, and replication rights are
+granted *on the root* — which on a domain root is every credential in the domain. Discovery-first as
+originally written would have reported every partition root as not assessed automatically, in every
+forest, permanently. Roots are now Tier-0 seeds on the strength of what they are. What a permission on
+one *means* still differs by partition: the configuration and schema partitions hold no credential
+material, and `ReplicationControlDeriver` already keeps that distinction.
+
+**Path to Tier 0 is not implemented and is not part of this work.** Nothing in `next/src` builds or
+stores a chain from an ordinary account to a Tier-0 asset. `OwnershipScopeSelector` performs a backward
+walk from Tier-0 seeds and produces an admission decision — `Included`, `OutsideComputedScope` or
+`Undetermined` — not a route. The retained-route change above keeps that walk's own answer so a later
+path stage reads stored facts rather than re-traversing; it adds no path presentation, ranking,
+remediation or all-path enumeration, and none of those become prerequisites here.
+
 At the catalogue-2 checkpoint, re-judging alone obtained that correction. The current member-attribution
 product requires current Derivation inputs: re-derive and re-judge an isolated copy, without re-capture.
 The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)

@@ -66,7 +66,8 @@ internal static class FullControlEvaluator
             || !Enum.IsDefined(source.Availability) || !Enum.IsDefined(source.Dacl) || !Enum.IsDefined(source.Completeness)
             || !Enum.IsDefined(value.Expectedness) || !Enum.IsDefined(value.ExpectednessReason)
             || value.Expectedness == ControlExpectedness.Expected && value.ExpectednessReason == ControlExpectednessReason.ExpectedSchemaControlPlane
-            || value.PrincipalCatalogueVersion != PrincipalClassificationRegistry.Version
+            // Catalogue 3 changes only Tier-0 classification; catalogue-2 permission proof is still replayable.
+            || value.PrincipalCatalogueVersion is not (2 or 3)
             || source.Entries.Any(entry => entry is null || entry.Trustee is null || entry.ApplicationData is null)
             || source.Entries.Select(entry => entry.Ordinal).Distinct().Count() != source.Entries.Count
             || !source.Entries.Select(entry => entry.Ordinal).SequenceEqual(source.Entries.Select(entry => entry.Ordinal).Order()))

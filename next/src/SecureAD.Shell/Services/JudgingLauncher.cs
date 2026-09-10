@@ -43,10 +43,12 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
     /// Judges, then reads back what was written.
     /// </summary>
     /// <remarks>
-    /// <b>The counts are read from the store rather than tallied on the way past.</b> What the
+    /// <b>Finding counts are read from the store rather than tallied on the way past.</b> What the
     /// completion screen reports is then what an operator will find when he opens the findings, and
     /// cannot drift from it. A count assembled in flight would be a second account of the same
-    /// judging, and the two would disagree on the day one of them had a defect.
+    /// judging, and the two would disagree on the day one of them had a defect. The unique-object
+    /// count comes from the coordinator's stream progress; summing rule counts would count each
+    /// object once per applicable rule.
     /// </remarks>
     private Result<JudgingOutcome> Judge(
         string bundleDirectory,
@@ -58,19 +60,26 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
             ? log.Value
             : null;
 
+        long objectsRead = 0;
+        var watched = new Watching(value =>
+        {
+            objectsRead = Math.Max(objectsRead, value.ObjectsRead);
+            progress.Report(value);
+        });
         var judged = JudgingRun.Judge(
             bundleDirectory,
             RuleCatalogue.All,
             discoveryBudget,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
-            progress,
+            watched,
             file ?? RunLog.Discarded,
             cancellationToken);
 
         if (!judged.IsSuccess)
             return Result<JudgingOutcome>.Failure(judged.Error!);
 
+        progress.Report(new JudgingRun.JudgingProgress(objectsRead) { Phase = JudgingPhase.ReadingResults });
         var opened = JudgementReader.Open(bundleDirectory);
         if (!opened.IsSuccess)
             return Result<JudgingOutcome>.Failure(opened.Error!);
@@ -97,11 +106,17 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
         return Result<JudgingOutcome>.Success(
             new JudgingOutcome(
                 judged.Value,
-                stored.RulesRun.Sum(r => (long)r.ObjectsJudged),
+                objectsRead,
                 bySeverity,
                 couldNotDecide)
             {
                 Requesters = reader.ReadSelfMembershipSummary(),
             });
+    }
+
+    // Observe the stream synchronously before forwarding to the UI's asynchronous progress channel.
+    private sealed class Watching(Action<JudgingRun.JudgingProgress> report) : IProgress<JudgingRun.JudgingProgress>
+    {
+        public void Report(JudgingRun.JudgingProgress value) => report(value);
     }
 }

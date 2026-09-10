@@ -17,6 +17,11 @@ public sealed class DerivationLayoutTests
         [10] = "337F22D4D30400F866A667325815095115079A1A889BF259448EC1282D6FD3C4",
         // Schema 11 adds lossless membership sources; observed from this build, not a historical forest.
         [11] = "15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143",
+        // Schema 12 retains naming-context heads in the membership input under 0117. The tables are
+        // unchanged - this is a change in which objects are stored, not in the shape that stores
+        // them - so the layout hash is deliberately identical to 11 and the version carries the
+        // difference. A version 11 store is refused because it does not contain the roots at all.
+        [12] = "15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143",
     };
 
     [Fact]

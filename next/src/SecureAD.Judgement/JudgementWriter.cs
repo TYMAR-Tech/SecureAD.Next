@@ -72,16 +72,48 @@ public sealed class JudgementWriter : IDisposable
         ControlEdgeStorage.Start(_connection, captureComplete);
     }
 
-    internal void WriteControlEdges(ControlObjectEvaluation evaluation)
+    internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget = null)
     {
         ThrowIfFinished();
-        ControlEdgeStorage.Write(_connection, evaluation);
+        ControlEdgeStorage.Write(_connection, evaluation, ownershipTarget);
     }
 
     internal void CompleteControlEdges()
     {
         ThrowIfFinished();
         ControlEdgeStorage.Complete(_connection);
+    }
+
+    internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
+    {
+        ThrowIfFinished();
+        OwnershipAuditStorage.Start(_connection, GenerationId, description.EvidenceSeal, description.DerivationGenerationId,
+            description.EvaluationAsOf, ownerRightsContextHash);
+    }
+
+    internal void AssessAutomaticOwnership(BundleReader bundle, JudgementDescription description,
+        SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding? binding,
+        JudgingContext context, Func<string, string?> domainSid, long objectsRead,
+        IProgress<JudgingRun.JudgingProgress> progress, CancellationToken cancellationToken,
+        bool scopeAlreadyPlanned = false)
+    {
+        ThrowIfFinished();
+        OwnershipAuditRun.Assess(_connection, bundle, description, input, binding, context, domainSid,
+            objectsRead, progress, cancellationToken, scopeAlreadyPlanned);
+    }
+
+    /// <summary>
+    /// Derives detailed control products for the targets Tier-0 discovery admitted, and no others.
+    /// </summary>
+    /// <returns>The number of admitted targets whose products were derived.</returns>
+    internal int AdmitDiscoveredScope(BundleReader bundle, JudgementDescription description,
+        SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding binding,
+        Tier0DiscoveryScheduler discovery, JudgingContext context, Func<string, string?> domainSid,
+        Guid? derivationGeneration, CancellationToken cancellationToken)
+    {
+        ThrowIfFinished();
+        return Tier0AdmissionRun.Admit(_connection, bundle, description, input, binding, discovery, context,
+            domainSid, GenerationId, derivationGeneration, cancellationToken);
     }
 
     internal void WriteMemberAttributions(SecureAD.Derivation.CapturedMembershipInput input,
@@ -299,9 +331,11 @@ public sealed class JudgementWriter : IDisposable
     /// </para>
     /// </remarks>
     /// <param name="completedUtc">When judging finished.</param>
-    public void Complete(DateTimeOffset completedUtc)
+    /// <param name="cancellationToken">Cancels finalization before the generation is selected for publication.</param>
+    public void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken = default)
     {
         ThrowIfFinished();
+        cancellationToken.ThrowIfCancellationRequested();
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
@@ -311,6 +345,7 @@ public sealed class JudgementWriter : IDisposable
         FinishWithState(state, completedUtc);
 
         JudgementSchema.CreateDeferredIndexes(_connection);
+        cancellationToken.ThrowIfCancellationRequested();
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
@@ -318,7 +353,8 @@ public sealed class JudgementWriter : IDisposable
         AnalysisStoreLifecycle.Publish(
             _bundleDirectory,
             AnalysisStoreKind.Judgement,
-            GenerationId);
+            GenerationId,
+            cancellationToken);
         _finished = true;
     }
 

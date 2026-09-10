@@ -68,6 +68,22 @@
                        Style="{StaticResource SectionTitle}" />
         </StackPanel>
 
+        <Border x:Name="AuditPhaseProgress" DockPanel.Dock="Top" Margin="20,10,20,0" Padding="10"
+                BorderBrush="{StaticResource DividerBrush}" BorderThickness="1"
+                Visibility="{Binding Progress.HasStarted, Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="{Binding Progress.Heading}" FontWeight="{StaticResource EmphasisFontWeight}" />
+                <TextBlock Text="{Binding Progress.Status}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <ProgressBar IsIndeterminate="{Binding Progress.IsActive}" Height="4" Margin="0,6,0,4"
+                             Visibility="{Binding Progress.IsActive, Converter={StaticResource Shown}}" />
+                <TextBlock Text="{Binding Progress.Counter}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Progress.Elapsed}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Progress.LastUpdateAge}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Progress.Caveat}" TextWrapping="Wrap"
+                           Style="{StaticResource Caption}" Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+        </Border>
+
         <!-- =========================================================================
              The notice. What used to be a MessageBox - 0071.
 
@@ -508,19 +524,6 @@
                     </ItemsControl>
                 </StackPanel>
 
-                <!-- While it runs. Indeterminate for the same reason the opening pass is: the
-                     audit layer returns one result at the end, so a proportion would be invented. -->
-                <StackPanel Orientation="Horizontal"
-                            Margin="0,20,0,0"
-                            Visibility="{Binding IsCapturing, Converter={StaticResource Shown}}">
-                    <ProgressBar IsIndeterminate="True" Width="140" Height="4"
-                                 VerticalAlignment="Center" />
-                    <TextBlock Text="Reading every partition in the forest. This may take a while."
-                               Margin="10,0,0,0"
-                               VerticalAlignment="Center"
-                               Foreground="{StaticResource SecondaryTextBrush}" />
-                </StackPanel>
-
                 <!-- What it produced. There is no button here any more: View results is the
                      footer control, beside the act that ends the wizard, rather than stranded in
                      the body. The path stays, because knowing where a run landed is worth having
@@ -534,11 +537,21 @@
                                Margin="0,6,0,0" />
                 </StackPanel>
 
-                <TextBox Text="{Binding Report, Mode=OneWay}"
-                         Style="{StaticResource SelectableMessage}"
-                         MaxHeight="120"
-                         Margin="0,10,0,0"
-                         VerticalScrollBarVisibility="Auto" />
+                <StackPanel Margin="0,10,0,0" Visibility="{Binding HasCaptureReport, Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding Progress.CaptureHeading}" FontWeight="{StaticResource EmphasisFontWeight}" />
+                    <TextBox Text="{Binding Report, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                             MaxHeight="120" VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+                <StackPanel Margin="0,10,0,0" Visibility="{Binding HasDerivationReport, Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding Progress.DerivationHeading}" FontWeight="{StaticResource EmphasisFontWeight}" />
+                    <TextBox Text="{Binding DerivationReport, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                             MaxHeight="120" VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+                <StackPanel Margin="0,10,0,0" Visibility="{Binding HasJudgingReport, Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding Progress.JudgingHeading}" FontWeight="{StaticResource EmphasisFontWeight}" />
+                    <TextBox Text="{Binding JudgingReport, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                             MaxHeight="180" VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
             </StackPanel>
           </ScrollViewer>
         </Grid>

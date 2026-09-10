@@ -108,7 +108,8 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             WithholdGeneration("The judgement generation is missing. Return to the first page to read the products again.");
             return;
         }
-        if (_generation is not null && _generation != page.GenerationId)
+        if (_generation is not null && _generation != page.GenerationId
+            || page.OwnershipCoverage is { } ownership && ownership.GenerationId != page.GenerationId)
         {
             WithholdGeneration("The judgement changed while paging. Return to the first page to read the new generation.");
             return;
@@ -121,6 +122,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
                 + (ByHolder ? "Unanswered-object count covers the whole capture because unread ACLs may name this principal. " : "")
                 + "This is a named-trustee view, not an expansion of rights inherited through group membership. "
                 + "Counts include unknown candidates; expectedness is not proof that a capability is established.";
+        if (page.OwnershipCoverage is { } ownershipCoverage) Coverage += Environment.NewLine + ownershipCoverage.Description;
         Counts = page.ProductWasDerived
             ? $"{page.UnexpectedCount} unexpected; {page.UnknownCount} expectedness unknown; {page.ExpectedCount} expected "
                 + (IncludeExpected ? "(shown)." : "(hidden).")

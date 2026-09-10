@@ -10,6 +10,35 @@ public sealed class FullControlStorageTests
 {
     internal static ControlObjectEvaluation Evaluation(params PermissionEntry[] entries) => ControlEdgeDeriverTests.Derive(ControlEdgeDeriverTests.Permissions(entries));
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Tier0OnlyCatalogueChangesPreserveFullControlReadback(int version)
+    {
+        var evaluation = Evaluation(FullControlEvaluatorTests.Allow(0));
+        evaluation = evaluation with
+        {
+            Edges = evaluation.Edges.Select(edge => edge with { PrincipalCatalogueVersion = version }).ToArray(),
+            FullControlAssessments = evaluation.FullControlAssessments.Select(value => value with { PrincipalCatalogueVersion = version }).ToArray(),
+        };
+        using var reader = Open(Store([evaluation]));
+        var page = reader.ReadControlEdges(null, null, null, true, 0);
+        Assert.Equal((version, ControlEvaluationState.Established, 2),
+            (Assert.Single(page.FullControlAssessments).PrincipalCatalogueVersion, page.FullControlAssessments[0].EvaluationState, page.FullControlSupports.Count));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(4)]
+    public void AResealedUnsupportedFullControlCatalogueIsStillRejected(int version)
+    {
+        var directory = Store([Evaluation(FullControlEvaluatorTests.Allow(0))], connection => Execute(connection,
+            $"UPDATE full_control_assessment SET proof=json_set(proof,'$.PrincipalCatalogueVersion',{version})"));
+        using var reader = Open(directory);
+        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, null, null, true, 0));
+    }
+
     [Fact]
     public void BothDirectionsCountOneSummaryAndRetainPrimitiveEvidence()
     {
@@ -139,7 +168,7 @@ public sealed class FullControlStorageTests
     [Theory]
     [InlineData("PRAGMA foreign_keys=OFF; DELETE FROM full_control_source")]
     [InlineData("DELETE FROM full_control_support")]
-    [InlineData("DELETE FROM full_control_support; DELETE FROM full_control_assessment; DELETE FROM full_control_source")]
+    [InlineData("DELETE FROM full_control_support; DELETE FROM full_control_assessment; DELETE FROM full_control_source_entry; DELETE FROM full_control_source")]
     [InlineData("UPDATE full_control_assessment SET support_count=0")]
     [InlineData("UPDATE full_control_assessment SET expectedness='Expected'")]
     [InlineData("UPDATE full_control_assessment SET expectedness='Expected',proof=json_set(proof,'$.Expectedness',0,'$.ExpectednessReason',0)")]
@@ -148,8 +177,8 @@ public sealed class FullControlStorageTests
     [InlineData("UPDATE full_control_assessment SET proof=json_set(proof,'$.Source.HolderScope','another-domain')")]
     [InlineData("UPDATE full_control_assessment SET proof=json_set(proof,'$.Rights[0].GrantOrdinals[0]',99)")]
     [InlineData("UPDATE full_control_assessment SET proof=json_set(proof,'$.HasIndependentGrantRoutes',json('true'))")]
-    [InlineData("UPDATE full_control_source SET entries=json_set(entries,'$[0].AccessMask',131071)")]
-    [InlineData("UPDATE control_ace SET mask=0")]
+    [InlineData("UPDATE permission_entry SET mask=131071 WHERE id IN (SELECT entry_id FROM full_control_source_entry WHERE position=0)")]
+    [InlineData("UPDATE permission_entry SET mask=0 WHERE id IN (SELECT entry_id FROM control_ace)")]
     [InlineData("UPDATE full_control_assessment SET proof='{}'")]
     [InlineData("UPDATE full_control_assessment SET proof='not json'")]
     public void InconsistentProofIsRefusedBeforeCountsAreReturned(string mutation)

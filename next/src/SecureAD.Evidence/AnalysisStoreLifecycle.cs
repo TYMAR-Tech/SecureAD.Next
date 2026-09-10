@@ -61,12 +61,15 @@ public static class AnalysisStoreLifecycle
     /// <param name="bundleDirectory">The bundle containing the analysis store.</param>
     /// <param name="kind">Which disposable store is being published.</param>
     /// <param name="generationId">The generation written into the staged database.</param>
+    /// <param name="cancellationToken">Stops before the atomic manifest replacement; already-written generation files remain unselected.</param>
     public static AnalysisStoreGeneration Publish(
         string bundleDirectory,
         AnalysisStoreKind kind,
-        Guid generationId)
+        Guid generationId,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var stagingPath = StagingPath(bundleDirectory, kind);
         if (!File.Exists(stagingPath))
@@ -87,6 +90,7 @@ public static class AnalysisStoreLifecycle
 
         File.Move(stagingPath, dataPath);
         BundleSealing.Seal(dataPath, sealPath);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var manifestPath = ManifestPath(bundleDirectory, kind);
         var stagedManifestPath = manifestPath + ".partial";
@@ -106,6 +110,7 @@ public static class AnalysisStoreLifecycle
             stream.Flush(flushToDisk: true);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         File.Move(stagedManifestPath, manifestPath, overwrite: true);
         return generation;
     }

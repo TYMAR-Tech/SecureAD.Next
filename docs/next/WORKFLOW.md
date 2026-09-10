@@ -130,13 +130,25 @@ The stage implementation is shared, but orchestration is not yet shared:
 | Developer judging script | open existing Evidence/Derivation → judge | Developer-only entry point, not the target product workflow |
 | Budgeted member-attribution library entry point | open current Evidence/Derivation → `JudgeWithMemberAttribution` → persisted attribution/readback | Offline synthetic validation and budget measurement; no production default or host activation |
 
-The bounded member-attribution component is implemented in judgement schema 24/control engine 8 with
+The bounded member-attribution component was introduced in judgement schema 24/control engine 8 with
 Derivation schema 11 inputs; this is not a claim that its production workflow is enabled. Existing
 Shell judging supplies no member-expansion or requester-discovery budget. CLI capture still stops after
 derivation and therefore activates neither product. The member views read an existing stored product
 and do not start expansion. Any production activation requires separate approval and must follow this
 workflow rather than introducing a second orchestrator. See the
 [implementation and validation boundary](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution).
+
+The [schema-25 shared permission-proof storage](../layers/judgement/the-judgement-store.md#shared-permission-proof-storage--schema-25)
+changes disposable Judgement storage only. Complete sealed-lab public models match across schemas;
+production-shaped validation remains outstanding. It changes none of these host paths, permission
+semantics, input generations or budget/activation boundaries.
+
+**Planned internal judging change, not a new application stage:** the owner-confirmed
+[Tier-0-driven assessment plan](PLAN-tier-0-driven-assessment.md) separates ordinary forest-wide rule
+evaluation from admission to detailed control assessment. Minimal shared reverse discovery will consume
+captured/derived facts directly rather than require the detailed forest-wide control store first.
+The current pipeline has not been replaced yet. Scoped result/count semantics and presentation require
+their recorded approval gates; no live access or additional measurement allowance follows from this plan.
 
 Wave 7 replaces host-specific orchestration with one host-neutral application workflow. The replacement
 must delete the stage sequencing from `NewAuditViewModel` and `SecureAD.Cli.Program` in the same change;

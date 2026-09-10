@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Assessed" xml:space="preserve"><value>Assessed automatically from captured evidence.</value></data>
+  <data name="NotAssessed" xml:space="preserve"><value>Not assessed automatically.</value></data>
+  <data name="InputsUnavailable" xml:space="preserve"><value>Not assessed automatically: required derived inputs are unavailable.</value></data>
+  <data name="Incomplete" xml:space="preserve"><value>Automatic ownership scope is incomplete; this is not a safety verdict.</value></data>
+  <data name="HolderView" xml:space="preserve"><value>Ownership assessment is target-specific. Switch to the target view for this object's assessment status.</value></data>
+  <data name="InvalidProof" xml:space="preserve"><value>The stored automatic ownership scope or assessment proof is inconsistent with its source generation.</value></data>
+</root>

@@ -111,3 +111,9 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0109](decisions/0109-schema-admins-ownership-is-accepted-only-in-the-schema.md) | 2026-09-05 | Accepted | Schema Admins ownership is accepted only in the schema |
 | [0110](decisions/0110-membership-and-replication-have-distinct-control-edge-categories.md) | 2026-09-06 | Accepted | Membership and replication have distinct control-edge categories |
 | [0111](decisions/0111-bounded-self-membership-requesters.md) | 2026-09-06 | Accepted | Bounded Self-Membership requester assessments |
+| [0112](decisions/0112-shared-tier-0-classification-and-ownership-contracts.md) | 2026-09-08 | Accepted | Shared Tier-0 classification and ownership contracts |
+| [0113](decisions/0113-automatic-ownership-scope-follows-shared-relations.md) | 2026-09-08 | Accepted | Automatic ownership scope follows shared relations |
+| [0114](decisions/0114-scoped-ownership-assessment-during-judging.md) | 2026-09-08 | Accepted | Scoped ownership assessment during judging |
+| [0115](decisions/0115-share-judgement-explanations-and-membership-proof.md) | 2026-09-09 | Accepted | Share Judgement explanations and membership proof |
+| [0116](decisions/0116-discovery-first-assessment-admission.md) | 2026-09-10 | Accepted | Discovery-first assessment admission |
+| [0117](decisions/0117-naming-context-roots-are-tier-0-assets.md) | 2026-09-10 | Accepted | Naming-context roots are Tier-0 assets |

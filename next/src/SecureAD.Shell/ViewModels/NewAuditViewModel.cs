@@ -642,6 +642,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private readonly IJudgingLauncher _judging;
 
     private CancellationTokenSource? _stopping;
+    private long _progressEpoch;
+    private bool _auditHasGaps;
+    public AuditProgressViewModel Progress { get; } = new(TimeProvider.System);
 
     [ObservableProperty]
     private AuditScreen _screen = AuditScreen.Domains;
@@ -668,6 +671,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     /// <summary>What the derivation has to say, or null before one has run.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDerivationReport))]
     private string? _derivationReport;
 
     /// <summary>Whether the evidence is being judged, which follows the capture.</summary>
@@ -686,6 +690,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     /// <summary>What the judging has to say, or null before one has run.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasJudgingReport))]
     private string? _judgingReport;
 
     /// <summary>How many findings there were, by severity.</summary>
@@ -702,7 +707,12 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private string? _problem;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCaptureReport))]
     private string? _report;
+
+    public bool HasCaptureReport => Report is not null;
+    public bool HasDerivationReport => DerivationReport is not null;
+    public bool HasJudgingReport => JudgingReport is not null;
 
     [ObservableProperty]
     private string? _forestFqdn;
@@ -1585,8 +1595,22 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStart))]
     public async Task StartAsync()
     {
+        if (IsCapturing || IsBusy) return;
         _stopping?.Dispose();
         _stopping = new CancellationTokenSource();
+        _progressEpoch++;
+        _auditHasGaps = false;
+        Problem = null;
+        Notice = null;
+        WasStopped = false;
+        HasFinished = false;
+        BundleDirectory = null;
+        DerivationReport = JudgingReport = null;
+        ObjectsDerived = ObjectsJudged = 0;
+        Findings = new Dictionary<Severity, int>();
+        Progress.Begin(AuditProgressViewModel.Text("Capture"));
+        using var clockStop = new CancellationTokenSource();
+        var clock = RefreshProgressAsync(clockStop.Token);
 
         IsCapturing = true;
         Report = "Running. This reads every partition in the forest and may take a while.";
@@ -1620,14 +1644,19 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 // Each is asked to absorb its own defects. Deriving that threw its way out of here
                 // would skip the judging entirely and land in the catch below, which speaks for a
                 // capture and would say no bundle was sealed - by this point one has been.
+                _stopping.Token.ThrowIfCancellationRequested();
                 await DeriveAsync(sealedEvidence, _stopping.Token).ConfigureAwait(true);
+                _stopping.Token.ThrowIfCancellationRequested();
                 await JudgeAsync(sealedEvidence, _stopping.Token).ConfigureAwait(true);
+                _stopping.Token.ThrowIfCancellationRequested();
             }
 
             HasFinished = true;
+            Progress.End(AuditProgressViewModel.Text(BundleDirectory is null ? "NoEvidence" : _auditHasGaps ? "FinishedWithGaps" : "Finished"));
         }
         catch (OperationCanceledException)
         {
+            Progress.End(AuditProgressViewModel.Text("Stopped"));
             Report = BundleDirectory is { } sealedEvidence
                 ? $"Stopped. The evidence was already sealed and is safe at {sealedEvidence}."
                 : "Stopped. The run recorded why it stopped.";
@@ -1657,10 +1686,13 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 + "to report.";
 
             Notice = new Notice("The run could not finish", Report!);
+            Progress.End(AuditProgressViewModel.Text("Failed"));
         }
         finally
         {
             IsCapturing = false;
+            clockStop.Cancel();
+            await clock.ConfigureAwait(true);
         }
     }
 
@@ -1688,16 +1720,22 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private async Task DeriveAsync(string bundleDirectory, CancellationToken cancellationToken)
     {
         IsDeriving = true;
+        var epoch = _progressEpoch;
+        Progress.Report(AuditProgressViewModel.Text("Deriving"), string.Empty);
         DerivationReport = "Deriving from the evidence. Nothing is read from the directory now.";
 
         try
         {
             var derived = await _deriving
-                .RunAsync(bundleDirectory, new Progress<DerivationProgress>(OnDerived), cancellationToken)
+                .RunAsync(bundleDirectory, new Progress<DerivationProgress>(value =>
+                {
+                    if (epoch == _progressEpoch && IsDeriving) OnDerived(value);
+                }), cancellationToken)
                 .ConfigureAwait(true);
 
             if (!derived.IsSuccess)
             {
+                _auditHasGaps = true;
                 DerivationReport =
                     $"The evidence was sealed and is safe. Nothing could be derived from it: "
                     + $"{derived.Error!.Description} The facts can be derived again from this "
@@ -1706,9 +1744,16 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             }
 
             DerivationReport = Describe(derived.Value);
+            _auditHasGaps |= derived.Value.State != DerivationRunState.Completed || !derived.Value.EveryPhaseThatRanSucceeded;
+        }
+        catch (OperationCanceledException)
+        {
+            DerivationReport = AuditProgressViewModel.Text("DerivationStopped");
+            throw;
         }
         catch (Exception failure) when (failure is not OperationCanceledException)
         {
+            _auditHasGaps = true;
             // A defect in deriving costs the derivation and nothing else. Left to escape, it would
             // skip the judging and be reported as a run that failed - so a fault in the newest and
             // least-exercised stage would take the findings down with it, and the findings do not
@@ -1717,7 +1762,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             DerivationReport =
                 $"The evidence was sealed and is safe. Deriving stopped on an error the product "
                 + $"did not expect: {failure.Message} This is a defect rather than something you "
-                + "did. The judging below ran regardless, and the facts can be derived again from "
+                + "did. Judging can proceed only if its required inputs are available. The facts can be derived again from "
                 + "this bundle once the defect is fixed.";
         }
         finally
@@ -1727,8 +1772,12 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     }
 
     /// <summary>Notes how far the derivation has got, for the screen watching it.</summary>
-    private void OnDerived(DerivationProgress progress) =>
-        ObjectsDerived = progress.ObjectsRead;
+    private void OnDerived(DerivationProgress progress)
+    {
+        ObjectsDerived = Math.Max(ObjectsDerived, progress.ObjectsRead);
+        Progress.Report(AuditProgressViewModel.PhaseText(progress.Phase),
+            progress.Phase == "MembershipAndNesting" ? AuditProgressViewModel.Text("ObjectsRead", ObjectsDerived) : string.Empty);
+    }
 
     /// <summary>
     /// What a finished derivation produced, in the words the completion screen uses.
@@ -1771,16 +1820,22 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private async Task JudgeAsync(string bundleDirectory, CancellationToken cancellationToken)
     {
         IsJudging = true;
+        var epoch = _progressEpoch;
+        Progress.Report(AuditProgressViewModel.Text("PreparingInputs"), string.Empty);
         JudgingReport = "Judging the evidence. Nothing is read from the directory now.";
 
         try
         {
             var judged = await _judging
-                .RunAsync(bundleDirectory, new Progress<JudgingRun.JudgingProgress>(OnJudged), cancellationToken)
+                .RunAsync(bundleDirectory, new Progress<JudgingRun.JudgingProgress>(value =>
+                {
+                    if (epoch == _progressEpoch && IsJudging) OnJudged(value);
+                }), cancellationToken)
                 .ConfigureAwait(true);
 
             if (!judged.IsSuccess)
             {
+                _auditHasGaps = true;
                 JudgingReport =
                     $"The evidence was sealed and is safe. It could not be judged: "
                     + $"{judged.Error!.Description} The findings can be produced again from this "
@@ -1789,7 +1844,20 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             }
 
             Findings = judged.Value.Findings;
+            ObjectsJudged = Math.Max(ObjectsJudged, judged.Value.ObjectsJudged);
             JudgingReport = Describe(judged.Value);
+            _auditHasGaps |= judged.Value.State != JudgementRunState.Completed;
+            Progress.Report(AuditProgressViewModel.Text("ReadingResults"), AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
+        }
+        catch (OperationCanceledException)
+        {
+            JudgingReport = AuditProgressViewModel.Text("JudgingStopped");
+            throw;
+        }
+        catch (Exception failure) when (failure is not OperationCanceledException)
+        {
+            JudgingReport = failure.Message;
+            throw;
         }
         finally
         {
@@ -1798,8 +1866,12 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     }
 
     /// <summary>Notes how far the judging has got, for the screen watching it.</summary>
-    private void OnJudged(JudgingRun.JudgingProgress progress) =>
-        ObjectsJudged = progress.ObjectsRead;
+    private void OnJudged(JudgingRun.JudgingProgress progress)
+    {
+        ObjectsJudged = Math.Max(ObjectsJudged, progress.ObjectsRead);
+        Progress.Report(AuditProgressViewModel.PhaseText(progress.Phase.ToString()),
+            progress.Phase == JudgingPhase.PreparingInputs ? string.Empty : AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
+    }
 
     /// <summary>
     /// What a finished judging produced, in the words the completion screen uses.
@@ -1909,7 +1981,11 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// to understand the shape of the code.
     /// </remarks>
     [RelayCommand(CanExecute = nameof(CanStop))]
-    public void Stop() => _stopping?.Cancel();
+    public void Stop()
+    {
+        Progress.RequestStop();
+        _stopping?.Cancel();
+    }
 
     /// <summary>Whether there is anything to stop.</summary>
     public bool CanStop => IsBusy || IsCapturing;
@@ -2008,6 +2084,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     {
         _stopping?.Dispose();
         _stopping = new CancellationTokenSource();
+        Progress.Begin(AuditProgressViewModel.Text("Preparing"));
+        using var clockStop = new CancellationTokenSource();
+        var clock = RefreshProgressAsync(clockStop.Token);
 
         IsBusy = true;
         WasStopped = false;
@@ -2029,9 +2108,31 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
         finally
         {
+            Progress.End(AuditProgressViewModel.Text(WasStopped ? "Stopped" : "Ready"));
             IsBusy = false;
             BusyMessage = null;
+            clockStop.Cancel();
+            await clock.ConfigureAwait(true);
         }
+    }
+
+    private async Task RefreshProgressAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(true))
+                Progress.Refresh();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // This UI clock is owned and awaited by the operation; it must not outlive it.
+        }
+    }
+
+    partial void OnBusyMessageChanged(string? value)
+    {
+        if (IsBusy && value is not null) Progress.Report(value, string.Empty);
     }
 
     /// <summary>
@@ -2098,6 +2199,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     partial void OnIsCapturingChanged(bool value)
     {
+        OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanStop));
         OnPropertyChanged(nameof(CanLeave));

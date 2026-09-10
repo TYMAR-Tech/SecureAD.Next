@@ -134,6 +134,7 @@ public static class Stage2aRun
             writer.RecordCompleteness(
                 DerivationCompleteness.NothingWasRead(scope.Value!, writer.GenerationId));
 
+            progress.Report(new DerivationProgress("PublishingDerivation", 0));
             writer.Complete(DateTimeOffset.UtcNow);
             return DerivationRunState.CompletedDegraded;
         }
@@ -155,10 +156,12 @@ public static class Stage2aRun
                 new RunLogDetail("unscopedBuiltins", facts.Sids.UnscopedBuiltins.ToString(CultureInfo.InvariantCulture)),
             ]);
 
+        progress.Report(new DerivationProgress("BuildingNestingGraph", 0));
         var graph = NestingGraph.Build(facts);
 
         // Every derived product names principals by this dictionary, so it is persisted before any
         // phase can write a product that references it.
+        progress.Report(new DerivationProgress("WritingMembershipEvidence", 0));
         WriteFacts(writer, facts);
         writer.WriteMembershipInput(facts.MembershipSources, bundle.StreamObjects().IsComplete);
 
@@ -196,6 +199,7 @@ public static class Stage2aRun
         // dictionary ids, and the dictionary is written by WriteFacts.
         writer.RecordCompleteness(completeness);
 
+        progress.Report(new DerivationProgress("PublishingDerivation", 0));
         var state = writer.Complete(DateTimeOffset.UtcNow);
 
         log.Note(DerivePhase, "finished", [new RunLogDetail("state", state.ToString())]);

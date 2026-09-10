@@ -20,14 +20,22 @@ public sealed record CapturedMembershipInput(
     internal static ObjectAttributes? Project(ObjectAttributes source)
     {
         var classes = source.Find("objectClass")?.Values;
+
+        // Naming-context heads are retained even though they are not principals. A partition root
+        // holds no SID and no membership, so every other test here rejects it, but decision 0117
+        // makes it a Tier-0 seed in its own right and the classifier cannot qualify what the index
+        // does not contain. Its objectClass is the qualifying witness and is already projected.
+        if (classes?.Any(value => value.Text is "domainDNS" or "configuration" or "dMD") == true) return Projected(source);
         if (source.Find("objectSid")?.HasValue != true
             && classes?.Any(value => value.Text is "group" or "user" or "computer" or "foreignSecurityPrincipal") != true
             && source.Find("member")?.HasValue != true && source.Find("memberOf")?.HasValue != true)
             return null;
-        return source with
-        {
-            Attributes = source.Attributes.Where(attribute => AttributeNames.Contains(attribute.LdapDisplayName,
-                StringComparer.OrdinalIgnoreCase)).ToArray(),
-        };
+        return Projected(source);
     }
+
+    private static ObjectAttributes Projected(ObjectAttributes source) => source with
+    {
+        Attributes = source.Attributes.Where(attribute => AttributeNames.Contains(attribute.LdapDisplayName,
+            StringComparer.OrdinalIgnoreCase)).ToArray(),
+    };
 }

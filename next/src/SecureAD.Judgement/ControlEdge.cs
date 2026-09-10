@@ -206,7 +206,18 @@ public sealed record ControlObjectEvaluation(
         && FullControlAssessments.All(value => value.EvaluationState != ControlEvaluationState.Unknown && value.Uncertainty == ControlUncertainty.None);
 }
 
-/// <summary>One bounded page with stored coverage and counts, including expected edges hidden by default.</summary>
+/// <summary>
+/// One bounded page with stored coverage and counts, including expected edges hidden by default.
+/// </summary>
+/// <remarks>
+/// <b>The counts cover the assessed scope, not the captured forest.</b> Under decision 0116 and
+/// schema 28, detailed control products are derived for the objects Tier-0 discovery admitted, so
+/// <see cref="UnexpectedCount"/>, <see cref="UnknownCount"/>, <see cref="ExpectedCount"/> and
+/// <see cref="UnansweredObjects"/> describe those objects. An object discovery did not reach
+/// contributes to none of them, and its absence is not a statement that it holds no dangerous
+/// permission - only that nothing assessed it. A caller presenting these as forest-wide totals would
+/// be reporting a coverage the product never established.
+/// </remarks>
 public sealed record ControlEdgePage(
     IReadOnlyList<ControlEdge> Edges,
     long UnexpectedCount,
@@ -222,11 +233,16 @@ public sealed record ControlEdgePage(
 
     /// <summary>The selected immutable generation, used to refuse mixed-generation paging.</summary>
     public Guid? GenerationId { get; init; }
+    /// <summary>Stored automatic ownership assessment coverage, separate from supported primitive rights.</summary>
+    public OwnershipAuditCoverage? OwnershipCoverage { get; init; }
     /// <summary>Assessment rows on this page; only established summaries contribute to headline counts.</summary>
     public IReadOnlyList<FullControlAssessment> FullControlAssessments { get; init; } = [];
     /// <summary>Primitive row IDs included in an established summary's count, including summaries on another page.</summary>
     public IReadOnlyDictionary<long, long> FullControlSupports { get; init; } = new Dictionary<long, long>();
-    /// <summary>Completeness of the supported primitive slice, not of all stage-6 capabilities.</summary>
+    /// <summary>
+    /// Completeness of the supported primitive slice within the assessed scope, not of all stage-6
+    /// capabilities and not of the forest.
+    /// </summary>
     public bool IsComplete => ProductWasDerived && CaptureIsComplete && UnansweredObjects == 0;
     /// <summary>The boundary stated wherever this partial capability catalogue is shown.</summary>
     public static string SupportedScope => ScopeResources.GetString(nameof(SupportedScope), CultureInfo.CurrentUICulture)

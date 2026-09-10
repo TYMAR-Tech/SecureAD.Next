@@ -84,6 +84,7 @@ internal sealed class DerivationLauncher : IDerivationLauncher
         if (!derived.IsSuccess)
             return Result<DerivingOutcome>.Failure(derived.Error!);
 
+        progress.Report(new DerivationProgress("ReadingDerivedResults", 0));
         var reopened = DerivationReader.Open(bundleDirectory);
         if (!reopened.IsSuccess)
             return Result<DerivingOutcome>.Failure(reopened.Error!);

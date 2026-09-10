@@ -81,7 +81,7 @@ public sealed class ReplicationWorkflowTests
     [Fact]
     public void ReaderReturnsTheExactCapturedRootAndDoesNotModifyEvidence()
     {
-        var directory = Bundle(sddl: "O:SYG:SYD:", rootDescriptor: Grants(TargetSid));
+        var directory = Bundle(sddl: "O:SYG:SYD:", rootDescriptor: Grants(TargetSid), tier0Route: true);
         var before = Hash(directory);
         Judge(directory);
         using var bundle = BundleReader.Open(directory).Value;
@@ -137,7 +137,7 @@ public sealed class ReplicationWorkflowTests
     [InlineData("UPDATE control_product SET engine_version=4", "not derived")]
     [InlineData("UPDATE control_edge SET edge_class='DirectoryControl'", "could not be read")]
     [InlineData("DELETE FROM control_ace", "could not be read")]
-    [InlineData("UPDATE control_ace SET mask=16", "could not be read")]
+    [InlineData("UPDATE permission_entry SET mask=16 WHERE id IN (SELECT entry_id FROM control_ace)", "could not be read")]
     [InlineData("DELETE FROM control_precondition WHERE name='NamingContextRoot'", "could not be read")]
     [InlineData("UPDATE control_precondition SET evidence='CN=Child,DC=contoso,DC=com' WHERE name='NamingContextRoot'", "could not be read")]
     [InlineData("UPDATE control_precondition SET state='NotEstablished' WHERE name='DS-Replication-Get-Changes'", "could not be read")]
@@ -226,6 +226,21 @@ public sealed class ReplicationWorkflowTests
             var bytes = new byte[raw.BinaryLength];
             raw.GetBinaryForm(bytes, 0);
             writer.WriteSecurityDescriptor(id, bytes, AceNormalizer.Normalize(guid, SecurityDescriptorParser.Parse(bytes)));
+
+            // Replication rights on the configuration or schema root reach that partition's secrets,
+            // so this root is a route into Tier 0 in its own right. Expressed as an owned Tier-0
+            // group for the same reason as the shared fixture's: ownership adds no counted edge.
+            var owned = Guid.NewGuid();
+            var ownedId = writer.WriteObject(new(partition, "CN=Tier0Partition," + dn, owned,
+            [
+                Text("objectClass", "top", "group"),
+                Bytes("objectSid", Sid.ToBytes("S-1-5-21-1-2-3-517")!),
+                Text("groupType", "-2147483646"),
+            ], Started));
+            var ownedRaw = new RawSecurityDescriptor($"O:{TargetSid}G:SYD:");
+            var ownedBytes = new byte[ownedRaw.BinaryLength];
+            ownedRaw.GetBinaryForm(ownedBytes, 0);
+            writer.WriteSecurityDescriptor(ownedId, ownedBytes, AceNormalizer.Normalize(owned, SecurityDescriptorParser.Parse(ownedBytes)));
         });
         using var source = new BundleAssetSource();
         var section = Open(source, directory, dn, false);
@@ -248,7 +263,10 @@ public sealed class ReplicationWorkflowTests
 
     private static string Prepared(string descriptor, Action<BundleWriter, PartitionCoverage>? extra = null)
     {
-        var directory = Bundle(sddl: "O:SYG:SYD:", rootDescriptor: descriptor, users: 4, writeAdditional: (writer, coverage) =>
+        // Replication rights on the naming-context root are a route to every secret in the domain,
+        // which is what makes them worth assessing.
+        var directory = Bundle(sddl: "O:SYG:SYD:", rootDescriptor: descriptor, users: 4, tier0Route: true,
+            writeAdditional: (writer, coverage) =>
         {
             writer.WriteObject(new(coverage, "CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=contoso,DC=com", Guid.NewGuid(),
                 [Text("objectClass", "top", "nTDSService"), Text("dSHeuristics")], Started));

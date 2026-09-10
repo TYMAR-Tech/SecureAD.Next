@@ -3,6 +3,17 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Derivation;
 
+/// <summary>The captured identity context required by a Tier-0 identifier under 0006 and 0112.</summary>
+public enum Tier0IdentityScope
+{
+    /// <summary>The SID must belong to the object's verified issuing domain.</summary>
+    Domain,
+    /// <summary>The SID must belong to the captured forest-root domain.</summary>
+    ForestRoot,
+    /// <summary>The absolute BUILTIN SID must resolve in the object's domain resource context.</summary>
+    BuiltinDomain,
+}
+
 /// <summary>The boundary of a catalogue claim, not proof that the principal holds a permission.</summary>
 public enum PrincipalAuthorityScope
 {
@@ -46,14 +57,18 @@ public sealed record PrincipalClassification(
     /// <summary>The scoped control-plane and SYSTEM policies.</summary>
     public string ControlPlaneSource => "0099;0100";
     /// <summary>Asset classification must not be inferred from expectedness.</summary>
-    public string Tier0Source => "0006;0099;object evidence required for computer accounts";
+    public string Tier0Source => "0006;0112;object evidence required for asset classification";
+    /// <summary>The context required to apply the independently catalogued Tier-0 identifier.</summary>
+    public Tier0IdentityScope? Tier0Scope { get; init; }
+    /// <summary>The captured principal class required by the Tier-0 identifier, not a name heuristic.</summary>
+    public string? Tier0ObjectClass { get; init; }
 }
 
 /// <summary>Shared data with separate predicates under 0101. Membership, protection and authorization are not inferred here.</summary>
 public static class PrincipalClassificationRegistry
 {
     /// <summary>The semantic version recorded on control-edge classifications.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     /// <summary>Absolute broad identifiers, not discovered directory members.</summary>
     public static readonly FrozenSet<string> BroadSids = new[]
@@ -115,16 +130,16 @@ public static class PrincipalClassificationRegistry
                 _ => PrincipalAuthorityScope.None,
             },
         };
-        bool? tier0 = normalized switch
+        (Tier0IdentityScope? Scope, string? ObjectClass) tier0 = normalized switch
         {
-            "S-1-5-32-544" or "S-1-5-32-549" or "S-1-5-32-551" => true,
+            "S-1-5-32-544" or "S-1-5-32-548" or "S-1-5-32-549" or "S-1-5-32-550" or "S-1-5-32-551"
+                => (Tier0IdentityScope.BuiltinDomain, "group"),
             _ => rid switch
             {
-                500 or 502 or 512 => true,
-                // A SID alone does not establish that 518/519 is the actual forest-root group.
-                518 or 519 => null,
-                516 or 521 or 498 => false,
-                _ => null,
+                500 or 502 => (Tier0IdentityScope.Domain, "user"),
+                512 or 516 or 517 or 520 or 521 or 526 => (Tier0IdentityScope.Domain, "group"),
+                498 or 518 or 519 or 527 => (Tier0IdentityScope.ForestRoot, "group"),
+                _ => (null, null),
             },
         };
         return new PrincipalClassification(sid,
@@ -139,7 +154,11 @@ public static class PrincipalClassificationRegistry
                 PrincipalAuthorityScope.Descriptor => "ApplicableSystemAceOnly",
                 PrincipalAuthorityScope.RequiredDomainControllerOperations => "VerifiedRequiredOperationsOnly",
                 _ => "None",
-            }, tier0, Version);
+            }, tier0.Scope is null or Tier0IdentityScope.ForestRoot ? null : true, Version)
+        {
+            Tier0Scope = tier0.Scope,
+            Tier0ObjectClass = tier0.ObjectClass,
+        };
     }
 
     /// <summary>Reads a RID only from a structurally valid domain-principal SID.</summary>

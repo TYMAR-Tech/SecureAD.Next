@@ -7,6 +7,37 @@
 where that answer goes: a second database in the bundle's own directory, written after capture has
 finished and sealed separately from the evidence it judged.
 
+**Current storage:** judgement schema **28**, control engine **9**, principal catalogue
+**3**, with unchanged Evidence format and Derivation schema **12**. Shared explanation/route storage under
+[0115](../../decisions/0115-share-judgement-explanations-and-membership-proof.md) is implemented locally
+with paired lab proof parity verified, but performance acceptance is on hold because elapsed time
+and cumulative allocation increased. This is not a production-acceptance claim. The
+[scoped audit integration](#scoped-ownership-during-judging--schema-26) implements 0114. Full-control
+catalogue-2/3 semantics remain supported within the current schema; older schema files require
+re-judging under the existing schema policy and are not rewritten. The
+[shared permission-proof storage boundary](#shared-permission-proof-storage--schema-25) records
+the implementation, verified lab storage change and remaining acceptance limits; historical version records
+below retain their original meaning.
+
+**Schema 28 changes what stored counts mean.** Under
+[0116](../../decisions/0116-discovery-first-assessment-admission.md) discovery decides which objects
+receive detailed control assessment, so `ControlEdgePage`'s counts cover the assessed scope rather
+than the captured forest. A schema 27 file and a schema 28 file are otherwise indistinguishable while
+meaning different things, which is why the version rises although the tables do not change.
+`ownership_relation` is re-anchored in the same release: `edge_id` is nullable beside witness columns
+naming the captured owner or entry, because a route discovered before any control edge exists has no
+edge to reference. Exactly one provenance per row is enforced by a check constraint.
+
+**This is reachable only through `JudgingRun.JudgeWithTier0Discovery`.** `JudgingRun.Judge` still
+assesses every streamed object and remains the default until the scope wording on screen is approved;
+a scoped count shown without that wording would read as a forest-wide total.
+
+**Next-session priority:** the owner clarified that automatic detailed control work must follow
+Tier-0 relevance, not precede its discovery. The
+[Tier-0-driven assessment plan](../../next/PLAN-tier-0-driven-assessment.md) replaces the dependency on
+an already-expanded forest-wide control store. It is not implemented yet and does not resume S1
+micro-optimization or authorize another timed run. S1's code, results and performance hold remain retained.
+
 ---
 
 ## What this page owns
@@ -17,6 +48,7 @@ finished and sealed separately from the evidence it judged.
 |---|---|
 | `JudgementSchema` | Every table in a judgement store, and the indexes built once writing is done |
 | `JudgingRun` | Judging a sealed bundle: read every object once, offer it to every rule, write what they concluded |
+| `JudgingPhase` | Transient preparation, evaluation, writing, publication and readback progress; not a stored outcome |
 | `JudgementWriter` | The one way a judgement store gets written |
 | `JudgementReader` | Reads a store back, and refuses one that does not belong to the bundle it sits in |
 | `JudgementDescription` | What one judging recorded about itself |
@@ -35,6 +67,25 @@ finished and sealed separately from the evidence it judged.
 | `ControlEdge` | A stored capability attributed to its named trustee, with evidence and independent expectedness |
 | `ControlEdgeClass` | Semantic categories, never severity or an ordered risk score |
 | `ControlEdgePage` | A bounded page with generation, coverage and counts, including hidden expected edges |
+| `Tier0RelevanceKind` | Qualified membership versus control/dependency candidates, not a Tier-0 label |
+| `Tier0RelevanceRelation` | Immutable controller-to-affected relation referencing source membership or a stored permission |
+| `Tier0CaptureWitness` | The captured owner or ACE behind a discovered candidate, so a route needs no stored control edge |
+| `Tier0DiscoveryReason` | Why discovery cannot claim complete coverage, never a statement that unreached objects are safe |
+| `Tier0DiscoveryBudget` | Explicit bounded scan limits; no production default has been measured |
+| `Tier0DiscoveryLimitation` | One limitation bound to the captured target, entry ordinal and trustee that caused it |
+| `Tier0DiscoveryCoverage` | What the scan inspected and what stopped it, which is work accounting rather than security coverage |
+| `OwnershipScopeState` | Included, outside the computed scope, or undetermined |
+| `OwnershipScopeProgress` | Distinct visited-target, examined-relation and included-target counters, not permission counts |
+| `OwnershipScopeSelection` | Immutable source-bound scope decisions, retained inputs, coverage and cancellation, with selector version |
+| `OwnershipScopeSelector` | Reverse traversal over shared classifications and captured relations, now consumed during judging |
+| `OwnershipAssessmentOrigin` | Automatic audit versus explicit object request |
+| `OwnershipAssessmentExecution` | Not assessed, completed, limited, cancelled or failed execution |
+| `OwnershipAssessmentAvailability` | Contract availability, staleness, unsupported versions or invalid proof |
+| `OwnershipScopeDecision` | Selection references and coverage shared by the selector and ownership result contracts |
+| `OwnershipAssessmentBinding` | Source/target/audit identities, evaluation time, owner-rights context hash and semantic versions |
+| `OwnershipCandidateAssessment` | A retained WRITE_OWNER source reference with the still-open assignment gate |
+| `OwnershipAssessmentResult` | Versioned result/attempt contract with structural validation, not an assessment store or runner |
+| `OwnershipAuditCoverage` | Validated stored automatic assessment status and scope limitations for target or holder-view presentation |
 | `FullControlAssessment` | A full-control summary assessment with separate permission proof and support links |
 | `FullControlRight` | One required right and its ordered alternative sources, with an explicit completeness voucher |
 | `FullControlSource` | Captured descriptor, holder, scope and expectedness inputs used to replay a summary |
@@ -72,6 +123,530 @@ finished and sealed separately from the evidence it judged.
 <!-- TYPES:END -->
 
 ---
+
+## Shared Tier-0 relevance and ownership contracts — decision 0112
+
+The [shared foundation](../derivation/what-stage-2a-derives.md#shared-tier-0-foundation--decision-0112)
+supplies classifications and positive membership witnesses. `Tier0RelevanceRelation` belongs to
+Judgement, outside ownership-specific evaluation. A checked effective-membership support becomes a
+directed relation from the member to its core root. A persisted control edge becomes an operationally
+unqualified candidate, preserving its source edge ID, audit/Derivation generations, catalogue version,
+permission conclusion and uncertainty. Expectedness changes neither direction nor relevance. A proven
+WRITE_OWNER/WRITE_DAC permission is not silently promoted to operational Tier-0 control.
+
+The ownership contracts separate automatic scope, request origin, execution, candidate conclusions and
+availability. `OwnershipAssessmentBinding` includes the complete shared input binding, target/resource
+identity, audit generation and (for explicit requests) source audit seal, evaluation time and a hash of
+the relevant owner-rights context. Automatic results do not embed their enclosing audit's own seal.
+`CheckBinding` distinguishes stale identities from unsupported versions and malformed contracts.
+`CanPublish` rejects failed/cancelled attempts, contradictory scope and invalid candidate contracts;
+it performs no publication. All candidate owner transitions remain Unknown and must retain the open
+`CanSetTakeoverOwnerSid` check. A completed request with no candidates is distinct from not assessed.
+
+**Structural contract validation is not seal verification, permission replay or a complete relevance
+selector.** A future writer/reader must still qualify selection routes to core anchors, verify all
+referenced source files and replay permission proof. This slice adds no tables, automatic scope switch,
+ownership evaluator integration, object runner, cache or Shell action. Current audits still produce
+their existing owner transitions for all retained WRITE_OWNER assessments. Capture, rules, existing-owner
+findings, full-control supports and counting are unchanged. The explicit metadata delta is catalogue
+3 on newly generated control/full-control results; catalogue-2 proof retains its original recorded
+version and remains replay-readable. Other full-control catalogue versions are still rejected.
+
+The accepted [0112](../../decisions/0112-shared-tier-0-classification-and-ownership-contracts.md) and
+[Stage 6 contract](../../next/SPEC-stage-6-control-edges.md#15-proposed-shared-tier-0-and-ownership-contracts)
+govern the first slice and later boundaries. Final foundation validation passed the solution build,
+133 focused tests and 281 additional ownership, permission, storage-integrity, architecture,
+public-surface and documentation checks: **414 distinct targeted tests**, not the full suite. The
+focused tests cover canonical policy identities, original-membership negative controls, independent
+supports, direction, stale/malformed contracts and catalogue-2/3 stored full-control readback.
+
+All 133 focused tests also passed under `dotnet-coverage` on test-host runtime **.NET 10.0.12**. The
+collector reported these executable source-line hits for that focused run only:
+
+| Source | Hit lines | Reported executable lines |
+|---|---:|---:|
+| PrincipalClassificationRegistry | 93 | 100 |
+| Tier0Classification | 52 | 53 |
+| Tier0Classifier | 160 | 166 |
+| OwnershipAssessmentResult | 56 | 60 |
+| Tier0RelevanceRelation | 48 | 48 |
+
+These are neither complete branch coverage nor proof that every semantic case is tested. Test and
+coverage artifacts are retained locally, not required by this document or clean-clone validation.
+Read-only review found no concrete defect within the implemented boundary. The handoff source-manifest
+comparison found all **1,004 existing files outside the 11 approved changed files byte-identical**;
+the frozen benchmark source hash also matched. No snapshot was restored over live work.
+
+This is offline functional validation, not production scale, an ownership lab-gate result or a cost
+measurement. At that foundation checkpoint, automatic selection, target-specific publication/replay,
+object execution and UI remained unimplemented. Frozen benchmarks and the four excluded stage-status tests remain untouched. Existing
+full-suite progress-test intermittency and instrumentation-sensitive scanner limitations are not
+closed by these targeted runs; no production acceptance or performance improvement is claimed.
+
+## Offline ownership scope selector — decision 0113
+
+**Implemented as a callable library, not connected to judging or the UI.** The owner approved this
+bounded slice under [0113](../../decisions/0113-automatic-ownership-scope-follows-shared-relations.md).
+`OwnershipScopeSelector.Select` consumes one shared input binding, one audit generation, existing
+classifications, supplied captured relations and explicit source coverage. It creates no Tier-0 list
+and performs no membership discovery. Established shared classifications are starting points; their
+original proofs already identify core objects or supported effective members. Further selected
+controllers retain their original classification rather than being relabelled Tier 0.
+
+The selector follows **incoming** relations. It never includes an ordinary object simply because a
+Tier-0 administrator manages it. Possible WRITE_OWNER/ownership relations remain eligible for relevance,
+without establishing the operation or a completed path. A disproven source permission is retained in
+the input inventory but does not propagate inclusion. Unresolved holders, placeholders and unverified
+resource contexts cannot be guessed into controller identities. Unsupported dependency qualification
+remains a coverage limitation, not a new implemented dependency capability.
+
+Each selected target is visited once. All distinct incoming source relations at visited targets are
+counted as examined, including those rejected for propagation; independent usable relations are kept
+as inclusion reasons. Cycles terminate and shared controllers keep alternative reasons without
+enumerating all paths. Input ordering does not change the completed decisions or control-relation
+reason order. Conflicting GUID/DN/scoped-SID identities block propagation and disclose incomplete
+scope. Different BUILTIN domain scopes are separate identities. Mixed capture/audit generations and
+conflicting payloads for the same source-edge ID are rejected rather than merged.
+
+Cancellation during input reading or traversal returns a `WasCancelled` snapshot with processing
+incompleteness and any discovered inclusions/reasons. Cancellation is not swallowed as successful
+completion; an unrelated callback failure still propagates. The result retains consumed original
+classifications and relations, its source identities, and **SelectorVersion 1**, independent of the
+principal classifier and ownership evaluator versions. Passive `For` lookup never restarts selection;
+an unlisted target returns `Undetermined` with an input limitation.
+
+Finishing traversal does not remove upstream limitations. Current shared classification producers are
+partial, so their uncovered objects remain `Undetermined`, not definitively outside a complete forest
+scope. Results satisfy the existing `OwnershipScopeDecision` structural contract, but are not sealed
+stores or proof that an audit may publish after cancellation. This slice supplies no production budget
+and does not use the existing membership-expansion defaults.
+
+The 34 synthetic selector tests cover direction, chains, cycles, independent grants, disproven sources,
+generation isolation, ambiguous identities, scoped BUILTIN principals, membership-witness reuse,
+deterministic order and partial cancellation. A negative-control test caught an undercount of examined
+disproven relations; it failed before the fix and passed afterwards, without changing inclusion
+eligibility. Final validation passed the solution build and **448 targeted checks**, comprising these
+34 tests plus the 414 foundation, permission, ownership, storage-integrity, architecture and documentation
+checks. This is not a full-suite acceptance run.
+
+The 34 selector tests also passed under `dotnet-coverage` on test-host runtime **.NET 10.0.12**. The
+focused report recorded 209/217 executable source lines hit in `OwnershipScopeSelector` and 25/25 in
+`OwnershipScopeSelection`; this is not complete branch coverage or proof of every semantic case.
+Read-only review found no concrete defect within this slice's boundary. The fresh source-hash baseline
+contained 1,023 files: all **1,017 files outside the six approved existing-file changes remained
+byte-identical**. The frozen benchmark hash matched; no snapshot was restored. Test/coverage artifacts
+are retained locally and are not prerequisites of this document or clean-clone validation.
+
+At that selector-only checkpoint, audit integration and UI presentation were still pending and schema
+25/engine 8 remained active. The subsequent schema-26 slice below implements audit integration and
+status-only presentation. Explicit object execution and its separate target-specific publication
+remain pending. No cost or production-acceptance claim follows from the selector tests.
+
+## Scoped ownership during judging — schema 26
+
+**Implemented under [0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md).** New
+judging runs use schema 26/control engine 9. They first retain basic permissions, existing-owner
+control and full-control summaries while offering each captured object to each scheduled rule once.
+Hypothetical owner transitions are deferred. The shared classifier's indexed `ClassifyMany` path and
+the existing reverse selector then determine the automatic scope; only selected targets receive
+the detailed `OwnershipControlDeriver.Transition` evaluation. This changes which hypothetical
+assessments run, not the underlying permission inventory, expectedness, existing-owner findings or
+group-held counting. An unassessed WRITE_OWNER primitive remains an alternative candidate, not a
+discarded relationship or a safety verdict.
+
+The classifier builds one DN/scoped-SID/domain-root index for a batch and uses the same evaluator as
+single-object classification. Supplied memberships remain source-linked; there is no new discovery
+or production expansion budget. Missing Derivation records unavailable assessment inputs. An invalid
+present membership-input product refuses judging rather than being silently treated as absent.
+Unsupported assets, memberships, direct-control qualification and dependencies remain explicit scope
+limitations. The current partial classifier does not establish a complete forest scope.
+
+Four additional tables live in the private Judgement generation before publication:
+
+| Table | Purpose |
+|---|---|
+| `ownership_audit` | Versioned source/evaluation bindings, owner-rights context hash, coverage, expected row counts and completion |
+| `ownership_target` | Capture-local identity, scope decision, execution status, candidate count and assessed-transition count |
+| `ownership_seed` | Retained membership witnesses and fingerprints of qualifying shared classifications |
+| `ownership_relation` | Source-edge references for inclusion links, without duplicating permission proof |
+
+Selected-target append reuses existing `permission_entry` values by complete target/generation-bound
+identity. It does not replace primitive IDs, delete alternatives or rewrite full-control supports.
+SELF normalization and NULL-DACL holder identity retain their original meanings. A selected target
+with an unreadable descriptor and no identified candidates is completed with limitations, not a known
+empty answer. All owner-change compounds remain Unknown and uncounted behind the existing laboratory
+gate.
+
+Readback verifies counts and bindings, replays stored seed witnesses against the selected verified
+Derivation, validates retained inclusion links against complete captured ACE values, and checks that
+the retained relation graph reaches exactly the recorded included targets. This is verification of
+stored proof, not new discovery or assessment publication. Raw proof validation is separate from the
+existing display projection, which omits trustee explanation fields. Opening and paging write no new
+analysis. A new immutable generation gets its own validation; ordinary page reads retain generation
+checks and stored target-specific coverage.
+
+The approved status text appears beneath existing control coverage: assessed automatically, not
+assessed automatically, or required derived inputs unavailable, with the explicit incomplete-scope
+warning when applicable. The holder view directs users to target-specific status. The two new progress
+labels are **Selecting ownership assessment scope** and **Assessing ownership takeover**. No on-demand
+button or new top-level screen is implemented.
+
+Cancellation is passed through writer finalization and immutable publication, including checks after
+sealing and before manifest replacement. A cancellation test exposed the previous gap at the publishing
+phase and passed after correction. The manifest replacement remains the commit point: no cancellation
+check after it reports an already-published audit as unpublished. An in-progress SQLite operation or
+file hash may finish before cancellation is observed; no instant-stop guarantee is made. The previous
+published generation remains selected when cancellation is observed before replacement.
+
+The new schema-26 layout checkpoint is `AF47D06ABD44412895EB9BBE5799BC48D065D5638D32959CECF497F88B6881A4`,
+observed from this build, not an external historical anchor. All schema-15 through schema-25 checkpoints
+and frozen benchmark sources remain unchanged. Integration tests cover selected/unselected targets,
+missing inputs, primitive-row parity, exact proof reuse, OWNER RIGHTS, SELF, NULL DACLs, passive
+readback, removed/resealed witnesses, approved labels and cancellation. Final validation passed the
+solution build and **533 targeted checks**, not a full-suite acceptance run. The focused coverage run
+passed **31 integration, batch-classifier and publication tests** on test-host runtime **.NET 10.0.12**.
+Its reported executable source-line hits were:
+
+| Source | Hit lines | Reported executable lines |
+|---|---:|---:|
+| Tier0Classifier | 170 | 193 |
+| OwnershipAuditCoverage | 12 | 12 |
+| OwnershipAuditRun | 90 | 90 |
+| OwnershipAuditStorage | 188 | 194 |
+| OwnershipAuditValidation | 82 | 90 |
+
+These are focused line counts, not complete branch coverage or proof of all directory semantics.
+The integration's source-hash baseline contained 1,027 files. All **1,002 files outside the 25 approved
+existing-file changes remained byte-identical**, and the frozen benchmark hash matched. No snapshot
+was restored over live edits. Local test/coverage artifacts are retained but are not dependencies of
+this document or clean-clone tests. The four excluded stage-status tests and cost workloads were not
+run, and no commit or push was performed.
+
+Desktop/monitor checks, production-scale acceptance and the separate explicit object-request workflow
+remain outstanding. The ownership-assignment laboratory gate remains open. No timing, storage-saving
+or production-budget claim follows from these functional tests.
+
+## Proposed bounded proof-storage redesign and validation plan
+
+**Status: S1 and its two-pass lab validation approved under
+[0115](../../decisions/0115-share-judgement-explanations-and-membership-proof.md); implemented and both passes completed, with performance acceptance on hold.**
+The owner requested a production-scale design assessment before further code changes, then approved
+this bounded first slice. Keep the sealed Evidence / reusable Derivation / immutable Judgement
+architecture, SQLite and the existing product semantics. Follow-ons, UI changes and production
+acceptance are not approved by this decision. The scope under [0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md)
+remains the authority for automatic ownership assessment.
+
+### Evidence and limits
+
+The supplied capture is `ad.lab-20260909-050807`, with 8,407 objects. A single successful local replay
+of schema 26/control engine 9/catalogue 3 on S2DMEASOFT, .NET 10.0.12, took 67.95 seconds including
+completion readback. Basic object processing took 57.71 seconds; ownership selection 2.20 seconds,
+selected assessment 5.65 seconds, publication 0.78 seconds and completion readback 0.66 seconds.
+These are retained stopwatch boundaries, not averaged benchmark results. BenchmarkDotNet's aggregate
+result was NA; the execution and validation artifacts separately record success. The sampled CPU
+trace identifies database writing and commits as major costs, with selected-target permission reload
+also material. This is not an improvement comparison with the owner's approximately 237-second lab
+run: the lab executable, source revision and runtime have not been established as identical.
+
+Read-only aggregates over the completed replay found:
+
+| Content | Observed logical payload | Relevant distinction |
+|---|---:|---|
+| Full-control assessment JSON | 79,365,759 bytes | Includes per-right decisions and source context; not all repetition |
+| Membership-route JSON inside those assessments | 16,921,009 bytes | 11 distinct complete values totaling 19,733 bytes |
+| Permission trustee explanation text (`meaning`) | 14,108,474 bytes | 169,254 non-null uses of 15 distinct texts totaling 1,071 bytes |
+| Target strings in table `target` columns | 34,221,994 bytes | Repeated names, including reference keys |
+| Strings in `generation` / `derivation_generation` columns | 17,318,448 bytes | Repeated source identities |
+
+Component figures overlap their parent JSON; do not add them twice. The 372,428,800-byte final
+Judgement file includes 40 indexes, record/page overhead and numeric fields. Text/BLOB table payload
+totals 240,333,914 bytes; the remainder is not a measured index-only total. The largest sampled
+Judgement DB/WAL/sidecar footprint was 377,719,440 bytes; samples can miss brief peaks and exclude
+external temporary files, retained earlier generations, inputs and filesystem allocation/compression.
+None of these figures is a promised saving or a production sizing rule.
+
+### S1: share repeated immutable values, preserve every answer
+
+**Approved first implementation slice:** share exact trustee explanation text and complete
+membership-route values within one Judgement generation. Keep per-permission source identity and
+per-target/holder conclusions independent. Do not combine this with transaction batching, evaluator
+changes or a new reader-validation lifetime; otherwise a regression cannot be attributed to one change.
+
+| Storage concern | Proposed representation | Consumers in S1 |
+|---|---|---|
+| Repeated trustee explanation | A generation-local, versioned text-value table with integer references | `permission_entry.meaning`; reconstruct the original `PermissionTrustee.Meaning` before existing proof checks |
+| Repeated membership explanations | One versioned complete route value, plus explicit consumer bindings | Control-edge routes and `FullControlSource.MembershipRoutes` |
+| Per-consumer integrity | A checked binding from consumer identity/context to the referenced value | Every affected control edge, full-control assessment and permission entry |
+
+The route value preserves the whole ordered `MembershipRouteSummary`: incompleteness reasons,
+membership and route order, catalogue roots, authorization/protection flags, every step's scoped
+identity and distinguished name, and primary-group markers. A repeated step is not an interchangeable
+route. Neither alternative routes nor steps may be removed to reduce counts. Existing finding-owned
+route storage and Derivation storage remain unchanged in this first slice; the Judgement-specific
+adapter must not alter the shared `MembershipRouteStorage` implementation compiled into Derivation.
+
+Full-control persistence should use an internal storage representation with a required route-value
+reference instead of embedding the same route JSON again. Reconstruct the existing public model before
+validation/presentation. Do not serialize a fake empty/NotDerived route in place of a required value,
+add compatibility copies, or treat a missing reference as an empty successful answer.
+
+**Identity and integrity contract:**
+
+- Preserve text exactly: case, whitespace, null versus empty and the stored UTF-8 value. Do not
+  resolve descriptions from a newer live catalogue or replace captured names with current names.
+- Scope sharing to the immutable Judgement generation and exact Evidence/Derivation and semantic
+  version bindings. Consumer bindings retain target identity, holder SID/resource scope and applicable
+  entry ordinal or assessment identity. Identical payload bytes do not merge consumer meanings.
+- Use a versioned encoding and indexed digest lookup, followed by complete value equality. A hash
+  match alone is not permission to merge values. Fingerprints must bind both the exact value and its
+  required consumer/source context; a redirected reference with a valid new payload hash must fail.
+- Retain existing complete ACE fingerprints, flags, masks, GUID strings, callback bytes, source order,
+  full-control rights/supports, expectedness and uncertainty. Shared text must reconstruct those same
+  values before the existing checks run. Do not move integrity responsibility out of the proof chain.
+- Create shared values and consumer references transactionally. A failed object leaves no dangling
+  references or reusable IDs from its rolled-back transaction. Preserve the current object rollback
+  guarantee and previous-generation publication guarantee. Do not introduce an unbounded whole-forest
+  value cache; use indexed persisted lookup and transaction-scoped reuse.
+- Passive reads remain read-only. No new discovery, derivation, membership expansion or assessment
+  is triggered by reading a shared value.
+
+S1 is confined to Judgement storage helpers, schema, write/read adapters, their tests and governing
+documentation. `SharedPermissionStorage`, `ControlEdgeStorage` and `FullControlStorage` are the primary
+existing entry points. Leave rule/evaluator logic, the shared Tier-0 classifier/selector, public result
+contracts, Evidence, Derivation, production host budgets and Shell presentation unchanged. A future
+format change requires a new Judgement schema version; the live tree was checked and 0115 assigns
+schema 27 to S1. Engine 9/catalogue 3 retain their unchanged semantics.
+Older sealed generations and their original readers/checkpoints are preserved, not migrated or
+relabelled; current-format reopening follows the existing re-judging policy.
+
+**Local implementation, performance acceptance on hold:** `shared_proof_value` retains versioned, source-bound
+exact values; its indexed lookup digest is followed by complete ordinal equality. `permission_entry.meaning`
+now references a text value and carries a target/generation/ordinal-bound `meaning_binding`, including
+for null meanings. The original complete ACE association fingerprints are unchanged in purpose.
+`control_membership_route` binds each control edge to its complete route value. Full-control JSON
+omits the repeated membership property and uses required `route_value_id` / `route_fingerprint`
+columns; readback reconstructs the public source before the existing evaluator checks.
+
+Route values use the existing relational membership encoding once per shared value, under a private
+`proof-route:` subject. Its existing writer/reader validation is reused without editing the shared
+Derivation implementation. The complete value payload is checked against that ordered reconstruction;
+these are not per-consumer compatibility copies. Finding-owned rows keep their existing encoding.
+Caches belong to the object transaction, and a completed/rolled-back transaction cannot return its
+cached IDs. Object transactions, evaluator replays, public counts and reader lifetimes are unchanged.
+The schema-27 layout checkpoint is `B7CA7DBFC045647A5211E35E833C92626A712383300D0AC2C14D84E49C1E5ADF`,
+observed from this build; every schema-15 through schema-26 checkpoint is retained unchanged.
+
+### Follow-on work is separate, not hidden in S1
+
+| Follow-on | Why it remains necessary | Boundary |
+|---|---|---|
+| Writer/lookup costs | Per-object commits, repeated commands and the measured full-table `SharedPermissionStorage.Load` | Separately measured command reuse, bounded transactions and a target/generation lookup index; do not weaken durability or object rollback |
+| Repeated evaluation and validation | Full-control write validation replays the assessment twice after initial calculation | Define reusable validated inputs/results before changing verification; never simply remove corruption checks |
+| Page-read cost | Full-control validation precedes pagination; GUI requests open new readers | A separately reviewed immutable-generation validation lifetime and page-local work; no safety claim from a stale cache |
+| Other repeated storage | Long identity keys, generation strings and per-right JSON | Measure compact typed/reference forms separately; S1 does not collapse the 308,775 stored right checks |
+| Ownership graph memory | Input/edge materialization and multiple relation collections grow with the graph | Compact or disk-backed indexed inputs without changing shared Tier-0 policy, completeness or retained alternatives |
+
+This order is not approval for all follow-ons. S1 alone is neither a complete speed solution nor
+production acceptance. Do not narrow basic auditing further, switch database engines, enumerate all
+paths, or enable requester/member expansion to work around the measured storage costs.
+
+### Implementation sequence and validation gates
+
+1. **Approval and preservation.** Obtain explicit approval of S1's representation/contract and the
+   separately described measurement allowance. Record the live HEAD, uncommitted production-source
+   manifest, actual loaded runtime, application/benchmark/SQLite assembly hashes and build configuration.
+   Preserve originals, previous results, golden fixtures and all pre-existing changes. Do not build over
+   the only copy of a measured executable; retain the before build independently.
+2. **Fix the external reference before coding.** Pin the supplied input seals, evaluation time and
+   schema-26 public answers below. Inventory complete baseline shared values and every consumer binding
+   independently of the proposed writer. Specify required null/empty, context, ordering and corruption
+   behavior. A candidate cannot generate its own expected values or pass by matching counts alone.
+3. **Prepare and freeze the comparison artifacts.** Discover usable existing artifacts first. If new
+   schema-aware artifacts are approved, exercise the real production writer, completion readback,
+   object-first and holder-first pages, repeated pages and selected-target append. Freeze their setup,
+   input and comparison logic after the first successful before run. Verify negative controls before
+   relying on the comparison; retain all outputs rather than deleting fixtures.
+4. **Implement only S1.** Add exact-value sharing and checked consumer reconstruction without changing
+   conclusions, transaction boundaries, evaluator/replay behavior or UI. Run focused tests as each
+   storage seam changes; do not stack unrelated performance changes on top of a failing gate.
+5. **Prove functional preservation and failure behavior.** Build the solution and run the focused
+   storage/integration/presentation tests, then the authorized offline suite with the four
+   `StageStatusGateTests` cases explicitly excluded. Separate uninstrumented correctness results from
+   coverage results; do not hide known flaky/profiler-sensitive failures by weakening tests.
+6. **Measure the identical workload after S1.** Use the same approved comparison artifact, collection
+   tool, source inputs, runtime/configuration and read selections as the before run. Compare final
+   DB bytes, DB/WAL/temp/retained-generation disk overlap, phase elapsed/CPU, allocations, working/private
+   memory and first/repeated-page costs. Separate observer/profiler overhead and sampled lower bounds
+   from guaranteed peaks. A faster writer with materially slower reads or higher peak memory is a
+   regression to explain, not an unqualified improvement.
+7. **Close the bounded slice or stop.** Require exact public-value/binding preservation, expected
+   primitive/finding/coverage counts, all corruption controls rejecting, unchanged publication safety,
+   and a measured net physical storage reduction including reference/index overhead. Report every
+   timing/memory trade-off without inventing an acceptance threshold. A single observation is diagnostic,
+   not statistical confidence. Stop for unexpected proof changes, unexplained material regressions or
+   inability to establish parity without additional authorized work. Production acceptance remains open.
+
+The focused test set includes `SharedPermissionStorageTests`, `ControlEdgeCommandReuseTests`,
+`FullControlStorageTests`, `FullControlEvaluatorTests`, `OwnershipAuditIntegrationTests`,
+`FullControlPresentationTests` and `FullControlWorkflowTests`; retain Derivation's membership-route
+tests as a no-change boundary. New S1 tests must cover:
+
+| Gate | Required cases |
+|---|---|
+| Exact values | All trustee fields; null/empty/case/whitespace; masks/flags/GUIDs/callback bytes; exact ordered route/root/step values and limitations |
+| No false sharing | Same SID in different resource domains; same text under different contexts; different flags, ordinals or route order; indexed lookup collisions with unequal complete values |
+| Reference integrity | Missing/replaced shared values, redirected consumer references, wrong target/holder/generation/version and altered/resealed payloads; valid and nonempty controls beside each rejection |
+| Complete public reconstruction | Object-first and holder-first reads, hidden counts, pagination and repeated references; no lazy write or fabricated empty value |
+| Transaction/publication | Failure after shared-value insertion, rollback then another object, cancellation before publication, previous generation still readable and references never escaping rollback |
+| Independent parity | Every distinct changed value and all consumer bindings compared to the schema-26 source; full public-model parity on bounded adversarial fixtures and representative lab reads |
+
+Compare complete values once per shared node and stream consumer-binding comparisons rather than
+re-exporting the entire public object model for every target. No expensive exhaustive exports are
+authorized. If this cannot establish the required equivalence, record the gap and seek explicit
+authorization; do not substitute a cardinality-only check or claim complete lab public-model parity
+from representative reads. Expected physical route-row counts may change under S1; public routes,
+their ordering and security conclusions may not. Existing frozen count/comparer expectations are
+never relaxed, updated in place or satisfied using duplicate compatibility records.
+
+### Pinned lab reference and one-execution constraint
+
+The reference Evidence SHA-256 is
+`A6F1F001F53ADD970B42D55A710F3FC3B083AC62C8E54AB1B140955E46EBB16C`.
+Derivation generation is `c2d92b83-2e23-4a1a-b611-2cca9344cf9f`, SHA-256
+`0C2FE5FE6BA7655EC2FFEDF059353524BC1271B22B13AF47BBF817C3CC15F31E`.
+Keep evaluation time `2026-09-09T05:08:22.3459193+00:00`. The local replay Judgement generation is
+`cfc4d72f-e839-4955-a09a-db1cf5c9dd71`, SHA-256
+`9A379F512F244FBF4CD3E4985B1B07FDF1A81250592AAF134DEC232AF3A67073`;
+it differs from the lab-produced generation, not from its input capture. The CPU session was
+`03fced3f-2577-4756-8ee8-7d0c20a45a15`. Local trace/report availability is not a clean-clone test dependency.
+
+Preserve 27 findings from 17 rules, 112,303 control records, 23,751 full-control assessments,
+72,422 support links, 342,812 ACE associations and 208,900 full-control source references. All 8,407
+targets remain recorded: 51 selected/completed-with-limitations with 210 Unknown/uncounted transitions,
+8,356 undetermined/not-assessed, and 32,639 basic WRITE_OWNER records in total. SEC-031 and SEC-032 each
+retain four unjudged objects. Coverage remains processing-complete but analysis/input-incomplete;
+requester/member work stays unconfigured. None of these counts replaces complete proof comparison.
+
+The owner requested one diagnostic execution, not warmups or averaged repetitions; that execution
+has already happened. Preserve `LabAuditProfilingBenchmarks` byte-for-byte at SHA-256
+`4F234E3E93EACB94B271D70D9018DF0C5F9FED4A2168982B677B74656BEDC3DC` and preserve the successful
+`ScopedOwnershipSingleReplayBenchmarks` source, outputs and consumed execution claim. Do not reset its
+claim, alter its fixed counts or silently rerun either artifact.
+
+**Approved additional allowance under 0115:** a separate schema-aware comparison artifact and
+exactly two additional lab judging executions: one before S1 and one after, with zero warmups and no
+averaging. Each invocation includes the same pinned, bounded sequence of completion, object-first,
+holder-first and repeated-page reads; do not add a judging run for each read direction. List those
+selections before approval and freeze them for the pair. A separate consumed claim for each approved
+before/after slot must prevent accidental extra judging invocations. The extra before execution is
+needed only to establish the identical-artifact comparison:
+the frozen one-shot runner cannot be repurposed. Retain the existing 67.95-second result as diagnostic
+evidence rather than pretending a changed runner is the same baseline. The owner approved this two-pass
+allowance and the pinned workload is recorded in 0115. Do not retry a completed or failed measured
+execution automatically. Production-scale workloads are not part of this allowance. The additional
+artifact is `S1ProofStorageBenchmarks`; its input/read sequence and logical comparer were frozen after
+the successful before pass. Its before execution took 50.64 seconds including the pinned reads,
+retained a 372,428,800-byte new judgement and sampled 750,148,404 bytes of combined judgement storage
+including the previous 372,428,800-byte generation. Its count, complete-value/binding digest and
+normalization-negative-control preparation passed. Both slots are now consumed; the after result
+and its regression are recorded below. No third judging execution is authorized.
+
+### S1 paired lab result — performance acceptance on hold
+
+Both Release passes used the same frozen `S1ProofStorageBenchmarks` source (SHA-256
+`76717721E673F262046F26469FE01BF262DBFF6E6BBC41B31998386461EEC2A8`), the pinned input and read sequence,
+and actual runtime .NET 10.0.12 on S2DMEASOFT. Before/after source and binary manifests were retained;
+the common Git HEAD alone does not identify either uncommitted implementation. Judgement assembly
+SHA-256 before is `0EA8109ECD1956B69CB519C411FBD1D9CE4112F67FCB6A47AC85191B2605E48D`; after is
+`66B8F5DA37EE6D474C424F467B0356AB5444E3828CEFC11AE72583D9333A9D54`.
+
+The before generation is `fb244056-fa1c-492a-ad0a-1cbcd6914196`, database SHA-256
+`B2CFBA8F3A61E2077946518B4F3F8DF11AB9E782E3F2C792BCE2E2B83E8D337A`; the after generation is
+`b63655c6-a44f-4ed3-946e-3b30a94f14b2`, database SHA-256
+`239F0181259BAF538D54740D2222E2887035F7D9D4ACC74977B130C330CF29A7`.
+CPU trace sessions are `9353931c-49dc-4dec-89ed-1a326925d5a3` and
+`4042886f-b504-4084-9ff4-08feb425a52f`. These are not the older diagnostic trace or the lab executable.
+
+| Metric | Before | After | Delta |
+|---|---:|---:|---:|
+| Judging plus the fixed completion/page reads | 50.640 s | 55.309 s | +4.670 s / +9.22% |
+| Basic object-processing phase | 35.655 s | 40.221 s | +4.566 s |
+| Ownership selection | 1.500 s | 1.526 s | +0.026 s |
+| Selected ownership assessment | 3.564 s | 3.225 s | -0.339 s |
+| Publication | 0.453 s | 0.416 s | -0.037 s |
+| Completion readback | 0.485 s | 0.448 s | -0.037 s |
+| Process CPU during the measured interval | 49.656 s | 53.047 s | +3.391 s / +6.83% |
+| Cumulative managed allocation during that interval | 13,224,498,544 bytes | 15,931,714,368 bytes | +2,707,215,824 / +20.47% |
+| Gen 0 / Gen 1 / Gen 2 collection deltas | 1,062 / 66 / 15 | 1,277 / 70 / 16 | +215 / +4 / +1 |
+| Maximum boundary-sampled working set | 237,547,520 bytes | 233,840,640 bytes | -3,706,880 / -1.56% |
+| Maximum boundary-sampled private memory | 186,998,784 bytes | 183,046,144 bytes | -3,952,640 / -2.11% |
+| Final newly selected Judgement database | 372,428,800 bytes | 333,299,712 bytes | -39,129,088 / -10.51% |
+| Maximum sampled combined Judgement DB bytes | 744,857,600 bytes | 705,728,512 bytes | -39,129,088 / -5.25% |
+| Maximum sampled WAL bytes | 5,380,752 bytes | 6,283,032 bytes | +902,280 / +16.77% |
+| Maximum sampled DB/WAL/sidecar total | 750,148,404 bytes | 711,622,588 bytes | -38,525,816 / -5.14% |
+| Prior Judgement retained in each pass | 372,428,800 bytes | 372,428,800 bytes | unchanged |
+
+Allocation is bytes allocated over time, not required live RAM. Boundary memory samples and 100 ms
+file samples are observed lower bounds, not guaranteed peaks; external temporary files and filesystem
+allocation/compression are not measured. The common retained prior generation explains why overlap
+savings are smaller than the new-file percentage. BenchmarkDotNet reported NA for its aggregate table;
+the independent execution stopwatches and validation records succeeded. This is one observation per
+build, with profiler/observer/snapshot overhead, not averages or statistical significance.
+
+All 56 logical product digests matched, including complete permission values, consumer associations,
+complete control-route sequences, full-control stored proof and unchanged products. Every ACE/source
+association fingerprint was independently checked before normalizing only validated Judgement IDs and
+run timestamps. The same eight bounded public snapshots matched; no exhaustive public export was run.
+All pinned findings, primitive/support counts, selected/unselected states, Unknown owner transitions,
+and inactive requester/member products were preserved.
+
+The after store has 15 explanation values totaling 1,071 payload bytes and 12 complete route values
+totaling 22,360 payload bytes. There are 112,303 control consumer bindings. The shared relational route
+representation has 34 routes and 81 steps; reconstructing each consumer still produces the original
+87,340 logical routes and 174,764 logical steps. The earlier 11-value observation covered full-control
+route JSON only, whereas S1 also shares control-edge route values. Full-control JSON payload fell from
+79,365,759 to 61,969,730 bytes. These payload figures are not additive physical savings.
+
+**Functional verification:** the new sharing/corruption tests passed; focused coverage passed 142/142.
+The new shared-proof helper had approximately 98.73% reported line coverage and 88.70% branch coverage,
+not full coverage. The final uninstrumented offline suite ran 4,616 tests: 4,603 passed and 13 failed;
+zero excluded stage-status cases ran. Every remaining failed case reproduced using the retained
+pre-S1 Judgement assembly in an isolated host. They concern earlier catalogue-2 expectations,
+unselected ownership transitions and pre-existing concept/vouched-result/null-default architecture
+checks. Existing failing tests and their expectations were not weakened. The new optional-null
+collaborator and missing decision-index entry found during validation were corrected. The solution
+build succeeds; the offline suite is not reported as fully green.
+
+**Stop point:** storage and logical parity gates passed, but the measured workload is slower and
+allocates more. The after CPU trace remains dominated by storage work and shows the added shared-value
+serialization/binding/read work; it does not establish allocation attribution for every extra byte.
+No performance acceptance, production acceptance or speed improvement is claimed. Production changes
+and benchmark executions stopped after this result; the candidate is retained for review, not silently
+optimized further or reset over existing work. Investigating the new writer serialization/binding
+overhead is the bounded next recommendation and requires a new explicit measurement allowance before
+another timed judging run. Transaction batching, evaluator weakening and reader-lifetime changes have
+not been smuggled into this slice.
+
+### Production-scale validation is a separate gate
+
+Use the [recorded production shape](../../WHAT-THE-PRODUCT-IS.md#the-forest-this-is-built-for): nine
+domains, approximately 347,000 objects and 5.9 million ACEs, deep names averaging about 97 characters,
+and historically about nine million predecessor control edges. The predecessor edge figure is workload
+context, not a predicted Next output count. The existing synthetic volume harness's mostly read-property
+filler and discovery-on pairing is not representative evidence for this design.
+
+Before claiming readiness, separately authorize retained offline scale fixtures or available sealed
+production evidence. Cover increasing object/ACE volume and increasing holders, deny/object-specific
+ACE density, conditional entries, identity ambiguity, membership depth/alternative routes, and both
+high and low value reuse. Include small and broad ownership scope with honest incomplete coverage,
+first/repeated holder and object pages, and re-judging while the prior generation remains retained.
+Record measured output/reference counts, actual runtime/build, elapsed phases, peak memory and full
+disk overlap, including available temporary-file measurements; do not extrapolate a lab ratio into
+a production promise or choose new production budgets. Establish an explicit acceptable completion,
+memory and disk envelope for the operator's hardware before acceptance, not after observing a result.
+Scale fixtures remain synthetic evidence, not customer acceptance. No live access, recapture, service
+or power changes, UI changes, production requester/member activation, deletion of old evidence,
+commit/push/reset or execution of the four excluded stage-status tests is included.
 
 ## A bundle gains two files, and loses none
 
@@ -2560,3 +3135,111 @@ an object.
 
 The other blank rows were not exercised: nothing threw, no rule was skipped, and no account was
 missing a declared input, so the refusals and degraded paths remain proven by test alone.
+
+## Shared permission-proof storage — schema 25
+
+**Approval and status:** the owner approved target-bound shared storage for ownership/control ACE
+associations and full-control source lists, then separately approved an isolated offline comparison
+helper. The bounded sealed-lab storage slice is implemented and validated: complete cross-schema
+public-read-model comparison passed and a net lab storage saving is established. This is not
+production-scale or final Stage 6 acceptance. There is no authorization for
+publication, live directory access, recapture, UI changes or production expansion budgets.
+
+`SharedPermissionStorage` stores each distinct complete permission entry once per target and
+judgement generation, within the existing per-object transaction. `permission_entry` retains the
+original ordinal, ACE type, every trustee field, mask, GUID strings and explicit presence flags,
+inheritance/propagation flags and callback bytes in structured columns. Equality checks the complete
+case-sensitive value representation, not a hash alone. Different physical ordinals and different
+metadata remain distinct; null and empty values are not interchanged. There is no mask expansion,
+SELF reinterpretation, compression, forest-wide cache, command-reuse change or transaction batching.
+
+`control_ace` retains every original edge/ordinal association and refers to the shared entry.
+`full_control_source_entry` retains each source-list position and original ordinal, referring to the
+same entry only when all values match. Each association carries an integrity fingerprint bound to
+its target, generation, ordinal and complete values. The full-control source also retains its count
+and an ordered-list fingerprint. These detect changed values, misdirected references and reordered
+lists; they are not a claim of cryptographic authenticity or permission to merge conflicting proof.
+
+Readers join these records to reconstruct the existing public models. Full-control sources retain
+the richer trustee metadata; control-edge evidence still returns null for trustee `UnresolvedReason`
+and `Meaning`, as it did before. Existing proof-consistency checks, including validation beyond the
+visible page where it protects counts, remain in place. No new permission derivation or membership
+expansion is performed for display. Assessment explanations, alternative grants, ownership
+preconditions, membership routes and support links remain separate and unchanged.
+
+Named-holder counts remain independent of members and routes. Existing-owner control remains
+independent, and `CanBecomeOwnerAndRewriteDacl` stays Unknown and uncounted. Concrete requester
+assessments, partial results, unresolved nodes and budget stop reasons retain their existing
+limitations. Empty, null, unreadable and incomplete descriptors do not become interchangeable empty
+lists. Failed object writes roll back their new shared rows as well as their associations; cancellation
+after substantial writes still leaves the previous published generation intact.
+
+Only the disposable Judgement schema advances, from **24 to 25**. Control engine **8**, principal
+catalogue **2**, and Derivation schema **11** are unchanged. The reader refuses schema 24; re-judge
+unchanged sealed inputs in a new isolated copy rather than migrating the old database. The new
+schema-25 layout checkpoint records this build's observed layout, not a historical forest anchor.
+Every previous checkpoint and the frozen lab benchmark and same-schema comparer are preserved.
+
+### Verification and limits
+
+The current focused run passes **167 tests**. Sharing checks cover every stored field, distinct
+ordinals, callback arrays, richer metadata, SELF/applicability and unsupported inputs. Corruption
+checks include wrong target/generation, missing values/references, same-target metadata substitution,
+case-only changes, reordered valid sources, and failures outside the displayed page. Existing
+ownership/replication, late-proof rollback and cancellation-after-1,000-written-objects checks pass.
+
+Fresh outputs from the sealed **ad.lab-20260908-145954** input retain 8,407 objects in three domains,
+17 rules, 27 findings and CompletedDegraded, with requester discovery and member attribution inactive.
+The schema-24 database is **686,673,920 bytes**; the schema-25 candidate is **543,715,328 bytes**:
+**142,958,592 bytes (136.336 MiB; 20.8%) less**, including indexes and reference overhead. Index count
+changes from 37 to 38, both have zero freelist pages, and the candidate's published WAL is empty.
+There are **209,032 distinct complete stored entries**, with no duplicate complete-value rows or
+unreferenced entries. All **208,900 full-control source references** reuse entries also referenced
+by control edges. Target/generation/ordinal bindings, foreign keys and the frozen rule-uncertainty
+fixture checks pass.
+
+Complete object-first public models match for all **8,407 targets**, **144,732 control edges**,
+**1,327,169 ACE associations**, **23,751 full-control assessments** and **72,422 support links**.
+Every permission field, precondition, route, support, expectedness and uncertainty value is retained.
+The complete findings/rule and inactive requester models are compared too; member attribution stays
+unconfigured. Only independently validated judgement generation IDs and run timestamps are normalized.
+The four disjoint export partitions cover every target once, preserve all public-reader validation,
+and have identical normalized model hashes across schemas. Other query directions and filters retain
+their focused test coverage. A case-only change from `AccessAllowed` to `accessallowed`, with counts
+unchanged and the export hash refreshed, is refused by the comparator at the changed record. Wrong
+generation and unexpected timestamp normalization attempts are also refused.
+
+An uninstrumented offline run passed **4,422/4,422**, with only the four stage-status tests excluded,
+and the solution builds successfully. The final repeat passed **4,421/4,422**: the existing
+`AuditProgressTests.DerivationSubphaseIsVisibleWithoutResettingTheReadCounter` timed out again, with
+no C# changes between the two runs. It uses controlled progress substitutes, not the shared storage
+writer. **Medium — unresolved outside this storage slice:** the intermittent progress-wait failure
+is retained, not hidden by relaxing the test or repeating until green. The coverage run records
+**4,420/4,422**, not a full pass: that progress wait and the literal-instruction scanner's negative
+control failed under instrumentation. The scanner's positive/negative cases and full uninstrumented
+run pass; neither gate was weakened. Shared storage has full observed line and branch coverage.
+Preservation checks found no unexpected changes in 1,001 original files outside the bounded edit list;
+the frozen benchmark fingerprint still matches its preserved value.
+
+Publication/readback and memory observations are diagnostic, not a controlled speed comparison.
+The candidate's publication checkpoint records about 102.1 seconds and a 149.3 MiB process peak
+including setup; cumulative allocation is not a RAM requirement. Peak WAL/temp growth is unmeasured.
+The initial exhaustive export reached its helper's 15-minute cutoff after 3,500 objects. Its complete
+publication and partial output are retained; revised export-only workers use fresh copies, preserve
+all reader validation, and require complete disjoint target/association coverage before comparison.
+Baseline export workers recorded 20.82–21.49 minutes each; candidate workers recorded 15.78–15.83
+minutes each. These include exhaustive validation, serialization, output writing and hashing under
+different concurrent load, not ordinary screen-opening latency or proof of a runtime speedup.
+Baseline worker peaks were 94.3–104.8 MiB and candidate peaks 101.1–104.2 MiB, including setup; an
+aggregate concurrent-worker peak was not measured. **Cumulative allocation increased** from
+7.52–7.59 GiB to 10.77–10.87 GiB per export worker. That is an observed trade-off, not a RAM
+requirement or a memory-improvement claim. Local input, source, binary, log, coverage and comparison
+artifacts are retained, not required clean-clone documentation inputs. No runtime improvement is claimed.
+
+Production-shaped validation remains outstanding. The existing volume harness couples its
+discovery-disabled baseline with a discovery-enabled pass and deletes generated captures afterward;
+most of its volume ACEs are read-property fillers, not the repeated ownership/full-control proof
+addressed here. It is not a substitute for this retained, discovery-disabled storage comparison. No new scale harness
+or production budget is authorized. Synthetic results alone cannot establish production acceptance.
+The four stage-status checks remain unverified, and the previously reported clean-clone prose-path
+citation issue remains separate. Earlier local progress changes and all prior artifacts are preserved.

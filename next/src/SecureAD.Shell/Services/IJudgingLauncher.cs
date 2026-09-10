@@ -14,7 +14,7 @@ namespace SecureAD.Shell.Services;
 /// lists them, which is the only thing that should be holding them.
 /// </remarks>
 /// <param name="State">What became of the judging.</param>
-/// <param name="ObjectsJudged">How many objects the rules reached a verdict on.</param>
+/// <param name="ObjectsJudged">Unique captured objects streamed through judging, not the sum of per-rule evaluations.</param>
 /// <param name="Findings">How many findings there were, by severity.</param>
 /// <param name="CouldNotDecide">
 /// What stopped a rule reaching a verdict, and on how many objects, worst first.

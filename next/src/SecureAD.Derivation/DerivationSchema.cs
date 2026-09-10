@@ -83,7 +83,13 @@ internal static class DerivationSchema
     /// </remarks>
     // Version 9 introduced schema-scoped owner acceptance under 0109. Version 10 adds the
     // independent membership routes and their completeness under 0108; old paths are not totals.
-    public const int Version = 11;
+    //
+    // Version 12 retains naming-context heads in the captured membership input under 0117. A
+    // partition root holds no SID and no membership, so every earlier version projected it away as
+    // not a principal. It is now a Tier-0 seed in its own right, and a version 11 store simply does
+    // not contain the object, so it cannot answer whether a replication grant on a partition root
+    // was assessed - which is refused rather than guessed at.
+    public const int Version = 12;
 
 
     private static readonly string[] TableDdl =

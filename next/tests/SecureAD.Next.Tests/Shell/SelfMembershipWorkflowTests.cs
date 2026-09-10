@@ -64,7 +64,8 @@ public sealed class SelfMembershipWorkflowTests
     [Fact]
     public void RequesterAnswersDoNotIncreaseTheRealScreenHolderCounts()
     {
-        var directory = Bundle();
+        // Adding yourself to a group is a route to whatever that group can reach.
+        var directory = Bundle(tier0Route: true, tier0RouteFromTarget: true);
         Derive(directory);
         Judge(directory, null);
         using var source = new BundleAssetSource();
@@ -110,7 +111,7 @@ public sealed class SelfMembershipWorkflowTests
     [Fact]
     public void UnreadableStoredCoverageClearsTheActualScreenWithoutHidingValidHolderEdges()
     {
-        var directory = Bundle();
+        var directory = Bundle(tier0Route: true, tier0RouteFromTarget: true);
         Derive(directory);
         Judge(directory, TestBudget);
         using var source = new BundleAssetSource();

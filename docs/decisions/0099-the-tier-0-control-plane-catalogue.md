@@ -113,9 +113,11 @@ what past runs meant.
    Active Directory and `PrivilegedSidHistory` reports it as a finding; making it confer
    expectedness would hide the edges that rule exists to raise.
 3. **A domain controller computer account is a Tier 0 asset and is not a control-plane entry.** Its
-   edges surface. This follows the settled 516 ruling, which named the computer account as the Tier 0
-   object and the group as not one, and it is stated here so that the first run's replication edges
-   are a decision rather than a surprise.
+   edges surface. **Corrected under [0112](0112-shared-tier-0-classification-and-ownership-contracts.md):**
+   the earlier sentence excluded the Domain Controllers group as a Tier-0 object, contradicting
+   0006. The group remains a core Tier-0 target under 0006; it is not itself a domain-controller
+   computer and does not become an expected control-plane entry. Classification and expectedness
+   remain separate.
 4. **A group whose members are Tier 0 assets does not inherit expectedness from them.** A group of
    domain controllers is not a domain controller.
 5. **Broad principals are never expected**, whatever else this catalogue says (`0098` condition 3).

@@ -112,6 +112,20 @@ hidden by default, with expected, unexpected and unknown-expectedness counts sta
 Showing expected edges changes the filter, not the stored classification. Supporting ownership
 compounds remain separately labeled, unknown and uncounted; these are not findings or severity grades.
 
+**Automatic ownership coverage under [0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md)**
+is read from the completed Judgement generation and appended beneath the existing coverage text.
+Target view says **Assessed automatically from captured evidence.**, **Not assessed automatically.**,
+or **Not assessed automatically: required derived inputs are unavailable.** Incomplete scope appends
+**Automatic ownership scope is incomplete; this is not a safety verdict.** Holder view explains that
+assessment is target-specific and directs the user to target view. Coverage from another generation
+is withheld rather than mixed with the current edges. This is passive readback, not an assessment
+trigger. No on-demand button is present yet, and existing permission counts/filtering are unchanged.
+
+Audit progress resolves the approved **Selecting ownership assessment scope** and **Assessing
+ownership takeover** labels while preserving object counters and publication outcomes. Automated
+workflow/resource checks do not establish laptop or external-monitor visual acceptance; those checks
+remain outstanding within normal product verification.
+
 First/next-page controls read bounded pages. Changing views or filters returns to the first page;
 if the judgement generation changes during paging, the view refuses to mix results and asks the
 operator to return to the first page. A missing or unreadable product says so rather than presenting

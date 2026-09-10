@@ -86,6 +86,14 @@ and `AnalysisStoreLifecycle.Resolve` reads the selected identity. `BundleLayout.
 `BundleSealing.VerifyAnalysisGeneration` verifies the selected pair. A failed publication leaves the
 earlier manifest untouched, so readers continue opening the previous complete generation.
 
+`Publish` also accepts cancellation under
+[0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md). It checks before starting,
+after sealing, and before atomic manifest replacement. Cancellation observed before replacement
+leaves the prior manifest selected; generation files already written remain unselected rather than
+being deleted. There is no post-replacement cancellation check that could report a committed generation
+as unpublished. Synchronous hashing may finish before cancellation is observed. The audit writer
+passes its token through finalization; existing callers that omit a token retain their prior behavior.
+
 > `S-16` said a bundle was four files. It was written before `run-outcome.json` and `preflight.json`
 > existed and was never revisited, and the count survived because nothing counted it.
 

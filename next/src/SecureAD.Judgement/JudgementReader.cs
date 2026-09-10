@@ -150,6 +150,7 @@ public sealed class JudgementReader : IDisposable
 {
     private readonly SqliteConnection _connection;
     private bool _disposed;
+    private bool _ownershipValidated;
 
     private JudgementReader(
         string bundleDirectory, SqliteConnection connection, JudgementDescription description)
@@ -172,8 +173,15 @@ public sealed class JudgementReader : IDisposable
         if (target is not null && holderSid is not null)
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
+        // The reader holds one opened immutable generation; a new generation gets its own validation.
+        if (!_ownershipValidated)
+        {
+            OwnershipAuditValidation.Validate(_connection, Description, BundleDirectory);
+            _ownershipValidated = true;
+        }
         return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
-            with { GenerationId = Description.GenerationId };
+            with { GenerationId = Description.GenerationId,
+                OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
     }
 
     /// <summary>Reads explicit requester assessments object-first, requester-first, or together.</summary>

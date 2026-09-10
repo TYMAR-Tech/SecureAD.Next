@@ -93,21 +93,42 @@ public sealed class OwnershipWorkflowTests
         Assert.False(reader.ReadControlEdges(null, UserSid, null, true, 0).IsComplete);
     }
 
+    /// <summary>
+    /// The state this describes belongs to decision 0114: every object received control products and
+    /// only ownership assessment was scoped, so a target could be proven for control and still not
+    /// assessed for ownership. Under 0116 control itself is scoped, and an unadmitted target has no
+    /// edges to retain, so this is kept on the unscoped path where that state exists.
+    /// <see cref="UnadmittedTargetIsNotAssessedAndSaysSoWithoutClaimingSafety"/> is its scope-aware
+    /// counterpart.
+    /// </summary>
     [Fact]
-    public void OwnerTransitionRetainsProvenPrimitiveAndUncountedLaboratoryGate()
+    public void UnselectedTargetRetainsProvenPrimitiveAndShowsNotAssessedStatus()
     {
-        var directory = Prepared($"O:SYG:SYD:(A;;WO;;;{UserSid})(A;;WD;;;S-1-3-4)");
+        var directory = Prepared($"O:SYG:SYD:(A;;WO;;;{UserSid})(A;;WD;;;S-1-3-4)", tier0Route: false);
         using var reader = JudgementReader.Open(directory).Value;
         var page = reader.ReadControlEdges(TargetDn, null, null, true, 0);
         var primitive = Assert.Single(page.Edges.Where(edge => edge.IsCounted));
         Assert.Equal(ControlEvaluationState.Established, primitive.EvaluationState);
-        var compound = Assert.Single(page.Edges.Where(edge => !edge.IsCounted));
-        Assert.Equal(ControlEvaluationState.Unknown, compound.EvaluationState);
-        Assert.Contains(compound.Preconditions, item => item.Name == "OwnerWouldReceiveWriteDacl" && item.State == ControlEvaluationState.Established);
-        Assert.Contains(compound.Preconditions, item => item.Name == "CanSetTakeoverOwnerSid" && item.State == ControlEvaluationState.Unknown);
+        Assert.DoesNotContain(page.Edges, edge => edge.Capability == ControlCapability.CanBecomeOwnerAndRewriteDacl);
+        Assert.Equal(OwnershipAssessmentExecution.NotAssessed, page.OwnershipCoverage?.Execution);
         using var source = new BundleAssetSource();
-        Assert.Contains(Open(source, directory, TargetDn, false).Rows,
-            row => row.Capability == "Owner-change permission control — not verified; not counted");
+        Assert.Contains("Not assessed automatically.", Open(source, directory, TargetDn, false).Coverage);
+    }
+
+    /// <summary>
+    /// The scope-aware replacement, per 0116: a target discovery never reached has no detailed
+    /// products at all, and the screen says nothing assessed it rather than implying it is clean.
+    /// </summary>
+    [Fact]
+    public void UnadmittedTargetIsNotAssessedAndSaysSoWithoutClaimingSafety()
+    {
+        var directory = Prepared($"O:SYG:SYD:(A;;WO;;;{UserSid})(A;;WD;;;S-1-3-4)", tier0Route: false);
+        using var reader = JudgementReader.Open(directory).Value;
+        var page = reader.ReadControlEdges(TargetDn, null, null, true, 0);
+        using var source = new BundleAssetSource();
+        Assert.Equal((OwnershipAssessmentExecution.NotAssessed, true),
+            (page.OwnershipCoverage?.Execution,
+             Open(source, directory, TargetDn, false).Coverage.Contains("Not assessed automatically.", StringComparison.Ordinal)));
     }
 
     [Theory]
@@ -119,7 +140,7 @@ public sealed class OwnershipWorkflowTests
     [InlineData("UPDATE control_edge SET target_class='computer'", "could not be read")]
     [InlineData("UPDATE control_edge SET counted=0", "could not be read")]
     [InlineData("UPDATE control_edge SET generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'", "could not be read")]
-    [InlineData("UPDATE control_ace SET mask=16", "could not be read")]
+    [InlineData("UPDATE permission_entry SET mask=16 WHERE id IN (SELECT entry_id FROM control_ace)", "could not be read")]
     [InlineData("UPDATE control_precondition SET evidence=json_set(evidence,'$.Setting.Value',2) WHERE name='OwnerSource'; UPDATE control_precondition SET evidence='DefaultedByAbsence:0:2' WHERE name='BlockOwnerImplicitRights'", "could not be read")]
     public void DamagedProofOrPreviousEngineClearsBothRowsAndSelectedEvidence(string mutation, string notice)
     {
@@ -164,9 +185,17 @@ public sealed class OwnershipWorkflowTests
         Assert.Equal(103, first.Edges.Concat(last.Edges).Select(edge => edge.Target).Distinct().Count());
     }
 
-    internal static string Prepared(string descriptor, bool derive = true, int extraTargets = 0)
+    internal static string Prepared(string descriptor, bool derive = true, int extraTargets = 0, bool tier0Route = true)
     {
-        var directory = Bundle(sddl: descriptor, users: 0, members: [UserDn], writeAdditional: (writer, coverage) =>
+        // Ownership of an object is a route to controlling it, so these targets are worth assessing.
+        //
+        // extraTargets is the exception and stays off the gated path. Those objects exist to give the
+        // reader enough rows to page through, and an ordinary organizational unit owned by an
+        // ordinary user is precisely what discovery is right not to admit: the holder's outgoing
+        // ownership of ordinary objects is not a route into Tier 0. Manufacturing a hundred Tier-0
+        // groups to make them appear would be inventing evidence to restore a count.
+        var directory = Bundle(sddl: descriptor, users: 0, members: [UserDn], tier0Route: tier0Route && extraTargets == 0,
+            writeAdditional: (writer, coverage) =>
         {
             Write(UserDn, [Text("objectClass", "top", "person", "organizationalPerson", "user"),
                 Bytes("objectSid", Sid.ToBytes(UserSid)!), Text("userAccountControl", "512"), Text("primaryGroupID", "513")]);

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading"><value>Audit progress</value></data>
+  <data name="Preparing"><value>Preparing the audit</value></data>
+  <data name="Capture"><value>Capturing and sealing evidence</value></data>
+  <data name="Deriving"><value>Deriving reusable facts from sealed evidence</value></data>
+  <data name="AttributeVisibility"><value>Deriving — checking captured attribute visibility</value></data>
+  <data name="MembershipAndNesting"><value>Deriving — reading captured membership evidence</value></data>
+  <data name="BuildingNestingGraph"><value>Deriving — building the membership graph</value></data>
+  <data name="WritingMembershipEvidence"><value>Deriving — writing membership evidence</value></data>
+  <data name="ExpansionPhase"><value>Deriving — expanding security-group membership</value></data>
+  <data name="ProtectedPrincipals"><value>Deriving — evaluating protected principals</value></data>
+  <data name="LatentPrivilegePaths"><value>Deriving — evaluating latent privilege</value></data>
+  <data name="PublishingDerivation"><value>Deriving — finalizing and publishing derived facts</value></data>
+  <data name="ReadingDerivedResults"><value>Deriving — reading the published results</value></data>
+  <data name="PreparingInputs"><value>Judging — preparing captured and derived inputs</value></data>
+  <data name="EvaluatingObjects"><value>Judging — evaluating permissions and rules</value></data>
+  <data name="SelectingOwnershipScope"><value>Selecting ownership assessment scope</value></data>
+  <data name="AssessingOwnership"><value>Assessing ownership takeover</value></data>
+  <data name="AttributingMembers"><value>Judging — attributing group-held permissions</value></data>
+  <data name="EvaluatingRequesters"><value>Judging — finalizing requester assessments</value></data>
+  <data name="WritingFindings"><value>Judging — writing findings and rule outcomes</value></data>
+  <data name="PublishingJudgement"><value>Judging — finalizing and publishing the judgement</value></data>
+  <data name="ReadingResults"><value>Judging — reading the published results</value></data>
+  <data name="ObjectsRead"><value>Captured objects read: {0:N0}</value></data>
+  <data name="ObjectsProcessed"><value>Objects processed: {0:N0}</value></data>
+  <data name="Elapsed"><value>Elapsed: {0}</value></data>
+  <data name="LastUpdate"><value>Last phase/progress update: {0} ago</value></data>
+  <data name="Caveat"><value>Elapsed time is not a progress estimate. A phase may continue working between reports. No percentage or completion time is assumed.</value></data>
+  <data name="Stopping"><value>Stopping — waiting for the current work to stop: {0}</value></data>
+  <data name="Stopped"><value>Audit stopped — review the phase outcomes below</value></data>
+  <data name="Failed"><value>Audit could not finish — review the error below</value></data>
+  <data name="Finished"><value>Audit completed — results are ready</value></data>
+  <data name="FinishedWithGaps"><value>Audit ended with incomplete or unavailable results — review the phase outcomes below</value></data>
+  <data name="NoEvidence"><value>Audit ended without sealed evidence</value></data>
+  <data name="Ready"><value>Preparation ended — review the plan and any reported problems</value></data>
+  <data name="CaptureHeading"><value>Capture outcome</value></data>
+  <data name="DerivationHeading"><value>Derivation outcome</value></data>
+  <data name="JudgingHeading"><value>Judging outcome</value></data>
+  <data name="DerivationStopped"><value>Derivation stopped. Sealed evidence remains available; completion of derived facts has not been confirmed.</value></data>
+  <data name="JudgingStopped"><value>Judging stopped. Sealed evidence remains available; a completed judgement has not been confirmed.</value></data>
+</root>

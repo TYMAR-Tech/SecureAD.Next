@@ -49,7 +49,11 @@ public static class JudgingRun
     /// stall at 99 or pass 100 in front of an operator watching for hours.
     /// </remarks>
     /// <param name="ObjectsRead">How many objects have been offered to the rules so far.</param>
-    public readonly record struct JudgingProgress(long ObjectsRead);
+    public readonly record struct JudgingProgress(long ObjectsRead)
+    {
+        /// <summary>The current operation, not an indication that a judgement has been published.</summary>
+        public JudgingPhase Phase { get; init; }
+    }
 
     /// <summary>
     /// Judges the bundle in <paramref name="bundleDirectory"/> and writes the judgement beside it.
@@ -131,6 +135,46 @@ public static class JudgingRun
             startedUtc, evaluationAsOf, progress, log, cancellationToken);
     }
 
+    /// <summary>
+    /// Judges with Tier-0 discovery deciding which objects receive detailed control assessment.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the work boundary decision 0116 describes, and it is opt-in for now.</b> Detailed
+    /// control, full-control and owner-transition products are derived only for objects a supported
+    /// incoming route from a Tier-0 seed reached. Ordinary rule evaluation is unchanged: every rule
+    /// is still offered every streamed object exactly once.
+    /// </para>
+    /// <para>
+    /// <b>Why the other entry points still assess everything.</b> Under this boundary the stored
+    /// control counts cover the assessed scope rather than the captured forest, and a large body of
+    /// existing acceptance fixtures state their expectations as forest-wide totals. Those are the
+    /// counts 0116 calls history rather than oracles, and re-anchoring them is deliberate work in
+    /// its own right - not something to do by quietly changing what they measure underneath them.
+    /// Until that is done, choosing this behaviour is explicit.
+    /// </para>
+    /// </remarks>
+    /// <param name="discoveryBudget">
+    /// The bounded scan limits. No production default exists;
+    /// <see cref="Tier0DiscoveryBudget.Laboratory"/> is sized for a laboratory capture and is not a
+    /// measured production budget.
+    /// </param>
+    public static Result<JudgementRunState> JudgeWithTier0Discovery(
+        string bundleDirectory,
+        IReadOnlyList<IRule> rules,
+        Tier0DiscoveryBudget discoveryBudget,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress,
+        IRunLog log,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(discoveryBudget);
+        discoveryBudget.Validate();
+        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, null,
+            startedUtc, evaluationAsOf, progress, log, cancellationToken, discoveryBudget);
+    }
+
     private static Result<JudgementRunState> JudgeCore(
         string bundleDirectory,
         IReadOnlyList<IRule> rules,
@@ -143,7 +187,8 @@ public static class JudgingRun
         DateTimeOffset evaluationAsOf,
         IProgress<JudgingProgress> progress,
         IRunLog log,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Tier0DiscoveryBudget? tier0DiscoveryBudget = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -154,6 +199,7 @@ public static class JudgingRun
         if (selfMembershipRequests.Count > selfMembershipBudget.Requests)
             throw new ArgumentException($"The request batch contains {selfMembershipRequests.Count} requests; its explicit budget is {selfMembershipBudget.Requests}.", nameof(selfMembershipRequests));
 
+        progress.Report(new JudgingProgress(0) { Phase = JudgingPhase.PreparingInputs });
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
         if (seal is null || string.IsNullOrWhiteSpace(seal.Hash))
@@ -397,12 +443,14 @@ public static class JudgingRun
         if (memberBudget is not null && derivation is null)
             return Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable"), bundleDirectory);
         CapturedMembershipInput? memberInput = null;
-        if (memberBudget is not null && derivation is not null)
+        if (derivation is not null)
         {
             try { memberInput = derivation.ReadMembershipInput(); }
             catch (Exception error) when (error is InvalidOperationException or System.Text.Json.JsonException or Microsoft.Data.Sqlite.SqliteException)
             {
-                var refusal = Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable") + " " + error.Message, bundleDirectory);
+                var refusal = memberBudget is not null
+                    ? Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable") + " " + error.Message, bundleDirectory)
+                    : Failure("OwnershipScopeInputUnavailable", OwnershipAuditCoverage.Text("InvalidProof") + " " + error.Message, bundleDirectory);
                 log.Record(JudgePhase, refusal.Error!, []);
                 return refusal;
             }
@@ -450,12 +498,32 @@ public static class JudgingRun
             return value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
         });
 
+        var ownershipDescription = new JudgementDescription(seal.Hash, writer.GenerationId, derivationGeneration,
+            JudgementRunState.Running, evaluationAsOf, startedUtc, default);
+        var ownershipBinding = memberInput is not null && derivationGeneration is { } sourceGeneration
+            ? OwnershipAuditRun.Binding(bundleDirectory, seal.Hash, sourceGeneration, bundle.Description.ForestFqdn) : null;
+        writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
+
         var scanWatch = new System.Diagnostics.Stopwatch();
+        var discoveryWatch = new System.Diagnostics.Stopwatch();
         var unobservedRoots = controlContext.NamingContexts.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var discovery = automaticDiscovery ? new SelfMembershipScheduler(discoveryBudget,
             scope.Value!.AllDeclaredDomainsAreComplete, attributes, controlContext.SchemaGuids ?? SchemaGuidCatalog.Embedded,
             bundle.Description.ForestFqdn, cancellationToken) : null;
 
+        // TIER-0 DISCOVERY, WHICH DECIDES WHAT THE EXPENSIVE PASS BELOW WILL LOOK AT. Per decision
+        // 0116 this reads the same captured owners and ACLs the detailed evaluators read, but only
+        // to collect candidates - it invokes no evaluator and writes no control product. Without a
+        // pinned derivation binding there is nothing to classify seeds against, so discovery does
+        // not run and every object falls back to being assessed, which is the previous behaviour
+        // rather than a silent claim that nothing mattered.
+        var tier0Discovery = tier0DiscoveryBudget is not null && ownershipBinding is not null
+            ? new Tier0DiscoveryScheduler(ownershipBinding, tier0DiscoveryBudget,
+                scope.Value!.AllDeclaredDomainsAreComplete, attributes,
+                subject => OwnershipAuditRun.Target(subject, namingContexts.Value), cancellationToken)
+            : null;
+
+        progress.Report(new JudgingProgress(0));
         foreach (var subject in bundle.StreamObjects().Objects)
         {
             // Checked per object rather than per batch. A rule catalogue that has grown expensive
@@ -465,8 +533,26 @@ public static class JudgingRun
 
             unobservedRoots.Remove(subject.DistinguishedName);
             var permissions = bundle.ReadPermissions(subject.DistinguishedName);
-            writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
-                permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids));
+
+            // THE DESCRIPTOR RECORD IS WRITTEN FOR EVERY OBJECT; THE EDGES ARE NOT. Whether the
+            // descriptor could be read is cheap and is the difference between "captured but not
+            // assessed", "captured and unreadable" and "not captured at all" - three answers a
+            // reader must be able to tell apart. Deriving the edges is the expensive part, and it
+            // now waits until discovery has said whether this object is in scope.
+            if (tier0Discovery is null)
+                writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
+                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids, includeOwnerTransitions: false),
+                    OwnershipAuditRun.Target(subject, namingContexts.Value));
+            else
+            {
+                writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
+                    permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids, includeOwnerTransitions: false)
+                    with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) },
+                    OwnershipAuditRun.Target(subject, namingContexts.Value));
+                discoveryWatch.Start();
+                tier0Discovery.Observe(subject, permissions);
+                discoveryWatch.Stop();
+            }
             scanWatch.Start();
             discovery?.Observe(subject, permissions);
             scanWatch.Stop();
@@ -482,15 +568,32 @@ public static class JudgingRun
 
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",
-                ControlUncertainty.ReplicationRootNotEstablished | ControlUncertainty.DescriptorUnreadable, []));
+                ControlUncertainty.ReplicationRootNotEstablished | ControlUncertainty.DescriptorUnreadable, []),
+                new Tier0Target(null, root, root, null, null, null));
 
         // The last report is unconditional, so a run that ends between two reports does not leave
         // the operator looking at a count short of what was actually read.
         progress.Report(new JudgingProgress(objectsRead));
+        if (tier0Discovery is not null)
+        {
+            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+            var admitted = writer.AdmitDiscoveredScope(bundle, ownershipDescription, memberInput, ownershipBinding!,
+                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken);
+            log.Note(JudgePhase, "tier0-discovery",
+            [
+                new RunLogDetail("scan-ms", ((long)discoveryWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("candidates", tier0Discovery.Coverage().CandidatesDiscovered.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("admitted", admitted.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("objects", objectsRead.ToString(CultureInfo.InvariantCulture)),
+            ]);
+        }
+        writer.AssessAutomaticOwnership(bundle, ownershipDescription, memberInput, ownershipBinding, controlContext,
+            domainSids, objectsRead, progress, cancellationToken, scopeAlreadyPlanned: tier0Discovery is not null);
         writer.CompleteControlEdges();
 
         if (memberInput is not null && memberBudget is not null)
         {
+            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.AttributingMembers });
             var memberWatch = System.Diagnostics.Stopwatch.StartNew();
             writer.WriteMemberAttributions(memberInput, memberBudget, bundle.Description.ForestFqdn, namingContexts.Value, cancellationToken);
             log.Note("MemberAttribution", "finished", [new RunLogDetail("elapsedMs",
@@ -508,6 +611,7 @@ public static class JudgingRun
         // to 8.5 ms as the work grew - the same target's evidence was being re-read once per
         // question. The answers were never affected: this changes the order rows are written in,
         // not what any of them says.
+        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.EvaluatingRequesters });
         string? loadedTarget = null;
         ObjectPermissions? loadedPermissions = null;
         var loadedEdges = new Dictionary<string, IReadOnlyList<long>>(StringComparer.Ordinal);
@@ -585,11 +689,13 @@ public static class JudgingRun
             ]);
         }
 
+        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.WritingFindings });
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
         cancellationToken.ThrowIfCancellationRequested();
-        writer.Complete(DateTimeOffset.UtcNow);
+        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });
+        writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
             && tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
@@ -694,6 +800,24 @@ public static class JudgingRun
         Result<JudgementRunState>.Failure(
             AuditError.Create(
                 ErrorCategory.Evidence, reason, ErrorSeverity.Failed, description, context));
+
+    /// <summary>
+    /// Whether the descriptor was read, for an object whose edges discovery has not asked for.
+    /// </summary>
+    /// <remarks>
+    /// An unassessed object must not be recorded as though its descriptor were missing. "Nothing
+    /// looked at this" and "this could not be read" are different answers, and only the second is a
+    /// gap in the evidence.
+    /// </remarks>
+    private static string DescriptorOutcome(ObjectPermissions? permissions) => permissions is null
+        || permissions.Availability != DescriptorAvailability.Read ? "DescriptorNotRead"
+        : permissions.DaclState == DaclState.Unreadable ? "DescriptorNotRead" : "NotAssessed";
+
+    private static ControlUncertainty DescriptorUncertainty(ObjectPermissions? permissions) => permissions is null
+        || permissions.Availability != DescriptorAvailability.Read || permissions.DaclState == DaclState.Unreadable
+        ? ControlUncertainty.DescriptorUnreadable
+        : permissions.DaclCompleteness != DaclCompleteness.Complete ? ControlUncertainty.DescriptorIncomplete
+        : ControlUncertainty.None;
 
     /// <summary>
     /// What one rule has made of the objects offered to it so far.

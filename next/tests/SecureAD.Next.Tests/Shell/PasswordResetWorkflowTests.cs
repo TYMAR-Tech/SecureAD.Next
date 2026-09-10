@@ -23,9 +23,11 @@ public sealed class PasswordResetWorkflowTests
 
         var section = Open(source, directory, dn, byHolder);
 
-        var row = Assert.Single(section.Rows);
+        // The reset permission is this test's subject. The holder view also carries the existing-owner
+        // edge from the fixture's Tier-0 route, which is a real captured fact rather than noise, so
+        // the row is selected by capability instead of by being the only one present.
+        var row = Assert.Single(section.Rows, item => item.Capability == "Password-reset permission");
         Assert.Same(row, section.SelectedEdge);
-        Assert.Equal("Password-reset permission", row.Capability);
         Assert.Equal("Established", row.Evaluation);
         Assert.Contains("Category: CredentialExposure", row.Evidence);
         Assert.Contains(PasswordResetControlTests.ResetGuid, row.Evidence);
@@ -53,7 +55,10 @@ public sealed class PasswordResetWorkflowTests
     [Fact]
     public void EnablingSyntheticRequesterDiscoveryDoesNotChangeResetHolderCounts()
     {
-        var directory = Prepared($"O:SYG:SYD:(OA;;CR;{PasswordResetControlTests.ResetGuid};;{TargetSid})");
+        // The requester answers link to self-membership edges on the target group, so the group has
+        // to be assessed for those links to exist.
+        var directory = Prepared($"O:SYG:SYD:(OA;;CR;{PasswordResetControlTests.ResetGuid};;{TargetSid})",
+            tier0RouteFromTarget: true);
         Judge(directory, null);
         using var source = new BundleAssetSource();
         var section = Open(source, directory, UserDn, false);
@@ -113,9 +118,11 @@ public sealed class PasswordResetWorkflowTests
         Assert.False(result.IsSuccess);
     }
 
-    private static string Prepared(string descriptor)
+    private static string Prepared(string descriptor, bool tier0RouteFromTarget = false)
     {
-        var directory = Bundle(userDescriptor: descriptor);
+        // Resetting an account's password is a route to using that account, so a target reachable
+        // from Tier 0 is what makes the grant worth assessing.
+        var directory = Bundle(userDescriptor: descriptor, tier0Route: true, tier0RouteFromTarget: tier0RouteFromTarget);
         Derive(directory);
         return directory;
     }

@@ -50,6 +50,23 @@ public sealed class AnalysisStoreLifecycleTests
     }
 
     [Fact]
+    public void PreCancelledPublicationPreservesTheExistingManifestAndStagingFile()
+    {
+        var directory = NewBundle();
+        var first = Guid.NewGuid();
+        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
+        File.WriteAllText(staging, "first");
+        AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, first);
+        File.WriteAllText(staging, "replacement");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var error = Record.Exception(() => AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement,
+            Guid.NewGuid(), cancellation.Token));
+        Assert.Equal((typeof(OperationCanceledException), first, "replacement"),
+            (error?.GetType(), AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId, File.ReadAllText(staging)));
+    }
+
+    [Fact]
     public void AMalformedManifestReturnsATypedFailure()
     {
         var directory = NewBundle();

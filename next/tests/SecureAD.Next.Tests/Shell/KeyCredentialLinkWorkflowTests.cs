@@ -130,7 +130,8 @@ public sealed class KeyCredentialLinkWorkflowTests
     [Fact]
     public void GroupMembersDoNotMultiplyHolderTargetCounts()
     {
-        var directory = Bundle(userDescriptor: $"O:SYG:SYD:(OA;;WP;{AttributeGuid};;{TargetSid})(OA;;WP;{AttributeGuid};;{TargetSid})", users: 4);
+        var directory = Bundle(userDescriptor: $"O:SYG:SYD:(OA;;WP;{AttributeGuid};;{TargetSid})(OA;;WP;{AttributeGuid};;{TargetSid})", users: 4,
+            tier0Route: true);
         Derive(directory);
         Judge(directory);
         using var reader = JudgementReader.Open(directory).Value;
@@ -142,7 +143,7 @@ public sealed class KeyCredentialLinkWorkflowTests
     [InlineData("S-1-5-21-1-2-3-527")]
     public void KeyAdministratorGrantsRemainVisibleAfterRealDerivation(string sid)
     {
-        var directory = Bundle(userDescriptor: $"O:SYG:SYD:(OA;;WP;{AttributeGuid};;{sid})",
+        var directory = Bundle(userDescriptor: $"O:SYG:SYD:(OA;;WP;{AttributeGuid};;{sid})", tier0Route: true,
             writeAdditional: (writer, coverage) =>
             {
                 writer.WriteObject(new(coverage, "CN=KeyHolder,DC=contoso,DC=com", Guid.NewGuid(),
@@ -216,7 +217,9 @@ public sealed class KeyCredentialLinkWorkflowTests
 
     private static string Prepared(string descriptor, string? assignment = null, IRule[]? rules = null)
     {
-        var directory = Bundle(userDescriptor: descriptor, writeAdditional: (writer, coverage) =>
+        // A key-credential write is a route to the account's credentials, so a target reachable from
+        // Tier 0 is what makes these grants worth assessing at all.
+        var directory = Bundle(userDescriptor: descriptor, tier0Route: true, writeAdditional: (writer, coverage) =>
         {
             if (assignment is null) return;
             writer.WriteObject(new(coverage, "CN=SomeSet,CN=Extended-Rights,CN=Configuration,DC=contoso,DC=com", Guid.NewGuid(),
