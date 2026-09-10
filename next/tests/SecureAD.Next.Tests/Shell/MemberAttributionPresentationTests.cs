@@ -24,13 +24,25 @@ public sealed class MemberAttributionPresentationTests
             section.MemberPanel.Counting.Contains("do not add control-edge counts", StringComparison.Ordinal)));
     }
 
+    /// <summary>
+    /// A member-attributed permission that would allow a takeover is not itself a takeover.
+    /// </summary>
+    /// <remarks>
+    /// <b>This asserted the compound takeover row until 2026-09-11, and this run produces none.</b>
+    /// <c>JudgeWithMemberAttribution</c> performs no ownership audit, so the transition - derived by
+    /// <see cref="OwnershipAuditRun"/> for objects discovery admitted under 0114 - is absent. The row
+    /// was reached only through the deriver's <c>includeOwnerTransitions</c> default that no
+    /// production caller selected. What this test is named for is asserted on the owner-setting
+    /// permission instead, which is what the run actually attributes.
+    /// </remarks>
     [Fact]
     public void ReverseOwnerChangeRemainsUnknownAndUncounted()
     {
         using var reader = MemberAttributionTests.Prepare(Bundle(userDescriptor: $"O:SYG:SYD:(A;;0x000F01FF;;;{TargetSid})"));
-        var value = Assert.Single(reader.ReadPermissionsThroughMembership(UserSid, null, true, 0).Permissions,
-            permission => permission.Capability == nameof(ControlCapability.CanBecomeOwnerAndRewriteDacl));
-        Assert.Equal((ControlEvaluationState.Unknown, false), (value.PermissionState, value.IsCounted));
+        var permissions = reader.ReadPermissionsThroughMembership(UserSid, null, true, 0).Permissions;
+        Assert.DoesNotContain(permissions, permission => permission.Capability == nameof(ControlCapability.CanBecomeOwnerAndRewriteDacl));
+        var value = Assert.Single(permissions, permission => permission.Capability == nameof(ControlCapability.CanSetOwner));
+        Assert.False(value.IsCounted);
     }
 
     [Fact]

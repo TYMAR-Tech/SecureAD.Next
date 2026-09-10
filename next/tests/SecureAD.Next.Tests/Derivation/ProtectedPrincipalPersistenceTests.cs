@@ -65,7 +65,7 @@ public sealed class ProtectedPrincipalPersistenceTests
         var product = reader.Read().ProtectedPrincipals;
 
         Assert.Equal(ProtectedPrincipalProductAvailability.Available, product.Availability);
-        Assert.Equal(2, product.Value!.CatalogueVersion);
+        Assert.Equal(3, product.Value!.CatalogueVersion);
         Assert.Equal(3, product.Value.Principals.Count);
         Assert.Equal(ProtectedPrincipalEvaluation.Protected, product.Value.Principals[0].Evaluation);
         Assert.Equal(ProtectedPrincipalBasisKind.MembershipRoot, product.Value.Principals[0].Basis!.Kind);

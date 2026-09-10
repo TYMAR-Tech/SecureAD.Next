@@ -21,6 +21,30 @@ public sealed class ControlEdgeDeriverTests
     internal static ControlObjectEvaluation Derive(ObjectPermissions? permissions) => ControlEdgeDeriver.Derive(Subject, permissions,
         JudgingContext.At(DateTimeOffset.UnixEpoch) with { ForestFqdn = "contoso.com" }, Guid.Empty, null, DomainSid);
 
+    /// <summary>
+    /// Derives the control edges and then the owner transitions, the way a run does.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ControlEdgeDeriver"/> does not produce the compound takeover edge; it is derived
+    /// afterwards by <see cref="OwnershipAuditRun"/> from each stored <c>CanSetOwner</c> edge, and
+    /// only for objects discovery admitted under decision 0114. Tests about how that edge is stored,
+    /// counted and presented need a fixture that reaches it the same way, rather than through a
+    /// deriver flag no production caller selected - which is what they used until 2026-09-11.
+    /// </remarks>
+    internal static ControlObjectEvaluation DeriveWithTransitions(ObjectPermissions permissions) =>
+        DeriveWithTransitions(Subject, permissions);
+
+    /// <inheritdoc cref="DeriveWithTransitions(ObjectPermissions)"/>
+    internal static ControlObjectEvaluation DeriveWithTransitions(ObjectAttributes subject, ObjectPermissions permissions)
+    {
+        var context = JudgingContext.At(DateTimeOffset.UnixEpoch) with { ForestFqdn = "contoso.com" };
+        var evaluation = ControlEdgeDeriver.Derive(subject, permissions, context, Guid.Empty, null, DomainSid);
+        var transitions = evaluation.Edges.Where(edge => edge.Capability == ControlCapability.CanSetOwner)
+            .Select(edge => OwnershipControlDeriver.Transition(edge, subject, permissions, context,
+                permissions.Entries.First(entry => entry.Trustee.Sid == edge.HolderSid).Trustee, DomainSid));
+        return evaluation with { Edges = [.. evaluation.Edges, .. transitions] };
+    }
+
     internal static string? DomainSid(string domain) => domain == "contoso.com" ? "S-1-5-21-1-2-3" : null;
 
     [Theory]

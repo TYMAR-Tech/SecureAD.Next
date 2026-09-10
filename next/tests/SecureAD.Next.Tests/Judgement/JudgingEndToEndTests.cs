@@ -295,10 +295,14 @@ public sealed class JudgingEndToEndTests
                 Assert.Equal(domain.Name, edge.HolderScope);
                 Assert.Equal(ControlExpectedness.Expected, edge.Expectedness);
                 Assert.Equal(ControlExpectednessReason.ExpectedSameDomainControlPlane, edge.ExpectednessReason);
-                Assert.Equal(2, edge.PrincipalCatalogueVersion);
+                Assert.Equal(3, edge.PrincipalCatalogueVersion);
             });
             Assert.All(shown.Edges.Where(edge => edge.IsCounted), edge => Assert.Equal(ControlEvaluationState.Established, edge.EvaluationState));
-            Assert.Equal(ControlEvaluationState.Unknown, Assert.Single(shown.Edges.Where(edge => !edge.IsCounted)).EvaluationState);
+            // Judging derives no owner transition. That edge is OwnershipAuditRun's, for objects
+            // discovery admitted under 0114, and this run performs no ownership audit. Until
+            // 2026-09-11 an uncounted Unknown edge was asserted here, reached only through the
+            // deriver's includeOwnerTransitions default that no production caller selected.
+            Assert.Empty(shown.Edges.Where(edge => !edge.IsCounted));
         }
     }
 

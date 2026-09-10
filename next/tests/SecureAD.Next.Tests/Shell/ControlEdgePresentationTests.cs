@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using SecureAD.Derivation;
+using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Shell.ViewModels;
@@ -275,6 +276,80 @@ public sealed class ControlEdgePresentationTests
             OwnAccount = ControlEvaluationState.NotEstablished,
         });
         Assert.Contains("Account to add or remove: CN=Bob", row.Evidence);
+    }
+
+    /// <summary>
+    /// A BUILTIN holder on a forest-wide partition is told the scope cannot be settled, and told
+    /// that capturing again will not settle it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The last sentence is the one that matters.</b> An operator reading <c>Unknown</c> with no
+    /// explanation reaches for a re-capture, which is exactly the afternoon wasted by the
+    /// primary-group wording corrected under <c>0118</c>. This limit is a property of Active
+    /// Directory: a domain local group grants within its own domain, the token is built against the
+    /// target domain, and a forest-wide partition has none.
+    /// </remarks>
+    [Fact]
+    public void ABuiltinHolderOnAForestPartitionIsToldTheScopeCannotBeSettled()
+    {
+        var row = Row(ReplicationEdge("S-1-5-32-544", "contoso.com", ControlUncertainty.ResourceContextUnverified));
+
+        Assert.Contains("Domain-local scope on a forest-wide partition.", row.Evidence, StringComparison.Ordinal);
+        Assert.Contains("capturing again will not change it", row.Evidence, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The recorded scope is shown, and shown as recorded rather than resolved.
+    /// </summary>
+    /// <remarks>
+    /// Capture stamps the forest root on every object in a partition that belongs to no domain.
+    /// Printing that beside a per-domain SID would tell an operator the product had worked out which
+    /// domain's Administrators the entry means. The value is kept because hiding it loses evidence.
+    /// </remarks>
+    [Fact]
+    public void TheRecordedScopeIsMarkedRatherThanPresentedAsAnAnswer()
+    {
+        var row = Row(ReplicationEdge("S-1-5-32-544", "contoso.com", ControlUncertainty.ResourceContextUnverified));
+
+        Assert.Contains("contoso.com — recorded, not resolved", row.Group, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The negative control: the uncertainty flag alone does not earn this explanation.
+    /// </summary>
+    /// <remarks>
+    /// <b>Without this, selecting on the flag would look correct.</b> Fourteen edges in the
+    /// laboratory run carry <c>ResourceContextUnverified</c> and only four are the BUILTIN case; the
+    /// rest are unresolved for a different reason. Attaching this sentence to those would answer ten
+    /// rows with an explanation that does not describe them - a confident wrong answer, which is
+    /// worse than an unexplained one.
+    /// </remarks>
+    [Theory]
+    // The flag, but a domain principal rather than a BUILTIN one.
+    [InlineData("S-1-5-21-1-2-3-519", ControlUncertainty.ResourceContextUnverified)]
+    // A BUILTIN principal, but on a target whose resource context was never in doubt.
+    [InlineData("S-1-5-32-544", ControlUncertainty.None)]
+    public void AnotherReasonDoesNotBorrowThisExplanation(string holderSid, ControlUncertainty uncertainty)
+    {
+        var row = Row(ReplicationEdge(holderSid, "contoso.com", uncertainty));
+
+        Assert.DoesNotContain("Domain-local scope on a forest-wide partition.", row.Evidence, StringComparison.Ordinal);
+        Assert.DoesNotContain("recorded, not resolved", row.Group, StringComparison.Ordinal);
+    }
+
+    private static ControlEdge ReplicationEdge(string holderSid, string? holderScope, ControlUncertainty uncertainty) =>
+        new(1, Guid.NewGuid(), "CN=Configuration,DC=contoso,DC=com", "configuration", holderSid, null, holderScope,
+            ControlCapability.CanReplicateSecretDomainData, ControlEvaluationState.Unknown, uncertainty,
+            ControlExpectedness.Unknown, ControlExpectednessReason.UnknownAuthorityScope, 3, Guid.Empty, null,
+            false, [], [], MembershipRouteSummary.NotDerived);
+
+    private static ControlEdgeRowViewModel Row(ControlEdge edge)
+    {
+        var vm = new ControlEdgesSectionViewModel(new(ObjectSectionCatalog.ControlEdges, "Control edges", []));
+        vm.Configure(true, false, (_, _, _) => Result<ControlEdgePage>.Success(
+            new([edge], 0, 0, 1, 1, true, true, false, 1) { GenerationId = Guid.Empty }),
+            _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, Guid.Empty)));
+        return Assert.Single(vm.Rows);
     }
 
     private static SelfMembershipAssessment Assessment()

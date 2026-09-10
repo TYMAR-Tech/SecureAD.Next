@@ -8,7 +8,7 @@ namespace SecureAD.Next.Tests.Judgement;
 
 public sealed class FullControlStorageTests
 {
-    internal static ControlObjectEvaluation Evaluation(params PermissionEntry[] entries) => ControlEdgeDeriverTests.Derive(ControlEdgeDeriverTests.Permissions(entries));
+    internal static ControlObjectEvaluation Evaluation(params PermissionEntry[] entries) => ControlEdgeDeriverTests.DeriveWithTransitions(ControlEdgeDeriverTests.Permissions(entries));
 
     [Theory]
     [InlineData(2)]
@@ -150,8 +150,8 @@ public sealed class FullControlStorageTests
         {
             var target = $"OU=Object{index},DC=contoso,DC=com";
             var subject = ControlEdgeDeriverTests.Subject with { DistinguishedName = target, ObjectGuid = Guid.NewGuid() };
-            return ControlEdgeDeriver.Derive(subject, ControlEdgeDeriverTests.Permissions(FullControlEvaluatorTests.Allow(0)) with { DistinguishedName = target },
-                JudgingContext.At(DateTimeOffset.UnixEpoch) with { ForestFqdn = "contoso.com" }, Guid.Empty, null, ControlEdgeDeriverTests.DomainSid);
+            var permissions = ControlEdgeDeriverTests.Permissions(FullControlEvaluatorTests.Allow(0)) with { DistinguishedName = target };
+            return ControlEdgeDeriverTests.DeriveWithTransitions(subject, permissions);
         }).ToArray();
         using var reader = Open(Store(results));
         var pages = new List<ControlEdgePage>();

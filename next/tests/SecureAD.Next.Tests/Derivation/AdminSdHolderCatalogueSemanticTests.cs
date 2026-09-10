@@ -53,9 +53,9 @@ public sealed class AdminSdHolderCatalogueSemanticTests
     }
 
     [Fact]
-    public void CatalogueVersionTwoMeansDecision0089Semantics()
+    public void TheCatalogueVersionMovesWhenItsSemanticsDo()
     {
-        Assert.Equal(2, ProtectedGroupCatalogue.Default.Version);
+        Assert.Equal(3, ProtectedGroupCatalogue.Default.Version);
     }
 
     [Fact]

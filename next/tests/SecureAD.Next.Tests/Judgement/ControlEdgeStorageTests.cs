@@ -125,7 +125,7 @@ public sealed class ControlEdgeStorageTests
         var directory = Store(writer =>
         {
             writer.StartControlEdges(true);
-            var result = ControlEdgeDeriverTests.Derive(ControlEdgeDeriverTests.Permissions(
+            var result = ControlEdgeDeriverTests.DeriveWithTransitions(ControlEdgeDeriverTests.Permissions(
                 ControlEdgeDeriverTests.Ace(0, ControlEdgeDeriverTests.Holder, 0x80000)));
             writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
             writer.CompleteControlEdges();

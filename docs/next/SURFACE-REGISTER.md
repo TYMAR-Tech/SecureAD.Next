@@ -238,6 +238,7 @@ The table below sits between the two markers around it, so the test parses only 
 | ObjectAttribute | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | AttributeValue | SecureAD.Evidence | [what-an-object-holds](../layers/evidence/what-an-object-holds.md) |
 | BundleSealing | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |
+| ProofSerialization | SecureAD.Evidence | [how-a-run-is-stored](../areas/how-a-run-is-stored.md) |
 | AttestedExclusion | SecureAD.Evidence | [a-domain-left-out-on-purpose](../layers/evidence/a-domain-left-out-on-purpose.md) |
 | ExclusionKind | SecureAD.Evidence | [a-domain-left-out-on-purpose](../layers/evidence/a-domain-left-out-on-purpose.md) |
 | BundleSealContents | SecureAD.Evidence | [the-bundle-on-disk](../layers/evidence/the-bundle-on-disk.md) |

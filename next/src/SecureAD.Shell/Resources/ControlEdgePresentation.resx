@@ -15,6 +15,8 @@
   <data name="ReplicationCategory" xml:space="preserve"><value>Category: ReplicationControl.</value></data>
   <data name="ReplicationScope" xml:space="preserve"><value>Naming context: {0} ({1}).</value></data>
   <data name="ReplicationCaveat" xml:space="preserve"><value>Permission evidence only. No replication operation or credential extraction was performed. This does not establish account takeover or a completed path to Tier 0.</value></data>
+  <data name="DomainLocalScopeOnForestPartition" xml:space="preserve"><value>Domain-local scope on a forest-wide partition. This group exists separately in every domain and every one of them uses this same identifier, so which group it grants to depends on the domain controller serving the request rather than on the object. The configuration and schema partitions belong to no domain, so this cannot be settled from captured evidence: it is a property of Active Directory, not a gap in the capture, and capturing again will not change it.</value></data>
+  <data name="HolderScopeNotVerified" xml:space="preserve"><value>{0} — recorded, not resolved</value></data>
   <data name="ReplicationGroup" xml:space="preserve"><value>Replication permissions — {0} [{1}; {2}] — {3}</value></data>
   <data name="DomainControllerAsset" xml:space="preserve"><value>Domain controller asset</value></data>
   <data name="DomainControllerUnknown" xml:space="preserve"><value>Domain-controller classification is unconfirmed; captured evidence is missing or conflicting.</value></data>

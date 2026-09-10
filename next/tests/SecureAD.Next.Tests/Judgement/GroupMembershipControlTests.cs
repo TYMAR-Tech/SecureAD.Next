@@ -1,3 +1,4 @@
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel.Capture;
@@ -216,7 +217,7 @@ public sealed class GroupMembershipControlTests
         var builtin = Assert.Single(Membership(Permissions(ace with { Trustee = ace.Trustee with { Sid = "S-1-5-32-544", DomainFqdn = null } })).Edges);
         Assert.Equal("contoso.com", builtin.HolderScope);
         Assert.Equal(ControlExpectedness.Expected, builtin.Expectedness);
-        Assert.Equal(2, builtin.PrincipalCatalogueVersion);
+        Assert.Equal(PrincipalClassificationRegistry.Version, builtin.PrincipalCatalogueVersion);
         var broad = Assert.Single(Membership(Permissions(ace with { Trustee = ace.Trustee with { Sid = "S-1-1-0" } })).Edges);
         Assert.Equal(ControlExpectedness.Unexpected, broad.Expectedness);
     }

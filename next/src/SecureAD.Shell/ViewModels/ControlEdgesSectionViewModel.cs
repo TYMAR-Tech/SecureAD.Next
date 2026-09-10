@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -285,8 +286,55 @@ internal sealed class ControlEdgeRowViewModel
         + (edge.EdgeClass == ControlEdgeClass.ReplicationControl && edge.HolderDomainControllerAsset == ControlEvaluationState.Established
             ? " — " + Text("DomainControllerAsset") : "");
     public string Group => _summary is not null ? "" : edge.EdgeClass == ControlEdgeClass.ReplicationControl
-        ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationGroup"), Holder, edge.HolderSid, edge.HolderScope ?? "SID-scoped", edge.Target)
+        ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationGroup"), Holder, edge.HolderSid, DisplayedHolderScope, edge.Target)
         : "";
+
+    /// <summary>
+    /// The holder's scope as the row should show it, marked where the stored value is a stamp
+    /// rather than an answer.
+    /// </summary>
+    /// <remarks>
+    /// <b>A domain beside a per-domain SID reads as a conclusion.</b> Capture stamps every
+    /// configuration and schema object with the forest root, because those objects belong to no
+    /// domain and something has to be recorded. Printing that plainly next to
+    /// <c>S-1-5-32-544</c> tells an operator the product resolved which domain's Administrators
+    /// this entry means, when <see cref="ScopeCannotBeSettled"/> says nothing can. The value is
+    /// kept, because hiding it would lose evidence, and marked, because showing it bare states
+    /// something untrue.
+    /// </remarks>
+    private string DisplayedHolderScope => ScopeCannotBeSettled(edge)
+        ? string.Format(CultureInfo.CurrentCulture, Text("HolderScopeNotVerified"), edge.HolderScope ?? "SID-scoped")
+        : edge.HolderScope ?? "SID-scoped";
+    /// <summary>
+    /// Whether this row's holder scope is a question Active Directory itself leaves open, rather
+    /// than something the capture failed to answer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A BUILTIN group exists once per domain and every one of them carries the same SID.</b>
+    /// Microsoft's group-scope table gives a domain local group's reach as <i>within the same
+    /// domain</i>, and the access-check description says the token built at the resource adds the
+    /// SIDs of domain local groups <i>in the target domain</i>. So an entry naming
+    /// <c>S-1-5-32-544</c> grants to the Administrators of whichever domain owns the resource.
+    /// </para>
+    /// <para>
+    /// <b>A forest-wide partition owns no domain, which is what makes this unanswerable.</b> The
+    /// configuration and schema naming contexts are replicated to every controller in every domain,
+    /// so the target domain the rule turns on is a property of the controller serving the request
+    /// and not of the object. No capture setting reaches it. Recorded under <c>0120</c>.
+    /// </para>
+    /// <para>
+    /// <b>The uncertainty flag alone is not the condition, and that matters.</b> Fourteen edges in
+    /// the laboratory run carry <c>ResourceContextUnverified</c> and only four are this case; the
+    /// rest are <c>UnknownCapabilityScope</c>, a different open question. Attaching this
+    /// explanation to all of them would answer ten rows with a reason that does not describe them,
+    /// which is worse than leaving them unexplained.
+    /// </para>
+    /// </remarks>
+    private static bool ScopeCannotBeSettled(ControlEdge edge) =>
+        (edge.Uncertainty & ControlUncertainty.ResourceContextUnverified) != 0
+        && Sid.IsBuiltinDomain(edge.HolderSid);
+
     public string Target => _summary?.Source.Target ?? edge.Target;
     public string Capability => _summary is not null ? Text("FullControlLabel") : CapabilityText(edge.Capability);
     internal static string CapabilityText(ControlCapability capability) => capability switch
@@ -311,6 +359,7 @@ internal sealed class ControlEdgeRowViewModel
         + (edge.EdgeClass == ControlEdgeClass.ReplicationControl
             ? string.Format(CultureInfo.CurrentCulture, Text("ReplicationScope"), edge.Target, edge.ReplicationNamingContextKind) + "\n"
                 + Text("ReplicationCategory") + "\n"
+                + (ScopeCannotBeSettled(edge) ? Text("DomainLocalScopeOnForestPartition") + "\n" : "")
                 + (edge.HolderDomainControllerAsset == ControlEvaluationState.Established ? Text("DomainControllerAsset") + "\n"
                     : edge.HolderDomainControllerAsset == ControlEvaluationState.Unknown ? Text("DomainControllerUnknown") + "\n" : "")
             : edge.Capability is ControlCapability.IsOwnerAndCanRewriteDacl or ControlCapability.CanBecomeOwnerAndRewriteDacl ? Text("OwnershipCategory") + "\n"

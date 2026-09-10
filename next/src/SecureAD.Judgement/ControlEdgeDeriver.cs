@@ -76,7 +76,11 @@ internal static class ControlEdgeDeriver
                 var classification = PrincipalClassificationRegistry.For(trustee.Sid);
                 if (!classification.IdentityIsValid || trustee.DistinguishedName is null && classification.MicrosoftName is null)
                     unknown |= ControlUncertainty.HolderUnresolved;
-                // P-90: the capturing controller's domain is not a proven resource context for a non-domain NC.
+                // A BUILTIN group is domain-local: it grants within its own domain, and the token is built
+                // from the domain-local groups of the domain owning the resource. Every domain has its own
+                // BUILTIN\Administrators and all of them are S-1-5-32-544. The configuration and schema
+                // partitions own no domain, so no capture can say which domain's group this entry means.
+                // Recorded under 0120, not a capture gap. See docs/DECISIONS.md.
                 if (Sid.IsBuiltinDomain(trustee.Sid) && !IsDomainTarget(subject, context.ForestFqdn))
                     unknown |= ControlUncertainty.ResourceContextUnverified;
                 var granted = (mask & right) != 0;
@@ -160,6 +164,7 @@ internal static class ControlEdgeDeriver
                 var classification = PrincipalClassificationRegistry.For(trustee.Sid);
                 if (!classification.IdentityIsValid || trustee.DistinguishedName is null && classification.MicrosoftName is null)
                     unknown |= ControlUncertainty.HolderUnresolved;
+                // Same domain-local rule as the WRITE_DAC/WRITE_OWNER pass above.
                 if (Sid.IsBuiltinDomain(trustee.Sid) && !IsDomainTarget(subject, context.ForestFqdn))
                     unknown |= ControlUncertainty.ResourceContextUnverified;
                 var granted = outcome == EffectiveAccessOutcome.GrantsEveryoneEverything

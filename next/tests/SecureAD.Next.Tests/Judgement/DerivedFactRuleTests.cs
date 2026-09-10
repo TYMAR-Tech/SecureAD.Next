@@ -188,7 +188,7 @@ public sealed class DerivedFactRuleTests
         // Delivered rather than merely permitted: the rule recorded what it was handed, so an empty
         // package cannot pass this by looking like a successful run.
         Assert.NotNull(rule.Seen);
-        Assert.Equal(2, rule.Seen!.CatalogueVersion);
+        Assert.Equal(ProtectedGroupCatalogue.Default.Version, rule.Seen!.CatalogueVersion);
     }
 
     /// <summary>

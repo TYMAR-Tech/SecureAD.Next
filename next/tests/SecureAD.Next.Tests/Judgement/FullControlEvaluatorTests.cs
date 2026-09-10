@@ -244,7 +244,7 @@ public sealed class FullControlEvaluatorTests
     [Fact]
     public void FullControlDoesNotPromoteTheOwnerTransition()
     {
-        var result = ControlEdgeDeriverTests.Derive(ControlEdgeDeriverTests.Permissions(Allow(0)));
+        var result = ControlEdgeDeriverTests.DeriveWithTransitions(ControlEdgeDeriverTests.Permissions(Allow(0)));
         Assert.Equal((ControlEvaluationState.Unknown, false), result.Edges.Where(edge => edge.Capability == ControlCapability.CanBecomeOwnerAndRewriteDacl)
             .Select(edge => (edge.EvaluationState, edge.IsCounted)).Single());
     }

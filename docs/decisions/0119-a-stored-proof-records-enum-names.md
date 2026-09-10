@@ -89,4 +89,17 @@ its encoding changed. Nothing is now asserted that was not asserted before.
   test fixture was the only thing reaching the branch. Both were rewritten to assert what the deriver
   does; the transition itself remains covered by `OwnershipAuditIntegrationTests` on the scoped path
   and by `OwnershipWorkflowTests` asserting its absence off it.
+- **That removal broke eleven more tests, and this record said it had not.** Only the two the
+  compiler forced were rewritten; the rest failed at runtime and were not found because the full
+  suite was not run before pushing. Eight had depended on the fixture producing the compound edge -
+  storage counts, paging totals, presentation rows. The fix is
+  `ControlEdgeDeriverTests.DeriveWithTransitions`, which derives the edges and then the transitions
+  the way `OwnershipAuditRun` does, so a test about that edge reaches it by the path a run takes
+  rather than through a deriver flag. Three tests whose own run performs no ownership audit -
+  `JudgingRun.Judge` and `JudgeWithMemberAttribution` - were rewritten to assert the edge's absence,
+  which is what those runs actually produce.
+- **Four of them were absorbed into a "known failures" list rather than investigated.** The baseline
+  carried ten names; four were this defect. A remembered failure list is not a baseline, and a
+  regression that lands on one is invisible for exactly as long as the list is trusted. The true
+  baseline is six.
 - `AC-61` is restated: its requirement is unchanged but all three names it gave had moved.

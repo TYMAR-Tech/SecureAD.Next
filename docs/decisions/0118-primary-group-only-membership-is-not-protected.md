@@ -116,6 +116,12 @@ tests. The script remains in `tools/` and either domain can be run at any time.
 
 ## Consequences
 
+- **The catalogue version moved 2 to 3, and five tests froze the old number as a literal.** They were
+  not found before pushing because the full suite was not run. Four asserted a bare `2` against a
+  version the product had moved; one, `CatalogueVersionTwoMeansDecision0089Semantics`, put the number
+  in its own name. Where a test's subject is the version it now reads
+  `ProtectedGroupCatalogue.Default.Version` or `PrincipalClassificationRegistry.Version`, so the
+  catalogue moving again fails only the tests that are genuinely about it.
 - The primary-group walk is **removed** rather than inverted. A principal reachable only that way
   keeps the `NotProtected` it already carries, so a walk that observed the difference and recorded
   nothing would be a computation no caller reads. `Reachable` loses its `followPrimaryGroups`
