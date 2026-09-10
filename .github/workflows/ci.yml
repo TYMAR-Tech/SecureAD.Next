@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 permissions:
   contents: read
@@ -16,19 +16,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
+      # The solution is named on every step, deliberately. A bare `dotnet restore` at
+      # the repository root finds the tracked but empty SecureAD.Next.sln beside this
+      # file, which restores, builds and tests nothing and reports success - a green
+      # check measuring nothing, which is worse than no check at all. See P-178.
+      #
+      # This workflow spent its whole life triggering on `master` in a repository whose
+      # branch is `main`, so it had never run once and nothing said so. See P-177.
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore next/SecureAD.Next.sln
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build next/SecureAD.Next.sln --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        run: dotnet test next/SecureAD.Next.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
       - name: Upload coverage
         if: always()
