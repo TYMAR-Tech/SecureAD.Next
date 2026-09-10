@@ -117,3 +117,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0115](decisions/0115-share-judgement-explanations-and-membership-proof.md) | 2026-09-09 | Accepted | Share Judgement explanations and membership proof |
 | [0116](decisions/0116-discovery-first-assessment-admission.md) | 2026-09-10 | Accepted | Discovery-first assessment admission |
 | [0117](decisions/0117-naming-context-roots-are-tier-0-assets.md) | 2026-09-10 | Accepted | Naming-context roots are Tier-0 assets |
+| [0118](decisions/0118-primary-group-only-membership-is-not-protected.md) | 2026-09-11 | Proposed | Primary-group-only membership does not carry AdminSDHolder protection, lab-verified |
