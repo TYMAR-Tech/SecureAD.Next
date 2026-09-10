@@ -67,6 +67,45 @@ internal static class ProtectedObjectReading
     }
 
     /// <summary>
+    /// Why <see cref="Answer"/> came to <see cref="ProtectedObjectAnswer.Unknown"/>, in the
+    /// vocabulary an operator reads.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Every branch of <see cref="Answer"/> that returns Unknown has an arm here</b>, and they
+    /// are written in the same order for the reason the two rules share a body: two places deciding
+    /// one question is two chances to disagree. An incomplete closure and an unread identifier are
+    /// facts about this run that another run may fix; a primary-group-only route and a disputed
+    /// catalogue claim are not, and telling an operator to capture again over either wastes his
+    /// afternoon.
+    /// </para>
+    /// <para>
+    /// <b>The derivation's own reason is preferred wherever it recorded one.</b> It knows whether
+    /// the principal was blocked at a primary-group edge or by Microsoft contradicting itself;
+    /// this rule does not, and guessing would put a wrong instruction on the screen.
+    /// </para>
+    /// </remarks>
+    /// <param name="subject">The object being judged.</param>
+    /// <param name="protection">The derived facts offered to the rule.</param>
+    public static UnresolvedReason UnknownReason(
+        ObjectAttributes subject, StoredProtectedPrincipalDerivation protection)
+    {
+        if (!protection.IsComplete)
+            return ProtectedPrincipalReading.ReasonFor(protection.StatedLimits);
+
+        if (SidTextOf(subject) is not { } sid)
+            return UnresolvedReason.IdentityUnreadable;
+
+        var scope = Sid.IsBuiltinDomain(sid) ? subject.DomainFqdn : null;
+
+        // A SID the closure never evaluated is a gap in the derivation rather than a fact about
+        // this object, and NotDerived is the one instruction that fits it.
+        return protection.Lookup(sid, scope) is { } fact
+            ? ProtectedPrincipalReading.ReasonFor(fact.UnknownReasons)
+            : UnresolvedReason.NotDerived;
+    }
+
+    /// <summary>
     /// The object's own security identifier, or null where it carries none or none could be read.
     /// </summary>
     /// <remarks>
@@ -278,8 +317,17 @@ internal static class OwnershipRuleBody
         {
             // Neither rule may speak. Reporting at Low an object that might be protected would
             // understate it; staying silent would hide it.
+            //
+            // THE REASON IS READ FROM THE DERIVATION RATHER THAN ASSUMED. This said
+            // MembershipIncomplete for every cause until 2026-09-11, which renders as "capturing
+            // every domain in the forest would settle it" - advice that is wrong for both causes a
+            // lab run actually produces. A domain controller reaching Domain Controllers only
+            // through primaryGroupID, and a group Microsoft's own pages disagree about, are neither
+            // of them fixed by capturing anything. ProtectedPrincipalReading.ReasonFor already
+            // draws exactly this distinction for SEC-021 and SEC-030; this path simply never asked
+            // it. Recorded as F-S46-1.
             return RuleVerdict.CouldNotResolve([new UnresolvedInput(
-                DerivedFactKind.ProtectedPrincipals, UnresolvedReason.MembershipIncomplete)]);
+                DerivedFactKind.ProtectedPrincipals, ProtectedObjectReading.UnknownReason(subject, protection))]);
         }
 
         var isProtected = protectedAnswer is ProtectedObjectAnswer.Protected;

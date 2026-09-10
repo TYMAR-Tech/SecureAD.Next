@@ -584,6 +584,75 @@ public sealed class ObjectOwnershipRuleTests
         Assert.Contains(verdict.Unresolved, item => item.Reason == UnresolvedReason.OwnerServerBehaviorNotRecorded);
     }
 
+    /// <summary>
+    /// A subject reachable only through its primary group is refused for that reason, and not for
+    /// incomplete membership.
+    /// </summary>
+    /// <remarks>
+    /// <b>The distinction is the whole finding.</b> Until 2026-09-11 both rules answered every
+    /// unknown subject with <c>MembershipIncomplete</c>, which the shell renders as "capturing every
+    /// domain in the forest would settle it". A domain controller reaches <c>Domain Controllers</c>
+    /// only through <c>primaryGroupID</c>, and no capture settles whether AdminSDHolder follows that
+    /// route - so the instruction sent an operator to re-run a capture that could not help. The lab
+    /// produced three of these against a forest whose every domain was already captured.
+    /// </remarks>
+    [Fact]
+    public void APrimaryGroupOnlyRouteIsNotReportedAsIncompleteMembership()
+    {
+        var subject = Computer();
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject,
+            Context(subject, Person, UnknownProtectionFor(
+                subject, ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked)));
+
+        Assert.Contains(verdict.Unresolved, item => item.Reason == UnresolvedReason.PrimaryGroupRoute);
+        Assert.DoesNotContain(verdict.Unresolved, item => item.Reason == UnresolvedReason.MembershipIncomplete);
+    }
+
+    /// <summary>
+    /// A subject whose catalogue claim Microsoft contradicts itself about is refused for that
+    /// reason, and not for incomplete membership.
+    /// </summary>
+    /// <remarks>
+    /// <b>The least recoverable reason, and the one a capture can never fix.</b> Appendix C lists
+    /// Read-only Domain Controllers among the protected groups while the group pages answer
+    /// separately for Enterprise Read-only Domain Controllers, so the catalogue records the claim as
+    /// disputed rather than picking a side. Telling an operator to capture again over a
+    /// documentation conflict is the exact waste <c>UnresolvedReason</c> exists to prevent.
+    /// </remarks>
+    [Fact]
+    public void ADisputedCatalogueClaimIsNotReportedAsIncompleteMembership()
+    {
+        var subject = Computer();
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject,
+            Context(subject, Person, UnknownProtectionFor(
+                subject, ProtectionUnknownReason.PrincipalClaimDisputed)));
+
+        Assert.Contains(verdict.Unresolved, item => item.Reason == UnresolvedReason.ClaimDisputed);
+        Assert.DoesNotContain(verdict.Unresolved, item => item.Reason == UnresolvedReason.MembershipIncomplete);
+    }
+
+    /// <summary>
+    /// Genuinely incomplete membership evidence still says so, which is what keeps the two apart.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control for the two tests above.</b> Without it they would pass against a
+    /// version that had simply stopped saying <c>MembershipIncomplete</c> at all, and the one case
+    /// where "capture every domain" is the right instruction would have lost its wording.
+    /// </remarks>
+    [Fact]
+    public void IncompleteMembershipEvidenceStillReportsIncompleteMembership()
+    {
+        var subject = Computer();
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject,
+            Context(subject, Person, UnknownProtectionFor(
+                subject, ProtectionUnknownReason.MembershipEvidenceIncomplete)));
+
+        Assert.Contains(verdict.Unresolved, item => item.Reason == UnresolvedReason.MembershipIncomplete);
+    }
+
     // ---- fixtures ----
 
     private static RuleVerdict JudgeLow(
@@ -698,6 +767,37 @@ public sealed class ObjectOwnershipRuleTests
 
     private static StoredProtectedPrincipalDerivation IncompleteProtection() =>
         new(1, Mask(), [], [], ProtectionUnknownReason.MembershipEvidenceIncomplete);
+
+    /// <summary>
+    /// A complete closure holding an <c>Unknown</c> fact about the subject, with the cause the
+    /// derivation recorded.
+    /// </summary>
+    /// <remarks>
+    /// <b>Complete on purpose, which is what makes this fixture worth having.</b>
+    /// <see cref="IncompleteProtection"/> refuses at the closure level, before any fact about the
+    /// subject is read, so it cannot express a run that derived everything it could and still could
+    /// not answer for one principal. That is the shape the laboratory produces - four unknown
+    /// principals inside a closure with no stated limits at all - and the shape the reason mapping
+    /// has to get right.
+    /// </remarks>
+    private static StoredProtectedPrincipalDerivation UnknownProtectionFor(
+        ObjectAttributes subject, ProtectionUnknownReason cause) =>
+        new(
+            1,
+            Mask(),
+            [],
+            [
+                new StoredProtectedPrincipalFact(
+                    1,
+                    SidOf(subject) ?? throw new InvalidOperationException("The subject carries no security identifier."),
+                    null,
+                    ProtectedPrincipalEvaluation.Unknown,
+                    null,
+                    cause,
+                    [],
+                    OwnerAcceptance.NotAccepted),
+            ],
+            ProtectionUnknownReason.None);
 
     private static AdminSdExclusionMask Mask() =>
         new([], HeuristicReadOutcome.DefaultedByAbsence, '0');
