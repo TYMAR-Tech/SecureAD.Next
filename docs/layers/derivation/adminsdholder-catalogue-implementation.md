@@ -550,8 +550,8 @@ complete, three domains). No controller was contacted.
 | Population | 4,273 principals: 43 `Protected`, 4 `Unknown`, 4,226 `NotProtected` |
 | Direct protection | 39, being six builtin and six per-domain entries across three domains plus three forest-root entries - the exact count the catalogue predicts |
 | Member propagation | 4, each carrying a path that starts at the principal and ends at the decisive root, including cross-domain members of the root's Enterprise Admins |
-| Primary-group gate | 3 `Unknown`, being the forest's three domain controllers, which reach `Domain Controllers` only through `primaryGroupID` |
-| Disputed claim | 1 `Unknown`, being RID 498 in the root domain, held `Disputed` by `0089` |
+| Primary-group gate | 3 `Unknown`, being the forest's three domain controllers, which reach `Domain Controllers` only through `primaryGroupID`. **Superseded 2026-09-11**: under [`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md) those three are `NotProtected` and a re-derive of the same evidence would record 1 `Unknown` here, not 4. The row is left as it was measured — it is a record of a run, not a statement of current behaviour |
+| Disputed claim | 1 `Unknown`, being RID 498 in the root domain, held `Disputed` by `0089`. This one is unchanged: Microsoft's own pages still contradict each other and no capture settles that |
 
 **What this establishes.** The forest-root resolution works against real captured evidence, which unit
 tests could not show because they supply both sides of the match. Clean negatives are reachable rather

@@ -1,12 +1,18 @@
 # 0118 - Primary-group-only membership does not carry AdminSDHolder protection, lab-verified
 
 Date: 2026-09-11
-Status: Proposed. Awaiting owner ruling.
+Status: Accepted.
 
-This unblocks `AC-64` on the strength of a laboratory observation rather than a Microsoft citation,
-which is the weaker of the two routes `AC-64` itself permits. It changes what SecureAD asserts about
-domain-controller computer accounts. It does not authorize live access, a capture change, a UI
-change, or any widening of the Tier-0 definition.
+The owner accepted this on 2026-09-11, having read the observation and judged that the forest's other
+two domains would answer the same way. It unblocks `AC-64` on the strength of a laboratory
+observation rather than a Microsoft citation, which is the weaker of the two routes `AC-64` itself
+permits. It changes what SecureAD asserts about domain-controller computer accounts. It does not
+authorize live access, a capture change, a UI change, or any widening of the Tier-0 definition.
+
+**Only `ba.ad.lab` was observed, and it holds one domain controller.** The record below recommended
+running `ad.lab` and `ph.ad.lab` as well; the owner declined, judging the answer settled. That is his
+call to make and it is recorded here rather than left implicit, because the evidence behind this
+decision is one account in one domain and a reader a year from now must not mistake it for three.
 
 ## Why
 
@@ -103,17 +109,36 @@ assumption. And the label keeps the answer downgradeable: a single contradicting
 
 **One forest, one domain, one domain controller.** `ba.ad.lab` holds a single DC, so this is one
 observation and not three. Running the same script against `ad.lab` and `ph.ad.lab` would strengthen
-it at the cost of a few minutes, and is worth doing before this is accepted.
+it at the cost of a few minutes. **The owner declined on 2026-09-11**, judging that the other two
+domains would answer the same way, which is very likely true - they are domains of one forest at one
+Windows version, so they are three readings of nearly the same thing rather than three independent
+tests. The script remains in `tools/` and either domain can be run at any time.
 
 ## Consequences
 
-- `WalkPrimaryGroups` records `NotProtected` with laboratory provenance instead of
-  `Unknown` with `PrimaryGroupTraversalResearchBlocked`.
+- The primary-group walk is **removed** rather than inverted. A principal reachable only that way
+  keeps the `NotProtected` it already carries, so a walk that observed the difference and recorded
+  nothing would be a computation no caller reads. `Reachable` loses its `followPrimaryGroups`
+  parameter with it: the only remaining caller passed `false`, and a parameter with one possible
+  value is a branch nothing exercises. `SchemaOwners` still walks both edge kinds, because ownership
+  acceptance is an authorization question and authorization does honour primary groups.
 - The three unknown principals per lab run become answered. `SEC-031` and `SEC-032` judge domain
   controllers instead of refusing them, and `P-153` closes.
-- `UnresolvedReason.PrimaryGroupRoute` and its wording stay. The reason must remain reachable for a
-  forest where the observation is later contradicted, and removing it would delete the vocabulary
-  needed to reinstate the doubt.
+- **`SEC-030` changes what it reports, and this reaches a customer.** An account carrying
+  `adminCount=1` with a DACL still refusing inheritance, reachable only through `primaryGroupID`,
+  was previously hidden behind a doubt and is now a finding. That residue is exactly what the rule
+  exists to report: AdminSDHolder left it behind and nothing protects the account now.
+- `UnresolvedReason.PrimaryGroupRoute` and its wording stay, and so does
+  `ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked`. The second is not optional:
+  it is persisted as flag value 1 in every derivation written before schema 13, so removing it would
+  make those stores unreadable. That it also happens to be what a reinstatement would need is a
+  convenience rather than the reason.
+- Catalogue version 2 → 3, recording the changed semantics with
+  `CatalogueClaimProvenance.ControlledLabObservation`. Derived results are stamped with the version,
+  so a closure records which rule it was judged under.
+- Derivation schema 12 → 13. **The layout is byte-identical and that is the point**: this is the
+  case `P-149` warns about, where a structural fingerprint cannot see the change. A version 12 store
+  holds `Unknown` rows this version would have written as `NotProtected`, so it is refused rather
+  than reinterpreted. Re-derive; no migration is offered, because those rows are honest records of
+  what the product believed when they were written.
 - `AC-64` and § 6.3 are updated to record the observation, its date, and the lab-verified label.
-- The derivation's stated semantics change without its stored layout changing, so a version bump is
-  required per `P-149`: a structural fingerprint cannot detect this and a re-derive is needed.

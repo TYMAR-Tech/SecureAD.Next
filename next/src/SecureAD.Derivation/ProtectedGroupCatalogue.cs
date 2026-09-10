@@ -89,7 +89,17 @@ internal sealed record ProtectedGroupCatalogue(
         CatalogueClaimProvenance.MicrosoftProductDocumentation,
         "MS-ADTS-UNVERIFIED-2026-08");
 
-    private static readonly IReadOnlyList<AdminSdHolderCatalogueEntry> VersionTwoEntries =
+    /// <summary>
+    /// The fifteen entries, unchanged since version 2.
+    /// </summary>
+    /// <remarks>
+    /// <b>Version 3 changed a traversal rule and not this list.</b> The entries are Appendix C's set
+    /// and are shared by both versions, so the name says what the list is rather than which revision
+    /// first carried it: naming it after one version would make every future revision either rename
+    /// it or lie. What changed in 3 is that primary-group-only membership answers
+    /// <c>NotProtected</c> instead of <c>Unknown</c>, per <c>0118</c>.
+    /// </remarks>
+    private static readonly IReadOnlyList<AdminSdHolderCatalogueEntry> AppendixCEntries =
     [
         Entry(1, "Administrator", CataloguePrincipalScope.PerDomainRid, 500, EstablishedPrincipal,
             Claim(CatalogueClaimStatus.DoesNotApply, "OBJECT-CLASS-NOT-GROUP")),
@@ -190,10 +200,28 @@ internal sealed record ProtectedGroupCatalogue(
     /// version are what change.
     /// </para>
     /// <para>
-    /// <b>Primary-group membership is not followed.</b> The specifications establish that
-    /// <c>primaryGroupID</c> is real membership and that authorization honours it; none of them says
-    /// how the protection process traverses it. A principal that reaches a protected group only that
-    /// way is <c>Unknown</c>, never <c>NotProtected</c>.
+    /// <b>Primary-group membership is not followed, and a principal reachable only that way is
+    /// <c>NotProtected</c>.</b> The specifications establish that <c>primaryGroupID</c> is real
+    /// membership and that authorization honours it; none of them says how the protection process
+    /// traverses it. Such a principal was <c>Unknown</c> until version 3, on the ground that the
+    /// question was open.
+    /// </para>
+    /// <para>
+    /// <b>The laboratory closed it where the documentation would not, and the answer is
+    /// <see cref="CatalogueClaimProvenance.ControlledLabObservation"/> rather than documented.</b>
+    /// In <c>ba.ad.lab</c> on 2026-09-10 the Domain Controllers group was itself stamped, held no
+    /// explicit <c>member</c> entries so the primary-group edge was the only route into it, and
+    /// <c>dSHeuristics</c> excluded nothing - while its domain controller carried neither
+    /// <c>adminCount</c> nor a DACL refusing inheritance, eighteen months after creation. Domain
+    /// Admins was stamped and Domain Users was not in the same run, so the fingerprint means what
+    /// the observation assumes. Recorded under decision <c>0118</c>; the observation is
+    /// <c>tools/Observe-Ac64PrimaryGroupTraversal.ps1</c> and can be run again.
+    /// </para>
+    /// <para>
+    /// <b>Lab-verified is a weaker warrant than specified, and the version records which.</b> One
+    /// forest, one domain, one domain controller, one Windows version. A forest that contradicts it
+    /// reverts the answer to <c>Unknown</c>, which is a catalogue version change and not a code
+    /// change.
     /// </para>
     /// <para>
     /// <b><see cref="Exclusions"/> is unread here, and that is the honest default.</b> This is the
@@ -203,8 +231,8 @@ internal sealed record ProtectedGroupCatalogue(
     /// </para>
     /// </remarks>
     public static ProtectedGroupCatalogue Default { get; } = new(
-        Version: 2,
-        Entries: VersionTwoEntries,
+        Version: 3,
+        Entries: AppendixCEntries,
         Exclusions: new AdminSdExclusionMask(
             [], HeuristicReadOutcome.NotRead, Character: null));
 

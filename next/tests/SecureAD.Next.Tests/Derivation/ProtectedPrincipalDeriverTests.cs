@@ -80,34 +80,76 @@ public sealed class ProtectedPrincipalDeriverTests
     }
 
     /// <summary>
-    /// Reaching a protected group only by primary group is unknown, never not protected.
+    /// Reaching a protected group only by primary group is not protected, and is not a doubt.
     /// </summary>
     /// <remarks>
-    /// <c>AC-64</c>. The citation establishes that primary-group membership is real and that
-    /// authorization honours it; nothing says the protection process follows it. Answering false
-    /// would report a possibly protected account as unprotected.
+    /// <para>
+    /// <b>This asserted <c>Unknown</c> until 0118.</b> <c>AC-64</c> was blocked because the citation
+    /// establishes that primary-group membership is real and that authorization honours it, and says
+    /// nothing about whether the protection process follows it - so answering either way was a
+    /// guess, and the guess that reports a protected account as unprotected is the worse one.
+    /// </para>
+    /// <para>
+    /// <b>The laboratory answered it on 2026-09-10, which <c>AC-64</c> permits.</b> In
+    /// <c>ba.ad.lab</c> the Domain Controllers group was itself stamped, held no explicit
+    /// <c>member</c> entries so the primary-group edge was the only route into it, and
+    /// <c>dSHeuristics</c> excluded nothing - while its domain controller carried neither
+    /// <c>adminCount</c> nor a DACL refusing inheritance. Domain Admins was stamped and Domain Users
+    /// was not in the same run, so the fingerprint was measuring what it claimed to.
+    /// </para>
+    /// <para>
+    /// <b>Lab-verified, not specified.</b> One forest, one domain controller, one Windows version.
+    /// The reason and its wording are retained so a contradicting forest can reinstate the doubt
+    /// without rebuilding the vocabulary under pressure.
+    /// </para>
     /// </remarks>
     [Fact]
-    public void Stage2a_PrimaryGroupOnlyPathIsUnknown()
+    public void Stage2a_PrimaryGroupOnlyPathIsNotProtected()
     {
         var closure = Derive(
             [Security(0, rid: 512), User(1, rid: 1104, primaryGroup: 0)],
             edges: []);
 
-        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, closure.EvaluationOf(1));
-        Assert.Equal(
-            ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked,
-            closure.ReasonsFor(1));
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(1));
+
+        // The answer is settled, not withheld. Asserting the evaluation alone would pass against a
+        // version that still recorded the old research reason beside a changed evaluation, which
+        // would put "capturing again will not help" on screen for an account nobody doubts.
+        Assert.Equal(ProtectionUnknownReason.None, closure.ReasonsFor(1));
     }
 
     /// <summary>
-    /// An ordinary path settles it even when a gated one also exists.
+    /// The primary-group edge is still walked, and still reaches the principal it always did.
     /// </summary>
     /// <remarks>
-    /// The gated edge only matters to a principal that has nothing else.
+    /// <b>The negative control for the test above, and the reason it is not redundant.</b>
+    /// <c>NotProtected</c> is what the deriver writes for a principal it never reached at all, so a
+    /// version that had simply stopped following <c>primaryGroupID</c> would satisfy that assertion
+    /// perfectly while having lost the edge. This pins the edge itself: the same account reached
+    /// through the same attribute is <c>Protected</c> once the group's own protection propagates,
+    /// so the traversal is demonstrably alive and only its protection consequence changed.
     /// </remarks>
     [Fact]
-    public void Stage2a_AnOrdinaryPathBeatsAGatedOne()
+    public void Stage2a_ThePrimaryGroupEdgeIsStillFollowedForAuthorization()
+    {
+        var graph = GraphOf(
+            [Security(0, rid: 512), User(1, rid: 1104, primaryGroup: 0)],
+            edges: []);
+
+        Assert.Contains(1, graph.PrimaryMembersOf(0).ToArray());
+    }
+
+    /// <summary>
+    /// An ordinary path settles it, and so does a primary-group one.
+    /// </summary>
+    /// <remarks>
+    /// <b>This distinguished a gated edge from an ordinary one until 0118 removed the gate.</b> It
+    /// is retained rather than deleted because it pins the ordinary route independently: a principal
+    /// with both routes must be <c>Protected</c>, and it would have been <c>Protected</c> under the
+    /// old rule too. Deleting it would remove the only assertion that a nesting edge still wins.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AnOrdinaryPathReachesProtection()
     {
         var closure = Derive(
             [Security(0, rid: 512), User(1, rid: 1104, primaryGroup: 0)],
@@ -117,20 +159,21 @@ public sealed class ProtectedPrincipalDeriverTests
     }
 
     /// <summary>
-    /// A gated edge does not turn the rest of the directory into a shrug.
+    /// A primary-group edge does not turn the rest of the directory into a shrug.
     /// </summary>
     /// <remarks>
-    /// The failure §2a names outright. One account behind an unestablished edge must not make
-    /// everybody else unknown, or the closure has told a reader nothing while sounding careful.
+    /// The failure §2a names outright. This mattered most while the edge produced <c>Unknown</c>,
+    /// and it still matters: both accounts are now <c>NotProtected</c>, and a version that widened
+    /// the primary-group answer back into a doubt would fail here as well as above.
     /// </remarks>
     [Fact]
-    public void Stage2a_AGatedEdgeDoesNotMakeEverybodyUnknown()
+    public void Stage2a_APrimaryGroupEdgeDoesNotMakeEverybodyUnknown()
     {
         var closure = Derive(
             [Security(0, rid: 512), User(1, rid: 1104, primaryGroup: 0), User(2, rid: 1105)],
             edges: []);
 
-        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, closure.EvaluationOf(1));
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(1));
         Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(2));
     }
 
@@ -382,7 +425,13 @@ public sealed class ProtectedPrincipalDeriverTests
 
         for (var i = 0; i < 5; i++)
             Assert.Equal(OwnerAcceptance.SchemaOnly, result.OwnerAcceptanceOf(i));
-        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, result.EvaluationOf(4));
+
+        // ACCEPTANCE AND PROTECTION REMAIN SEPARATE ANSWERS, WHICH IS THIS ASSERTION'S POINT.
+        // Principal 4 reaches Schema Admins only through its primary group, so it is an accepted
+        // schema owner - authorization honours the edge - while being NotProtected, because SDProp
+        // does not follow it. This read Unknown until 0118; the pairing is what matters, not which
+        // of the two values the protection side happens to hold.
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, result.EvaluationOf(4));
     }
 
     [Fact]

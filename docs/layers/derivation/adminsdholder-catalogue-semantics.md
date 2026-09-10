@@ -320,15 +320,34 @@ model is canonical.
 
 ### 6.3 Primary-group-only membership
 
-The current evidence establishes that `primaryGroupID` represents membership for authorization. It
-does not yet establish that AdminSDHolder protected-member enumeration follows a route represented
-only by primary-group membership in every relevant case.
+The evidence establishes that `primaryGroupID` represents membership for authorization. It does not
+establish that AdminSDHolder protected-member enumeration follows a route represented only by
+primary-group membership, and no Microsoft source does — Appendix C, *Reducing the Active Directory
+Attack Surface* and MS-ADA3 were re-read on 2026-09-11 and every one of them confirms which groups
+are protected while saying nothing about which routes SDProp walks to find their members.
 
-A principal whose only possible route to an established or disputed member-propagation root is a
-primary-group edge is therefore `Unknown` until that traversal is established.
+**A laboratory observation settled it in the negative on 2026-09-10, and the closure does not follow
+the edge.** A principal whose only possible route to a member-propagation root is a primary-group
+edge is `NotProtected`. In `ba.ad.lab` the Domain Controllers group was itself stamped, held no
+explicit `member` entries so the primary-group edge was the only route into it, and `dSHeuristics`
+excluded nothing — while its domain controller carried neither `adminCount` nor a DACL refusing
+inheritance, eighteen months after creation, against a stamped Domain Admins and an unstamped Domain
+Users in the same run. Recorded under
+[`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md) and reproducible by
+`tools/Observe-Ac64PrimaryGroupTraversal.ps1`.
 
-RID 516 and 521 require separate handling: their member propagation is `Unverified`, so a
-DC or RODC computer relying only on those routes is `Unknown` for that reason as well.
+**Lab-verified is a weaker warrant than specified.** One forest, one domain, one domain controller,
+one Windows version. A forest that contradicts it reverts the answer to `Unknown`, which is why
+`ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked` remains in the enumeration — it is
+also persisted as flag value 1 in every derivation written before schema 13, so it could not be
+removed in any case.
+
+**RID 516 and 521 carried two independent gates and now carry neither in this path.** Their member
+propagation is `Unverified`, which places them among the possible roots, and the walk over those
+roots marks what it reaches `Unknown`. That walk follows ordinary nesting alone, so a DC or RODC
+computer whose only route is its primary group is never reached by it and is `NotProtected`. The
+`Unverified` propagation still applies to a DC listed as an explicit `member`, which is a different
+directory and a different answer.
 
 ## 7. Derived principal evaluation
 

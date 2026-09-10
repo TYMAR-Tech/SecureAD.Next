@@ -203,7 +203,7 @@ So both non-obvious edge kinds in that closure were gated, on the same terms as 
 |---|---|
 | Nesting through security groups | specified — the ordinary case |
 | Nesting through **distribution** groups | **resolved 2026-08-27** — see below |
-| **Primary-group** membership | **gated**: `AC-64`, membership is cited, the SDProp traversal is not |
+| **Primary-group** membership | **resolved 2026-09-11** — lab-verified under [`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md): SDProp does not follow the edge |
 
 **A gated edge may not be implemented from inference.** Each needs a Microsoft protocol citation,
 or a lab observation recorded and labelled as lab-verified rather than specified. Guessing is
@@ -233,8 +233,12 @@ rather than **specified**, because the source is product guidance and not an Ope
 `ProtectedEdgeProvenance` keeps the two apart so the weaker one can be revisited. `AC-26` is
 satisfied by the catalogue flag it already anticipated.
 
-`AC-64` is unaffected and remains gated: the primary-group citation establishes real membership and
-authorization's honouring of it, and still says nothing about SDProp.
+`AC-64` was unaffected by that resolution and stayed gated for two more weeks: the primary-group
+citation establishes real membership and authorization's honouring of it, and still says nothing
+about SDProp. **It was resolved separately on 2026-09-11 by the other route the gate allows** — a
+lab observation, recorded under
+[`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md) and labelled
+lab-verified rather than specified. The citation route was re-checked that day and remains closed.
 
 Recorded in `docs/MICROSOFT-VERIFICATION.md`, anchored by
 `AdminSdHolderCatalogueSemanticTests`, and built as described in
@@ -263,10 +267,13 @@ UnknownReasons:
 ```
 
 **Only principals that actually intersect a gated edge become `Unknown`.** A user whose
-`primaryGroupID` names a protected group is `Unknown` with
-`PrimaryGroupTraversalResearchBlocked`; a user with no such path is `NotProtected` as usual. The
-uncertainty is bounded by the observed candidate paths, in the same way an `UncertaintyRegion` is
-bounded — a gated edge kind must not turn the whole forest `Unknown`.
+`primaryGroupID` names a protected group was `Unknown` with
+`PrimaryGroupTraversalResearchBlocked` until [`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md)
+and is now `NotProtected`; a user with no such path is `NotProtected` as usual. The reason is
+retained in the enumeration because derivations written before schema 13 persist it, and because a
+forest contradicting the observation would reinstate it. The uncertainty is bounded by the observed
+candidate paths, in the same way an `UncertaintyRegion` is bounded — a gated edge kind must not turn
+the whole forest `Unknown`.
 
 #### Primary-group membership is real membership and is not represented by `member` / `memberOf`
 
@@ -290,18 +297,24 @@ and the phase maintains a reverse index from primary-group SID to accounts. **Th
 authorization membership.** It is not a special-case reporting hint; it is membership Windows itself
 recognizes.
 
-**Its participation in protected-principal analysis is a separate claim and remains gated under
-`AC-64`.** The cited sources establish that primary-group membership is real membership and that
-authorization honours it; neither says how SDProp traverses it. An earlier draft said this
-relationship "feeds both security membership and protected-principal analysis", which stated the
-second half as settled fact while the criterion blocked it — the shape of contradiction where one
-implementer follows the prose, another follows the criterion, and both believe they complied.
+**Its participation in protected-principal analysis was a separate claim, gated under `AC-64` until
+2026-09-11 and now answered in the negative.** The cited sources establish that primary-group
+membership is real membership and that authorization honours it; neither says how SDProp traverses
+it, and neither ever will — a laboratory observation settled it instead, under
+[`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md). An earlier draft
+said this relationship "feeds both security membership and protected-principal analysis", which
+stated the second half as settled fact while the criterion blocked it — the shape of contradiction
+where one implementer follows the prose, another follows the criterion, and both believe they
+complied. The two halves now have the same answer for different reasons: authorization follows the
+edge, and protection demonstrably does not.
 
 This is especially important because writable domain-controller accounts normally use the Domain
 Controllers group as primary group, and an administrator can change a user account's primary group.
 A user whose `primaryGroupID` names a privileged security group must not disappear from
 `AuthorizationMembershipClosure` merely because there is no ordinary `member` backlink.
-Participation in `ProtectedPrincipalClosure` stays research-gated under `AC-64`.
+Participation in `ProtectedPrincipalClosure` was research-gated under `AC-64` until 2026-09-11, and
+is now settled in the negative: the closure does not follow the edge, because SDProp was observed not
+to.
 
 #### Membership is target-independent
 
@@ -2361,7 +2374,7 @@ research status and sources — and the code is generated from that, not from th
 | AC-61 | `Tier0Basis` has one authoritative enumeration everywhere: `Seed`, `EffectiveMembership`, `DirectControl`. |
 | AC-62 | Every finding records the rule, derivation-engine, capability-catalogue, privileged-catalogue, tier-policy and schema/GUID semantic versions that produced it. |
 | AC-63 | `primaryGroupID` membership is included even when neither `memberOf` nor the group's `member` attribute contains the account. A user whose primary group is Domain Admins is found. |
-| AC-64 | Primary-group membership participates in protected-principal derivation as well as authorization membership where the group is in the protected set. **Blocked pending evidence:** the `primaryGroupID` citation establishes membership and its use in authorization, not the SDProp traversal. This criterion may not be implemented until either a Microsoft protocol citation shows primary-group membership participating in protected-group evaluation, or a lab observation is recorded and labelled as lab-verified rather than specified. |
+| AC-64 | Primary-group membership does **not** carry AdminSDHolder protection: a principal whose only route to a protected root is a `primaryGroupID` edge is `NotProtected`, not `Unknown`. **Unblocked 2026-09-11 by lab observation, per [`0118`](../../decisions/0118-primary-group-only-membership-is-not-protected.md).** The `primaryGroupID` citation establishes membership and its use in authorization, not the SDProp traversal, and no Microsoft source states what SDProp traverses — re-checked 2026-09-11 against Appendix C, *Reducing the Active Directory Attack Surface* and MS-ADA3. This criterion's alternative route was taken: `ba.ad.lab` on 2026-09-10 showed the Domain Controllers group itself stamped with no explicit `member` entries and `dSHeuristics` unset, while its domain controller carried neither `adminCount` nor a DACL refusing inheritance, against a stamped Domain Admins and an unstamped Domain Users in the same run. **Lab-verified, not specified**, and one domain: a contradicting forest reverts the answer to `Unknown`. Observation reproducible by `tools/Observe-Ac64PrimaryGroupTraversal.ps1`. |
 | AC-65 | Many derived capability edges produced by one inherited ACE share one `RemediationActionId`; dominator/min-cut analysis recommends the source ACE once, not thousands of child edges. |
 | AC-66 | One direct group membership that feeds many transitive paths remains one source remediation action. |
 | AC-67 | Findings can have non-account subjects (OU, GPO, certificate template, domain root, topology object) without inventing a SID. |

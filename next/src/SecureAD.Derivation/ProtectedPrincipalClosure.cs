@@ -181,7 +181,23 @@ internal static class ProtectedPrincipalDeriver
 
         Walk(graph, establishedRoots, isEstablished: true, evaluations, reasons, bases, paths, cancellationToken);
         Walk(graph, possibleRoots, isEstablished: false, evaluations, reasons, bases, paths, cancellationToken);
-        WalkPrimaryGroups(graph, [.. establishedRoots, .. possibleRoots], evaluations, reasons, cancellationToken);
+
+        // NO THIRD WALK FOR PRIMARY-GROUP EDGES, PER 0118. A principal reachable only through
+        // primaryGroupID was marked Unknown here until 2026-09-11, because Microsoft establishes
+        // that the attribute IS membership and that authorization honours it, and establishes
+        // nothing about whether AdminSDHolder's protected-member enumeration follows the same edge.
+        //
+        // The laboratory answered it where the documentation would not. In ba.ad.lab on 2026-09-10
+        // the Domain Controllers group was itself stamped, held no explicit member entries so the
+        // primary-group edge was the only route into it, and dSHeuristics excluded nothing - and its
+        // domain controller carried neither adminCount nor a DACL refusing inheritance, eighteen
+        // months after creation, while Domain Admins was stamped and Domain Users was not in the
+        // same run. SDProp does not follow the edge, so these principals keep the NotProtected they
+        // already hold. tools/Observe-Ac64PrimaryGroupTraversal.ps1 reproduces the observation.
+        //
+        // LAB-VERIFIED, NOT SPECIFIED. One forest, one domain, one domain controller, one Windows
+        // version. If a forest ever contradicts it the answer reverts to Unknown, which is why
+        // PrimaryGroupTraversalResearchBlocked and UnresolvedReason.PrimaryGroupRoute both remain.
 
         // THE ACCEPTED-OWNER QUESTION, ANSWERED SEPARATELY AND NOT FILTERED OUT OF THE ONE ABOVE.
         // Walked over the accepted roots alone, so a principal reaching Domain Admins is accepted
@@ -194,7 +210,7 @@ internal static class ProtectedPrincipalDeriver
             .ToArray();
 
         var acceptedOwners = Reachable(
-            graph, acceptedOwnerRoots, followPrimaryGroups: false, cancellationToken);
+            graph, acceptedOwnerRoots, cancellationToken);
 
         var ownerAcceptance = Enumerable.Repeat(OwnerAcceptance.NotAccepted, count).ToArray();
         foreach (var sidId in acceptedOwners)
@@ -416,48 +432,19 @@ internal static class ProtectedPrincipalDeriver
     }
 
     /// <summary>
-    /// Flags the principals whose only route to a root runs through a primary-group edge.
+    /// Everything beneath the roots, following ordinary nesting alone.
     /// </summary>
     /// <remarks>
-    /// <b>The difference between the two reachable sets is the whole point.</b> Walking both edge
-    /// kinds together and blaming everything it reaches would stamp this reason on principals whose
-    /// route is ordinary nesting, which is a reason that does not apply - and under <c>0086</c> an
-    /// unknown reason is customer-visible, so a wrong one sends an operator to look at
-    /// <c>primaryGroupID</c> on an account whose answer has nothing to do with it.
+    /// <b>Primary-group edges are not followed, and there is no longer a switch to follow them.</b>
+    /// This took a <c>followPrimaryGroups</c> parameter until 0118, so the deriver could difference
+    /// the two reachable sets and mark the difference <c>Unknown</c>. With that gate gone the only
+    /// caller passed <c>false</c>, and a parameter with one possible value is a branch nothing
+    /// exercises. <see cref="SchemaOwners"/> still walks both edge kinds, because ownership
+    /// acceptance is an authorization question and authorization does honour primary groups.
     /// </remarks>
-    private static void WalkPrimaryGroups(
-        NestingGraph graph,
-        IReadOnlyCollection<Root> roots,
-        ProtectedPrincipalEvaluation[] evaluations,
-        ProtectionUnknownReason[] reasons,
-        CancellationToken cancellationToken)
-    {
-        var ordinary = Reachable(graph, roots, followPrimaryGroups: false, cancellationToken);
-        var withPrimary = Reachable(graph, roots, followPrimaryGroups: true, cancellationToken);
-
-        foreach (var sidId in withPrimary.Order())
-        {
-            if (ordinary.Contains(sidId))
-                continue;
-
-            if (evaluations[sidId] != ProtectedPrincipalEvaluation.Protected)
-            {
-                MakeUnknown(
-                    sidId,
-                    ProtectionUnknownReason.PrimaryGroupTraversalResearchBlocked,
-                    evaluations,
-                    reasons);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Everything beneath the roots, by the edge kinds the caller allows.
-    /// </summary>
     private static HashSet<int> Reachable(
         NestingGraph graph,
         IReadOnlyCollection<Root> roots,
-        bool followPrimaryGroups,
         CancellationToken cancellationToken)
     {
         var seen = new HashSet<int>();
@@ -474,11 +461,7 @@ internal static class ProtectedPrincipalDeriver
             cancellationToken.ThrowIfCancellationRequested();
             var current = queue.Dequeue();
 
-            var members = followPrimaryGroups
-                ? [.. graph.MembersOf(current).ToArray(), .. graph.PrimaryMembersOf(current).ToArray()]
-                : graph.MembersOf(current).ToArray();
-
-            foreach (var member in members)
+            foreach (var member in graph.MembersOf(current).ToArray())
             {
                 if (seen.Add(member))
                     queue.Enqueue(member);

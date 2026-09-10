@@ -89,7 +89,16 @@ internal static class DerivationSchema
     // not a principal. It is now a Tier-0 seed in its own right, and a version 11 store simply does
     // not contain the object, so it cannot answer whether a replication grant on a partition root
     // was assessed - which is refused rather than guessed at.
-    public const int Version = 12;
+    //
+    // Version 13 changes what a stored evaluation MEANS without changing a single table, and is the
+    // case P-149 warns about: a structural fingerprint cannot see it. Under 0118 a principal whose
+    // only route to a protected root is a primaryGroupID edge is NotProtected, where version 12
+    // recorded Unknown with PrimaryGroupTraversalResearchBlocked. A version 12 store therefore holds
+    // Unknown rows that this version would have written as NotProtected, and reading one as though
+    // it were current would report a settled answer as a doubt. Refused rather than reinterpreted.
+    // Re-derive; no migration is offered, because the old rows are honest records of what the
+    // product believed when they were written.
+    public const int Version = 13;
 
 
     private static readonly string[] TableDdl =

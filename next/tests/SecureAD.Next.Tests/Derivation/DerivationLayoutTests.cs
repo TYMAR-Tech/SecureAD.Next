@@ -22,6 +22,12 @@ public sealed class DerivationLayoutTests
         // them - so the layout hash is deliberately identical to 11 and the version carries the
         // difference. A version 11 store is refused because it does not contain the roots at all.
         [12] = "15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143",
+        // Schema 13 changes what a stored evaluation MEANS and touches no DDL at all: under 0118 a
+        // principal reachable only through primaryGroupID is NotProtected where 12 wrote Unknown.
+        // The hash is identical to 12 for that reason, and this is precisely the case P-149 says a
+        // structural fingerprint cannot catch - the guard below would pass unchanged if the version
+        // had not been bumped, so ProtectedPrincipalDeriverTests carries the behavioural check.
+        [13] = "15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143",
     };
 
     [Fact]

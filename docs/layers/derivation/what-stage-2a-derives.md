@@ -682,4 +682,6 @@ run exercised the pass, the expansion and both derivations end to end, and every
 | Keep forest-root-only RIDs from matching child-domain principals | `ProtectedPrincipalDeriverTests.Stage2a_AForestRootRidInAChildDomainIsNotTheForestRootPrincipal` | 2026-08-31 |
 | Read persisted evaluations, reasons, bases and deterministic paths | `ProtectedPrincipalPersistenceTests.Stage2a_AllEvaluationsReasonsBasesAndPathsRoundTrip` | 2026-08-31 |
 | Not be told a doubt is about primary groups when the route was ordinary nesting | `ProtectedPrincipalDeriverTests.Stage2a_AnOrdinaryRouteToAPossibleRootDoesNotBlameThePrimaryGroup` | 2026-08-31 |
+| Not be told a domain controller's protection is unknown when it is settled | `ProtectedPrincipalDeriverTests.Stage2a_PrimaryGroupOnlyPathIsNotProtected` | 2026-09-11 |
+| Keep the primary-group edge for authorization after protection stopped following it | `ProtectedPrincipalDeriverTests.Stage2a_ThePrimaryGroupEdgeIsStillFollowedForAuthorization` | 2026-09-11 |
 | Be refused a stored product whose rows contradict each other | `ProtectedPrincipalPersistenceTests.Stage2a_AnIncoherentProductIsRefusedRatherThanStored` | |

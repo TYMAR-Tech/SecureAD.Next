@@ -168,10 +168,27 @@ public sealed class AdminCountWithoutProtectionTests
     }
 
     /// <summary>
-    /// U5. A primary-group route is not evidence of protection, and not evidence against it.
+    /// P1. A primary-group route is settled evidence against protection, so the marker is reported.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This asserted an unsettled doubt until 0118, and the change is visible to a customer.</b>
+    /// While primary-group traversal was research-gated, an account reaching Domain Controllers only
+    /// through <c>primaryGroupID</c> was <c>Unknown</c>, and <c>SEC-030</c> declined to judge it.
+    /// The laboratory observation of 2026-09-10 established that SDProp does not follow the edge, so
+    /// the account is <c>NotProtected</c> - and an account carrying <c>adminCount=1</c> with a DACL
+    /// still refusing inheritance, while nothing protects it, is exactly what this rule exists to
+    /// report.
+    /// </para>
+    /// <para>
+    /// <b>The account in this fixture is a leftover, not a domain controller.</b> A real domain
+    /// controller carries neither marker, which is what the observation measured; this one carries
+    /// both, which is the residue AdminSDHolder leaves behind when a principal stops being
+    /// protected. Under the old rule that residue was hidden behind a doubt.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void Sec030_ReportsAPrimaryGroupOnlyRouteAsUnsettledRatherThanUnprotected()
+    public void Sec030_ReportsAPrimaryGroupOnlyRouteAsUnprotected()
     {
         var stored = Stored(
             Ann() with
@@ -185,13 +202,12 @@ public sealed class AdminCountWithoutProtectionTests
 
         var run = Assert.Single(stored.RulesRun);
 
-        // The group object beside it is judged cleanly - it carries no marker - so what matters is
-        // that the computer produced no finding and one stated doubt, not that nothing was judged.
-        Assert.Empty(stored.Findings);
-        Assert.Equal(1, run.ObjectsNotJudged);
+        Assert.Single(stored.Findings);
+        Assert.Equal(0, run.ObjectsNotJudged);
 
-        var reason = Assert.Single(run.MissingInputs);
-        Assert.Equal("ProtectedPrincipals.PrimaryGroupRoute", reason.Attribute);
+        // Nothing may remain unsettled: a finding beside a stated doubt would tell an operator the
+        // answer and then undercut it in the same breath.
+        Assert.Empty(run.MissingInputs);
     }
 
     // ---- fixture ----------------------------------------------------------------------------
