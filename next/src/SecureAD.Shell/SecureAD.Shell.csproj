@@ -23,6 +23,13 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
+    <!-- English only, so a package that ships translations cannot quietly add fourteen satellite
+         folders beside the executable. The product's own strings are English and its resource files
+         are not translated; the folders that appeared here were a dependency's, not ours. Stated
+         rather than left to chance because an operator copying a build to a lab should get the files
+         the product needs and nothing else. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
     <!-- Per-monitor DPI awareness, declared in app.manifest. Without it the product is system DPI
          aware and the OS stretches it on any monitor scaled differently from the one the session
          started on, which is what made the window look wrong across the owner's displays. -->
