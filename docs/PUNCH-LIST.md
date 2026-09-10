@@ -580,6 +580,13 @@ solution build, 799/799 targeted coverage and preserved final artifacts. The own
 documentation closeout, commit and push of this completed slice; this is not permission for live work,
 production budgets, discovery activation or later publication.
 
+**Where the product actually is, 2026-09-11: judgement schema 30, control engine 9, derivation schema
+13, principal catalogue 3, protected-group catalogue 3.** The checkpoints above each record the
+version its slice was completed at, which is what a checkpoint is for; this line exists because a
+reader reaching the last one would otherwise take *schema 24 / control engine 8* for the present
+state, and five schema versions have landed since. See [`ROADMAP.md`](ROADMAP.md#remaining-stage-6-work)
+for what moved and why.
+
 P-145 remains open. Its remaining work is collected in
 [Remaining Stage 6 work](ROADMAP.md#remaining-stage-6-work): customer-shaped expansion/readback
 measurement, unresolved scope and constrained authorization cases, controlled live evidence gates,

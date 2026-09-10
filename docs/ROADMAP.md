@@ -897,6 +897,18 @@ excluded, 799/799 targeted coverage tests and a successful solution build. The
 [member-attribution record](layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
 owns the final artifacts, approved timing clarification and publication authorization.
 
+**Current versions, 2026-09-11: judgement schema 30, control engine 9, derivation schema 13,
+principal catalogue 3, protected-group catalogue 3.** The paragraphs above record the version each
+slice was completed at and are left as written; this line records where the product actually is, so
+a reader working from the last slice described does not take *judgement schema 24 / control engine
+8* for the present state. What moved since: judgement 25-27 completing the control slices, 28 and 29
+for discovery-first scoping under [`0116`](decisions/0116-discovery-first-assessment-admission.md),
+30 for name-pinned stored proofs under
+[`0119`](decisions/0119-a-stored-proof-records-enum-names.md); derivation 12 retaining partition
+roots under [`0117`](decisions/0117-naming-context-roots-are-tier-0-assets.md) and 13 for
+primary-group protection under
+[`0118`](decisions/0118-primary-group-only-membership-is-not-protected.md).
+
 ### Remaining Stage 6 work
 
 1. Measure customer-shaped synthetic expansion, storage and forward/reverse readback, including

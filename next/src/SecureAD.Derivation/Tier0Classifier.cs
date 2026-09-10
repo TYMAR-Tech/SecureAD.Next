@@ -88,7 +88,7 @@ public static class Tier0Classifier
                 cancellationToken.ThrowIfCancellationRequested();
                 var support = Membership(route);
                 if (support is null) limitations |= Tier0Limitations.MembershipUnqualified;
-                else if (uniqueSupports.Add(JsonSerializer.Serialize(support.Evidence))) supports.Add(support);
+                else if (uniqueSupports.Add(JsonSerializer.Serialize(support.Evidence, ProofSerialization.Options))) supports.Add(support);
             }
         }
         return Result();

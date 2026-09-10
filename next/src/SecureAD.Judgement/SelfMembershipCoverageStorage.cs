@@ -1,16 +1,11 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SecureAD.Evidence;
 
 namespace SecureAD.Judgement;
 
 internal static class SelfMembershipCoverageStorage
 {
-    private static readonly JsonSerializerOptions ReadOptions = new()
-    {
-        RespectRequiredConstructorParameters = true,
-        RespectNullableAnnotations = true,
-    };
-
     internal static SelfMembershipSummary? Read(SqliteConnection connection, JudgementDescription description)
     {
         using var product = connection.CreateCommand();
@@ -32,7 +27,7 @@ internal static class SelfMembershipCoverageStorage
         SelfMembershipDiscoveryCoverage coverage;
         try
         {
-            coverage = JsonSerializer.Deserialize<SelfMembershipDiscoveryCoverage>((string)encoded!, ReadOptions)
+            coverage = JsonSerializer.Deserialize<SelfMembershipDiscoveryCoverage>((string)encoded!, ProofSerialization.Options)
                 ?? throw new InvalidDataException("Self-Membership coverage is null.");
         }
         catch (JsonException error)

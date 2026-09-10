@@ -43,7 +43,7 @@ internal static class FullControlStorage
                 ("$target", result.Target), ("$count", result.FullControlAssessments.Count));
         if (result.FullControlAssessments.Count == 0) return;
         var entries = result.FullControlAssessments[0].Source.Entries;
-        var serializedEntries = JsonSerializer.Serialize(entries);
+        var serializedEntries = JsonSerializer.Serialize(entries, ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO full_control_source VALUES ($target,$count,$fingerprint)",
             ("$target", result.Target), ("$count", entries.Count), ("$fingerprint", SHA256.HashData(Encoding.UTF8.GetBytes(serializedEntries))));
         for (var position = 0; position < entries.Count; position++)
@@ -58,10 +58,10 @@ internal static class FullControlStorage
         {
             FullControlEvaluator.Validate(assessment, storedEdges);
             if (!FullControlEvaluator.Same(assessment.Source.Target, result.Target)
-                || JsonSerializer.Serialize(assessment.Source.Entries) != serializedEntries) throw FullControlEvaluator.InvalidProof();
+                || JsonSerializer.Serialize(assessment.Source.Entries, ProofSerialization.Options) != serializedEntries) throw FullControlEvaluator.InvalidProof();
             var supports = assessment.IsCounted ? storedEdges.Where(edge => FullControlEvaluator.Supports(assessment.Source, edge)).ToArray() : [];
             var routes = sharedEntries.Proofs.WriteFullControlRoutes(assessment);
-            var stored = JsonSerializer.SerializeToNode(assessment with { Id = 0, Source = assessment.Source with { Entries = [] } })!;
+            var stored = JsonSerializer.SerializeToNode(assessment with { Id = 0, Source = assessment.Source with { Entries = [] } }, ProofSerialization.Options)!;
             if (stored["Source"] is not JsonObject source || !source.Remove("MembershipRoutes")) throw FullControlEvaluator.InvalidProof();
             Execute(connection, transaction, """
                 INSERT INTO full_control_assessment(target,holder_sid,holder_scope,evaluation,expectedness,generation,derivation_generation,support_count,proof,route_value_id,route_fingerprint)
@@ -95,13 +95,13 @@ internal static class FullControlStorage
             if (!read.Read()) throw FullControlEvaluator.InvalidProof();
             var stored = JsonNode.Parse(read.GetString(8));
             if (stored?["Source"] is not JsonObject source || source.ContainsKey("MembershipRoutes")) throw FullControlEvaluator.InvalidProof();
-            var value = stored.Deserialize<FullControlAssessment>();
+            var value = stored.Deserialize<FullControlAssessment>(ProofSerialization.Options);
             if (value?.Source?.Holder is null) throw FullControlEvaluator.InvalidProof();
             var routes = SharedProofStorage.ReadFullControlRoutes(connection, value, read.GetInt64(12), (byte[])read.GetValue(13));
             value = value with { Source = value.Source with { MembershipRoutes = routes } };
             var entries = ReadEntries(connection, description, read.GetString(0));
             if (value?.Source?.Holder is null || entries.Count != read.GetInt32(9)
-                || !SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(entries)).AsSpan().SequenceEqual((byte[])read.GetValue(10))
+                || !SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(entries, ProofSerialization.Options)).AsSpan().SequenceEqual((byte[])read.GetValue(10))
                 || value.Id != 0 || value.Source.Entries is null || value.Source.Entries.Count != 0
                 || value.Source.Target != read.GetString(0) || value.Source.Holder.Sid != read.GetString(1)
                 || value.Source.HolderScope != Text(read, 2) || value.EvaluationState.ToString() != read.GetString(3)

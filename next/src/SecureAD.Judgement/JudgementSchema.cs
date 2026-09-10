@@ -52,8 +52,17 @@ public static class JudgementSchema
     /// forest-wide one are the same rows with the same columns, and the screen would either omit the
     /// scope caveat where it is needed or show it where it is not - understating real coverage.
     /// </para>
+    /// <para>
+    /// <b>30 changes how every stored proof is written, without changing one column.</b> Enums were
+    /// serialised as ordinals, so a fingerprint or a rehydrated proof meant what it meant only
+    /// because of the order somebody typed the members in. They are now written as names, per
+    /// <c>docs/decisions/0119-a-stored-proof-records-enum-names.md</c>. A 29 file therefore holds
+    /// proofs this build would write differently: its fingerprints would not match on replay, and a
+    /// rehydrated flags value could read back as a different limitation entirely. Refused rather
+    /// than reinterpreted; re-judge, and nothing is lost because the evidence was never touched.
+    /// </para>
     /// </remarks>
-    public const int Version = 29;
+    public const int Version = 30;
 
     private static readonly string[] TableDdl =
     [

@@ -89,7 +89,7 @@ internal static class FullControlEvaluator
         if (value.EvaluationState != replay.EvaluationState || value.Uncertainty != replay.Uncertainty
             || value.HasIndependentGrantRoutes != replay.HasIndependentGrantRoutes
             || value.Expectedness != replay.Expectedness || value.ExpectednessReason != replay.ExpectednessReason
-            || JsonSerializer.Serialize(value.Rights) != JsonSerializer.Serialize(replay.Rights)
+            || JsonSerializer.Serialize(value.Rights, ProofSerialization.Options) != JsonSerializer.Serialize(replay.Rights, ProofSerialization.Options)
             || !value.SupportingCapabilities.SequenceEqual(replay.SupportingCapabilities)
             || edges.Where(edge => Supports(source, edge)).Any(edge => edge.GenerationId != value.GenerationId
                 || edge.DerivationGenerationId != value.DerivationGenerationId)) throw InvalidProof();

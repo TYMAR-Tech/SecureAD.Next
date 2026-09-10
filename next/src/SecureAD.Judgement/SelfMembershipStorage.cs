@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
+using SecureAD.Evidence;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 
@@ -10,11 +11,6 @@ namespace SecureAD.Judgement;
 internal static class SelfMembershipStorage
 {
     private const int EvaluatorVersion = 1;
-    private static readonly JsonSerializerOptions ReadOptions = new()
-    {
-        RespectRequiredConstructorParameters = true,
-        RespectNullableAnnotations = true,
-    };
 
     public static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE self_membership_product (id INTEGER PRIMARY KEY CHECK(id=1), evaluator_version INTEGER NOT NULL,
@@ -52,14 +48,15 @@ internal static class SelfMembershipStorage
         ("$readiness", value.Readiness.ToString()), ("$descriptor", value.DescriptorOutcome),
         ("$captured", value.RequesterCapturedUtc?.ToString("O")), ("$uac", value.UserAccountControl),
         ("$present", value.MemberPresent is null ? null : value.MemberPresent.Value ? 1 : 0),
-        ("$issues", JsonSerializer.Serialize(value.Issues)), ("$evidence", JsonSerializer.Serialize(value.Evidence)),
-        ("$edges", JsonSerializer.Serialize(value.HolderEdgeIds)));
+        ("$issues", JsonSerializer.Serialize(value.Issues, ProofSerialization.Options)),
+        ("$evidence", JsonSerializer.Serialize(value.Evidence, ProofSerialization.Options)),
+        ("$edges", JsonSerializer.Serialize(value.HolderEdgeIds, ProofSerialization.Options)));
 
     public static void Complete(SqliteConnection connection, SqliteTransaction? transaction, SelfMembershipDiscoveryCoverage coverage)
     {
         SelfMembershipCoverageStorage.Validate(coverage);
         Execute(connection, transaction, "INSERT INTO self_membership_discovery VALUES (1,$coverage)",
-            ("$coverage", JsonSerializer.Serialize(coverage)));
+            ("$coverage", JsonSerializer.Serialize(coverage, ProofSerialization.Options)));
         Execute(connection, transaction, "UPDATE self_membership_product SET completed=1 WHERE id=1");
     }
 
@@ -192,7 +189,7 @@ internal static class SelfMembershipStorage
 
     private static T[] JsonArray<T>(SqliteDataReader reader, int ordinal, Action<T[]> validate) => Field(reader, ordinal, () =>
     {
-        var values = JsonSerializer.Deserialize<T[]>(RequiredText(reader, ordinal), ReadOptions)
+        var values = JsonSerializer.Deserialize<T[]>(RequiredText(reader, ordinal), ProofSerialization.Options)
             ?? throw new InvalidDataException("Expected an array, not JSON null.");
         validate(values);
         return values;

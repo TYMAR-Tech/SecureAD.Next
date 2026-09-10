@@ -13,8 +13,19 @@ internal static class ControlEdgeDeriver
     private const int WriteOwner = 0x80000;
     private const int ControlAccess = 0x100;
 
+    /// <summary>
+    /// The control edges one object's descriptor supports, before ownership transitions are added.
+    /// </summary>
+    /// <remarks>
+    /// <b>Owner transitions are not derived here, and there is no longer a switch asking for them.</b>
+    /// This took an <c>includeOwnerTransitions</c> parameter defaulting to <c>true</c> until
+    /// 2026-09-11, while all three production callers passed <c>false</c> - so the branch it guarded
+    /// could not run, and a default nothing selects is a claim the code does not honour. Ownership
+    /// transitions belong to <see cref="OwnershipAuditRun"/>, which derives them for the objects
+    /// discovery admitted rather than for every object in the forest, per decision 0114.
+    /// </remarks>
     public static ControlObjectEvaluation Derive(ObjectAttributes subject, ObjectPermissions? permissions,
-        JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid, bool includeOwnerTransitions = true)
+        JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid)
     {
         var sidValue = subject.Find("objectSid")?.OnlyValue;
         var targetSid = sidValue?.Bytes is { } bytes ? Sid.ToText(bytes) : sidValue?.Text;
@@ -81,8 +92,6 @@ internal static class ControlEdgeDeriver
                     capability, evaluation, unknown, expected.State, expected.Reason, PrincipalClassificationRegistry.Version,
                     generation, derivationGeneration, true, evidence, [], routes) { DescriptorOutcome = effective.Outcome.ToString() };
                 edges.Add(edge);
-                if (includeOwnerTransitions && capability == ControlCapability.CanSetOwner)
-                    edges.Add(OwnershipControlDeriver.Transition(edge, subject, permissions, context, trustee, domainSid));
             }
         }
         uncertainty |= AddScopedEdges(subject, permissions, normalized, context, generation, derivationGeneration,

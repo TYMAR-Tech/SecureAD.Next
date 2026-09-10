@@ -11,12 +11,12 @@ namespace SecureAD.Judgement;
 internal static class OwnershipAuditRun
 {
     internal static string OwnerRightsHash(OwnerImplicitRightsSetting? setting) =>
-        Convert.ToHexString(OwnershipAuditStorage.Hash(JsonSerializer.Serialize(setting)));
+        Convert.ToHexString(OwnershipAuditStorage.Hash(JsonSerializer.Serialize(setting, ProofSerialization.Options)));
 
     internal static Tier0InputBinding Binding(string directory, string evidenceSeal, Guid derivationGeneration, string? forest)
     {
         var path = BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Derivation, derivationGeneration);
-        var seal = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(path)) ?? throw OwnershipAuditStorage.InvalidProof();
+        var seal = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(path), ProofSerialization.Options) ?? throw OwnershipAuditStorage.InvalidProof();
         if (seal.Algorithm != BundleSealing.Algorithm) throw OwnershipAuditStorage.InvalidProof();
         var root = string.IsNullOrWhiteSpace(forest) ? null : string.Join(',', forest.Split('.').Select(part => "DC=" + part));
         var binding = new Tier0InputBinding(evidenceSeal, derivationGeneration, seal.Hash, ForestRootNamingContext: root);

@@ -116,7 +116,7 @@ public static class BundleSealing
         ArgumentException.ThrowIfNullOrWhiteSpace(sealFilePath);
 
         var contents = new BundleSealContents(Algorithm, HashFile(evidenceFilePath));
-        File.WriteAllText(sealFilePath, JsonSerializer.Serialize(contents));
+        File.WriteAllText(sealFilePath, JsonSerializer.Serialize(contents, ProofSerialization.Options));
     }
 
     /// <summary>
@@ -238,7 +238,7 @@ public static class BundleSealing
 
         try
         {
-            return JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealFilePath));
+            return JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealFilePath), ProofSerialization.Options);
         }
         catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -267,7 +267,7 @@ public static class BundleSealing
         BundleSealContents? contents;
         try
         {
-            contents = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealPath));
+            contents = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(sealPath), ProofSerialization.Options);
         }
         catch (Exception error) when (error is JsonException or IOException or UnauthorizedAccessException)
         {

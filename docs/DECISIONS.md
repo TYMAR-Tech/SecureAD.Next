@@ -118,3 +118,4 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0116](decisions/0116-discovery-first-assessment-admission.md) | 2026-09-10 | Accepted | Discovery-first assessment admission |
 | [0117](decisions/0117-naming-context-roots-are-tier-0-assets.md) | 2026-09-10 | Accepted | Naming-context roots are Tier-0 assets |
 | [0118](decisions/0118-primary-group-only-membership-is-not-protected.md) | 2026-09-11 | Accepted | Primary-group-only membership does not carry AdminSDHolder protection, lab-verified |
+| [0119](decisions/0119-a-stored-proof-records-enum-names.md) | 2026-09-11 | Accepted | A stored proof records enum names, never positions |

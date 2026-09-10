@@ -69,11 +69,11 @@ internal static class MemberAttributionStorage
             var contexts = links.Select(link => MemberAttributionScope.ContextKey(link.Target, forest, namingContexts)).Distinct().ToArray();
             var expansion = engine.Derive(holder.Sid, string.IsNullOrEmpty(holder.Scope) ? null : holder.Scope, generation, contexts.Length, cancellationToken);
             var contextProofs = contexts.ToDictionary(context => context,
-                context => JsonSerializer.Serialize(MemberAttributionScope.Assess(expansion, context, forest, engine.WithinTime, cancellationToken)));
+                context => JsonSerializer.Serialize(MemberAttributionScope.Assess(expansion, context, forest, engine.WithinTime, cancellationToken), ProofSerialization.Options));
             expansion = engine.Finish(expansion);
             using var transaction = connection.BeginTransaction();
             command.Transaction = transaction;
-            var json = JsonSerializer.Serialize(expansion);
+            var json = JsonSerializer.Serialize(expansion, ProofSerialization.Options);
             Execute(connection, "INSERT INTO member_attribution_root VALUES ($id,$sid,$scope,$proof,$hash)",
                 ("$id", ++rootId), ("$sid", holder.Sid), ("$scope", holder.Scope), ("$proof", json), ("$hash", Hash(json)));
             foreach (var member in expansion.Members)
@@ -96,7 +96,7 @@ internal static class MemberAttributionStorage
             }
             transaction.Commit();
         }
-        var configuration = JsonSerializer.Serialize(new Configuration(budget, forest, namingContexts));
+        var configuration = JsonSerializer.Serialize(new Configuration(budget, forest, namingContexts), ProofSerialization.Options);
         Execute(connection, "UPDATE member_attribution_product SET configuration=$configuration,configuration_hash=$hash,root_count=$roots,permission_count=$permissions WHERE id=1",
             ("$configuration", configuration), ("$hash", Hash(configuration)), ("$roots", rootId), ("$permissions", permissions));
     }
@@ -207,7 +207,7 @@ internal static class MemberAttributionStorage
         if (!reader.Read()) throw Invalid();
         var json = reader.GetString(2);
         if (Hash(json) != reader.GetString(3)) throw Invalid();
-        var result = JsonSerializer.Deserialize<MemberAttribution>(json) ?? throw Invalid();
+        var result = JsonSerializer.Deserialize<MemberAttribution>(json, ProofSerialization.Options) ?? throw Invalid();
         if (result.GenerationId != description.GenerationId || result.DerivationGenerationId != description.DerivationGenerationId
             || !Same(result.HolderSid, reader.GetString(0)) || !Same(result.HolderScope ?? "", reader.GetString(1))
             || result.Budget is null || !Enum.IsDefined(result.Stop)) throw Invalid();
@@ -248,7 +248,7 @@ internal static class MemberAttributionStorage
         if (!reader.Read()) throw Invalid();
         var json = reader.GetString(0);
         if (Hash(json) != reader.GetString(1)) throw Invalid();
-        var result = JsonSerializer.Deserialize<MemberResourceApplicability[]>(json) ?? throw Invalid();
+        var result = JsonSerializer.Deserialize<MemberResourceApplicability[]>(json, ProofSerialization.Options) ?? throw Invalid();
         var identities = expansion.Members.Select(member => member.Identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (result.Length != expansion.Members.Count || result.Select(item => item.Member).Distinct(StringComparer.OrdinalIgnoreCase).Count() != result.Length
             || result.Any(item => !Enum.IsDefined(item.State) || !identities.Contains(item.Member))) throw Invalid();
@@ -263,7 +263,7 @@ internal static class MemberAttributionStorage
         if (!reader.Read() || reader.IsDBNull(0) || reader.IsDBNull(1)) throw Invalid();
         var json = reader.GetString(0);
         if (Hash(json) != reader.GetString(1)) throw Invalid();
-        var value = JsonSerializer.Deserialize<Configuration>(json) ?? throw Invalid();
+        var value = JsonSerializer.Deserialize<Configuration>(json, ProofSerialization.Options) ?? throw Invalid();
         if (value.Budget is null || string.IsNullOrWhiteSpace(value.Forest) || value.NamingContexts is null) throw Invalid();
         value.Budget.Validate();
         return value with { NamingContexts = new Dictionary<string, NamingContextKind>(value.NamingContexts, StringComparer.OrdinalIgnoreCase) };

@@ -37,7 +37,7 @@ internal static class MembershipInputStorage
         var index = 0;
         foreach (var source in objects.OrderBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase))
         {
-            var json = JsonSerializer.Serialize(source);
+            var json = JsonSerializer.Serialize(source, ProofSerialization.Options);
             hash.AppendData(Encoding.UTF8.GetBytes(json + "\n"));
             ordinal.Value = index++;
             dn.Value = source.DistinguishedName;
@@ -70,7 +70,7 @@ internal static class MembershipInputStorage
         while (reader.Read())
         {
             var json = reader.GetString(2);
-            var source = JsonSerializer.Deserialize<ObjectAttributes>(json)
+            var source = JsonSerializer.Deserialize<ObjectAttributes>(json, ProofSerialization.Options)
                 ?? throw Invalid("SourceMissing");
             if (reader.GetInt32(0) != sources.Count || !string.Equals(source.DistinguishedName, reader.GetString(1), StringComparison.OrdinalIgnoreCase))
                 throw Invalid("IdentityInvalid");

@@ -46,6 +46,11 @@ public sealed class ControlEdgeLayoutTests
         // Schema 29 adds control_product.discovery_scoped, so a reader can tell a scoped count from a
         // forest-wide one instead of inferring it. Observed from this build.
         [29] = "1702E41D511FB64ED4DF4371A3FD6721788FA453096740E78B3EBEDCE8B5DC3C",
+        // Schema 30 writes enum names rather than ordinals into every stored proof, per 0119. No DDL
+        // changes, so the hash is deliberately identical to 29 and the version carries the whole
+        // difference - this guard would pass unchanged if the bump had been forgotten, which is why
+        // ProofSerializationGateTests holds the behavioural check.
+        [30] = "1702E41D511FB64ED4DF4371A3FD6721788FA453096740E78B3EBEDCE8B5DC3C",
     };
 
     [Fact]

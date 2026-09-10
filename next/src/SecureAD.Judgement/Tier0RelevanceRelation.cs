@@ -3,14 +3,20 @@ using SecureAD.Derivation;
 namespace SecureAD.Judgement;
 
 /// <summary>The source of relevance, not a claim that the related object is confirmed Tier 0.</summary>
+/// <remarks>
+/// <b><c>DependencyCandidate</c> was removed on 2026-09-11.</b> No relation ever carried it: a
+/// dependency needing capability-specific interpretation is recorded as
+/// <see cref="SecureAD.Derivation.Tier0Limitations.DependencyQualificationUnsupported"/> on the
+/// coverage, which is a statement that the product declined to qualify something rather than a kind
+/// of relation it found. Keeping both left a reader to decide which one a dependency was, when only
+/// one was ever written. Decision 0119.
+/// </remarks>
 public enum Tier0RelevanceKind
 {
     /// <summary>An independently checked effective membership witness.</summary>
     EffectiveMembership,
     /// <summary>A named permission whose operational classification still requires qualification.</summary>
     ControlCandidate,
-    /// <summary>A dependency requiring capability-specific interpretation.</summary>
-    DependencyCandidate,
 }
 
 /// <summary>

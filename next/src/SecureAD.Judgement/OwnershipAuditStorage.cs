@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
+using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Judgement;
@@ -60,13 +61,13 @@ internal static class OwnershipAuditStorage
     {
         var header = new Header(1, generation, evidenceSeal, derivationGeneration, evaluationAsOf, ownerRightsContextHash,
             null, UnavailableCoverage, OwnershipScopeSelector.Version, 1, 0, 0, 0);
-        var json = JsonSerializer.Serialize(header);
+        var json = JsonSerializer.Serialize(header, ProofSerialization.Options);
         Execute(connection, null, "INSERT INTO ownership_audit VALUES (1,$header,$hash,0)", ("$header", json), ("$hash", Hash(json)));
     }
 
     internal static void Observe(SqliteConnection connection, SqliteTransaction transaction, Tier0Target target)
     {
-        var json = JsonSerializer.Serialize(target);
+        var json = JsonSerializer.Serialize(target, ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO ownership_target VALUES ($target,$identity,$hash,'Undetermined','NotAssessed',0,0)",
             ("$target", target.DistinguishedName), ("$identity", json), ("$hash", Hash(json)));
     }
@@ -81,7 +82,7 @@ internal static class OwnershipAuditStorage
         {
             var json = read.GetString(1);
             if (!Hash(json).AsSpan().SequenceEqual((byte[])read.GetValue(2))) throw InvalidProof();
-            var identity = JsonSerializer.Deserialize<Tier0Target>(json) ?? throw InvalidProof();
+            var identity = JsonSerializer.Deserialize<Tier0Target>(json, ProofSerialization.Options) ?? throw InvalidProof();
             if (identity.DistinguishedName != read.GetString(0)) throw InvalidProof();
             var selection = Enum.Parse<OwnershipScopeState>(read.GetString(3));
             var execution = Enum.Parse<OwnershipAssessmentExecution>(read.GetString(4));
@@ -116,8 +117,8 @@ internal static class OwnershipAuditStorage
             {
                 var summary = routes(target.Identity) ?? MembershipRouteSummary.NotDerived;
                 Execute(connection, transaction, "INSERT INTO ownership_seed VALUES ($target,$routes,$hash)",
-                    ("$target", target.Identity.DistinguishedName), ("$routes", JsonSerializer.Serialize(summary)),
-                    ("$hash", Hash(JsonSerializer.Serialize(decision.Classification))));
+                    ("$target", target.Identity.DistinguishedName), ("$routes", JsonSerializer.Serialize(summary, ProofSerialization.Options)),
+                    ("$hash", Hash(JsonSerializer.Serialize(decision.Classification, ProofSerialization.Options))));
                 seeds++;
             }
             foreach (var relation in decision.Reasons)
@@ -205,7 +206,7 @@ internal static class OwnershipAuditStorage
         if (!read.Read()) return null;
         var json = read.GetString(0);
         if (!Hash(json).AsSpan().SequenceEqual((byte[])read.GetValue(1)) || requireComplete && !read.GetBoolean(2)) throw InvalidProof();
-        var header = JsonSerializer.Deserialize<Header>(json) ?? throw InvalidProof();
+        var header = JsonSerializer.Deserialize<Header>(json, ProofSerialization.Options) ?? throw InvalidProof();
         if (header.Version != 1 || header.SelectorVersion != OwnershipScopeSelector.Version || header.EvaluatorVersion != 1
             || header.TargetCount < 0 || header.SeedCount < 0 || header.RelationCount < 0 || header.Coverage is null
             || header.Input is not null && (!header.Input.IsSupported || header.Input.EvidenceSeal != header.EvidenceSeal
@@ -262,7 +263,8 @@ internal static class OwnershipAuditStorage
         command.CommandText = "SELECT target,routes,classification_fingerprint FROM ownership_seed ORDER BY target";
         using var read = command.ExecuteReader();
         var seeds = new List<SeedRow>();
-        while (read.Read()) seeds.Add(new(read.GetString(0), JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1)) ?? throw InvalidProof(),
+        while (read.Read()) seeds.Add(new(read.GetString(0),
+            JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1), ProofSerialization.Options) ?? throw InvalidProof(),
             (byte[])read.GetValue(2)));
         return seeds;
     }
@@ -290,7 +292,7 @@ internal static class OwnershipAuditStorage
 
     private static void WriteHeader(SqliteConnection connection, SqliteTransaction transaction, Header header)
     {
-        var json = JsonSerializer.Serialize(header);
+        var json = JsonSerializer.Serialize(header, ProofSerialization.Options);
         Execute(connection, transaction, "UPDATE ownership_audit SET header=$header,fingerprint=$hash WHERE id=1 AND completed=0",
             ("$header", json), ("$hash", Hash(json)));
     }

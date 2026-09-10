@@ -84,17 +84,26 @@ public sealed class ControlEdgeDeriverTests
         Assert.NotEqual(ControlExpectedness.Expected, ControlEdgeDeriver.Expected(historical, Subject, "contoso.com", routes, true, true, DomainSid).State);
     }
 
+    /// <summary>
+    /// <c>WRITE_OWNER</c> produces the owner-setting edge and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// <b>The compound takeover edge this asserted until 2026-09-11 was never produced in a run.</b>
+    /// The fixture reached it through <c>includeOwnerTransitions</c>, whose <c>true</c> default no
+    /// production caller selected, so the assertion described the deriver's capability rather than
+    /// the product's behaviour. Where the transition is genuinely derived - for objects discovery
+    /// admitted, per 0114 - it is asserted by <c>OwnershipAuditIntegrationTests</c>, and
+    /// <c>OwnershipWorkflowTests</c> asserts its absence for an object outside that scope.
+    /// </remarks>
     [Fact]
-    public void OwnerSettingRemainsEstablishedWhileTakeoverRemainsUnknown()
+    public void OwnerSettingIsEstablishedWithoutDerivingTheTakeoverItWouldAllow()
     {
         var result = Derive(Permissions(Ace(0, Holder, 0x80000)));
-        var primitive = Assert.Single(result.Edges.Where(edge => edge.IsCounted));
+
+        var primitive = Assert.Single(result.Edges);
         Assert.Equal(ControlCapability.CanSetOwner, primitive.Capability);
         Assert.Equal(ControlEvaluationState.Established, primitive.EvaluationState);
-        var compound = Assert.Single(result.Edges.Where(edge => !edge.IsCounted));
-        Assert.Equal(ControlEvaluationState.Unknown, compound.EvaluationState);
-        Assert.Equal(15, compound.Preconditions.Count);
-        Assert.Contains(compound.Preconditions, condition => condition.Name == "CanSetOwner" && condition.State == ControlEvaluationState.Established);
+        Assert.True(primitive.IsCounted);
     }
 
     [Fact]
@@ -171,12 +180,26 @@ public sealed class ControlEdgeDeriverTests
         Assert.NotEqual(ControlExpectedness.Expected, Assert.Single(Derive(Permissions(Ace(0, Holder, 0x40000))).Edges).Expectedness);
     }
 
+    /// <summary>
+    /// SYSTEM holding <c>WRITE_OWNER</c> is expected, and the deriver does not turn that into a
+    /// second edge about what SYSTEM could then become.
+    /// </summary>
+    /// <remarks>
+    /// <b>This asserted a compound edge until 2026-09-11, and production never produced one.</b>
+    /// <c>ControlEdgeDeriver.Derive</c> took an <c>includeOwnerTransitions</c> parameter defaulting
+    /// to <c>true</c> while all three production callers passed <c>false</c>, so the only caller
+    /// reaching the branch was this fixture - the test was measuring a path the product had already
+    /// stopped taking. Ownership transitions belong to <see cref="OwnershipAuditRun"/>, which
+    /// derives them for admitted objects under decision 0114, and
+    /// <c>OwnershipAuditIntegrationTests</c> covers them there.
+    /// </remarks>
     [Fact]
-    public void SystemExpectationDoesNotExtendToAnUnverifiedCompound()
+    public void SystemHoldingWriteOwnerIsExpectedWithoutDerivingATransition()
     {
         var edges = Derive(Permissions(Ace(0, "S-1-5-18", 0x80000))).Edges;
-        Assert.Equal(ControlExpectedness.Expected, Assert.Single(edges.Where(edge => edge.IsCounted)).Expectedness);
-        Assert.Equal(ControlExpectedness.Unknown, Assert.Single(edges.Where(edge => !edge.IsCounted)).Expectedness);
+
+        Assert.Equal(ControlExpectedness.Expected, Assert.Single(edges).Expectedness);
+        Assert.All(edges, edge => Assert.True(edge.IsCounted));
     }
 
     [Fact]

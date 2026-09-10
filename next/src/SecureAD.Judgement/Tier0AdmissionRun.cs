@@ -71,7 +71,7 @@ internal static class Tier0AdmissionRun
             if (subject is null) continue;
             var permissions = bundle.ReadPermissions(decision.Target.DistinguishedName);
             ControlEdgeStorage.Assess(connection, ControlEdgeDeriver.Derive(subject, permissions, context,
-                generation, derivationGeneration, domainSid, includeOwnerTransitions: false));
+                generation, derivationGeneration, domainSid));
             admitted++;
         }
 

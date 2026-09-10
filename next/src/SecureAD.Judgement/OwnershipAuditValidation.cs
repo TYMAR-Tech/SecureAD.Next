@@ -74,7 +74,7 @@ internal static class OwnershipAuditValidation
         {
             var seed = seedByDn[classification.Target.DistinguishedName];
             if (classification.State != Tier0State.Established || targets[seed.Target].Selection != OwnershipScopeState.Included
-                || !OwnershipAuditStorage.Hash(JsonSerializer.Serialize(classification)).AsSpan().SequenceEqual(seed.Fingerprint))
+                || !OwnershipAuditStorage.Hash(JsonSerializer.Serialize(classification, ProofSerialization.Options)).AsSpan().SequenceEqual(seed.Fingerprint))
                 throw OwnershipAuditStorage.InvalidProof();
         }
         var relations = new List<Tier0RelevanceRelation>();

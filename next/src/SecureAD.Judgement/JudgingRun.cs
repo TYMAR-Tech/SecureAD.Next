@@ -550,12 +550,12 @@ public static class JudgingRun
             // now waits until discovery has said whether this object is in scope.
             if (tier0Discovery is null)
                 writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
-                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids, includeOwnerTransitions: false),
+                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids),
                     OwnershipAuditRun.Target(subject, namingContexts.Value));
             else
             {
                 writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
-                    permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids, includeOwnerTransitions: false)
+                    permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids)
                     with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) },
                     OwnershipAuditRun.Target(subject, namingContexts.Value));
                 discoveryWatch.Start();

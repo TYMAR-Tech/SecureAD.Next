@@ -17,14 +17,22 @@ public enum Tier0State
 }
 
 /// <summary>Why an object qualifies, separate from longer or conditional relevance.</summary>
+/// <remarks>
+/// <b><c>DirectControl</c> was removed on 2026-09-11, and its absence is the point.</b> It belonged
+/// to the design where every object was assessed and a controller could be classified Tier 0 for
+/// holding a qualified capability. Discovery-first admission replaced that: a controller is a
+/// candidate to be assessed, not a member of the set, so the classifier never produced the value and
+/// a reader seeing it would have looked for a basis nothing can emit. Removal was safe only once
+/// <see cref="SecureAD.Evidence.ProofSerialization"/> stopped writing enums as ordinals - before
+/// that, deleting a member from the middle would have renumbered <see cref="PartitionRoot"/> and
+/// changed the meaning of fingerprints already written. Decision 0119.
+/// </remarks>
 public enum Tier0Basis
 {
     /// <summary>The canonical Tier-0 policy identifies the captured object.</summary>
     Core,
     /// <summary>Captured security membership establishes authority through a canonical core group.</summary>
     EffectiveMembership,
-    /// <summary>A separately qualified capability establishes direct operational control.</summary>
-    DirectControl,
     /// <summary>
     /// The captured object is the head of a directory partition.
     /// </summary>
