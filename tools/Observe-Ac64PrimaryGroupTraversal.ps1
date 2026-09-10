@@ -71,26 +71,45 @@ function Get-StampState {
         SDProp's two fingerprints, read together. adminCount alone is not enough: it is a marker
         that stays behind after a principal leaves a protected group, so an object can carry
         adminCount=1 having not been protected for years. The inheritance flag is the live state.
+
+        DescriptorRead IS REPORTED SEPARATELY AND NEVER FOLDED INTO Stamped. An unread descriptor
+        and a descriptor that permits inheritance are different facts, and computing Stamped=False
+        from the first would let a control that measured nothing report as a control that passed -
+        which is exactly what the first version of this script did on 2026-09-10.
     #>
-    param($Object)
+    [CmdletBinding()]
+    param(
+        # Bound from the pipeline as well as positionally. The first version bound positionally
+        # only, so the one call site that piped silently passed $null: the negative control printed
+        # a blank name and a False that came from no data at all.
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
+        $Object
+    )
 
-    $adminCount = if ($null -eq $Object.adminCount) { '<not set>' } else { $Object.adminCount }
+    process {
+        $adminCount = if ($null -eq $Object.adminCount) { '<not set>' } else { $Object.adminCount }
 
-    # nTSecurityDescriptor.AreAccessRulesProtected is the "refuses to inherit" state SDProp sets.
-    $refuses = if ($null -ne $Object.nTSecurityDescriptor) {
-        $Object.nTSecurityDescriptor.AreAccessRulesProtected
-    } else {
-        '<descriptor not read>'
-    }
+        $descriptorRead = $null -ne $Object.nTSecurityDescriptor
 
-    [PSCustomObject]@{
-        Name              = $Object.Name
-        DistinguishedName = $Object.DistinguishedName
-        AdminCount        = $adminCount
-        RefusesInheritance = $refuses
-        Stamped           = ($Object.adminCount -eq 1 -and $Object.nTSecurityDescriptor.AreAccessRulesProtected -eq $true)
-        WhenCreated       = $Object.whenCreated
-        AgeHours          = if ($Object.whenCreated) { [math]::Round(((Get-Date) - $Object.whenCreated).TotalHours, 1) } else { $null }
+        # nTSecurityDescriptor.AreAccessRulesProtected is the "refuses to inherit" state SDProp sets.
+        $refuses = if ($descriptorRead) {
+            $Object.nTSecurityDescriptor.AreAccessRulesProtected
+        } else {
+            '<NOT READ>'
+        }
+
+        [PSCustomObject]@{
+            Name               = $Object.Name
+            DistinguishedName  = $Object.DistinguishedName
+            AdminCount         = $adminCount
+            RefusesInheritance = $refuses
+            DescriptorRead     = $descriptorRead
+            Stamped            = ($descriptorRead -and
+                                  $Object.adminCount -eq 1 -and
+                                  $Object.nTSecurityDescriptor.AreAccessRulesProtected -eq $true)
+            WhenCreated        = $Object.whenCreated
+            AgeHours           = if ($Object.whenCreated) { [math]::Round(((Get-Date) - $Object.whenCreated).TotalHours, 1) } else { $null }
+        }
     }
 }
 
@@ -122,7 +141,7 @@ try {
     Write-Host "These must be stamped. If they are not, this forest is not stamping and nothing below counts."
 
     $positiveRids = @{ 512 = 'Domain Admins'; 518 = 'Schema Admins'; 519 = 'Enterprise Admins' }
-    $positive = foreach ($rid in $positiveRids.Keys) {
+    $positive = @(foreach ($rid in $positiveRids.Keys) {
         $sid = "$($domain.DomainSID)-$rid"
         try {
             $group = Get-ADGroup -Identity $sid -Properties $attributes @domainArgs
@@ -131,15 +150,15 @@ try {
             # Schema/Enterprise Admins exist only in the forest root, which is not an error here.
             Write-Host ("  {0} not present in this domain (expected outside the forest root)" -f $positiveRids[$rid]) -ForegroundColor DarkGray
         }
-    }
-    $positive | Format-Table Name, AdminCount, RefusesInheritance, Stamped -AutoSize
+    })
+    $positive | Format-Table Name, AdminCount, RefusesInheritance, DescriptorRead, Stamped -AutoSize
 
     # ------------------------------------------------------------------
     Write-Section "2. NEGATIVE CONTROL - a group that is not protected"
     Write-Host "Domain Users must NOT be stamped. If it is, the fingerprint does not mean what this test assumes."
 
-    $negative = Get-ADGroup -Identity "$($domain.DomainSID)-513" -Properties $attributes @domainArgs | Get-StampState
-    $negative | Format-Table Name, AdminCount, RefusesInheritance, Stamped -AutoSize
+    $negative = Get-StampState (Get-ADGroup -Identity "$($domain.DomainSID)-513" -Properties $attributes @domainArgs)
+    $negative | Format-Table Name, AdminCount, RefusesInheritance, DescriptorRead, Stamped -AutoSize
 
     # ------------------------------------------------------------------
     Write-Section "3. Is Domain Controllers itself protected, and does it list members?"
@@ -147,7 +166,8 @@ try {
     Write-Host "explicitly - otherwise its DCs have an ordinary route and prove nothing."
 
     $dcGroup = Get-ADGroup -Identity "$($domain.DomainSID)-516" -Properties ($attributes + 'member') @domainArgs
-    Get-StampState $dcGroup | Format-Table Name, AdminCount, RefusesInheritance, Stamped -AutoSize
+    $dcGroupState = Get-StampState $dcGroup
+    $dcGroupState | Format-Table Name, AdminCount, RefusesInheritance, DescriptorRead, Stamped -AutoSize
 
     $explicitMembers = @($dcGroup.member)
     Write-Host ("Explicit 'member' entries on Domain Controllers: {0}" -f $explicitMembers.Count)
@@ -162,18 +182,18 @@ try {
     Write-Section "4. THE OBSERVATION - domain controller computer accounts"
     Write-Host "Reached by primaryGroupID 516/521 alone. If SDProp followed that edge these would be stamped."
 
-    $dcComputers = Get-ADComputer -Filter { primaryGroupID -eq 516 -or primaryGroupID -eq 521 } `
-        -Properties $attributes @domainArgs | ForEach-Object { Get-StampState $_ }
+    $dcComputers = @(Get-ADComputer -Filter { primaryGroupID -eq 516 -or primaryGroupID -eq 521 } `
+        -Properties $attributes @domainArgs | ForEach-Object { Get-StampState $_ })
 
-    $dcComputers | Format-Table Name, AdminCount, RefusesInheritance, Stamped, AgeHours -AutoSize
+    $dcComputers | Format-Table Name, AdminCount, RefusesInheritance, DescriptorRead, Stamped, AgeHours -AutoSize
 
     # ------------------------------------------------------------------
     Write-Section "5. COMPARISON - ordinary member computers"
     Write-Host "primaryGroupID 515, no protected group anywhere. Expected to look identical to section 4."
 
-    $ordinary = Get-ADComputer -Filter { primaryGroupID -eq 515 } -Properties $attributes -ResultSetSize 10 @domainArgs |
-        ForEach-Object { Get-StampState $_ }
-    $ordinary | Format-Table Name, AdminCount, RefusesInheritance, Stamped -AutoSize
+    $ordinary = @(Get-ADComputer -Filter { primaryGroupID -eq 515 } -Properties $attributes -ResultSetSize 10 @domainArgs |
+        ForEach-Object { Get-StampState $_ })
+    $ordinary | Format-Table Name, AdminCount, RefusesInheritance, DescriptorRead, Stamped -AutoSize
 
     # ------------------------------------------------------------------
     Write-Section "6. dSHeuristics - could the forest have excluded the group?"
@@ -201,25 +221,47 @@ try {
     # ------------------------------------------------------------------
     Write-Section "VERDICT"
 
+    # EVERY GATE IS REPORTED, AND ANY UNREAD DESCRIPTOR VOIDS THE RUN. A control whose descriptor
+    # was never read cannot support a conclusion in either direction: on 2026-09-10 the negative
+    # control silently bound $null, printed a blank name and a Stamped=False computed from no data,
+    # and the run still printed a verdict. A gate that cannot fail is measuring nothing.
+    $allSubjects        = @($positive) + @($negative) + @($dcGroupState) + @($dcComputers) + @($ordinary)
+    $unreadDescriptors  = @($allSubjects | Where-Object { -not $_.DescriptorRead })
+
     $positiveAllStamped = ($positive.Count -gt 0) -and -not ($positive | Where-Object { -not $_.Stamped })
-    $negativeUnstamped  = -not $negative.Stamped
+    $negativeUnstamped  = $negative.DescriptorRead -and -not $negative.Stamped
+    $dcGroupProtected   = $dcGroupState.Stamped
     $noExplicitMembers  = $explicitMembers.Count -eq 0
     $anyDcStamped       = [bool]($dcComputers | Where-Object { $_.Stamped })
-    $allDcsOldEnough    = -not ($dcComputers | Where-Object { $_.AgeHours -ne $null -and $_.AgeHours -lt 2 })
+    $allDcsOldEnough    = -not ($dcComputers | Where-Object { $null -ne $_.AgeHours -and $_.AgeHours -lt 2 })
+    $everyDescriptorRead = $unreadDescriptors.Count -eq 0
 
+    Write-Host ("Every descriptor read           : {0}" -f $(if ($everyDescriptorRead) { 'YES' } else { "NO  <-- $($unreadDescriptors.Count) unread, run is void" }))
     Write-Host ("Positive control stamped        : {0}" -f $(if ($positiveAllStamped) { 'YES' } else { 'NO  <-- run is void' }))
     Write-Host ("Negative control unstamped      : {0}" -f $(if ($negativeUnstamped) { 'YES' } else { 'NO  <-- run is void' }))
+    Write-Host ("Domain Controllers is protected : {0}" -f $(if ($dcGroupProtected) { 'YES' } else { 'NO  <-- question does not arise' }))
     Write-Host ("primaryGroupID is the only route: {0}" -f $(if ($noExplicitMembers) { 'YES' } else { 'NO  <-- proves nothing' }))
+    Write-Host ("DC accounts observed            : {0}" -f $dcComputers.Count)
     Write-Host ("All DCs older than 2 hours      : {0}" -f $(if ($allDcsOldEnough) { 'YES' } else { 'NO  <-- SDProp may not have run' }))
     Write-Host ("Any DC computer account stamped : {0}" -f $(if ($anyDcStamped) { 'YES' } else { 'NO' }))
     Write-Host ""
 
-    if (-not ($positiveAllStamped -and $negativeUnstamped)) {
+    if (-not $everyDescriptorRead) {
+        Write-Host "INCONCLUSIVE. At least one security descriptor was not read, so a 'not stamped'" -ForegroundColor Red
+        Write-Host "answer cannot be told apart from 'not looked at'."
+        $unreadDescriptors | ForEach-Object { Write-Host ("  unread: {0}" -f $_.DistinguishedName) }
+        Write-Host "Do not record this as evidence for AC-64."
+    } elseif (-not ($positiveAllStamped -and $negativeUnstamped)) {
         Write-Host "INCONCLUSIVE. The controls failed, so this forest cannot answer the question." -ForegroundColor Red
         Write-Host "Do not record this as evidence for AC-64."
+    } elseif (-not $dcGroupProtected) {
+        Write-Host "INCONCLUSIVE. Domain Controllers is not itself stamped in this domain, so there is" -ForegroundColor Yellow
+        Write-Host "no protection for a primary-group edge to have carried."
     } elseif (-not $noExplicitMembers) {
         Write-Host "INCONCLUSIVE. Domain Controllers lists members explicitly, so its DCs are" -ForegroundColor Yellow
         Write-Host "reachable by an ordinary route and say nothing about primary-group traversal."
+    } elseif ($dcComputers.Count -eq 0) {
+        Write-Host "INCONCLUSIVE. No domain controller computer accounts were found to observe." -ForegroundColor Yellow
     } elseif (-not $allDcsOldEnough) {
         Write-Host "INCONCLUSIVE. At least one DC account is too young for SDProp to have visited it." -ForegroundColor Yellow
         Write-Host "Wait for the next SDProp cycle and run again."
@@ -229,9 +271,11 @@ try {
         Write-Host "derivation, and the current Unknown is wrong in the direction of understatement."
     } else {
         Write-Host "SDProp DOES NOT follow primary-group edges." -ForegroundColor Green
-        Write-Host "The controls passed, the group is protected, primaryGroupID is the only route into it,"
-        Write-Host "and not one domain controller carries either fingerprint."
+        Write-Host "Every descriptor was read, the controls passed, Domain Controllers is itself stamped,"
+        Write-Host "primaryGroupID is the only route into it, and not one domain controller carries either"
+        Write-Host "fingerprint - while looking identical to the ordinary computers in section 5."
         Write-Host ""
+        Write-Host ("Observed {0} domain controller account(s) in this domain." -f $dcComputers.Count)
         Write-Host "This is one forest on one Windows version. Recorded under AC-64 it must be labelled"
         Write-Host "LAB-VERIFIED, not specified - it is downgradeable if another forest behaves differently."
     }
