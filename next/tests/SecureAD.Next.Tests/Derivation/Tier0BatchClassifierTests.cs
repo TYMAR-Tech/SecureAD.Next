@@ -20,9 +20,9 @@ public sealed class Tier0BatchClassifierTests
         var targets = new[] { evidence.Target(ordinary), evidence.Target(root), evidence.Target(member) };
         var input = evidence.Input(root, member, ordinary);
         var routes = new Dictionary<Tier0Target, MembershipRouteSummary> { [evidence.Target(member)] = evidence.Routes(member, root) };
-        var expected = targets.Select(target => Tier0Classifier.Classify(evidence.Binding, target, input, routes.GetValueOrDefault(target))).ToArray();
-        var actual = Tier0Classifier.ClassifyMany(evidence.Binding, targets, input, target => routes.GetValueOrDefault(target));
-        Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(actual));
+        var expected = targets.Select(target => Tier0Classifier.Qualify(evidence.Binding, target, input, routes.GetValueOrDefault(target))).ToArray();
+        var actual = Tier0Classifier.QualifyMany(evidence.Binding, targets, input, target => routes.GetValueOrDefault(target));
+        Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(actual.Classifications));
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed class Tier0BatchClassifierTests
         var second = evidence.Principal("Second", "S-1-5-21-1-2-3-520");
         var source = new CountedObjects(evidence.Input(first, second).Objects);
         var input = new CapturedMembershipInput(evidence.Generation, true, source);
-        Tier0Classifier.ClassifyMany(evidence.Binding, [evidence.Target(first), evidence.Target(second)], input);
+        Tier0Classifier.QualifyMany(evidence.Binding, [evidence.Target(first), evidence.Target(second)], input, routes: null);
         Assert.Equal(1, source.Enumerations);
     }
 
@@ -43,8 +43,8 @@ public sealed class Tier0BatchClassifierTests
         var evidence = new Tier0TestEvidence();
         var first = evidence.Principal("First", "S-1-5-21-1-2-3-512");
         var second = evidence.Principal("Second", "S-1-5-21-1-2-3-512");
-        var actual = Tier0Classifier.ClassifyMany(evidence.Binding, [evidence.Target(first), evidence.Target(second)], evidence.Input(first, second));
-        Assert.All(actual, result => Assert.Equal(Tier0State.Unknown, result.State));
+        var actual = Tier0Classifier.QualifyMany(evidence.Binding, [evidence.Target(first), evidence.Target(second)], evidence.Input(first, second), routes: null);
+        Assert.All(actual.Classifications, result => Assert.Equal(Tier0State.Unknown, result.State));
     }
 
     [Fact]
@@ -52,9 +52,35 @@ public sealed class Tier0BatchClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512");
-        var actual = Tier0Classifier.ClassifyMany(evidence.Binding, [evidence.Target(root)],
-            evidence.Input(root) with { DerivationGenerationId = Guid.NewGuid() });
-        Assert.True(Assert.Single(actual).Coverage.Limitations.HasFlag(Tier0Limitations.SourceMismatch));
+        var actual = Tier0Classifier.QualifyMany(evidence.Binding, [evidence.Target(root)],
+            evidence.Input(root) with { DerivationGenerationId = Guid.NewGuid() }, routes: null);
+        Assert.True(Assert.Single(actual.Classifications).Coverage.Limitations.HasFlag(Tier0Limitations.SourceMismatch));
+        Assert.True(actual.Coverage.Limitations.HasFlag(Tier0Limitations.SourceMismatch));
+    }
+
+    [Fact]
+    public void AnEmptyBatchUnderASourceMismatchIsNotReportedAsComplete()
+    {
+        var evidence = new Tier0TestEvidence();
+        var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512");
+
+        var actual = Tier0Classifier.QualifyMany(evidence.Binding, [],
+            evidence.Input(root) with { DerivationGenerationId = Guid.NewGuid() }, routes: null);
+
+        Assert.Empty(actual.Classifications);
+        Assert.False(actual.Coverage.IsComplete);
+    }
+
+    [Fact]
+    public void AnEmptyBatchOfANonEmptyInputIsComplete()
+    {
+        var evidence = new Tier0TestEvidence();
+        var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512");
+
+        var actual = Tier0Classifier.QualifyMany(evidence.Binding, [], evidence.Input(root), routes: null);
+
+        Assert.Empty(actual.Classifications);
+        Assert.True(actual.Coverage.IsComplete);
     }
 
     [Fact]
@@ -63,7 +89,7 @@ public sealed class Tier0BatchClassifierTests
         var evidence = new Tier0TestEvidence();
         var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512");
         using var cancellation = new CancellationTokenSource();
-        Assert.Throws<OperationCanceledException>(() => Tier0Classifier.ClassifyMany(evidence.Binding,
+        Assert.Throws<OperationCanceledException>(() => Tier0Classifier.QualifyMany(evidence.Binding,
             [evidence.Target(root)], evidence.Input(root), _ => { cancellation.Cancel(); return null; }, cancellation.Token));
     }
 

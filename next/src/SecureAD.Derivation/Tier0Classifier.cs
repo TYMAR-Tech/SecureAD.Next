@@ -13,18 +13,18 @@ public static class Tier0Classifier
     /// <summary>The classes a captured naming-context head may legitimately be, per decision 0117.</summary>
     private static readonly string[] PartitionRootClasses = ["domainDNS", "configuration", "dMD"];
 
-    /// <summary>Classifies one captured object from source-bound inputs; unsupported bases remain explicitly incomplete.</summary>
-    public static Tier0Classification Classify(Tier0InputBinding binding, Tier0Target target,
-        CapturedMembershipInput input, MembershipRouteSummary? routes = null, CancellationToken cancellationToken = default)
+    /// <summary>Qualifies one captured object from source-bound inputs; unsupported bases remain explicitly incomplete.</summary>
+    public static Tier0Classification Qualify(Tier0InputBinding binding, Tier0Target target,
+        CapturedMembershipInput input, MembershipRouteSummary? routes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(target);
-        return ClassifyIndexed(binding, target, input, CreateIndex(binding, input, cancellationToken), routes, cancellationToken);
+        return QualifyIndexed(binding, target, input, CreateIndex(binding, input, cancellationToken), routes, cancellationToken);
     }
 
-    /// <summary>Classifies supplied targets using one captured-input index, without discovering new memberships.</summary>
+    /// <summary>Qualifies supplied targets using one captured-input index, without discovering new memberships.</summary>
     /// <remarks>Results preserve target order. Cancellation throws rather than publishing a partial batch.</remarks>
-    public static ImmutableArray<Tier0Classification> ClassifyMany(Tier0InputBinding binding, IEnumerable<Tier0Target> targets,
-        CapturedMembershipInput input, Func<Tier0Target, MembershipRouteSummary?>? routes = null, CancellationToken cancellationToken = default)
+    public static Tier0ClassificationBatch QualifyMany(Tier0InputBinding binding, IEnumerable<Tier0Target> targets,
+        CapturedMembershipInput input, Func<Tier0Target, MembershipRouteSummary?>? routes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(targets);
         var index = CreateIndex(binding, input, cancellationToken);
@@ -33,10 +33,36 @@ public static class Tier0Classifier
         {
             cancellationToken.ThrowIfCancellationRequested();
             ArgumentNullException.ThrowIfNull(target);
-            results.Add(ClassifyIndexed(binding, target, input, index, routes?.Invoke(target), cancellationToken));
+            results.Add(QualifyIndexed(binding, target, input, index, routes?.Invoke(target), cancellationToken));
         }
-        return results.ToImmutable();
+
+        var classifications = results.ToImmutable();
+        return new(classifications, Aggregate(classifications, binding, input));
     }
+
+    /// <summary>
+    /// The coverage that holds across a whole batch: every boundary only as complete as its weakest
+    /// member, and every limitation any member reported.
+    /// </summary>
+    /// <remarks>
+    /// The seed carries the two facts that survive an empty batch. A caller who offered no targets
+    /// was answered in full, so that case is complete rather than silently incomplete - but not when
+    /// the binding names a different derivation from the input, because then nothing could have been
+    /// classified whatever was offered, and reporting an empty batch as complete would say the
+    /// forest holds no Tier-0 objects when the truth is that nothing was read.
+    /// </remarks>
+    private static Tier0Coverage Aggregate(ImmutableArray<Tier0Classification> classifications,
+        Tier0InputBinding binding, CapturedMembershipInput input) =>
+        classifications.Aggregate(
+            new Tier0Coverage(input.IsComplete, true, true,
+                binding.DerivationGenerationId == input.DerivationGenerationId
+                    ? Tier0Limitations.None
+                    : Tier0Limitations.SourceMismatch),
+            (total, item) => new(
+                total.InputsComplete && item.Coverage.InputsComplete,
+                total.AnalysisComplete && item.Coverage.AnalysisComplete,
+                total.ProcessingComplete && item.Coverage.ProcessingComplete,
+                total.Limitations | item.Coverage.Limitations));
 
     private static CapturedIndex CreateIndex(Tier0InputBinding binding, CapturedMembershipInput input, CancellationToken cancellationToken)
     {
@@ -47,7 +73,7 @@ public static class Tier0Classifier
         return new(binding.DerivationGenerationId == input.DerivationGenerationId ? input.Objects : [], cancellationToken);
     }
 
-    private static Tier0Classification ClassifyIndexed(Tier0InputBinding binding, Tier0Target target,
+    private static Tier0Classification QualifyIndexed(Tier0InputBinding binding, Tier0Target target,
         CapturedMembershipInput input, CapturedIndex index, MembershipRouteSummary? routes, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

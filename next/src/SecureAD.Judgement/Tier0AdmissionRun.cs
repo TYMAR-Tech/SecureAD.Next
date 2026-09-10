@@ -44,12 +44,12 @@ internal static class Tier0AdmissionRun
         var candidates = discovery.Candidates();
         var coverage = discovery.Coverage();
         var targets = discovery.Observed.Values.Where(target => target.IsValid).ToArray();
-        var classifications = Tier0Classifier.ClassifyMany(binding, targets, input,
+        var classifications = Tier0Classifier.QualifyMany(binding, targets, input,
             target => target.Sid is { } sid ? context.ProtectedPrincipals?.Lookup(sid, target.SidScope)?.MembershipRoutes : null,
-            cancellationToken);
+            cancellationToken).Classifications;
 
         var selection = OwnershipScopeSelector.Select(binding, generation, classifications, candidates,
-            Source(coverage), cancellationToken);
+            Source(coverage), cancellationToken, progress: null);
         cancellationToken.ThrowIfCancellationRequested();
         if (selection.WasCancelled) throw new OperationCanceledException(cancellationToken);
 

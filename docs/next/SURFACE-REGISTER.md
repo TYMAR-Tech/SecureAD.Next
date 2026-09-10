@@ -429,6 +429,7 @@ The table below sits between the two markers around it, so the test parses only 
 | Tier0Support | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | Tier0Coverage | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | Tier0Classification | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
+| Tier0ClassificationBatch | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | Tier0Classifier | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | Tier0RelevanceKind | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | Tier0RelevanceRelation | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
@@ -448,6 +449,8 @@ The table below sits between the two markers around it, so the test parses only 
 | OwnershipAssessmentBinding | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | OwnershipCandidateAssessment | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | OwnershipAssessmentResult | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| OwnershipCountLimit | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
+| OwnershipAuditCount | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | OwnershipAuditCoverage | SecureAD.Judgement | [the-judgement-store](../layers/judgement/the-judgement-store.md) |
 | PrincipalExpansionOutcome | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |
 | ExpandedPrincipal | SecureAD.Derivation | [what-stage-2a-derives](../layers/derivation/what-stage-2a-derives.md) |

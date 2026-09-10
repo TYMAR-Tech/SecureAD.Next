@@ -64,7 +64,7 @@ internal static class ControlEdgeStorage
         return result;
     }
 
-    public static void Write(SqliteConnection connection, ControlObjectEvaluation result, Tier0Target? ownershipTarget = null)
+    public static void Write(SqliteConnection connection, ControlObjectEvaluation result, Tier0Target? ownershipTarget)
     {
         using var transaction = connection.BeginTransaction();
         var entries = new SharedPermissionStorage(connection, transaction);

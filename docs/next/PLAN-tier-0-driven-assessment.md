@@ -89,7 +89,7 @@ detailed pass already ran. `ownership_relation.edge_id` references `control_edge
 routes cannot outlive the edges. A capture-backed candidate source is therefore required before
 Step 4 can gate anything; moving the existing selector call earlier cannot work.
 
-**Verified 2026-09-10 — seeding does not require the control store.** `Tier0Classifier.ClassifyMany`
+**Verified 2026-09-10 — seeding does not require the control store.** `Tier0Classifier.QualifyMany`
 accepts any sequence of `Tier0Target` and takes membership from `derivation.ReadMembershipInput()` in
 the Derivation store. The targets it is given are built by `OwnershipAuditRun.Target(subject,
 namingContexts)`, a pure function of the streamed object. Seeds can be assembled during the object

@@ -45,7 +45,7 @@ public sealed class ControlEdgeCommandReuseTests
                 [new("First", ControlEvaluationState.Established, "proof-" + index),
                     new("Second", ControlEvaluationState.Unknown, ""), new("Third", ControlEvaluationState.NotEstablished, "other-" + index)],
             }).ToArray();
-            ControlEdgeStorage.Write(connection, new(target, null, null, "Computed", ControlUncertainty.CrossTrusteeDeny, edges));
+            ControlEdgeStorage.Write(connection, new(target, null, null, "Computed", ControlUncertainty.CrossTrusteeDeny, edges), ownershipTarget: null);
             expected.AddRange(edges);
         }
 
@@ -79,15 +79,15 @@ public sealed class ControlEdgeCommandReuseTests
         var earlier = ControlEdgeDeriver.Derive(subject, ControlEdgeDeriverTests.Permissions(
             ControlEdgeDeriverTests.Ace(0, ControlEdgeDeriverTests.Holder, 0x40000)), JudgingContext.At(DateTimeOffset.UnixEpoch),
             Guid.Empty, null, ControlEdgeDeriverTests.DomainSid);
-        ControlEdgeStorage.Write(connection, earlier);
+        ControlEdgeStorage.Write(connection, earlier, ownershipTarget: null);
         var tables = new[] { "control_object", "control_edge", "control_ace", "permission_entry", "control_precondition", "membership_route_summary", "full_control_manifest", "full_control_source", "full_control_source_entry", "full_control_assessment", "full_control_support" };
         var before = tables.Select(table => Count(connection, "SELECT COUNT(*) FROM " + table)).ToArray();
         var complete = FullControlStorageTests.Evaluation(FullControlEvaluatorTests.Allow(0), FullControlEvaluatorTests.Allow(1));
         var invalid = complete with { FullControlAssessments = [complete.FullControlAssessments[0] with { SupportingCapabilities = [] }] };
-        Assert.Throws<InvalidOperationException>(() => ControlEdgeStorage.Write(connection, invalid));
+        Assert.Throws<InvalidOperationException>(() => ControlEdgeStorage.Write(connection, invalid, ownershipTarget: null));
         Assert.Equal(before, tables.Select(table => Count(connection, "SELECT COUNT(*) FROM " + table)).ToArray());
         Assert.Equal(1, Count(connection, "SELECT COUNT(*) FROM control_object WHERE target='OU=Saved,DC=contoso,DC=com'"));
-        ControlEdgeStorage.Write(connection, complete);
+        ControlEdgeStorage.Write(connection, complete, ownershipTarget: null);
         Assert.Equal(2, Count(connection, "SELECT COUNT(*) FROM control_object"));
         Assert.Equal(0, Count(connection, "SELECT COUNT(*) FROM pragma_foreign_key_check"));
         Assert.True(Count(connection, "SELECT COUNT(*) FROM full_control_support") > 0);

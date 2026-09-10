@@ -221,7 +221,7 @@ public sealed class SharedProofStorageTests
     public void FailedObjectRollsBackSharedRowsAndReferencesWhilePreservingEarlierObjects()
     {
         using var connection = Memory();
-        ControlEdgeStorage.Write(connection, ControlOnly("OU=Saved,DC=contoso,DC=com", Routes(), "saved"));
+        ControlEdgeStorage.Write(connection, ControlOnly("OU=Saved,DC=contoso,DC=com", Routes(), "saved"), ownershipTarget: null);
         var tables = new[] { "control_object", "control_edge", "permission_entry", "control_ace", "control_precondition", "shared_proof_value",
             "control_membership_route", "membership_route_summary", "membership_route", "membership_route_step", "full_control_manifest", "full_control_source", "full_control_source_entry", "full_control_assessment", "full_control_support" };
         var before = tables.Select(table => Count(connection, "SELECT COUNT(*) FROM " + table)).ToArray();
@@ -229,9 +229,9 @@ public sealed class SharedProofStorageTests
         entry = entry with { Trustee = entry.Trustee with { Meaning = "only the failed object" } };
         var result = FullControlStorageTests.Evaluation(entry);
         var invalid = result with { FullControlAssessments = [result.FullControlAssessments[0] with { SupportingCapabilities = [] }] };
-        Assert.Throws<InvalidOperationException>(() => ControlEdgeStorage.Write(connection, invalid));
+        Assert.Throws<InvalidOperationException>(() => ControlEdgeStorage.Write(connection, invalid, ownershipTarget: null));
         Assert.Equal(before, tables.Select(table => Count(connection, "SELECT COUNT(*) FROM " + table)).ToArray());
-        ControlEdgeStorage.Write(connection, result);
+        ControlEdgeStorage.Write(connection, result, ownershipTarget: null);
         Assert.Equal(2, Count(connection, "SELECT COUNT(*) FROM control_object"));
         Assert.Equal(0, Count(connection, "SELECT COUNT(*) FROM pragma_foreign_key_check"));
     }

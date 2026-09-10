@@ -106,7 +106,7 @@ public static class JudgingRun
     {
         discoveryBudget?.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, discoveryBudget, null, startedUtc, evaluationAsOf,
-            progress, log, cancellationToken);
+            progress, log, cancellationToken, tier0DiscoveryBudget: null);
     }
 
     /// <summary>Judges a bundle and evaluates only the explicit bounded Self-Membership requests supplied.</summary>
@@ -121,7 +121,7 @@ public static class JudgingRun
         IRunLog log,
         CancellationToken cancellationToken) =>
         JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, false, null, null, startedUtc,
-            evaluationAsOf, progress, log, cancellationToken);
+            evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryBudget: null);
 
     /// <summary>Judges with an explicit offline member-attribution budget; requester discovery remains inactive.</summary>
     public static Result<JudgementRunState> JudgeWithMemberAttribution(
@@ -132,7 +132,7 @@ public static class JudgingRun
         ArgumentNullException.ThrowIfNull(memberBudget);
         memberBudget.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, memberBudget,
-            startedUtc, evaluationAsOf, progress, log, cancellationToken);
+            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryBudget: null);
     }
 
     /// <summary>
@@ -168,7 +168,7 @@ public static class JudgingRun
         IProgress<JudgingProgress> progress,
         IRunLog log,
         CancellationToken cancellationToken,
-        SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget = null)
+        SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget)
     {
         ArgumentNullException.ThrowIfNull(discoveryBudget);
         discoveryBudget.Validate();
@@ -190,7 +190,7 @@ public static class JudgingRun
         IProgress<JudgingProgress> progress,
         IRunLog log,
         CancellationToken cancellationToken,
-        Tier0DiscoveryBudget? tier0DiscoveryBudget = null)
+        Tier0DiscoveryBudget? tier0DiscoveryBudget)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);

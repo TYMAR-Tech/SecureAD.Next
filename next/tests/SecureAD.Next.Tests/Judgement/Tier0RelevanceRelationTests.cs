@@ -100,7 +100,7 @@ public sealed class Tier0RelevanceRelationTests
         var member = evidence.Principal("Member", "S-1-5-21-1-2-3-1200", "user");
         var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512", "group",
             Tier0TestEvidence.Attribute("groupType", "-2147483646"), Tier0TestEvidence.Attribute("member", member.DistinguishedName));
-        var classification = Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), evidence.Routes(member, root));
+        var classification = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), evidence.Routes(member, root));
         var relation = Tier0RelevanceRelation.FromMembership(classification, 0);
         Assert.Equal((evidence.Target(member), evidence.Target(root), Tier0State.Established), (relation.Controller, relation.Affected, relation.State));
     }
@@ -110,7 +110,7 @@ public sealed class Tier0RelevanceRelationTests
     {
         var evidence = new Tier0TestEvidence();
         var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512");
-        var classification = Tier0Classifier.Classify(evidence.Binding, evidence.Target(root), evidence.Input(root));
+        var classification = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(root), evidence.Input(root), routes: null);
         Assert.Throws<ArgumentException>(() => Tier0RelevanceRelation.FromMembership(classification, 0));
     }
 

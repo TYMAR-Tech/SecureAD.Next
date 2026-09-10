@@ -166,9 +166,9 @@ public sealed class OwnershipScopeSelectorTests
     public void AClassificationFromAnotherCaptureIsRejected()
     {
         var graph = new Graph();
-        var classification = Tier0Classifier.Classify(graph.Input with { EvidenceSeal = new string('C', 64) },
-            graph.Target(graph.Root), graph.Evidence.Input(graph.Objects));
-        Assert.Throws<ArgumentException>(() => OwnershipScopeSelector.Select(graph.Input, graph.Audit, [classification], [], graph.Coverage));
+        var classification = Tier0Classifier.Qualify(graph.Input with { EvidenceSeal = new string('C', 64) },
+            graph.Target(graph.Root), graph.Evidence.Input(graph.Objects), routes: null);
+        Assert.Throws<ArgumentException>(() => OwnershipScopeSelector.Select(graph.Input, graph.Audit, [classification], [], graph.Coverage, CancellationToken.None, progress: null));
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public sealed class OwnershipScopeSelectorTests
     public void EquivalentRepeatedClassificationsAreNotTreatedAsAmbiguous()
     {
         var graph = new Graph();
-        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, graph.Classifications.Concat(graph.Classifications), [], graph.Coverage);
+        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, graph.Classifications.Concat(graph.Classifications), [], graph.Coverage, CancellationToken.None, progress: null);
         Assert.Equal((4, OwnershipScopeState.Included), (result.Classifications.Length, result.For(graph.Target(graph.Root)).State));
     }
 
@@ -190,8 +190,8 @@ public sealed class OwnershipScopeSelectorTests
     public void ConflictingClassificationsCannotSupplyASeed()
     {
         var graph = new Graph();
-        var incomplete = Tier0Classifier.Classify(graph.Input, graph.Target(graph.Root), graph.Evidence.Input(graph.Objects) with { IsComplete = false });
-        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, [.. graph.Classifications, incomplete], [], graph.Coverage);
+        var incomplete = Tier0Classifier.Qualify(graph.Input, graph.Target(graph.Root), graph.Evidence.Input(graph.Objects) with { IsComplete = false }, routes: null);
+        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, [.. graph.Classifications, incomplete], [], graph.Coverage, CancellationToken.None, progress: null);
         Assert.Equal(OwnershipScopeState.Undetermined, result.For(graph.Target(graph.Root)).State);
     }
 
@@ -208,7 +208,7 @@ public sealed class OwnershipScopeSelectorTests
     public void AnUnlistedObjectDoesNotBecomeAnOutsideScopeAnswer()
     {
         var graph = new Graph();
-        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, [], [], graph.Coverage);
+        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, [], [], graph.Coverage, CancellationToken.None, progress: null);
         Assert.Equal(OwnershipScopeState.Undetermined, result.For(graph.Target(graph.A)).State);
     }
 
@@ -217,7 +217,7 @@ public sealed class OwnershipScopeSelectorTests
     {
         var graph = new Graph();
         var root = graph.Classifications.Single(item => item.Target == graph.Target(graph.Root));
-        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, [root], [graph.Link(graph.A, graph.Root, 1)], graph.Coverage);
+        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, [root], [graph.Link(graph.A, graph.Root, 1)], graph.Coverage, CancellationToken.None, progress: null);
         Assert.Equal((OwnershipScopeState.Included, false), (result.For(graph.Target(graph.A)).State, result.Coverage.InputsComplete));
     }
 
@@ -227,7 +227,7 @@ public sealed class OwnershipScopeSelectorTests
         var graph = new Graph();
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, graph.Classifications, [], graph.Coverage, cancellation.Token);
+        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, graph.Classifications, [], graph.Coverage, cancellation.Token, progress: null);
         Assert.Equal((true, false, OwnershipScopeState.Undetermined),
             (result.WasCancelled, result.Coverage.ProcessingComplete, result.For(graph.Target(graph.Root)).State));
     }
@@ -251,7 +251,7 @@ public sealed class OwnershipScopeSelectorTests
         var graph = new Graph();
         using var cancellation = new CancellationTokenSource();
         var root = graph.Classifications.Single(item => item.Target == graph.Target(graph.Root));
-        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, CancelInput(root, cancellation), [], graph.Coverage, cancellation.Token);
+        var result = OwnershipScopeSelector.Select(graph.Input, graph.Audit, CancelInput(root, cancellation), [], graph.Coverage, cancellation.Token, progress: null);
         Assert.Equal((1, true, false), (result.Classifications.Length, result.WasCancelled, result.Coverage.InputsComplete));
     }
 
@@ -261,7 +261,8 @@ public sealed class OwnershipScopeSelectorTests
         var graph = new Graph();
         using var other = new CancellationTokenSource();
         Assert.Throws<OperationCanceledException>(() => OwnershipScopeSelector.Select(graph.Input, graph.Audit,
-            graph.Classifications, [], graph.Coverage, progress: new InlineProgress(_ => throw new OperationCanceledException(other.Token))));
+            graph.Classifications, [], graph.Coverage, CancellationToken.None,
+            progress: new InlineProgress(_ => throw new OperationCanceledException(other.Token))));
     }
 
     [Fact]
@@ -270,7 +271,7 @@ public sealed class OwnershipScopeSelectorTests
         var graph = new Graph();
         var links = new[] { graph.Link(graph.A, graph.Root, 2), graph.Link(graph.A, graph.Root, 1), graph.Link(graph.B, graph.A, 3) };
         var first = graph.Select(links);
-        var second = OwnershipScopeSelector.Select(graph.Input, graph.Audit, graph.Classifications.Reverse(), links.Reverse(), graph.Coverage);
+        var second = OwnershipScopeSelector.Select(graph.Input, graph.Audit, graph.Classifications.Reverse(), links.Reverse(), graph.Coverage, CancellationToken.None, progress: null);
         Assert.Equal(Signature(first), Signature(second));
     }
 
@@ -282,11 +283,11 @@ public sealed class OwnershipScopeSelectorTests
         var root = evidence.Principal("Root", "S-1-5-21-1-2-3-512", "group",
             Tier0TestEvidence.Attribute("groupType", "-2147483646"), Tier0TestEvidence.Attribute("member", member.DistinguishedName));
         var input = evidence.Input(member, root);
-        var rootFact = Tier0Classifier.Classify(evidence.Binding, evidence.Target(root), input);
-        var memberFact = Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), input, evidence.Routes(member, root));
+        var rootFact = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(root), input, routes: null);
+        var memberFact = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), input, evidence.Routes(member, root));
         var relation = Tier0RelevanceRelation.FromMembership(memberFact, 0);
         var result = OwnershipScopeSelector.Select(evidence.Binding, Guid.NewGuid(), [rootFact, memberFact], [relation, relation],
-            new(true, true, true, Tier0Limitations.None));
+            new(true, true, true, Tier0Limitations.None), CancellationToken.None, progress: null);
         Assert.Equal((2, 1, Tier0Basis.EffectiveMembership),
             (result.VisitedTargets, result.Relations.Length, result.For(evidence.Target(member)).Classification?.Supports[0].Basis));
     }
@@ -304,7 +305,7 @@ public sealed class OwnershipScopeSelectorTests
     {
         var graph = new Graph();
         Assert.Throws<ArgumentException>(() => OwnershipScopeSelector.Select(graph.Input, graph.Audit, [], [],
-            graph.Coverage with { Limitations = (Tier0Limitations)1024 }));
+            graph.Coverage with { Limitations = (Tier0Limitations)1024 }, CancellationToken.None, progress: null));
     }
 
     private static IEnumerable<Tier0Classification> CancelInput(Tier0Classification first, CancellationTokenSource cancellation)
@@ -333,8 +334,8 @@ public sealed class OwnershipScopeSelectorTests
         internal Tier0InputBinding Input => Evidence.Binding;
         internal Tier0Coverage Coverage => new(true, true, true, Tier0Limitations.None);
         internal ObjectAttributes[] Objects => [Root, A, B, Ordinary];
-        internal Tier0Classification[] Classifications => Objects.Select(item => Tier0Classifier.Classify(Input,
-            Target(item), Evidence.Input(Objects))).ToArray();
+        internal Tier0Classification[] Classifications => Objects.Select(item => Tier0Classifier.Qualify(Input,
+            Target(item), Evidence.Input(Objects), routes: null)).ToArray();
 
         internal Graph()
         {
@@ -346,7 +347,7 @@ public sealed class OwnershipScopeSelectorTests
 
         internal Tier0Target Target(ObjectAttributes item) => Evidence.Target(item);
         internal OwnershipScopeSelection Select(params Tier0RelevanceRelation[] relations) =>
-            OwnershipScopeSelector.Select(Input, Audit, Classifications, relations, Coverage);
+            OwnershipScopeSelector.Select(Input, Audit, Classifications, relations, Coverage, CancellationToken.None, progress: null);
         internal Tier0RelevanceRelation Link(ObjectAttributes controller, ObjectAttributes affected, long id,
             ControlCapability capability = ControlCapability.CanSetOwner, ControlEvaluationState state = ControlEvaluationState.Established,
             ControlUncertainty uncertainty = ControlUncertainty.None) =>

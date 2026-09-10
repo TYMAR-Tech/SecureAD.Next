@@ -13,7 +13,7 @@ public static class OwnershipScopeSelector
     /// <remarks>Callers verify source stores first. Completing this finite walk does not establish complete forest coverage.</remarks>
     public static OwnershipScopeSelection Select(Tier0InputBinding input, Guid judgementGenerationId,
         IEnumerable<Tier0Classification> classifications, IEnumerable<Tier0RelevanceRelation> relations,
-        Tier0Coverage sourceCoverage, CancellationToken cancellationToken = default, IProgress<OwnershipScopeProgress>? progress = null)
+        Tier0Coverage sourceCoverage, CancellationToken cancellationToken, IProgress<OwnershipScopeProgress>? progress)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(classifications);

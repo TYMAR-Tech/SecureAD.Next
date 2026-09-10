@@ -216,6 +216,24 @@ public sealed class VouchedValueReachabilityGateTests
     /// P-62 taught this repository to distrust - so it is written down as a weakness rather than
     /// presented as a result.
     /// </para>
+    /// <para>
+    /// <b><c>Tier0RelevanceRelation.IsComplete</c>, added 2026-09-12 with <c>P-154</c>'s gate 4
+    /// work.</b> The type has no public constructor, and its public factories cannot be driven
+    /// either: <c>FromMembership</c> takes a <c>Tier0Classification</c>, whose own constructor is
+    /// <c>internal</c>, so the driver has no way to synthesize an argument and witnesses no
+    /// instances at all. That is the <c>ControllerSelection</c> case rather than the
+    /// <c>GpoInventory</c> one - the driver builds nothing here, so it reads neither value, and this
+    /// entry claims only that and not that the member is fixed.
+    /// </para>
+    /// <para>
+    /// <b>The member does take both values, and the lines that assign them are cited rather than
+    /// asserted.</b> It reads true from <c>FromMembership</c> at
+    /// <c>next/src/SecureAD.Judgement/Tier0RelevanceRelation.cs:126</c>, which constructs with
+    /// <c>Tier0State.Established</c> and <c>Tier0Limitations.None</c>, and false from
+    /// <c>FromControlEdge</c> at line 144, which constructs with <c>Tier0State.Unknown</c> and two
+    /// limitations. As with <c>GpoInventory</c>, that rests on a reading of the code and is written
+    /// down as a weakness rather than presented as a result.
+    /// </para>
     /// </summary>
     private static readonly string[] BeyondTheDriver =
     [
@@ -223,6 +241,7 @@ public sealed class VouchedValueReachabilityGateTests
         "GpoInventory.DeclaredPoliciesAreComplete",
         "IDirectoryChannel.IsComplete",
         "LdapDirectoryChannel.IsComplete",
+        "Tier0RelevanceRelation.IsComplete",
     ];
 
     /// <summary>
@@ -433,6 +452,28 @@ public sealed class VouchedValueReachabilityGateTests
     /// like a smaller forest - so a caller must be able to tell a complete inventory from a partial
     /// one without inspecting every row. Read true where every declared domain was read in full,
     /// and false where any was excluded, partly read, or had no controller to read it.
+    /// 53 and 54 from <c>91d4c1c</c>, when Tier-0 discovery began deciding which objects get a
+    /// detailed control assessment, and unrecorded here until <c>P-154</c>.
+    /// <c>Tier0Coverage.IsComplete</c> holds three independent boundaries apart - whether the
+    /// captured input was whole, whether the analysis a basis needs is supported at all, and whether
+    /// processing finished - because a classification that establishes nothing means <i>no
+    /// qualifying evidence was found</i> in one case and <i>the question was never asked</i> in the
+    /// others, and an object reported outside Tier 0 on the second reading is an object nobody
+    /// looked at. <c>Tier0DiscoveryCoverage.IsComplete</c> says whether anything stopped the scan
+    /// from inspecting all supported captured input, which matters for the reason its own remarks
+    /// give: its counts are work accounting, so an object absent from every candidate was not
+    /// examined and was not cleared. Both are read true from whole input with no limitations and
+    /// false from a stopped or budgeted scan.
+    /// 55 and 56 from 2026-09-12 with <c>P-154</c>'s gate 4 work.
+    /// <c>OwnershipAuditCount.IsComplete</c> exists because a stored ownership count of nought
+    /// reaches a caller identically from four situations - nobody asked about a target, the audit
+    /// holds no ownership input, the target has no stored row, and a target genuinely assessed with
+    /// nothing to report - and only the last is a fact about the directory. It is read true from a
+    /// measured count and false from any count carrying a limit.
+    /// <c>Tier0RelevanceRelation.IsComplete</c> exists because <c>Tier0Support</c> is handed out by
+    /// this type as well as by <c>Tier0Classification</c>, and gate 4 clears a leaf only when every
+    /// type that hands it out vouches for it. It is named on <see cref="BeyondTheDriver"/> rather
+    /// than settled here, for the reason given there.
     /// </para>
     /// </summary>
     [Fact]
@@ -440,8 +481,25 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        // Retain the pre-aggregation inventory and account explicitly for the new per-right proof voucher.
-        Assert.Equal(57 + 1 + 4, found.Count);
+        // Every term is a reason, not a total. Retain the pre-aggregation inventory, the per-right
+        // proof voucher, the Tier-0 discovery pair, and the ownership-count and relevance-relation
+        // pair. The failure names what it found because the count on its own says only that
+        // something moved, and a failure that cannot say what moved makes raising the number the
+        // cheapest way out - which is how a self-test stops being one. The expected total is held in
+        // one place so the condition and the message cannot disagree, which they did on the first
+        // draft of this check.
+        var accountedFor = 57 + 1 + 4 + 2 + 2;
+
+        Assert.True(
+            found.Count == accountedFor,
+            $"Gate 4b's voucher inventory has moved: expected {accountedFor}, found {found.Count}. "
+            + "Every entry below must be accounted for by a term in the sum above and by a numbered "
+            + "entry in this test's summary saying what the voucher is for and how it is read both "
+            + "ways. Raising the number alone puts back the blindness the count exists to detect:"
+            + Environment.NewLine
+            + string.Join(
+                Environment.NewLine,
+                found.Select(v => $"  {v.Type.Name}.{v.Name}").OrderBy(t => t, StringComparer.Ordinal)));
         foreach (var name in new[] { "CapturedMembershipInput", "MemberAttribution", "MemberAttributionDetail", "MemberPermissionPage" })
             Assert.Contains(found, v => v.Type.Name == name && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "FullControlRight" && v.Name == "IsComplete");
@@ -455,6 +513,10 @@ public sealed class VouchedValueReachabilityGateTests
                                     && v.Name == "AllDeclaredDomainsAreComplete");
         Assert.Contains(found, v => v.Type.Name == "GpoInventory"
                                     && v.Name == "DeclaredPoliciesAreComplete");
+        Assert.Contains(found, v => v.Type.Name == "Tier0Coverage" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "Tier0DiscoveryCoverage" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "OwnershipAuditCount" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "Tier0RelevanceRelation" && v.Name == "IsComplete");
     }
 
     /// <summary>

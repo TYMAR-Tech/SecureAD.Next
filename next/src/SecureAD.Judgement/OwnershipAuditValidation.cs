@@ -68,8 +68,8 @@ internal static class OwnershipAuditValidation
         }
         var seedByDn = seeds.ToDictionary(item => item.Target, StringComparer.OrdinalIgnoreCase);
         if (seeds.Any(seed => !targets.ContainsKey(seed.Target))) throw OwnershipAuditStorage.InvalidProof();
-        var classifications = Tier0Classifier.ClassifyMany(header.Input, seeds.Select(seed => targets[seed.Target].Identity), input,
-            target => seedByDn[target.DistinguishedName].Routes);
+        var classifications = Tier0Classifier.QualifyMany(header.Input, seeds.Select(seed => targets[seed.Target].Identity), input,
+            target => seedByDn[target.DistinguishedName].Routes).Classifications;
         foreach (var classification in classifications)
         {
             var seed = seedByDn[classification.Target.DistinguishedName];
@@ -120,7 +120,8 @@ internal static class OwnershipAuditValidation
                 throw OwnershipAuditStorage.InvalidProof();
             relations.Add(Tier0RelevanceRelation.FromControlEdge(header.Input, controller.Identity, affected.Identity, edge));
         }
-        var replay = OwnershipScopeSelector.Select(header.Input, description.GenerationId, classifications, relations, header.Coverage);
+        var replay = OwnershipScopeSelector.Select(header.Input, description.GenerationId, classifications, relations, header.Coverage,
+            CancellationToken.None, progress: null);
         var selected = replay.Decisions.Where(item => item.State == OwnershipScopeState.Included).Select(item => item.Target).ToHashSet();
         if (!selected.SetEquals(rows.Where(item => item.Selection == OwnershipScopeState.Included).Select(item => item.Identity)))
             throw OwnershipAuditStorage.InvalidProof();

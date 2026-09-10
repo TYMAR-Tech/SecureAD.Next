@@ -109,6 +109,12 @@ public sealed record OwnershipAssessmentResult(Guid ResultGenerationId, Ownershi
     OwnershipAssessmentOrigin Origin, OwnershipScopeDecision Scope, OwnershipAssessmentExecution Execution,
     ImmutableArray<OwnershipCandidateAssessment> Candidates)
 {
+    /// <summary>
+    /// The scope coverage these candidates were produced under, surfaced here so a caller holding the
+    /// result need not reach through the scope to learn whether the answer beside it was reached.
+    /// </summary>
+    public Tier0Coverage Coverage => Scope.Coverage;
+
     /// <summary>Checks structure and immutable input equality, without replacing seal verification or permission replay.</summary>
     public OwnershipAssessmentAvailability CheckBinding(OwnershipAssessmentBinding expected)
     {

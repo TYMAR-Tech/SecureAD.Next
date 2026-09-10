@@ -241,20 +241,34 @@ internal static class OwnershipAuditStorage
     {
         var header = ValidateCounts(connection, description);
         if (header is null) return null;
-        if (target is null) return new(header.Generation, null, header.Input is not null, null, null, header.Coverage, 0, 0);
+        // The holder view asks about no target, so neither number was ever produced. It used to
+        // report two zeros, which a reader cannot tell from a target assessed and found clean.
+        if (target is null) return new(header.Generation, null, header.Input is not null, null, null, header.Coverage,
+            OwnershipAuditCount.Unmeasured(OwnershipCountLimit.NoTargetRequested),
+            OwnershipAuditCount.Unmeasured(OwnershipCountLimit.NoTargetRequested));
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT target,selection,execution,candidate_count,transition_count FROM ownership_target WHERE target=$target COLLATE NOCASE";
         command.Parameters.AddWithValue("$target", target);
         using var read = command.ExecuteReader();
+        // No stored row means this target was never counted, which is not the same as counting none.
+        var absent = header.Input is null ? OwnershipCountLimit.OwnershipInputsUnavailable : OwnershipCountLimit.TargetNotStored;
         if (!read.Read()) return new(header.Generation, target, header.Input is not null, OwnershipScopeState.Undetermined,
             OwnershipAssessmentExecution.NotAssessed, header.Coverage with { InputsComplete = false,
-                Limitations = header.Coverage.Limitations | Tier0Limitations.InputIncomplete }, 0, 0);
+                Limitations = header.Coverage.Limitations | Tier0Limitations.InputIncomplete },
+            OwnershipAuditCount.Unmeasured(absent), OwnershipAuditCount.Unmeasured(absent));
         var selection = Enum.Parse<OwnershipScopeState>(read.GetString(1));
         var execution = Enum.Parse<OwnershipAssessmentExecution>(read.GetString(2));
         if (!Enum.IsDefined(selection) || !Enum.IsDefined(execution) || header.Input is null && selection != OwnershipScopeState.Undetermined
             || selection == OwnershipScopeState.OutsideComputedScope && !header.Coverage.IsComplete) throw InvalidProof();
+        // The candidate count is a count of stored holder edges and is real whenever the row exists.
+        // The assessed count is not: ValidateCounts forces it to zero for every target the run did
+        // not assess, so reporting that zero as a measurement would say "nothing can take this
+        // object" about an object nobody examined.
+        var assessed = execution is OwnershipAssessmentExecution.Completed or OwnershipAssessmentExecution.CompletedWithLimitations
+            ? OwnershipAuditCount.Of(read.GetInt32(4))
+            : OwnershipAuditCount.Unmeasured(OwnershipCountLimit.TargetNotAssessed);
         return new(header.Generation, read.GetString(0), header.Input is not null, selection, execution,
-            header.Coverage, read.GetInt32(3), read.GetInt32(4));
+            header.Coverage, OwnershipAuditCount.Of(read.GetInt32(3)), assessed);
     }
 
     internal static IReadOnlyList<SeedRow> Seeds(SqliteConnection connection)

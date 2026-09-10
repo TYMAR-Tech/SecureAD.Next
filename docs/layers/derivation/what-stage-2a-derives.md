@@ -65,6 +65,7 @@ protected-principal product and principal expansion.
 | `Tier0Support` | One independently qualified root/basis with immutable source witnesses |
 | `Tier0Coverage` | Capture, supported-analysis and processing completeness kept separate |
 | `Tier0Classification` | One object's source-bound answer and retained independent supports |
+| `Tier0ClassificationBatch` | Classifications for one batch of targets with the coverage that holds across all of them |
 | `Tier0Classifier` | Qualifies canonical core identities and supplied same-domain membership witnesses without graph expansion |
 | `PrincipalExpansionOutcome` | Whether a principal was expanded, and if not, why not |
 | `ExpandedPrincipal` | One principal found inside another, with the path that reached it |
@@ -558,7 +559,7 @@ predicates retain their answers. Identifier scope and expected object class are 
 registry, never a second ownership list. Forest-root identities require the supplied captured root
 context; syntax alone does not establish an object's identity or administrative authority.
 
-`Tier0Classifier.Classify` consumes a versioned source binding, a capture-local target, schema-11
+`Tier0Classifier.Qualify` consumes a versioned source binding, a capture-local target, schema-11
 membership input and optional existing membership-route witnesses. It checks unique SID/DN identity,
 captured object class, issuing-domain identity and the applicable domain naming context. The supported
 membership adapter rechecks supplied same-domain chains against captured `member`, `memberOf`,
@@ -566,9 +567,14 @@ membership adapter rechecks supplied same-domain chains against captured `member
 make the root Tier 0. Independent positive supports retain their original attribute values/ordinals;
 duplicate witnesses do not multiply them. Cancellation interrupts the call rather than returning a
 negative result. Under [0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md),
-`ClassifyMany` supplies the audit path with one reusable DN/scoped-SID/domain-root index. Single-object
+`QualifyMany` supplies the audit path with one reusable DN/scoped-SID/domain-root index. Single-object
 and batch calls use the same evaluator. Tests compare their complete serialized proof and verify one
 enumeration of the captured population; this is functional validation, not a production timing claim.
+**The members are named for the verb this text has always used.** They were `Classify*` until
+2026-09-10, when the concept registry caught the collision: `DangerousPermissionClassifier` owns
+`Classify*` for *is this permission dangerous*, which is a different question from *is this object
+Tier 0*. Two questions wearing one verb is what that registry exists to find, and the fix was to give
+this one the verb its own prose already used.
 
 **This is not the complete Tier-0 population.** Existing route summaries
 are protection-rooted and incomplete for this purpose. Missing routes remain Unknown. Cross-domain

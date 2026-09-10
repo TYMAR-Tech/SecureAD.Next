@@ -364,9 +364,9 @@ public sealed class Tier0DiscoveryAdmissionTests
             var scheduler = Run();
             var input = Evidence.Input();
             var classifications = scheduler.Observed.Values
-                .Select(target => Tier0Classifier.Classify(Evidence.Binding, target, input)).ToArray();
+                .Select(target => Tier0Classifier.Qualify(Evidence.Binding, target, input, routes: null)).ToArray();
             return OwnershipScopeSelector.Select(Evidence.Binding, Guid.NewGuid(), classifications,
-                scheduler.Candidates(), new(true, true, true, Tier0Limitations.None));
+                scheduler.Candidates(), new(true, true, true, Tier0Limitations.None), CancellationToken.None, progress: null);
         }
     }
 }

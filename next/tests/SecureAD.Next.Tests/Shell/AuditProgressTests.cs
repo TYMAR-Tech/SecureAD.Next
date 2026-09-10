@@ -149,6 +149,34 @@ public sealed class AuditProgressTests
             { Screen = AuditScreen.Review };
     }
 
+    /// <summary>
+    /// Reports progress and waits for the screen to show it.
+    ///
+    /// <para>
+    /// <b>The deadline is generous because a correct run never pays it.</b> The view model builds
+    /// its <c>Progress&lt;T&gt;</c> while running on xUnit's synchronization context, and
+    /// <c>Progress&lt;T&gt;</c> posts its callbacks back to whatever context it was built on. That
+    /// context runs a bounded number of test collections at once, so the callback does not run when
+    /// it is raised - it queues behind whatever else the suite is running, including tests that hold
+    /// a slot while blocking. When the screen is working the callback arrives at once and nothing
+    /// here waits at all.
+    /// </para>
+    /// <para>
+    /// It was ten seconds until 2026-09-10, and <c>P-154</c> records what that cost: the test passed
+    /// alone, passed across its own namespace, and failed in the full suite often enough to be
+    /// carried as a known failure while being described as an ordering defect that leaves state
+    /// behind. It leaves no state behind. This is the same shape as <c>P-115</c>, where a one-second
+    /// rendezvous deadline reported sequential behaviour that had not happened, and it was raised
+    /// for the same reason: a test that cries wolf is worse than no test, because the next person to
+    /// see it red assumes the machine was busy - and here they would have been right, which is worse
+    /// still.
+    /// </para>
+    /// <para>
+    /// <b>The timeout says how long it actually waited</b>, so a future failure distinguishes a
+    /// report that never arrived from one that arrived too late to matter. Without that the only
+    /// evidence is that something did not happen, which is what made this take three sessions.
+    /// </para>
+    /// </summary>
     private static async Task ReportAndWait(AuditProgressViewModel progress, Func<bool> observed, Action report)
     {
         var arrived = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -157,9 +185,24 @@ public sealed class AuditProgressTests
             if (observed()) arrived.TrySetResult(true);
         }
         progress.PropertyChanged += Changed;
-        try { report(); await arrived.Task.WaitAsync(TimeSpan.FromSeconds(10)); }
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            report();
+            try { await arrived.Task.WaitAsync(ReportDeadline); }
+            catch (TimeoutException)
+            {
+                throw new TimeoutException(
+                    $"The screen did not show the reported progress within {ReportDeadline.TotalSeconds:0} seconds "
+                    + $"(waited {waited.Elapsed.TotalSeconds:0.0}s). The report was made, so either the screen "
+                    + "ignored it or its progress callback never got a turn on xUnit's scheduler.");
+            }
+        }
         finally { progress.PropertyChanged -= Changed; }
     }
+
+    /// <summary>How long a reported progress value is given to reach the screen. See <see cref="ReportAndWait"/>.</summary>
+    private static readonly TimeSpan ReportDeadline = TimeSpan.FromSeconds(120);
 
     private sealed class ManualTime : TimeProvider
     {

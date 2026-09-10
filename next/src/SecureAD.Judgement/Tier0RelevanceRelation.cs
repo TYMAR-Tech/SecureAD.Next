@@ -53,7 +53,7 @@ public sealed record Tier0RelevanceRelation
     private Tier0RelevanceRelation(Tier0InputBinding input, Tier0Target controller, Tier0Target affected,
         Tier0RelevanceKind kind, Tier0State state, Tier0Limitations limitations, Tier0Support? membership,
         Guid? judgementGeneration, long? edgeId, int? edgeCatalogueVersion, ControlCapability? capability,
-        ControlEvaluationState? permissionState, ControlUncertainty uncertainty, Tier0CaptureWitness? witness = null)
+        ControlEvaluationState? permissionState, ControlUncertainty uncertainty, Tier0CaptureWitness? witness)
     {
         Input = input;
         Controller = controller;
@@ -100,6 +100,13 @@ public sealed record Tier0RelevanceRelation
     /// <summary>The captured fact behind a discovered candidate, or null when a stored edge is the source.</summary>
     public Tier0CaptureWitness? Witness { get; }
 
+    /// <summary>
+    /// Whether this relation was qualified in full. It matters beside <see cref="Membership"/>,
+    /// because an absent witness on an unresolved relation means the qualification did not finish
+    /// rather than that no membership exists.
+    /// </summary>
+    public bool IsComplete => State != Tier0State.Unknown && Limitations == Tier0Limitations.None;
+
     /// <summary>Tests the affected end only; it does not walk a graph or infer reverse relevance.</summary>
     public bool IsIncomingTo(Tier0Target target)
     {
@@ -117,7 +124,8 @@ public sealed record Tier0RelevanceRelation
         if (!classification.Input.IsSupported || !classification.Target.IsValid
             || support.Basis != Tier0Basis.EffectiveMembership) throw new ArgumentException(null, nameof(classification));
         return new(classification.Input, classification.Target, support.Root, Tier0RelevanceKind.EffectiveMembership,
-            Tier0State.Established, Tier0Limitations.None, support, null, null, null, null, null, ControlUncertainty.None);
+            Tier0State.Established, Tier0Limitations.None, support, null, null, null, null, null, ControlUncertainty.None,
+            witness: null);
     }
 
     /// <summary>References a persisted permission as a candidate; even Established does not qualify operational direct control.</summary>
@@ -136,7 +144,8 @@ public sealed record Tier0RelevanceRelation
             throw new ArgumentException(null, nameof(edge));
         return new(input, controller, affected, Tier0RelevanceKind.ControlCandidate, Tier0State.Unknown,
             Tier0Limitations.ControlQualificationUnsupported | Tier0Limitations.ConditionalOperation,
-            null, edge.GenerationId, edge.Id, edge.PrincipalCatalogueVersion, edge.Capability, edge.EvaluationState, edge.Uncertainty);
+            null, edge.GenerationId, edge.Id, edge.PrincipalCatalogueVersion, edge.Capability, edge.EvaluationState, edge.Uncertainty,
+            witness: null);
     }
 
     /// <summary>

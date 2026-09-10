@@ -75,9 +75,15 @@ public enum Tier0Limitations
 }
 
 /// <summary>Exact source and semantic identities; validation is not a substitute for verifying file seals.</summary>
+/// <remarks>
+/// The trailing parameters carry no defaults, per gate 1. The order is not free to change either:
+/// this record is serialised into the stored classification fingerprint, and
+/// <see cref="SecureAD.Evidence.ProofSerialization"/> writes properties in declaration order, so
+/// moving one would silently invalidate every stored proof rather than fail a build.
+/// </remarks>
 public sealed record Tier0InputBinding(string EvidenceSeal, Guid DerivationGenerationId, string DerivationSeal,
-    int PrincipalCatalogueVersion = PrincipalClassificationRegistry.Version, int PolicyVersion = 1, int ContractVersion = 1,
-    string? ForestRootNamingContext = null)
+    int PrincipalCatalogueVersion, int PolicyVersion, int ContractVersion,
+    string? ForestRootNamingContext)
 {
     /// <summary>Whether source identities are structurally usable.</summary>
     public bool IsValid => IsSeal(EvidenceSeal) && DerivationGenerationId != Guid.Empty && IsSeal(DerivationSeal)
@@ -157,6 +163,18 @@ public sealed record Tier0Coverage(bool InputsComplete, bool AnalysisComplete, b
     /// <summary>True only when none of the three boundaries is incomplete.</summary>
     public bool IsComplete => InputsComplete && AnalysisComplete && ProcessingComplete && Limitations == Tier0Limitations.None;
 }
+
+/// <summary>
+/// Classifications for one batch of targets, with the coverage that applies across all of them.
+/// </summary>
+/// <remarks>
+/// The coverage is what makes the list beside it readable: an empty batch means the caller offered
+/// no targets, but a caller cannot know that from an empty array alone, and a short batch under a
+/// source mismatch is not a forest with fewer Tier-0 objects in it. Callers that go on to select a
+/// scope merge each classification's own coverage again, which is the same statement said per
+/// target rather than a second opinion.
+/// </remarks>
+public sealed record Tier0ClassificationBatch(ImmutableArray<Tier0Classification> Classifications, Tier0Coverage Coverage);
 
 /// <summary>A shared evidence-backed answer; only the classifier creates qualified supports.</summary>
 public sealed record Tier0Classification

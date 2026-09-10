@@ -14,7 +14,7 @@ public sealed class Tier0ClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("RenamedGroup", "S-1-5-21-1-2-3-512");
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null);
         Assert.Equal(Tier0State.Established, result.State);
     }
 
@@ -41,7 +41,7 @@ public sealed class Tier0ClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("LocalName", sid, objectClass);
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null);
         Assert.Equal(Tier0Basis.Core, Assert.Single(result.Supports).Basis);
     }
 
@@ -54,7 +54,7 @@ public sealed class Tier0ClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("Domain Admins", sid);
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null);
         Assert.Equal(Tier0State.Unknown, result.State);
     }
 
@@ -65,7 +65,7 @@ public sealed class Tier0ClassifierTests
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("RootGroup", "S-1-5-21-1-2-3-" + rid);
         var binding = evidence.Binding with { ForestRootNamingContext = "DC=another,DC=com" };
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(binding, evidence.Target(subject), evidence.Input(subject)).State);
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(binding, evidence.Target(subject), evidence.Input(subject), routes: null).State);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class Tier0ClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("WrongDomain", "S-1-5-21-9-8-7-512");
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject)).State);
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null).State);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class Tier0ClassifierTests
         var evidence = new Tier0TestEvidence();
         var nc = "CN=Configuration," + evidence.Domain.DistinguishedName;
         var subject = evidence.Principal("Administrators", "S-1-5-32-544") with { DistinguishedName = "CN=Administrators,CN=Builtin," + nc };
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(evidence.Binding, Tier0Target.From(subject, nc), evidence.Input(subject)).State);
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(evidence.Binding, Tier0Target.From(subject, nc), evidence.Input(subject), routes: null).State);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public sealed class Tier0ClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("Computer", "S-1-5-21-1-2-3-516", "computer");
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject)).State);
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null).State);
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed class Tier0ClassifierTests
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("One", "S-1-5-21-1-2-3-512");
         var other = evidence.Principal("Two", "S-1-5-21-1-2-3-512");
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject, other)).State);
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject, other), routes: null).State);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class Tier0ClassifierTests
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("Group", "S-1-5-21-1-2-3-512");
         var input = evidence.Input(subject) with { DerivationGenerationId = Guid.NewGuid() };
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), input);
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), input, routes: null);
         Assert.True(result.Coverage.Limitations.HasFlag(Tier0Limitations.SourceMismatch));
     }
 
@@ -117,7 +117,7 @@ public sealed class Tier0ClassifierTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("Group", "S-1-5-21-1-2-3-512");
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null);
         Assert.Equal((Tier0State.Established, false), (result.State, result.Coverage.IsComplete));
     }
 
@@ -130,7 +130,7 @@ public sealed class Tier0ClassifierTests
         {
             Attributes = [new("objectSid", AttributeCardinality.SingleValued, [new(7, null, bytes)]), Tier0TestEvidence.Attribute("objectClass", "group")],
         };
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null);
         var witness = result.Supports[0].Evidence.First(item => item.Object == result.Target && item.Attribute == "objectSid");
         Assert.Equal((7, Convert.ToHexString(bytes)), (witness.Ordinal, witness.Value));
     }
@@ -139,7 +139,7 @@ public sealed class Tier0ClassifierTests
     public void RawSecurityMembershipCanEstablishANonProtectedPolicyRoot()
     {
         var (evidence, member, root) = MembershipFixture(520);
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), evidence.Routes(member, root));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), evidence.Routes(member, root));
         Assert.Equal(Tier0Basis.EffectiveMembership, Assert.Single(result.Supports).Basis);
     }
 
@@ -148,7 +148,7 @@ public sealed class Tier0ClassifierTests
     {
         var (evidence, member, root) = MembershipFixture();
         root = root with { Attributes = root.Attributes.Where(item => item.LdapDisplayName != "member").ToArray() };
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), evidence.Routes(member, root));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), evidence.Routes(member, root));
         Assert.Equal(Tier0State.Unknown, result.State);
     }
 
@@ -158,7 +158,7 @@ public sealed class Tier0ClassifierTests
         var (evidence, member, root) = MembershipFixture();
         root = root with { Attributes = root.Attributes.Where(item => item.LdapDisplayName != "groupType")
             .Append(Tier0TestEvidence.Attribute("groupType", "2")).ToArray() };
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(evidence.Binding, evidence.Target(member),
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member),
             evidence.Input(member, root), evidence.Routes(member, root)).State);
     }
 
@@ -166,7 +166,7 @@ public sealed class Tier0ClassifierTests
     public void MissingRoutesAreUnknownRatherThanNotEstablished()
     {
         var (evidence, member, root) = MembershipFixture();
-        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, root)).State);
+        Assert.Equal(Tier0State.Unknown, Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), routes: null).State);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public sealed class Tier0ClassifierTests
             Tier0TestEvidence.Attribute("groupType", "-2147483646"), Tier0TestEvidence.Attribute("member", member.DistinguishedName));
         var routes = evidence.Routes(member, first) with
         { Memberships = [.. evidence.Routes(member, first).Memberships, .. evidence.Routes(member, second).Memberships] };
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, first, second), routes);
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, first, second), routes);
         Assert.Equal(new[] { first.DistinguishedName, second.DistinguishedName }, result.Supports.Select(support => support.Root.DistinguishedName));
     }
 
@@ -187,7 +187,7 @@ public sealed class Tier0ClassifierTests
         var (evidence, member, root) = MembershipFixture();
         var routes = evidence.Routes(member, root);
         routes = routes with { Memberships = [.. routes.Memberships, .. routes.Memberships] };
-        Assert.Single(Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), routes).Supports);
+        Assert.Single(Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), routes).Supports);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class Tier0ClassifierTests
         var route = routes.Memberships[0].Routes[0];
         routes = routes with { Memberships = [routes.Memberships[0] with
         { Routes = [route with { Steps = [route.Steps[0], route.Steps[1] with { IsPrimaryGroup = true }] }] }] };
-        Assert.Equal(Tier0State.Established, Tier0Classifier.Classify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), routes).State);
+        Assert.Equal(Tier0State.Established, Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member), evidence.Input(member, root), routes).State);
     }
 
     [Fact]
@@ -209,16 +209,16 @@ public sealed class Tier0ClassifierTests
         var (evidence, member, root) = MembershipFixture();
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        Assert.Throws<OperationCanceledException>(() => Tier0Classifier.Classify(evidence.Binding, evidence.Target(member),
-            evidence.Input(member, root), cancellationToken: cancellation.Token));
+        Assert.Throws<OperationCanceledException>(() => Tier0Classifier.Qualify(evidence.Binding, evidence.Target(member),
+            evidence.Input(member, root), routes: null, cancellationToken: cancellation.Token));
     }
 
     [Fact]
     public void UnsupportedPolicyVersionCannotProduceACurrentClassification()
     {
         var (evidence, member, root) = MembershipFixture();
-        Assert.Throws<ArgumentException>(() => Tier0Classifier.Classify(evidence.Binding with { PolicyVersion = 2 },
-            evidence.Target(member), evidence.Input(member, root)));
+        Assert.Throws<ArgumentException>(() => Tier0Classifier.Qualify(evidence.Binding with { PolicyVersion = 2 },
+            evidence.Target(member), evidence.Input(member, root), routes: null));
     }
 
     private static (Tier0TestEvidence Evidence, ObjectAttributes Member, ObjectAttributes Root) MembershipFixture(int rid = 512)
@@ -237,6 +237,7 @@ internal sealed class Tier0TestEvidence
     internal ObjectAttributes Domain { get; } = new("DC=contoso,DC=com", Guid.NewGuid(), DateTimeOffset.UnixEpoch, default,
         [Attribute("objectSid", "S-1-5-21-1-2-3"), Attribute("objectClass", "top", "domain", "domainDNS")], "contoso.com");
     internal Tier0InputBinding Binding => new(new string('A', 64), Generation, new string('B', 64),
+        PrincipalClassificationRegistry.Version, PolicyVersion: 1, ContractVersion: 1,
         ForestRootNamingContext: Domain.DistinguishedName);
     internal Tier0Target Target(ObjectAttributes subject) => Tier0Target.From(subject, Domain.DistinguishedName);
     internal CapturedMembershipInput Input(params ObjectAttributes[] subjects) => new(Generation, true, [Domain, .. subjects]);

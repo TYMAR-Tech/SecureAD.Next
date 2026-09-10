@@ -117,7 +117,7 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
     {
         var directory = Captured();
         var result = JudgingRun.JudgeWithTier0Discovery(directory, [], Tier0DiscoveryBudget.Laboratory,
-            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
+            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
 
@@ -154,7 +154,7 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
     {
         var directory = Captured();
         Assert.Throws<ArgumentNullException>(() => JudgingRun.JudgeWithTier0Discovery(directory, [], null!,
-            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None));
+            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null));
     }
 
     private static SqliteConnection Database(string directory)
@@ -225,7 +225,7 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
     private static void JudgeGated(string directory, IReadOnlyList<IRule>? rules = null)
     {
         var result = JudgingRun.JudgeWithTier0Discovery(directory, rules ?? [], Tier0DiscoveryBudget.Laboratory,
-            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
+            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
 

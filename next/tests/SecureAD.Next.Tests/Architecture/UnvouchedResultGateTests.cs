@@ -433,6 +433,50 @@ public sealed class UnvouchedResultGateTests
     }
 
     /// <summary>
+    /// The type-carried statement finds the types it was written for, and finds them by the new
+    /// route rather than the old one.
+    ///
+    /// <para>
+    /// Asserting only that <c>Tier0Classification</c> is vouched would pass just as well if the
+    /// widening did nothing and the name rule had quietly started matching, so the second assertion
+    /// states that the name rule does <i>not</i> clear it. Without that this test would be a check
+    /// that passes while measuring nothing.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheTypeCarriedStatementFindsTheTypesItIsFor()
+    {
+        Assert.False(DeclaresVouchingName(typeof(SecureAD.Derivation.Tier0Classification)));
+        Assert.True(IsVouched(typeof(SecureAD.Derivation.Tier0Classification)));
+
+        Assert.False(DeclaresVouchingName(typeof(SecureAD.Judgement.OwnershipScopeSelection)));
+        Assert.True(IsVouched(typeof(SecureAD.Judgement.OwnershipScopeSelection)));
+
+        Assert.True(IsVouched(typeof(OneLevelAway)));
+    }
+
+    /// <summary>
+    /// And it reaches one level and no further, which is the whole of what keeps it a gate. A rule
+    /// that chained would clear almost every type in the product, because most of them transitively
+    /// hold something carrying an <c>Errors</c> or an <c>IsComplete</c> somewhere below.
+    /// </summary>
+    [Fact]
+    public void TheTypeCarriedStatementDoesNotReachTwoLevels()
+    {
+        Assert.False(IsVouched(typeof(TwoLevelsAway)));
+        Assert.False(IsVouched(typeof(NothingVouching)));
+    }
+
+    /// <summary>A type holding a statement one member away, which is the shape the widening admits.</summary>
+    private sealed record OneLevelAway(SecureAD.Derivation.Tier0Coverage Coverage);
+
+    /// <summary>The same statement two members away, which it must not admit.</summary>
+    private sealed record TwoLevelsAway(OneLevelAway Inner);
+
+    /// <summary>A type carrying no statement at any depth, so neither rule may clear it.</summary>
+    private sealed record NothingVouching(string Name, int Size);
+
+    /// <summary>
     /// The scanner self-test. Without it both fires above pass by reflecting over an empty set of
     /// members and reporting a surface in perfect order - which is the worst thing a gate can do,
     /// and which this repository has done three times.
@@ -690,10 +734,61 @@ public sealed class UnvouchedResultGateTests
     /// A type that states its own completeness, by declaring a member that says whether the answer
     /// beside it was reached.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The statement may be carried in a name or in a type, and 2026-09-12 added the second.</b>
+    /// The original rule read member names only, and the Tier-0 work carries its statement in a
+    /// dedicated type instead: <c>Tier0Classification</c> declares a <c>Coverage</c> of type
+    /// <see cref="SecureAD.Derivation.Tier0Coverage"/>, which holds three separate boundaries and a
+    /// set of limitations and declares <c>IsComplete</c> itself. A caller holding the classification
+    /// is holding that statement. The gate could not see it, because <c>Coverage</c> is not one of
+    /// the shapes.
+    /// </para>
+    /// <para>
+    /// <b>Widening a gate is how a gate dies, so it is worth saying what forced this one.</b> The
+    /// alternative was a forwarding <c>bool</c> on each type, and it was tried: gate 4b refused two
+    /// of them within a minute as members that could only ever say one thing. They could not vary
+    /// because <c>Tier0Classifier</c> records asset, control and dependency qualification as
+    /// unsupported on every classification it makes - Stage 6 has not built them - so
+    /// <c>Tier0Coverage.IsComplete</c> is false for every classification in the product today. A
+    /// name that promises to vary on a value that cannot is exactly <c>P-62</c>, so satisfying this
+    /// gate that way would have created the defect its sibling exists to catch.
+    /// </para>
+    /// <para>
+    /// <b>It reaches exactly one level, deliberately.</b> Made recursive it would clear almost
+    /// everything, since most types transitively hold something with an <c>Errors</c> somewhere, and
+    /// a gate that clears everything is an allowlist with no entries and no way to see that. One
+    /// level says the statement is a single member away, which is where a reader will look for it.
+    /// <see cref="TheTypeCarriedStatementFindsTheTypesItIsFor"/> and
+    /// <see cref="TheTypeCarriedStatementDoesNotReachTwoLevels"/> hold both halves of that.
+    /// </para>
+    /// </remarks>
     private static bool IsVouched(Type type) =>
+        DeclaresVouchingName(type) || DeclaredMemberTypes(type).Any(DeclaresVouchingName);
+
+    /// <summary>A member whose own name is one of the vouching shapes.</summary>
+    private static bool DeclaresVouchingName(Type type) =>
         type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
                         | BindingFlags.DeclaredOnly)
             .Any(m => VouchShapes.Any(shape => Matches(shape, m.Name)));
+
+    /// <summary>
+    /// The types this one declares members of. Nullable wrappers are unwrapped, because a coverage
+    /// that may be absent still states what it states when it is there.
+    /// </summary>
+    private static IEnumerable<Type> DeclaredMemberTypes(Type type) =>
+        type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(m => m switch
+            {
+                PropertyInfo property when property.GetMethod is not null
+                                           && property.GetIndexParameters().Length == 0
+                    => property.PropertyType,
+                FieldInfo field => field.FieldType,
+                _ => null,
+            })
+            .Where(t => t is not null)
+            .Select(t => Nullable.GetUnderlyingType(t!) ?? t!)
+            .Where(t => t != type);
 
     /// <summary>
     /// The leaf types whose vouching is carried by whatever produces them.

@@ -45,7 +45,7 @@ public sealed class ControlEdgeStorageTests
         {
             writer.StartControlEdges(true);
             var result = GroupMembershipControlTests.Membership(ControlEdgeDeriverTests.Permissions(ace));
-            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
+            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() }, ownershipTarget: null);
             writer.CompleteControlEdges();
         });
         using var reader = Open(directory);
@@ -106,7 +106,7 @@ public sealed class ControlEdgeStorageTests
             for (var i = 0; i < 105; i++)
             {
                 var target = $"OU=Object{i},DC=contoso,DC=com";
-                writer.WriteControlEdges(original with { Target = target, Edges = original.Edges.Select(edge => edge with { Target = target, GenerationId = writer.GenerationId }).ToArray() });
+                writer.WriteControlEdges(original with { Target = target, Edges = original.Edges.Select(edge => edge with { Target = target, GenerationId = writer.GenerationId }).ToArray() }, ownershipTarget: null);
             }
             writer.CompleteControlEdges();
         });
@@ -127,7 +127,7 @@ public sealed class ControlEdgeStorageTests
             writer.StartControlEdges(true);
             var result = ControlEdgeDeriverTests.DeriveWithTransitions(ControlEdgeDeriverTests.Permissions(
                 ControlEdgeDeriverTests.Ace(0, ControlEdgeDeriverTests.Holder, 0x80000)));
-            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
+            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() }, ownershipTarget: null);
             writer.CompleteControlEdges();
         });
         using var reader = Open(directory);
@@ -149,7 +149,7 @@ public sealed class ControlEdgeStorageTests
         {
             writer.StartControlEdges(true);
             var result = ControlEdgeDeriverTests.Derive(ControlEdgeDeriverTests.Permissions(ControlEdgeDeriverTests.Ace(0, "S-1-5-18", 0x40000)));
-            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
+            writer.WriteControlEdges(result with { Edges = result.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() }, ownershipTarget: null);
             writer.CompleteControlEdges();
         });
         using var reader = Open(directory);
@@ -167,7 +167,7 @@ public sealed class ControlEdgeStorageTests
         var directory = Store(writer =>
         {
             writer.StartControlEdges(false);
-            writer.WriteControlEdges(ControlEdgeDeriverTests.Derive(null));
+            writer.WriteControlEdges(ControlEdgeDeriverTests.Derive(null), ownershipTarget: null);
             writer.CompleteControlEdges();
         });
         using var reader = Open(directory);
@@ -190,7 +190,7 @@ public sealed class ControlEdgeStorageTests
             var ace = GroupMembershipControlTests.Scoped(0, 0x08);
             writer.StartControlEdges(true);
             var control = GroupMembershipControlTests.Membership(ControlEdgeDeriverTests.Permissions(ace), subject: target);
-            writer.WriteControlEdges(control with { Edges = control.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() });
+            writer.WriteControlEdges(control with { Edges = control.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() }, ownershipTarget: null);
             writer.CompleteControlEdges();
             var ids = writer.SelfMembershipEdgeIds(target.DistinguishedName, [ace.Trustee.Sid]);
             Assert.Single(ids);

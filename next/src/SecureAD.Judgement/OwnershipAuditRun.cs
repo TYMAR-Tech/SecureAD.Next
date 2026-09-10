@@ -19,7 +19,8 @@ internal static class OwnershipAuditRun
         var seal = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(path), ProofSerialization.Options) ?? throw OwnershipAuditStorage.InvalidProof();
         if (seal.Algorithm != BundleSealing.Algorithm) throw OwnershipAuditStorage.InvalidProof();
         var root = string.IsNullOrWhiteSpace(forest) ? null : string.Join(',', forest.Split('.').Select(part => "DC=" + part));
-        var binding = new Tier0InputBinding(evidenceSeal, derivationGeneration, seal.Hash, ForestRootNamingContext: root);
+        var binding = new Tier0InputBinding(evidenceSeal, derivationGeneration, seal.Hash,
+            PrincipalClassificationRegistry.Version, PolicyVersion: 1, ContractVersion: 1, ForestRootNamingContext: root);
         if (!binding.IsSupported) throw OwnershipAuditStorage.InvalidProof();
         return binding;
     }
@@ -55,7 +56,7 @@ internal static class OwnershipAuditRun
             {
                 var coverage = OwnershipAuditStorage.UnavailableCoverage with { InputsComplete = input.IsComplete,
                     Limitations = OwnershipAuditStorage.UnavailableCoverage.Limitations & ~Tier0Limitations.InputIncomplete };
-                var classifications = Tier0Classifier.ClassifyMany(binding, targets.Select(item => item.Identity), input, Routes, cancellationToken);
+                var classifications = Tier0Classifier.QualifyMany(binding, targets.Select(item => item.Identity), input, Routes, cancellationToken).Classifications;
                 var edges = ControlEdgeStorage.ReadScopeEdges(connection, description);
                 var relations = Relations(binding, targets, edges, ref coverage, cancellationToken);
                 selection = OwnershipScopeSelector.Select(binding, description.GenerationId, classifications, relations, coverage,

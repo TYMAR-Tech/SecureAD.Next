@@ -123,6 +123,8 @@ micro-optimization or authorize another timed run. S1's code, results and perfor
 | `SelfMembershipDiscoveryLimitation` | One limitation bound to the captured target, permission, trustee or member it came from |
 | `SelfMembershipDiscoveryCoverage` | What the scan examined and where it stopped, never a claim about the forest |
 | `SelfMembershipSummary` | Generation-bound counts and coverage read without loading every assessment |
+| `OwnershipCountLimit` | Why a stored ownership count is a placeholder rather than a measurement |
+| `OwnershipAuditCount` | A stored ownership count that says whether it was measured, and if not what prevented it |
 
 <!-- TYPES:END -->
 
@@ -251,7 +253,7 @@ remain pending. No cost or production-acceptance claim follows from the selector
 **Implemented under [0114](../../decisions/0114-scoped-ownership-assessment-during-judging.md).** New
 judging runs use schema 26/control engine 9. They first retain basic permissions, existing-owner
 control and full-control summaries while offering each captured object to each scheduled rule once.
-Hypothetical owner transitions are deferred. The shared classifier's indexed `ClassifyMany` path and
+Hypothetical owner transitions are deferred. The shared classifier's indexed `QualifyMany` path and
 the existing reverse selector then determine the automatic scope; only selected targets receive
 the detailed `OwnershipControlDeriver.Transition` evaluation. This changes which hypothetical
 assessments run, not the underlying permission inventory, expectedness, existing-owner findings or

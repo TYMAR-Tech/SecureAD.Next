@@ -46,7 +46,7 @@ public sealed class Tier0FixtureRouteTests(ITestOutputHelper output)
     private static void JudgeGated(string directory)
     {
         var result = JudgingRun.JudgeWithTier0Discovery(directory, [], Tier0DiscoveryBudget.Laboratory,
-            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
+            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
 

@@ -23,8 +23,8 @@ public sealed class Tier0PartitionRootTests
     {
         var evidence = new Tier0TestEvidence();
         var root = Root(evidence, "CN=Partition,DC=contoso,DC=com", objectClass);
-        var result = Tier0Classifier.Classify(evidence.Binding,
-            Tier0Target.From(root, root.DistinguishedName), evidence.Input(root));
+        var result = Tier0Classifier.Qualify(evidence.Binding,
+            Tier0Target.From(root, root.DistinguishedName), evidence.Input(root), routes: null);
         Assert.Equal((Tier0State.Established, Tier0Basis.PartitionRoot),
             (result.State, result.Supports.Single().Basis));
     }
@@ -38,7 +38,7 @@ public sealed class Tier0PartitionRootTests
     {
         var evidence = new Tier0TestEvidence();
         var subject = evidence.Principal("Ordinary", "S-1-5-21-1-2-3-1500", "user");
-        var result = Tier0Classifier.Classify(evidence.Binding, evidence.Target(subject), evidence.Input(subject));
+        var result = Tier0Classifier.Qualify(evidence.Binding, evidence.Target(subject), evidence.Input(subject), routes: null);
         Assert.Equal(Tier0State.Unknown, result.State);
     }
 
@@ -47,8 +47,8 @@ public sealed class Tier0PartitionRootTests
     {
         var evidence = new Tier0TestEvidence();
         var root = Root(evidence, "CN=Pretender,DC=contoso,DC=com", "container");
-        var result = Tier0Classifier.Classify(evidence.Binding,
-            Tier0Target.From(root, root.DistinguishedName), evidence.Input(root));
+        var result = Tier0Classifier.Qualify(evidence.Binding,
+            Tier0Target.From(root, root.DistinguishedName), evidence.Input(root), routes: null);
         Assert.Equal((Tier0State.Unknown, true),
             (result.State, result.Coverage.Limitations.HasFlag(Tier0Limitations.IdentityUnverified)));
     }
@@ -58,8 +58,8 @@ public sealed class Tier0PartitionRootTests
     {
         var evidence = new Tier0TestEvidence();
         var root = Root(evidence, "CN=Configuration,DC=contoso,DC=com", "configuration");
-        var result = Tier0Classifier.Classify(evidence.Binding,
-            Tier0Target.From(root, root.DistinguishedName), evidence.Input(root));
+        var result = Tier0Classifier.Qualify(evidence.Binding,
+            Tier0Target.From(root, root.DistinguishedName), evidence.Input(root), routes: null);
         Assert.Contains(result.Supports.Single().Evidence,
             item => item.Attribute == "objectClass" && item.Value == "configuration");
     }
@@ -72,8 +72,8 @@ public sealed class Tier0PartitionRootTests
     public void ADomainHeadQualifiesOnItsOwnBasisWithoutSuppressingOthers()
     {
         var evidence = new Tier0TestEvidence();
-        var result = Tier0Classifier.Classify(evidence.Binding,
-            Tier0Target.From(evidence.Domain, evidence.Domain.DistinguishedName), evidence.Input());
+        var result = Tier0Classifier.Qualify(evidence.Binding,
+            Tier0Target.From(evidence.Domain, evidence.Domain.DistinguishedName), evidence.Input(), routes: null);
         Assert.Contains(result.Supports, support => support.Basis == Tier0Basis.PartitionRoot);
     }
 

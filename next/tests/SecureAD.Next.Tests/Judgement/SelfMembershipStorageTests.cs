@@ -277,7 +277,7 @@ public sealed class SelfMembershipStorageTests
         };
         var edges = GroupMembershipControlTests.Membership(ControlEdgeDeriverTests.Permissions(evidence.Entry), subject: target);
         writer.StartControlEdges(true);
-        writer.WriteControlEdges(edges with { Edges = edges.Edges.Select(edge => edge with { GenerationId = writer.GenerationId, DerivationGenerationId = derivation }).ToArray() });
+        writer.WriteControlEdges(edges with { Edges = edges.Edges.Select(edge => edge with { GenerationId = writer.GenerationId, DerivationGenerationId = derivation }).ToArray() }, ownershipTarget: null);
         writer.CompleteControlEdges();
         var ids = writer.SelfMembershipEdgeIds(Target, [self ? TargetSid : evidence.Entry.Trustee.Sid]);
         Assert.Single(ids);

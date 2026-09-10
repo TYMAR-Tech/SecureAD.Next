@@ -72,7 +72,7 @@ public sealed class JudgementWriter : IDisposable
         ControlEdgeStorage.Start(_connection, captureComplete, discoveryScoped);
     }
 
-    internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget = null)
+    internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
     {
         ThrowIfFinished();
         ControlEdgeStorage.Write(_connection, evaluation, ownershipTarget);

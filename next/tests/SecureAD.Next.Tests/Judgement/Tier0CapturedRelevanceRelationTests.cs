@@ -156,8 +156,8 @@ public sealed class Tier0CapturedRelevanceRelationTests
     {
         var input = fixture.Input();
         var classifications = new[] { root, controller }
-            .Select(item => Tier0Classifier.Classify(fixture.Binding, fixture.Target(item), input)).ToArray();
+            .Select(item => Tier0Classifier.Qualify(fixture.Binding, fixture.Target(item), input, routes: null)).ToArray();
         return OwnershipScopeSelector.Select(fixture.Binding, Guid.NewGuid(), classifications, relations,
-            new(true, true, true, Tier0Limitations.None));
+            new(true, true, true, Tier0Limitations.None), CancellationToken.None, progress: null);
     }
 }
