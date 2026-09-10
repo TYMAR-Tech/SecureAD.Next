@@ -14,7 +14,8 @@ internal static class ControlEdgeStorage
     {
         Execute(connection, null, """
             CREATE TABLE control_product (id INTEGER PRIMARY KEY CHECK(id = 1), engine_version INTEGER NOT NULL,
-                capture_complete INTEGER NOT NULL CHECK(capture_complete IN (0,1)), completed INTEGER NOT NULL CHECK(completed IN (0,1)));
+                capture_complete INTEGER NOT NULL CHECK(capture_complete IN (0,1)), completed INTEGER NOT NULL CHECK(completed IN (0,1)),
+                discovery_scoped INTEGER NOT NULL DEFAULT 0 CHECK(discovery_scoped IN (0,1)));
             CREATE TABLE control_object (target TEXT PRIMARY KEY COLLATE NOCASE, principal_sid TEXT NULL, principal_scope TEXT NULL,
                 descriptor_outcome TEXT NOT NULL, uncertainty INTEGER NOT NULL, is_complete INTEGER NOT NULL CHECK(is_complete IN (0,1)));
             CREATE TABLE control_edge (id INTEGER PRIMARY KEY, target TEXT NOT NULL REFERENCES control_object(target), target_guid TEXT NULL,
@@ -39,8 +40,14 @@ internal static class ControlEdgeStorage
         OwnershipAuditStorage.CreateTables(connection);
     }
 
-    public static void Start(SqliteConnection connection, bool captureComplete) => Execute(connection, null,
-        "INSERT INTO control_product VALUES (1, $version, $complete, 0)", ("$version", EngineVersion), ("$complete", captureComplete));
+    /// <summary>
+    /// Starts the control product. <paramref name="discoveryScoped"/> records whether Tier-0 discovery
+    /// decided which objects were assessed, because a reader cannot otherwise tell a scoped count from
+    /// a forest-wide one and would present the first as the second.
+    /// </summary>
+    public static void Start(SqliteConnection connection, bool captureComplete, bool discoveryScoped = false) => Execute(connection, null,
+        "INSERT INTO control_product VALUES (1, $version, $complete, 0, $scoped)", ("$version", EngineVersion),
+        ("$complete", captureComplete), ("$scoped", discoveryScoped));
     public static void Complete(SqliteConnection connection) => Execute(connection, null, "UPDATE control_product SET completed = 1 WHERE id = 1");
 
     public static IReadOnlyList<long> SelfMembershipEdgeIds(SqliteConnection connection, string target,
@@ -190,13 +197,14 @@ internal static class ControlEdgeStorage
         string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
     {
         using var product = connection.CreateCommand();
-        product.CommandText = "SELECT capture_complete, completed FROM control_product WHERE id=1 AND engine_version=$version";
+        product.CommandText = "SELECT capture_complete, completed, discovery_scoped FROM control_product WHERE id=1 AND engine_version=$version";
         product.Parameters.AddWithValue("$version", EngineVersion);
-        bool derived, capture;
+        bool derived, capture, scoped;
         using (var read = product.ExecuteReader())
         {
             derived = read.Read();
             capture = derived && read.GetBoolean(0);
+            scoped = derived && read.GetBoolean(2);
             derived = derived && read.GetBoolean(1);
         }
         if (!derived) return new([], 0, 0, 0, 0, false, capture, false, afterId);
@@ -254,6 +262,7 @@ internal static class ControlEdgeStorage
         {
             FullControlAssessments = assessments,
             FullControlSupports = FullControlStorage.Supports(connection, rows),
+            IsScopedToDiscovery = scoped,
         };
     }
 

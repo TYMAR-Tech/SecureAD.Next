@@ -122,6 +122,13 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
                 + (ByHolder ? "Unanswered-object count covers the whole capture because unread ACLs may name this principal. " : "")
                 + "This is a named-trustee view, not an expansion of rights inherited through group membership. "
                 + "Counts include unknown candidates; expectedness is not proof that a capability is established.";
+
+        // WITHOUT THIS SENTENCE THE COUNTS READ AS FOREST-WIDE TOTALS. Under decision 0116 a judgement
+        // written by the gated pipeline counts the objects discovery reached, not everything captured,
+        // and the two are indistinguishable on screen. Shown only where the stored generation actually
+        // is scoped, because saying it of a forest-wide product would understate real coverage.
+        if (page.ProductWasDerived && page.IsScopedToDiscovery)
+            Coverage += Environment.NewLine + ControlEdgeRowViewModel.Text("DiscoveryScope");
         if (page.OwnershipCoverage is { } ownershipCoverage) Coverage += Environment.NewLine + ownershipCoverage.Description;
         Counts = page.ProductWasDerived
             ? $"{page.UnexpectedCount} unexpected; {page.UnknownCount} expectedness unknown; {page.ExpectedCount} expected "

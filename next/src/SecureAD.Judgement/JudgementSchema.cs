@@ -46,8 +46,14 @@ public static class JudgementSchema
     /// the product telling a customer something false. Older generations are re-judged for current
     /// readback rather than migrated or relabelled.
     /// </para>
+    /// <para>
+    /// <b>29 records whether discovery scoped the run.</b> Schema 28 changed what the counts mean; 29
+    /// lets a reader tell which meaning a given file holds. Without it a scoped product and a
+    /// forest-wide one are the same rows with the same columns, and the screen would either omit the
+    /// scope caveat where it is needed or show it where it is not - understating real coverage.
+    /// </para>
     /// </remarks>
-    public const int Version = 28;
+    public const int Version = 29;
 
     private static readonly string[] TableDdl =
     [

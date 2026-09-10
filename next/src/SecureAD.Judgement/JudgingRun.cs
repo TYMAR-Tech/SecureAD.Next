@@ -167,11 +167,13 @@ public static class JudgingRun
         DateTimeOffset evaluationAsOf,
         IProgress<JudgingProgress> progress,
         IRunLog log,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget = null)
     {
         ArgumentNullException.ThrowIfNull(discoveryBudget);
         discoveryBudget.Validate();
-        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, null,
+        selfMembershipDiscoveryBudget?.Validate();
+        return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, selfMembershipDiscoveryBudget, null,
             startedUtc, evaluationAsOf, progress, log, cancellationToken, discoveryBudget);
     }
 
@@ -479,7 +481,6 @@ public static class JudgingRun
         var tallies = rules.Select(r => new Tally(r)).ToList();
 
         long objectsRead = 0;
-        writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete);
         writer.StartSelfMembershipAssessments();
         // Control capabilities always consume captured schema, even when no rule requests derived facts.
         var attributes = Memoised<ObjectAttributes?>(dn => bundle.ReadObjectAttributes(dn));
@@ -502,6 +503,14 @@ public static class JudgingRun
             JudgementRunState.Running, evaluationAsOf, startedUtc, default);
         var ownershipBinding = memberInput is not null && derivationGeneration is { } sourceGeneration
             ? OwnershipAuditRun.Binding(bundleDirectory, seal.Hash, sourceGeneration, bundle.Description.ForestFqdn) : null;
+
+        // STARTED HERE BECAUSE THE SCOPING FLAG MUST MATCH WHAT ACTUALLY HAPPENS. Discovery needs a
+        // pinned derivation binding to qualify seeds against; without one it does not run and every
+        // object is assessed. Recording "scoped" on the strength of the budget alone would put the
+        // scope caveat on screen for a run that in fact covered the whole capture, understating real
+        // coverage - the opposite error to the one the caveat exists to prevent.
+        var gated = tier0DiscoveryBudget is not null && ownershipBinding is not null;
+        writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete, gated);
         writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
 
         var scanWatch = new System.Diagnostics.Stopwatch();
@@ -517,8 +526,8 @@ public static class JudgingRun
         // pinned derivation binding there is nothing to classify seeds against, so discovery does
         // not run and every object falls back to being assessed, which is the previous behaviour
         // rather than a silent claim that nothing mattered.
-        var tier0Discovery = tier0DiscoveryBudget is not null && ownershipBinding is not null
-            ? new Tier0DiscoveryScheduler(ownershipBinding, tier0DiscoveryBudget,
+        var tier0Discovery = gated
+            ? new Tier0DiscoveryScheduler(ownershipBinding!, tier0DiscoveryBudget!,
                 scope.Value!.AllDeclaredDomainsAreComplete, attributes,
                 subject => OwnershipAuditRun.Target(subject, namingContexts.Value), cancellationToken)
             : null;

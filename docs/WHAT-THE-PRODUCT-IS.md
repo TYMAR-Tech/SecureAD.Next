@@ -253,12 +253,12 @@ forest-wide to assessed-scope while their shape does not; the added scope wordin
 substance with its exact rendering confirmed before the Shell edit; and discovery retains the
 controller/target route it already computes instead of discarding it after admission.
 
-**As of 2026-09-10 this is built, and reachable only through an explicit entry point.**
-`JudgingRun.JudgeWithTier0Discovery` runs the gated pipeline; `JudgingRun.Judge` still assesses every
-streamed object, and that remains the default. The reason is not engineering. Under gating the stored
-control counts cover the assessed scope, and the screen has no wording yet saying so, in which case an
-administrator reading "2 unexpected permissions" would take it for two in the forest. **Do not flip
-the default until the scope wording and its placement are approved.**
+**As of 2026-09-10 this is built and the shell uses it.** `JudgingRun.JudgeWithTier0Discovery` runs
+the gated pipeline and is what the audit screen calls; `JudgingRun.Judge` is retained for callers
+needing the unscoped contract. The control-edges panel states that its counts cover the objects
+discovery reached rather than the whole forest, and says so only for a judgement that was actually
+scoped - schema 29 records which kind a stored product is, because the two are otherwise
+indistinguishable and a reader would take the first for the second.
 
 Decision [0117](decisions/0117-naming-context-roots-are-tier-0-assets.md) was accepted alongside it.
 A naming-context root holds no SID, so no controller route can reach it, and replication rights are

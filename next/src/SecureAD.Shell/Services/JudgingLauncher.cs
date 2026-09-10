@@ -22,6 +22,12 @@ namespace SecureAD.Shell.Services;
 /// interface thread would freeze the window for as long as it took, which the predecessor measured
 /// in hours.
 /// </para>
+/// <para>
+/// <b><paramref name="discoveryBudget"/> is not the Tier-0 budget.</b> It governs automatic
+/// self-membership requester discovery, which the shell leaves unconfigured, and is retained so that
+/// activating it stays a deliberate act. Tier-0 discovery is separate and always on: it decides which
+/// objects receive detailed control assessment, and without it every captured object is assessed.
+/// </para>
 /// </remarks>
 internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget) : IJudgingLauncher
 {
@@ -66,15 +72,24 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
             objectsRead = Math.Max(objectsRead, value.ObjectsRead);
             progress.Report(value);
         });
-        var judged = JudgingRun.Judge(
+        // TIER-0 DISCOVERY DECIDES WHAT IS ASSESSED IN DETAIL, per decision 0116. Detailed control,
+        // full-control and owner-transition products are derived for the objects a supported incoming
+        // route from a Tier-0 seed reached, rather than for every captured object. Ordinary rule
+        // findings are unaffected: every rule is still offered every object exactly once.
+        //
+        // The budget is the laboratory bound, which is not a measured production figure. It is well
+        // above the recorded forest shape, so it should not bind; if it ever does, the run stops and
+        // says so through the stored coverage rather than quietly assessing less than it claims.
+        var judged = JudgingRun.JudgeWithTier0Discovery(
             bundleDirectory,
             RuleCatalogue.All,
-            discoveryBudget,
+            Tier0DiscoveryBudget.Laboratory,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             watched,
             file ?? RunLog.Discarded,
-            cancellationToken);
+            cancellationToken,
+            discoveryBudget);
 
         if (!judged.IsSuccess)
             return Result<JudgingOutcome>.Failure(judged.Error!);

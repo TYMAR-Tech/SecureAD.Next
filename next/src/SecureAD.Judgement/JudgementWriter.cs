@@ -66,10 +66,10 @@ public sealed class JudgementWriter : IDisposable
         _evidenceIsComplete = scope.AllDeclaredDomainsAreComplete;
     }
 
-    internal void StartControlEdges(bool captureComplete)
+    internal void StartControlEdges(bool captureComplete, bool discoveryScoped = false)
     {
         ThrowIfFinished();
-        ControlEdgeStorage.Start(_connection, captureComplete);
+        ControlEdgeStorage.Start(_connection, captureComplete, discoveryScoped);
     }
 
     internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget = null)

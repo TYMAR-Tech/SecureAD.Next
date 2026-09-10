@@ -240,6 +240,16 @@ public sealed record ControlEdgePage(
     /// <summary>Primitive row IDs included in an established summary's count, including summaries on another page.</summary>
     public IReadOnlyDictionary<long, long> FullControlSupports { get; init; } = new Dictionary<long, long>();
     /// <summary>
+    /// Whether Tier-0 discovery decided which objects were assessed, so these counts cover that scope
+    /// rather than the captured forest.
+    /// </summary>
+    /// <remarks>
+    /// A scoped count and a forest-wide count are the same number in the same place, and a reader who
+    /// cannot tell them apart will take the first for the second. This is what lets a caller say which
+    /// it is holding.
+    /// </remarks>
+    public bool IsScopedToDiscovery { get; init; }
+    /// <summary>
     /// Completeness of the supported primitive slice within the assessed scope, not of all stage-6
     /// capabilities and not of the forest.
     /// </summary>

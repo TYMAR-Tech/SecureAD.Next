@@ -122,15 +122,31 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void TheStoredJudgementIsReadableUnderTheScopedSchema()
+    public void TheStoredJudgementRecordsThatItsCountsAreScoped()
     {
         var directory = Captured();
         Derive(directory);
         JudgeGated(directory);
         using var connection = Database(directory);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT schema_version FROM judgement";
-        Assert.Equal(28L, Convert.ToInt64(command.ExecuteScalar()));
+        command.CommandText = "SELECT discovery_scoped FROM control_product WHERE id=1";
+        Assert.Equal(1L, Convert.ToInt64(command.ExecuteScalar()));
+    }
+
+    /// <summary>
+    /// The negative control: an unscoped run must not claim its counts are scoped, or the screen would
+    /// show the scope caveat for a product that in fact covered the whole capture.
+    /// </summary>
+    [Fact]
+    public void AnUnscopedRunDoesNotClaimItsCountsAreScoped()
+    {
+        var directory = Captured();
+        Derive(directory);
+        JudgeAll(directory);
+        using var connection = Database(directory);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT discovery_scoped FROM control_product WHERE id=1";
+        Assert.Equal(0L, Convert.ToInt64(command.ExecuteScalar()));
     }
 
     [Fact]

@@ -43,6 +43,9 @@ public sealed class ControlEdgeLayoutTests
         // need not reference a control edge that discovery-first ordering has not derived yet.
         // Observed under 0116 from this build, not a historical anchor.
         [28] = "F7B1CD880966048DD15A3DE28D23C6E6D7B202481A1C6F7F2F5A4C33D3FC4FAA",
+        // Schema 29 adds control_product.discovery_scoped, so a reader can tell a scoped count from a
+        // forest-wide one instead of inferring it. Observed from this build.
+        [29] = "1702E41D511FB64ED4DF4371A3FD6721788FA453096740E78B3EBEDCE8B5DC3C",
     };
 
     [Fact]

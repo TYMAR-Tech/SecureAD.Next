@@ -7,7 +7,7 @@
 where that answer goes: a second database in the bundle's own directory, written after capture has
 finished and sealed separately from the evidence it judged.
 
-**Current storage:** judgement schema **28**, control engine **9**, principal catalogue
+**Current storage:** judgement schema **29**, control engine **9**, principal catalogue
 **3**, with unchanged Evidence format and Derivation schema **12**. Shared explanation/route storage under
 [0115](../../decisions/0115-share-judgement-explanations-and-membership-proof.md) is implemented locally
 with paired lab proof parity verified, but performance acceptance is on hold because elapsed time
@@ -28,9 +28,13 @@ meaning different things, which is why the version rises although the tables do 
 naming the captured owner or entry, because a route discovered before any control edge exists has no
 edge to reference. Exactly one provenance per row is enforced by a check constraint.
 
-**This is reachable only through `JudgingRun.JudgeWithTier0Discovery`.** `JudgingRun.Judge` still
-assesses every streamed object and remains the default until the scope wording on screen is approved;
-a scoped count shown without that wording would read as a forest-wide total.
+**Schema 29 lets a reader tell which of those two meanings a file holds.** `control_product` carries
+`discovery_scoped`, because a scoped product and a forest-wide one are otherwise the same rows with
+the same columns. Without it the screen would either omit the scope caveat where it is needed or show
+it where it is not, and the second understates real coverage as surely as the first overstates it.
+
+**The shell judges through `JudgingRun.JudgeWithTier0Discovery`.** `JudgingRun.Judge` is retained for
+callers that need the unscoped contract, including the tests that assert the pre-0116 state.
 
 **Next-session priority:** the owner clarified that automatic detailed control work must follow
 Tier-0 relevance, not precede its discovery. The
