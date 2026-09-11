@@ -19,9 +19,20 @@ This has three consequences, and they are not optional politeness:
 
 Watch for drift: it is easy to slip into developer-to-developer shorthand several messages into a session, especially when the work is going well.
 
+## Documentation — changed 2026-09-11, and the change is the point
+
+**This is a hobby project that must be accurate, not a professional codebase with a documentation department.** The owner's time is the scarce resource. On 2026-09-11, 260 tests that existed only to prove a document and the code said the same thing were deleted, because they protected a second copy of the truth rather than the product.
+
+- **Three documents are maintained and nothing else.** `docs/PUNCH-LIST.md` is the work queue. `docs/WHAT-THE-PRODUCT-IS.md` records decisions the owner has already made, so he is never asked twice. This file says how to work. Keep these three accurate.
+- **Reasoning goes in code comments and in the commit message.** That is where it is actually read, it cannot drift from the code beside it, and nobody has to edit around it later. Do not write narrative into a document.
+- **docs/layers/ is retired.** It was unbound from the code on 2026-09-11 and is history. Never update it.
+- **docs/decisions/ and docs/rules/ are reference.** Read one when a question needs it. Never maintain them proactively. The rules cards describe the predecessor.
+- **Punch-list entries are three sentences.** Detail belongs in the commit message.
+- **Do not reintroduce a document that must be kept in step with code by hand.** That shape is what was just removed, and it is the same failure the product keeps finding in itself: two places answering one question, free to disagree.
+
 ## When to stop and raise it
 
-**The default is to keep moving.** Something that is wrong but contained gets written down as a finding, with a severity and a status, in the session's slice document — and the work carries on. Stopping for every defect is as damaging as stopping for none: it turns a session into a list of interruptions and the owner into an approver of things he is not positioned to judge.
+**The default is to keep moving.** Something that is wrong but contained gets written down as a finding, with a severity and a status, in `docs/PUNCH-LIST.md` — and the work carries on. Stopping for every defect is as damaging as stopping for none: it turns a session into a list of interruptions and the owner into an approver of things he is not positioned to judge.
 
 **Five things stop the work.** In each case, say plainly what is wrong and propose the fix; do not hand over an open technical question.
 
@@ -49,8 +60,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## Repository Practices
 
 - Preserve pre-existing uncommitted work and frozen historical evidence.
-- Use bounded, validated sessions and update existing governing documents rather than creating session-history documents.
-- Explain results in plain language for an AD/security administrator.
+- Use bounded, validated sessions and update existing governing documents rather than creating session-history documents.- Explain results in plain language for an AD/security administrator.
 - For SecureAD, laptop and external-monitor checks belong to normal product verification. Do not create a separate monitor-check session or make it a prerequisite to continuing R2/R7/R8; keep unperformed checks recorded as outstanding rather than accepted.
 - For SecureAD.Next, check the existing specifications and accepted decisions before presenting product behavior as an unanswered owner decision. In particular, explicit requester/target batches in the judging API do not imply a manual administrator-maintained selection list; the judgement specification already prefers permission/group-first derivation from captured evidence.
 
