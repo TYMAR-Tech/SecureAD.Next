@@ -35,8 +35,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 **The owner's decision, 2026-09-12**, and what gives the documentation regime above teeth.
 
 - **A test may check code against code, or code against an outside authority.** Microsoft's published specifications, a recorded output of the predecessor, a frozen lab result. Those can tell you that you are wrong, which is the only thing a test is for. The `*MicrosoftAnchorTests` family is the clearest case and the most valuable material in the suite — it is not a documentation test, and it stays.
-- **A test that checks whether a document and the code agree is not written, and is deleted when found.** So is one that checks two documents against each other. It can only confirm an opinion back to itself, it doubles the cost of every change, and `F-S44-2` is what a closed loop of such checks costs: three sound suites agreeing perfectly while fifteen attributes were silently missing.
-- **A drifting document is a documentation problem.** It is fixed by reading it, not by a failing build.
+- **Do not write tests that compare a markdown/documentation file against the code, or two documents against each other; delete such tests when found.** A drifting document is a documentation problem. It is fixed by reading it, not by a failing build.
 - **One exception, granted explicitly.** `StageStatusGateTests` and `next/tools/check-stage-status.ps1` hold the stage table in `docs/WHAT-THE-PRODUCT-IS.md` to the code. That table claimed *two* judging rules for long enough that twelve more were built underneath it; a stale one misleads the owner about the state of his own product, which no other document here can do.
 
 ## When to stop and raise it
@@ -69,7 +68,8 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## Repository Practices
 
 - Preserve pre-existing uncommitted work and frozen historical evidence.
-- Use bounded, validated sessions and update existing governing documents rather than creating session-history documents.- Explain results in plain language for an AD/security administrator.
+- Use bounded, validated sessions and update existing governing documents rather than creating session-history documents.
+- Explain results in plain language for an AD/security administrator.
 - For SecureAD, laptop and external-monitor checks belong to normal product verification. Do not create a separate monitor-check session or make it a prerequisite to continuing R2/R7/R8; keep unperformed checks recorded as outstanding rather than accepted.
 - For SecureAD.Next, check the existing specifications and accepted decisions before presenting product behavior as an unanswered owner decision. In particular, explicit requester/target batches in the judging API do not imply a manual administrator-maintained selection list; the judgement specification already prefers permission/group-first derivation from captured evidence.
 
