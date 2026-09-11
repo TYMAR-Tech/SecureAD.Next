@@ -53,11 +53,11 @@ READMEs were folded into this file. See §`One fact, one home` below for what wa
 
 | Question | Where | What it may contain |
 |---|---|---|
-| What does this component do? | docs/layers/ | One document per component, written from the code and bound to it by a test. **This is the description** |
+| What does this component do? | the type's own XML documentation | Written from the code and kept beside it. docs/layers/ held this until 2026-09-12 and is gone |
 | How does the product run end to end? | [`WORKFLOW.md`](WORKFLOW.md) | The one current and target stage flow, host reachability, artefact lifetime and migration/deletion rules |
 | Which workflow paths still exist and when are they deleted? | [`WORKFLOW-PATHS.md`](WORKFLOW-PATHS.md) | Production/developer path inventory with retain/replace/delete disposition and exact retirement event |
-| How will something unbuilt work? | docs/layers/specs/ | One document per unbuilt subsystem, carrying the design and the research behind it. **Discussion, never a decision** — it says so in writing, and `SpecDocumentGateTests` fails the build if it does not. Consumed and deleted into the layer document as the code is built |
-| What can an operator do? | a capability row on the layer document that owns the subject | A sentence naming the test that proves it. The test is the evidence; the row is the index |
+| How will something unbuilt work? | a `SPEC-*.md` in this folder | The design and the research behind it. **Discussion, never a decision** — but docs/layers/specs/ and `SpecDocumentGateTests` are both gone, so nothing enforces that wording now |
+| What can an operator do? | no single home since 2026-09-12 | The capability rows lived on the layer documents, and the gates that indexed them were deleted with those documents |
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |
 | Why was it decided that way? | [`docs/decisions/`](../decisions/) | The reasoning. **The only place a decision is stated** |
 | What may need doing? | [`docs/PUNCH-LIST.md`](../PUNCH-LIST.md) | Open work, findings without a decision, and what blocks each |
@@ -138,8 +138,8 @@ What was chosen, in the present tense.
 What this makes cheap, what it makes expensive, and what it forbids.
 ```
 
-**What no test holds:** whether any of that content is true of the code. See §`How to continue this
-work` for what `DecisionIndexTests` does and does not check.
+**What no test holds:** whether any of that content is true of the code. `DecisionIndexTests` checked
+the index was tidy and was itself deleted on 2026-09-12, so nothing checks even that now.
 
 ### Where the rebuild tree's own conventions live
 
@@ -148,8 +148,9 @@ Folded here on 2026-08-24 from the rebuild tree's own README.
 `next/` builds from its own solution, `next/SecureAD.Next.sln`, and inherits `Directory.Build.props`
 (nullable, implicit usings, version stamp, analyzers), `Directory.Packages.props` (central package
 versions), `global.json` and `.editorconfig` from the repository root rather than restating them per
-project. The project list and the layering rules are in [`ARCHITECTURE.md`](ARCHITECTURE.md), which
-is bound to the real `.csproj` references in both directions.
+project. The project list and the layering rules are enforced by `ProjectLayeringGateTests` against
+the real `.csproj` references; [`ARCHITECTURE.md`](ARCHITECTURE.md) describes them, and since
+`P-184` nothing checks that the two agree.
 
 **Why the target frameworks differ, which is load-bearing.** `SecureAD.Kernel` and
 `SecureAD.Evidence` target plain `net10.0`, not `net10.0-windows`. The predecessor's
@@ -165,8 +166,9 @@ Targeting plain `net10.0` turns a convention someone has to remember into a comp
 
 ## One library now, and what is left of the other
 
-**`docs/` is this product's library.** docs/layers/, [`docs/decisions/`](../decisions/)
-and this folder all describe the rebuild. That is a reversal: until the predecessor's documentation
+**`docs/` is this product's library.** [`docs/decisions/`](../decisions/)
+and this folder describe the rebuild, as docs/layers/ did until 2026-09-12. That is a reversal:
+until the predecessor's documentation
 was archived on 2026-08-20, `docs/` was the *old* product's library and `docs/next/` was the new
 one. The sentence describing that arrangement stood here until 2026-08-24, long after it stopped
 being true.
@@ -208,12 +210,14 @@ suite covering the product.
 **The test that decides it: what change to the product would make this fail?**
 
 If the answer names a change — adding a table, renaming a member, removing an enum value — the check
-is **generative** and belongs in the test suite. HistoricalRecordDocumentationTests reads the
-`CREATE TABLE` statements out of `BundleSchema.cs` and holds
-`what-a-bundle-holds.md` to them, so a twelfth table fails
-the build until it is described. `GoverningDocumentTests` globs `next/src` and holds
-`READING-ORDER.md` to what is there. `DecisionIndexTests` holds `docs/DECISIONS.md` to the records it
-is generated from.
+is **generative**. That was the test for whether a documentation check belonged in the suite, and
+all three examples that stood here were deleted on 2026-09-12 regardless:
+HistoricalRecordDocumentationTests held a bundle page to the `CREATE TABLE` statements in
+`BundleSchema.cs`, GoverningDocumentTests held READING-ORDER.md to what is under `next/src`, and
+DecisionIndexTests held `docs/DECISIONS.md` to the records it is generated from. **Being generative
+is no longer sufficient**: under the owner's rule of 2026-09-12 a test may check code against code
+or against an outside authority, and a document is neither. See
+[`WHAT-THE-PRODUCT-IS.md`](../WHAT-THE-PRODUCT-IS.md).
 
 If the answer is *nothing — only editing the document it is about*, the check is **pinning**, and it
 does not belong here. A pinning check hardcodes the instance somebody already found by reading. It
@@ -283,9 +287,11 @@ exception, and it is the important one.
 
 **Oracles are copied exactly, and never rewritten.**
 
-An oracle is a frozen record of what the old system produced: the classifier fixtures under
-`tests/…/EscalationPaths/Fixtures/`, and the hash constants in `GoldenFileDeterminismTests`, which
-its own remarks describe as *"computed once and hardcoded"*. These come across byte for byte.
+An oracle is a frozen record of what the old system produced: the classifier fixtures under the
+predecessor's `tests/…/EscalationPaths/Fixtures/`, and the hash constants in
+[`GoldenAceHashTests`](../../next/tests/SecureAD.Next.Tests/Kernel/Security/GoldenAceHashTests.cs),
+whose own remarks carry the rule — *a golden value that needs editing is a finding, not a fix*.
+GoldenFileDeterminismTests, named here until 2026-09-12, is gone. These come across byte for byte.
 
 A golden value edited to match what the new code produces proves nothing. It deletes the evidence
 and keeps the ceremony. So: **a golden value that needs editing is a finding, not a fix.** Stop,
@@ -334,9 +340,9 @@ more than once, so each becomes a build failure in the rebuild tree rather than 
 | # | What went wrong before | How it is prevented | State |
 |---|---|---|---|
 | 1 | A correct mechanism built, and no boundary obliging its use | `Result<T>` and `AuditError` are types, so the compiler enforces them. Plus: no service constructor parameter may default to `null` — that is how progress, cancellation and the performance log all became optional and unused | **done** — `NullDefaultGateTests`. Enforced as the wider rule, no production parameter at all, because a text scan cannot tell a constructor from a method |
-| 2 | The same question answered three to six times, differently | A concept registry: named concepts, one owning type each, and a test that fails when a second type declares a matching member | **done** — [`CONCEPT-REGISTRY.md`](CONCEPT-REGISTRY.md), enforced by `ConceptRegistryTests`. `SchemaGuidSingleSourceGateTests` is a second, narrower instance of the same gate, forbidding a GUID literal outside the catalogue |
+| 2 | The same question answered three to six times, differently | A concept registry: named concepts, one owning type each, and a test that fails when a second type declares a matching member | **done** — `ConceptRegistryTests`, which has held the concepts as a table in its own code since `P-184`; [`CONCEPT-REGISTRY.md`](CONCEPT-REGISTRY.md) is description and nothing checks the two agree. `SchemaGuidSingleSourceGateTests` is a second, narrower instance of the same gate, forbidding a GUID literal outside the catalogue |
 | 3 | No artefact states the age or provenance of its evidence | Every artefact writer emits `run_id` and `SealedUtc` | **phase 2** |
-| 4 | "Found nothing" and "could not compute" rendered identically | No public method returns a bare count; it returns a vouched type or a `Result<T>` | **done** — `S-6-vouched-returns.md`, enforced by `UnvouchedResultGateTests`. A count is recognised by its name, because an `int` carries no units and a rule firing on every `int` would forbid an access mask; a collection is bare when its declaring type carries no `Errors` or `Verdict` beside it. One exemption, `SchemaGuidCatalog`, with a decay test that fails when the catalogue gains a way to fail |
+| 4 | "Found nothing" and "could not compute" rendered identically | No public method returns a bare count; it returns a vouched type or a `Result<T>` | **done** — `UnvouchedResultGateTests`, which is now the whole of the rule: the specification it was written from, `S-6-vouched-returns.md`, went with docs/layers/ on 2026-09-12. A count is recognised by its name, because an `int` carries no units and a rule firing on every `int` would forbid an access mask; a collection is bare when its declaring type carries no `Errors` or `Verdict` beside it. One exemption, `SchemaGuidCatalog`, with a decay test that fails when the catalogue gains a way to fail |
 | 4b | A member carrying a vouching *name* and a value that cannot vary | The vouching member must be reachable as both values: the gate drives each type's own public constructors and factories, and fails a boolean voucher it only ever saw say one thing | **done** — `VouchedValueReachabilityGateTests`, closing `P-63`. It reads nothing under `next/tests`, so a test can neither satisfy it nor break it. A cheaper check on the getter's IL is carried beside it, for the vouchers the driver cannot build. Four are named as beyond its reach, each with a reason, and a decay test deletes an entry the driver later learns to settle |
 | 5b | The same, but proved rather than promised | Every public type is reachable from a running entry point. Uses the compiler's own view of the code, so a mention in a comment does not count as use | **blocked** — nothing traces reachability. The entry point it once waited for exists: the shell ships and a run can be started from it. What is missing is the trace itself, from that root through the compilation. Recorded as `F-S7-42` |
 | 6 | Names describing an intention rather than the code | Not mechanically testable. Review only | — |
@@ -363,15 +369,20 @@ The failure it exists to catch is not "nothing mentions this" — the old produc
 grids mention plenty, and mention each other. It is **"nothing that runs can get to this"**. That
 is reachability from a root. When the gate was split there was no root to measure from; the shell
 has since shipped and there is one. What is still missing is the trace itself — nothing walks the
-compilation from that root — so 5a enforces the bookkeeping and 5b stays blocked on the measurement
-rather than on the entry point.
+compilation from that root — so 5b stays blocked on the measurement rather than on the entry point.
+
+**5a is gone, and with it the half that was working.** It was the surface register, deleted on
+2026-09-12 with the other paperwork gates because it only ever checked that a document and a list
+agreed. Its own page said so. So gate 5 now has no half at all: nothing enforces the bookkeeping and
+nothing traces reachability. That is `P-182`.
 
 Written so far, in [`next/tests/SecureAD.Next.Tests/Architecture/`](../../next/tests/SecureAD.Next.Tests/Architecture):
 [`ProductInvariantTests`](../../next/tests/SecureAD.Next.Tests/Architecture) asserts invariants I-1 and I-3 explicitly rather than inheriting them,
 `GreenfieldGateTests` confines directory reads to the capture project per
 [`0008`](../decisions/0008-live-verification-is-removed.md) and holds the orphan guard, and
-`NullDefaultGateTests` holds gate 1's second half, and `ConceptRegistryTests` holds gate 2 against
-[`CONCEPT-REGISTRY.md`](CONCEPT-REGISTRY.md), and `UnvouchedResultGateTests` holds gate 4 while `VouchedValueReachabilityGateTests` holds gate 4b. Each
+`NullDefaultGateTests` holds gate 1's second half, and `ConceptRegistryTests` holds gate 2 as a table
+in its own code since `P-184` — [`CONCEPT-REGISTRY.md`](CONCEPT-REGISTRY.md) is now description, not
+the rule — and `UnvouchedResultGateTests` holds gate 4 while `VouchedValueReachabilityGateTests` holds gate 4b. Each
 carries the scanner self-tests below, and
 all were mutation-tested in both directions.
 
@@ -387,106 +398,78 @@ permanent.
 
 ## How to continue this work
 
-**The documentation is consolidated, and staying that way is the job.** One layer document per
-component, written from the code and bound to it by a test; `docs/decisions/` for positions;
-[`PUNCH-LIST.md`](../PUNCH-LIST.md) for work that may need doing; everything else deleted. A pass
-that adds documents without removing any has not consolidated anything.
+**The documentation is consolidated, and staying that way is the job.** A pass that adds documents
+without removing any has not consolidated anything. What consolidation means in practice changed on
+2026-09-12, and is set out below rather than assumed from how this repository used to work.
 
-### Adding documentation: the whole procedure
+### Adding documentation: what replaced the procedure
 
-**Documentation for code lives in docs/layers/{subsystem}/{a-sentence-about-the-thing}.md. There
-is nowhere else it may go.** The subsystems are `kernel`, `audit`, `connect`, `evidence`, `schema`
-and `shell` — the folders that exist under docs/layers/. Nothing else is a layer
-document: `docs/decisions/` holds positions, `docs/rules/` holds the predecessor's rule cards,
-docs/planned/ holds specifications for unbuilt work.
+> **This section described a documentation system that no longer exists.** Until 2026-09-12 the
+> repository kept one layer document per component under docs/layers/, a public surface register,
+> and around a dozen tests holding those documents to the code. The cuts of 2026-09-11 and
+> 2026-09-12 deleted all of it — 260 tests, then 24 more — under the owner's rule that a test keeps
+> the code honest rather than a document. The six-step procedure that stood here instructed steps
+> against deleted folders, pointed at a deleted register, and claimed the build enforced them. It is
+> replaced rather than corrected, because there is nothing left to correct it to.
 
-Six steps. Steps 1 to 4 fail the build if skipped; 5 and 6 do not, and are the ones to be
-deliberate about.
+**Three documents are maintained, and nothing else.** [`PUNCH-LIST.md`](../PUNCH-LIST.md) is the
+work queue, [`WHAT-THE-PRODUCT-IS.md`](../WHAT-THE-PRODUCT-IS.md) records decisions the owner has
+already made so he is never asked twice, and `.github/copilot-instructions.md` says how to work.
+Those three are authoritative on process. What other documents cite *this* page for is § Gates.
 
-1. **Put the file in docs/layers/{subsystem}/.** Naming a new subsystem means adding it to
-   `LayerDocuments.Subsystems` in the test project **in the same commit** — the gates iterate that
-   list, so a folder missing from it is a folder nothing checks.
-   `EveryLayerDirectoryIsARegisteredSubsystem` fails if you forget.
-2. **Give it a `TYPES` table** between `<!-- TYPES:BEGIN -->` and `<!-- TYPES:END -->`, one row per
-   public type, in the form `` | `TypeName` | what it is | ``. A page that opens the markers and
-   leaves them empty fails.
-3. **Add each type to [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md)**, pointing at that page. The
-   register and the table are checked against each other in both directions: a type in the table
-   and not the register fails, and a type registered to a page whose table does not claim it fails.
-4. **Make every path resolve** — as a link, in backticks, or in a `<c>` tag. Three gates cover
-   those three forms across the whole repository.
-5. **Write it from the code, not from another document.** Open the type, the enum, the query
-   actually sent. A page written from a page inherits its errors, and that is how a wrong sentence
-   survives four rewrites.
-6. **Delete what it replaces, in the same commit.** A document that adds without removing has not
-   consolidated. If something is deleted, `AreaFileCitationSurvivalTests` reads it back out of git
-   history and refuses the deletion if a capability went with it.
+**Reasoning goes in code comments and in the commit message.** That is where it is actually read,
+it cannot drift from the code beside it, and nobody has to edit around it later. A type carries its
+own reasoning in its XML documentation, including the Microsoft sources it is anchored to.
 
-**The shape of a layer document**, from the pages that have one:
-
-```
-# A sentence about the thing
-
-**Code:** the source files this page describes, in backticks, comma separated
-**Layer:** Audit — speaks to a customer's directory.
-
-One paragraph on what the part actually does.
-
----
-
-## The types
-
-<!-- TYPES:BEGIN -->
-| Type | What it is |
-|---|---|
-| `SomeType` | What it is, in a sentence an operator could read |
-<!-- TYPES:END -->
-
-Each type carries its own reasoning in its XML documentation, including the Microsoft sources it
-is anchored to. **That is the reference; this page is the orientation.**
-```
-
-Then whatever the page needs: what it refuses to claim, what an operator can do, what is not built.
-**No gate gets to say what a page contains beyond the `TYPES` block** — testing the shape of prose
-is forbidden by §*When a document counts as documentation*, and a page whose headings are policed
-is a page nobody rewrites when the code changes.
+`docs/decisions/` and `docs/rules/` remain as reference and are not maintained proactively.
+docs/layers/, docs/planned/, docs/reviews/ and docs/corrections/ are gone and are not to be
+recreated — that shape is exactly what was removed.
 
 ### Route every fact to exactly one destination
 
 | Kind of fact | Goes to | What holds it there |
 |---|---|---|
-| What an operator can do | a capability row naming the test that proves it | `CapabilityCitationTests`, `AreaFileGateTests` |
-| A product position | a record in `docs/decisions/` | `DecisionIndexTests` — **the index only, never the content** |
-| Work that may need doing | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | `PunchListIdentifierTests` — the shape only |
-| A document and the code disagreeing, where you are not fixing it now | [`_DRIFT.md`](../_DRIFT.md) | **nothing** — see below |
+| What an operator can do | a capability row naming the test that proves it | nothing — `CapabilityCitationTests` and `AreaFileGateTests` deleted 2026-09-12 |
+| A product position | a record in `docs/decisions/` | nothing — `DecisionIndexTests` deleted 2026-09-12; the folder is reference now |
+| Work that may need doing | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | nothing — `PunchListIdentifierTests` deleted 2026-09-12 |
+| A document and the code disagreeing, where you are not fixing it now | [`_DRIFT.md`](../_DRIFT.md) | nothing, and it never had a gate |
 | Anything else | deleted | — |
 
-**The drift log is the one destination with no gate behind it.** A row added there and never worked
-will not announce itself. All eight of its original items were fixed on 2026-08-25, and the header
-records what went wrong: they had been deferred on the stated grounds that the branch was
-documentation-only, and that was not true of it — it carried thirty-five production files, six with
-behaviour changes. Two of the eight had themselves rotted before anyone returned to them. **If you
-put something there, put a punch-list row beside it**, because that is the destination something
-watches.
+**Every destination in that table is now unguarded.** Until 2026-09-12 the drift log was the only one
+with nothing behind it, and this section warned about precisely that: a row added there and never
+worked will not announce itself. All eight of its original items were fixed on 2026-08-25, and the
+header records what went wrong — they had been deferred on the stated grounds that the branch was
+documentation-only, and that was not true of it: it carried thirty-five production files, six with
+behaviour changes. Two of the eight had themselves rotted before anyone returned to them. **That
+warning now applies to the whole table.** Prefer the punch list, because it is the destination the
+owner actually reads.
 
 ### The rules a session works to
 
 Each says plainly whether the build enforces it, because a rule nothing checks is a rule that
 decays and the point of this section is to stop that happening again.
 
-1. **One type, one owner.** Adding a public type means adding a row to the owning page's `TYPES`
-   table and a row to [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md). Two pages may not claim one
-   type. **Enforced.**
+> **Four of these said "Enforced." on 2026-09-12 when nothing enforced them any longer.** The gates
+> named were deleted in the documentation cut, and the list went on promising a build failure that
+> could not happen — which is the failure this repository rates worst of all, a check that looks like
+> protection while measuring nothing. They are corrected below rather than quietly dropped, because
+> the rules themselves are still worth working to.
+
+1. **One type, one owner.** *Removed.* It required a row in a page's `TYPES` table and a row in
+   `SURFACE-REGISTER.md`; both the tables and the register were deleted on 2026-09-12, so there is
+   no longer any such thing to do. Gate 2 still holds the version of this that matters — one concept,
+   one answering type — in `ConceptRegistryTests`.
 2. **A capability names a test that exists and passes.** The test is the evidence; the table is the
-   index. **Enforced.**
-3. **Nothing is deleted until its claims have somewhere else to live.** `AreaFileCitationSurvivalTests`
-   reads deleted documents back out of git history and refuses a deletion that dropped a capability.
-   That gate also makes recovery possible: seventeen run-library claims were restored verbatim from
-   history on 2026-08-24 rather than rewritten. **Enforced.**
-4. **Every path you write must resolve** — as a link, in backticks, or in a `<c>` tag.
-   `DocumentationLinkGateTests`, `ProsePathCitationTests` and `DocumentPathCitationTests` cover
-   those three between them, across the whole repository and not only `docs/`. If a document was
-   deleted, take the backticks off so the sentence reads as history. **Enforced.**
+   index. **No longer enforced** — `CapabilityCitationTests` was deleted 2026-09-12.
+3. **Nothing is deleted until its claims have somewhere else to live.** **No longer enforced** —
+   `AreaFileCitationSurvivalTests` was deleted 2026-09-12. It read deleted documents back out of git
+   history and refused a deletion that dropped a capability, and it also made recovery possible:
+   seventeen run-library claims were restored verbatim from history on 2026-08-24 rather than
+   rewritten. Git history still holds all of that; nothing now checks it for you.
+4. **Every path you write must resolve** — as a link, in backticks, or in a `<c>` tag. **No longer
+   enforced** — `DocumentationLinkGateTests`, `ProsePathCitationTests` and `DocumentPathCitationTests`
+   were all deleted 2026-09-12. If a document was deleted, take the backticks off so the sentence
+   reads as history.
 5. **Measure before you plan, and say what you opened.** A count you did not read is not a
    measurement, and a probe that matches a substring is not a probe — `README.md` is a substring of
    six paths in this repository and that has produced wrong answers twice. **Not enforced.**
@@ -498,13 +481,15 @@ decays and the point of this section is to stop that happening again.
 
 ### What nothing holds, and you should know it
 
-- **Whether a decision record's content matches the code.** `DecisionIndexTests` checks the
-  catalogue is tidy — every record listed, every listing real, each with a title, date and status.
-  It does not read a single word inside one. Measured 2026-08-24: of 77 records, 29 are named in a
-  test, 53 in production code, and **23 appear nowhere in the tree at all**. Several of those
+- **Whether a decision record's content matches the code.** `DecisionIndexTests` checked the
+  catalogue was tidy — every record listed, every listing real, each with a title, date and status —
+  and never read a word inside one. **It was deleted on 2026-09-12, so even the tidiness is now
+  unchecked.** Measured 2026-08-24, when the gate still ran: of 77 records, 29 were named in a
+  test, 53 in production code, and **23 appeared nowhere in the tree at all**. Several of those
   describe behaviour that does exist.
-- **Whether a capability sentence describes what its test asserts.** The gate closes the gap where
-  a test was renamed, deleted or never written. It cannot read English.
+- **Whether a capability sentence describes what its test asserts.** No gate closes this, and since
+  2026-09-12 no gate closes the narrower gap either — a capability may now name a test that was
+  renamed, deleted or never written.
 - **Whether any of the prose is any good.** That needs a reader.
 
 ### Decisions are the owner's, and a session waits for them

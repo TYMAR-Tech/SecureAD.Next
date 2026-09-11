@@ -8,8 +8,8 @@ namespace SecureAD.Next.Tests.Architecture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Why this exists.</b> Three architecture gates - <see cref="ConceptRegistryTests"/>,
-/// <see cref="SurfaceRegisterTests"/> and <see cref="UnvouchedResultGateTests"/> - each held their
+/// <b>Why this exists.</b> Three architecture gates - <see cref="ConceptRegistryTests"/>, the
+/// surface register at gate 5a, and <see cref="UnvouchedResultGateTests"/> - each held their
 /// own copy of this list, and each named the audit assembly as
 /// <c>typeof(SecureAD.Audit.Capture.CapturedAttributeCatalog).Assembly</c>. When S-24 moved that
 /// catalogue into the kernel, that expression still compiled and returned the <i>kernel</i>
@@ -19,12 +19,21 @@ namespace SecureAD.Next.Tests.Architecture;
 /// <para>
 /// <b>It was not silent, and the record says so because the first draft of this comment claimed it
 /// was.</b> Mutating the reference here fails five checks, three of them the gates themselves: the
-/// registers are bound in both directions, so an assembly dropping out of the scan leaves the
+/// registers were bound in both directions, so an assembly dropping out of the scan left the
 /// register naming types that no longer exist, and
-/// <c>SurfaceRegisterTests.TheRegisterNamesNoTypeThatDoesNotExist</c> fires. The bidirectional
+/// <c>SurfaceRegisterTests.TheRegisterNamesNoTypeThatDoesNotExist</c> fired. The bidirectional
 /// binding did the job it was built for. That is <c>F-S24-4</c>, and it is duplication worth
 /// removing rather than a hole - three copies of one list is three places to update and three
 /// chances to update two of them.
+/// </para>
+/// <para>
+/// <b>That safety net is gone, and this one is what replaced it.</b> The surface register and
+/// <c>SurfaceRegisterTests</c> were deleted on 2026-09-12 with the other documentation gates, so
+/// nothing bidirectional watches this list any more. What catches the same mutation now is
+/// <see cref="RebuildAssemblyTests.TheGatesCoverEveryDistinctAndCorrectlyNamedAssembly"/> below,
+/// which compares the resolved assembly names against a fixed list of strings: the S-24 mutation
+/// would produce kernel, evidence, kernel and fail on both the sequence and the distinctness check.
+/// <b>It is the only thing holding this file, so do not weaken it.</b>
 /// </para>
 /// <para>
 /// <b>Each assembly is named by a type that cannot leave it.</b> <c>Result</c> is the kernel's own

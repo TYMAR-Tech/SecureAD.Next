@@ -9,11 +9,12 @@ namespace SecureAD.Next.Tests.Architecture;
 /// <remarks>
 /// <para>
 /// <b>Why this project is not in <see cref="RebuildAssemblies"/>.</b> The architecture gates that
-/// reflect over the product - the surface register at gate 5a and the vouched-return rule at gate 4
-/// - ask questions about public types. A command-line executable has no public types worth asking
-/// about: what it offers the world is three options and four exit codes. Adding it to the covered
-/// list would mean registering its argument parser in <c>SURFACE-REGISTER.md</c> as though
-/// something might come to depend on it.
+/// reflect over the product ask questions about public types. A command-line executable has no
+/// public types worth asking about: what it offers the world is three options and four exit codes.
+/// Adding it to the covered list would once have meant registering its argument parser in the
+/// surface register as though something might come to depend on it. That register was deleted on
+/// 2026-09-12, but the vouched-return rule at gate 4 still reflects over the covered set, so the
+/// reasoning is unchanged.
 /// </para>
 /// <para>
 /// <b>But an assembly outside the gates is an assembly that escapes them</b>, and this repository
@@ -57,9 +58,10 @@ public sealed class CommandLineSurfaceGateTests
             exported.Count == 0,
             "The command-line project exports public types. Its surface is meant to be a command "
             + "line, which is why it sits outside the assemblies the architecture gates reflect "
-            + "over. A public type here is covered by no gate at all: it is in neither "
-            + "SURFACE-REGISTER.md nor the vouched-return rule. Either make it internal, or add "
-            + "the assembly to RebuildAssemblies and register what it exports:"
+            + "over. A public type here is covered by no gate at all: it is outside the "
+            + "vouched-return rule, and the surface register that would once have caught it was "
+            + "deleted on 2026-09-12. Either make it internal, or add the assembly to "
+            + "RebuildAssemblies deliberately:"
             + Environment.NewLine + string.Join(Environment.NewLine, exported));
     }
 

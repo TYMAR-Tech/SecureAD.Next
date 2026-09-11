@@ -10,13 +10,14 @@ namespace SecureAD.Next.Tests.Architecture;
 /// <remarks>
 /// <para>
 /// <b>Why the shell is not in <see cref="RebuildAssemblies"/>.</b> The gates that reflect over the
-/// product - the surface register at gate 5a and the vouched-return rule at gate 4 - ask questions
-/// about public types, and name for each one the inventory row expected to bring it a consumer. A view
+/// product ask questions about public types, and until 2026-09-12 the surface register at gate 5a
+/// named for each one the inventory row expected to bring it a consumer. A view
 /// model has no such row and never will: nothing outside this project can legitimately consume one,
 /// because what a window offers the world is screens. Registering <c>NewAuditViewModel</c> as
 /// though something might come to depend on it is bookkeeping about a fiction. This is the same
 /// answer <see cref="CommandLineSurfaceGateTests"/> gives for the command line, for the same
-/// reason.
+/// reason. The register is gone, but the vouched-return rule at gate 4 still asks those questions,
+/// so the exemption still has something to be an exemption from.
 /// </para>
 /// <para>
 /// <b>But an assembly outside the gates is an assembly that escapes them</b>, and this repository
@@ -78,11 +79,11 @@ public sealed class ShellSurfaceGateTests
             exported.Count == 0,
             "The shell exports public types. Its surface is meant to be its screens, which is why "
             + "it sits outside the assemblies the architecture gates reflect over. A public type "
-            + "here is covered by no gate at all: it is in neither SURFACE-REGISTER.md nor the "
-            + "vouched-return rule. Either make it internal - a view's code-behind needs "
-            + "x:ClassModifier=\"internal\" in its XAML as well as the modifier in its .cs, because "
-            + "WPF generates the other half of the class - or add the assembly to "
-            + "RebuildAssemblies and register what it exports:"
+            + "here is covered by no gate at all: it is outside the vouched-return rule, and the "
+            + "surface register that would once have caught it was deleted on 2026-09-12. Either "
+            + "make it internal - a view's code-behind needs x:ClassModifier=\"internal\" in its "
+            + "XAML as well as the modifier in its .cs, because WPF generates the other half of "
+            + "the class - or add the assembly to RebuildAssemblies deliberately:"
             + Environment.NewLine + string.Join(Environment.NewLine, exported));
     }
 

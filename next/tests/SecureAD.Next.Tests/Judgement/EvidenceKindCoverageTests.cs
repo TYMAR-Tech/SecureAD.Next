@@ -29,8 +29,10 @@ namespace SecureAD.Next.Tests.Judgement;
 /// <b>What a new rule owes, therefore.</b> Add its evidence kind to <see cref="Samples"/> with one
 /// assertion about its contents, and the write, the read, the paged read and the discriminator are
 /// all covered. Everything else a rule owes is already held: guidance by
-/// <c>RuleGuidanceTests</c>, declared inputs by <c>RuleDeclarationTests</c>, and the public types by
-/// <c>SurfaceRegisterTests</c> and <c>TypesTableOwnershipTests</c>.
+/// <c>RuleGuidanceTests</c>, and declared inputs by <c>RuleDeclarationTests</c>. <b>Its public types
+/// are held by nothing.</b> <c>SurfaceRegisterTests</c> and <c>TypesTableOwnershipTests</c> covered
+/// them until 2026-09-12, when both were deleted with the other documentation gates, and nothing
+/// has replaced them - that is <c>P-182</c>.
 /// </para>
 /// </remarks>
 public sealed class EvidenceKindCoverageTests
