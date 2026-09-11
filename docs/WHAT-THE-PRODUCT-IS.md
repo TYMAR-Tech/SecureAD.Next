@@ -55,7 +55,7 @@ control evidence and require profiling before assigning cost to individual addit
 
 The owner authorized visible progress through all available audit phases and approved a pinned phase
 panel, real counters, elapsed/last-update ages and separate outcomes. The
-[New Audit progress correction](layers/shell/the-new-audit-screen.md#visible-phase-progress--approved-correction)
+New Audit progress correction
 records the implementation and limits. Performance/storage profiling and logging hardening remain
 separate work. Profiling can use sealed copies and representative synthetic data without contacting
 a directory; production-shaped synthetic results alone do not establish customer acceptance. Preserve
@@ -66,7 +66,7 @@ The progress correction built successfully and passed 4,372 offline tests (four 
 excluded) plus 179 targeted coverage tests. Its detailed verification record is in the linked New Audit
 page. It adds no production budget and makes no improvement claim for the reported judging runtime.
 
-Decided, built and measured — see [`layers/judgement/`](layers/judgement/).
+Decided, built and measured — see layers/judgement/.
 
 - **One pass over the bundle, not one per rule.** Every object is streamed once and offered to every
   scheduled rule while it is in hand, so judging forty rules costs the same read as judging one.
@@ -117,7 +117,7 @@ Synthetic verification and customer-shaped measurement
 must be reported separately from production-budget approval and final Stage 6 acceptance.
 Final offline verification passed 4,355/4,355 tests with the four stage-status tests explicitly excluded;
 targeted coverage passed 799/799, and the solution build succeeded. The
-[implementation record](layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+implementation record
 records the final artifacts and outstanding acceptance boundaries. No production expansion budget is approved.
 General membership writes and own-account-only Self-Membership candidates are separate; concrete
 requester answers are not implied by those candidates. Historical schema-16 Self-Membership
@@ -131,7 +131,7 @@ schema 22/control engine 6 added existing-owner assessments and replay-validated
 schema 23/control engine 7 adds bounded full-control summaries with separate source proof and counting links;
 schema 24/control engine 8 adds explicitly budgeted member attribution, requiring current Derivation inputs;
 principal catalogue version 2 includes the verified BUILTIN domain-scope correction, P-150.
-Schema 25 implements the approved [shared permission-proof storage](layers/judgement/the-judgement-store.md#shared-permission-proof-storage--schema-25),
+Schema 25 implements the approved shared permission-proof storage,
 with unchanged control engine, catalogue and input formats. Complete lab public-model comparison passes,
 and the database is 20.8% smaller including indexes and references. Exhaustive export allocation
 increased; no runtime or memory improvement is claimed. Production-shaped validation remains outstanding,
@@ -163,7 +163,7 @@ Being included because of a possible route or dependency does not establish that
 These answers remain separate from protection, accepted ownership, expected administration and rule
 severity; they must not collapse into a universal privileged-or-important flag.
 
-The [broader judgement design](layers/specs/JUDGEMENT-HALF.md#three-tier-0-bases-with-different-remediations)
+The broader judgement design
 already describes these distinctions, but is not a completed shared classifier. Its outdated seed
 exclusions must not override the authoritative Tier-0 policy. Existing membership and control evidence
 are reusable inputs, not proof that the combined classification is implemented. This agreement settles
@@ -186,7 +186,7 @@ core identities and supplied same-domain membership witnesses, retaining indepen
 explicitly incomplete coverage. It does not yet classify all assets, expand membership or qualify
 operational direct control/dependencies. Shared directed relations and ownership result/binding
 contracts are built and now consumed by the schema-26 audit integration below. The
-[implementation record](layers/judgement/the-judgement-store.md#shared-tier-0-relevance-and-ownership-contracts--decision-0112)
+implementation record
 records that foundation checkpoint; its catalogue-2 compatibility does not override the current schema-version policy.
 
 **The offline selector is implemented as a library** under
@@ -194,7 +194,7 @@ records that foundation checkpoint; its catalogue-2 compatibility does not overr
 classifications and follows incoming captured controller relationships, retaining conditional links,
 alternative reasons and explicit incomplete results on cancellation. It blocks ambiguous identities,
 handles cycles without repeating target visits, and keeps selector version 1 separate from the
-classification version. The [selector implementation record](layers/judgement/the-judgement-store.md#offline-ownership-scope-selector--decision-0113)
+classification version. The selector implementation record
 states the supported inputs and validation. The selector-only slice added no membership expansion or
 production limit; the subsequent integration now uses it during judging.
 
@@ -205,11 +205,11 @@ The approved change uses schema 26/control engine 9 and requires re-judging olde
 for current readback without rewriting those older files. The owner approved explicit assessed,
 not-assessed and unavailable-input status wording plus the two scope/assessment progress labels.
 No on-demand action button, live work, production expansion budget or performance claim is included.
-The [schema-26 implementation record](layers/judgement/the-judgement-store.md#scoped-ownership-during-judging--schema-26)
+The schema-26 implementation record
 describes proof-preserving staging, readback validation and the remaining acceptance limits. Shared
 classification remains partial: incomplete scope is visible, never a declaration that unassessed
 objects are safe. Subsequent single-run local diagnosis and read-only storage assessment are recorded
-in the [proposed bounded proof-storage redesign and validation plan](layers/judgement/the-judgement-store.md#proposed-bounded-proof-storage-redesign-and-validation-plan).
+in the proposed bounded proof-storage redesign and validation plan.
 They establish diagnostic costs, not a controlled speedup, guaranteed storage saving or production
 acceptance. The owner requested this plan before further code changes. Its recommended first slice
 shares exact repeated descriptions and complete membership explanations without narrowing basic
@@ -295,13 +295,13 @@ remediation or all-path enumeration, and none of those become prerequisites here
 
 At the catalogue-2 checkpoint, re-judging alone obtained that correction. The current member-attribution
 product requires current Derivation inputs: re-derive and re-judge an isolated copy, without re-capture.
-The [judgement-store document](layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
+The judgement-store document
 records the implementation and before/after lab checks. P-145 now has initial-slice measurements,
 not an acceptance pass: the remaining capabilities, member-attribution scale measurements, Tier 0-target review and
 claim-specific laboratory gates remain outstanding. The
-[membership slice](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
+membership slice
 has automated coverage, an isolated offline comparison and an
-[isolated live Self-Membership measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06).
+isolated live Self-Membership measurement.
 The live direct/group-held tests and fresh readback passed. Those measurements did not include
 concrete requester evaluation and do not accept the schema-17 implementation below. The new bounded
 member-attribution product has separate synthetic verification; it does not widen requester semantics.
@@ -319,7 +319,7 @@ code and genuinely unresolved details; do not ask the owner to restate the requi
 preparation does not itself approve new UI wording/layout, a reset operation, discovery enablement,
 further performance tuning or a commit/push. A stored password-reset capability and a security
 finding about unexpected reset authority are separate deliverables.
-The [bounded implementation preparation](layers/judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
+The bounded implementation preparation
 records the implementation path, versioning, verification cases and approved presentation.
 The owner subsequently selected **"Approve the capability-first implementation and wording"**.
 That approves this bounded stored-capability slice, the existing-table label "Password-reset
@@ -342,7 +342,7 @@ recommendation, the owner selected **"Approve the bounded implementation and wor
 proposal. Schema 20/control engine 4 stores it as `CredentialExposure` and the existing table says
 **"Key-credential write permission"**. It evaluates property writes, not the separate validated-write
 route, and does not claim a tested write, sign-in, account takeover or completed path to Tier 0.
-The [implementation record](layers/judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
+The implementation record
 owns the exact boundary, reproduced defects and validation. No layout, capture/Derivation schema,
 finding, discovery budget, performance tuning, commit or push is part of this approval. The separate
 password-reset security finding and final Stage 6/P-145 acceptance remain outstanding.
@@ -362,7 +362,7 @@ permission"** labels, with non-collapsing holder/root groups limited to the curr
 are not suppressed or granted an expectedness exemption. Missing/conflicting DC classification
 evidence remains unconfirmed. Configuration/Schema scope is explicit; non-domain servicing contexts
 remain unverified under P-90, except descriptor-native SYSTEM and NULL-DACL Everyone evidence.
-The [implementation record](layers/judgement/the-judgement-store.md#replication-permissions--bounded-implementation)
+The implementation record
 owns validation and limits. This does not perform replication, extract credentials, establish takeover
 or complete a path to Tier 0. Separate rules/findings and final Stage 6 acceptance remain outstanding.
 
@@ -383,7 +383,7 @@ owner acceptance stays unanswered. Both viewing directions consume the same stor
 The shared checks distinguish ordered OWNER RIGHTS permissions, complete class ancestry and missing
 serving-DC behavior. No behavior baseline is inferred from a machine name or a heuristic alone.
 SEC-031/032 are now version 3 and SEC-060 version 2; rule identities and severities are unchanged.
-The [ownership implementation record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation)
+The ownership implementation record
 owns verification and limitations. This approval includes focused shared-check corrections, not live
 operations, discovery enablement, member expansion, new findings, final Stage 6 acceptance or publication.
 
@@ -406,7 +406,7 @@ One or several grants can establish one counted summary. Supporting permissions 
 routes remain stored and visible, without being counted again. A broken or Unknown summary does
 not suppress surviving permissions. Existing-owner control remains independent; owner-change
 control remains Unknown and uncounted. Principal catalogue 2 is unchanged.
-The [implementation record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+The implementation record
 owns the 4,305/4,305 offline suite, successful build, 796/796 targeted coverage, proof-integrity
 corrections and remaining gates. Historical tests, hashes and measurement reports are preserved.
 No live access, discovery enablement, member expansion, new findings, Stage 7 paths, final Stage 6
@@ -436,7 +436,7 @@ and control/requester results from different judging runs are withheld rather th
 Requester-grid sizing and the approved R7 selected-answer presentation are implemented and
 regression-tested. R8 reconciles the delivered state, not final feature acceptance. Production
 enablement and real-product laptop/monitor validation remain outstanding; see the
-[review status](layers/judgement/the-judgement-store.md#authorization-correction-and-remaining-review-findings).
+review status.
 This is not a complete token model, whole-feature acceptance or a new live acceptance result.
 
 **R7 presentation approved after the performance checkpoint:** the owner selected
@@ -446,7 +446,7 @@ readiness separately, with expandable stored identities, permission entries and 
 for the selected answer. Keep capture-wide coverage limitations separate. This approves presentation
 only, not discovery enablement, a numerical budget, authorization/storage changes or R8 acceptance.
 Implementation and offline validation are recorded in the
-[Assets specification](layers/shell/the-assets-screen.md#r7-requester-presentation).
+Assets specification.
 The approved presentation is implemented: 137 focused checks and the full 3,837-test suite passed,
 and the solution builds. Selected evidence clears with failed or mismatched-generation reads.
 This is offline validation, not real-product acceptance; laptop/monitor checks remain outstanding
@@ -466,7 +466,7 @@ the shipped Shell and CLI until a numerical processing budget is approved. The n
 workflow checks connect synthetic sealed evidence through real judging and file readers to both
 object-screen directions, including stored proof, holder-count preservation, re-judging and read
 failure clearing. They do not establish live-directory success, physical-display usability or
-completed chains toward Tier 0. The [R8 record](layers/judgement/the-judgement-store.md#r8-current-state-reconciliation)
+completed chains toward Tier 0. The R8 record
 owns verification results and the remaining acceptance gates. R8's documentation correction is
 complete for the delivered scope; final requester/Stage 6 acceptance is not.
 
@@ -534,7 +534,7 @@ tuning, preserve the validated permission-read fix, its regression tests and mea
 and return to the remaining R2/R7/R8 integration, presentation and acceptance work in bounded
 slices. Remeasure when work changes data access or processing volume, and before approving a
 production budget, rather than after every presentation change. The completed synthetic measurements
-and their limitations are recorded in [the judgement store](layers/judgement/the-judgement-store.md).
+and their limitations are recorded in the judgement store.
 This is not approval of a numerical limit, enabling automatic discovery, new authorization behavior,
 a new R7 presentation design or final feature acceptance. Laptop/monitor checks remain ordinary
 verification work, not an additional session that must precede continued development.
@@ -543,7 +543,7 @@ verification work, not an additional session that must precede continued develop
 validated work, then resume in a new session. This explicitly authorizes that checkpoint commit and
 push; it did not approve the then-proposed R7 requester-details presentation. The continuation session
 obtained explicit approval before implementation; see the
-[R7 presentation record](layers/shell/the-assets-screen.md#r7-requester-presentation).
+R7 presentation record.
 The owner subsequently requested a separate R7 commit and push, completed as `a92d592` on `main`.
 The current R8 instruction includes no further commit or push. Keep further performance tuning
 paused unless later work changes the measured workload or a remaining cost blocks the bounded feature.
@@ -623,6 +623,31 @@ prevent.
   timestamp shown as *information* on an asset rather than as an indicator of activity, and a
   separately named *rough estimate* rule, for customers without that telemetry, whose own wording
   would have to say it is an estimate.
+
+## What tests are for, decided 2026-09-12
+
+**Tests keep the code honest, never a document.** The owner's words: *"i dont want any test that point to
+documenation. its done thing but slow developemnt way down. test to me should keep the code and how its
+supposed to work honest."*
+
+- **A test may check code against code, or code against an outside authority.** Microsoft's published
+  specifications, a recorded output of the predecessor, a frozen lab result. Only those can say the
+  product is wrong.
+- **A test that checks whether a document and the code agree is deleted.** So is one comparing two
+  documents. It confirms an opinion back to itself and doubles the cost of every change. `F-S44-2` is
+  the price: three sound suites agreeing in both directions while fifteen captured attributes were
+  silently missing, because the whole circle was anchored to the rules already written.
+- **A drifting document is a documentation problem**, fixed by reading it, not by a failing build.
+- **One exception, granted explicitly: the stage table** at the top of this file, held to the code by
+  `StageStatusGateTests` and `next/tools/check-stage-status.ps1`. That table claimed *two* judging rules
+  for long enough that twelve more were built underneath it. A stale stage table misleads the owner
+  about his own product, which is a cost no other document here carries.
+
+This removed 24 test classes on 2026-09-12, on top of the 260 deleted on 2026-09-11. **What it does not
+buy is any claim that nothing in the product is dead.** The check that would prove that — every public
+type reachable from a running entry point, gate 5b — was never built; see `docs/next/README.md` § Gates
+and `F-S7-42`. The surface register retired with the other paperwork gates was never that proof, and its
+own page said so.
 
 ## Where it departs from the predecessor
 
@@ -852,7 +877,7 @@ writable controller for, and a SYSVOL read that partly failed.
 `DomainInventory` holds its counts behind `TryGetCounts`, which answers false for every outcome but
 `Read`, and its factories refuse both contradictions at construction. There is no zero available to
 render for an unread domain even if the screen's markup were wrong. See
-[`layers/shell/what-a-run-counted.md`](layers/shell/what-a-run-counted.md).
+layers/shell/what-a-run-counted.md.
 
 **Tier 1 means what Microsoft says it means, decided 2026-09-05.** Per the
 [tier model](https://learn.microsoft.com/windows-server/identity/ad-ds/tier-model), Tier 1 is

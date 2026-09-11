@@ -5,7 +5,7 @@
 > slice has since been built and P-150 corrected. The instruction below that `ControlEdge` must
 > remain absent applied only to that decision session; it is not a current restriction.
 > Read the [current roadmap](../ROADMAP.md) and
-> [implemented control-edge boundary](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+> implemented control-edge boundary.
 > P-145's remaining acceptance checks are still open; the accepted catalogue is not reopened here.
 
 > **Written 2026-09-05.** A brief states the objective and the known ground. It is not authoritative:

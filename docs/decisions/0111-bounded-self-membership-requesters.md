@@ -52,6 +52,6 @@ Introduced in judgement schema 17; schema 18 added separately approved automatic
 Current schema 19 retains those products and adds a separate password-reset permission capability,
 without changing this requester's semantics. Both production hosts currently pass no discovery budget, leaving
 that scan inactive. The approved R7 requester presentation is implemented; the
-[R8 reconciliation](../layers/judgement/the-judgement-store.md#r8-current-state-reconciliation)
+R8 reconciliation
 records current behavior, offline verification and outstanding acceptance. These implementation
 updates do not change this decision, add a new live acceptance result or close P-145.

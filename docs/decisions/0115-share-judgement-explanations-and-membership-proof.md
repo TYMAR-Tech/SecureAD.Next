@@ -4,7 +4,7 @@ Date: 2026-09-09
 Status: Accepted.
 
 The owner explicitly approved S1 and its two-pass lab validation after reviewing the
-[bounded storage redesign](../layers/judgement/the-judgement-store.md#proposed-bounded-proof-storage-redesign-and-validation-plan).
+bounded storage redesign.
 This accepts the first slice, not every follow-on or production-scale acceptance.
 
 ## Decision

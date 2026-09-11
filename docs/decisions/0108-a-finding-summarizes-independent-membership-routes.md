@@ -89,5 +89,5 @@ recorded rather than a half-built control-edge implementation.
 
 The initial control-edge slice was implemented afterwards, including P-150's catalogue-2 scope
 correction. Its current boundary and remaining acceptance gates are recorded in
-[the judgement store](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+the judgement store.
 That later work does not change this decision's membership-evidence requirements.

@@ -35,7 +35,7 @@ The Microsoft evidence pinned so far establishes the four group assignments and 
 member propagation; it does not yet establish that the group object itself loses protection.
 
 Independent review of SEC-030 found the defect before the first derived-fact rule consumed it. The
-review is recorded in `docs/reviews/adminsdholder-catalogue-review.md`.
+review is recorded in docs/reviews/adminsdholder-catalogue-review.md.
 
 ## Decision
 

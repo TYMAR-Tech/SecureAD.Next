@@ -5,7 +5,7 @@
 > and P-150 corrected. The original objectives, counts and instruction to keep `ControlEdge` absent
 > below describe the earlier decision-only session; do not execute them now or reopen its decisions.
 > Use the [current roadmap](../ROADMAP.md), [accepted decisions](../DECISIONS.md) and
-> [implemented control-edge boundary](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06).
+> implemented control-edge boundary.
 
 > **Written 2026-09-05.** A brief states the objective and the known ground. It is not authoritative:
 > where it disagrees with the code, the code wins and the disagreement is a finding.
@@ -127,7 +127,7 @@ must do; he is relying on you for how.
 | `next/src/SecureAD.Kernel/Security/` | `DangerousPermissionClassifier`, `PermissionAssessment` |
 | `next/src/SecureAD.Derivation/` | `Walk`, membership bases — `P-105`'s subject |
 | `docs/decisions/0006`, `0077`, `0082`, `0089` | cited by the rows above |
-| `docs/layers/judgement/` | how judging works today |
+| docs/layers/judgement/ | how judging works today |
 
 **A lab bundle with real data**: `C:\Users\ba.admin\SecureADRuns\ad.lab-20260905-035415` — three
 domains, 8,383 objects, 2,071 users, 11 computers, 2,163 groups, 174 OUs, 15 GPOs, all three domains

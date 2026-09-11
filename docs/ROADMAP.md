@@ -17,7 +17,7 @@ Four systems hold the work, and each answers a different question. This document
 |---|---|
 | [`docs/decisions/`](decisions/) | what did we settle, and why |
 | [`PUNCH-LIST.md`](PUNCH-LIST.md) | what is wrong, or unanswered |
-| [`JUDGEMENT-HALF-ACCEPTANCE.md`](layers/specs/JUDGEMENT-HALF-ACCEPTANCE.md) | which of the 100 criteria are discharged |
+| `JUDGEMENT-HALF-ACCEPTANCE.md` | which of the 100 criteria are discharged |
 | [`docs/rules/`](rules/) | what each of the 62 rules must do |
 | **this file** | **what order, and where were we** |
 
@@ -117,7 +117,7 @@ what they proved is owed back at stage 3, where it is listed. `StoredFindings` a
 were kept, unconstructed, because they are the shapes a judgement store has to return.
 
 The documentation moved in the same change:
-[`layers/judgement/what-a-finding-is.md`](layers/judgement/what-a-finding-is.md) is new and owns the
+layers/judgement/what-a-finding-is.md is new and owns the
 fourteen judgement types, and the area file that held them was deleted.
 
 *Needs first:* nothing.
@@ -137,7 +137,7 @@ smaller number, and a smaller number looks exactly like a smaller forest.
 `DomainInventory` holds the counts in a field reachable only through `TryGetCounts`, and its
 factories refuse both contradictions — counts for a domain that was not read, and silence for one
 that was. So *could not read* cannot draw a zero even if the screen's markup were wrong.
-`docs/layers/shell/what-a-run-counted.md` states what the screen refuses to claim.
+docs/layers/shell/what-a-run-counted.md states what the screen refuses to claim.
 
 **The class rule is the trap this stage nearly fell into.** `objectClass` is multi-valued and
 arrives least specific first, so a computer account's chain contains `user`. Counting any value in
@@ -166,7 +166,7 @@ command-line tool rather than a screen.
 
 `SecureAD.Judgement` is a fourth production assembly at layer 4. It holds the judgement store,
 written beside the evidence and never into it, and the coordinator that streams a bundle once and
-offers every object to every scheduled rule. `docs/layers/judgement/the-judgement-store.md` describes
+offers every object to every scheduled rule. docs/layers/judgement/the-judgement-store.md describes
 it.
 
 **What the lab run found that no test could.** The delegation rules were counting every
@@ -224,7 +224,7 @@ which is an answer arrived at the wrong way round.
 
 *`P-100`, recorded and discharged 2026-08-26:* the assets screen had no layer document, so the
 findings grid, the navigation to an object and the filters over it were all built with nothing
-holding them. [`the-assets-screen.md`](layers/shell/the-assets-screen.md) now claims all 29 types
+holding them. `the-assets-screen.md` now claims all 29 types
 across the eight files behind that screen, and `ShellLayerTypesTests` binds the claim to the code in
 both directions. What is still unheld is the XAML: the views declare no types, so only
 `ViewBindingGateTests` and `ViewResourceGateTests` stand over them, and the second of those exists
@@ -255,7 +255,7 @@ nothing and concluding it was dropped:
 | `FindingStorageTests.TheRulesThatRanAreRecordedWithTheVersionThatRan` | `JudgementReadingTests.AFindingCarriesTheVersionOfTheRuleThatMadeIt` |
 
 The claims themselves live in
-[`layers/judgement/the-judgement-store.md`](layers/judgement/the-judgement-store.md), which is where
+layers/judgement/the-judgement-store.md, which is where
 they stay once this file is deleted.
 
 ## Stage 4 — the simple posture rules
@@ -279,10 +279,10 @@ rough-estimate rule for customers without that telemetry.
 carrying the AdminSDHolder marker with a non-inheriting DACL that nothing establishes as protected,
 and it is the first rule to read derived facts rather than only captured attributes. Its
 implementation is described in
-[`adminsdholder-catalogue-implementation.md`](layers/derivation/adminsdholder-catalogue-implementation.md).
+`adminsdholder-catalogue-implementation.md`.
 
 **`SEC-022` is built**, 2026-09-01, described in
-[`SEC-022-no-kerberos-preauthentication.md`](layers/judgement/rules/SEC-022-no-kerberos-preauthentication.md).
+`SEC-022-no-kerberos-preauthentication.md`.
 It reports any account whose `userAccountControl` carries `ADS_UF_DONT_REQUIRE_PREAUTH`, so a domain
 controller will hand out material derived from that account's password to anybody who asks. It reads
 only captured attributes and declares no derived facts, so it is the first rule to show that the
@@ -311,7 +311,7 @@ predecessor never had this rule. It matters because a non-privileged account car
 SID from another domain is effectively privileged and appears in no group membership listing.
 
 **`SEC-027` is built**, 2026-09-02, described in
-[`SEC-027-privileged-sid-history.md`](layers/judgement/rules/SEC-027-privileged-sid-history.md). It
+`SEC-027-privileged-sid-history.md`. It
 reports any security principal — user, computer or group — whose `sIDHistory` contains a SID whose
 identifier Microsoft documents as privileged. Severity **High**, and all three classes are reported
 identically; both decided by the owner on 2026-09-02. It reads only captured attributes and declares
@@ -349,7 +349,7 @@ single unreadable sibling silenced the whole object. Absent still means clean an
 means unknown, and there are negative controls for both.
 
 **`SEC-028`, `SEC-029` and `SEC-033` are built**, 2026-09-02, described together in
-[`SEC-028-029-033-unsecure-account-flags.md`](layers/judgement/rules/SEC-028-029-033-unsecure-account-flags.md).
+`SEC-028-029-033-unsecure-account-flags.md`.
 They report an account not required to have a password, one whose password is stored reversibly, and
 one restricted to DES — three rows of Microsoft's one *Unsecure account attributes* table. High, High
 and Medium.
@@ -394,7 +394,7 @@ know what an unset attribute resolves to. The rule will fire only when the attri
 explicitly excludes AES — Microsoft's own example being `0x4`, RC4 only.
 
 **`SEC-021` is built**, 2026-09-02, described in
-[`SEC-021-kerberoastable-privileged-account.md`](layers/judgement/rules/SEC-021-kerberoastable-privileged-account.md).
+`SEC-021-kerberoastable-privileged-account.md`.
 It reports a **privileged** user account with a service name registered on it — any authenticated
 member of the domain can ask for a ticket encrypted with that account's password and crack it
 offline, and because the account is privileged that is a single step from ordinary member to domain
@@ -465,8 +465,8 @@ The two rules were split on 2026-09-03, and the reason is not tidiness:
 | `SEC-091` | a computer carries **neither** LAPS expiration timestamp | Medium |
 | `SEC-094` | a **Windows LAPS-capable** computer carries the legacy timestamp and **not** the modern one | Low |
 
-Specified in [`SEC-091`](layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md) and
-[`SEC-094`](layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md).
+Specified in `SEC-091` and
+`SEC-094`.
 
 **`SEC-092`, LAPS rotation stale. Specified 2026-09-03, built 2026-09-03. Run against `ad.lab`
 2026-09-04: judged all 14 LAPS-relevant computers, nothing to report. A clean result rather than an
@@ -476,7 +476,7 @@ untested one — the lab's managed machines are rotating within the 24-hour grac
 |---|---|---|
 | `SEC-092` | a computer's LAPS expiration lapsed **more than 24 hours** before the reference time | Medium |
 
-Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
+Specified in `SEC-092`.
 
 **`SEC-090`, who can read LAPS passwords. Specified 2026-09-03, built 2026-09-03. Run against
 `ad.lab` 2026-09-04: three findings, and one object it refused to judge. Re-judged after `P-134`
@@ -486,13 +486,13 @@ Specified in [`SEC-092`](layers/judgement/rules/SEC-092-laps-rotation-stale.md).
 |---|---|---|
 | `SEC-090` | a principal **broad in every organisation** appears in the fully expanded set of principals holding read access to a LAPS password attribute | High |
 
-Specified in [`SEC-090`](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md).
+Specified in `SEC-090`.
 
 **The `Indeterminate` outcome was the rule working, and `P-134` gave it better evidence rather than
 weakening it.** The refusal, why it was right, and what changed are in
-[`SEC-090` §11](layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md); the derived fact it
+`SEC-090` §11; the derived fact it
 now rests on is in
-[`what-stage-2a-derives`](layers/derivation/what-stage-2a-derives.md).
+`what-stage-2a-derives`.
 
 **It is the first rule to read a security descriptor against the group expansion**, and it is the
 first of the four consumers `P-124` names to be built. What it asserts is deliberately narrow: the
@@ -514,7 +514,7 @@ three corrected the same day and the rule confirmed working against the forest.*
 |---|---|---|
 | `SEC-093` | a Group Policy Object's authorized Windows LAPS password decryptor **is, or contains through nesting,** a principal broad in every organisation | Critical |
 
-Specified in [`SEC-093`](layers/judgement/rules/SEC-093-laps-decryptor-is-a-broad-principal.md).
+Specified in `SEC-093`.
 
 **It is a second, independent gate on the same passwords `SEC-090` guards.** Microsoft separates
 them outright: being granted permission to query a password "doesn't automatically imply that the
@@ -533,7 +533,7 @@ the rule was found broken in three separate ways — a registry key that does no
 test gated on an expansion it does not need, and a lookup under the wrong scope — each a false
 negative on a Critical rule, and none visible to 3,013 green tests. All three corrected the same
 day and the rule confirmed working against the forest. **Detail, and what the tests now anchor to,
-in [`SEC-093` §10](layers/judgement/rules/SEC-093-laps-decryptor-is-a-broad-principal.md).**
+in `SEC-093` §10.**
 
 **It is the first consumer of `gpo_registry_setting`,** which capture has been writing since the
 SYSVOL work and nothing had read.
@@ -594,7 +594,7 @@ defect in the same shape, one step earlier.
 - **[`0093`](decisions/0093-an-export-states-what-it-contains.md)** — an export states its filter and
   its counts. The predecessor's LAPS export ignored the active filter *and* was named for a subset it
   did not contain.
-- **The rule-identifier gates now accept a specification under `docs/layers/judgement/rules/`**, not
+- **The rule-identifier gates now accept a specification under docs/layers/judgement/rules/**, not
   only a predecessor card. As written they forbade the rebuild from ever naming a new rule. A bogus
   `SEC-999` was fed to the gate to confirm it still fails.
 
@@ -757,7 +757,7 @@ to decrypt. Both are built. `SEC-093` was expected to need the permission graph 
 stage 5; it does not, because the decryptor is a Group Policy value rather than an access control
 entry, and the group expansion it walks arrived with `SEC-090`.
 
-*Detail:* the two specifications under [`docs/layers/judgement/rules/`](layers/judgement/rules/).
+*Detail:* the two specifications under docs/layers/judgement/rules/.
 *Needs first:* stage 3.
 
 **`SEC-020` follows, and carries an open question.** It reports a user account with a service name
@@ -776,7 +776,7 @@ Who is really in which group: nesting, primary group, cycles. Everything after t
 stored `nesting_edge` rows breadth first with a visited set; membership cycles are persisted rather
 than discarded; primary-group membership is carried on the principal row. It arrived with `SEC-090`
 and `SEC-093` is its second consumer. *Detail:*
-[`what-stage-2a-derives`](layers/derivation/what-stage-2a-derives.md).
+`what-stage-2a-derives`.
 
 *Criteria:* `AC-10`, `AC-25`, `AC-63`. `AC-26` and `AC-64` are **blocked** pending Microsoft evidence
 on what SDProp traverses and must not be implemented from inference.
@@ -802,19 +802,19 @@ stores their evidence and coverage during judging, and supplies object-first and
 pages to the object screen. The owner-to-DACL compound remains unknown and is not counted as a
 proved takeover. Expected edges are hidden by default with their count stated. The implementation
 and its end-to-end witness are described in
-[the judgement store](layers/judgement/the-judgement-store.md#initial-control-edge-product--schema-15).
+the judgement store.
 
 **Group-membership candidates were introduced in judgement schema 16, control engine 2.** Group objects
 receive separate general membership-write and own-account-only Self-Membership candidates, with
 stored scope evidence and both existing views. The named-holder Self-Membership candidates stay
 unknown; concrete requester assessments are a separate later product, not a promotion of those
 candidates. This is not member expansion or a claim that every group is privileged. The
-[membership implementation](layers/judgement/the-judgement-store.md#bounded-group-membership-control--schema-16)
-has automated coverage and an [isolated offline lab comparison](layers/judgement/the-judgement-store.md#schema-16-membership-slice--offline-lab-comparison-2026-09-06):
+membership implementation
+has automated coverage and an isolated offline lab comparison:
 all old primitives are unchanged, with 10,776 general membership writes and 10,761 unknown
 self-membership candidates added. There were no self-membership-only cases in that capture, so
 that comparison did not measure the requester behavior. A subsequent
-[isolated live measurement](layers/judgement/the-judgement-store.md#isolated-live-self-membership-measurement--2026-09-06)
+isolated live measurement
 passed twelve self/other-account and no-grant checks for direct and group-held Self-Membership,
 then verified fresh captured evidence and both real presentation directions. Concrete requester
 analysis and member expansion were unimplemented at that measurement; it does not accept the later
@@ -834,7 +834,7 @@ The approved R7 table wording and expandable selected-answer evidence are implem
 and R4 generation/failure safeguards preserved. R8 reconciles the current delivered scope and verifies
 the real stored-result-to-object-screen workflow using synthetic evidence. These are implementation
 and offline-verification results, not real-product acceptance. See the
-[R8 current-state record](layers/judgement/the-judgement-store.md#r8-current-state-reconciliation).
+R8 current-state record.
 R2 enablement and real-product/laptop/monitor verification remain open; further discovery tuning is
 paused rather than replaced by an assumed budget.
 
@@ -843,7 +843,7 @@ approval of the bounded capability-first slice and its wording. Normal judging s
 `CanResetPassword` as `CredentialExposure`, with original permission evidence, named-holder counts
 and both object-screen directions. It does not reset passwords or predict successful sign-in;
 the corresponding security finding remains separate. The existing control table and sizing are
-unchanged. See the [implementation record](layers/judgement/the-judgement-store.md#password-reset-control--bounded-implementation-preparation)
+unchanged. See the implementation record
 for validation and limits. Re-judging obtains the larger evaluated capability set without re-capture.
 
 **Key-credential write permission is implemented in schema 20, control engine 4**, following explicit
@@ -853,7 +853,7 @@ original evidence in both existing views. The partial-property-set safeguard als
 member writes; capability-only judging now receives captured schema independently of scheduled rules.
 Full offline validation passed **4,025/4,025**, the solution build succeeded, and the targeted coverage
 selection passed **270/270**. Historical layout hashes and the product layout are unchanged. See the
-[implementation record](layers/judgement/the-judgement-store.md#key-credential-write-permission--bounded-implementation)
+implementation record
 for permission-only limits, reproduced defects and the local coverage report.
 
 **Replication permission capabilities are implemented in schema 21/control engine 5**, after explicit
@@ -861,7 +861,7 @@ approval of the bounded scope, wording and grouping. `CanReplicateSecretDomainDa
 `CanReplicateFilteredAttributes` retain ordered component checks, original proof and exact captured
 root scope as `ReplicationControl`. Both views group replication visibly by holder/root within each
 page; DC classification does not suppress edges. Non-domain resource-context gaps remain unknown.
-See the [implementation record](layers/judgement/the-judgement-store.md#replication-permissions--bounded-implementation).
+See the implementation record.
 This supplies conclusions for future rules; it does not introduce a finding or perform replication.
 
 **Bounded ownership control is implemented in schema 22/control engine 6**, after approval of the
@@ -870,7 +870,7 @@ with owner-field and ordered permission proof; accepted and proven-deleted owner
 Only established existing-owner capabilities are counted; unanswered assessments retain coverage.
 The owner-change compound remains Unknown and uncounted under 0103. Serving-DC behavior is not
 inferred from a heuristic. SEC-031/032 version 3 and SEC-060 version 2 share the corrected check,
-with unchanged identities and severities. See the [ownership implementation record](layers/judgement/the-judgement-store.md#ownership-control--bounded-implementation).
+with unchanged identities and severities. See the ownership implementation record.
 
 **Bounded full-control aggregation is implemented in schema 23/control engine 7**, after the owner
 approved the preparation by requesting implementation. `HasFullControl` is a summary assessment,
@@ -880,7 +880,7 @@ Broken or Unknown summaries leave surviving permissions visible and independentl
 Existing-owner and requester boundaries remain separate; the owner-change compound stays Unknown
 and uncounted. Principal catalogue 2 is unchanged. The full offline suite passed 4,305/4,305, the
 solution build succeeded, and targeted coverage passed 796/796. See the
-[implementation record](layers/judgement/the-judgement-store.md#full-control-aggregation--bounded-implementation)
+implementation record
 for proof-integrity corrections, preserved measurements and remaining gates. The implementation request
 did not authorize publication, live ownership work or discovery enablement; the owner subsequently
 authorized publication of that completed full-control slice.
@@ -894,7 +894,7 @@ evaluation and full-control count status; established membership cannot promote 
 Only an explicitly budgeted offline library entry point runs the expansion; normal host enablement
 remains unapproved. Verification passed 4,355/4,355 offline tests with four stage-status tests explicitly
 excluded, 799/799 targeted coverage tests and a successful solution build. The
-[member-attribution record](layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+member-attribution record
 owns the final artifacts, approved timing clarification and publication authorization.
 
 **Current versions, 2026-09-11: judgement schema 30, control engine 9, derivation schema 13,
@@ -973,5 +973,5 @@ diffing: the owner ruled out a granular ACL delta on 2026-08-25.
 - **Password policy checking.** [`P-97`](PUNCH-LIST.md) — the data is captured and shown, and nothing
   grades it. SecureAD is not a policy compliance checker.
 - **The query tool** — wanted, not urgent, described in
-  [`planned/the-query-tool.md`](planned/the-query-tool.md).
-- **Effective access** — [`planned/effective-access.md`](planned/effective-access.md).
+  planned/the-query-tool.md.
+- **Effective access** — planned/effective-access.md.

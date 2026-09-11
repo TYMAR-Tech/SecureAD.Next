@@ -78,7 +78,7 @@ something that happens to a run, and an allowance is something somebody chose.
 **There is no dialog at the moment of failure.** An audit tool gets scheduled. A run that blocks at
 03:00 on a prompt nobody sees has done nothing by morning, and the operator arrives to a machine
 waiting politely for an answer instead of a bundle. This is the same reasoning that made the retry
-policy report rather than ask, recorded at [`S-10`](../layers/audit/limits-and-failures.md).
+policy report rather than ask, recorded at `S-10`.
 
 ### The declaration is per run and is never remembered
 

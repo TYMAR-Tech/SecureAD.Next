@@ -47,7 +47,7 @@ record of the conclusion.
 *"turned out not to exist in the data"* because *"a base schema attribute cannot be marked
 confidential at all — which covers the attributes this product captures."* Both halves fail. The
 general claim was challenged on 2026-08-11 as `F-S7-27`. The coverage claim failed on 2026-08-13,
-when [`S-23`](../layers/audit/the-attribute-catalogue.md) added `msLAPS-PasswordExpirationTime` and
+when `S-23` added `msLAPS-PasswordExpirationTime` and
 `ms-Mcs-AdmPwdExpirationTime` — schema extensions rather than base schema, either of which a
 customer can mark confidential.
 

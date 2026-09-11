@@ -28,8 +28,8 @@ a test with a synthetic descriptor proves the parser handles those bytes, not th
 controller sends them.
 
 **The sixteen capabilities of the parsers have moved** into
-[`what-a-policy-declares.md`](../layers/kernel/what-a-policy-declares.md) and
-[`what-a-policy-file-contains.md`](../layers/kernel/what-a-policy-file-contains.md), which now carry them
+`what-a-policy-declares.md` and
+`what-a-policy-file-contains.md`, which now carry them
 under *What an operator can do*. They are not repeated here.
 
 **What is still owed to this section** are the seven types this area governs that no layer document

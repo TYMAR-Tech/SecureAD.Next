@@ -31,7 +31,7 @@ object's detail.
 `SecureAD.Judgement` streams a bundle once, offers
 every object to every scheduled rule, and writes findings to a store beside the evidence and never
 into it. Two rules, SEC-010 and SEC-011, confirmed against a real forest on 2026-08-26.
-[`docs/layers/judgement/the-judgement-store.md`](../layers/judgement/the-judgement-store.md)
+docs/layers/judgement/the-judgement-store.md
 describes it. The Shell runs capture, derivation and judging in that order and can open the resulting
 objects and findings.
 
@@ -53,10 +53,10 @@ READMEs were folded into this file. See §`One fact, one home` below for what wa
 
 | Question | Where | What it may contain |
 |---|---|---|
-| What does this component do? | [`docs/layers/`](../layers/) | One document per component, written from the code and bound to it by a test. **This is the description** |
+| What does this component do? | docs/layers/ | One document per component, written from the code and bound to it by a test. **This is the description** |
 | How does the product run end to end? | [`WORKFLOW.md`](WORKFLOW.md) | The one current and target stage flow, host reachability, artefact lifetime and migration/deletion rules |
 | Which workflow paths still exist and when are they deleted? | [`WORKFLOW-PATHS.md`](WORKFLOW-PATHS.md) | Production/developer path inventory with retain/replace/delete disposition and exact retirement event |
-| How will something unbuilt work? | [`docs/layers/specs/`](../layers/specs/) | One document per unbuilt subsystem, carrying the design and the research behind it. **Discussion, never a decision** — it says so in writing, and `SpecDocumentGateTests` fails the build if it does not. Consumed and deleted into the layer document as the code is built |
+| How will something unbuilt work? | docs/layers/specs/ | One document per unbuilt subsystem, carrying the design and the research behind it. **Discussion, never a decision** — it says so in writing, and `SpecDocumentGateTests` fails the build if it does not. Consumed and deleted into the layer document as the code is built |
 | What can an operator do? | a capability row on the layer document that owns the subject | A sentence naming the test that proves it. The test is the evidence; the row is the index |
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |
 | Why was it decided that way? | [`docs/decisions/`](../decisions/) | The reasoning. **The only place a decision is stated** |
@@ -165,7 +165,7 @@ Targeting plain `net10.0` turns a convention someone has to remember into a comp
 
 ## One library now, and what is left of the other
 
-**`docs/` is this product's library.** [`docs/layers/`](../layers/), [`docs/decisions/`](../decisions/)
+**`docs/` is this product's library.** docs/layers/, [`docs/decisions/`](../decisions/)
 and this folder all describe the rebuild. That is a reversal: until the predecessor's documentation
 was archived on 2026-08-20, `docs/` was the *old* product's library and `docs/next/` was the new
 one. The sentence describing that arrangement stood here until 2026-08-24, long after it stopped
@@ -210,7 +210,7 @@ suite covering the product.
 If the answer names a change — adding a table, renaming a member, removing an enum value — the check
 is **generative** and belongs in the test suite. HistoricalRecordDocumentationTests reads the
 `CREATE TABLE` statements out of `BundleSchema.cs` and holds
-[`what-a-bundle-holds.md`](../layers/evidence/what-a-bundle-holds.md) to them, so a twelfth table fails
+`what-a-bundle-holds.md` to them, so a twelfth table fails
 the build until it is described. `GoverningDocumentTests` globs `next/src` and holds
 `READING-ORDER.md` to what is there. `DecisionIndexTests` holds `docs/DECISIONS.md` to the records it
 is generated from.
@@ -394,16 +394,16 @@ that adds documents without removing any has not consolidated anything.
 
 ### Adding documentation: the whole procedure
 
-**Documentation for code lives in `docs/layers/{subsystem}/{a-sentence-about-the-thing}.md`. There
+**Documentation for code lives in docs/layers/{subsystem}/{a-sentence-about-the-thing}.md. There
 is nowhere else it may go.** The subsystems are `kernel`, `audit`, `connect`, `evidence`, `schema`
-and `shell` — the folders that exist under [`docs/layers/`](../layers/). Nothing else is a layer
+and `shell` — the folders that exist under docs/layers/. Nothing else is a layer
 document: `docs/decisions/` holds positions, `docs/rules/` holds the predecessor's rule cards,
-`docs/planned/` holds specifications for unbuilt work.
+docs/planned/ holds specifications for unbuilt work.
 
 Six steps. Steps 1 to 4 fail the build if skipped; 5 and 6 do not, and are the ones to be
 deliberate about.
 
-1. **Put the file in `docs/layers/{subsystem}/`.** Naming a new subsystem means adding it to
+1. **Put the file in docs/layers/{subsystem}/.** Naming a new subsystem means adding it to
    `LayerDocuments.Subsystems` in the test project **in the same commit** — the gates iterate that
    list, so a folder missing from it is a folder nothing checks.
    `EveryLayerDirectoryIsARegisteredSubsystem` fails if you forget.

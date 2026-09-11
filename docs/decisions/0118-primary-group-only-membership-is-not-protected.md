@@ -18,7 +18,7 @@ decision is one account in one domain and a reader a year from now must not mist
 
 `ProtectedPrincipalClosure.WalkPrimaryGroups` marks a principal `Unknown` when its only route to a
 protected group runs through a `primaryGroupID` edge. The reasoning is recorded in
-[`adminsdholder-catalogue-semantics.md`](../layers/derivation/adminsdholder-catalogue-semantics.md)
+`adminsdholder-catalogue-semantics.md`
 § 6.3: Microsoft establishes that `primaryGroupID` **is** membership and that authorization honours
 it, and establishes nothing at all about whether AdminSDHolder's protected-member enumeration follows
 the same edge. Refusing to guess was correct.

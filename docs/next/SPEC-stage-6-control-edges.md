@@ -27,7 +27,7 @@ stored and shown in object-first and named-holder-first views. Its owner-to-DACL
 remains unknown and uncounted. Catalogue version 2 corrects P-150's BUILTIN domain scope; judgement
 schema 15 stores the product. This does not implement membership changes, credential or replication
 capabilities, existing-owner control, full-control aggregation or effective member expansion.
-The [judgement-store document](../layers/judgement/the-judgement-store.md#p-150-corrected--catalogue-2-2026-09-06)
+The judgement-store document
 records the code boundary and measured lab comparison. P-145 and the claim-specific gates below
 remain open. The remaining sections are still a proposal except where an accepted decision is cited.
 
@@ -47,7 +47,7 @@ both production hosts remain without a member-expansion budget. Counts remain at
 Validated-write-only key-credential access, constrained secret reveal,
 general ownership modifications and production member-expansion budget/scale acceptance remain unfinished; unresolved full-control
 scope/authorization cases remain Unknown rather than being guessed.
-The [implementation record](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+The implementation record
 owns behavior and validation. Approval of this bounded slice does not accept the entire proposal
 or close P-145.
 
@@ -69,7 +69,7 @@ and schema entries below are refreshed for the approved bounded full-control sli
 | `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 8. |
 | `FullControlAssessment`, `FullControlEvaluator`, `FullControlStorage` | `next/src/SecureAD.Judgement/` | Bounded all-rights summary, original ordered source/check proof, independent expectedness replay and summary-versus-support counting. Primitive records are retained. |
 | `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
-| **90+ acceptance criteria for this stage** | `docs/layers/specs/JUDGEMENT-HALF.md` | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
+| **90+ acceptance criteria for this stage** | docs/layers/specs/JUDGEMENT-HALF.md | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
 
 **Two punch-list rows were wrong and are corrected.** `P-70` said the product does not judge
 ownership; it does. `P-71` said nothing computes effective permissions; `EffectiveAccessCalculator`
@@ -687,7 +687,7 @@ Naming these here so a reviewer does not read their absence as an omission.
 - **Group Policy applicability as an edge.** `AC-43` requires site, domain and OU scope, link state
   and order, enforced and blocked inheritance, security filtering and WMI. That is a stage of its
   own and the roadmap already defers Group Policy to the end.
-- **Full principal-level effective access as described in `docs/planned/effective-access.md`.** That
+- **Full principal-level effective access as described in docs/planned/effective-access.md.** That
   document's R8, R12 and R19 name inputs the current capture does not collect - `fDoListObject`,
   parent-and-child visibility, operation and connection context. Stage 6 answers layer 3, accumulated
   capability, for the named capability list. It does not claim layer 4 for every right.
@@ -1056,14 +1056,14 @@ publication; no UI action or wording is approved by this contract.
    target/generation/version bindings. Verify other registry predicates and existing ownership behavior
    separately. A policy-mirroring test alone is not the complete validation argument.
 
-The [implemented foundation](../layers/judgement/the-judgement-store.md#shared-tier-0-relevance-and-ownership-contracts--decision-0112)
+The implemented foundation
 establishes the shared contracts and supported evidence interpretation, not automatic
 ownership selection during audits or a completed path engine. The later
-[offline selector slice](../layers/judgement/the-judgement-store.md#offline-ownership-scope-selector--decision-0113)
+offline selector slice
 implements the reverse walk over supplied shared facts, with versioned results and partial cancellation.
 It selects established shared classifications and their identified candidate controllers, without
 claiming a complete forest scope from partial producers. The
-[schema-26 audit integration](../layers/judgement/the-judgement-store.md#scoped-ownership-during-judging--schema-26)
+schema-26 audit integration
 now persists scope/coverage, appends selected-target assessments using shared proof, validates stored
 seed/inclusion witnesses on readback and displays the approved statuses. Later slices implement the
 separate target-specific publication/cache and explicit object execution. Their tests must cover

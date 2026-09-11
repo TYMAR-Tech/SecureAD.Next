@@ -72,7 +72,7 @@ by itself, verify that all fifteen group objects propagate protection to members
 therefore splits principal protection from member propagation and requires each to carry its own
 status and provenance.
 
-`docs/layers/specs/JUDGEMENT-HALF.md` gated two edge kinds in the protected-principal derivation on
+docs/layers/specs/JUDGEMENT-HALF.md gated two edge kinds in the protected-principal derivation on
 the grounds that no Microsoft source stated whether the protection process follows them. For
 distribution nesting one does, and it is the same page the specification already quotes for the
 adjacent claim: *Reducing the Active Directory Attack Surface* states that an account with

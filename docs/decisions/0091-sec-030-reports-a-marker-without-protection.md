@@ -4,7 +4,7 @@ Date: 2026-08-31
 Status: Accepted.
 
 Accepts
-[`SEC-030-admincount-without-protection.reviewed.md`](../layers/judgement/rules/SEC-030-admincount-without-protection.reviewed.md)
+`SEC-030-admincount-without-protection.reviewed.md`
 as the specification SEC-030 is built from, and settles the two questions that specification left open
 to the owner. Sits under
 [0089](0089-principal-protection-and-member-propagation-are-separate-claims.md) and

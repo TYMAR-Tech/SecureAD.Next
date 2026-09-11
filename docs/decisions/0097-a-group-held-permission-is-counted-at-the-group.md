@@ -59,6 +59,6 @@ and concrete requester authorization remain separate. The current permission-onl
 does not claim account takeover merely because an illustrative headline above uses that shorthand.
 Decision 0102's accepted timing clarification governs retained partial results; no production budget
 or host activation is approved. The
-[implementation record](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution)
+implementation record
 owns validation, publication authorization and outstanding Stage 6 acceptance work. This implementation
 note does not change the counting decision.

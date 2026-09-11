@@ -62,7 +62,7 @@ create a second product workflow.
 | `next/tools/Build-DecisionIndex.ps1` | Generate the decision index | Repository maintenance, not application workflow | Retain |
 | `next/tools/Replace-InventoryRow.ps1` | Historical documentation maintenance | Repository maintenance, not application workflow | Retain while its input format exists |
 | `next/tools/SecureAD.Gallery` | UI component gallery | Developer UI tool, not application workflow | Retain while Shell visual development uses it; it may not invoke capture/derive/judge |
-| `next/tools/SecureAD.Measure` | Time automatic Self-Membership discovery against synthetic captures it writes itself, so a processing budget can be argued from numbers | Non-product measurement harness, not application workflow | Retain until a discovery budget is measured, approved and recorded in [the judgement store](../layers/judgement/the-judgement-store.md); delete in that same change. It contacts no directory and writes only beneath the system temporary directory |
+| `next/tools/SecureAD.Measure` | Time automatic Self-Membership discovery against synthetic captures it writes itself, so a processing budget can be argued from numbers | Non-product measurement harness, not application workflow | Retain until a discovery budget is measured, approved and recorded in the judgement store; delete in that same change. It contacts no directory and writes only beneath the system temporary directory |
 
 ## Duplicate decisions that must move once
 

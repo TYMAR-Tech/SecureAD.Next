@@ -25,10 +25,19 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 
 - **Three documents are maintained and nothing else.** `docs/PUNCH-LIST.md` is the work queue. `docs/WHAT-THE-PRODUCT-IS.md` records decisions the owner has already made, so he is never asked twice. This file says how to work. Keep these three accurate.
 - **Reasoning goes in code comments and in the commit message.** That is where it is actually read, it cannot drift from the code beside it, and nobody has to edit around it later. Do not write narrative into a document.
-- **docs/layers/ is retired.** It was unbound from the code on 2026-09-11 and is history. Never update it.
+- **docs/layers/, docs/reviews/, docs/corrections/ and docs/planned/ are gone.** They were unbound from the code on 2026-09-11 and deleted on 2026-09-12. Do not recreate them, and write their paths without backticks when history has to mention one.
 - **docs/decisions/ and docs/rules/ are reference.** Read one when a question needs it. Never maintain them proactively. The rules cards describe the predecessor.
 - **Punch-list entries are three sentences.** Detail belongs in the commit message.
 - **Do not reintroduce a document that must be kept in step with code by hand.** That shape is what was just removed, and it is the same failure the product keeps finding in itself: two places answering one question, free to disagree.
+
+## Tests keep the code honest, never a document
+
+**The owner's decision, 2026-09-12**, and what gives the documentation regime above teeth.
+
+- **A test may check code against code, or code against an outside authority.** Microsoft's published specifications, a recorded output of the predecessor, a frozen lab result. Those can tell you that you are wrong, which is the only thing a test is for. The `*MicrosoftAnchorTests` family is the clearest case and the most valuable material in the suite — it is not a documentation test, and it stays.
+- **A test that checks whether a document and the code agree is not written, and is deleted when found.** So is one that checks two documents against each other. It can only confirm an opinion back to itself, it doubles the cost of every change, and `F-S44-2` is what a closed loop of such checks costs: three sound suites agreeing perfectly while fifteen attributes were silently missing.
+- **A drifting document is a documentation problem.** It is fixed by reading it, not by a failing build.
+- **One exception, granted explicitly.** `StageStatusGateTests` and `next/tools/check-stage-status.ps1` hold the stage table in `docs/WHAT-THE-PRODUCT-IS.md` to the code. That table claimed *two* judging rules for long enough that twelve more were built underneath it; a stale one misleads the owner about the state of his own product, which no other document here can do.
 
 ## When to stop and raise it
 
@@ -46,7 +55,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 
 ## SecureAD Specific Guidelines
 
-- **The predecessor is on this machine at `C:\Users\ba.admin\source\repos\razamus\SecureAD`.** `docs/layers/specs/JUDGEMENT-HALF.md` records it under a different user profile, which is that author's path and not this one — look here first. Read it when a decision rests on what the old implementation did, and read it read-only: it is history and evidence, never a design to copy. It carries a `BenchmarkSuite1` using BenchmarkDotNet and an `ObjectDetailProfiler`, both of which measured the questions this rebuild keeps re-asking.
+- **The predecessor is on this machine at `C:\Users\ba.admin\source\repos\razamus\SecureAD`.** A retired specification (docs/layers/specs/JUDGEMENT-HALF.md, deleted 2026-09-12) recorded it under a different user profile, which was that author's path and not this one — look here first. Read it when a decision rests on what the old implementation did, and read it read-only: it is history and evidence, never a design to copy. It carries a `BenchmarkSuite1` using BenchmarkDotNet and an `ObjectDetailProfiler`, both of which measured the questions this rebuild keeps re-asking.
 - **The production forest's scale is recorded in [`docs/WHAT-THE-PRODUCT-IS.md`](../docs/WHAT-THE-PRODUCT-IS.md) § The forest this is built for.** Roughly 347,000 objects and 5.9 million access control entries across nine domains, against a laboratory of 8,383. **Measure against that shape before recommending any limit, threshold or default.** A figure taken only from the lab or from a small synthetic capture is not evidence about a customer forest.
 - **Measure before optimizing, and say what the measurement showed.** Judging writes a per-phase breakdown to the run log for this reason. Three plausible causes were proposed for one slow phase in a single session and two were wrong; the timing data settled it in twenty seconds. **For SecureAD.Next performance investigations, preserve pre-existing uncommitted work and original evidence/measurement artifacts, and identify executable/build provenance for every timing. Use isolated sealed-evidence copies offline. Obtain explicit approval before optimization or new measurement-harness code. Preserve permission proof, counting semantics, explicit incompleteness, and generation binding; do not activate discovery, change production budgets, access live forests, recapture, delete originals, commit, or push without separate authorization.**
 - For SecureAD explanations, orient the owner within the Stage 6 control-edge work and its Tier 0 purpose before discussing narrow requester fixes. Distinguish existing ownership findings, permission-derived control edges, and later chained paths to Tier 0. Explain incomplete captured evidence separately from unsupported analysis and proposed processing limits. Use Tier 0-relevant examples without implying arbitrary example group names are hard-coded product scope.

@@ -10,7 +10,7 @@
 > implementation is not. In this product executable rules are `IRule` implementations in `SecureAD.Judgement`,
 > registered in `RuleCatalogue.All`, resting on evidence stored by `JudgementWriter`, and
 > reading only attributes declared in `CapturedAttributeCatalog`. What a rule is here is described
-> in [`layers/judgement/what-a-finding-is.md`](../layers/judgement/what-a-finding-is.md).
+> in layers/judgement/what-a-finding-is.md.
 >
 > Nothing in here is held by any gate. It is quarantined rather than rewritten, per `P-101`.
 <!-- PREDECESSOR-MATERIAL:END -->

@@ -136,9 +136,9 @@ Shell judging supplies no member-expansion or requester-discovery budget. CLI ca
 derivation and therefore activates neither product. The member views read an existing stored product
 and do not start expansion. Any production activation requires separate approval and must follow this
 workflow rather than introducing a second orchestrator. See the
-[implementation and validation boundary](../layers/judgement/the-judgement-store.md#bounded-effective-member-attribution).
+implementation and validation boundary.
 
-The [schema-25 shared permission-proof storage](../layers/judgement/the-judgement-store.md#shared-permission-proof-storage--schema-25)
+The schema-25 shared permission-proof storage
 changes disposable Judgement storage only. Complete sealed-lab public models match across schemas;
 production-shaped validation remains outstanding. It changes none of these host paths, permission
 semantics, input generations or budget/activation boundaries.

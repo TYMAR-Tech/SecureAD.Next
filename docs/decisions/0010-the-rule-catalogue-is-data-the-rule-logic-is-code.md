@@ -83,7 +83,7 @@ the question of which fields are behavioural and which are presentation copy doe
 **The last consequence is now false and worth naming.** `docs/rules/` is *not* load-bearing here. Its
 sixty-six cards are the predecessor's, quarantined on 2026-08-26 under `P-101` and marked as such on
 every file, because they describe an architecture this product does not have. What a rule is here is
-[`layers/judgement/what-a-finding-is.md`](../layers/judgement/what-a-finding-is.md), and that page is
+layers/judgement/what-a-finding-is.md, and that page is
 held to the code by a gate. This amendment exists because
 `PredecessorMaterialGateTests` — written to stop exactly this contamination spreading out of
 `docs/rules/` — failed on this record within minutes of being written.

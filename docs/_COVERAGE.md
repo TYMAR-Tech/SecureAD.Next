@@ -87,7 +87,7 @@ found by searching for decision-shaped language rather than by reading whole fil
 > **Not a breach.** The Audit/Connect documents were written from the twenty-seven source files
 > under `next/src/SecureAD.Audit/Connect` (4,943 lines, all read), the tests that bind them, and
 > docs/areas/which-controller-we-read.md (102/102) — the complete code-first input set. That area
-> file has since been consumed into `docs/layers/connect/` and deleted. The
+> file has since been consumed into docs/layers/connect/ and deleted. The
 > twenty-five archive files below belong to the separate later exercise described at the top of this
 > file. **Audit/Connect is closed.**
 
@@ -195,7 +195,7 @@ found by searching for decision-shaped language rather than by reading whole fil
 > `RunCompletionReader` had been named in `the-bundle-on-disk.md` on signature and call site alone —
 > enough to say a member exists, not enough to say why it is shaped as it is — and `RunLibrary` had
 > never been opened. All three were read whole for
-> [`how-a-bundle-is-read.md`](layers/evidence/how-a-bundle-is-read.md), with `RunListing` (51) alongside
+> `how-a-bundle-is-read.md`, with `RunListing` (51) alongside
 > them. What the reading bought that a signature could not: the one-door rule on `Resolve`, the
 > same-second refusal, the containment guard documented as unreachable-by-design rather than
 > untested, the newest-first ordering recorded as a chronological claim that cost lab work when it
@@ -233,7 +233,7 @@ several times before it disappears.
 |---|---:|---|---|---|
 | **consumed** | 1259 → **251** | all | `next\SecureAD-Microsoft-Source-Deep-Review.md` — kernel/security removed; findings 17–22 remain | kernel-grouppolicy |
 | unread | 929 | headings only | `next\S-58-the-fix-brief.md` | evidence-findings |
-| **consumed** | 816 | ~350 | `next\S-56-what-a-permission-grants.md` — repo copy deleted; requirements moved to `docs/layers/kernel/permission-requirements.md` | kernel-schema |
+| **consumed** | 816 | ~350 | `next\S-56-what-a-permission-grants.md` — repo copy deleted; requirements moved to docs/layers/kernel/permission-requirements.md | kernel-schema |
 | part | 606 | ~210 | `next\S-60-an-independent-review-of-the-security-layer.md` | kernel-schema |
 | unread | 514 | headings only | `next\S-57-adjudicating-the-deep-review.md` | evidence-findings |
 | unread | 387 | headings only | `history\S-21-the-security-descriptor-parser.md` | evidence-findings |
@@ -244,7 +244,7 @@ several times before it disappears.
 
 **Two of these were never opened at all** and are the largest risk to what has been drafted:
 `SecureAD-Microsoft-Source-Deep-Review.md` at 1,259 lines, which is most likely where the Microsoft
-citations now repeated in `docs/layers/kernel/naming.md` were originally verified; and
+citations now repeated in docs/layers/kernel/naming.md were originally verified; and
 `history\S-6-vouched-returns.md`, whose subject is unknown.
 
 
@@ -305,7 +305,7 @@ citations now repeated in `docs/layers/kernel/naming.md` were originally verifie
 > which is `P-37`. Documents read whole alongside them:
 > docs/next/S-3-schema-guid-catalogue.md (412/412, now deleted) and
 > docs/areas/what-a-permission-means.md (109/109, deleted 2026-08-24; its Evidence half became
-> [`what-an-objects-permissions-hold.md`](layers/evidence/what-an-objects-permissions-hold.md)).
+> `what-an-objects-permissions-hold.md`).
 
 ---
 
@@ -324,7 +324,7 @@ later archive pass should search the archive for the subject rather than trust t
 > | `Naming/DnHelper.cs` | 207 | 207 |
 >
 > Documents read whole alongside it: docs/next/S-2-distinguished-name-manipulation.md (245/245,
-> now deleted), docs/areas/who-is-who.md (95/95), `docs/layers/kernel/naming.md` (294/294, read to
+> now deleted), docs/areas/who-is-who.md (95/95), docs/layers/kernel/naming.md (294/294, read to
 > establish that it is a different subject and must not be merged), and the binding test
 > DistinguishedNameDocumentationTests.cs (164/164).
 

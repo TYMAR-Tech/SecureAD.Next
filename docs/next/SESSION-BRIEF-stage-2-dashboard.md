@@ -66,7 +66,7 @@ make dishonest, because a number with no denominator always looks like an answer
 | `next/src/SecureAD.Shell/ViewModels/RunSummaryViewModel.cs` | already summarises a run for Home |
 | `next/src/SecureAD.Shell/Views/NotBuiltView.xaml` | what `Dashboard` renders today |
 | `next/src/SecureAD.Evidence` | `ReadCoverage`, `EvidenceCompleteness`, the bundle reader |
-| `docs/layers/shell/` | layer documents; a new one is required for this screen |
+| docs/layers/shell/ | layer documents; a new one is required for this screen |
 | `docs/ROADMAP.md` § Stage 2 | the definition above |
 
 **A lab bundle with real data**: `C:\Users\ba.admin\SecureADRuns\ad.lab-20260905-035415` — three
@@ -101,7 +101,7 @@ clears them.
 
 - `DashboardViewModel` exists, is reachable, and `check-stage-status.ps1` reports stage 2 built.
 - The screen distinguishes *read and empty* from *not read*, and a test proves it by mutation.
-- A layer document under `docs/layers/shell/` describes the screen and what it refuses to claim.
+- A layer document under docs/layers/shell/ describes the screen and what it refuses to claim.
 - `docs/ROADMAP.md` stage 2 updated with what was built and what it was verified against.
 - Verified against the lab bundle, with the numbers checked against the directory by hand.
 - Full suite green; encoding count 14.

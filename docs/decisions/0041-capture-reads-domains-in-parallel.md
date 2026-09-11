@@ -9,7 +9,7 @@ Capture is sequential today: `CaptureRun` walks the plan one unit at a time and 
 starting the next. Nothing decided that. It is what the first run driver happened to be, written
 when there was one controller and no reason to consider a second.
 
-[`S-10`](../layers/audit/limits-and-failures.md) settled the constraint that governs this, and it is narrower
+`S-10` settled the constraint that governs this, and it is narrower
 than it first appears:
 
 > Requests are never pipelined. This product places one request at a time on a domain controller.
