@@ -4,8 +4,17 @@ What in this product has been checked against Microsoft's own published values, 
 what. One row per component that carries values Microsoft defines.
 
 **This file is an index, not evidence.** The evidence is the anchor test, which re-runs on every
-build, and the harvest script, which re-reads Microsoft's page on demand. A row here that names
-either falsely fails `MicrosoftVerificationRegisterTests`.
+build, and the harvest script, which re-reads Microsoft's page on demand.
+
+> **The rows below are description, not the rule. The rule is the anchor tests.**
+> Until 2026-09-12 `MicrosoftVerificationRegisterTests` held this page to the tree in both
+> directions: every anchor test a row named had to exist, and every anchor test in the tree had to
+> appear in a row. It was deleted in the September cut under the owner's rule of 2026-09-12, which
+> forbids a test that holds a document to the code — a drifting document is a documentation problem,
+> fixed by reading it rather than by a failing build. **Nothing now checks either direction.** A row
+> may name an anchor test that has since been renamed or deleted, and a component may be verified
+> without ever appearing here. If this page and the tree disagree, the tree is right: the
+> `*MicrosoftAnchorTests` are the verification and this is a reader's index to them. `P-183`.
 
 ## Why a date, when the test runs continuously
 
