@@ -13,10 +13,11 @@ namespace SecureAD.Next.Tests.Connect;
 /// <para>
 /// <b>Why the reads are made to linger.</b> Concurrency that is asserted by counting after the
 /// fact proves nothing: work that happened to run one after another produces the same counts as
-/// work that was forced to. So every connection opened here waits until the expected number of
-/// connections is open, or until a short deadline passes. A pass that relies on serialization sees
-/// the deadline and reports one at a time; a pass that runs together sees the others arrive and
-/// reports the overlap. Both outcomes are reached deterministically rather than by timing.
+/// work that was forced to. So every connection's first read waits asynchronously until the expected
+/// number of connections is open, or until a short deadline passes. A pass that relies on
+/// serialization sees the deadline and reports one at a time; a pass that runs together sees the
+/// others arrive and reports the overlap. Both outcomes are reached deterministically without
+/// occupying the runner thread that must start the other read.
 /// </para>
 /// <para>
 /// <b>It counts the open channel, not the connect call.</b> A read is bracketed by opening the
@@ -32,7 +33,8 @@ internal sealed class OverlapWatch : IDirectoryChannelFactory
     private readonly object _tally = new();
     private readonly Dictionary<string, int> _openNow = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _mostAtOnce = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ManualResetEventSlim _enough = new(false);
+    private readonly TaskCompletionSource<bool> _enough =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _openAnywhere;
     private int _mostAnywhere;
 
@@ -90,11 +92,8 @@ internal sealed class OverlapWatch : IDirectoryChannelFactory
 
         Arrived(host);
 
-        // Wait for company. Whether any comes is the thing under test.
-        _enough.Wait(_deadline);
-
         return Result<IDirectoryChannel>.Success(
-            new WatchedChannel(opened.Value!, () => Left(host)));
+            new WatchedChannel(opened.Value!, WaitForCompanyAsync, () => Left(host)));
     }
 
     private void Arrived(string host)
@@ -114,8 +113,20 @@ internal sealed class OverlapWatch : IDirectoryChannelFactory
 
             if (_openAnywhere >= _waitingFor)
             {
-                _enough.Set();
+                _enough.TrySetResult(true);
             }
+        }
+    }
+
+    private async Task WaitForCompanyAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _enough.Task.WaitAsync(_deadline, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // Whether company arrives before the deadline is the thing under test.
         }
     }
 
@@ -131,8 +142,13 @@ internal sealed class OverlapWatch : IDirectoryChannelFactory
     /// <summary>
     /// One of the forest's channels, which reports when it is closed and changes nothing else.
     /// </summary>
-    private sealed class WatchedChannel(IDirectoryChannel channel, Action onClosed) : IDirectoryChannel
+    private sealed class WatchedChannel(
+        IDirectoryChannel channel,
+        Func<CancellationToken, Task> waitForCompany,
+        Action onClosed) : IDirectoryChannel
     {
+        private int _hasWaited;
+
         /// <inheritdoc/>
         public string DomainController => channel.DomainController;
 
@@ -152,9 +168,16 @@ internal sealed class OverlapWatch : IDirectoryChannelFactory
         public bool IsComplete => channel.IsComplete;
 
         /// <inheritdoc/>
-        public Task<DirectoryPage> SendAsync(
-            SearchRequest request, CancellationToken cancellationToken) =>
-            channel.SendAsync(request, cancellationToken);
+        public async Task<DirectoryPage> SendAsync(
+            SearchRequest request, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Exchange(ref _hasWaited, 1) == 0)
+            {
+                await waitForCompany(cancellationToken).ConfigureAwait(false);
+            }
+
+            return await channel.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
 
         /// <inheritdoc/>
         public void Dispose()
