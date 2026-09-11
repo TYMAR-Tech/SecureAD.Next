@@ -889,7 +889,7 @@ fails if the analysis calls member expansion.
 schema-16 offline comparison below now records one, without discharging live requester gates.
 The schema-15 corrected baseline remains 65,084
 counted primitives: 53,265 expected, 11,805 unexpected and 14 of unknown expectedness. It does not
-include these new membership candidates. No sealed laboratory evidence or `next/artifacts/` was
+include these new membership candidates. No sealed laboratory evidence or next/artifacts/ was
 modified or reused for writes. P-145 and the remaining stage-6 laboratory gates remain open;
 completed permission/Tier 0 session briefs are historical and the stage-6 specification remains
 a proposal except where accepted decisions govern it.
@@ -928,7 +928,7 @@ Derivation generation: `9059ced8-4300-431f-a5ce-e959d3e4d15a`; judgement generat
 `b3ba397d-3a48-43dc-bec5-2b48302be4dc`. Judging remains `CompletedDegraded`: 27 findings,
 with SEC-031 and SEC-032 each indeterminate on four objects. This is not a complete all-rule pass.
 
-The read-only comparison under `next/artifacts/self-membership-live-20260906-0527/` verifies
+The read-only comparison under next/artifacts/self-membership-live-20260906-0527/ (local, untracked) verifies
 the successful run's object GUIDs, disabled users, grant-group membership and two exact SELF-only
 grants. Raw captured ACE ordinals, trustees, masks and GUIDs match their stored supporting entries.
 The live recorder uses `ActiveDirectorySecurity`, which normalizes entry order; the same
@@ -1890,7 +1890,7 @@ that is not a claim that they have no other capabilities. Enterprise Domain Cont
 the remaining 14 unknown expectedness answers, with `UnknownCapabilityScope`.
 
 Artifacts, including the two executable checks, raw diagnostic outputs and binary fingerprints,
-remain under `next/artifacts/stage6-control-recovery-validation/`. Judgement generation:
+remain under next/artifacts/stage6-control-recovery-validation/. Judgement generation:
 `4cfa848c-83c2-42b5-8eb9-c65014d07c72`; derivation generation:
 `709c602a-19ad-428d-91bd-5d10efb507a6`. **P-145 remains open:** the remaining capabilities,
 member expansion, Tier 0-target analysis and the claim-specific live laboratory gates are not
@@ -1933,7 +1933,7 @@ holder totals are therefore 462 in `ad.lab`, 8,836 in `ba.ad.lab`, and 526 in `p
 the reclassification deltas. The remaining 14 unknown answers still have `UnknownCapabilityScope`
 for Enterprise Domain Controllers.
 
-The executable comparison in `next/artifacts/stage6-p150-scope-correction/compare-p150.ps1` checks
+The executable comparison in next/artifacts/stage6-p150-scope-correction/compare-p150.ps1 (local, untracked) checks
 both directions: all other stored edge fields (apart from the new generation and catalogue version),
 8,383 object-coverage rows, 433,561 control ACEs, 97,620 preconditions, membership-route tables, 27
 finding rows and all 17 rule-execution rows match the baseline. The evidence fingerprint is unchanged.
@@ -1945,7 +1945,7 @@ still returns its version-1 answers. **P-150 is closed; P-145 and stage-6 accept
 
 **Checkpoint `491fbff`, not stage-6 acceptance.** The bounded membership slice was committed,
 then the corrected schema-15 evidence and derivation were copied into a new, separate workspace
-directory. The original `next/artifacts/` files were not used as writable working files. All twelve
+directory. The original next/artifacts/ files were not used as writable working files. All twelve
 files in the source bundle, including its existing SQLite sidecars, retain their original hashes;
 all six database seals in the comparison baseline and final working copy verify.
 
@@ -2014,7 +2014,7 @@ not establish token-wide effective authorization, member expansion, full Tier 0-
 remediation or the acceptability of the default result volume. **P-145 and the claim-specific
 laboratory gates remain open.**
 
-Local artifacts are deliberately untracked under `next/lab-validation-membership-491fbff/`:
+Local artifacts are deliberately untracked under next/lab-validation-membership-491fbff/:
 `run-judging.ps1`, `compare-membership.ps1`, `inspect-membership.ps1`, `verify-integrity.ps1`, their
 logs, JSON reports, source/binary manifests, a preserved baseline and isolated working copies.
 The first diagnostic generation `f16f74a8-ce95-4af3-b252-3abb842227ea` is retained separately but
@@ -2547,7 +2547,7 @@ documentation review, commit/push and a new-session handoff. That request author
 the completed replication and ownership slices, including the preserved instruction-file edit; it is
 not standing authorization for future commits or pushes. `main` / `1d94b39` is the pre-publication
 baseline; Git history and the publication handoff identify the resulting commit. Coverage reports
-under `next/.vs/` remain local and ignored, not missing files a new session should regenerate blindly.
+under next/.vs/ remain local and ignored, not missing files a new session should regenerate blindly.
 Preserve all historical evidence, measurements and earlier completed/cancelled coverage reports.
 
 **Historical next-session boundary: bounded `HasFullControl` preparation.** Read Stage 6 §5 and §7, the
@@ -2690,7 +2690,7 @@ FullControlDeriver **36/41**, FullControlEvaluator **120/130**, FullControlStora
 ControlEdgeDeriver **230/234**, ControlEdgeStorage **208/208**, and
 ControlEdgesSectionViewModel **238/244**. These are selection-specific line observations, not
 complete branch coverage or a performance benchmark. The earlier 795-test coverage report in
-`next/.vs/FullControl-bcc394c2412b4952972ad8d100dfdf6f/` is preserved and predates FC-4's correction.
+next/.vs/FullControl-bcc394c2412b4952972ad8d100dfdf6f/ is preserved and predates FC-4's correction.
 No ownership/replication report was overwritten or regenerated.
 
 The new schema-23 layout checkpoint is
@@ -2799,7 +2799,7 @@ verification timings, not customer-scale performance evidence, and build success
 all analyzer warnings were resolved.
 
 Final artifacts are in
-`next/.vs/MemberAttribution-Final-fcecad10067a499a9091cbd45d44cc85/`: `offline.trx`, `offline.log`,
+next/.vs/MemberAttribution-Final-fcecad10067a499a9091cbd45d44cc85/: `offline.trx`, `offline.log`,
 `offline-summary.json`, `targeted.trx`, `coverage-run.log`, `coverage-summary.json` and
 `coverage.cobertura.xml`. The test assembly SHA-256 is
 `4C4356CC0D061CBDBBC24E8ADB60E60EBD10C728FFEBB934C820BD9F85A63D82`.
@@ -2810,7 +2810,7 @@ line observations are not complete branch coverage.
 
 Earlier in this implementation, the focused membership/scope/safety/presentation and historical control
 sizing selection passed **93/93**. The pre-reverse-label-correction 4,352-test regression and 796-test
-coverage artifacts remain preserved in `next/.vs/MemberAttribution-ec12b694eae84902a7212d4018ce155d/`,
+coverage artifacts remain preserved in next/.vs/MemberAttribution-ec12b694eae84902a7212d4018ce155d/,
 including the stopped initial CLI build log, which produced no test verdict. The final results above
 supersede those intermediate results without overwriting them. The background terminal wrapper marked
 completed commands as cancelled; the saved exit-code-0 summaries and completed TRX counters were checked

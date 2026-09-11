@@ -1135,7 +1135,7 @@ The guard covers structural changes, not semantic-only changes with identical SQ
 an explicit version decision and behavioral tests. Version-9 refusal is now tested too.
 
 **The same sealed ad.lab evidence was checked again on a new copy.** Existing diagnostics, run with
-`pwsh`, derived and judged `next/artifacts/membership-routes-0108/`. SEC-031 remains **10**, SEC-032
+`pwsh`, derived and judged next/artifacts/membership-routes-0108/ on the measuring machine. SEC-031 remains **10**, SEC-032
 remains **0**, and both retain **four undecided objects**. All ten ownership finding details match
 the preserved scoped result. Evidence retains SHA-256
 2DEF9F8AD4DE01877970B7F97F845716C1FFC1B093B01F388004610526E76BE4. Derivation generation
