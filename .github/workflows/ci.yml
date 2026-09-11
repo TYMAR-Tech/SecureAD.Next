@@ -14,7 +14,15 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # Full history, not the default depth-1 checkout. AreaFileCitationSurvivalTests reads
+      # `git log --diff-filter=D` to find deleted area files and prove their citations were
+      # retired with them. A shallow checkout carries no history, so that search returns
+      # nothing - and the class refuses to pass on an empty set rather than comparing nothing
+      # against nothing and reporting success. It was right to fail; the answer is to give it
+      # the history, never to weaken the check.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
