@@ -208,7 +208,7 @@ suite covering the product.
 **The test that decides it: what change to the product would make this fail?**
 
 If the answer names a change — adding a table, renaming a member, removing an enum value — the check
-is **generative** and belongs in the test suite. `HistoricalRecordDocumentationTests` reads the
+is **generative** and belongs in the test suite. HistoricalRecordDocumentationTests reads the
 `CREATE TABLE` statements out of `BundleSchema.cs` and holds
 [`what-a-bundle-holds.md`](../layers/evidence/what-a-bundle-holds.md) to them, so a twelfth table fails
 the build until it is described. `GoverningDocumentTests` globs `next/src` and holds
@@ -338,7 +338,6 @@ more than once, so each becomes a build failure in the rebuild tree rather than 
 | 3 | No artefact states the age or provenance of its evidence | Every artefact writer emits `run_id` and `SealedUtc` | **phase 2** |
 | 4 | "Found nothing" and "could not compute" rendered identically | No public method returns a bare count; it returns a vouched type or a `Result<T>` | **done** — `S-6-vouched-returns.md`, enforced by `UnvouchedResultGateTests`. A count is recognised by its name, because an `int` carries no units and a rule firing on every `int` would forbid an access mask; a collection is bare when its declaring type carries no `Errors` or `Verdict` beside it. One exemption, `SchemaGuidCatalog`, with a decay test that fails when the catalogue gains a way to fail |
 | 4b | A member carrying a vouching *name* and a value that cannot vary | The vouching member must be reachable as both values: the gate drives each type's own public constructors and factories, and fails a boolean voucher it only ever saw say one thing | **done** — `VouchedValueReachabilityGateTests`, closing `P-63`. It reads nothing under `next/tests`, so a test can neither satisfy it nor break it. A cheaper check on the getter's IL is carried beside it, for the vouchers the driver cannot build. Four are named as beyond its reach, each with a reason, and a decay test deletes an entry the driver later learns to settle |
-| 5a | Dead surface accumulating unnoticed | Every public type is listed in [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md), claimed by exactly one document. A type claimed by no document, or by one that does not exist, fails the build | **done** — `SurfaceRegisterTests`, with `TypesTableOwnershipTests` holding each page's `TYPES` table to the register so two pages cannot claim one type. Keyed to areas from 2026-08-16 and to layer documents from 2026-08-24, as the area files were consumed. The shell is exempt from the register and bound instead by `ShellLayerTypesTests`, because it exports nothing by design |
 | 5b | The same, but proved rather than promised | Every public type is reachable from a running entry point. Uses the compiler's own view of the code, so a mention in a comment does not count as use | **blocked** — nothing traces reachability. The entry point it once waited for exists: the shell ships and a run can be started from it. What is missing is the trace itself, from that root through the compilation. Recorded as `F-S7-42` |
 | 6 | Names describing an intention rather than the code | Not mechanically testable. Review only | — |
 
@@ -456,7 +455,6 @@ is a page nobody rewrites when the code changes.
 
 | Kind of fact | Goes to | What holds it there |
 |---|---|---|
-| What the code does | the layer document for that component, and a row in its `TYPES` table | that page's own component gate, plus `TypesTableOwnershipTests` and `SurfaceRegisterTests` |
 | What an operator can do | a capability row naming the test that proves it | `CapabilityCitationTests`, `AreaFileGateTests` |
 | A product position | a record in `docs/decisions/` | `DecisionIndexTests` — **the index only, never the content** |
 | Work that may need doing | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | `PunchListIdentifierTests` — the shape only |
@@ -594,7 +592,7 @@ Kept because they are operational rather than historical — they will happen ag
     the literal goes in as seven characters of text, which produced a mutation that silently proved
     nothing.
 - **`replace_string_in_file` cannot reach `next/SecureAD.Next.sln`**, and it has twice duplicated a
-  block in `TypesTableOwnershipTests.cs` rather than replacing it. For both, edit by line index with
+  block in TypesTableOwnershipTests.cs rather than replacing it. For both, edit by line index with
   `[System.IO.File]::ReadAllLines` on an **absolute** path, assert the boundaries before slicing,
   and check `git diff --numstat` afterwards: lines added with none removed is the tell.
 - **Summarising from memory at the end of a long pass.** A session once reported a document drafted

@@ -7,7 +7,7 @@ Every table in a bundle, what one row of it is, and what its absence means. Ever
 says, it says from here; nothing is said from a live directory. That is what lets a finding be
 reproduced a year later on a machine that has never seen the forest.
 
-Bound by `BundleDocumentationTests`, which creates the schema in a real database and compares the
+Was bound by BundleDocumentationTests, a documentation gate retired on 2026-09-11,, which creates the schema in a real database and compares the
 table list below against `sqlite_master` in both directions. A table named here and absent from the
 schema fails the build, and so does a table the schema creates and this page does not name. It also
 fails a row whose *absence* column is under thirty characters, because a table whose emptiness
@@ -406,4 +406,3 @@ index.**
 | be certain a container nobody captured is recorded as an unresolved reference | `BundleWriterTests.AContainerThatWasNeverCapturedIsRecordedAsAnUnresolvedReference` |  |
 | be certain every catalogue attribute is stored somewhere | `BundleSchemaTests.EveryCatalogueAttributeIsStoredSomewhere` |  |
 | be certain no two catalogue attributes collide on a column name | `BundleSchemaTests.NoTwoCatalogueAttributesShareAColumnName` |  |
-| read the same account of the schema in this document and in a real database | `BundleDocumentationTests` |  |

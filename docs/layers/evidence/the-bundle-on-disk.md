@@ -9,7 +9,7 @@ This page is one level out: which files sit in a bundle directory, what stops a 
 being read as a whole one, what the seal proves and what it does not, how a run's state is read
 back off the disk, and the note a run leaves when it ends badly.
 
-Bound by `BundleOnDiskDocumentationTests`, which compares the file table below against the names
+Was bound by BundleOnDiskDocumentationTests, a documentation gate retired on 2026-09-11,, which compares the file table below against the names
 `BundleLayout` declares in both directions, the seal table against `SealState` in both directions,
 and the state table against `RunState` in both directions. A name in the code and not here fails the
 build, and so does a name here and not in the code.

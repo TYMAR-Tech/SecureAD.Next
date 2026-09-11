@@ -18,7 +18,7 @@ Those belong to the Kernel — see [`permission-classification.md`](../kernel/pe
 and [`security-descriptors.md`](../kernel/security-descriptors.md). This page is about what the
 bundle holds, not what it means.
 
-Bound by `ObjectPermissionsDocumentationTests`. The states table below is bound **in both
+Was bound by ObjectPermissionsDocumentationTests, a documentation gate retired on 2026-09-11,. The states table below is bound **in both
 directions** against the code — an availability state the code declares and this page does not name
 fails the build, and so does a row here naming a state that does not exist.
 

@@ -10,7 +10,7 @@ questions that have to be answered before a bundle can be set beside another one
 which evidence is this**, and **what did the run manage to read**. Whether two runs may then be
 compared is [`whether-two-runs-compare.md`](whether-two-runs-compare.md).
 
-Bound by `RunIdentityDocumentationTests`, which compares four outcome tables below against the four
+Was bound by RunIdentityDocumentationTests, a documentation gate retired on 2026-09-11,, which compares four outcome tables below against the four
 enums in both directions. A member in the code and not here fails the build, and so does a member
 here and not in the code. Every `Type.Member` written in backticks is resolved against the type it
 names.

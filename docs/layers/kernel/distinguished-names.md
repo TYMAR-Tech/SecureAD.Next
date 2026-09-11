@@ -177,4 +177,3 @@ index.** Blank in **Confirmed in lab** means unit-tested but not yet exercised a
 | be certain a name containing an escaped comma is read correctly rather than split | `DnHelperTests.WhenTheValueContainsAnEscapedComma_ThenItIsUnescapedIntoTheName` |  |
 | be certain the container of an object is derived without being fooled by escaping | `DnHelperTests.WhenTheFirstComponentContainsAnEscapedComma_ThenItIsNotTreatedAsASeparator` |  |
 | be certain walking up a distinguished name reaches the root and stops | `DnHelperTests.WhenTheParentIsTakenRepeatedly_ThenTheWalkReachesTheRootAndStops` |  |
-| read the same account of distinguished-name handling in the document and the code | `DistinguishedNameDocumentationTests` |  |

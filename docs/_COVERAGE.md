@@ -326,7 +326,7 @@ later archive pass should search the archive for the subject rather than trust t
 > Documents read whole alongside it: docs/next/S-2-distinguished-name-manipulation.md (245/245,
 > now deleted), docs/areas/who-is-who.md (95/95), `docs/layers/kernel/naming.md` (294/294, read to
 > establish that it is a different subject and must not be merged), and the binding test
-> `DistinguishedNameDocumentationTests.cs` (164/164).
+> DistinguishedNameDocumentationTests.cs (164/164).
 
 
 

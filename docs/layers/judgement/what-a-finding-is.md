@@ -99,7 +99,7 @@ records stay in Evidence because they are durable data rather than executable po
 <!-- TYPES:END -->
 
 This table is the page's claim of ownership, bound against the surface register by
-`TypesTableOwnershipTests` in both directions, and the register is itself bound to the exported
+TypesTableOwnershipTests in both directions, and the register is itself bound to the exported
 types of the production assemblies by `SurfaceRegisterTests`.
 
 ---

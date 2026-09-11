@@ -9,7 +9,7 @@ how much of it the run read. This page is what is done with those two facts: whe
 measured against that one, whether a run may be nominated as its forest's baseline, and what the
 card reporting either is permitted to look like.
 
-Bound by `RunComparabilityDocumentationTests`. The outcome table below is bound **in both
+Was bound by RunComparabilityDocumentationTests, a documentation gate retired on 2026-09-11,. The outcome table below is bound **in both
 directions** — a situation in the code and not here fails the build, and so does a situation here
 and not in the code — and the shape in its third column is compared against the shape the code
 actually produces, by producing one of every verdict.

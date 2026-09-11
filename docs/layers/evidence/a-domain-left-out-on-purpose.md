@@ -8,7 +8,7 @@ domain left out apart from one the run fell short on. This page is the other hal
 statement a person made when the domain was taken out**, and the reason the product refuses to let
 those two look alike.
 
-Bound by `AttestedExclusionDocumentationTests`. The `TYPES` table and the `KINDS` table are both
+Was bound by AttestedExclusionDocumentationTests, a documentation gate retired on 2026-09-11,. The `TYPES` table and the `KINDS` table are both
 bound in both directions against the code — a kind the enum declares and this page does not name
 fails the build, and so does a row naming one that does not exist.
 

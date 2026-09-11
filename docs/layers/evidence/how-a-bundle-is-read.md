@@ -16,7 +16,7 @@ there. This page calls it; that is a mention, not a claim. Both headers named th
 2026-08-24, which cost nothing while neither page claimed ownership and would have given one type
 two owners the moment either grew a `TYPES` table.
 
-Bound by `RunLibraryDocumentationTests`, which compares the library's public surface against
+Was bound by RunLibraryDocumentationTests, a documentation gate retired on 2026-09-11,, which compares the library's public surface against
 `RunLibrary` in both directions, the refusals table against the error codes the class actually
 constructs in both directions, and the listing table against `RunListing`'s members in both
 directions. A member in the code and not here fails the build, and so does a member here and not in

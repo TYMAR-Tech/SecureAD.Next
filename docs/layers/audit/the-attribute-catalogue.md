@@ -554,8 +554,3 @@ unit-tested but not yet exercised against Active Directory.
 | have LAPS reported by when it last rotated, never by the password itself | `CredentialAttributeGuardTests.TheCatalogueTakesTheLapsTimestampAndNotTheLapsPassword` |  |
 | be certain no attribute is asked for two different ways | `CapturedAttributeCatalogTests.NoAttributeIsDeclaredTwoDifferentWays` |  |
 | be certain DNS is the only thing deliberately left out of the catalogue | `CapturedAttributeCatalogTests.TheDnsClassesAreTheOnlyOnesExcluded` |  |
-| rely on every attribute the code requests appearing here with a consumer named | `CapturedAttributeCatalogDocumentationTests.TheDocumentDescribesEveryAttributeTheCatalogueRequests` |  |
-| be certain this document names no attribute the code does not request | `CapturedAttributeCatalogDocumentationTests.TheDocumentDescribesNoAttributeTheCatalogueDoesNotRequest` |  |
-| read which object classes are captured and which are deliberately not | `CapturedAttributeCatalogDocumentationTests.TheDocumentNamesTheObjectClassesAndTheExclusions` |  |
-| be certain every part of the capture subsystem is described somewhere a reader will find it | `CapturedAttributeCatalogDocumentationTests.EveryPublicTypeInTheCaptureProjectIsNamedByACaptureDocument` |  |
-| be certain the derivation and the catalogue name the same attributes | `CapturedAttributeDerivationDocumentationTests` |  |

@@ -336,7 +336,4 @@ unit-tested but not yet exercised against Active Directory.
 | trust that list even when the controller publishes an incomplete picture of itself | `CapturePlanTests.TheUnreadListDoesNotDependOnWhatTheControllerPublishes` |  |
 | be stopped before a run starts, rather than part-way through, when a controller cannot serve a partition | `CapturePlanTests.APartitionTheControllerDoesNotServeIsRefusedBeforeTheRunStarts` |  |
 | tell a controller that answered "none" from one whose question failed | `CapturePlanTests.AControllerThatPublishesNothingIsAFailedQuestionRatherThanAnAnswerOfNo` |  |
-| rely on every property of the capture search being described, and described correctly | `CaptureUnitDocumentationTests.EveryPropertyOfTheSearchIsDescribedAndDescribedCorrectly` |  |
-| be certain the document describes no property the search does not have | `CaptureUnitDocumentationTests.TheDocumentDescribesNoPropertyTheSearchDoesNotHave` |  |
-| read why each refused way of reading a forest was refused | `CaptureUnitDocumentationTests.EveryRefusedAvoidanceIsNamed` |  |
 | be certain no other part of the product builds a search or sets a referral option | `DirectorySearchGateTests` |  |

@@ -26,8 +26,6 @@ This is a working document, not a product position. Nothing here overrides a rec
 | 11 | Add its `RuleGuidanceCatalogue` entry | `RuleGuidanceTests`, both directions |
 | 12 | Write the rule's own tests, with negative controls | — |
 | 13 | Mutate the rule in both directions and record what failed | nothing |
-| 14 | Add the public types to `SURFACE-REGISTER.md` and the layer document table | `SurfaceRegisterTests`, `TypesTableOwnershipTests` |
-| 15 | If you added a layer document, list it in `SecureAD.Next.sln` | `LayerDocumentGateTests` |
 | 16 | Update `docs/ROADMAP.md`; add anything deferred to `PUNCH-LIST.md` | `PunchListIdentifierTests` |
 | 17 | Full suite, and `next/tools/check-document-encoding.ps1` — the count must not rise | — |
 | 18 | **Run it against `ad.lab` before calling it done** | nothing, and it is the step that catches what the tests cannot |

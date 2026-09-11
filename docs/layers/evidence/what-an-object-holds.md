@@ -14,7 +14,7 @@ The door is `BundleReader.ReadObjectAttributes`, which belongs to
 `ObjectAttributesReader`, is internal and is described here because its behaviour is the only
 thing a caller can observe about it.
 
-Bound by `ObjectAttributesDocumentationTests`. The storage table below is bound **in both
+Was bound by ObjectAttributesDocumentationTests, a documentation gate retired on 2026-09-11,. The storage table below is bound **in both
 directions** against the shapes the code actually produces — a storage kind the code handles and
 this page does not name fails the build, and so does a row here describing a shape the reader
 never produces.

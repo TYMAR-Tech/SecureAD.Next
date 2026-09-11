@@ -10,7 +10,7 @@ a bundle that would not open, a setting that could not be saved — arrives as o
 Where a particular failure is produced, and what it says, belongs to the page for that code. This
 page is about the vocabulary all of them use.
 
-Bound by `FailureReportingDocumentationTests`. The tables below are bound **in both directions**
+Was bound by FailureReportingDocumentationTests, a documentation gate retired on 2026-09-11,. The tables below are bound **in both directions**
 against the code — a category or severity the code declares and this page does not name fails the
 build, and so does a row here naming one that does not exist.
 

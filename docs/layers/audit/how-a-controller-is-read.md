@@ -417,8 +417,5 @@ articles cited above is not a domain controller.
 | be certain a first, partial response is never mistaken for the whole answer | `LdapEntryReaderTests.TheFirstResponseDoesNotClaimToBeAllOfThem` |  |
 | tell an attribute that was absent from one that was present and empty | `LdapEntryReaderTests.AnAbsentAttributeIsNotReportedAsAnEmptyOne` |  |
 | be certain a paged read that stalled is reported as a failure rather than an ending | `LdapEntryReaderTests.ABlockThatAdvancedByNothingIsAFailureAndNotAnEnding` |  |
-| rely on every way a pass can end being described | `CapturePassesDocumentationTests.TheDocumentDescribesEveryWayAPassCanEnd` |  |
-| be certain no described ending belongs to something that cannot happen | `CapturePassesDocumentationTests.TheDocumentDescribesNoEndingThatCannotHappen` |  |
-| be certain that check reads the real loop and the real document | `CapturePassesDocumentationTests.TheScannerReadsTheLoopAndTheDocumentAndItsPatternMatches` |  |
 | be certain no second place in the product spells a range specifier | `RangeSpecifierGateTests` |  |
 | have a capture run end to end and produce a readable bundle | `CaptureRunEndToEndTests` |  |

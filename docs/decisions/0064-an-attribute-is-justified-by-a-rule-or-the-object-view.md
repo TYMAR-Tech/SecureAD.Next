@@ -11,7 +11,7 @@ under `B1` of the S-44 agenda.
 ## Context
 
 The catalogue of captured attributes is held to a rule enforced by
-`CapturedAttributeDerivationDocumentationTests`: **every attribute must name something that reads
+CapturedAttributeDerivationDocumentationTests: **every attribute must name something that reads
 it**, and today that something must be a rule card. It exists to stop the catalogue becoming a junk
 drawer, and it works.
 

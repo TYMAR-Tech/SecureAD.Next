@@ -198,17 +198,5 @@ unit-tested but not yet exercised against Active Directory.
 
 | An operator can… | Proven by | Confirmed in lab |
 |---|---|---|
-| rely on the product naming every limit its controller enforces, rather than the ones somebody remembered | `PolitenessDocumentationTests.TheDocumentDescribesEveryLimitTheCodeNames` |  |
-| be certain the product claims no limit its code has never heard of | `PolitenessDocumentationTests.TheDocumentDescribesNoLimitTheCodeDoesNotName` |  |
-| trust that a documented default and the value the code carries have not drifted apart | `PolitenessDocumentationTests.EveryLimitCarriesTheSameDocumentedDefaultInBothPlaces` |  |
-| read what capture does about every limit, never a blank | `PolitenessDocumentationTests.EveryLimitSaysWhatCaptureDoesAboutIt` |  |
-| be certain the two limits capture acts on are the values it acts with | `PolitenessDocumentationTests.TheTwoLimitsCaptureActsOnAreTheValuesItActsWith` |  |
-| be certain that check is reading a real table and real code, not two empty sets | `PolitenessDocumentationTests.TheCheckReadsBothTheTableAndTheCode` |  |
-| rely on every failure the policy answers being described | `PolitenessDocumentationTests.TheDocumentDescribesEveryFailureThePolicyAnswers` |  |
-| be certain no described response belongs to a failure the policy cannot see | `PolitenessDocumentationTests.TheDocumentDescribesNoFailureThePolicyDoesNotAnswer` |  |
-| trust that a failure is classified by the code it actually arrives with | `PolitenessDocumentationTests.EveryFailureCarriesTheSameCodeInBothPlaces` |  |
-| be certain a lost connection is never answered by resending a dead bookmark | `PolitenessDocumentationTests.AFailureThatEndsTheConversationIsNeverAnsweredByResendingTheRequest` |  |
-| be certain an unknown failure code still gets an instruction | `PolitenessDocumentationTests.EveryPossibleFailureCodeGetsAnAnswer` |  |
-| be certain a busy controller is asked again after a wait that doubles, and only three times | `PolitenessDocumentationTests.TheWaitDoublesAndStartsLong` |  |
 | be certain a busy controller is retried a bounded number of times and then the run ends | `PartitionCaptureTests.AControllerSayingItIsBusyIsAskedThreeTimesAndThenTheRunEnds` |  |
 | be certain no part of the product opens two directory conversations at once | `SerializedDirectoryAccessGateTests` |  |

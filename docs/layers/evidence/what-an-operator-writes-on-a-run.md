@@ -10,7 +10,7 @@ database, and true whether or not anybody looked. This page is the exception: wh
 called a run, what he wrote about it, and which run he marked as the thing later runs are measured
 against. None of it is evidence, and the whole page exists to keep that line visible.
 
-Bound by `RunAnnotationsDocumentationTests`. The `TYPES` table is bound in both directions against
+Was bound by RunAnnotationsDocumentationTests, a documentation gate retired on 2026-09-11,. The `TYPES` table is bound in both directions against
 the public types `RunAnnotations.cs` declares, and the doors table against the public members the
 class actually exposes, so a method added or removed fails the build rather than leaving a
 paragraph describing a product that no longer exists.
