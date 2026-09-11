@@ -321,6 +321,10 @@ internal static class MembershipNestingPass
             var groupResolved = names.TryResolve(groupNameId, out var groupSidId);
             var memberResolved = names.TryResolve(memberNameId, out var memberSidId);
 
+            // EACH END IS RECORDED ON ITS OWN MERITS, not only the first one to fail. A link whose
+            // group and member are both unidentifiable names two things this capture does not hold,
+            // and stopping at the group left the member's name out of the forest-wide list
+            // entirely - an under-report of the coverage the run prints and stores. P-185.
             if (!groupResolved)
             {
                 unresolved.Add(names.TextOf(groupNameId));
@@ -336,23 +340,26 @@ internal static class MembershipNestingPass
                         NestingLinkDirection.ContainingGroup,
                         names.TextOf(groupNameId)));
                 }
-
-                continue;
             }
 
             if (!memberResolved)
             {
                 unresolved.Add(names.TextOf(memberNameId));
 
-                unresolvedLinks.Add(new UnresolvedNestingLink(
-                    groupSidId,
-                    NestingLinkDirection.Member,
-                    names.TextOf(memberNameId)));
-
-                continue;
+                // Only where the group end survived. Both ends unresolvable leaves no principal to
+                // hang the link on, so it is recorded forest-wide above and nowhere else - which is
+                // correct rather than a gap: there is no group whose contents could be called short.
+                if (groupResolved)
+                {
+                    unresolvedLinks.Add(new UnresolvedNestingLink(
+                        groupSidId,
+                        NestingLinkDirection.Member,
+                        names.TextOf(memberNameId)));
+                }
             }
 
-            edges.Add(new NestingEdge(groupSidId, memberSidId));
+            if (groupResolved && memberResolved)
+                edges.Add(new NestingEdge(groupSidId, memberSidId));
         }
 
         return new NestingFacts(

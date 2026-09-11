@@ -76,3 +76,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## Ownership Assessment
 
 - **Reuse the existing authoritative Tier-0 definition for ownership assessment and future path analysis.** Do not introduce a separate ownership-specific Tier-0 list or duplicate the definition in another location.
+
+## GitHub Actions CI Management
+
+- **Do not block a session waiting for a GitHub Actions CI run to finish after pushing.** Push and carry on with the next piece of work. Check the CI result opportunistically instead — at the start of the next session, before building on top of a push, or when a clean-machine failure is actually suspected. The GitHub CLI is installed and authenticated, so `gh run list --branch main --limit 1 --json headSha,conclusion` gives the answer in one non-blocking call.

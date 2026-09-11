@@ -69,6 +69,56 @@ public sealed class MembershipNestingPassTests
     }
 
     /// <summary>
+    /// Where both ends of a link are unidentifiable, both names are recorded.
+    /// </summary>
+    /// <remarks>
+    /// <b>The fire for P-185.</b> The resolution loop used to stop at the group end, so the member's
+    /// name never reached the forest-wide list and the coverage the run prints and stores was short
+    /// by an unknown amount. The case is reachable: a group whose own <c>objectSid</c> was withheld
+    /// or never captured has no identity to resolve to, and the members it lists may be uncaptured
+    /// as well.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_BothEndsOfAnUnidentifiableLinkAreRecorded()
+    {
+        var facts = Read(
+            Object(
+                "CN=Unreadable,DC=ad,DC=lab",
+                [
+                    Text("objectClass", AttributeCardinality.MultiValued, ["top", "group"]),
+                    Text("member", AttributeCardinality.MultiValued, ["CN=Ghost,DC=elsewhere"]),
+                ]));
+
+        Assert.Equal(
+            ["CN=Ghost,DC=elsewhere", "CN=Unreadable,DC=ad,DC=lab"],
+            facts.UnresolvedTrustees.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Neither end resolving leaves no principal to attribute the link to, and none is invented.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control on the fix above, and it guards P-164 rather than P-185.</b> The
+    /// per-group attribution exists so a group can be marked short by evidence about itself; a link
+    /// with no surviving end names no such group, and inventing one would mark the wrong object
+    /// incomplete.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_ALinkWithNeitherEndResolvedIsAttributedToNobody()
+    {
+        var facts = Read(
+            Object(
+                "CN=Unreadable,DC=ad,DC=lab",
+                [
+                    Text("objectClass", AttributeCardinality.MultiValued, ["top", "group"]),
+                    Text("member", AttributeCardinality.MultiValued, ["CN=Ghost,DC=elsewhere"]),
+                ]));
+
+        Assert.Empty(facts.UnresolvedLinks);
+        Assert.Equal(0, facts.GroupsWithUnidentifiedMembers);
+    }
+
+    /// <summary>
     /// A member the capture never covered is recorded as unresolved, not dropped.
     /// </summary>
     [Fact]
