@@ -141,8 +141,66 @@ public sealed class AuditProgressTests
         Assert.Equal((false, null, null), (screen.HasFinished, screen.BundleDirectory, screen.JudgingReport));
     }
 
+    /// <summary>
+    /// Building the screen leaves no ambient context for <c>Progress&lt;T&gt;</c> to capture.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The guard on the clearing in <see cref="Model"/>, asserted rather than timed.</b> The
+    /// obvious check - install a context that runs nothing, then wait for a report to arrive - was
+    /// written first and thrown away. It does not fail when the clearing is removed; it hangs,
+    /// because the waiting test's own continuations are posted to the same dead context and the
+    /// deadline can never be delivered either. A guard that blocks the suite instead of failing it
+    /// is <c>P-155</c> in a new place.
+    /// </para>
+    /// <para>
+    /// So the property is asserted directly: once the screen is built there is no context left to
+    /// capture, and <c>Progress&lt;T&gt;</c> falls back to the thread pool. Removing the clearing
+    /// fails this in milliseconds instead of hanging for two minutes.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void BuildingTheScreenLeavesNoContextForProgressToCapture()
+    {
+        var original = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new NeverRuns());
+
+        try
+        {
+            _ = Model(new ControlledDerivation(), new ControlledJudging());
+
+            Assert.Null(SynchronizationContext.Current);
+        }
+        finally { SynchronizationContext.SetSynchronizationContext(original); }
+    }
+
+    /// <summary>A synchronization context that accepts work and never runs it.</summary>
+    private sealed class NeverRuns : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback d, object? state) { }
+
+        public override void Send(SendOrPostCallback d, object? state) { }
+    }
+
     internal static NewAuditViewModel Model(IDerivationLauncher deriving, IJudgingLauncher judging, FakeCaptureLauncher? capture = null)
     {
+        // PROGRESS MUST NOT BE DELIVERED THROUGH XUNIT'S SCHEDULER, AND CLEARING THE CONTEXT HERE
+        // IS WHAT STOPS IT. The view model builds its Progress<T> inside StartAsync, and Progress<T>
+        // captures whatever SynchronizationContext is current at that moment and posts every
+        // callback back to it. Under WPF that is the UI thread and is exactly right. Under xUnit it
+        // is a context running a bounded number of test collections at once, so a callback raised
+        // here waits for a slot behind everything else - including tests that hold one while
+        // blocking, which is P-155.
+        //
+        // CI measured the cost on 2026-09-11: a two-core runner starved this for 200.2 seconds
+        // against a 120-second deadline, while the same test passed on a twenty-thread machine.
+        // Cleared, Progress<T> falls back to the thread pool and the callback runs immediately.
+        //
+        // THE PRODUCT IS NOT CHANGED FOR THIS. Marshalling progress to the UI thread is correct;
+        // the defect was in the harness observing it. This is P-154's last failure, carried for
+        // three sessions as an ordering defect that it never was.
+        SynchronizationContext.SetSynchronizationContext(null);
+
         var location = new RunLibraryLocation(new FakeSettingsStore { Stored = new ShellSettings(@"D:\audits") });
         location.Load();
         return new(location, capture ?? new FakeCaptureLauncher(), new FakeNewAuditDialog(), new FakeRunOpener(), deriving, judging)
