@@ -38,12 +38,116 @@ namespace SecureAD.Next.Tests.Architecture;
 /// cannot judge whether two differently named members answer the same question; that is what the
 /// registry's own member shapes are for, and keeping them honest is a reader's job.
 /// </para>
+/// <para>
+/// <b>The registry lives in this file as of 2026-09-12.</b> It was parsed out of
+/// <c>CONCEPT-REGISTRY.md</c> until <c>P-184</c>, which made this a test holding a document to the
+/// code rather than the code to itself. The document remains as description and points here.
+/// </para>
 /// </summary>
 public sealed class ConceptRegistryTests
 {
-    private const string RegistryFile = "CONCEPT-REGISTRY.md";
-    private const string TableBegin = "<!-- CONCEPTS:BEGIN -->";
-    private const string TableEnd = "<!-- CONCEPTS:END -->";
+    /// <summary>One concept, the type that owns it, and the member names that answer it.</summary>
+    /// <param name="Name">The question, as a person would ask it.</param>
+    /// <param name="Owner">The single type entitled to answer it.</param>
+    /// <param name="Shapes">
+    /// Member-name globs that constitute answering it. <c>*</c> stands for the rest of a name.
+    /// </param>
+    private sealed record Concept(string Name, string Owner, string[] Shapes);
+
+    /// <summary>
+    /// The registry, held as code so that nothing has to be kept in step with it by hand.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It was parsed out of <c>CONCEPT-REGISTRY.md</c> until 2026-09-12.</b> That made this a
+    /// test holding a document to the code, which the owner's rule of that date forbids: a drifting
+    /// document is a documentation problem, fixed by reading it rather than by a failing build. The
+    /// gate is worth keeping and the coupling is not, so the rows moved into the code they protect.
+    /// The document remains as description and says this file is authoritative. <c>P-184</c>.
+    /// </para>
+    /// <para>
+    /// <b>Adding a row is how a new shared question is claimed.</b> Two types answering one question
+    /// is the defect this exists for, so the fix for a failure here is usually to call the owner
+    /// rather than to widen the table.
+    /// </para>
+    /// </remarks>
+    private static readonly Concept[] Registry =
+    [
+        new("Schema GUID lookup", "SchemaGuidCatalog",
+            ["FindByGuid*", "FindByLdapName*", "GuidFor*", "GetGuid*", "TryGetGuid*", "LookupGuid*",
+             "ByGuid", "ByLdapName", "WellKnownGuid*"]),
+
+        new("Dangerous-permission classification", "DangerousPermissionClassifier",
+            ["Classify*", "IsDangerous*", "AreDangerous*", "IsRisky*", "AssessDanger*",
+             "EvaluateDanger*", "ComputeDanger*", "DangerousRights*", "DangerousGuids*"]),
+
+        new("Distinguished-name manipulation", "DnHelper",
+            ["GetParentDn*", "ParentDn*", "ExtractFirstRdn*", "ExtractNameFromDn*", "GetRdn*",
+             "SplitDn*", "DnToFqdn*", "ToFqdn*", "NormalizeDn*"]),
+
+        new("Security descriptor parsing", "SecurityDescriptorParser",
+            ["Parse", "ParseBase64*", "ParseSecurityDescriptor*", "ParseSd*",
+             "TryParseSecurityDescriptor*"]),
+
+        new("ACE canonicalisation", "AceNormalizer",
+            ["Normalize*", "Normalise*", "Canonicalize*", "Canonicalise*"]),
+
+        new("Generic-rights expansion", "GenericRightsExpander",
+            ["Expand*", "ExpandGenericRights*", "HasGenericRights*"]),
+
+        new("Capture search request", "CaptureSearchRequestFactory",
+            ["ForUnit*", "BuildSearchRequest*", "CreateSearchRequest*", "NewSearchRequest*",
+             "SearchRequestFor*", "ApplyReferralPolicy*"]),
+
+        new("Directory failure response", "RetryPolicy",
+            ["FailureFor*", "IsTransient*", "IsRetryable*", "ShouldRetry*", "RetryAfter*",
+             "WaitBefore*", "BackoffFor*"]),
+
+        new("Operation outcome", "Result",
+            ["IsSuccess", "IsFailure", "Succeeded", "Failed", "IsOk"]),
+
+        new("What capture asks the directory for", "CapturedAttributeCatalog",
+            ["AttributesFor*", "RequestedAttributes*", "AttributesForClass*", "CaptureFilter*",
+             "CapturedAttributes*", "IsRangeLiable*", "RangeLiable*", "MultiValuedAttributes*",
+             "BinaryAttributes*"]),
+
+        new("What an entry's values mean", "LdapEntryReader",
+            ["ForEntry*", "ForValues*", "ValuesOf*", "ReadAttribute*", "AsText*", "AsBytes*",
+             "AsInteger*", "AsGuid*", "AsSid*", "Continue*"]),
+
+        new("Where a block of values begins and ends", "AttributeRange",
+            ["SpecifierFor*", "TryReadSpecifier*", "NextAfter*", "FirstRound*", "ValuesPerRound*"]),
+
+        new("Which forest a run assessed", "ProfileId",
+            ["ForForest*", "ForSecurityMode*", "FromComponents*", "ProfileFor*", "ForestKey*"]),
+
+        new("Which evidence a run is built from", "CoverageId",
+            ["ForDomains*", "FromDomains*", "CoverageFor*", "DeclaredCoverage*"]),
+
+        new("What became of a run", "RunStateNames",
+            ["Persist*", "PersistedName*", "ReadState*", "ParseRunState*", "ToRunState*"]),
+
+        new("Whether a run may be used", "RunComparability",
+            ["Evaluate*", "MayBeBaseline*", "IsBaselineEligible*", "CanCompare*", "MayCompare*",
+             "IsComparable*", "CompareCompatibility*", "NoEarlierRun*", "EarlierRunDeleted*"]),
+
+        new("What a bundle's files are called", "BundleLayout",
+            ["EvidenceFileName", "PartialFileName", "SealFileName", "AnnotationsFileName",
+             "OutcomeFileName", "EvidencePath*", "PartialPath*", "SealPath*", "AnnotationsPath*",
+             "OutcomePath*", "BundleFile*", "BundlePath*"]),
+
+        new("What a userAccountControl bit means", "UserAccountControlWording",
+            ["Documented", "DocumentedFlags*", "AccountControlFlags*", "AccountStateFlags*",
+             "WordAccountControl*"]),
+
+        new("What a directory timestamp means", "DirectoryTime",
+            ["WordTimestamp*", "FromInterval*", "FromGeneralizedTime*", "TimestampFormatFor*",
+             "IsTimestampAttribute*"]),
+
+        new("Who a well-known SID is", "WellKnownSidCatalog",
+            ["FindBySid*", "FindByRid*", "AllSids", "AllRelativeIdentifiers", "ResolveWellKnown*",
+             "IsWellKnownSid*", "IsPlaceholderSid*", "WellKnownName*"]),
+    ];
 
     /// <summary>
     /// Assemblies making up the rebuild's production surface. Held once in
@@ -59,16 +163,13 @@ public sealed class ConceptRegistryTests
     [Fact]
     public void NoTypeOtherThanTheOwnerDeclaresAMemberOfAnOwnedConcept()
     {
-        var concepts = RegistryEntries();
-
         var trespassers =
-            (from concept in concepts
+            (from concept in Registry
              from declaration in Declarations()
              where !IsOwnedBy(declaration.Type, concept.Owner)
              where concept.Shapes.Any(shape => Matches(shape, declaration.Member))
              select $"  {ReadableName(declaration.Type)}.{declaration.Member} answers "
-                    + $"'{concept.Name}', which is owned by {concept.Owner} "
-                    + $"({RegistryFile} line {concept.Line})")
+                    + $"'{concept.Name}', which is owned by {concept.Owner}")
             .OrderBy(t => t, StringComparer.Ordinal)
             .ToList();
 
@@ -78,7 +179,7 @@ public sealed class ConceptRegistryTests
             + "produced two GUID tables neither of which knew about the other, and six answers to "
             + "'is this permission dangerous' - two of them driving the pair of screens a customer "
             + "opens to compare against each other. Call the owning type, or move the concept's "
-            + "ownership in " + RegistryFile + " and say why:"
+            + "ownership in the registry table above and say why:"
             + Environment.NewLine + string.Join(Environment.NewLine, trespassers));
     }
 
@@ -92,14 +193,14 @@ public sealed class ConceptRegistryTests
     {
         var actual = Types().Select(ReadableName).ToHashSet(StringComparer.Ordinal);
 
-        var phantom = RegistryEntries()
+        var phantom = Registry
             .Where(c => !actual.Contains(c.Owner))
-            .Select(c => $"  '{c.Name}' is owned by {c.Owner}, which does not exist (line {c.Line})")
+            .Select(c => $"  '{c.Name}' is owned by {c.Owner}, which does not exist")
             .ToList();
 
         Assert.True(
             phantom.Count == 0,
-            RegistryFile + " names owning types that are not in the rebuild:"
+            "The registry table above names owning types that are not in the rebuild:"
             + Environment.NewLine + string.Join(Environment.NewLine, phantom));
     }
 
@@ -114,11 +215,11 @@ public sealed class ConceptRegistryTests
     {
         var declarations = Declarations().ToList();
 
-        var empty = RegistryEntries()
+        var empty = Registry
             .Where(c => !declarations.Any(d =>
                 IsOwnedBy(d.Type, c.Owner) && c.Shapes.Any(shape => Matches(shape, d.Member))))
             .Select(c => $"  '{c.Name}': {c.Owner} declares no member matching "
-                         + $"{string.Join(", ", c.Shapes)} (line {c.Line})")
+                         + $"{string.Join(", ", c.Shapes)}")
             .ToList();
 
         Assert.True(
@@ -133,7 +234,7 @@ public sealed class ConceptRegistryTests
     [Fact]
     public void NoConceptIsListedTwice()
     {
-        var duplicates = RegistryEntries()
+        var duplicates = Registry
             .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() > 1)
             .Select(g => $"  '{g.Key}' appears {g.Count()} times")
@@ -141,8 +242,8 @@ public sealed class ConceptRegistryTests
 
         Assert.True(
             duplicates.Count == 0,
-            "A concept named twice can have two owners, which is the thing this file exists to "
-            + "prevent, recorded in the file that prevents it:"
+            "A concept named twice can have two owners, which is the thing this registry exists "
+            + "to prevent, recorded in the table that prevents it:"
             + Environment.NewLine + string.Join(Environment.NewLine, duplicates));
     }
 
@@ -154,10 +255,13 @@ public sealed class ConceptRegistryTests
     public void TheCheckFindsBothTheCodeAndTheRegistry()
     {
         var declarations = Declarations().ToList();
-        var concepts = RegistryEntries();
 
         Assert.True(declarations.Count > 0, "Reflected over no members in the production assemblies.");
-        Assert.True(concepts.Count > 0, $"Read no concepts from {RegistryFile}.");
+
+        // Asserted even though the table is now a compile-time constant: the compiler guarantees it
+        // parses, not that anybody left anything in it, and an emptied table would let every check
+        // above pass vacuously.
+        Assert.True(Registry.Length > 0, "The registry table is empty, so nothing is checked.");
 
         Assert.Contains(
             declarations,
@@ -165,7 +269,7 @@ public sealed class ConceptRegistryTests
                  && d.Member == nameof(SecureAD.Kernel.Schema.SchemaGuidCatalog.GuidFor));
 
         Assert.Contains(
-            concepts,
+            Registry,
             c => c.Owner == nameof(SecureAD.Kernel.Security.DangerousPermissionClassifier));
     }
 
@@ -218,7 +322,7 @@ public sealed class ConceptRegistryTests
     [InlineData("IsDangerous", "DangerousPermissionClassifier")]
     public void TheGateWouldHaveCaughtTheDuplicatesThatMotivatedIt(string member, string expectedOwner)
     {
-        var claiming = RegistryEntries()
+        var claiming = Registry
             .Where(c => c.Shapes.Any(shape => Matches(shape, member)))
             .Select(c => c.Owner)
             .ToList();
@@ -305,73 +409,5 @@ public sealed class ConceptRegistryTests
         var name = type.Name;
         var tick = name.IndexOf('`', StringComparison.Ordinal);
         return tick < 0 ? name : name[..tick];
-    }
-
-    private static string RegistryPath() =>
-        Path.Combine(RepositoryLocation.Root(), "docs", "next", RegistryFile);
-
-    /// <summary>
-    /// The registry's rows. Only what lies between the markers is parsed, so the prose around the
-    /// table does not have to pretend to be data.
-    /// </summary>
-    private static List<(string Name, string Owner, string[] Shapes, int Line)> RegistryEntries()
-    {
-        var path = RegistryPath();
-        Assert.True(File.Exists(path), $"Expected the concept registry at {path}.");
-
-        var lines = File.ReadAllLines(path);
-        var begin = Array.FindIndex(lines, l => l.Trim() == TableBegin);
-        var end = Array.FindIndex(lines, l => l.Trim() == TableEnd);
-
-        Assert.True(
-            begin >= 0 && end > begin,
-            $"Could not find the {TableBegin} / {TableEnd} markers around the table in {path}. "
-            + "The test parses only what lies between them, so a missing marker must fail rather "
-            + "than silently empty the scan.");
-
-        var entries = new List<(string, string, string[], int)>();
-
-        for (var i = begin + 1; i < end; i++)
-        {
-            var cells = lines[i].Split('|', StringSplitOptions.TrimEntries);
-
-            if (!lines[i].TrimStart().StartsWith('|'))
-            {
-                Assert.True(
-                    lines[i].Trim().Length == 0,
-                    $"{RegistryFile} line {i + 1} lies between the table markers and is not a "
-                    + "table row. Only rows belong there, so prose here is a row that has lost "
-                    + "its shape and would be skipped in silence.");
-                continue;
-            }
-
-            Assert.True(
-                cells.Length >= 6,
-                $"{RegistryFile} line {i + 1} is a malformed table row with {cells.Length - 2} "
-                + "cells rather than four. A row that cannot be parsed must fail rather than be "
-                + "skipped: an editing accident during mutation testing truncated exactly this "
-                + "row, and every check went on reporting the registry in perfect order because "
-                + "the concept it held had quietly stopped existing."
-                + Environment.NewLine + "  " + lines[i]);
-
-            var name = cells[1];
-            if (name is "Concept" || name.Length == 0 || name.All(c => c is '-' or ':'))
-                continue;
-
-            var shapes = cells[3]
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(s => s.Trim('`'))
-                .Where(s => s.Length > 0)
-                .ToArray();
-
-            Assert.True(
-                shapes.Length > 0,
-                $"{RegistryFile} line {i + 1}: '{name}' lists no member shapes, so it owns "
-                + "nothing and can never fail.");
-
-            entries.Add((name, cells[2], shapes, i + 1));
-        }
-
-        return entries;
     }
 }

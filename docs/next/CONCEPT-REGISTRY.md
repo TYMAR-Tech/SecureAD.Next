@@ -6,6 +6,15 @@ A **concept** is a question the product has to answer — *what does this GUID m
 permission dangerous?*, *what is this object's parent?* Each is answered in exactly one place, by
 one type, and everything else asks that type.
 
+> **The table below is description, not the rule. The rule is code.**
+> As of 2026-09-12 the concepts, their owners and their member shapes live in
+> `ConceptRegistryTests`, which enforces them by reflection over the production assemblies. This
+> document was the input to that check until `P-184`, which made it a test holding a document to the
+> code — the shape the owner's rule of 2026-09-12 forbids, because a drifting document is a
+> documentation problem and is fixed by reading it rather than by a failing build. **Nothing now
+> checks that the table below matches the one in the test.** If the two disagree, the test is right.
+> Claim a new concept there, and correct this afterwards.
+
 ## What this is for
 
 The map found the same question answered three to six times, differently, in branches that could

@@ -3,8 +3,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Architecture;
 
 /// <summary>
-/// Binds <c>docs/next/ARCHITECTURE.md</c> to the projects it describes, and enforces the dependency
-/// direction it declares.
+/// Gate: project references point strictly downward, and every project is placed in the layering.
 ///
 /// <para>
 /// <b>Why the direction is a rule.</b> Today the kernel references nothing, the bundle references
@@ -18,7 +17,12 @@ namespace SecureAD.Next.Tests.Architecture;
 /// years. Nobody decided that either.
 /// </para>
 /// <para>
-/// Stated now, at three projects and three edges, because it is the cheapest it will ever be.
+/// <b>The layering lives here rather than in <c>ARCHITECTURE.md</c>, as of 2026-09-12.</b> It was
+/// parsed out of that document until <c>P-184</c>, which made this a test holding a document to the
+/// code - the shape the owner's rule of 2026-09-12 forbids, because a drifting document is a
+/// documentation problem and is fixed by reading it rather than by a failing build. The guard is
+/// worth keeping and the coupling is not, so the table moved into the code it protects. The
+/// document remains as description and says that this file is authoritative.
 /// </para>
 /// <para>
 /// <b>What it does not do.</b> It cannot say a dependency is sensible, only that it points
@@ -27,57 +31,95 @@ namespace SecureAD.Next.Tests.Architecture;
 /// records about itself.
 /// </para>
 /// </summary>
-public sealed class ArchitectureDocumentationTests
+public sealed class ProjectLayeringGateTests
 {
-    private const string Document = "ARCHITECTURE.md";
-    private const string TableBegin = "<!-- DEPENDENCIES:BEGIN -->";
-    private const string TableEnd = "<!-- DEPENDENCIES:END -->";
+    /// <summary>One project's place in the layering, and what it is allowed to reference.</summary>
+    /// <param name="Name">The project, as its file is named.</param>
+    /// <param name="Layer">Its rung. Lower is deeper; every reference must go strictly downward.</param>
+    /// <param name="MayReference">The projects it is permitted to reference, and no others.</param>
+    private sealed record DeclaredProject(string Name, int Layer, IReadOnlyList<string> MayReference);
 
-    /// <summary>One row of the document's dependency table.</summary>
-    private sealed record DeclaredProject(string Name, int Layer, IReadOnlyList<string> MayReference, int Line);
+    /// <summary>
+    /// The layering, held as code so that nothing has to be kept in step with it by hand.
+    /// </summary>
+    /// <remarks>
+    /// <b>Each project sits on a layer of its own.</b> Two projects sharing one may reference each
+    /// other without the downward comparison noticing, which is why
+    /// <see cref="NoTwoProjectsShareALayer"/> exists beside the rule rather than being assumed.
+    /// </remarks>
+    private static readonly DeclaredProject[] Layering =
+    [
+        new("SecureAD.Kernel", 1, []),
+        new("SecureAD.Evidence", 2, ["SecureAD.Kernel"]),
+        new("SecureAD.Audit", 3, ["SecureAD.Kernel", "SecureAD.Evidence"]),
+        new("SecureAD.Derivation", 4, ["SecureAD.Kernel", "SecureAD.Evidence"]),
+        new("SecureAD.Judgement", 5, ["SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Derivation"]),
+        new(
+            "SecureAD.Cli",
+            6,
+            ["SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Derivation", "SecureAD.Judgement", "SecureAD.Audit"]),
+        new(
+            "SecureAD.Shell",
+            7,
+            ["SecureAD.Kernel", "SecureAD.Evidence", "SecureAD.Derivation", "SecureAD.Judgement", "SecureAD.Audit"]),
+    ];
 
+    /// <summary>
+    /// Every project in the tree is placed in the layering.
+    /// </summary>
+    /// <remarks>
+    /// A project nobody has placed is one whose dependencies nothing checks, so a new project has
+    /// to be classified before it can be referenced freely.
+    /// </remarks>
     [Fact]
-    public void TheDocumentDescribesEveryProjectInTheRebuild()
+    public void EveryProjectIsPlacedInTheLayering()
     {
-        var declared = Declared().Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var placed = Layering.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var missing = ProductionProjects()
-            .Where(p => !declared.Contains(p))
+            .Where(p => !placed.Contains(p))
             .Select(p => "  " + p)
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToList();
 
         Assert.True(
             missing.Count == 0,
-            "Projects in next/src that " + Document + " does not describe. A project nobody has "
-            + "placed in the layering is one whose dependencies nothing checks:"
+            "Projects in next/src that the layering above does not place. A project nobody has "
+            + "placed is one whose dependencies nothing checks:"
             + Environment.NewLine + string.Join(Environment.NewLine, missing));
     }
 
+    /// <summary>
+    /// The layering places no project that does not exist.
+    /// </summary>
+    /// <remarks>
+    /// A row for a deleted project asserts structure the code does not have, and the permissions it
+    /// carries can never be violated - which is how an allowance outlives the thing it was written
+    /// for.
+    /// </remarks>
     [Fact]
-    public void TheDocumentDescribesNoProjectThatDoesNotExist()
+    public void TheLayeringPlacesNoProjectThatDoesNotExist()
     {
         var actual = ProductionProjects().ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var phantom = Declared()
+        var phantom = Layering
             .Where(p => !actual.Contains(p.Name))
-            .Select(p => $"  {p.Name} (line {p.Line})")
+            .Select(p => "  " + p.Name)
             .ToList();
 
         Assert.True(
             phantom.Count == 0,
-            Document + " describes projects that do not exist. A document promising more structure "
-            + "than the code has is worse than none, because the layering it asserts is not the "
-            + "layering being checked:" + Environment.NewLine + string.Join(Environment.NewLine, phantom));
+            "The layering above places projects that do not exist:"
+            + Environment.NewLine + string.Join(Environment.NewLine, phantom));
     }
 
     /// <summary>
-    /// The specific rule: every actual reference is one the document permits.
+    /// The specific rule: every actual reference is one the layering permits.
     /// </summary>
     [Fact]
-    public void EveryProjectReferenceIsOneTheDocumentPermits()
+    public void EveryProjectReferenceIsOneTheLayeringPermits()
     {
-        var permitted = Declared().ToDictionary(
+        var permitted = Layering.ToDictionary(
             p => p.Name,
             p => p.MayReference.ToHashSet(StringComparer.OrdinalIgnoreCase),
             StringComparer.OrdinalIgnoreCase);
@@ -91,8 +133,8 @@ public sealed class ArchitectureDocumentationTests
 
         Assert.True(
             undeclared.Count == 0,
-            "Project references " + Document + " does not permit. Either the reference is wrong, or "
-            + "the architecture changed and the document has not - and the second is how a design "
+            "Project references the layering does not permit. Either the reference is wrong, or "
+            + "the architecture changed and this table has not - and the second is how a design "
             + "becomes whatever the project files happen to say:"
             + Environment.NewLine + string.Join(Environment.NewLine, undeclared));
     }
@@ -106,7 +148,7 @@ public sealed class ArchitectureDocumentationTests
     [Fact]
     public void EveryProjectReferencePointsDownward()
     {
-        var layers = Declared().ToDictionary(p => p.Name, p => p.Layer, StringComparer.OrdinalIgnoreCase);
+        var layers = Layering.ToDictionary(p => p.Name, p => p.Layer, StringComparer.OrdinalIgnoreCase);
 
         var wrongWay = ActualReferences()
             .Where(r => layers.ContainsKey(r.From) && layers.ContainsKey(r.To))
@@ -132,7 +174,7 @@ public sealed class ArchitectureDocumentationTests
     [Fact]
     public void NoTwoProjectsShareALayer()
     {
-        var collisions = Declared()
+        var collisions = Layering
             .GroupBy(p => p.Layer)
             .Where(g => g.Count() > 1)
             .Select(g => $"  layer {g.Key}: {string.Join(", ", g.Select(p => p.Name))}")
@@ -140,8 +182,8 @@ public sealed class ArchitectureDocumentationTests
 
         Assert.True(
             collisions.Count == 0,
-            "Projects sharing a layer in " + Document + ". Two projects on one layer may reference "
-            + "each other without the downward rule noticing:"
+            "Projects sharing a layer. Two projects on one layer may reference each other without "
+            + "the downward rule noticing:"
             + Environment.NewLine + string.Join(Environment.NewLine, collisions));
     }
 
@@ -154,39 +196,16 @@ public sealed class ArchitectureDocumentationTests
     {
         var actual = ProductionProjects().ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var phantom = Declared()
+        var phantom = Layering
             .SelectMany(p => p.MayReference.Select(t => (p, t)))
             .Where(x => !actual.Contains(x.t))
-            .Select(x => $"  {x.p.Name} may reference '{x.t}', which does not exist (line {x.p.Line})")
+            .Select(x => $"  {x.p.Name} may reference '{x.t}', which does not exist")
             .ToList();
 
         Assert.True(
             phantom.Count == 0,
-            Document + " permits references to projects that do not exist:"
+            "The layering permits references to projects that do not exist:"
             + Environment.NewLine + string.Join(Environment.NewLine, phantom));
-    }
-
-    /// <summary>
-    /// The workflow document is the one source of stage status. Every numbered stage must state its
-    /// current state so a component cannot become reachable while the documentation still calls it
-    /// absent, or remain promised after its path was deleted.
-    /// </summary>
-    [Fact]
-    public void EveryStageDeclaresItsState()
-    {
-        var rows = ReadWorkflow().Split('\n')
-            .Where(l => l.TrimStart().StartsWith("| ", StringComparison.Ordinal))
-            .Where(l => Enumerable.Range(1, 9).Any(stage =>
-                l.TrimStart().StartsWith($"| {stage}. ", StringComparison.Ordinal)))
-            .ToList();
-
-        Assert.Equal(9, rows.Count);
-
-        Assert.All(rows, row => Assert.True(
-            row.Contains("Built", StringComparison.OrdinalIgnoreCase)
-            || row.Contains("incomplete", StringComparison.OrdinalIgnoreCase)
-            || row.Contains("Not built", StringComparison.OrdinalIgnoreCase),
-            "A stage row states no state: " + row.Trim()));
     }
 
     /// <summary>
@@ -194,19 +213,24 @@ public sealed class ArchitectureDocumentationTests
     /// projects against an empty table and reporting an architecture in perfect order - the failure
     /// this repository has committed three times.
     /// </summary>
+    /// <remarks>
+    /// <b>The table is asserted even though it is now a compile-time constant.</b> The compiler
+    /// guarantees it parses, not that anybody left anything in it, and a table emptied in a careless
+    /// edit would let every other check above pass vacuously - which is the same failure in a new
+    /// costume.
+    /// </remarks>
     [Fact]
-    public void TheCheckFindsTheProjectsTheirReferencesAndTheTable()
+    public void TheCheckFindsTheProjectsTheirReferencesAndTheLayering()
     {
         var projects = ProductionProjects();
         var references = ActualReferences();
-        var declared = Declared();
 
         Assert.True(projects.Count > 0, "Found no projects under next/src.");
         Assert.True(references.Count > 0, "Found no project references at all, so nothing is checked.");
-        Assert.True(declared.Count > 0, $"Read no rows from the dependency table in {Document}.");
+        Assert.True(Layering.Length > 0, "The layering table is empty, so nothing is checked.");
 
         Assert.Contains(projects, p => p == "SecureAD.Kernel");
-        Assert.Contains(declared, d => d.Name == "SecureAD.Kernel");
+        Assert.Contains(Layering, d => d.Name == "SecureAD.Kernel");
         Assert.Contains(references, r => r.From == "SecureAD.Audit" && r.To == "SecureAD.Kernel");
     }
 
@@ -251,75 +275,5 @@ public sealed class ArchitectureDocumentationTests
         }
 
         return edges;
-    }
-
-    private static List<DeclaredProject> Declared()
-    {
-        var lines = File.ReadAllLines(DocumentPath());
-
-        var begin = Array.FindIndex(lines, l => l.Trim() == TableBegin);
-        var end = Array.FindIndex(lines, l => l.Trim() == TableEnd);
-
-        if (begin < 0 || end < 0 || end < begin)
-        {
-            throw new InvalidOperationException(
-                "Could not find the " + TableBegin + " / " + TableEnd + " markers in "
-                + DocumentPath() + ". The checks parse only what lies between them, so a missing "
-                + "marker must fail rather than silently widen or empty the scan.");
-        }
-
-        var rows = new List<DeclaredProject>();
-
-        for (var i = begin + 1; i < end; i++)
-        {
-            var trimmed = lines[i].Trim();
-            if (!trimmed.StartsWith('|') || !trimmed.EndsWith('|'))
-                continue;
-
-            var cells = trimmed[1..^1].Split('|').Select(c => c.Trim().Trim('`')).ToArray();
-            if (cells.Length < 4 || cells[0] == "Project" || cells[0].All(c => c is '-' or ':'))
-                continue;
-
-            if (!int.TryParse(cells[1], out var layer))
-            {
-                throw new InvalidOperationException(
-                    $"Row '{cells[0]}' in {Document} has a layer of '{cells[1]}', which is not a "
-                    + "number. The downward rule is expressed in layers, so an unparseable one must "
-                    + "fail rather than be skipped.");
-            }
-
-            var may = cells[2] == "-"
-                ? []
-                : cells[2].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Select(t => t.Trim('`'))
-                    .ToList();
-
-            rows.Add(new DeclaredProject(cells[0], layer, may, i + 1));
-        }
-
-        return rows;
-    }
-
-    private static string DocumentPath() =>
-        Path.Combine(RepositoryLocation.Root(), "docs", "next", Document);
-
-    private static string Read()
-    {
-        var path = DocumentPath();
-
-        Assert.True(
-            File.Exists(path),
-            $"Expected the architecture document at {path}. Per docs/next/README.md a document is "
-            + "not the new product's documentation until a test binds it to the code, so an absent "
-            + "document fails rather than being skipped.");
-
-        return File.ReadAllText(path);
-    }
-
-    private static string ReadWorkflow()
-    {
-        var path = Path.Combine(RepositoryLocation.Root(), "docs", "next", "WORKFLOW.md");
-        Assert.True(File.Exists(path), $"Expected the authoritative workflow document at {path}.");
-        return File.ReadAllText(path);
     }
 }

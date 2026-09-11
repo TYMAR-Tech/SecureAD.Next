@@ -7,9 +7,13 @@ This document owns project layering and dependency direction. The authoritative 
 stage flow is [`WORKFLOW.md`](WORKFLOW.md); stage reachability is stated there once rather than being
 repeated here and allowed to drift. Layer documents own behavior inside each stage.
 
-`ArchitectureDocumentationTests` binds it: this document must name every project that exists and no
-project that does not, and the dependency rule below is enforced against the project files rather
-than trusted.
+> **The layering table below is description, not the rule. The rule is code.**
+> As of 2026-09-12 the layers and permitted references live in `ProjectLayeringGateTests`, which
+> enforces them against the project files. This document was the input to that check until `P-184`,
+> which made it a test holding a document to the code — the shape the owner's rule of 2026-09-12
+> forbids, because a drifting document is a documentation problem and is fixed by reading it rather
+> than by a failing build. **Nothing now checks that the table below matches the one in the test.**
+> If the two disagree, the test is right. Change it there, and correct this afterwards.
 
 ## What a run is
 
