@@ -40,6 +40,15 @@ internal static class ProtectedPrincipalReading
             || reasons.HasFlag(ProtectionUnknownReason.ForestMaskMalformed))
             return UnresolvedReason.ForestMaskUnknown;
 
+        // Below the forest-wide reasons above, and that ordering is the point. Where a run both
+        // failed to read the forest mask and did not read this account's domain, the mask is the
+        // thing to say: it is one fact about the whole run that an operator fixes once, while this
+        // would send him to widen a capture that the mask would still spoil. Above the catch-all
+        // below, because "membership incomplete" would send him to look at group nesting when
+        // nothing is wrong with the nesting - the account's domain was simply never read. P-163.
+        if (reasons.HasFlag(ProtectionUnknownReason.PrincipalDomainNotReadInFull))
+            return UnresolvedReason.PrincipalDomainNotRead;
+
         // Everything left - incomplete membership evidence, a possible root reached, an unknown
         // forest root - is the graph being short of what the answer needed.
         return UnresolvedReason.MembershipIncomplete;

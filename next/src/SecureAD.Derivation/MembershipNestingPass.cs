@@ -72,6 +72,20 @@ internal sealed record NestingFacts(
         .Distinct()
         .Count();
 
+    /// <summary>
+    /// Principals that only a <c>foreignSecurityPrincipal</c> stub ever answered for, by SID
+    /// dictionary id.
+    /// </summary>
+    /// <remarks>
+    /// <b>These are the principals of a domain this capture did not read, found from the evidence
+    /// rather than from a coverage table.</b> A domain left out entirely contributes no objects, so
+    /// it establishes no domain SID and there is no prefix to match it by - but its principals still
+    /// reach the graph through stubs held in the domains that were read, and a stub resolves
+    /// perfectly well, so it never lands in <see cref="UnresolvedTrustees"/>. Without this they
+    /// would be stated <c>NotProtected</c>: a flat claim about an account nobody looked at. P-163.
+    /// </remarks>
+    public IReadOnlyList<int> StubOnlyPrincipals { get; init; } = [];
+
     /// <summary>The SID prefix of the forest-root domain, derived from sealed Evidence.</summary>
     public string? ForestRootDomainSid { get; init; }
 
@@ -226,7 +240,7 @@ internal static class MembershipNestingPass
 
             if (!isStub && string.Equals(subject.DomainFqdn, forestFqdn, StringComparison.OrdinalIgnoreCase))
             {
-                var candidate = DomainSidOf(ownSid);
+                var candidate = DomainRelativeSid.DomainOf(ownSid);
                 if (candidate is not null)
                 {
                     if (forestRootDomainSid is not null
@@ -355,6 +369,23 @@ internal static class MembershipNestingPass
             MembershipSources = membershipSources,
             UnresolvedLinks = [.. unresolvedLinks],
 
+            // A principal no real object ever answered for. KeepBest ranks a captured principal
+            // above a stub standing in for one, so a row that is still a stub here is a row whose
+            // real object was never captured - which is to say its own domain was not read. P-163.
+            //
+            // ONLY DOMAIN-RELATIVE IDENTIFIERS, and the filter is load-bearing. A universal
+            // well-known identifier is held once in the configuration partition and again as a stub
+            // in every domain, so it can end up stub-only through an ordinary capture; it belongs to
+            // no domain, so there is no domain of its own to have gone unread, and withholding its
+            // answer would silence principals nothing is actually missing about.
+            StubOnlyPrincipals =
+            [
+                .. principals
+                    .Where(entry => entry.Value.Rank == StubRank
+                        && DomainRelativeSid.DomainOf(sids.TextOf(entry.Key)) is not null)
+                    .Select(entry => entry.Key),
+            ],
+
             // Dropped last rather than never recorded, so a conflict is decided on everything the
             // pass saw rather than on whichever object happened to arrive first.
             DomainSidsByFqdn = domainSids
@@ -381,7 +412,7 @@ internal static class MembershipNestingPass
         if (isStub || string.IsNullOrWhiteSpace(domainFqdn))
             return;
 
-        var candidate = DomainSidOf(sid);
+        var candidate = DomainRelativeSid.DomainOf(sid);
 
         if (candidate is null)
             return;
@@ -394,22 +425,6 @@ internal static class MembershipNestingPass
 
         if (!string.Equals(held, candidate, StringComparison.Ordinal))
             conflicting.Add(domainFqdn);
-    }
-
-    private static string? DomainSidOf(string sid)
-    {
-        var parts = sid.Split('-');
-        if (parts.Length != 8
-            || !string.Equals(parts[0], "S", StringComparison.OrdinalIgnoreCase)
-            || parts[1] != "1"
-            || parts[2] != "5"
-            || parts[3] != "21"
-            || parts.Skip(4).Any(part => !uint.TryParse(part, out _)))
-        {
-            return null;
-        }
-
-        return string.Join('-', parts[..^1]);
     }
 
     /// <summary>

@@ -79,6 +79,11 @@ internal static class UnresolvedWording
                 + "read, so nothing was called unprotected. Capturing the configuration partition "
                 + "would settle it.",
 
+            UnresolvedReason.PrincipalDomainNotRead =>
+                "The domain these accounts belong to was not read in full, so nothing was "
+                + "established about whether they are protected. Including that domain in the run "
+                + "would settle it.",
+
             UnresolvedReason.SecurityDescriptorUnreadable =>
                 "Permissions could not be read for these objects, so their current state is "
                 + "unknown. Capturing with an account that can read them would settle it.",

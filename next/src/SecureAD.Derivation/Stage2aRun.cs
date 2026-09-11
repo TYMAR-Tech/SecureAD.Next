@@ -191,7 +191,7 @@ public static class Stage2aRun
         var completeness = closure is null
             ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
             : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId);
-        RunProtection(writer, graph, facts, closure, !completeness.IsComplete, progress, log, cancellationToken);
+        RunProtection(writer, graph, facts, closure, !completeness.IsComplete, scope.Value!, progress, log, cancellationToken);
         RunLatent(writer, graph, closure, progress, log, cancellationToken);
 
         // Written from the same closure the products were derived from, so a cycle recorded here is
@@ -326,6 +326,7 @@ public static class Stage2aRun
         NestingFacts facts,
         MembershipClosure? closure,
         bool routeEvidenceIncomplete,
+        SecureAD.Evidence.Run.RunScope scope,
         IProgress<DerivationProgress> progress,
         IRunLog log,
         CancellationToken cancellationToken)
@@ -337,6 +338,29 @@ public static class Stage2aRun
             closure is null
             || !closure.IsComplete
             || facts.UnresolvedTrustees.Count > 0;
+
+        // The two signals that name the principals this run cannot speak for. Kept out of
+        // evidenceIsPartial above deliberately: that one is a fact about the whole run and turns
+        // every answer in the forest Unknown, which is the outcome P-163 exists to prevent.
+        var unreadDomains = DomainSidsNotReadInFull(facts, scope);
+        var stubOnly = facts.StubOnlyPrincipals;
+
+        if (unreadDomains.Count > 0 || stubOnly.Count > 0)
+        {
+            log.Note(
+                DerivePhase,
+                "found principals whose own domain was not read in full",
+                [
+                    new RunLogDetail(
+                        "unreadDomains", unreadDomains.Count.ToString(CultureInfo.InvariantCulture)),
+
+                    // Counted apart from the domains, because they are the principals no coverage
+                    // row could have reached: a domain left out entirely establishes no SID.
+                    new RunLogDetail(
+                        "principalsKnownOnlyByAStub",
+                        stubOnly.Count.ToString(CultureInfo.InvariantCulture)),
+                ]);
+        }
 
         // The catalogue this forest actually enforces, rather than the one Microsoft publishes. A
         // forest that never set dSHeuristics gets the published set and says it was asked; one that
@@ -352,7 +376,8 @@ public static class Stage2aRun
             () =>
             {
                 var derived = ProtectedPrincipalDeriver.Derive(
-                    graph, facts.Sids, catalogue, evidenceIsPartial, cancellationToken, facts.ForestRootDomainSid);
+                    graph, facts.Sids, catalogue, evidenceIsPartial, cancellationToken, facts.ForestRootDomainSid,
+                    unreadDomains, stubOnly);
                 return !routeEvidenceIncomplete ? derived : derived with
                 {
                     MembershipRoutesBySid = derived.MembershipRoutesBySid.Select(summary => summary.WithIncompleteReasons(
@@ -496,6 +521,41 @@ public static class Stage2aRun
         }
 
         writer.WriteDomainReadCoverage(rows);
+    }
+
+    /// <summary>
+    /// The domain SID prefixes of every declared domain this run did not read in full.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Anything short of <see cref="DomainReadOutcome.Read"/> counts</b>, which is the owner's
+    /// decision of 2026-09-12 and matches how an unresolvable identifier is already judged in
+    /// <c>OutcomeForMissingPrincipal</c>. A domain read in part is a hole of unknown shape, and an
+    /// account inside it is one nothing was established about whether it was left out on purpose or
+    /// by a failure.
+    /// </para>
+    /// <para>
+    /// <b>A domain with no established SID yields nothing here, and that is not a gap this method
+    /// can close.</b> A domain excluded outright contributes no objects to attribute a prefix from,
+    /// so it cannot be matched this way - its principals reach the graph only as stubs, which is why
+    /// <see cref="NestingFacts.StubOnlyPrincipals"/> exists and is applied beside this. P-163.
+    /// </para>
+    /// </remarks>
+    private static HashSet<string> DomainSidsNotReadInFull(
+        NestingFacts facts, SecureAD.Evidence.Run.RunScope scope)
+    {
+        var prefixes = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var domain in scope.Domains)
+        {
+            if (domain.Outcome == SecureAD.Evidence.Run.DomainReadOutcome.Read)
+                continue;
+
+            if (facts.DomainSidsByFqdn.TryGetValue(domain.DomainFqdn, out var domainSid))
+                prefixes.Add(domainSid);
+        }
+
+        return prefixes;
     }
 
     /// <summary>

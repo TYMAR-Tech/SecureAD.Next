@@ -718,7 +718,7 @@ public sealed class DerivationReader : IDisposable
     /// <param name="sid">The SID no principal in this derivation carries.</param>
     private PrincipalExpansionOutcome OutcomeForMissingPrincipal(string sid)
     {
-        var domainSid = DomainSidOf(sid);
+        var domainSid = DomainRelativeSid.DomainOf(sid);
 
         if (domainSid is null)
             return PrincipalExpansionOutcome.PrincipalNotFound;
@@ -726,32 +726,6 @@ public sealed class DerivationReader : IDisposable
         return ReadDomainReadOutcome(domainSid) == DomainReadOutcome.Read
             ? PrincipalExpansionOutcome.PrincipalDoesNotExist
             : PrincipalExpansionOutcome.PrincipalNotFound;
-    }
-
-    /// <summary>
-    /// The domain part of a domain-relative SID, or null where the SID is not one.
-    /// </summary>
-    /// <remarks>
-    /// <b>Only <c>S-1-5-21-a-b-c-RID</c> names a domain.</b> A built-in identifier such as
-    /// <c>S-1-5-32-544</c> and a well-known one such as <c>S-1-1-0</c> mean something in every
-    /// domain and belong to none, so there is no coverage to look up and no absence to conclude
-    /// anything from.
-    /// </remarks>
-    private static string? DomainSidOf(string sid)
-    {
-        var parts = sid.Split('-');
-
-        if (parts.Length != 8
-            || !string.Equals(parts[0], "S", StringComparison.OrdinalIgnoreCase)
-            || parts[1] != "1"
-            || parts[2] != "5"
-            || parts[3] != "21"
-            || parts.Skip(4).Any(part => !uint.TryParse(part, out _)))
-        {
-            return null;
-        }
-
-        return string.Join('-', parts[..^1]);
     }
 
     /// <summary>

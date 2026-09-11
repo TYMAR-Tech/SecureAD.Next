@@ -384,7 +384,9 @@ public sealed class ProtectedPrincipalDeriverTests
             ProtectedGroupCatalogue.Default,
             membershipEvidenceIsPartial: false,
             CancellationToken.None,
-            DomainSid);
+            DomainSid,
+            EveryDomainRead,
+            NoStubOnlyPrincipals);
 
         Assert.True(closure.StatedLimits.HasFlag(ProtectionUnknownReason.ProtectedCatalogueIncomplete));
     }
@@ -411,7 +413,9 @@ public sealed class ProtectedPrincipalDeriverTests
             ProtectedGroupCatalogue.NarrowedBy(string.Empty),
             membershipEvidenceIsPartial: false,
             CancellationToken.None,
-            DomainSid);
+            DomainSid,
+            EveryDomainRead,
+            NoStubOnlyPrincipals);
 
         Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
     }
@@ -447,7 +451,7 @@ public sealed class ProtectedPrincipalDeriverTests
                 ? e with { PrincipalProtection = noProtection, MemberPropagation = noProtection } : e).ToArray(),
         };
         var result = ProtectedPrincipalDeriver.Derive(GraphOf(principals, [(0, 1)]), SidsFor(principals),
-            catalogue, false, CancellationToken.None, DomainSid);
+            catalogue, false, CancellationToken.None, DomainSid, EveryDomainRead, NoStubOnlyPrincipals);
 
         Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, result.EvaluationOf(1));
         Assert.Equal(OwnerAcceptance.SchemaOnly, result.OwnerAcceptanceOf(1));
@@ -491,7 +495,7 @@ public sealed class ProtectedPrincipalDeriverTests
         Fixture[] principals = [Security(0, 518), User(1, 1104)];
         var result = ProtectedPrincipalDeriver.Derive(GraphOf(principals, [(0, 1)]), SidsFor(principals),
             ProtectedGroupCatalogue.NarrowedBy(string.Empty), false, CancellationToken.None,
-            "S-1-5-21-999-888-777");
+            "S-1-5-21-999-888-777", EveryDomainRead, NoStubOnlyPrincipals);
         Assert.Equal(OwnerAcceptance.NotAccepted, result.OwnerAcceptanceOf(0));
         Assert.Equal(OwnerAcceptance.NotAccepted, result.OwnerAcceptanceOf(1));
     }
@@ -506,7 +510,149 @@ public sealed class ProtectedPrincipalDeriverTests
             ProtectedGroupCatalogue.NarrowedBy(string.Empty),
             membershipEvidenceIsPartial,
             CancellationToken.None,
-            DomainSid);
+            DomainSid,
+
+            // Stated rather than defaulted, which gate 1 requires: every test below is about a
+            // forest that was read in full, and that is a claim each one makes rather than inherits.
+            EveryDomainRead,
+            NoStubOnlyPrincipals);
+
+    /// <summary>A run that read every declared domain in full.</summary>
+    private static readonly IReadOnlySet<string> EveryDomainRead =
+        new HashSet<string>(StringComparer.Ordinal);
+
+    /// <summary>A capture in which every principal had a real object of its own.</summary>
+    private static readonly IReadOnlyCollection<int> NoStubOnlyPrincipals = [];
+
+    // -----------------------------------------------------------------------------------------
+    // P-163: a principal whose own domain was not read in full.
+
+    /// <summary>The SID of a second domain, so "this domain" and "the forest" can be told apart.</summary>
+    /// <remarks>
+    /// Every sub-authority is inside <see cref="uint"/>, as a real one is. The first draft of this
+    /// constant used <c>4444444444</c>, which overflows, so the domain test correctly refused to
+    /// read it as domain-relative at all and the fixture rather than the code was wrong.
+    /// </remarks>
+    private const string OtherDomainSid = "S-1-5-21-4000000000-1500000000-2600000000";
+
+    /// <summary>
+    /// A principal of a domain the run did not read in full loses its protection answer, and
+    /// nobody else does.
+    /// </summary>
+    /// <remarks>
+    /// <b>The fire for P-163.</b> Without it the derivation states <c>NotProtected</c> about an
+    /// account nobody read, which a customer would act on. What is asserted alongside is the whole
+    /// point: the principal of the domain that <i>was</i> read keeps its answer. Making the
+    /// forest-wide answer <c>Unknown</c> would be the easy fix and would stop ownership findings
+    /// being reported anywhere, which is the trap that turned two real findings into none on
+    /// 2026-09-03.
+    /// </remarks>
+    [Fact]
+    public void APrincipalOfADomainNotReadInFullLosesItsAnswerAndNobodyElseDoes()
+    {
+        var closure = DeriveAcrossTwoDomains(unreadDomains: [OtherDomainSid]);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, closure.EvaluationOf(1));
+        Assert.Equal(OwnerAcceptance.Unknown, closure.OwnerAcceptanceOf(1));
+
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
+        Assert.Equal(OwnerAcceptance.NotAccepted, closure.OwnerAcceptanceOf(0));
+    }
+
+    /// <summary>
+    /// A principal only a foreign-security-principal stub ever answered for loses its answer too.
+    /// </summary>
+    /// <remarks>
+    /// <b>The case no coverage row can reach.</b> A domain excluded outright contributes no objects,
+    /// so it establishes no domain SID and there is no prefix to match it by. Its principals arrive
+    /// as stubs held in the domains that were read, and a stub resolves - so it never lands in
+    /// <c>UnresolvedTrustees</c> and the forest-wide safety net never sees it.
+    /// </remarks>
+    [Fact]
+    public void APrincipalKnownOnlyByAStubLosesItsAnswer()
+    {
+        var closure = DeriveAcrossTwoDomains(stubOnly: [1]);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, closure.EvaluationOf(1));
+        Assert.Equal(OwnerAcceptance.Unknown, closure.OwnerAcceptanceOf(1));
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
+    }
+
+    /// <summary>
+    /// A forest read in full keeps every answer it had.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control on both tests above.</b> Without it, a change that withheld every
+    /// answer whatever the coverage said would satisfy them, and the product would refuse to judge
+    /// anything while looking thoroughly tested - which is the failure P-163 exists to prevent
+    /// rather than to cause.
+    /// </remarks>
+    [Fact]
+    public void AForestReadInFullKeepsEveryAnswer()
+    {
+        var closure = DeriveAcrossTwoDomains();
+
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(1));
+        Assert.Equal(OwnerAcceptance.NotAccepted, closure.OwnerAcceptanceOf(0));
+        Assert.Equal(OwnerAcceptance.NotAccepted, closure.OwnerAcceptanceOf(1));
+    }
+
+    /// <summary>
+    /// The reason recorded names the unread domain rather than the membership evidence.
+    /// </summary>
+    /// <remarks>
+    /// Reporting incomplete membership would send an operator to inspect group nesting. Nothing is
+    /// wrong with the nesting; the domain was never read, and the remedy is a wider capture.
+    /// </remarks>
+    [Fact]
+    public void TheReasonRecordedNamesTheUnreadDomain()
+    {
+        var closure = DeriveAcrossTwoDomains(unreadDomains: [OtherDomainSid]);
+
+        Assert.True(closure.ReasonsFor(1)
+            .HasFlag(ProtectionUnknownReason.PrincipalDomainNotReadInFull));
+    }
+
+    /// <summary>
+    /// One principal in each of two domains, with whichever signals the test needs.
+    /// </summary>
+    /// <param name="unreadDomains">Domain SID prefixes the run did not read in full.</param>
+    /// <param name="stubOnly">Principals only a stub ever answered for.</param>
+    private static ProtectedPrincipalClosure DeriveAcrossTwoDomains(
+        string[]? unreadDomains = null,
+        int[]? stubOnly = null)
+    {
+        var sids = new SidInterner();
+        sids.Intern(DomainSid + "-1104", domainFqdn: null);
+        sids.Intern(OtherDomainSid + "-1104", domainFqdn: null);
+
+        PrincipalRow[] rows =
+        [
+            new(0, Guid.NewGuid(), IsGroup: false, GroupType: null, PrimaryGroupSidId: null),
+            new(1, Guid.NewGuid(), IsGroup: false, GroupType: null, PrimaryGroupSidId: null),
+        ];
+
+        var graph = NestingGraph.Build(new NestingFacts(
+            sids,
+            Identities: [],
+            rows,
+            Edges: [],
+            UnresolvedTrustees: [],
+            ObjectsWithoutSid: 0, CollapsedStubs: 0, ForestHeuristics: null));
+
+        return ProtectedPrincipalDeriver.Derive(
+            graph,
+            sids,
+            ProtectedGroupCatalogue.NarrowedBy(string.Empty),
+            membershipEvidenceIsPartial: false,
+            CancellationToken.None,
+            DomainSid,
+            unreadDomains is null
+                ? EveryDomainRead
+                : new HashSet<string>(unreadDomains, StringComparer.Ordinal),
+            stubOnly ?? NoStubOnlyPrincipals);
+    }
 
     private static NestingGraph GraphOf(
         IReadOnlyList<Fixture> principals,

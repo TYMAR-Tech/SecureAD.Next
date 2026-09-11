@@ -446,6 +446,65 @@ public sealed class MembershipNestingPassTests
         Assert.False(facts.DomainSidsByFqdn.ContainsKey("ad.lab"));
     }
 
+    /// <summary>
+    /// A principal only a stub ever answered for is recorded as one whose own domain went unread.
+    /// </summary>
+    /// <remarks>
+    /// <b>The signal P-163 uses where no coverage row can help.</b> A domain excluded outright
+    /// contributes no objects, so it establishes no domain SID and cannot be matched by prefix - but
+    /// its principals still reach the graph through stubs held in the domains that were read, and a
+    /// stub resolves, so it never lands in <see cref="NestingFacts.UnresolvedTrustees"/>. Without
+    /// this the protection derivation states <c>NotProtected</c> about it.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_APrincipalOnlyAStubAnsweredForIsRecordedAsSuch()
+    {
+        var facts = Read(
+            ForeignSecurityPrincipal("ad.lab", "CN=S-1-5-21-9-9-9-1500,CN=ForeignSecurityPrincipals,DC=ad,DC=lab",
+                sid: "S-1-5-21-9-9-9-1500"));
+
+        var sidId = Assert.Single(facts.StubOnlyPrincipals);
+        Assert.Equal("S-1-5-21-9-9-9-1500", facts.Sids.InIdOrder().ElementAt(sidId));
+    }
+
+    /// <summary>
+    /// A real object displaces the stub standing in for it, so nothing is recorded.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control.</b> A stub exists for a principal whose domain <i>was</i> read
+    /// whenever that principal is referenced across a trust, so a signal that fired on every stub
+    /// would withhold answers for principals nothing is missing about.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AStubDisplacedByItsRealObjectIsNotRecorded()
+    {
+        var facts = Read(
+            ForeignSecurityPrincipal("other.lab", "CN=S-1-5-21-1-2-3-1104,CN=ForeignSecurityPrincipals,DC=other,DC=lab",
+                sid: DomainSid + "-1104"),
+            User("CN=Alice,DC=ad,DC=lab", 1104, primaryGroupId: null, memberOf: []));
+
+        Assert.Empty(facts.StubOnlyPrincipals);
+    }
+
+    /// <summary>
+    /// A well-known identifier held only as a stub is not treated as an unread domain's principal.
+    /// </summary>
+    /// <remarks>
+    /// <b>The filter that keeps this from firing across the forest.</b> A universal well-known
+    /// identifier is held once in the configuration partition and again as a stub in every domain,
+    /// so an ordinary capture can leave one stub-only. It belongs to no domain, so there is no
+    /// domain of its own to have gone unread, and withholding the answer for <i>Authenticated
+    /// Users</i> would silence a principal nothing is actually missing about.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AWellKnownIdentifierHeldOnlyAsAStubIsNotRecorded()
+    {
+        var facts = Read(
+            ForeignSecurityPrincipal("ad.lab", "CN=S-1-5-11,CN=ForeignSecurityPrincipals,DC=ad,DC=lab"));
+
+        Assert.Empty(facts.StubOnlyPrincipals);
+    }
+
     /// <summary>One domain's <c>BUILTIN\Administrators</c>, holding one member.</summary>
     private static ObjectAttributes BuiltinAdministrators(
         string? domainFqdn, string dn, string memberDn) =>

@@ -75,7 +75,8 @@ public sealed class MembershipRoutePersistenceTests
         var graph = NestingGraph.Build(new NestingFacts(sids, [], rows,
             [new(0, 1), new(1, 2), new(2, 3), new(0, 3)], [], 0, 0, string.Empty));
         var product = ProtectedPrincipalDeriver.Derive(graph, sids, ProtectedGroupCatalogue.NarrowedBy(string.Empty),
-            false, CancellationToken.None, "S-1-5-21-11-22-33");
+            false, CancellationToken.None, "S-1-5-21-11-22-33",
+            new HashSet<string>(StringComparer.Ordinal), []);
         product = product with
         {
             MembershipRoutesBySid = product.MembershipRoutesBySid.Select(s => s.WithIncompleteReasons(reason)).ToArray(),

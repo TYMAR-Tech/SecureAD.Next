@@ -140,7 +140,8 @@ public sealed class MembershipRouteTests
              new(2, Guid.NewGuid(), false, null, null)],
             [new(0, 2), new(1, 2)], [], 0, 0, string.Empty));
         var product = ProtectedPrincipalDeriver.Derive(graph, sids, ProtectedGroupCatalogue.NarrowedBy(string.Empty),
-            false, CancellationToken.None, Domain);
+            false, CancellationToken.None, Domain,
+            new HashSet<string>(StringComparer.Ordinal), []);
         var summary = product.MembershipRoutesBySid[2];
         Assert.Equal(new[] { "ad.lab", "child.ad.lab" }, summary.Memberships.Select(m => m.InitialMembership.Scope));
         Assert.All(summary.Memberships, m => Assert.Equal(m.InitialMembership.Scope,

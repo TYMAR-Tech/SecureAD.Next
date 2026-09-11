@@ -27,6 +27,20 @@ public enum ProtectionUnknownReason
     PartialMembershipEvidence = MembershipEvidenceIncomplete,
     ProtectedCatalogueIncomplete = ForestMaskNotRead,
     ProtectedCatalogueNarrowedByForest = 512,
+
+    /// <summary>
+    /// This principal's own domain was not read in full, so nothing was established about it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The only reason here that is about one principal rather than the whole forest.</b> Every
+    /// other value is a fact about the run or the forest and is applied to everything; this names
+    /// the accounts the capture did not cover. Adding it to the forest-wide set would make one
+    /// deliberately excluded domain turn every protection answer in a nine-domain forest
+    /// <c>Unknown</c> and stop ownership findings being reported anywhere - judging discards the
+    /// findings of an object with unresolved inputs, which turned two real findings into none on
+    /// 2026-09-03. P-163.
+    /// </remarks>
+    PrincipalDomainNotReadInFull = 1024,
 }
 
 public enum ProtectedPrincipalBasisKind
@@ -111,17 +125,27 @@ internal static class ProtectedPrincipalDeriver
 {
     public const string PhaseName = "ProtectedPrincipals";
 
+    /// <param name="domainSidsNotReadInFull">
+    /// Domain SID prefixes the run did not read in full. Empty where every declared domain was read.
+    /// </param>
+    /// <param name="stubOnlyPrincipals">
+    /// Principals only a <c>foreignSecurityPrincipal</c> stub ever answered for.
+    /// </param>
     public static ProtectedPrincipalClosure Derive(
         NestingGraph graph,
         SidInterner sids,
         ProtectedGroupCatalogue catalogue,
         bool membershipEvidenceIsPartial,
         CancellationToken cancellationToken,
-        string? forestRootDomainSid)
+        string? forestRootDomainSid,
+        IReadOnlySet<string> domainSidsNotReadInFull,
+        IReadOnlyCollection<int> stubOnlyPrincipals)
     {
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(sids);
         ArgumentNullException.ThrowIfNull(catalogue);
+        ArgumentNullException.ThrowIfNull(domainSidsNotReadInFull);
+        ArgumentNullException.ThrowIfNull(stubOnlyPrincipals);
 
         var count = graph.Count;
         var evaluations = Enumerable.Repeat(ProtectedPrincipalEvaluation.NotProtected, count).ToArray();
@@ -252,6 +276,51 @@ internal static class ProtectedPrincipalDeriver
                 // as a non-administrative owner, so an incomplete walk withholds the answer rather
                 // than defaulting it. An owner already found inside an accepted root is unaffected:
                 // finding a path is positive evidence and a partial walk cannot invent one.
+                if (ownerAcceptance[sidId] != OwnerAcceptance.Accepted)
+                    ownerAcceptance[sidId] = OwnerAcceptance.Unknown;
+            }
+        }
+
+        // BESIDE THE LOOP ABOVE AND NEVER INSIDE IT, WHICH IS THE WHOLE OF P-163. Every reason
+        // gathered into globalReason is a fact about the run or the forest and rightly applies to
+        // every principal. This one is a fact about particular accounts - the ones the capture did
+        // not cover - and folding it into globalReason would make a single deliberately excluded
+        // domain turn every protection answer in a nine-domain forest Unknown. Judging counts an
+        // object with unresolved inputs as not judged and discards its findings, so that would stop
+        // ownership findings being reported anywhere: the trap that turned two real findings into
+        // none on 2026-09-03.
+        //
+        // TWO SIGNALS, COVERING DISJOINT CASES, AND BOTH ARE NEEDED. A domain read in part
+        // establishes a domain SID, so its principals are found by prefix. A domain excluded
+        // outright establishes none - it contributed no objects to attribute one from - and its
+        // principals reach the graph only as foreignSecurityPrincipal stubs. A stub resolves, so it
+        // never lands in UnresolvedTrustees and the forest-wide safety net does not see it.
+        if (domainSidsNotReadInFull.Count > 0 || stubOnlyPrincipals.Count > 0)
+        {
+            var stubs = stubOnlyPrincipals as IReadOnlySet<int>
+                ?? new HashSet<int>(stubOnlyPrincipals);
+
+            for (var sidId = 0; sidId < count; sidId++)
+            {
+                var ownDomainWasNotRead = stubs.Contains(sidId)
+                    || (DomainRelativeSid.DomainOf(sids.TextOf(sidId)) is { } domainSid
+                        && domainSidsNotReadInFull.Contains(domainSid));
+
+                if (!ownDomainWasNotRead)
+                    continue;
+
+                // Protected survives for the same reason it survives above: finding a route to a
+                // protected root is positive evidence, and not having read the principal's own
+                // domain cannot unmake a path that was actually walked.
+                if (evaluations[sidId] != ProtectedPrincipalEvaluation.Protected)
+                {
+                    MakeUnknown(
+                        sidId,
+                        ProtectionUnknownReason.PrincipalDomainNotReadInFull,
+                        evaluations,
+                        reasons);
+                }
+
                 if (ownerAcceptance[sidId] != OwnerAcceptance.Accepted)
                     ownerAcceptance[sidId] = OwnerAcceptance.Unknown;
             }

@@ -83,6 +83,19 @@ public enum UnresolvedReason
     OwnerHeuristicNotRead,
     /// <summary>The named ownership modification has unresolved class, scope or requester applicability.</summary>
     OwnerRightsNotEvaluated,
+
+    /// <summary>
+    /// This account's own domain was not read in full, so nothing was established about it.
+    /// </summary>
+    /// <remarks>
+    /// <b>Kept apart from <see cref="MembershipIncomplete"/> deliberately</b>, for the reason
+    /// <c>docs/decisions/0091</c> gives about keeping an uncaptured attribute apart from a disputed
+    /// claim. Telling an operator the membership evidence was short sends him to look at group
+    /// nesting, when the answer is that he excluded the account's domain from the run or the run
+    /// could not read it. The remedy is a wider capture, and naming the wrong cause wastes his
+    /// afternoon. P-163.
+    /// </remarks>
+    PrincipalDomainNotRead,
 }
 
 /// <summary>
