@@ -319,6 +319,51 @@ public sealed class LapsPasswordReadAccessTests
     }
 
     /// <summary>
+    /// An expansion through a group of unknown type that found nothing must not report clean.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same refusal for the second kind of incomplete walk.</b> Where the walk passed
+    /// through a group whose <c>groupType</c> was never captured, whether that route carries
+    /// authorization was never established - so a delegation may reach a broad principal by it and
+    /// the rule cannot say it does not. Reporting the computer clean would tell an operator its
+    /// local administrator password is safely delegated when nobody knows. P-166.
+    /// </remarks>
+    [Fact]
+    public void AnExpansionThroughAnUnknownGroupTypeFindingNothingDoesNotReportClean()
+    {
+        var verdict = Verdict(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            _ => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType, []));
+
+        Assert.Empty(verdict.Findings);
+        Assert.Contains(
+            verdict.Unresolved,
+            u => u.Reason == UnresolvedReason.MembershipIncomplete);
+    }
+
+    /// <summary>
+    /// A complete expansion that found no broad principal reports nothing and refuses nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control on both refusals above.</b> A rule that refused on every expansion
+    /// would satisfy them while reporting nothing about any computer in the forest.
+    /// </remarks>
+    [Fact]
+    public void ACompleteExpansionFindingNothingReportsClean()
+    {
+        var verdict = Verdict(
+            [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
+            _ => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.Expanded, []));
+
+        Assert.Empty(verdict.Findings);
+        Assert.DoesNotContain(
+            verdict.Unresolved,
+            u => u.Reason == UnresolvedReason.MembershipIncomplete);
+    }
+
+    /// <summary>
     /// A well-known trustee that is keyed forest-wide, not under the domain it was captured from,
     /// is still expanded — and does not poison the whole object.
     /// </summary>

@@ -77,6 +77,24 @@ Decided, built and measured — see [`layers/judgement/`](layers/judgement/).
   discarded, because a partial verdict would read as a complete one.
 - **Findings live outside the seal** (`0085`), in a store that is disposable and rebuildable.
 
+**What "inside a group" means, and it is an authorization question rather than a directory one.**
+Owner's decisions, 2026-09-11. A distribution group nested inside a security group *is* a member of
+it and is reported as one, but nothing beneath it is: Microsoft is explicit that an account nested
+through a distribution group does not receive the enclosing group's SID in its access token, so
+following that hop would name principals who hold nothing. A group whose `groupType` the capture
+never read is **not** treated as a distribution group — the route is followed, because refusing it
+would hide access that exists, and the answer is marked as one the product cannot vouch for, so a
+rule refuses rather than reporting the object clean. A group asked about by a SID it carried before
+a migration expands to its real members, because `sIDHistory` is a second identity the principal
+answers to rather than a group it belongs to. See `P-165` and `P-166`.
+
+**When a domain was excluded or unread, only principals from that domain lose their protection
+answer.** Owner's decision, 2026-09-11, for `P-163`. Making the whole forest's answers unknown
+because one domain was deliberately left out would stop ownership findings being reported anywhere,
+and judging discards the findings of an object with unresolved inputs. Membership reaching *into* an
+unread domain is already covered, because a member nobody captured does not resolve and is recorded
+as an unresolved trustee, which qualifies the answer on its own.
+
 **The acknowledged rule-input gap:** rules that depend on cross-object facts need persisted,
 Evidence-bound Derivation products and typed missing/degraded input handling. The accepted correction
 order is recorded in [`docs/next/WORKFLOW.md`](next/WORKFLOW.md); it is no longer treated as an unbounded

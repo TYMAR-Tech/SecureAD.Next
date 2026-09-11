@@ -323,6 +323,51 @@ public sealed class ObjectOwnershipRuleTests
         Assert.False(evidence.IsComplete);
     }
 
+    /// <summary>
+    /// A walk through a group of unknown type is reported but does not vouch for itself either.
+    /// </summary>
+    /// <remarks>
+    /// <b>The completeness question is asked by naming the outcomes that fail it</b>, so an outcome
+    /// added later and not named would be read as a complete walk. That is the shape of failure
+    /// where a check goes on passing while measuring less than it did, which is why this test names
+    /// the second incomplete outcome rather than trusting the first to stand for both.
+    /// </remarks>
+    [Fact]
+    public void AWalkThroughAnUnknownGroupTypeIsCarriedOnTheFinding()
+    {
+        var subject = Container();
+
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject,
+            Context(subject, Person, ProtectionFor(subject, isProtected: false), expansionOutcome:
+                PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType));
+
+        var evidence = Assert.IsType<ObjectOwnershipEvidence>(
+            Assert.Single(verdict.Findings).Evidence);
+
+        Assert.False(evidence.IsComplete);
+    }
+
+    /// <summary>
+    /// A walk that finished vouches for itself, which is what makes the two tests above mean
+    /// something.
+    /// </summary>
+    [Fact]
+    public void ACompletedMembershipWalkIsReportedAsComplete()
+    {
+        var subject = Container();
+
+        var verdict = new ObjectOwnedByNonAdministrator().Judge(
+            subject,
+            Context(subject, Person, ProtectionFor(subject, isProtected: false), expansionOutcome:
+                PrincipalExpansionOutcome.Expanded));
+
+        var evidence = Assert.IsType<ObjectOwnershipEvidence>(
+            Assert.Single(verdict.Findings).Evidence);
+
+        Assert.True(evidence.IsComplete);
+    }
+
     // ---- silences that are not answers ----
 
     /// <summary>A descriptor nobody read is refused.</summary>

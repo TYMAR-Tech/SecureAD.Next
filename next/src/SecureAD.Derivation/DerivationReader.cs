@@ -483,19 +483,35 @@ public sealed class DerivationReader : IDisposable
         if (rootId is null)
             return new PrincipalExpansion(sid, OutcomeForMissingPrincipal(sid), null);
 
+        // THE SID ASKED ABOUT AND THE PRINCIPAL THAT ANSWERS TO IT ARE NOT THE SAME ROW. A group
+        // carried through a migration answers to its old SID as well as its current one, both are
+        // interned in the same dictionary, and the nesting edges hang off the current one alone -
+        // deliberately, because sIDHistory is another identity and never an edge. Walking from the
+        // identity that was matched would therefore find a group, find no edges beneath it, and
+        // report it as containing nobody. An access control entry naming the old SID would read as
+        // granting access to an empty group, which is the silence a customer cannot see. P-165.
+        var walkFrom = PrincipalCarrying(rootId.Value);
 
         var edges = ReadNestingEdges();
 
         var identities = ReadSidIdentities();
+
+        var groups = ReadSecurityEnabledByPrincipal();
 
         // The path to each principal, kept as the parent that first reached it. Storing one parent
         // rather than a whole path per member keeps this linear in the number of principals; the
         // path is walked back out at the end, only for the members actually returned.
         var parent = new Dictionary<int, int>();
         var order = new List<int>();
-        var seen = new HashSet<int> { rootId.Value };
+        var seen = new HashSet<int> { walkFrom };
         var queue = new Queue<int>();
-        queue.Enqueue(rootId.Value);
+        queue.Enqueue(walkFrom);
+
+        // The groups the walk went on to enter, which is not every group it listed. Kept so that a
+        // member left deliberately unentered is not later mistaken for one the walk ran out of room
+        // to finish.
+        var entered = new HashSet<int>();
+        var throughUnknownGroupType = false;
 
         var stopped = false;
 
@@ -515,7 +531,33 @@ public sealed class DerivationReader : IDisposable
 
                 parent[member] = current;
                 order.Add(member);
-                queue.Enqueue(member);
+
+                // LISTED EITHER WAY, ENTERED ONLY WHERE THE HOP CARRIES AUTHORIZATION. A
+                // distribution group nested in a security group really is a member of it, so it
+                // belongs in the answer; but Microsoft is explicit that an account beneath it does
+                // not receive the enclosing group's SID in its token, so its members are not
+                // members of what contains it. Walking through one names principals who hold
+                // nothing, which is a finding a customer would act on and should not - P-166.
+                //
+                // This is AuthorizationMembershipExpander's rule, deliberately the same one. Two
+                // answers to "who is effectively inside this group" that disagree are worse than
+                // either answer alone, and the stored closure has been security-aware all along.
+                if (edges.ContainsKey(member))
+                {
+                    var carriesAuthorization = groups.GetValueOrDefault(member);
+
+                    if (carriesAuthorization is not false)
+                    {
+                        // A group whose type nobody captured is not thereby a distribution group.
+                        // Refusing to enter it would drop authorization that exists, so the route
+                        // is followed and the answer says it cannot be vouched for.
+                        if (carriesAuthorization is null)
+                            throughUnknownGroupType = true;
+
+                        entered.Add(member);
+                        queue.Enqueue(member);
+                    }
+                }
 
                 if (order.Count < budget)
                     continue;
@@ -534,23 +576,28 @@ public sealed class DerivationReader : IDisposable
         {
             var identity = identities.GetValueOrDefault(memberId);
 
-            // A member is complete when it is not a group, or when it is one whose own members were
-            // all reached. Where the walk stopped, anything still queued behind it is unknown, so
-            // every group left on the frontier is marked incomplete rather than quietly trusted.
+            // A member is complete when nothing below it was left unreached. Where the walk stopped,
+            // every group still on the frontier is marked incomplete rather than quietly trusted.
+            // A group the walk chose not to enter is complete on these terms and not a thinning of
+            // the answer: what is below a distribution group does not belong in this answer at all.
             var isComplete = !stopped
-                || !edges.ContainsKey(memberId)
+                || !entered.Contains(memberId)
                 || edges[memberId].All(seen.Contains);
 
             expanded.Add(new ExpandedPrincipal(
                 identity.Sid ?? string.Empty,
                 identity.Scope ?? string.Empty,
-                PathTo(memberId, rootId.Value, parent, identities),
+                PathTo(memberId, walkFrom, parent, identities),
                 isComplete));
         }
 
+        // Order matters: a budget that stopped the walk is the larger silence, and saying only that
+        // the types were uncertain would understate it.
         var outcome = stopped
             ? PrincipalExpansionOutcome.StoppedAtBudget
-            : PrincipalExpansionOutcome.Expanded;
+            : throughUnknownGroupType
+                ? PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType
+                : PrincipalExpansionOutcome.Expanded;
 
         return new PrincipalExpansion(sid, outcome, expanded);
     }
@@ -684,6 +731,36 @@ public sealed class DerivationReader : IDisposable
         return found is null or DBNull ? null : Convert.ToInt32(found, CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// The principal that answers to one identity, which is the identity itself unless it is a SID
+    /// carried from a migration.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Every identity resolves through the same hop, including a principal's own.</b> The store
+    /// records a row where <c>principal_sid_id</c> equals <c>sid_id</c> for a current SID, so this
+    /// needs no special case for the ordinary answer and cannot acquire one that drifts.
+    /// </para>
+    /// <para>
+    /// <b>An identity with no row at all stands for itself.</b> A SID interned only because an edge
+    /// or an access control entry named it has no identity row, and redirecting it anywhere would
+    /// be an invention.
+    /// </para>
+    /// </remarks>
+    /// <param name="sidId">The identity that was matched.</param>
+    private int PrincipalCarrying(int sidId)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT principal_sid_id FROM sid_identity WHERE sid_id = $sid";
+        command.Parameters.AddWithValue("$sid", sidId);
+
+        var found = command.ExecuteScalar();
+
+        return found is null or DBNull
+            ? sidId
+            : Convert.ToInt32(found, CultureInfo.InvariantCulture);
+    }
+
     /// <summary>Every nesting edge, as members by group.</summary>
     private Dictionary<int, List<int>> ReadNestingEdges()
     {
@@ -722,6 +799,40 @@ public sealed class DerivationReader : IDisposable
             identities[reader.GetInt32(0)] = (reader.GetString(1), reader.GetString(2));
 
         return identities;
+    }
+
+    /// <summary>
+    /// Whether each group's flags say it can carry authorization, by dictionary id.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Tri-state, and the third state is the reason this exists.</b> True is a security group,
+    /// false is a distribution group, and null is a group whose <c>groupType</c> the capture never
+    /// read. A principal with no row here answers null for the same reason: nobody established what
+    /// it is. Collapsing null into false would drop authorization edges that exist.
+    /// </para>
+    /// <para>
+    /// <b>Computed through <see cref="MembershipNestingPass.IsSecurityEnabled"/> rather than here.</b>
+    /// The schema stores <c>group_type</c> raw and says plainly that the answers from it are not
+    /// stored; a second reading of the same flag in this file is how two parts of the product come
+    /// to disagree about one group.
+    /// </para>
+    /// </remarks>
+    private Dictionary<int, bool?> ReadSecurityEnabledByPrincipal()
+    {
+        var answers = new Dictionary<int, bool?>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT sid_id, group_type FROM principal";
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var groupType = reader.IsDBNull(1) ? (int?)null : reader.GetInt32(1);
+            answers[reader.GetInt32(0)] = MembershipNestingPass.IsSecurityEnabled(groupType);
+        }
+
+        return answers;
     }
 
     /// <summary>

@@ -281,9 +281,12 @@ public sealed class LapsPasswordReadAccess : IRule
             unresolved.Add(new UnresolvedInput(
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived));
         }
-        else if (expansion.Outcome is PrincipalExpansionOutcome.StoppedAtBudget)
+        else if (expansion.Outcome is PrincipalExpansionOutcome.StoppedAtBudget
+            or PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType)
         {
             // Everything found is genuinely inside; the absence of anything else is not a fact.
+            // The same holds where the walk passed through a group whose type was never captured,
+            // because whether that route carries authorization was never established.
             unresolved.Add(new UnresolvedInput(
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.MembershipIncomplete));
         }

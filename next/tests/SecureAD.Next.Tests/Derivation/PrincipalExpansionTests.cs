@@ -49,6 +49,19 @@ public sealed class PrincipalExpansionTests
     /// <summary>An identifier measured in that bundle that no object carries.</summary>
     private const string LabOrphan = LabDomainSid + "-2102";
 
+    /// <summary>The SID Readers carried before it was migrated between domains.</summary>
+    private const string ReadersOldSid = "S-1-5-21-7-7-7-1101";
+
+    /// <summary>
+    /// A global security group's <c>groupType</c>: global scope with the security-enabled bit.
+    /// </summary>
+    private const int SecurityGroup = unchecked((int)0x80000002);
+
+    /// <summary>
+    /// A global distribution group's <c>groupType</c>: the same scope without the security bit.
+    /// </summary>
+    private const int DistributionGroup = 0x00000002;
+
 
     /// <summary>
     /// A chain reaches everything below it, and says how it got there.
@@ -345,14 +358,157 @@ public sealed class PrincipalExpansionTests
         Assert.Equal(2, expansion.Members!.Count);
     }
 
+    /// <summary>
+    /// A group nested through a distribution group is listed, and what is under it is not.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A distribution group carries no authorization, so a hop through one grants nothing.</b>
+    /// Microsoft is explicit that an account nested beneath a distribution group does not receive
+    /// the enclosing security group's SID in its access token. Walking through one names principals
+    /// who hold nothing at all - a false positive, and the kind a customer would act on by removing
+    /// access that was never granted.
+    /// </para>
+    /// <para>
+    /// <b>The group itself is still reported, because it really is a member.</b> Dropping it would
+    /// replace one untruth with another: an operator looking at the membership would be shown a
+    /// list the directory does not agree with.
+    /// </para>
+    /// <para>
+    /// <b>Its negative control is <see cref="ABroadPrincipalNestedDeepIsFound"/></b>, which is this
+    /// fixture with the middle group left as a security group and asserts that Domain Users IS
+    /// found. The two together are what separate this fix from a walk that merely stopped
+    /// descending. P-166.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void WhatIsBeneathADistributionGroupIsNotInsideWhatContainsIt()
+    {
+        var directory = Store(edges: [(0, 1), (1, 3)], groupTypes: [(1, DistributionGroup)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+
+        var member = Assert.Single(expansion.Members!);
+        Assert.Equal(Staff, member.Sid);
+
+        // Not a place the answer thinned out. What is below a distribution group does not belong in
+        // this answer at all, so declining to enter it is a complete answer rather than a partial
+        // one - marking it incomplete would push every rule reading this into a needless refusal.
+        Assert.True(member.IsComplete);
+
+        Assert.Empty(expansion.BroadMembers);
+    }
+
+    /// <summary>
+    /// A group whose type was never captured is walked through, and the answer says so.
+    /// </summary>
+    /// <remarks>
+    /// <b>Ignorance is not a distribution group, and treating it as one would hide real access.</b>
+    /// The cautious pair is to follow the route and refuse to vouch for it: the members are
+    /// returned, so nothing is lost, and the outcome stops a rule turning this into a clean
+    /// verdict. The owner decided this on 2026-09-11.
+    /// </remarks>
+    [Fact]
+    public void AGroupWhoseTypeWasNeverCapturedIsWalkedAndTheAnswerIsMarked()
+    {
+        var directory = Store(edges: [(0, 1), (1, 3)], groupTypes: [(1, null)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(
+            PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType, expansion.Outcome);
+
+        // The members are real and are returned. What the outcome withholds is the claim that the
+        // route carries authorization, not the members themselves.
+        Assert.False(expansion.IsComplete);
+        Assert.Contains(expansion.BroadMembers, m => m.Sid == DomainUsers);
+    }
+
+    /// <summary>
+    /// A group asked about by the SID it carried before a migration expands to its members.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>An access control entry naming an old SID reaches the migrated principal</b>, which is
+    /// why sIDHistory is stored as a second identity rather than discarded. The membership edges
+    /// hang off the principal's current SID alone, so a walk starting at the identity that matched
+    /// finds the group, finds nothing beneath it, and reports it as containing nobody.
+    /// </para>
+    /// <para>
+    /// <b>The failure this replaces was worse than losing the members.</b> The outcome was
+    /// <c>Expanded</c>: a definite statement that the group is empty, which a rule turns into a
+    /// clean verdict and an operator reads as safe. P-165.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AGroupReachedByItsOldSidExpandsToItsMembers()
+    {
+        var directory = Store(edges: [(0, 1)], history: [(ReadersOldSid, 0)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(ReadersOldSid, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+
+        var member = Assert.Single(expansion.Members!);
+        Assert.Equal(Staff, member.Sid);
+
+        // The route shown to an operator names the group that holds the membership, not the
+        // identifier the entry happened to use. Cutting the link means editing Readers.
+        Assert.Equal([Readers, Staff], member.PathFromRoot);
+    }
+
+    /// <summary>
+    /// A principal that answers to its own SID is not redirected to another one.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control on the identity hop.</b> Every identity resolves through the same
+    /// lookup, a principal's own included, so a defect there would send ordinary expansions to the
+    /// wrong principal - silently, because the answer would still be a well-formed group. Here
+    /// Staff holds nothing, and a redirect to Readers would hand back a member.
+    /// </remarks>
+    [Fact]
+    public void APrincipalAnsweringToItsOwnSidIsNotRedirected()
+    {
+        var directory = Store(edges: [(0, 1)], history: [(ReadersOldSid, 0)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Staff, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+        Assert.Empty(expansion.Members!);
+    }
+
     /// <summary>Builds a store holding four principals and the edges given.</summary>
+    /// <remarks>
+    /// <b>Principal rows and identity rows are written because a real derivation writes them.</b>
+    /// The nesting pass records a row for every principal it sees and an identity row for every SID
+    /// each one answers to, so a fixture without them is a store that cannot occur - and a walk
+    /// reading group types would find every group untyped, which is a different test from the one
+    /// intended.
+    /// </remarks>
     /// <param name="edges">Group and member, as indexes into the four SIDs above.</param>
     /// <param name="nesting">What became of the nesting pass.</param>
     /// <param name="coverage">What the run made of reading each domain.</param>
+    /// <param name="groupTypes">
+    /// Overrides for the <c>groupType</c> of principals by index. Anything not named is a security
+    /// group where the edges make it a group and not a group at all otherwise; an entry whose value
+    /// is null is a group whose type the capture never read.
+    /// </param>
+    /// <param name="history">
+    /// Extra SIDs interned as identities carried from a migration, each naming the index of the
+    /// principal that answers to it.
+    /// </param>
     private static string Store(
         (int Group, int Member)[] edges,
         DerivationPhaseOutcome nesting = DerivationPhaseOutcome.Succeeded,
-        (string DomainSid, string DomainFqdn, DomainReadOutcome Outcome)[]? coverage = null)
+        (string DomainSid, string DomainFqdn, DomainReadOutcome Outcome)[]? coverage = null,
+        (int Index, int? GroupType)[]? groupTypes = null,
+        (string Sid, int Principal)[]? history = null)
     {
         var directory = TempDirectories.Create("expansion-tests");
 
@@ -363,11 +519,32 @@ public sealed class PrincipalExpansionTests
 
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash;
 
+        var carried = history ?? [];
+        var overrides = (groupTypes ?? []).ToDictionary(g => g.Index, g => g.GroupType);
+        var groupIndexes = edges.Select(e => e.Group).ToHashSet();
+
         using (var writer = DerivationWriter.Create(directory, seal, Started))
         {
             writer.WriteSids(
-                [Readers, Staff, Alice, DomainUsers],
-                [Scope, Scope, Scope, Scope]);
+                [Readers, Staff, Alice, DomainUsers, .. carried.Select(h => h.Sid)],
+                [Scope, Scope, Scope, Scope, .. carried.Select(_ => Scope)]);
+
+            writer.WritePrincipals(Enumerable.Range(0, 4).Select(index => new PrincipalRow(
+                index,
+                Guid.Empty,
+                IsGroup: groupIndexes.Contains(index),
+                GroupType: overrides.TryGetValue(index, out var type)
+                    ? type
+                    : groupIndexes.Contains(index) ? SecurityGroup : null,
+                PrimaryGroupSidId: null)));
+
+            writer.WriteSidIdentities(
+            [
+                .. Enumerable.Range(0, 4)
+                    .Select(index => new SidIdentityRow(index, index, SidIdentityKind.Current)),
+                .. carried.Select((h, offset) =>
+                    new SidIdentityRow(4 + offset, h.Principal, SidIdentityKind.History)),
+            ]);
 
             writer.WriteNestingEdges(edges.Select(e => new NestingEdge(e.Group, e.Member)));
             writer.RecordPhase(MembershipNestingPass.PhaseName, nesting, error: null);

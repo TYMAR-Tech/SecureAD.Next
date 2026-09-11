@@ -201,8 +201,12 @@ internal static class ObjectOwnershipReading
         };
 
         // A walk that stopped early could have missed the group that makes this owner
-        // administrative, so the answer is carried rather than asserted.
-        var complete = expansion.Outcome is not PrincipalExpansionOutcome.StoppedAtBudget;
+        // administrative, and so could one that passed through a group whose type was never
+        // captured, so the answer is carried rather than asserted. Both are tested by name: an
+        // outcome added later and not listed here would be read as a complete walk, which is the
+        // failure where a check goes on passing while it measures less than it did.
+        var complete = expansion.Outcome is not (PrincipalExpansionOutcome.StoppedAtBudget
+            or PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType);
 
         var evidence = new ObjectOwnershipEvidence(
             ownerSid,

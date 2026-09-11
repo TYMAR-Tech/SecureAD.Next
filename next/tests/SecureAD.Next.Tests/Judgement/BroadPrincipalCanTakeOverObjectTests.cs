@@ -349,6 +349,51 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
     }
 
     /// <summary>
+    /// An expansion that passed through a group of unknown type and found nothing must not report
+    /// clean either.
+    /// </summary>
+    /// <remarks>
+    /// <b>A second way for a walk to be incomplete, and it has to reach the same verdict.</b> A
+    /// budget leaves members unreached; a group whose <c>groupType</c> was never captured leaves it
+    /// unsettled whether the members reached carry authorization at all. Either way the rule has not
+    /// established who can take the object over, so finding nothing is not a statement that nobody
+    /// can. P-166.
+    /// </remarks>
+    [Fact]
+    public void AnExpansionThroughAnUnknownGroupTypeFindingNothingIsNotReportedAsClean()
+    {
+        var verdict = Judge(
+            Container(),
+            [Allow(Delegated, WriteDacl)],
+            (_, _) => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType, []));
+
+        Assert.Empty(verdict.Findings);
+        Assert.False(verdict.IsComplete);
+    }
+
+    /// <summary>
+    /// A complete expansion that found no broad principal is reported clean.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control on both refusals above.</b> Without it, a rule that refused on every
+    /// expansion whatever its outcome would satisfy them, and the product would report nothing about
+    /// any object while looking thoroughly tested.
+    /// </remarks>
+    [Fact]
+    public void ACompleteExpansionFindingNothingIsReportedAsClean()
+    {
+        var verdict = Judge(
+            Container(),
+            [Allow(Delegated, WriteDacl)],
+            (_, _) => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.Expanded, []));
+
+        Assert.Empty(verdict.Findings);
+        Assert.True(verdict.IsComplete);
+    }
+
+    /// <summary>
     /// A trustee that resolves to a principal which does not exist is judged silently.
     /// </summary>
     /// <remarks>

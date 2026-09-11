@@ -66,6 +66,27 @@ public enum PrincipalExpansionOutcome
     /// No expansion could be attempted, because the derivation carries no nesting to walk.
     /// </summary>
     NoNestingDerived,
+
+    /// <summary>
+    /// The walk finished, but passed through a group whose <c>groupType</c> was never captured, so
+    /// whether that route carries authorization at all is unknown.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The route is followed and the answer is marked, which is the cautious pair.</b> A group
+    /// whose type nobody recorded is not thereby a distribution group, so refusing to traverse it
+    /// would drop authorization that exists and report a live delegation as inert. Traversing it
+    /// silently would do the opposite, naming principals who may hold nothing. Members reached this
+    /// way are therefore returned, and the walk says it cannot vouch for them.
+    /// </para>
+    /// <para>
+    /// <b>Kept apart from <see cref="StoppedAtBudget"/> although both mean incomplete.</b> A budget
+    /// says more members exist and were not reached; this says the members reached may not be
+    /// members for authorization purposes at all. They thin the answer from opposite ends, and one
+    /// standing in for the other would put a false sentence in a run log.
+    /// </para>
+    /// </remarks>
+    ExpandedThroughUnknownGroupType,
 }
 
 
@@ -138,9 +159,10 @@ public sealed record PrincipalExpansion(
     /// Whether everything inside the principal was reached.
     /// </summary>
     /// <remarks>
-    /// False covers a walk that stopped at a budget, a principal nobody captured, and a derivation
-    /// with no nesting in it. A caller may report what is here in every case; what it may not do is
-    /// say that nothing else is inside.
+    /// False covers a walk that stopped at a budget, a walk that passed through a group whose type
+    /// was never captured, a principal nobody captured, and a derivation with no nesting in it. A
+    /// caller may report what is here in every case; what it may not do is say that nothing else is
+    /// inside.
     /// </remarks>
     public bool IsComplete => Outcome is PrincipalExpansionOutcome.Expanded;
 
