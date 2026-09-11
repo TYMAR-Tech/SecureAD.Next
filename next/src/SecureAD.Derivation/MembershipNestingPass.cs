@@ -45,6 +45,33 @@ internal sealed record NestingFacts(
     /// <summary>Original membership sources, before unresolved endpoints or foreign stubs are folded.</summary>
     public IReadOnlyList<ObjectAttributes> MembershipSources { get; init; } = [];
 
+    /// <summary>
+    /// Membership links that named nothing this bundle holds, each kept against the end of it that
+    /// did resolve.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same names as <see cref="UnresolvedTrustees"/>, answering a different question.</b>
+    /// That list says the derivation as a whole is short by this much; these say <i>which principal</i>
+    /// is short, which is the only form a walk can act on without marking every expansion in a
+    /// nine-domain forest incomplete. P-164.
+    /// </remarks>
+    public IReadOnlyList<UnresolvedNestingLink> UnresolvedLinks { get; init; } = [];
+
+    /// <summary>
+    /// How many principals claimed something inside them that nothing in this bundle answers to.
+    /// </summary>
+    /// <remarks>
+    /// <b>Distinct principals rather than links, because the question is how many answers are
+    /// short.</b> One group missing forty members is one group whose membership cannot be vouched
+    /// for, and counting the names instead would make a single badly-covered group look like a
+    /// forest-wide problem.
+    /// </remarks>
+    public int GroupsWithUnidentifiedMembers => UnresolvedLinks
+        .Where(link => link.Direction == NestingLinkDirection.Member)
+        .Select(link => link.SidId)
+        .Distinct()
+        .Count();
+
     /// <summary>The SID prefix of the forest-root domain, derived from sealed Evidence.</summary>
     public string? ForestRootDomainSid { get; init; }
 
@@ -266,20 +293,48 @@ internal static class MembershipNestingPass
 
         var edges = new List<NestingEdge>(pendingEdges.Count);
         var unresolved = new List<string>();
+        var unresolvedLinks = new HashSet<UnresolvedNestingLink>();
 
         foreach (var (groupNameId, memberNameId) in pendingEdges)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!names.TryResolve(groupNameId, out var groupSidId))
+            // BOTH ENDS ARE RESOLVED BEFORE EITHER IS JUDGED. The end that did resolve is the only
+            // thing a link that cannot become an edge can be attributed to, and returning at the
+            // first failure would throw it away along with the one that did not - which is how a
+            // group whose members could not be identified came to look like a group with none.
+            // P-164.
+            var groupResolved = names.TryResolve(groupNameId, out var groupSidId);
+            var memberResolved = names.TryResolve(memberNameId, out var memberSidId);
+
+            if (!groupResolved)
             {
                 unresolved.Add(names.TextOf(groupNameId));
+
+                // Attributed to the member, because it is what this thins: a principal naming a
+                // group nobody captured leaves what encloses that principal short, not its own
+                // contents. Where the member is unresolvable too there is nobody to attribute it
+                // to, and the forest-wide list above is the only record it can have.
+                if (memberResolved)
+                {
+                    unresolvedLinks.Add(new UnresolvedNestingLink(
+                        memberSidId,
+                        NestingLinkDirection.ContainingGroup,
+                        names.TextOf(groupNameId)));
+                }
+
                 continue;
             }
 
-            if (!names.TryResolve(memberNameId, out var memberSidId))
+            if (!memberResolved)
             {
                 unresolved.Add(names.TextOf(memberNameId));
+
+                unresolvedLinks.Add(new UnresolvedNestingLink(
+                    groupSidId,
+                    NestingLinkDirection.Member,
+                    names.TextOf(memberNameId)));
+
                 continue;
             }
 
@@ -298,6 +353,7 @@ internal static class MembershipNestingPass
         {
             ForestRootDomainSid = forestRootDomainSid,
             MembershipSources = membershipSources,
+            UnresolvedLinks = [.. unresolvedLinks],
 
             // Dropped last rather than never recorded, so a conflict is decided on everything the
             // pass saw rather than on whichever object happened to arrive first.

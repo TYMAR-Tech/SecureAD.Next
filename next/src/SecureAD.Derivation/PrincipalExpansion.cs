@@ -87,6 +87,33 @@ public enum PrincipalExpansionOutcome
     /// </para>
     /// </remarks>
     ExpandedThroughUnknownGroupType,
+
+    /// <summary>
+    /// The walk finished, but a group it passed through claimed a member that no captured object
+    /// answers to, so what that group holds is not fully known.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the difference between an empty group and an unreadable one.</b> A membership link
+    /// naming something the capture never read cannot become an edge, so the group it belonged to
+    /// carries fewer members than the directory says it has - and without this the answer would be
+    /// indistinguishable from a group that really holds nobody. A rule would then report the object
+    /// clean, which is could-not-work-it-out presented as nothing-to-report. P-164.
+    /// </para>
+    /// <para>
+    /// <b>Kept apart from <see cref="StoppedAtBudget"/> although both mean members were not
+    /// reached.</b> A budget is this product's own limit and raising it would find the rest; an
+    /// unidentified member is a hole in the capture that no amount of walking will fill. Saying
+    /// "ran out of room" where nothing was ever read would put a false sentence in a run log and
+    /// point an operator at a setting rather than at their capture scope.
+    /// </para>
+    /// <para>
+    /// <b>And apart from <see cref="ExpandedThroughUnknownGroupType"/>, which thins the answer from
+    /// the other end.</b> That one says the members returned may not count for authorization; this
+    /// says members exist that were never returned at all.
+    /// </para>
+    /// </remarks>
+    ExpandedWithUnidentifiedMember,
 }
 
 
@@ -115,7 +142,9 @@ public enum PrincipalExpansionOutcome
 /// </param>
 /// <param name="IsComplete">
 /// Whether everything nested below this principal was also reached. False marks the edge of a walk
-/// that stopped, so a reader can see where the answer thins out rather than inferring it.
+/// that stopped, so a reader can see where the answer thins out rather than inferring it, and also
+/// a group that claimed a member no captured object answers to - the walk reached everything it
+/// could, and what it could reach is not everything the directory says is there.
 /// </param>
 public sealed record ExpandedPrincipal(
     string Sid,
@@ -160,9 +189,9 @@ public sealed record PrincipalExpansion(
     /// </summary>
     /// <remarks>
     /// False covers a walk that stopped at a budget, a walk that passed through a group whose type
-    /// was never captured, a principal nobody captured, and a derivation with no nesting in it. A
-    /// caller may report what is here in every case; what it may not do is say that nothing else is
-    /// inside.
+    /// was never captured, a group that claimed a member no captured object answers to, a principal
+    /// nobody captured, and a derivation with no nesting in it. A caller may report what is here in
+    /// every case; what it may not do is say that nothing else is inside.
     /// </remarks>
     public bool IsComplete => Outcome is PrincipalExpansionOutcome.Expanded;
 

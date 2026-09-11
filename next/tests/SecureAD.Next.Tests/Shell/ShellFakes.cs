@@ -232,6 +232,19 @@ internal sealed class FakeAssetSource : IAssetSource
                 bundleDirectory));
     }
 
+    /// <summary>
+    /// What the dashboard is told about groups whose membership could not be fully read. Null,
+    /// the default, means deriving has not run - which is a different statement from none.
+    /// </summary>
+    public int? GroupsWithUnidentifiedMembers { get; set; }
+
+    public AuditError? GroupsWithUnidentifiedMembersFails { get; set; }
+
+    public Result<int?> ReadGroupsWithUnidentifiedMembers(string bundleDirectory) =>
+        GroupsWithUnidentifiedMembersFails is { } error
+            ? Result<int?>.Failure(error)
+            : Result<int?>.Success(GroupsWithUnidentifiedMembers);
+
     public AuditError? LapsListingFails { get; set; }
 
     public string? LapsListedContainer { get; private set; }

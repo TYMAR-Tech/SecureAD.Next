@@ -152,6 +152,13 @@ public static class Stage2aRun
                 // to compare it against nesting_edge and conclude half of them went missing.
                 new RunLogDetail("edgesCollected", facts.Edges.Count.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("unresolved", facts.UnresolvedTrustees.Count.ToString(CultureInfo.InvariantCulture)),
+                // Beside "unresolved" rather than instead of it, because they answer different
+                // questions. That is how many names went unmatched across the whole forest; this is
+                // how many groups are consequently unable to say what they hold, which is the number
+                // that decides how much judging goes quiet. P-164.
+                new RunLogDetail(
+                    "groupsWithUnidentifiedMembers",
+                    facts.GroupsWithUnidentifiedMembers.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("collapsed", facts.CollapsedStubs.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("unscopedBuiltins", facts.Sids.UnscopedBuiltins.ToString(CultureInfo.InvariantCulture)),
             ]);
@@ -451,6 +458,11 @@ public static class Stage2aRun
         writer.WriteSidIdentities(facts.Identities);
         writer.WritePrincipals(facts.Principals);
         writer.WriteNestingEdges(facts.Edges);
+
+        // Beside the edges rather than with the completeness lists below, because these are the
+        // links that could not become edges and a reader of one needs the other to know what the
+        // edges leave out. P-164.
+        writer.WriteUnresolvedNestingLinks(facts.UnresolvedLinks);
     }
 
     /// <summary>

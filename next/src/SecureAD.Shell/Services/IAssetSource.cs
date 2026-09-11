@@ -102,6 +102,20 @@ internal interface IAssetSource
     /// </remarks>
     Result<ForestInventory> ReadInventory(string bundleDirectory);
 
+    /// <summary>
+    /// Reads how many groups claimed a member the run could not identify, or null where the
+    /// membership has not been derived.
+    /// </summary>
+    /// <param name="bundleDirectory">The run's bundle directory.</param>
+    /// <remarks>
+    /// <b>Three answers, not two, and the third is the point.</b> A number is a count of groups
+    /// whose membership cannot be vouched for; zero says every member named was identified; null
+    /// says deriving has not run, so nobody has looked. A screen that collapsed null into zero
+    /// would tell an operator his groups are fully known on the strength of a stage that never
+    /// happened. P-164.
+    /// </remarks>
+    Result<int?> ReadGroupsWithUnidentifiedMembers(string bundleDirectory);
+
     /// <summary>Reads one page of the findings a judging produced.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     /// <param name="query">Which findings, and where to carry on from.</param>

@@ -76,6 +76,24 @@
                                Style="{StaticResource BlockLabel}" Margin="0,2,0,0" />
                 </StackPanel>
 
+                <!-- THEN WHAT THE GROUPS COULD NOT SAY, directly under the coverage headline
+                     because it is a coverage fact: a group listing a member the run could not
+                     identify holds more than this bundle can show. NotEstablished rather than
+                     Fault - nothing broke, and the remedy is a wider capture rather than a
+                     technical fix. Owner's decision, 2026-09-12. P-164. -->
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Background="{StaticResource NotEstablishedSubtleBrush}"
+                        BorderBrush="{StaticResource NotEstablishedBrush}"
+                        Visibility="{Binding HasMembershipNotice, Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding MembershipNotice.Title}"
+                                   Style="{StaticResource SectionTitle}"
+                                   Foreground="{StaticResource NotEstablishedBrush}" />
+                        <TextBlock Text="{Binding MembershipNotice.Detail}" TextWrapping="Wrap"
+                                   Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
                 <!-- THEN THE TOTAL, with what it covers stated beneath it rather than left to be
                      inferred from the rows below. -->
                 <Border Style="{StaticResource Card}" Margin="0,12,0,0"

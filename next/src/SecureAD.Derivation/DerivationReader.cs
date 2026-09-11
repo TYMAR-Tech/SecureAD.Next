@@ -437,6 +437,39 @@ public sealed class DerivationReader : IDisposable
     }
 
     /// <summary>
+    /// How many principals claimed a member no captured object answers to, or null where the
+    /// nesting was never derived.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Null rather than zero where the phase did not run</b>, for the reason
+    /// <see cref="NestingWasDerived"/> exists at all. A store with no rows because nothing was
+    /// derived and a store with no rows because every member resolved are opposite facts, and a
+    /// screen reading the second as the first would tell an operator his groups are fully known
+    /// when nobody looked.
+    /// </para>
+    /// <para>
+    /// <b>Distinct principals, matching what the derive run logged.</b> The question is how many
+    /// answers are short, not how many names went unmatched; one group missing forty members is one
+    /// group whose membership cannot be vouched for. P-164.
+    /// </para>
+    /// </remarks>
+    public int? GroupsWithUnidentifiedMembers()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!NestingWasDerived())
+            return null;
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT COUNT(DISTINCT sid_id) FROM nesting_unresolved_link WHERE direction = $direction";
+        command.Parameters.AddWithValue("$direction", nameof(NestingLinkDirection.Member));
+
+        return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
     /// Expands one principal to everything nested inside it.
     /// </summary>
     /// <remarks>
@@ -498,6 +531,8 @@ public sealed class DerivationReader : IDisposable
 
         var groups = ReadSecurityEnabledByPrincipal();
 
+        var unresolvedMembers = ReadGroupsWithUnresolvedMembers();
+
         // The path to each principal, kept as the parent that first reached it. Storing one parent
         // rather than a whole path per member keeps this linear in the number of principals; the
         // path is walked back out at the end, only for the members actually returned.
@@ -512,6 +547,11 @@ public sealed class DerivationReader : IDisposable
         // to finish.
         var entered = new HashSet<int>();
         var throughUnknownGroupType = false;
+
+        // Seeded from the principal being expanded, which no later check would catch: the root is
+        // never a member of its own answer, so a group that itself claimed an unidentifiable member
+        // would otherwise report everything it holds as everything there is. P-164.
+        var throughUnidentifiedMember = unresolvedMembers.Contains(walkFrom);
 
         var stopped = false;
 
@@ -554,6 +594,12 @@ public sealed class DerivationReader : IDisposable
                         if (carriesAuthorization is null)
                             throughUnknownGroupType = true;
 
+                        // Flagged on entering rather than on merely listing it, for the reason the
+                        // line above is: what is below a group the walk chose not to enter is not
+                        // part of this answer, so a link missing down there does not thin it.
+                        if (unresolvedMembers.Contains(member))
+                            throughUnidentifiedMember = true;
+
                         entered.Add(member);
                         queue.Enqueue(member);
                     }
@@ -580,24 +626,35 @@ public sealed class DerivationReader : IDisposable
             // every group still on the frontier is marked incomplete rather than quietly trusted.
             // A group the walk chose not to enter is complete on these terms and not a thinning of
             // the answer: what is below a distribution group does not belong in this answer at all.
-            var isComplete = !stopped
+            var reachedEverythingBelow = !stopped
                 || !entered.Contains(memberId)
                 || edges[memberId].All(seen.Contains);
+
+            // The second way a member's contents can be short, and it is checked apart because it
+            // has a different cause and a different remedy. The walk stopping is this product's own
+            // budget; a member nobody could identify is a hole in the capture, and no larger budget
+            // would find it. P-164.
+            var claimedSomethingUnidentified =
+                entered.Contains(memberId) && unresolvedMembers.Contains(memberId);
 
             expanded.Add(new ExpandedPrincipal(
                 identity.Sid ?? string.Empty,
                 identity.Scope ?? string.Empty,
                 PathTo(memberId, walkFrom, parent, identities),
-                isComplete));
+                reachedEverythingBelow && !claimedSomethingUnidentified));
         }
 
         // Order matters: a budget that stopped the walk is the larger silence, and saying only that
-        // the types were uncertain would understate it.
+        // the types were uncertain would understate it. An unidentified member outranks an unknown
+        // group type for the same reason - members that were never reached at all is a definite gap,
+        // while an uncertain group type is a doubt about members that were.
         var outcome = stopped
             ? PrincipalExpansionOutcome.StoppedAtBudget
-            : throughUnknownGroupType
-                ? PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType
-                : PrincipalExpansionOutcome.Expanded;
+            : throughUnidentifiedMember
+                ? PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember
+                : throughUnknownGroupType
+                    ? PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType
+                    : PrincipalExpansionOutcome.Expanded;
 
         return new PrincipalExpansion(sid, outcome, expanded);
     }
@@ -784,6 +841,31 @@ public sealed class DerivationReader : IDisposable
         }
 
         return edges;
+    }
+
+    /// <summary>
+    /// The principals that named something inside them which nothing in this bundle answers to.
+    /// </summary>
+    /// <remarks>
+    /// <b>Only the <see cref="NestingLinkDirection.Member"/> rows, and the filter is the point.</b>
+    /// A principal that named a containing group nobody captured is short in the other direction -
+    /// what encloses it - which is not the question an expansion answers. Reading both here would
+    /// mark a group incomplete on the strength of evidence about something else entirely. P-164.
+    /// </remarks>
+    private HashSet<int> ReadGroupsWithUnresolvedMembers()
+    {
+        var groups = new HashSet<int>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT sid_id FROM nesting_unresolved_link WHERE direction = $direction";
+        command.Parameters.AddWithValue("$direction", nameof(NestingLinkDirection.Member));
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+            groups.Add(reader.GetInt32(0));
+
+        return groups;
     }
 
     /// <summary>The SID text and scope of every principal, by dictionary id.</summary>

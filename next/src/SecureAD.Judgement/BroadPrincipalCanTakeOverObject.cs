@@ -210,12 +210,14 @@ public sealed class BroadPrincipalCanTakeOverObject : IRule
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived));
         }
         else if (expansion.Outcome is PrincipalExpansionOutcome.StoppedAtBudget
-            or PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType)
+            or PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType
+            or PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember)
         {
-            // Two different silences, one consequence. A budget leaves members unreached; a group
+            // Three different silences, one consequence. A budget leaves members unreached; a group
             // whose type was never captured leaves it unsettled whether the members reached are
-            // members for authorization at all. Either way the membership is not established, so
-            // finding nothing here is not a statement that there is nothing.
+            // members for authorization at all; a group that claimed a member nobody captured holds
+            // more than this bundle can show. Any of them means the membership is not established,
+            // so finding nothing here is not a statement that there is nothing. P-164.
             unresolved.Add(new UnresolvedInput(
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.MembershipIncomplete));
         }

@@ -373,12 +373,36 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
     }
 
     /// <summary>
+    /// An expansion whose group claimed an unidentifiable member and found nothing must not report
+    /// clean either.
+    /// </summary>
+    /// <remarks>
+    /// <b>A third way for a walk to be incomplete, reaching the same verdict as the other two.</b>
+    /// A budget is this product's own limit; an unknown group type leaves it unsettled whether the
+    /// members reached carry authorization; a member nobody captured means the group holds more
+    /// than the bundle can show. In each case the rule has not established who can take the object
+    /// over, so finding nothing is not a statement that nobody can. P-164.
+    /// </remarks>
+    [Fact]
+    public void AnExpansionWithAnUnidentifiedMemberFindingNothingIsNotReportedAsClean()
+    {
+        var verdict = Judge(
+            Container(),
+            [Allow(Delegated, WriteDacl)],
+            (_, _) => new PrincipalExpansion(
+                Delegated, PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember, []));
+
+        Assert.Empty(verdict.Findings);
+        Assert.False(verdict.IsComplete);
+    }
+
+    /// <summary>
     /// A complete expansion that found no broad principal is reported clean.
     /// </summary>
     /// <remarks>
-    /// <b>The negative control on both refusals above.</b> Without it, a rule that refused on every
-    /// expansion whatever its outcome would satisfy them, and the product would report nothing about
-    /// any object while looking thoroughly tested.
+    /// <b>The negative control on all three refusals above.</b> Without it, a rule that refused on
+    /// every expansion whatever its outcome would satisfy them, and the product would report nothing
+    /// about any object while looking thoroughly tested.
     /// </remarks>
     [Fact]
     public void ACompleteExpansionFindingNothingIsReportedAsClean()

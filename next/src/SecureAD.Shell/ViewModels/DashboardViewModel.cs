@@ -142,6 +142,15 @@ internal sealed partial class DashboardViewModel : ObservableObject
 
     private ForestInventory? _inventory;
 
+    /// <summary>
+    /// Groups that claimed a member the run could not identify, or null where deriving has not run.
+    /// </summary>
+    /// <remarks>
+    /// Null is load-bearing and is not a missing value: it says nobody has worked the membership
+    /// out, which <see cref="MembershipNotice"/> states rather than rounding down to none.
+    /// </remarks>
+    private int? _groupsWithUnidentifiedMembers;
+
     /// <summary>Builds the dashboard over a source of run evidence.</summary>
     /// <param name="assets">Where the counts come from.</param>
     public DashboardViewModel(IAssetSource assets)
@@ -243,6 +252,63 @@ internal sealed partial class DashboardViewModel : ObservableObject
 
     /// <summary>Whether there is a warning to raise.</summary>
     public bool HasWarning => Warning is not null;
+
+    /// <summary>
+    /// What the run can and cannot say about who is inside its groups, or null where there is
+    /// nothing to say.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Below the coverage headline, because it is a coverage fact.</b> The owner's decision of
+    /// 2026-09-12. A group listing a member the run could not identify holds more than this bundle
+    /// can show, and until <c>P-164</c> that was indistinguishable from a group holding nobody -
+    /// so rules reported such objects clean. They now decline instead, and this is where an
+    /// operator learns how much of the forest that covers.
+    /// </para>
+    /// <para>
+    /// <b>A notice rather than a statistic, because it can be acted on.</b> The usual cause is a
+    /// domain left out of the run or a member in another forest, and the remedy is to widen the
+    /// scope and capture again.
+    /// </para>
+    /// <para>
+    /// <b>Not derived is stated, not counted as none.</b> Deriving is a separate stage that may not
+    /// have run, and reporting that as <i>no groups affected</i> would be this screen making the
+    /// exact claim the rest of it exists to refuse.
+    /// </para>
+    /// </remarks>
+    public Notice? MembershipNotice
+    {
+        get
+        {
+            if (_inventory is null)
+                return null;
+
+            if (_groupsWithUnidentifiedMembers is not { } groups)
+            {
+                return new Notice(
+                    "Group membership has not been worked out yet",
+                    "Deriving has not run for this run, so whether every group's membership could "
+                    + "be read is unknown. Nothing below counts it either way.");
+            }
+
+            if (groups == 0)
+                return null;
+
+            var lead = groups == 1
+                ? "1 group lists at least one member this run could not identify"
+                : $"{groups:N0} groups list at least one member this run could not identify";
+
+            return new Notice(
+                "Some groups' membership could not be fully read",
+                lead
+                + " \u2014 usually an account in a domain you left out of the run, or one in "
+                + "another forest. Those groups are reported as incomplete, and rules that depend "
+                + "on who is inside them will decline to judge rather than report them clean.");
+        }
+    }
+
+    /// <summary>Whether there is anything to say about group membership.</summary>
+    public bool HasMembershipNotice => MembershipNotice is not null;
 
     /// <summary>Accounts across every domain that was read.</summary>
     public string TotalUsers => Total(c => c.Users);
@@ -367,6 +433,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
         if (!read.IsSuccess)
         {
             _inventory = null;
+            _groupsWithUnidentifiedMembers = null;
             Domains.Clear();
             Refusal = new Notice("This run cannot be summarised", read.Error.Description);
             Restated();
@@ -375,6 +442,12 @@ internal sealed partial class DashboardViewModel : ObservableObject
 
         _inventory = read.Value;
         Refusal = null;
+
+        // A derivation that will not open is reported as one that has not run, deliberately. Both
+        // mean nobody has established what these groups hold, which is the only thing this screen
+        // says about it; the evidence refusal above is where a broken store is stated.
+        var membership = _assets.ReadGroupsWithUnidentifiedMembers(bundleDirectory);
+        _groupsWithUnidentifiedMembers = membership.IsSuccess ? membership.Value : null;
 
         Domains.Clear();
         foreach (var domain in _inventory.Domains)
@@ -388,6 +461,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
     {
         BundlePath = null;
         _inventory = null;
+        _groupsWithUnidentifiedMembers = null;
         Refusal = null;
         Domains.Clear();
         Restated();
@@ -410,6 +484,8 @@ internal sealed partial class DashboardViewModel : ObservableObject
         OnPropertyChanged(nameof(EveryDomainCounted));
         OnPropertyChanged(nameof(Warning));
         OnPropertyChanged(nameof(HasWarning));
+        OnPropertyChanged(nameof(MembershipNotice));
+        OnPropertyChanged(nameof(HasMembershipNotice));
         OnPropertyChanged(nameof(TotalUsers));
         OnPropertyChanged(nameof(TotalComputers));
         OnPropertyChanged(nameof(TotalGroups));

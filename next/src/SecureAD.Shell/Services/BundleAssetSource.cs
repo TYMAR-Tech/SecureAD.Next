@@ -1,4 +1,5 @@
 using System.IO;
+using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Judgement;
@@ -184,6 +185,38 @@ internal sealed class BundleAssetSource : IAssetSource, IDisposable
         return guarded.IsSuccess
             ? guarded.Value
             : Result<ForestInventory>.Failure(guarded.Error);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Opened and closed per call rather than held like the evidence, for the reason the judgement
+    /// reads give: a derivation is rewritten whenever an operator re-derives, and a held handle
+    /// would answer from the store that existed when the screen was opened.
+    /// </remarks>
+    public Result<int?> ReadGroupsWithUnidentifiedMembers(string bundleDirectory)
+    {
+        var opened = DerivationReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return Result<int?>.Failure(opened.Error);
+
+        using var reader = opened.Value;
+
+        try
+        {
+            return Result<int?>.Success(reader.GroupsWithUnidentifiedMembers());
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            return Result<int?>.Failure(AuditError.Create(
+                ErrorCategory.Shell,
+                "DerivationCannotBeRead",
+                ErrorSeverity.Failed,
+                $"The derivation in '{bundleDirectory}' was opened and could not be read. "
+                + error.Message,
+                bundleDirectory));
+        }
     }
 
     /// <inheritdoc/>

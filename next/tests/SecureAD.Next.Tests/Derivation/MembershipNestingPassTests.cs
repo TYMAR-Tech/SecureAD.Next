@@ -82,6 +82,91 @@ public sealed class MembershipNestingPassTests
     }
 
     /// <summary>
+    /// The group that claimed an unidentifiable member keeps a record of having claimed it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The fire for P-164.</b> Before this the link was dropped and nothing above the pass could
+    /// tell a group whose members could not be identified from a group with none, so the LAPS rules
+    /// reported such machines clean. The forest-wide list asserted in the test above is not enough
+    /// on its own: it says some name somewhere went unmatched, which in a nine-domain forest is
+    /// almost always true and would silence judging everywhere if read as an answer about any one
+    /// group.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AnUnidentifiableMemberIsAttributedToTheGroupThatClaimedIt()
+    {
+        var facts = Read(
+            Group("CN=Domain Admins,DC=x", 512, ["CN=Ghost,DC=elsewhere"]));
+
+        var link = Assert.Single(facts.UnresolvedLinks);
+
+        Assert.Equal(NestingLinkDirection.Member, link.Direction);
+        Assert.Equal("CN=Ghost,DC=elsewhere", link.DistinguishedName);
+        Assert.Equal(SidOf(facts, 512), facts.Sids.InIdOrder().ElementAt(link.SidId));
+    }
+
+    /// <summary>
+    /// A group named by a member's <c>memberOf</c> that nothing answers to is attributed to the
+    /// member, in the other direction.
+    /// </summary>
+    /// <remarks>
+    /// <b>The asymmetry P-164 asks to preserve.</b> This thins what <i>contains</i> the account,
+    /// not what is inside it, so recording it in the same direction as the test above would let an
+    /// expansion mark a group short on the strength of evidence about something else entirely.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AnUnidentifiableContainingGroupIsAttributedToTheMember()
+    {
+        var facts = Read(
+            User("CN=Alice,DC=x", 1104, primaryGroupId: null, memberOf: ["CN=Gone,DC=elsewhere"]));
+
+        var link = Assert.Single(facts.UnresolvedLinks);
+
+        Assert.Equal(NestingLinkDirection.ContainingGroup, link.Direction);
+        Assert.Equal("CN=Gone,DC=elsewhere", link.DistinguishedName);
+        Assert.Equal(SidOf(facts, 1104), facts.Sids.InIdOrder().ElementAt(link.SidId));
+    }
+
+    /// <summary>
+    /// Where both ends of a membership resolve, nothing is recorded as unidentified.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control.</b> A guard that fired on every membership would mark the whole
+    /// forest incomplete and silence judging, which is the failure P-164 warns is worse than the
+    /// defect it fixes.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_AMembershipThatResolvesRecordsNoUnidentifiedLink()
+    {
+        var facts = Read(
+            Group("CN=Domain Admins,DC=x", 512, ["CN=Alice,DC=x"]),
+            User("CN=Alice,DC=x", 1104, primaryGroupId: null, memberOf: []));
+
+        Assert.Single(facts.Edges);
+        Assert.Empty(facts.UnresolvedLinks);
+        Assert.Equal(0, facts.GroupsWithUnidentifiedMembers);
+    }
+
+    /// <summary>
+    /// The count is of groups, not of the names they could not identify.
+    /// </summary>
+    /// <remarks>
+    /// What an operator needs from the run log and the dashboard is how many answers are short. One
+    /// group missing three members is one group whose membership cannot be vouched for, and
+    /// counting the names would make a single badly-covered group read as a wider problem.
+    /// </remarks>
+    [Fact]
+    public void Stage2a_TheUnidentifiedCountIsOfGroupsRatherThanNames()
+    {
+        var facts = Read(
+            Group("CN=Domain Admins,DC=x", 512,
+                ["CN=One,DC=elsewhere", "CN=Two,DC=elsewhere", "CN=Three,DC=elsewhere"]));
+
+        Assert.Equal(3, facts.UnresolvedLinks.Count);
+        Assert.Equal(1, facts.GroupsWithUnidentifiedMembers);
+    }
+
+    /// <summary>
     /// Primary-group membership is read, though it appears in neither <c>member</c> nor
     /// <c>memberOf</c>.
     /// </summary>

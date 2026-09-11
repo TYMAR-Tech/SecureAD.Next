@@ -64,6 +64,144 @@ public sealed class PrincipalExpansionTests
 
 
     /// <summary>
+    /// A group that claimed a member nobody captured does not report as fully expanded.
+    /// </summary>
+    /// <remarks>
+    /// <b>The fire for P-164, at the level a rule sees.</b> Staff claimed a member the capture
+    /// never read, so what Staff holds is not known. Before this the walk found the edges it could
+    /// and reported <see cref="PrincipalExpansionOutcome.Expanded"/>, which a rule reads as a
+    /// settled answer - and SEC-090 then reported the machine clean.
+    /// </remarks>
+    [Fact]
+    public void AGroupThatClaimedAnUnidentifiableMemberIsNotReportedComplete()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)], unresolvedMembers: [1]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember, expansion.Outcome);
+        Assert.False(expansion.IsComplete);
+
+        // The members that were reached are still real and still returned. The silence is about
+        // what else might be there, and only the group that carried it is marked short.
+        var members = expansion.Members!;
+        Assert.Equal(2, members.Count);
+        Assert.False(members.Single(m => m.Sid == Staff).IsComplete);
+        Assert.True(members.Single(m => m.Sid == Alice).IsComplete);
+    }
+
+    /// <summary>
+    /// The same store without the unidentified member expands cleanly.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control.</b> Identical edges, one fewer stored fact. Without it the test
+    /// above would pass against a walk that called every expansion incomplete, which is the
+    /// forest-wide silence P-164 says is worse than the defect.
+    /// </remarks>
+    [Fact]
+    public void TheSameChainWithEveryMemberIdentifiedExpandsCleanly()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+        Assert.True(expansion.IsComplete);
+        Assert.All(expansion.Members!, m => Assert.True(m.IsComplete));
+    }
+
+    /// <summary>
+    /// The principal being expanded is itself checked, not only the groups beneath it.
+    /// </summary>
+    /// <remarks>
+    /// The root is never a member of its own answer, so nothing in the loop over members would
+    /// reach it. A group that itself claimed an unidentifiable member would otherwise report
+    /// everything it holds as everything there is - the original defect, surviving at the one place
+    /// every caller starts from.
+    /// </remarks>
+    [Fact]
+    public void TheExpandedPrincipalsOwnUnidentifiableMemberIsCaught()
+    {
+        var directory = Store(edges: [(0, 1)], unresolvedMembers: [0]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember, expansion.Outcome);
+        Assert.False(expansion.IsComplete);
+    }
+
+    /// <summary>
+    /// An unidentifiable <i>containing</i> group does not thin what is inside the principal.
+    /// </summary>
+    /// <remarks>
+    /// <b>The asymmetry P-164 requires, tested from the reading end.</b> Alice naming a group
+    /// nobody captured says something about what encloses Alice, which is not the question
+    /// <c>MembersOf</c> answers. Consuming it here would mark Readers short on evidence about a
+    /// different object, and in a nine-domain forest with cross-forest members that would be most
+    /// expansions.
+    /// </remarks>
+    [Fact]
+    public void AnUnidentifiableContainingGroupDoesNotThinTheExpansion()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)], unresolvedContainers: [1, 2]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+        Assert.True(expansion.IsComplete);
+    }
+
+    /// <summary>
+    /// A distribution group's unidentifiable member does not thin the answer either.
+    /// </summary>
+    /// <remarks>
+    /// The walk deliberately does not enter a distribution group, because Microsoft is explicit
+    /// that an account beneath one does not receive the enclosing group's SID in its token. What is
+    /// below it is therefore not part of this answer at all, so a member it could not identify
+    /// takes nothing away from what was asked. This is the same reasoning the budget case already
+    /// uses for a group it chose not to enter.
+    /// </remarks>
+    [Fact]
+    public void AnUnidentifiableMemberBelowADistributionGroupDoesNotThinTheAnswer()
+    {
+        var directory = Store(
+            edges: [(0, 1), (1, 2)],
+            groupTypes: [(1, DistributionGroup)],
+            unresolvedMembers: [1]);
+
+        using var reader = DerivationReader.Open(directory).Value!;
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+        Assert.True(expansion.IsComplete);
+    }
+
+    /// <summary>
+    /// The count a run reports is null where the nesting was never derived.
+    /// </summary>
+    /// <remarks>
+    /// <b>Zero would be a claim.</b> A store with no rows because nothing was derived and one with
+    /// no rows because every member resolved are opposite facts, and the dashboard reading the
+    /// second as the first would tell an operator his groups are fully known when nobody looked.
+    /// </remarks>
+    [Fact]
+    public void TheUnidentifiedMemberCountIsUnknownWhereNestingWasNotDerived()
+    {
+        var derived = Store(edges: [(0, 1)], unresolvedMembers: [0]);
+        var notDerived = Store(edges: [], nesting: DerivationPhaseOutcome.DidNotRun);
+
+        using var fromDerived = DerivationReader.Open(derived).Value!;
+        using var fromNotDerived = DerivationReader.Open(notDerived).Value!;
+
+        Assert.Equal(1, fromDerived.GroupsWithUnidentifiedMembers());
+        Assert.Null(fromNotDerived.GroupsWithUnidentifiedMembers());
+    }
+
+    /// <summary>
     /// A chain reaches everything below it, and says how it got there.
     /// </summary>
     /// <remarks>
@@ -503,12 +641,22 @@ public sealed class PrincipalExpansionTests
     /// Extra SIDs interned as identities carried from a migration, each naming the index of the
     /// principal that answers to it.
     /// </param>
+    /// <param name="unresolvedMembers">
+    /// Principals, by index, that claimed a member no captured object answers to. Written as the
+    /// nesting pass writes them, so the walk sees what a real derivation would hold.
+    /// </param>
+    /// <param name="unresolvedContainers">
+    /// Principals, by index, that named a containing group no captured object answers to. Stored
+    /// but never consulted by an expansion, which is the asymmetry P-164 requires.
+    /// </param>
     private static string Store(
         (int Group, int Member)[] edges,
         DerivationPhaseOutcome nesting = DerivationPhaseOutcome.Succeeded,
         (string DomainSid, string DomainFqdn, DomainReadOutcome Outcome)[]? coverage = null,
         (int Index, int? GroupType)[]? groupTypes = null,
-        (string Sid, int Principal)[]? history = null)
+        (string Sid, int Principal)[]? history = null,
+        int[]? unresolvedMembers = null,
+        int[]? unresolvedContainers = null)
     {
         var directory = TempDirectories.Create("expansion-tests");
 
@@ -547,6 +695,15 @@ public sealed class PrincipalExpansionTests
             ]);
 
             writer.WriteNestingEdges(edges.Select(e => new NestingEdge(e.Group, e.Member)));
+
+            writer.WriteUnresolvedNestingLinks(
+            [
+                .. (unresolvedMembers ?? []).Select(index => new UnresolvedNestingLink(
+                    index, NestingLinkDirection.Member, $"CN=Gone{index},DC=elsewhere")),
+                .. (unresolvedContainers ?? []).Select(index => new UnresolvedNestingLink(
+                    index, NestingLinkDirection.ContainingGroup, $"CN=Above{index},DC=elsewhere")),
+            ]);
+
             writer.RecordPhase(MembershipNestingPass.PhaseName, nesting, error: null);
 
             writer.WriteDomainReadCoverage(

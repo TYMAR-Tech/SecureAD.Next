@@ -68,3 +68,37 @@ internal readonly record struct PrincipalRow(
 /// <param name="GroupSidId">The containing group.</param>
 /// <param name="MemberSidId">The principal directly inside it.</param>
 internal readonly record struct NestingEdge(int GroupSidId, int MemberSidId);
+
+/// <summary>Which side of a membership link the name nobody could resolve sat on.</summary>
+/// <remarks>
+/// <b>The two thin opposite answers, which is why they are not one value.</b> A group naming a
+/// member nobody captured leaves that group's contents short; a principal naming a containing
+/// group nobody captured leaves what encloses that principal short. Recording them
+/// undirected would let a walk asking one question spend the other question's evidence.
+/// </remarks>
+internal enum NestingLinkDirection
+{
+    /// <summary>A group named something inside it that no captured object answers to.</summary>
+    Member,
+
+    /// <summary>A principal named a group containing it that no captured object answers to.</summary>
+    ContainingGroup,
+}
+
+/// <summary>
+/// A membership link that named something no captured object answers to, kept against the end of
+/// it that did resolve.
+/// </summary>
+/// <remarks>
+/// <b>Dropping one of these is how an unreadable group came to look empty.</b> The link cannot
+/// become a <see cref="NestingEdge"/> because one end names no principal, and discarding it left
+/// the other end indistinguishable from a principal that genuinely had no such relationship.
+/// P-164.
+/// </remarks>
+/// <param name="SidId">The end of the link that resolved.</param>
+/// <param name="Direction">Which side the unresolvable name sat on.</param>
+/// <param name="DistinguishedName">The name nothing answered to.</param>
+internal readonly record struct UnresolvedNestingLink(
+    int SidId,
+    NestingLinkDirection Direction,
+    string DistinguishedName);

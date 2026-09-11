@@ -28,6 +28,12 @@ public sealed class DerivationLayoutTests
         // structural fingerprint cannot catch - the guard below would pass unchanged if the version
         // had not been bumped, so ProtectedPrincipalDeriverTests carries the behavioural check.
         [13] = "15DBD34B6918826C2408E64610E6F1B0E8F4B04675C7F7BD88E1B7D3740BA143",
+        // Schema 14 adds nesting_unresolved_link under P-164, so unlike 12 and 13 this one really
+        // does change the shape and the hash moves with it. A version 13 store has nowhere to have
+        // recorded which group carried a membership link naming something no captured object
+        // answers to, so it cannot be read as though the absence of those rows meant there were
+        // none - which is the whole defect.
+        [14] = "FFE987C95F60D7B88BD51060B11F5B34E2666FF5F2B51124BAC2D739264276C4",
     };
 
     [Fact]

@@ -507,6 +507,51 @@ internal sealed class DerivationWriter : IDisposable
     }
 
     /// <summary>
+    /// Records the membership links that named nothing this bundle holds, against whichever end of
+    /// each one did resolve.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Written from the same pass that wrote the edges, and it has to be.</b> These are the links
+    /// that could not become edges. A store holding the edges without them would say a group's
+    /// membership is exactly what <c>nesting_edge</c> shows, and for a group whose members could not
+    /// be identified that is a claim rather than a reading. P-164.
+    /// </para>
+    /// <para>
+    /// <b>Duplicates are ignored for the same reason they are on the edges.</b> One relationship is
+    /// seen from both ends, so a link the directory describes twice arrives twice and that is the
+    /// directory agreeing with itself.
+    /// </para>
+    /// </remarks>
+    /// <param name="links">The unresolvable links, attributed to the end that resolved.</param>
+    public void WriteUnresolvedNestingLinks(IEnumerable<UnresolvedNestingLink> links)
+    {
+        ArgumentNullException.ThrowIfNull(links);
+        ThrowIfFinished();
+        ThrowIfSidsNotWritten(nameof(WriteUnresolvedNestingLinks));
+
+        using var transaction = _connection.BeginTransaction();
+        using var command = _connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "INSERT OR IGNORE INTO nesting_unresolved_link "
+            + "(sid_id, direction, distinguished_name) VALUES ($sid, $direction, $name)";
+        var sid = command.Parameters.Add("$sid", SqliteType.Integer);
+        var direction = command.Parameters.Add("$direction", SqliteType.Text);
+        var name = command.Parameters.Add("$name", SqliteType.Text);
+
+        foreach (var link in links)
+        {
+            sid.Value = link.SidId;
+            direction.Value = link.Direction.ToString();
+            name.Value = link.DistinguishedName;
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
+    /// <summary>
     /// Records the membership cycles the expansion found.
     /// </summary>
     /// <remarks>

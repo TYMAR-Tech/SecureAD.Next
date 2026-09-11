@@ -98,7 +98,15 @@ internal static class DerivationSchema
     // it were current would report a settled answer as a doubt. Refused rather than reinterpreted.
     // Re-derive; no migration is offered, because the old rows are honest records of what the
     // product believed when they were written.
-    public const int Version = 13;
+    //
+    // Version 14 adds nesting_unresolved_link under P-164. A membership link naming something no
+    // captured object answers to was dropped, and the group that carried it kept no record of it,
+    // so a group whose members could not be identified was indistinguishable from a group with
+    // none and the LAPS rules reported it clean. A version 13 store cannot answer which group
+    // carried such a link - the evidence was never written - and the forest-wide list it does hold
+    // cannot stand in, because reading that would mark every expansion in a nine-domain forest
+    // incomplete. Refused rather than read as though the absence of rows meant there were none.
+    public const int Version = 14;
 
 
     private static readonly string[] TableDdl =
@@ -271,6 +279,41 @@ internal static class DerivationSchema
             group_sid_id  INTEGER NOT NULL REFERENCES sid(sid_id),
             member_sid_id INTEGER NOT NULL REFERENCES sid(sid_id),
             PRIMARY KEY (group_sid_id, member_sid_id)
+        )
+        """,
+
+        // One row per membership link that named something no captured object answers to,
+        // attributed to whichever end of it did resolve.
+        //
+        // THIS IS WHAT SEPARATES AN EMPTY GROUP FROM AN UNREADABLE ONE, which nesting_edge alone
+        // cannot do. A dropped link leaves no row, so a group whose members could not be identified
+        // has exactly the shape of a group that has none, and judging then reports it clean - could
+        // not work it out presented as nothing to report, which is the one thing an audit tool must
+        // not say. P-164.
+        //
+        // ATTRIBUTED TO A PRINCIPAL RATHER THAN LISTED FOR THE FOREST, and that is the whole reason
+        // this table exists beside completeness_unresolved_trustee, which holds the same names
+        // forest-wide. That list answers whether the derivation is complete as a whole. In a
+        // nine-domain forest with cross-forest members it is rarely empty, so a walk consulting it
+        // would mark EVERY expansion incomplete and silence judging wholesale - a worse failure than
+        // the one being fixed. A per-principal row thins only the answer that is actually short.
+        //
+        // direction CARRIES AN ASYMMETRY AND IS NOT COSMETIC. A group naming a member nobody
+        // captured thins what is inside that group; a principal naming a group nobody captured
+        // thins what contains that principal. Those are opposite questions about opposite objects,
+        // and one undirected row would let a reader asking either of them consume the other's
+        // evidence.
+        //
+        // THE NAME IS TEXT BECAUSE THERE IS NO PRINCIPAL TO GIVE AN ID TO, which is what made it
+        // unresolved. sid_id is the end that did resolve; where neither end did there is nobody to
+        // attribute the link to, so it reaches completeness_unresolved_trustee alone and no row is
+        // written here.
+        """
+        CREATE TABLE nesting_unresolved_link (
+            sid_id             INTEGER NOT NULL REFERENCES sid(sid_id),
+            direction          TEXT    NOT NULL,
+            distinguished_name TEXT    NOT NULL,
+            PRIMARY KEY (sid_id, direction, distinguished_name)
         )
         """,
 

@@ -282,11 +282,15 @@ public sealed class LapsPasswordReadAccess : IRule
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived));
         }
         else if (expansion.Outcome is PrincipalExpansionOutcome.StoppedAtBudget
-            or PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType)
+            or PrincipalExpansionOutcome.ExpandedThroughUnknownGroupType
+            or PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember)
         {
             // Everything found is genuinely inside; the absence of anything else is not a fact.
             // The same holds where the walk passed through a group whose type was never captured,
-            // because whether that route carries authorization was never established.
+            // because whether that route carries authorization was never established - and where a
+            // group claimed a member no captured object answers to, because then the directory says
+            // it holds more than this bundle can show. Reporting the machine clean on that would be
+            // could-not-work-it-out presented as nothing-to-report. P-164.
             unresolved.Add(new UnresolvedInput(
                 DerivedFactKind.PrincipalExpansion, UnresolvedReason.MembershipIncomplete));
         }

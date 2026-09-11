@@ -438,6 +438,75 @@ public class DashboardViewModelTests
             DomainInventory.NotCounted(DomainCoverage.Read("one.ad.lab")));
     }
 
+    /// <summary>
+    /// Groups whose membership could not be fully read are raised, with how many.
+    /// </summary>
+    /// <remarks>
+    /// <b>The operator-facing half of P-164.</b> A group listing a member the run could not
+    /// identify holds more than the bundle can show, and rules now decline to judge such objects
+    /// rather than reporting them clean. Without this the silence would be invisible: the screen
+    /// would look the same whether one group was affected or nine thousand.
+    /// </remarks>
+    [Fact]
+    public void GroupsWhoseMembersCouldNotBeIdentifiedAreRaised()
+    {
+        var dashboard = Showing(AForestOf(Counted("ad.lab", new ObjectCounts(10, 1, 1, 1))), groups: 4);
+
+        Assert.True(dashboard.HasMembershipNotice);
+        Assert.Contains("4 groups list at least one member", dashboard.MembershipNotice!.Detail);
+        Assert.Contains("decline to judge", dashboard.MembershipNotice.Detail);
+    }
+
+    /// <summary>
+    /// One affected group is said in the singular.
+    /// </summary>
+    /// <remarks>
+    /// The screen keeps the same care the coverage headline takes: no screen reads <i>1 domains</i>,
+    /// and none should read <i>1 group list</i> either.
+    /// </remarks>
+    [Fact]
+    public void OneAffectedGroupIsSaidInTheSingular()
+    {
+        var dashboard = Showing(AForestOf(Counted("ad.lab", new ObjectCounts(10, 1, 1, 1))), groups: 1);
+
+        Assert.Contains("1 group lists at least one member", dashboard.MembershipNotice!.Detail);
+    }
+
+    /// <summary>
+    /// Where every member was identified, nothing is raised.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control.</b> A notice that appeared whatever the count would tell an operator
+    /// his membership was doubtful on every run, which would teach him to ignore it - and it is the
+    /// one thing on this screen he is meant to act on.
+    /// </remarks>
+    [Fact]
+    public void EveryMemberIdentifiedRaisesNothing()
+    {
+        var dashboard = Showing(AForestOf(Counted("ad.lab", new ObjectCounts(10, 1, 1, 1))), groups: 0);
+
+        Assert.False(dashboard.HasMembershipNotice);
+    }
+
+    /// <summary>
+    /// Membership that was never worked out is said, not counted as none.
+    /// </summary>
+    /// <remarks>
+    /// <b>The failure this guards is the one the whole screen exists to refuse.</b> Deriving is a
+    /// separate stage that may not have run. Reporting that as no groups affected would be the
+    /// dashboard claiming every group's membership is known on the strength of work that never
+    /// happened.
+    /// </remarks>
+    [Fact]
+    public void MembershipThatWasNeverDerivedIsSaidRatherThanReportedAsNone()
+    {
+        var dashboard = Showing(AForestOf(Counted("ad.lab", new ObjectCounts(10, 1, 1, 1))), groups: null);
+
+        Assert.True(dashboard.HasMembershipNotice);
+        Assert.Contains("Deriving has not run", dashboard.MembershipNotice!.Detail);
+        Assert.DoesNotContain("0 groups", dashboard.MembershipNotice.Detail);
+    }
+
     // -------------------------------------------------------------------------------------------
 
     private const string Reason = "The controller refused the bind.";
@@ -464,6 +533,23 @@ public class DashboardViewModelTests
     private static DashboardViewModel Showing(ForestInventory inventory)
     {
         var dashboard = new DashboardViewModel(new FakeAssetSource { Inventory = inventory });
+        dashboard.Show(Bundle);
+        return dashboard;
+    }
+
+    /// <summary>Shows a run whose derivation reports a given number of short groups.</summary>
+    /// <param name="inventory">What the run captured.</param>
+    /// <param name="groups">
+    /// Groups that claimed a member nobody could identify, or null where deriving has not run.
+    /// </param>
+    private static DashboardViewModel Showing(ForestInventory inventory, int? groups)
+    {
+        var dashboard = new DashboardViewModel(new FakeAssetSource
+        {
+            Inventory = inventory,
+            GroupsWithUnidentifiedMembers = groups,
+        });
+
         dashboard.Show(Bundle);
         return dashboard;
     }
