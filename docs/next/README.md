@@ -441,7 +441,7 @@ recreated — that shape is exactly what was removed.
 | What an operator can do | a capability row naming the test that proves it | nothing — `CapabilityCitationTests` and `AreaFileGateTests` deleted 2026-09-12 |
 | A product position | a record in `docs/decisions/` | nothing — `DecisionIndexTests` deleted 2026-09-12; the folder is reference now |
 | Work that may need doing | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | nothing — `PunchListIdentifierTests` deleted 2026-09-12 |
-| A document and the code disagreeing, where you are not fixing it now | [`_DRIFT.md`](../_DRIFT.md) | nothing, and it never had a gate |
+| A document and the code disagreeing, where you are not fixing it now | [`PUNCH-LIST.md`](../PUNCH-LIST.md) | nothing — but it is the destination the owner actually reads |
 | Anything else | deleted | — |
 
 **Every destination in that table is now unguarded.** Until 2026-09-12 the drift log was the only one
@@ -450,8 +450,9 @@ worked will not announce itself. All eight of its original items were fixed on 2
 header records what went wrong — they had been deferred on the stated grounds that the branch was
 documentation-only, and that was not true of it: it carried thirty-five production files, six with
 behaviour changes. Two of the eight had themselves rotted before anyone returned to them. **That
-warning now applies to the whole table.** Prefer the punch list, because it is the destination the
-owner actually reads.
+warning now applies to the whole table.** The drift log itself was deleted on 2026-09-12 with all
+eight entries closed: it was a second place to write a finding, beside a punch list that is read,
+which is the two-places-one-question shape this repository keeps finding in itself.
 
 ### The rules a session works to
 
