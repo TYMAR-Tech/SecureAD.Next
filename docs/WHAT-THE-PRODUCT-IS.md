@@ -27,11 +27,16 @@ the record wins and this file is wrong.
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
 
-**The counts and states in that table are checked rather than maintained by hand**, by
-`next/tools/check-stage-status.ps1`. A status goes false when the code moves and the document sits
-still, so it cannot be protected by proof-reading; this file claimed *two rules* for long enough
-that twelve more were built underneath it. See `P-135`, and `ROADMAP.md` § *Where we are* for the
-per-stage witnesses.
+**The counts and states in that table are checked rather than maintained by hand.**
+`StageStatusGateTests` holds each state to a witness — a type that exists if and only if that stage
+is built — and asserts both directions, so a stage cannot be quietly finished any more than it can
+be claimed early. The rule count is checked the same way, and `next/tools/check-stage-status.ps1` is
+the same check as a diagnostic a person can run. A status goes false when the code moves and the
+document sits still, so it cannot be protected by proof-reading; this file claimed *two rules* for
+long enough that twelve more were built underneath it. **Until 2026-09-12 this paragraph overstated
+itself**: eight of the nine states above were unchecked while it said they were not, which is the
+shape this repository rates worst. See `P-135`, and `ROADMAP.md` § *Where we are* for the per-stage
+witnesses of the build order, which are a separate table answering a separate question.
 
 `0008` fixes the boundary: **the only component that touches a domain controller is capture.** A
 screen showing a permission is reading a file, not asking the directory.

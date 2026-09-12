@@ -5,8 +5,8 @@ using Xunit;
 namespace SecureAD.Next.Tests.Documentation;
 
 /// <summary>
-/// The stage statuses in <c>ROADMAP.md</c>, and the rule count in <c>WHAT-THE-PRODUCT-IS.md</c>,
-/// agree with what is actually in the source tree.
+/// The stage statuses in <c>ROADMAP.md</c>, and the run pipeline states and rule count in
+/// <c>WHAT-THE-PRODUCT-IS.md</c>, agree with what is actually in the source tree.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -127,6 +127,175 @@ public sealed class StageStatusGateTests
             $"docs/WHAT-THE-PRODUCT-IS.md claims {stated} rules; {actual} rule identifiers are "
             + $"declared in SecureAD.Judgement ({string.Join(", ", RuleIds())}).");
     }
+
+    /// <summary>
+    /// One row of the run pipeline in <c>WHAT-THE-PRODUCT-IS.md</c>, and the types that decide it.
+    /// </summary>
+    /// <param name="Stage">The row's first cell, matched exactly.</param>
+    /// <param name="Witnesses">
+    /// Types that exist if and only if the stage is built. A built row needs all of them; a row
+    /// claiming otherwise needs none of them, so any one appearing fails.
+    /// </param>
+    private sealed record PipelineStage(string Stage, params string[] Witnesses);
+
+    /// <summary>
+    /// The run pipeline, held here as code rather than as a column in the document.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this table needed a gate of its own.</b> Until 2026-09-12 the document said its states
+    /// were "checked rather than maintained by hand" by <c>check-stage-status.ps1</c>. That script
+    /// checks the roadmap's statuses and this file's <i>rule count</i>, and nothing else - so eight
+    /// of the nine states here could go false with nothing failing, in the file the working
+    /// instructions say to read first. That is the shape the owner's rule of 2026-09-12 rates worst:
+    /// a claim of protection that is not protection.
+    /// </para>
+    /// <para>
+    /// <b>The witnesses live here and not in a column, deliberately.</b> This page is the one an
+    /// administrator reads to learn what a run does; a column of type names would be noise to that
+    /// reader. Holding a gate's input in code is the <c>P-184</c> pattern, and the stage table is the
+    /// one exception the owner granted to the rule against binding a document to the code.
+    /// </para>
+    /// <para>
+    /// <b>Each witness is chosen so it cannot be hollow.</b> The dashboard's is
+    /// <c>DashboardViewModel</c> rather than <c>Dashboard</c>, because a <c>Dashboard</c> member
+    /// already exists as an empty navigation tab and would have reported the stage built while the
+    /// screen showed nothing. The unbuilt row names <c>ReportDefinition</c> and <c>RunComparison</c>
+    /// rather than <c>RunComparability</c>, which is declared today: it is the eligibility check
+    /// written ahead of the screen that will call it, and naming it would report a feature built
+    /// because a type it will one day use exists. Since 2026-09-12 a witness that exists but that
+    /// nothing running can reach is additionally caught by <c>PublicTypeReachabilityGateTests</c>.
+    /// </para>
+    /// </remarks>
+    private static readonly PipelineStage[] PipelineStages =
+    [
+        new("Connect", "ConnectionSecurityLadder"),
+        new("Preflight", "Preflight"),
+        new("Capture", "CaptureRun"),
+        new("Reconcile and seal", "BundleSealing"),
+        new("Derive", "Stage2aRun"),
+        new("Judge", "JudgingRun"),
+        new("Read back", "RunLibrary"),
+        new("Dashboard", "DashboardViewModel"),
+        new("Reports, compare and export", "ReportDefinition", "RunComparison"),
+    ];
+
+    /// <summary>
+    /// Every state in the run pipeline table agrees with what is declared in the source tree.
+    /// </summary>
+    [Fact]
+    public void EveryPipelineStateAgreesWithTheSource()
+    {
+        var failures = new List<string>();
+
+        foreach (var (stage, state) in PipelineClaims())
+        {
+            var declared = PipelineStages.Single(s => s.Stage == stage);
+            var claimsBuilt = state.StartsWith("built", StringComparison.Ordinal);
+
+            foreach (var witness in declared.Witnesses)
+            {
+                var present = WitnessIsDeclared(witness);
+
+                if (claimsBuilt && !present)
+                {
+                    failures.Add(
+                        $"  '{stage}' says '{state}' but its witness '{witness}' is declared "
+                        + "nowhere under next/src. Either the stage is not built, or the witness "
+                        + "names the wrong type.");
+                }
+
+                if (!claimsBuilt && present)
+                {
+                    failures.Add(
+                        $"  '{stage}' says '{state}' but its witness '{witness}' IS declared under "
+                        + "next/src. The stage looks finished and the document has not caught up - "
+                        + "which is exactly how stage 5 went unnoticed in the roadmap.");
+                }
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            "A state in the run pipeline table of docs/WHAT-THE-PRODUCT-IS.md disagrees with the "
+            + "source tree. Correct the state, or correct the witness in this file if it names the "
+            + "wrong type. Do not weaken the witness to make this pass:"
+            + Environment.NewLine
+            + string.Join(Environment.NewLine, failures));
+    }
+
+    /// <summary>
+    /// The pipeline table is found, every row is claimed, and both directions are exercised.
+    /// </summary>
+    /// <remarks>
+    /// <b>The self-test, and the reason the check above is not decoration.</b> The rows are located
+    /// by matching their first cell against the names above, so a renamed or reformatted row would
+    /// simply stop matching and leave the gate passing while measuring nothing - the failure this
+    /// repository has produced three times. This asserts every named stage was found exactly once,
+    /// that the document holds no pipeline row this file does not claim, and that both a built and a
+    /// not-built row exist so neither direction goes unexercised against the real document.
+    /// </remarks>
+    [Fact]
+    public void ThePipelineTableIsFoundAndFullyClaimed()
+    {
+        var claims = PipelineClaims();
+
+        Assert.NotEmpty(PipelineStages);
+
+        foreach (var declared in PipelineStages)
+        {
+            Assert.True(
+                claims.Count(c => c.Stage == declared.Stage) == 1,
+                $"'{declared.Stage}' should appear exactly once in the run pipeline table of "
+                + "docs/WHAT-THE-PRODUCT-IS.md, and does not. The table was renamed, reformatted or "
+                + "duplicated, and this gate is no longer reading it.");
+        }
+
+        Assert.Equal(PipelineStages.Length, claims.Count);
+
+        Assert.Contains(claims, c => c.State.StartsWith("built", StringComparison.Ordinal));
+        Assert.Contains(claims, c => !c.State.StartsWith("built", StringComparison.Ordinal));
+
+        // Every witness must be a name somebody could have written. A typo would sit in the
+        // not-built rows forever, looking like protection and asserting nothing.
+        foreach (var witness in PipelineStages.SelectMany(s => s.Witnesses))
+        {
+            Assert.Matches("^[A-Za-z][A-Za-z0-9_]*$", witness);
+        }
+    }
+
+    /// <summary>
+    /// The run pipeline rows, read by matching the first cell against the stages named above.
+    /// </summary>
+    /// <remarks>
+    /// Anchored on the known names rather than on an offset from a heading, because this file is
+    /// over a thousand lines and carries other three-column tables. A row this file does not claim
+    /// is caught by <see cref="ThePipelineTableIsFoundAndFullyClaimed"/> rather than silently
+    /// skipped.
+    /// </remarks>
+    private static List<(string Stage, string State)> PipelineClaims()
+    {
+        var known = PipelineStages.Select(s => s.Stage).ToHashSet(StringComparer.Ordinal);
+        var claims = new List<(string, string)>();
+
+        foreach (var line in File.ReadAllLines(ProductPath(), Encoding.UTF8))
+        {
+            var match = PipelineRow.Match(line);
+            if (!match.Success) continue;
+
+            var stage = match.Groups[1].Value.Trim();
+            if (!known.Contains(stage)) continue;
+
+            claims.Add((stage, match.Groups[3].Value.Replace("*", string.Empty).Trim()));
+        }
+
+        return claims;
+    }
+
+    /// <summary>A pipeline row: three cells, the last a state.</summary>
+    private static readonly Regex PipelineRow = new(
+        @"^\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|\s*([^|]+?)\s*\|\s*$",
+        RegexOptions.Compiled);
 
     /// <summary>
     /// The stage table is found at all, and holds the stages the roadmap describes.
