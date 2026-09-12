@@ -290,14 +290,39 @@ public sealed record PreflightReport(CapturePlan Plan, IReadOnlyList<DomainPrefl
     /// Why the run may not proceed, naming every domain that failed rather than the first.
     /// </summary>
     /// <remarks>
-    /// Null when <see cref="RunMayProceed"/>. It exists because a caller returning a
+    /// <para>
+    /// Null when nothing is left blocking. It exists because a caller returning a
     /// <see cref="Result{T}"/> needs one error to return, and building it from every blocking row
     /// is what stops the collected answers being thrown away at the last moment - which is the
     /// failure this whole session exists to remove, reappearing one layer up.
+    /// </para>
+    /// <para>
+    /// <b>An exclusion is a domain nobody is going to read, so it cannot be a reason not to start.</b>
+    /// A domain the operator attested his way out of - typically because the forest names no
+    /// controller for it - fails preflight for exactly the reason it was excluded, and counting it
+    /// here made a deliberate exclusion read as an unreachable forest. The exclusions are passed in
+    /// rather than known here, because <c>docs/decisions/0059-an-exclusion-is-attested-once-per-run.md</c>
+    /// makes them the run's rather than the report's.
+    /// </para>
+    /// <para>
+    /// <b><see cref="Blocking"/> is untouched, deliberately.</b> It is what preflight found and it
+    /// is what <c>preflight.json</c> records; an excluded domain that could not be read is still a
+    /// fact about the customer's forest. Only the decision to stop is narrowed.
+    /// </para>
     /// </remarks>
-    public AuditError? Refusal()
+    /// <param name="excludedNamingContexts">
+    /// The naming contexts this run has an operator's attestation for. Empty for a run that leaves
+    /// nothing out.
+    /// </param>
+    public AuditError? Refusal(IReadOnlyCollection<string> excludedNamingContexts)
     {
-        var blocking = Blocking;
+        ArgumentNullException.ThrowIfNull(excludedNamingContexts);
+
+        IReadOnlyList<DomainPreflight> blocking = excludedNamingContexts.Count == 0
+            ? Blocking
+            : [.. Blocking.Where(d => !excludedNamingContexts.Contains(
+                d.NamingContext, StringComparer.OrdinalIgnoreCase))];
+
         if (blocking.Count == 0)
         {
             return null;

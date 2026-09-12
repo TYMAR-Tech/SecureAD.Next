@@ -40,7 +40,8 @@ public sealed class OfflineAuditJourneyTests
         var captured = await new CaptureRun(
             connections,
             new InMemorySysvolFileReader(),
-            TimeProvider.System).RunAsync(
+            TimeProvider.System,
+            RunLog.Discarded).RunAsync(
                 plan.Value!,
                 directory.Value!,
                 new Dictionary<string, AttestedExclusion>(),

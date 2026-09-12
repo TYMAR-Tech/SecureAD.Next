@@ -5,6 +5,7 @@ using SecureAD.Audit.Capture;
 using SecureAD.Audit.Connect;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
 using SecureAD.Next.Tests.Capture;
 using SecureAD.Next.Tests.Connect;
 using SecureAD.Next.Tests.Sysvol;
@@ -98,6 +99,128 @@ public sealed class CaptureRunEndToEndTests : IDisposable
         Assert.Equal(
             ContinuationReconciliationOutcome.Incomplete,
             reader.ContinuationReconciliation.Outcome);
+    }
+
+    /// <summary>
+    /// Every partition the run reads is announced before it starts and accounted for when it
+    /// finishes.
+    ///
+    /// <para>
+    /// <b>This is the whole of what a failed production capture will have to be diagnosed from.</b>
+    /// Before this, a run wrote two lines for the entire stage - <c>started</c> and
+    /// <c>finished</c> - so a capture of a nine-domain forest that stopped at hour two left a file
+    /// saying it had begun, with no controller named, no domain named and no count. Deriving logs
+    /// six phases and judging logs per-rule shortfalls; capture, the only stage that runs for
+    /// hours, logged the least.
+    /// </para>
+    /// <para>
+    /// The start line is what matters most and is the one that is easiest to lose: it is the only
+    /// line a partition that never finished will have written.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task EveryPartitionIsAnnouncedBeforeItIsReadAndAccountedForAfterwards()
+    {
+        var (run, log) = await RunAndLogAsync(ForestOfThreeObjects());
+
+        Assert.Equal(RunCompletion.Sealed, run.Outcome);
+
+        var started = log.Saying("reading a partition");
+        var finished = log.Saying("partition read");
+
+        // Configuration, schema and the one domain.
+        Assert.Equal(3, started.Count);
+        Assert.Equal(3, finished.Count);
+
+        Assert.Equal(
+            ["CN=Configuration,DC=example,DC=com", "CN=Schema,CN=Configuration,DC=example,DC=com",
+             "DC=example,DC=com"],
+            started.Select(d => RecordingRunLog.Value(d, "namingContext")).Order().ToList());
+
+        foreach (var partition in started)
+        {
+            Assert.Equal("dc01.example.com", RecordingRunLog.Value(partition, "controller"));
+            Assert.NotNull(RecordingRunLog.Value(partition, "kind"));
+        }
+
+        var domain = Assert.Single(
+            finished,
+            d => RecordingRunLog.Value(d, "namingContext") == "DC=example,DC=com");
+
+        Assert.Equal("dc01.example.com", RecordingRunLog.Value(domain, "controller"));
+        Assert.Equal("3", RecordingRunLog.Value(domain, "objects"));
+        Assert.Equal("1", RecordingRunLog.Value(domain, "pages"));
+        Assert.NotNull(RecordingRunLog.Value(domain, "connection"));
+        Assert.NotNull(RecordingRunLog.Value(domain, "referralsSuppressed"));
+        Assert.NotNull(RecordingRunLog.Value(domain, "elapsedSeconds"));
+    }
+
+    /// <summary>
+    /// The rung the connection reached and whether referrals were suppressed are written when the
+    /// connection is made, not only when the partition completes.
+    ///
+    /// <para>
+    /// A run that dies part way through a partition never reaches the coverage record, and those
+    /// two facts are the ones nothing else would leave behind - the first says whether a customer's
+    /// evidence could have been altered in transit, the second whether the read could have been
+    /// silently truncated.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task TheConnectionIsAccountedForBeforeThePartitionIsRead()
+    {
+        var (_, log) = await RunAndLogAsync(ForestOfThreeObjects());
+
+        var connected = log.Saying("connected to a controller");
+
+        Assert.Equal(3, connected.Count);
+
+        foreach (var connection in connected)
+        {
+            Assert.Equal("dc01.example.com", RecordingRunLog.Value(connection, "controller"));
+            Assert.NotNull(RecordingRunLog.Value(connection, "connection"));
+            Assert.NotNull(RecordingRunLog.Value(connection, "referralsSuppressed"));
+        }
+
+        // Before the read, not after: the whole point is the line a half-read partition leaves.
+        var first = log.Notes.FindIndex(n => n.Message == "connected to a controller");
+        var read = log.Notes.FindIndex(n => n.Message == "partition read");
+        Assert.True(first < read, "The connection was accounted for after the partition finished.");
+    }
+
+    /// <summary>
+    /// A partition that could not be read is recorded as a failure naming the controller, with how
+    /// long it had been running.
+    ///
+    /// <para>
+    /// A controller that refused at once and one that answered for an hour and then stopped produce
+    /// the same error and want different remedies, so the elapsed time is on the failure as well as
+    /// on the success.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task APartitionThatFailedIsRecordedWithTheControllerAndHowLongItHadRun()
+    {
+        var controller = ForestOfThreeObjects();
+        controller.FailuresBeforeAnswering = 99;
+
+        // AdminLimitExceeded rather than Busy: the policy stops on it immediately, so this test
+        // does not spend the retry policy's five and ten seconds proving something about logging.
+        // That the exception type reaches the policy at all is PartitionCaptureTests' to show.
+        controller.FailWithCode = 11;
+        controller.FailsAsServerResult = true;
+
+        var (run, log) = await RunAndLogAsync(controller);
+
+        Assert.Equal(RunCompletion.Ended, run.Outcome);
+
+        var (phase, error, detail) = Assert.Single(log.Errors);
+
+        Assert.Equal("Capture", phase);
+        Assert.Contains("DirectoryRequestFailed", error.Code, StringComparison.Ordinal);
+        Assert.Equal("dc01.example.com", RecordingRunLog.Value(detail, "controller"));
+        Assert.NotNull(RecordingRunLog.Value(detail, "namingContext"));
+        Assert.NotNull(RecordingRunLog.Value(detail, "elapsedSeconds"));
     }
 
     /// <summary>
@@ -344,6 +467,16 @@ public sealed class CaptureRunEndToEndTests : IDisposable
     private async Task<CaptureRunResult> RunAsync(
         ControllerModel controller, AttestedExclusion? excluding = null)
     {
+        var (run, _) = await RunAndLogAsync(controller, excluding);
+        return run;
+    }
+
+    /// <summary>
+    /// The same run, with what it said about itself.
+    /// </summary>
+    private async Task<(CaptureRunResult Run, RecordingRunLog Log)> RunAndLogAsync(
+        ControllerModel controller, AttestedExclusion? excluding = null)
+    {
         var time = new FakeTimeProvider(RunStarted);
         var connections = controller.Connections();
 
@@ -376,21 +509,25 @@ public sealed class CaptureRunEndToEndTests : IDisposable
         var directory = library.CreateRun("example.com");
         Assert.True(directory.IsSuccess);
 
+        var log = new RecordingRunLog();
+
         // An empty share. This forest's fixture declares no Group Policy, so there is nothing to
         // read and nothing missed - which the coverage record reports as such rather than as a
         // failure.
-        var run = new CaptureRun(connections, new InMemorySysvolFileReader(), time);
+        var run = new CaptureRun(connections, new InMemorySysvolFileReader(), time, log);
 
         var exclusions = excluding is null
             ? ImmutableDictionary<string, AttestedExclusion>.Empty
             : ImmutableDictionary<string, AttestedExclusion>.Empty
                 .Add(excluding.NamingContext, excluding);
 
-        return await run.RunAsync(
+        var result = await run.RunAsync(
             plan.Value!.Excluding(exclusions.Keys),
             directory.Value!,
             exclusions,
             CancellationToken.None);
+
+        return (result, log);
     }
 
     /// <summary>

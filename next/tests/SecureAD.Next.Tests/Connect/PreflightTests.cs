@@ -174,7 +174,7 @@ public sealed class PreflightTests
         var report = await AskAsync(AForestWithSeveralFaults(), Root, Reachable);
 
         Assert.True(report.RunMayProceed);
-        Assert.Null(report.Refusal());
+        Assert.Null(report.Refusal([]));
     }
 
     /// <summary>
@@ -191,12 +191,72 @@ public sealed class PreflightTests
     {
         var report = await AskAsync(AForestWithSeveralFaults(), Absent, Root, Elsewhere, Denied);
 
-        var refusal = report.Refusal();
+        var refusal = report.Refusal([]);
 
         Assert.NotNull(refusal);
         Assert.Contains("2 of 4 domains", refusal.Description, StringComparison.Ordinal);
         Assert.Contains(Absent, refusal.Description, StringComparison.Ordinal);
         Assert.Contains(Elsewhere, refusal.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A domain the operator has attested his way out of does not stop the run, because nothing is
+    /// going to try to read it.
+    ///
+    /// <para>
+    /// A domain with no candidate controllers fails preflight for precisely the reason it was
+    /// excluded. Counting it as blocking turned a deliberate exclusion into an unreachable forest,
+    /// so a run an operator had already accounted for refused to start.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ADomainTheRunHasAnAttestationForDoesNotBlockIt()
+    {
+        var report = await AskAsync(AForestWithSeveralFaults(), Absent, Root, Elsewhere, Denied);
+
+        Assert.Null(report.Refusal([Absent, Elsewhere]));
+    }
+
+    /// <summary>
+    /// An attestation for one blocking domain does not excuse another.
+    ///
+    /// <para>
+    /// The negative control for the test above. Without it, a refusal that simply stopped counting
+    /// whenever any exclusion existed would pass, which is the failure - a forest silently read
+    /// short - that the whole attestation mechanism exists to prevent.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task AnAttestationForOneDomainDoesNotExcuseAnother()
+    {
+        var report = await AskAsync(AForestWithSeveralFaults(), Absent, Root, Elsewhere, Denied);
+
+        var refusal = report.Refusal([Absent]);
+
+        Assert.NotNull(refusal);
+        Assert.Contains("1 of 4 domains", refusal.Description, StringComparison.Ordinal);
+        Assert.Contains(Elsewhere, refusal.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain(Absent, refusal.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// An excluded domain is still recorded as one preflight could not read.
+    ///
+    /// <para>
+    /// Only the decision to stop is narrowed. What preflight found is a fact about the customer's
+    /// forest and is what <c>preflight.json</c> carries, so an exclusion that quietly erased it
+    /// would be trading one silence for another.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task AnExcludedDomainIsStillRecordedAsUnreadable()
+    {
+        var report = await AskAsync(AForestWithSeveralFaults(), Absent, Root, Elsewhere, Denied);
+
+        Assert.Null(report.Refusal([Absent, Elsewhere]));
+
+        Assert.Equal(2, report.Blocking.Count);
+        Assert.False(report.RunMayProceed);
     }
 
     /// <summary>

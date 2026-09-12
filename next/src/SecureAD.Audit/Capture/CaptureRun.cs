@@ -1,3 +1,4 @@
+using System.Globalization;
 using SecureAD.Audit.Sysvol;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
@@ -70,6 +71,7 @@ public sealed class CaptureRun
     private readonly IDirectoryChannelFactory _connections;
     private readonly ISysvolFileReader _sysvolFiles;
     private readonly TimeProvider _time;
+    private readonly IRunLog _log;
 
     /// <summary>
     /// Creates a run driver.
@@ -88,18 +90,26 @@ public sealed class CaptureRun
     /// seal a bundle reporting that no policy was examined without anyone having decided that.
     /// </param>
     /// <param name="time">The clock the run's start, finish and object times are read from.</param>
+    /// <param name="log">
+    /// Where each partition's start and finish is written down. Required for the same reason as the
+    /// SYSVOL reader: this loop is the only thing that knows when one domain ended and the next
+    /// began, and a capture that ran for hours and stopped leaves nothing else to read.
+    /// </param>
     public CaptureRun(
         IDirectoryChannelFactory connections,
         ISysvolFileReader sysvolFiles,
-        TimeProvider time)
+        TimeProvider time,
+        IRunLog log)
     {
         ArgumentNullException.ThrowIfNull(connections);
         ArgumentNullException.ThrowIfNull(sysvolFiles);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(log);
 
         _connections = connections;
         _sysvolFiles = sysvolFiles;
         _time = time;
+        _log = log;
     }
 
     /// <summary>
@@ -177,7 +187,7 @@ public sealed class CaptureRun
         using var writer = BundleWriter.Create(bundleDirectory, startedUtc);
 
         var sink = new BundleCaptureSink(writer, _time);
-        var capture = new PartitionCapture(_connections, sink, _time);
+        var capture = new PartitionCapture(_connections, sink, _time, _log);
 
         // Written before the first read, because it is a fact about the plan rather than about
         // anything a pass discovered. These are the partitions the forest declares and this product
@@ -202,12 +212,38 @@ public sealed class CaptureRun
         {
             Result<PartitionCoverage> read;
 
+            // Written before the read rather than after it, and that is the whole point. A capture
+            // that stops at hour two leaves a "started" line with a controller name and a clock
+            // time on it, which is the difference between diagnosing the run and repeating it.
+            var unitStartedUtc = _time.GetUtcNow();
+
+            _log.Note(
+                PartitionCapture.PhaseName,
+                "reading a partition",
+                [
+                    new RunLogDetail("namingContext", unit.NamingContext),
+                    new RunLogDetail("kind", unit.Kind.ToString()),
+                    new RunLogDetail("controller", unit.DomainController),
+                    new RunLogDetail(
+                        "unit",
+                        $"{recorded.Count + 1} of {plan.Units.Count}"),
+                ]);
+
             try
             {
                 read = await capture.ReadAsync(unit, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
+                _log.Note(
+                    PartitionCapture.PhaseName,
+                    "partition stopped by the operator",
+                    [
+                        new RunLogDetail("namingContext", unit.NamingContext),
+                        new RunLogDetail("controller", unit.DomainController),
+                        Elapsed(unitStartedUtc),
+                    ]);
+
                 return End(
                     bundleDirectory,
                     RunOutcome.Cancelled,
@@ -220,6 +256,18 @@ public sealed class CaptureRun
             {
                 var error = read.Error!;
 
+                // The elapsed time goes on the failure as well as on the success. How long a
+                // partition ran before it gave up is what separates a controller that refused at
+                // once from one that answered for an hour and then stopped.
+                _log.Record(
+                    PartitionCapture.PhaseName,
+                    error,
+                    [
+                        new RunLogDetail("namingContext", unit.NamingContext),
+                        new RunLogDetail("controller", unit.DomainController),
+                        Elapsed(unitStartedUtc),
+                    ]);
+
                 return End(
                     bundleDirectory,
                     RunOutcome.Failed,
@@ -228,7 +276,33 @@ public sealed class CaptureRun
                     error);
             }
 
-            recorded.Add(read.Value!);
+            var coverage = read.Value!;
+
+            _log.Note(
+                PartitionCapture.PhaseName,
+                "partition read",
+                [
+                    new RunLogDetail("namingContext", coverage.NamingContextDn),
+                    new RunLogDetail("controller", coverage.Controller),
+                    new RunLogDetail("connection", coverage.ConnectionSecurity.ToString()),
+                    new RunLogDetail(
+                        "objects", coverage.ObjectsRead.ToString(CultureInfo.InvariantCulture)),
+                    new RunLogDetail(
+                        "pages", coverage.PagesRead.ToString(CultureInfo.InvariantCulture)),
+                    new RunLogDetail(
+                        "attributeBlocks",
+                        coverage.AttributeBlocksFetched.ToString(CultureInfo.InvariantCulture)),
+                    new RunLogDetail(
+                        "continuationReferences",
+                        coverage.ContinuationReferences.Count.ToString(
+                            CultureInfo.InvariantCulture)),
+                    new RunLogDetail(
+                        "referralsSuppressed",
+                        coverage.ReferralsSuppressed ? "yes" : "no"),
+                    Elapsed(unitStartedUtc),
+                ]);
+
+            recorded.Add(coverage);
         }
 
         var reconciled = ContinuationReferenceReconciliation.Reconcile(
@@ -334,4 +408,18 @@ public sealed class CaptureRun
 
         return new CaptureRunResult(RunCompletion.Ended, bundleDirectory, error);
     }
+
+    /// <summary>
+    /// How long a partition has taken so far, as a log detail.
+    /// </summary>
+    /// <remarks>
+    /// Seconds, to one decimal place, because the reader is a person deciding whether one domain
+    /// out of nine took an unreasonable share of a run. A duration formatted as a timespan sorts
+    /// badly by eye and hides the difference between four seconds and forty.
+    /// </remarks>
+    private RunLogDetail Elapsed(DateTimeOffset startedUtc) =>
+        new(
+            "elapsedSeconds",
+            (_time.GetUtcNow() - startedUtc).TotalSeconds
+                .ToString("0.#", CultureInfo.InvariantCulture));
 }

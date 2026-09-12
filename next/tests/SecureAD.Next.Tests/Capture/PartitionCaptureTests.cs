@@ -49,9 +49,17 @@ public sealed class PartitionCaptureTests
     private static (PartitionCapture Capture, RecordingSink Sink, ImmediateTimeProvider Time)
         CaptureOver(ControllerModel model)
     {
+        var (capture, sink, time, _) = CaptureAndLogOver(model);
+        return (capture, sink, time);
+    }
+
+    private static (PartitionCapture Capture, RecordingSink Sink, ImmediateTimeProvider Time,
+        RecordingRunLog Log) CaptureAndLogOver(ControllerModel model)
+    {
         var sink = new RecordingSink();
         var time = new ImmediateTimeProvider();
-        return (new PartitionCapture(model.Connections(), sink, time), sink, time);
+        var log = new RecordingRunLog();
+        return (new PartitionCapture(model.Connections(), sink, time, log), sink, time, log);
     }
 
     [Fact]
@@ -266,6 +274,71 @@ public sealed class PartitionCaptureTests
         Assert.Equal(3, model.RequestsReceived);
         Assert.Equal(1, model.ConnectionsOpened);
         Assert.Equal([TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10)], time.Waits);
+    }
+
+    /// <summary>
+    /// The same thing, said the way a controller actually says it - and this is the one that was
+    /// broken.
+    ///
+    /// <para>
+    /// The test above models a busy controller by throwing <c>LdapException</c>, which is what the
+    /// client library raises for a failure that never reached a server. A controller that answers
+    /// the request with <c>busy</c> produces a <c>DirectoryOperationException</c> instead, and the
+    /// capture loop caught only the first type - so the failure the retry policy was written for
+    /// was the one failure that bypassed it entirely. Against nine domains that is likely rather
+    /// than exceptional.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task AControllerThatAnswersBusyIsRetriedAndThePartitionStillCompletes()
+    {
+        var model = new ControllerModel
+        {
+            FailuresBeforeAnswering = 2,
+            FailWithCode = 51,
+            FailsAsServerResult = true,
+        };
+        model.AddObjects(5, "DC=example,DC=com");
+        var (capture, sink, time, log) = CaptureAndLogOver(model);
+
+        var read = await capture.ReadAsync(Unit(), CancellationToken.None);
+
+        Assert.True(read.IsSuccess, read.Error?.Description);
+        Assert.Equal(5, sink.Received.Count);
+
+        // One connection: a retry reuses the conversation, and the paging bookmark with it.
+        Assert.Equal(1, model.ConnectionsOpened);
+        Assert.Equal([TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10)], time.Waits);
+
+        var retries = log.Saying("retrying a request");
+        Assert.Equal(2, retries.Count);
+        Assert.Equal("Busy", RecordingRunLog.Value(retries[0], "failure"));
+        Assert.Equal("51", RecordingRunLog.Value(retries[0], "resultCode"));
+        Assert.Equal("2 of 3", RecordingRunLog.Value(retries[0], "attempt"));
+        Assert.Equal("3 of 3", RecordingRunLog.Value(retries[1], "attempt"));
+    }
+
+    /// <summary>
+    /// A controller that keeps answering <c>busy</c> is asked three times and no more, and the run
+    /// then ends naming the failure rather than an exception nobody can interpret.
+    /// </summary>
+    [Fact]
+    public async Task AControllerThatKeepsAnsweringBusyEndsTheRunNamingTheFailure()
+    {
+        var model = new ControllerModel
+        {
+            FailuresBeforeAnswering = 99,
+            FailWithCode = 51,
+            FailsAsServerResult = true,
+        };
+        model.AddObjects(5, "DC=example,DC=com");
+        var (capture, _, _) = CaptureOver(model);
+
+        var read = await capture.ReadAsync(Unit(), CancellationToken.None);
+
+        Assert.False(read.IsSuccess);
+        Assert.Equal(3, model.RequestsReceived);
+        Assert.Contains("Busy (51)", read.Error!.Description, StringComparison.Ordinal);
     }
 
     [Fact]

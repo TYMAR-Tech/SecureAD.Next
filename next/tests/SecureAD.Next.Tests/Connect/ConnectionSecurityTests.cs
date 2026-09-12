@@ -648,5 +648,67 @@ public sealed class DirectoryCredentialTests
         Assert.Equal(
             DirectoryConnectionSettings.DefaultConnectTimeout,
             DirectoryConnectionSettings.Default.ConnectTimeout);
+        Assert.Equal(
+            DirectoryConnectionSettings.DefaultResponseTimeout,
+            DirectoryConnectionSettings.Default.ResponseTimeout);
+    }
+
+    /// <summary>
+    /// The client does not stop waiting before the controller's own limit for the same search has
+    /// expired.
+    ///
+    /// <para>
+    /// <b>This is the whole of the defect.</b> One budget served both purposes, it was chosen for
+    /// opening a socket, and so every search page of a multi-hour capture had ten seconds to come
+    /// back. The floor is not a preference: capture puts
+    /// <see cref="ServerLimits.QueryDuration"/> on every request it sends, which is the longest a
+    /// controller will lawfully spend assembling one page, so a client waiting less than that gives
+    /// up on work the server was still doing.
+    /// </para>
+    /// <para>
+    /// <b>What it costs to be impatient is not a retried page.</b>
+    /// <see cref="RetryPolicy.ClientTimeout"/> answers a client timeout by reading the naming
+    /// context again from its first page, which on a domain of any size is minutes of work thrown
+    /// away - so this is asserted alongside the floor rather than left implied.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheResponseBudgetOutlastsTheTimeLimitEverySearchIsSentWith()
+    {
+        Assert.True(
+            DirectoryConnectionSettings.DefaultResponseTimeout > ServerLimits.QueryDuration,
+            $"The client waits {DirectoryConnectionSettings.DefaultResponseTimeout} for an answer "
+            + $"while asking the controller for up to {ServerLimits.QueryDuration} to produce one. "
+            + "A client that gives up first abandons a page the server was lawfully still "
+            + "assembling, and RetryPolicy.ClientTimeout responds to that by re-reading the whole "
+            + "naming context.");
+
+        Assert.Equal(FailureResponse.RestartTheUnit, RetryPolicy.ClientTimeout.Response);
+    }
+
+    /// <summary>
+    /// The connect budget and the response budget are different numbers, and the connect one stays
+    /// short.
+    ///
+    /// <para>
+    /// They live on one property in the platform's client - the same field is handed to
+    /// <c>ldap_connect</c> and to every <c>BeginSendRequest</c> - which is how one value came to
+    /// answer both questions. Holding them apart in the settings is what lets the factory move
+    /// between them at the bind. A ladder walk against a host that is not there must stay cheap:
+    /// four rungs, at the response budget, against twelve controllers is a preflight that takes
+    /// most of an hour to discover a typo.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheConnectBudgetIsNotTheResponseBudgetAndStaysShort()
+    {
+        Assert.NotEqual(
+            DirectoryConnectionSettings.DefaultConnectTimeout,
+            DirectoryConnectionSettings.DefaultResponseTimeout);
+
+        Assert.True(
+            DirectoryConnectionSettings.DefaultConnectTimeout < ServerLimits.QueryDuration,
+            "The connect budget bounds a whole ladder walk against a host that may not answer at "
+            + "all, so it must stay far below the time one search is allowed to take.");
     }
 }

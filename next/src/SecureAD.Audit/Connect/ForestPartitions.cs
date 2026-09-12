@@ -135,8 +135,12 @@ internal sealed class ForestPartitions
                     CaptureSearchRequestFactory.ForCrossReferences(container), cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (System.DirectoryServices.Protocols.LdapException exception)
+        catch (System.DirectoryServices.Protocols.DirectoryException exception)
         {
+            // DirectoryException rather than LdapException, for the reason RetryPolicy.FailureFor
+            // records: a non-success server result arrives as a DirectoryOperationException, which
+            // is not an LdapException, so the narrower catch let it escape as an unclassified
+            // exception instead of the named refusal this method exists to produce.
             return Result<ForestPartitions>.Failure(AuditError.Create(
                 ErrorCategory.Capture,
                 "CrossReferencesCouldNotBeRead",

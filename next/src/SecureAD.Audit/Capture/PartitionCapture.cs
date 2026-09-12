@@ -1,4 +1,5 @@
 using System.DirectoryServices.Protocols;
+using System.Globalization;
 using SecureAD.Evidence;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Capture;
@@ -34,9 +35,20 @@ namespace SecureAD.Audit.Capture;
 /// </remarks>
 public sealed class PartitionCapture
 {
+    /// <summary>
+    /// The name every line about reading a forest is recorded under.
+    /// </summary>
+    /// <remarks>
+    /// One name for the whole stage rather than one per component, so that an operator looking for
+    /// what a capture did greps for a single word. The message on each line says which part of it
+    /// this was.
+    /// </remarks>
+    public const string PhaseName = "Capture";
+
     private readonly IDirectoryChannelFactory _connections;
     private readonly ICapturedObjectSink _sink;
     private readonly TimeProvider _time;
+    private readonly IRunLog _log;
 
     /// <summary>
     /// Creates a capture.
@@ -51,16 +63,26 @@ public sealed class PartitionCapture
     /// ambient one so that a test of the retry policy does not have to spend the five, ten and
     /// twenty seconds a real one would.
     /// </param>
+    /// <param name="log">
+    /// Where a retry, a restart and a reconnection are written down. Required rather than
+    /// defaulted, per gate 1: this is the only place in the product that knows a controller made a
+    /// capture wait, and a log it could be built without is a log it would be built without.
+    /// </param>
     public PartitionCapture(
-        IDirectoryChannelFactory connections, ICapturedObjectSink sink, TimeProvider time)
+        IDirectoryChannelFactory connections,
+        ICapturedObjectSink sink,
+        TimeProvider time,
+        IRunLog log)
     {
         ArgumentNullException.ThrowIfNull(connections);
         ArgumentNullException.ThrowIfNull(sink);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(log);
 
         _connections = connections;
         _sink = sink;
         _time = time;
+        _log = log;
     }
 
     /// <summary>
@@ -89,6 +111,24 @@ public sealed class PartitionCapture
             {
                 return attempt.Result;
             }
+
+            // A restart throws away everything the abandoned attempt read, so a run that quietly
+            // did one looks in every count like a run that read the partition once. The line is
+            // what stops a doubled read time reading as a slow directory.
+            _log.Note(
+                PhaseName,
+                "restarting a partition from its first page",
+                [
+                    new RunLogDetail("namingContext", unit.NamingContext),
+                    new RunLogDetail("controller", unit.DomainController),
+                    new RunLogDetail(
+                        "restart",
+                        $"{restart + 1} of {RetryPolicy.MaxRestartsPerUnit}"),
+                    new RunLogDetail(
+                        "because",
+                        attempt.Result.Error?.Description
+                            ?? "No reason was recorded, which is itself a fault in this product."),
+                ]);
         }
     }
 
@@ -144,6 +184,20 @@ public sealed class PartitionCapture
 
         var referralsSuppressed =
             CaptureSearchRequestFactory.ShouldSendDomainScopeControl(unit, channel.SupportedControls);
+
+        // Written here rather than only on the finished coverage, because a run that dies part way
+        // through a partition never reaches the coverage. How well protected the connection was,
+        // and whether the controller was asked to suppress referrals, are the two facts about a
+        // half-read partition that nothing else would leave behind.
+        _log.Note(
+            PhaseName,
+            "connected to a controller",
+            [
+                new RunLogDetail("namingContext", unit.NamingContext),
+                new RunLogDetail("controller", channel.DomainController),
+                new RunLogDetail("connection", channel.SecurityLevel.ToString()),
+                new RunLogDetail("referralsSuppressed", referralsSuppressed ? "yes" : "no"),
+            ]);
 
         // The sink is told before the first request, because an object must be attributed to its
         // partition the moment it is written and a receiver cannot work out either the rung this
@@ -337,9 +391,18 @@ public sealed class PartitionCapture
     /// Sends one request, applying the failure policy to whatever comes back.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Three attempts, waiting between them, and only where the policy says the conversation with
     /// the controller survived. A failure that ended the conversation took the paging bookmark with
     /// it, and sending it again would offer the controller a bookmark it has no memory of.
+    /// </para>
+    /// <para>
+    /// <b>It catches <see cref="DirectoryException"/> rather than <see cref="LdapException"/>, and
+    /// the difference is the whole of the retry mechanism.</b> A non-success server result arrives
+    /// from <c>EndSendRequest</c> as a <see cref="DirectoryOperationException"/>, which is not an
+    /// <see cref="LdapException"/> - so catching the narrower type let Busy and Unavailable, the
+    /// two failures retries exist for, past the retry and out of the run.
+    /// </para>
     /// </remarks>
     private async Task<Outcome<DirectoryPage>> SendAsync(
         IDirectoryChannel channel,
@@ -360,17 +423,38 @@ public sealed class PartitionCapture
 
                 return new Outcome<DirectoryPage>(page, RestartWanted: false);
             }
-            catch (LdapException exception)
+            catch (DirectoryException exception)
             {
-                failure = RetryPolicy.FailureFor(exception.ErrorCode);
+                failure = RetryPolicy.FailureFor(exception);
             }
 
             if (failure.Response == FailureResponse.RetryTheRequest
                 && attempt < RetryPolicy.MaxAttemptsPerRequest)
             {
-                await Task.Delay(
-                        RetryPolicy.WaitBefore(failure, attempt + 1), _time, cancellationToken)
-                    .ConfigureAwait(false);
+                var wait = RetryPolicy.WaitBefore(failure, attempt + 1);
+
+                // A retry is written down as it happens, not counted and reported at the end. A
+                // capture that took six hours because one controller spent five of them saying
+                // "busy" is a different story from one that was simply large, and the only place
+                // the difference survives is a line with a time on it.
+                _log.Note(
+                    PhaseName,
+                    "retrying a request",
+                    [
+                        new RunLogDetail("namingContext", unit.NamingContext),
+                        new RunLogDetail("controller", unit.DomainController),
+                        new RunLogDetail("failure", failure.Name),
+                        new RunLogDetail(
+                            "resultCode", failure.ResultCode.ToString(CultureInfo.InvariantCulture)),
+                        new RunLogDetail(
+                            "attempt",
+                            $"{attempt + 1} of {RetryPolicy.MaxAttemptsPerRequest}"),
+                        new RunLogDetail(
+                            "waitSeconds",
+                            wait.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture)),
+                    ]);
+
+                await Task.Delay(wait, _time, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 

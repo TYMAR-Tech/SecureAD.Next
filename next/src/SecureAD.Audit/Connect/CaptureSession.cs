@@ -326,7 +326,12 @@ public sealed class CaptureSession
 
         // Every domain was asked before any of them was allowed to stop the run, per 0048, so the
         // refusal names all of them rather than the first one met.
-        if (report.Refusal() is { } refused)
+        //
+        // The exclusions go in because a domain nobody is going to read cannot be a reason not to
+        // start. A domain with no candidate controllers fails preflight for precisely the reason it
+        // was excluded, and counting it here turned a deliberate exclusion into an unreachable
+        // forest. The coverage record is unaffected: report.Blocking still holds it.
+        if (report.Refusal(exclusions.Keys.ToList()) is { } refused)
         {
             return Result<CaptureRunResult>.Failure(refused);
         }
@@ -375,7 +380,7 @@ public sealed class CaptureSession
         // The share is read with the token the run already holds. There is no alternate-credential
         // path, per docs/decisions/0039: one way to start a capture, and the predecessor's
         // in-memory password is not carried over.
-        var run = new CaptureRun(connections, new SmbSysvolFileReader(), _time);
+        var run = new CaptureRun(connections, new SmbSysvolFileReader(), _time, log);
 
         // An attested exclusion takes the domain out of the reading, not only out of the evidence.
         // Recording that a domain was left out while still capturing it produces a bundle that

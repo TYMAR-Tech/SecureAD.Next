@@ -325,8 +325,12 @@ public sealed class ForestRoles
                 .SendAsync(CaptureSearchRequestFactory.ForRoleOwner(roleObjectDn), cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (LdapException exception)
+        catch (DirectoryException exception)
         {
+            // DirectoryException rather than LdapException, for the reason RetryPolicy.FailureFor
+            // records: a non-success server result arrives as a DirectoryOperationException, which
+            // is not an LdapException. Catching the narrower type let a controller that answered
+            // "busy" throw out of a read whose whole contract is that its failure is contained.
             return Result<RoleHolder?>.Failure(AuditError.Create(
                 ErrorCategory.Capture,
                 "RoleOwnerCouldNotBeRead",

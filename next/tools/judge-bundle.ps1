@@ -567,25 +567,44 @@ SELECT holder_sid, COUNT(*) AS rows_held FROM (
     $now = [DateTimeOffset]::UtcNow
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $judged = if ($Gated) {
-        [SecureAD.Judgement.JudgingRun]::JudgeWithTier0Discovery(
-            $BundlePath,
-            $rules,
-            $now,
-            $now,
-            [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
-            [SecureAD.Kernel.RunLog]::Discarded,
-            [System.Threading.CancellationToken]::None,
-            $null)
+    # A diagnostic judging is still a judging, and it leaves a bundle whose findings somebody will
+    # later ask about. Passing RunLog.Discarded meant the run that produced them was absent from
+    # the bundle's own log, so the file said the last thing to touch it was something else.
+    $openedLog = [SecureAD.Evidence.RunLogFile]::Open(
+        $BundlePath, 'judging (judge-bundle.ps1)', [System.TimeProvider]::System)
+
+    $log = if ($openedLog.IsSuccess) {
+        $openedLog.Value
     } else {
-        [SecureAD.Judgement.JudgingRun]::Judge(
-            $BundlePath,
-            $rules,
-            $now,
-            $now,
-            [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
-            [SecureAD.Kernel.RunLog]::Discarded,
-            [System.Threading.CancellationToken]::None)
+        Write-Host ("The run log could not be opened, so this judging will leave no account of " +
+            "itself: {0}" -f $openedLog.Error.Description)
+        [SecureAD.Kernel.RunLog]::Discarded
+    }
+
+    try {
+        $judged = if ($Gated) {
+            [SecureAD.Judgement.JudgingRun]::JudgeWithTier0Discovery(
+                $BundlePath,
+                $rules,
+                $now,
+                $now,
+                [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
+                $log,
+                [System.Threading.CancellationToken]::None,
+                $null)
+        } else {
+            [SecureAD.Judgement.JudgingRun]::Judge(
+                $BundlePath,
+                $rules,
+                $now,
+                $now,
+                [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
+                $log,
+                [System.Threading.CancellationToken]::None)
+        }
+    }
+    finally {
+        if ($openedLog.IsSuccess) { $openedLog.Value.Dispose() }
     }
 
     $watch.Stop()

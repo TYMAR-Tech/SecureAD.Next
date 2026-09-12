@@ -95,6 +95,17 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
     /// and a capture pass refuses to run on one - so a channel that could exist without having
     /// asked would be a channel that fails later for a reason decided here.
     /// </para>
+    /// <para>
+    /// <b>Two budgets on one property, moved between them at the bind.</b>
+    /// <c>LdapConnection.Timeout</c> looks like a connect timeout and is not one: the platform's
+    /// client hands the same field to <c>ldap_connect</c> and to every <c>BeginSendRequest</c>. So
+    /// it is held at <see cref="DirectoryConnectionSettings.ConnectTimeout"/> while the socket is
+    /// opened and the bind is done - which is what keeps a ladder walk against an unreachable host
+    /// short - and raised to <see cref="DirectoryConnectionSettings.ResponseTimeout"/> the moment
+    /// there is a controller on the other end, because from then on every use of it is a wait for
+    /// an answer rather than a wait for a connection. Setting it once, at construction, gave every
+    /// search page of a multi-hour capture the ten seconds meant for opening a socket.
+    /// </para>
     /// </remarks>
     private Result<IDirectoryChannel> Open(string domainController, ConnectionSecurityRung rung)
     {
@@ -119,6 +130,11 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
             CaptureSearchRequestFactory.ApplyReferralPolicy(connection.SessionOptions);
 
             connection.Bind();
+
+            // The connection is open and a controller answered it. Everything after this line is a
+            // request waiting on an answer, and a page of a thousand objects with their security
+            // descriptors is not a ten-second job on a forest of any size.
+            connection.Timeout = _settings.ResponseTimeout;
 
             var rootDse = ReadRootDse(connection);
 

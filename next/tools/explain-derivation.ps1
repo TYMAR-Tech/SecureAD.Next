@@ -200,13 +200,32 @@ try {
         $now = [DateTimeOffset]::UtcNow
         $watch = [System.Diagnostics.Stopwatch]::StartNew()
 
-        $derived = [SecureAD.Derivation.Stage2aRun]::Derive(
-            $BundlePath,
-            [SecureAD.Derivation.ExpansionBudget]::Bulk,
-            $now,
-            [SecureAD.Derivation.Stage2aRun]::Unwatched,
-            [SecureAD.Kernel.RunLog]::Discarded,
-            [System.Threading.CancellationToken]::None)
+        # -Derive rewrites the bundle's derivation, so it leaves a trace in the bundle's own log for
+        # the same reason judge-bundle.ps1 does: the file otherwise names something else as the last
+        # thing to have touched the state a later reader is looking at.
+        $openedLog = [SecureAD.Evidence.RunLogFile]::Open(
+            $BundlePath, 'deriving (explain-derivation.ps1)', [System.TimeProvider]::System)
+
+        $log = if ($openedLog.IsSuccess) {
+            $openedLog.Value
+        } else {
+            Write-Host ("The run log could not be opened, so this derivation will leave no " +
+                "account of itself: {0}" -f $openedLog.Error.Description)
+            [SecureAD.Kernel.RunLog]::Discarded
+        }
+
+        try {
+            $derived = [SecureAD.Derivation.Stage2aRun]::Derive(
+                $BundlePath,
+                [SecureAD.Derivation.ExpansionBudget]::Bulk,
+                $now,
+                [SecureAD.Derivation.Stage2aRun]::Unwatched,
+                $log,
+                [System.Threading.CancellationToken]::None)
+        }
+        finally {
+            if ($openedLog.IsSuccess) { $openedLog.Value.Dispose() }
+        }
 
         $watch.Stop()
 

@@ -266,6 +266,38 @@ internal sealed class ControllerModel
 
     public int FailWithCode { get; set; } = 51;
 
+    /// <summary>
+    /// Raise the failure the way a controller's own answer arrives, rather than the way the client
+    /// library reports a failure that never reached one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The two are different types and only one of them was ever modelled here.</b> A result
+    /// code the controller itself returned comes back from <c>EndSendRequest</c> as a
+    /// <c>DirectoryOperationException</c>, which does not derive from <c>LdapException</c>. Busy
+    /// and Unavailable - the two failures the retry policy exists for - are exactly that kind, so
+    /// a model that only ever threw <c>LdapException</c> proved the retry against the one shape it
+    /// never has to handle.
+    /// </para>
+    /// <para>
+    /// It is opt-in rather than the default because the client-library failures this model also
+    /// serves - <c>ServerDown</c> at 81, <c>Timeout</c> at 85 - genuinely do arrive as
+    /// <c>LdapException</c>, and collapsing the two would trade one blind spot for another.
+    /// </para>
+    /// </remarks>
+    public bool FailsAsServerResult { get; set; }
+
+    /// <summary>
+    /// The exception a failing request raises, in whichever of the two shapes
+    /// <see cref="FailsAsServerResult"/> asks for.
+    /// </summary>
+    public DirectoryException Failure() =>
+        FailsAsServerResult
+            ? ServerResultFailure.AnsweredWith(
+                (ResultCode)FailWithCode,
+                $"The controller answered with result code {FailWithCode}.")
+            : new LdapException(FailWithCode);
+
     /// <summary>How many connections this model has been asked for.</summary>
     public int ConnectionsOpened { get; private set; }
 
@@ -382,12 +414,12 @@ internal sealed class ControllerModel
             model.RequestsReceived++;
 
             if (model.FailRequestNumber == model.RequestsReceived)
-                throw new LdapException(model.FailWithCode);
+                throw model.Failure();
 
             if (model.FailuresBeforeAnswering > 0)
             {
                 model.FailuresBeforeAnswering--;
-                throw new LdapException(model.FailWithCode);
+                throw model.Failure();
             }
 
             if (model.RefusesToRead.Contains(

@@ -1,3 +1,5 @@
+using System.DirectoryServices.Protocols;
+
 namespace SecureAD.Audit.Capture;
 
 /// <summary>
@@ -205,6 +207,49 @@ public static class RetryPolicy
         }
 
         return Unrecognised;
+    }
+
+    /// <summary>
+    /// What to do about a failure that arrived as an exception from the platform's LDAP client.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This overload exists because the code is not always on the property it looks like it is
+    /// on, and the case that got lost is the case retries exist for.</b> A caller reading
+    /// <c>LdapException.ErrorCode</c> for itself catches <see cref="LdapException"/> to do it, and
+    /// <c>LdapConnection.EndSendRequest</c> does not raise one for a non-success server result - it
+    /// raises <see cref="DirectoryOperationException"/>, which carries the code on its
+    /// <c>Response</c> and does <i>not</i> derive from <see cref="LdapException"/>. So
+    /// <see cref="ServerBusy"/> and <see cref="ServerUnavailable"/>, the two failures the whole
+    /// retry mechanism was built for, went straight past it. Across nine domains a busy controller
+    /// is likely rather than exceptional.
+    /// </para>
+    /// <para>
+    /// <b>Both halves of the question live here rather than one here and one at the boundary.</b>
+    /// Getting the code out of an exception and deciding what the code means are the same question
+    /// asked twice, and the defect above is what a split between them produces: a caller that had
+    /// the exception, knew where it kept its code, and was looking on the wrong type. A channel
+    /// that translated on the way out would be a second place answering it.
+    /// </para>
+    /// <para>
+    /// <b>An exception that cannot say returns <see cref="Unrecognised"/>, which stops the run.</b>
+    /// A <see cref="DirectoryOperationException"/> may carry no response at all. Guessing that a
+    /// failure nobody can name is a harmless one is how a request that half-succeeded gets sent
+    /// twice.
+    /// </para>
+    /// </remarks>
+    /// <param name="exception">The failure, as the platform's client raised it.</param>
+    public static DirectoryFailure FailureFor(DirectoryException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return exception switch
+        {
+            LdapException ldap => FailureFor(ldap.ErrorCode),
+            DirectoryOperationException { Response: { } response } =>
+                FailureFor((int)response.ResultCode),
+            _ => Unrecognised,
+        };
     }
 
     /// <summary>

@@ -541,7 +541,11 @@ internal static class Program
             Console.Out.WriteLine("  not read  " + partition);
         }
 
-        if (report.Refusal() is { } refused)
+        // No exclusions: --validate and --preview report what preflight found, before any
+        // attestation has been gathered. A domain that cannot be read is stated here even if a
+        // later run would be allowed to leave it out, because this is the output an operator reads
+        // to decide whether to attest in the first place.
+        if (report.Refusal([]) is { } refused)
         {
             Console.Error.WriteLine(refused.Description);
             return Failed;
