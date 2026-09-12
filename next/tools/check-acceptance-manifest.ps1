@@ -39,8 +39,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-if (-not $Spec)     { $Spec     = Join-Path $repoRoot 'docs\layers\specs\JUDGEMENT-HALF.md' }
-if (-not $Manifest) { $Manifest = Join-Path $repoRoot 'docs\layers\specs\JUDGEMENT-HALF-ACCEPTANCE.md' }
+if (-not $Spec)     { $Spec     = Join-Path $repoRoot 'docs\specs\JUDGEMENT-HALF.md' }
+if (-not $Manifest) { $Manifest = Join-Path $repoRoot 'docs\specs\JUDGEMENT-HALF-ACCEPTANCE.md' }
 
 function Read-Utf8([string] $path) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Not found: $path" }

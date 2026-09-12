@@ -37,7 +37,7 @@ namespace SecureAD.Judgement;
 /// names where the operator can tell those apart, which is the machine's own event log.
 /// </para>
 /// <para>
-/// Specified in docs/layers/judgement/rules/SEC-092-laps-rotation-stale.md.
+/// Specified in <c>docs/specs/rules/SEC-092-laps-rotation-stale.md</c>.
 /// </para>
 /// </remarks>
 public sealed class LapsRotationStale : IRule

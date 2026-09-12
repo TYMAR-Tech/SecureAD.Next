@@ -44,7 +44,7 @@ namespace SecureAD.Judgement;
 /// how a tool teaches an operator to stop reading it.
 /// </para>
 /// <para>
-/// Reasoned through in docs/layers/judgement/rules/SEC-027-privileged-sid-history.md §5.
+/// Reasoned through in <c>docs/specs/rules/SEC-027-privileged-sid-history.md</c> §5.
 /// </para>
 /// </remarks>
 public static class PrivilegedSidCatalogue

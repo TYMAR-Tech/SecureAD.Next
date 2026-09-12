@@ -165,7 +165,7 @@ internal static class ProtectedObjectReading
 /// </para>
 /// <para>
 /// <b>Specified in</b>
-/// docs/layers/judgement/rules/SEC-031-object-owned-by-a-non-administrator.md.
+/// <c>docs/specs/rules/SEC-031-object-owned-by-a-non-administrator.md</c>.
 /// </para>
 /// </remarks>
 public sealed class ObjectOwnedByNonAdministrator : IRule
@@ -243,7 +243,7 @@ public sealed class ObjectOwnedByNonAdministrator : IRule
 /// </para>
 /// <para>
 /// <b>Specified in</b>
-/// docs/layers/judgement/rules/SEC-032-protected-object-owned-by-a-non-administrator.md.
+/// <c>docs/specs/rules/SEC-032-protected-object-owned-by-a-non-administrator.md</c>.
 /// </para>
 /// </remarks>
 public sealed class ProtectedObjectOwnedByNonAdministrator : IRule

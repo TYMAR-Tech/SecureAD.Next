@@ -549,12 +549,12 @@ every one so far has. **Re-measure everything it asserts.** The tools under
 scripted edit to a document, and the `harvest-*.ps1` scripts re-read Microsoft's published values on
 demand.
 
-> **Two tools this paragraph named until 2026-09-12 are gone, and a third never existed.**
+> **Three tools this paragraph named until 2026-09-12 are gone.**
 > measure-rewrite-progress.ps1 and show-area-file-types.ps1 both read the surface register on their
 > second line and were deleted with it — they had been throwing *could not find file* since the
-> register went. The mutate-*.ps1 harnesses it also named have never been in this repository at
-> all. A gate is proved by mutating it by hand, watching it fail with the message it should, and
-> restoring — verified by hash, not by a script that does not exist.
+> register went. The ten mutate-*.ps1 harnesses were deleted in the same cut, their only subject
+> having been gates that retired with the documents they read. A gate is still proved the same way:
+> mutate it by hand, watch it fail with the message it should, and restore — verified by hash.
 
 **Run the whole suite, never a filter.** A targeted run has passed 47 of 47 while the tree was
 broken.

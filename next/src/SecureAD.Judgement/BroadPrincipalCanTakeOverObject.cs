@@ -36,7 +36,7 @@ namespace SecureAD.Judgement;
 /// </para>
 /// <para>
 /// <b>Specified in</b>
-/// docs/layers/judgement/rules/SEC-060-broad-principal-can-take-over-an-object.md.
+/// <c>docs/specs/rules/SEC-060-broad-principal-can-take-over-an-object.md</c>.
 /// </para>
 /// </remarks>
 public sealed class BroadPrincipalCanTakeOverObject : IRule

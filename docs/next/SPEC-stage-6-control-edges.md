@@ -69,7 +69,7 @@ and schema entries below are refreshed for the approved bounded full-control sli
 | `ControlEdge`, `ControlEdgeDeriver`, `ControlEdgeStorage` | `next/src/SecureAD.Judgement/` | WRITE_DAC/WRITE_OWNER, membership, password-reset, key-credential write, replication and existing-owner slices, plus the unknown uncounted ownership compound. Written by `JudgingRun` and read through `JudgementReader`, with control engine 8. |
 | `FullControlAssessment`, `FullControlEvaluator`, `FullControlStorage` | `next/src/SecureAD.Judgement/` | Bounded all-rights summary, original ordered source/check proof, independent expectedness replay and summary-versus-support counting. Primitive records are retained. |
 | `ControlEdgesSectionViewModel` | `next/src/SecureAD.Shell/ViewModels/ControlEdgesSectionViewModel.cs` | Paged object-first and named-holder-first views, expected primitives hidden by default with their count stated, plus coverage and supporting evidence. |
-| **90+ acceptance criteria for this stage** | docs/layers/specs/JUDGEMENT-HALF.md | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. **This document builds on those and does not restate them.** |
+| **90+ acceptance criteria for this stage** | [`docs/specs/JUDGEMENT-HALF.md`](../specs/JUDGEMENT-HALF.md) | Already specify the capability record, `EdgeClass`, `Feasibility`, `Tier0Basis`, the replication compound capabilities, and the ownership rules. 
 
 **Two punch-list rows were wrong and are corrected.** `P-70` said the product does not judge
 ownership; it does. `P-71` said nothing computes effective permissions; `EffectiveAccessCalculator`
