@@ -916,6 +916,20 @@ have - reading policy *content* out of files on SYSVOL, rather than reading the 
 directory. That capability is self-contained, it is the same amount of work whenever it is done, and
 nothing else in the roadmap depends on it. Deferring it costs nothing but the findings themselves.
 
+**Stop throws the work away, at every stage, decided 2026-09-12.** The owner: *"at any stage of the
+audit, if the user hit stop, it should get thrown away. im not going to try and figure out how to
+handle incomplete data from a user hitting stop."* **This is already how capture, derivation and
+judging behave** - each writes `<name>.db.partial` and renames it as its last act, so a run that was
+stopped has no file under the name a reader opens. A cancelled re-judging leaves the previous
+judgement intact, which is the same guarantee a crash gets by the same mechanism.
+
+**The rule is recorded here because the shell cannot yet re-judge or re-derive, and will be able
+to.** `securead-cli` has `--derive` and `--judge` for a bundle already captured; the shell has no
+equivalent command, only *New audit*. When those buttons are built they must follow the rule above -
+delete whatever the interrupted attempt produced rather than keeping it for the operator to
+interpret. **No screen may offer partial results from a stop**, and nothing may ask an operator to
+decide what an incomplete judgement means.
+
 ## What a control edge means, decided 2026-09-05
 
 Stage 6 turns permissions into *this principal can take over that object*. Four things about what an
