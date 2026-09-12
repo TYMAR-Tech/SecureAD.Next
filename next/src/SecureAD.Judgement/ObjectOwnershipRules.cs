@@ -339,12 +339,12 @@ internal static class OwnershipRuleBody
 
         switch (decision.Outcome)
         {
-            case ObjectOwnershipOutcome.OwnerIsNotAdministrative:
+            case ObjectOwnershipOutcome.OwnerIsNotAccepted:
                 break;
 
             // A real answer: the owner is administrative, or cannot rewrite the list. Judged rather
             // than refused - this is knowledge, not ignorance.
-            case ObjectOwnershipOutcome.OwnerIsAdministrative:
+            case ObjectOwnershipOutcome.OwnerIsAccepted:
             case ObjectOwnershipOutcome.OwnerHoldsNoImplicitRights:
                 return RuleVerdict.Judged([]);
 

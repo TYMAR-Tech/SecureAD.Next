@@ -7,15 +7,31 @@ using SecureAD.Kernel.Security;
 namespace SecureAD.Judgement;
 
 /// <summary>
-/// What became of the question <i>is this object owned by somebody who is not an administrator</i>.
+/// What became of the question <i>is this object's owner one this product accepts</i>.
 /// </summary>
+/// <remarks>
+/// <b>Acceptance rather than administrativeness, and the difference is P-148.</b> These outcomes
+/// were once named for whether the owner was an administrator, and three of the principals the
+/// accepting arm covers are not administrators at all: CREATOR OWNER is a placeholder the directory
+/// substitutes when a child object is created and names nobody, SYSTEM is the platform, and
+/// Enterprise Domain Controllers is a machine identity. They go unreported because they are
+/// directory artefacts rather than people - a different question, as <c>0099</c> and <c>0100</c>
+/// both say, and precisely the conflation <c>0101</c> exists to prevent. The consequence was always
+/// identical, which is why the wrong name survived; the name is read by anyone extending this rule,
+/// which is why it did not survive longer. The vocabulary here now matches the registry these
+/// answers actually come from - <c>PrincipalClassificationRegistry.AcceptedOwnerSids</c> and
+/// <see cref="OwnerAcceptance"/>.
+/// </remarks>
 internal enum ObjectOwnershipOutcome
 {
-    /// <summary>The owner is not an administrative principal, and the evidence settles it.</summary>
-    OwnerIsNotAdministrative,
+    /// <summary>The owner is not an accepted one, and the evidence settles it.</summary>
+    OwnerIsNotAccepted,
 
-    /// <summary>The owner is administrative, so there is nothing to report.</summary>
-    OwnerIsAdministrative,
+    /// <summary>
+    /// The owner is accepted, so there is nothing to report - whether because the principal holds
+    /// directory authority or because it is an artefact naming no person at all.
+    /// </summary>
+    OwnerIsAccepted,
 
     /// <summary>
     /// The owner keeps no implicit right to rewrite the permission list, so the claim this rule
@@ -77,16 +93,16 @@ internal static class ObjectOwnershipReading
     /// that is why <see cref="OwnerAcceptance"/> exists.
     /// </para>
     /// </remarks>
-    private static readonly IReadOnlySet<string> AdministrativeSids = PrincipalClassificationRegistry.AcceptedOwnerSids;
+    private static readonly IReadOnlySet<string> AcceptedOwnerSids = PrincipalClassificationRegistry.AcceptedOwnerSids;
 
     /// <summary>
-    /// Relative identifiers that are administrative under any domain.
+    /// Relative identifiers accepted as owners under any domain.
     /// </summary>
     /// <remarks>
     /// <c>AdminSDHolder</c> is owned by <c>Domain Admins</c> rather than <c>Administrators</c> by
     /// design, which is why 512 is here and why that documented exception costs nothing.
     /// </remarks>
-    private static readonly IReadOnlySet<int> AdministrativeRids = PrincipalClassificationRegistry.AcceptedOwnerIdentifierRids;
+    private static readonly IReadOnlySet<int> AcceptedOwnerRids = PrincipalClassificationRegistry.AcceptedOwnerIdentifierRids;
 
     /// <summary>
     /// Decides the ownership question for one object.
@@ -97,7 +113,7 @@ internal static class ObjectOwnershipReading
         ObjectAttributes subject, JudgingContext context)
     {
         var eligibility = Eligibility(subject, context);
-        if (eligibility.Outcome != ObjectOwnershipOutcome.OwnerIsNotAdministrative || eligibility.Evidence?.IsOrphaned == true)
+        if (eligibility.Outcome != ObjectOwnershipOutcome.OwnerIsNotAccepted || eligibility.Evidence?.IsOrphaned == true)
             return eligibility;
         var permissions = context.Permissions?.Invoke(subject.DistinguishedName);
         if (permissions?.Owner is not { } owner)
@@ -132,8 +148,8 @@ internal static class ObjectOwnershipReading
         if (permissions.Owner?.Sid is not { Length: > 0 } ownerSid)
             return Unresolved(UnresolvedReason.IdentityUnreadable);
 
-        if (IsAdministrativeByIdentifier(ownerSid))
-            return Administrative();
+        if (IsAcceptedOwnerByIdentifier(ownerSid))
+            return Accepted();
 
         if (context.ProtectedPrincipals is not { } protection)
             return Unresolved(UnresolvedReason.NotDerived);
@@ -159,7 +175,7 @@ internal static class ObjectOwnershipReading
             switch (fact.OwnerAcceptance)
             {
                 case OwnerAcceptance.Accepted:
-                    return Administrative();
+                    return Accepted();
 
                 case OwnerAcceptance.SchemaOnly:
                 case OwnerAcceptance.SchemaOnlyOtherwiseUnknown:
@@ -167,7 +183,7 @@ internal static class ObjectOwnershipReading
                         return Unresolved(UnresolvedReason.ForestIdentityUnreadable);
 
                     if (IsInSchema(subject.DistinguishedName, context.ForestFqdn))
-                        return Administrative();
+                        return Accepted();
 
                     if (fact.OwnerAcceptance == OwnerAcceptance.SchemaOnlyOtherwiseUnknown)
                         return Unresolved(UnresolvedReason.MembershipIncomplete);
@@ -218,18 +234,18 @@ internal static class ObjectOwnershipReading
             complete);
 
         return new ObjectOwnershipDecision(
-            ObjectOwnershipOutcome.OwnerIsNotAdministrative, evidence, null);
+            ObjectOwnershipOutcome.OwnerIsNotAccepted, evidence, null);
     }
 
-    private static bool IsAdministrativeByIdentifier(string sid)
+    private static bool IsAcceptedOwnerByIdentifier(string sid)
     {
-        foreach (var known in AdministrativeSids)
+        foreach (var known in AcceptedOwnerSids)
         {
             if (string.Equals(sid, known, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
-        return RelativeIdentifierOf(sid) is { } rid && AdministrativeRids.Contains(rid);
+        return RelativeIdentifierOf(sid) is { } rid && AcceptedOwnerRids.Contains(rid);
     }
 
     /// <summary>
@@ -266,8 +282,8 @@ internal static class ObjectOwnershipReading
         return false;
     }
 
-    private static ObjectOwnershipDecision Administrative() =>
-        new(ObjectOwnershipOutcome.OwnerIsAdministrative, null, null);
+    private static ObjectOwnershipDecision Accepted() =>
+        new(ObjectOwnershipOutcome.OwnerIsAccepted, null, null);
 
     private static ObjectOwnershipDecision Unresolved(UnresolvedReason reason) =>
         new(ObjectOwnershipOutcome.CouldNotResolve, null, reason);
@@ -279,7 +295,7 @@ internal static class ObjectOwnershipReading
 /// <param name="Outcome">What became of the question.</param>
 /// <param name="Evidence">
 /// The facts to report, present only where <paramref name="Outcome"/> is
-/// <see cref="ObjectOwnershipOutcome.OwnerIsNotAdministrative"/>.
+/// <see cref="ObjectOwnershipOutcome.OwnerIsNotAccepted"/>.
 /// </param>
 /// <param name="Reason">
 /// Why the question could not be answered, present only where it could not be.

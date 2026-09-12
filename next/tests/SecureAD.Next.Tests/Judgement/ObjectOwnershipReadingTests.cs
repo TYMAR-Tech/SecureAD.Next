@@ -15,19 +15,19 @@ namespace SecureAD.Next.Tests.Judgement;
 /// <remarks>
 /// <para>
 /// <b>These tests exist because nothing measured this predicate at all.</b> <c>P-140</c> found that
-/// no test in the tree named the <c>OwnerIsAdministrative</c> outcome, so the shipping list of
+/// no test in the tree named the <c>OwnerIsAccepted</c> outcome, so the shipping list of
 /// administrative principals could have been edited in either direction without a single check
 /// going red. The list decides which owners a customer is never told about, which makes an
 /// unmeasured mistake in it a silence rather than a wrong answer - the harder kind to notice.
 /// </para>
 /// <para>
 /// <b>Asserted on the outcome, deliberately, and not on whether a finding appeared.</b> A rule that
-/// reports nothing is what a correct <c>OwnerIsAdministrative</c> and a completely broken predicate
+/// reports nothing is what a correct <c>OwnerIsAccepted</c> and a completely broken predicate
 /// both look like from outside. <c>ObjectOwnershipRuleTests</c> covers the rules consuming this;
 /// neither file substitutes for the other.
 /// </para>
 /// <para>
-/// <b>Two paths reach <c>OwnerIsAdministrative</c> and both are exercised here.</b> The identifier
+/// <b>Two paths reach <c>OwnerIsAccepted</c> and both are exercised here.</b> The identifier
 /// lists, and the AdminSDHolder protection closure. The second is the one that made <c>P-140</c>
 /// larger than it looked: the five operator groups are protected principals in their own right, so
 /// removing them from the lists alone would have changed nothing an operator could see.
@@ -61,7 +61,7 @@ public sealed class ObjectOwnershipReadingTests
 
     /// <summary>
     /// Every identifier the product still accepts as an administrative owner returns
-    /// <c>OwnerIsAdministrative</c>.
+    /// <c>OwnerIsAccepted</c>.
     /// </summary>
     /// <remarks>
     /// <b>The whole retained list in one assertion, so shrinking it cannot pass unnoticed.</b> A
@@ -81,7 +81,7 @@ public sealed class ObjectOwnershipReadingTests
     {
         var decision = Decide(ownerSid);
 
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAdministrative, decision.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAccepted, decision.Outcome);
         Assert.Null(decision.Evidence);
         Assert.True(name.Length > 0);
     }
@@ -117,7 +117,7 @@ public sealed class ObjectOwnershipReadingTests
     {
         var decision = Decide(ownerSid);
 
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAdministrative, decision.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAccepted, decision.Outcome);
         Assert.NotNull(decision.Evidence);
         Assert.Equal(ownerSid, decision.Evidence.OwnerSid);
         Assert.True(name.Length > 0);
@@ -147,7 +147,7 @@ public sealed class ObjectOwnershipReadingTests
     {
         var decision = Decide(BackupOperators, ownerIsProtected: true);
 
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAdministrative, decision.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAccepted, decision.Outcome);
         Assert.NotNull(decision.Evidence);
         Assert.Equal(BackupOperators, decision.Evidence.OwnerSid);
     }
@@ -167,7 +167,7 @@ public sealed class ObjectOwnershipReadingTests
     {
         var decision = Decide(Domain + "-1310", ownerIsProtected: true);
 
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAdministrative, decision.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAccepted, decision.Outcome);
         Assert.NotNull(decision.Evidence);
     }
 
@@ -194,7 +194,7 @@ public sealed class ObjectOwnershipReadingTests
     [Fact]
     public void SystemOwningAnObjectIsNotReported()
     {
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAdministrative, Decide(System).Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAccepted, Decide(System).Outcome);
     }
 
     // ---- 5. CREATOR OWNER ----
@@ -211,7 +211,7 @@ public sealed class ObjectOwnershipReadingTests
     /// </para>
     /// <para>
     /// <b>The outcome this returns is named wrongly and the name is not worth changing here.</b>
-    /// <c>OwnerIsAdministrative</c> is what the predicate answers, and CREATOR OWNER is not an
+    /// <c>OwnerIsAccepted</c> is what the predicate answers, and CREATOR OWNER is not an
     /// administrator - it is a directory artefact. The consequence is identical, so this test
     /// asserts the consequence; that the enum conflates <i>administrative</i> with <i>not a
     /// person</i> is recorded on the punch list rather than repaired mid-row.
@@ -222,7 +222,7 @@ public sealed class ObjectOwnershipReadingTests
     {
         var decision = Decide(CreatorOwner);
 
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAdministrative, decision.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAccepted, decision.Outcome);
         Assert.Null(decision.Evidence);
     }
 
@@ -251,11 +251,11 @@ public sealed class ObjectOwnershipReadingTests
     public void ARelativeIdentifierIsReadInTheRightAuthority()
     {
         Assert.Equal(
-            ObjectOwnershipOutcome.OwnerIsAdministrative, Decide(OtherDomain + "-512").Outcome);
+            ObjectOwnershipOutcome.OwnerIsAccepted, Decide(OtherDomain + "-512").Outcome);
 
         // The built-in domain, whose last value is an alias and not a relative identifier.
         Assert.Equal(
-            ObjectOwnershipOutcome.OwnerIsNotAdministrative, Decide("S-1-5-32-512").Outcome);
+            ObjectOwnershipOutcome.OwnerIsNotAccepted, Decide("S-1-5-32-512").Outcome);
     }
 
     // ---- 7 and 8. names are not identifiers ----
@@ -282,8 +282,8 @@ public sealed class ObjectOwnershipReadingTests
         var renamed = Decide(Domain + "-512", ownerName: "Tier0-DomainAdmins-DoNotRename");
         var impostor = Decide(Domain + "-7421", ownerName: "Domain Admins");
 
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAdministrative, renamed.Outcome);
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAdministrative, impostor.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAccepted, renamed.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAccepted, impostor.Outcome);
         Assert.NotNull(impostor.Evidence);
         Assert.Equal("Domain Admins", impostor.Evidence.OwnerName);
     }
@@ -343,13 +343,13 @@ public sealed class ObjectOwnershipReadingTests
     public void ForestRootAndDomainRelativeGroupsAreEvaluatedInTheirOwnContext()
     {
         Assert.Equal(
-            ObjectOwnershipOutcome.OwnerIsAdministrative, Decide(Domain + "-519").Outcome);
+            ObjectOwnershipOutcome.OwnerIsAccepted, Decide(Domain + "-519").Outcome);
         Assert.Equal(
-            ObjectOwnershipOutcome.OwnerIsAdministrative, Decide(OtherDomain + "-512").Outcome);
+            ObjectOwnershipOutcome.OwnerIsAccepted, Decide(OtherDomain + "-512").Outcome);
 
         // Not a domain SID, so nothing may be read off its tail.
         Assert.Equal(
-            ObjectOwnershipOutcome.OwnerIsNotAdministrative, Decide("S-1-5-80-519").Outcome);
+            ObjectOwnershipOutcome.OwnerIsNotAccepted, Decide("S-1-5-80-519").Outcome);
     }
 
     // ---- fixtures ----
@@ -447,8 +447,8 @@ public sealed class ObjectOwnershipReadingTests
     public void SchemaScopeUsesTheCapturedForestAndParsedAncestors(string dn, bool accepted)
     {
         var result = SchemaDecision(dn, OwnerAcceptance.SchemaOnly);
-        Assert.Equal(accepted ? ObjectOwnershipOutcome.OwnerIsAdministrative
-            : ObjectOwnershipOutcome.OwnerIsNotAdministrative, result.Outcome);
+        Assert.Equal(accepted ? ObjectOwnershipOutcome.OwnerIsAccepted
+            : ObjectOwnershipOutcome.OwnerIsNotAccepted, result.Outcome);
     }
 
     [Theory]
@@ -469,7 +469,7 @@ public sealed class ObjectOwnershipReadingTests
         var inside = SchemaDecision("CN=Schema,CN=Configuration,DC=contoso,DC=com",
             OwnerAcceptance.SchemaOnlyOtherwiseUnknown);
         var outside = SchemaDecision(Ou, OwnerAcceptance.SchemaOnlyOtherwiseUnknown);
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAdministrative, inside.Outcome);
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAccepted, inside.Outcome);
         Assert.Equal(ObjectOwnershipOutcome.CouldNotResolve, outside.Outcome);
         Assert.Equal(UnresolvedReason.MembershipIncomplete, outside.Reason);
     }
@@ -477,14 +477,14 @@ public sealed class ObjectOwnershipReadingTests
     [Fact]
     public void ASeparateBroaderAcceptanceIsNotLimitedToTheSchema()
     {
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAdministrative,
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsAccepted,
             SchemaDecision(Ou, OwnerAcceptance.Accepted).Outcome);
     }
 
     [Fact]
     public void BeingInTheSchemaDoesNotAcceptAnUnqualifiedOwner()
     {
-        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAdministrative,
+        Assert.Equal(ObjectOwnershipOutcome.OwnerIsNotAccepted,
             SchemaDecision("CN=Schema,CN=Configuration,DC=contoso,DC=com", OwnerAcceptance.NotAccepted).Outcome);
     }
 

@@ -16,11 +16,11 @@ internal static class OwnershipControlDeriver
         Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid, List<ControlEdge> edges)
     {
         var eligibility = ObjectOwnershipReading.Eligibility(subject, context with { Permissions = _ => permissions });
-        if (eligibility.Outcome == ObjectOwnershipOutcome.OwnerIsAdministrative || eligibility.Evidence?.IsOrphaned == true)
+        if (eligibility.Outcome == ObjectOwnershipOutcome.OwnerIsAccepted || eligibility.Evidence?.IsOrphaned == true)
             return ControlUncertainty.None;
         if (permissions.Owner is not { } owner || string.IsNullOrWhiteSpace(owner.Sid))
             return ControlUncertainty.HolderUnresolved;
-        var eligible = eligibility.Outcome == ObjectOwnershipOutcome.OwnerIsNotAdministrative && eligibility.Evidence?.IsComplete == true
+        var eligible = eligibility.Outcome == ObjectOwnershipOutcome.OwnerIsNotAccepted && eligibility.Evidence?.IsComplete == true
             ? ControlEvaluationState.Established : ControlEvaluationState.Unknown;
         var scope = Sid.IsBuiltinDomain(owner.Sid) ? subject.DomainFqdn : null;
         var routes = context.ProtectedPrincipals?.Lookup(owner.Sid, scope)?.MembershipRoutes ?? MembershipRouteSummary.NotDerived;
