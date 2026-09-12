@@ -191,6 +191,55 @@ public sealed class FindingsPagingTests
     }
 
     /// <summary>
+    /// Findings that tie on severity, rule and object are all returned.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The cursor's stated premise is false, and this is the dataset that shows it.</b>
+    /// <see cref="FindingsPageMark"/> documented that "a distinguished name is unique within a
+    /// forest, so no two findings can tie on all three". A distinguished name is unique per
+    /// <i>object</i>, but <c>finding</c> is unique on rule, subject kind, subject key and object
+    /// GUID - so one rule may report the same object more than once, and those rows tie on every
+    /// value the cursor carries.
+    /// </para>
+    /// <para>
+    /// <b>This is not hypothetical.</b> Judging <c>ad.lab-20260910-074140</c> produced two SEC-090
+    /// findings for <c>CN=BAWK1,OU=Workstations,OU=BA Lab,DC=ba,DC=ad,DC=lab</c>, identical in
+    /// severity, rule and distinguished name - one per broad principal able to read its LAPS
+    /// password. P-157 records the same shape for LAPS decryptors.
+    /// </para>
+    /// <para>
+    /// <b>Why <see cref="ReadingEveryPageShowsEveryFindingExactlyOnce"/> did not catch it.</b> That
+    /// test says nothing but the distinguished name orders its rows, and it is right - but its
+    /// dataset gives every finding a different one, so nothing ever ties and the tie-breaker it
+    /// exists for is never reached. A page size of one here puts a boundary inside a tied group on
+    /// every page, which is the only arrangement that exercises it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void FindingsThatTieOnSeverityRuleAndObjectAreAllReturned()
+    {
+        const string Shared = "CN=BAWK1,OU=Workstations,DC=contoso,DC=com";
+        var directory = ABundleWith([AFinding(Shared), AFinding(Shared), AFinding(Shared), AFinding(Shared)]);
+
+        var seen = 0;
+        var query = Query() with { PageSize = 1 };
+
+        while (true)
+        {
+            var page = Page(directory, query);
+            seen += page.Findings.Count;
+
+            if (page.Next is not { } mark)
+                break;
+
+            query = query.ResumingAfter(mark);
+        }
+
+        Assert.Equal(4, seen);
+    }
+
+    /// <summary>
     /// The worst findings are on the first page.
     /// </summary>
     /// <remarks>

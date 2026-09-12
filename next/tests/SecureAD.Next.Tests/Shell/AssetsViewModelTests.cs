@@ -476,7 +476,7 @@ public sealed class AssetsViewModelTests
         var screen = ShowingFindings(
             new FindingsPage(
                 [AFinding()],
-                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com"),
+                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com", 1),
                 RulesRan: 2));
 
         Assert.Equal(1, screen.FindingsPageNumber);
@@ -503,7 +503,7 @@ public sealed class AssetsViewModelTests
         var screen = ShowingFindings(
             new FindingsPage(
                 [AFinding()],
-                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com"),
+                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com", 1),
                 RulesRan: 2));
 
         screen.NextFindings();
@@ -594,7 +594,7 @@ public sealed class AssetsViewModelTests
         var screen = ShowingFindings(
             new FindingsPage(
                 [AFinding()],
-                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com"),
+                new FindingsPageMark(3, "SEC-010", "CN=svc,DC=contoso,DC=com", 1),
                 RulesRan: 2));
 
         screen.NextFindings();
@@ -747,7 +747,7 @@ public sealed class AssetsViewModelTests
             Tree = TreeOfOneDomain(),
             Page = APageOfOne(),
             FindingsPage = new FindingsPage(
-                [AFinding()], new FindingsPageMark(1, "SEC-010", "CN=svc-web"), RulesRan: 2),
+                [AFinding()], new FindingsPageMark(1, "SEC-010", "CN=svc-web", 1), RulesRan: 2),
         };
 
         var screen = new AssetsViewModel(assets);

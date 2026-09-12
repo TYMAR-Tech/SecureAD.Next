@@ -416,8 +416,10 @@ public sealed class JudgementReader : IDisposable
                    f.severity_rank < $afterRank OR
                    (f.severity_rank = $afterRank AND f.rule_id > $afterRule) OR
                    (f.severity_rank = $afterRank AND f.rule_id = $afterRule
-                    AND f.distinguished_name > $afterDn))
-            ORDER BY f.severity_rank DESC, f.rule_id ASC, f.distinguished_name ASC
+                    AND f.distinguished_name > $afterDn) OR
+                   (f.severity_rank = $afterRank AND f.rule_id = $afterRule
+                    AND f.distinguished_name = $afterDn AND f.finding_id > $afterId))
+            ORDER BY f.severity_rank DESC, f.rule_id ASC, f.distinguished_name ASC, f.finding_id ASC
             LIMIT $limit
             """;
 
@@ -430,12 +432,18 @@ public sealed class JudgementReader : IDisposable
         Bind(command, "$afterRank", query.After?.SeverityRank);
         Bind(command, "$afterRule", query.After?.RuleId);
         Bind(command, "$afterDn", query.After?.DistinguishedName);
+        Bind(command, "$afterId", query.After?.FindingId);
 
         // One more than asked for, so the extra row answers "is there another page" and is then
         // dropped. The alternative is a second query counting everything that matched.
         command.Parameters.AddWithValue("$limit", query.PageSize + 1);
 
         using var reader = command.ExecuteReader();
+
+        // Tracked alongside rather than taken from the finding, which does not carry its own
+        // identity. The mark needs the identity of the last row SHOWN, so it is recorded as each
+        // row is added rather than read from the extra row that ends the page.
+        var lastId = 0L;
 
         while (reader.Read())
         {
@@ -444,10 +452,11 @@ public sealed class JudgementReader : IDisposable
                 // The extra row. Its existence is the whole answer, so it is not read as a finding
                 // and not shown - the mark points at the last row that was.
                 var last = findings[^1];
-                next = new FindingsPageMark((int)last.Severity, last.RuleId, last.DistinguishedName);
+                next = new FindingsPageMark((int)last.Severity, last.RuleId, last.DistinguishedName, lastId);
                 break;
             }
 
+            lastId = reader.GetInt64(0);
             findings.Add(ReadFinding(reader, versions));
         }
 

@@ -13,20 +13,35 @@ namespace SecureAD.Judgement;
 /// next page is the rows after them, which costs one seek whatever page it is.
 /// </para>
 /// <para>
-/// <b>The distinguished name is the tie-breaker and is why this is three values rather than
-/// one.</b> Many findings share a severity and a rule, and rows that sort equal have no fixed order
-/// between them - so a page boundary landing inside such a group would show some of them twice and
-/// others not at all. A distinguished name is unique within a forest, so no two findings can tie on
-/// all three.
+/// <b>The finding's own identity is the tie-breaker, and the other three are not enough.</b> Many
+/// findings share a severity and a rule, and rows that sort equal have no fixed order between them -
+/// so a page boundary landing inside such a group would show some of them twice and others not at
+/// all. This once ordered on the distinguished name and stopped there, on the reasoning that a
+/// distinguished name is unique within a forest so no two findings could tie on all three.
+/// </para>
+/// <para>
+/// <b>That reasoning was wrong, and P-160 is what it cost.</b> A distinguished name is unique per
+/// <i>object</i>, but the <c>finding</c> table is unique on rule, subject kind, subject key and
+/// object GUID - so one rule may report the same object several times, once per principal or per
+/// path, and those rows tie on every value the mark carried. Judging <c>ad.lab-20260910-074140</c>
+/// produced two SEC-090 findings for one workstation that way. A page boundary inside such a group
+/// returned one row and reported nothing after it, so the reader saw fewer findings than the run
+/// produced and nothing said so.
 /// </para>
 /// </remarks>
 /// <param name="SeverityRank">The severity of the last row shown, as its rank.</param>
 /// <param name="RuleId">The rule of the last row shown.</param>
 /// <param name="DistinguishedName">The object of the last row shown.</param>
+/// <param name="FindingId">
+/// The identity of the last row shown. Required rather than defaulted, because a mark that omitted
+/// it would resume from a position no row occupies and drop the rest of its group in silence -
+/// which is the defect this parameter exists to close.
+/// </param>
 public readonly record struct FindingsPageMark(
     int SeverityRank,
     string RuleId,
-    string DistinguishedName);
+    string DistinguishedName,
+    long FindingId);
 
 /// <summary>
 /// What a findings grid's filters may offer.
