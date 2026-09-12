@@ -369,7 +369,7 @@ public sealed class PreflightTests
     /// a forest smaller than the one it read.
     /// </para>
     /// <para>
-    /// Replace the body of <c>PreflightDispatch.OneAtATimeAsync</c> with a plain call to the work
+    /// Replace the body of <c>DirectoryWorkDispatch.OneAtATimeAsync</c> with a plain call to the work
     /// and this fails at two connections open on one host. Observed in both directions.
     /// </para>
     /// </remarks>

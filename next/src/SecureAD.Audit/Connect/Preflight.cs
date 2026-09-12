@@ -27,7 +27,7 @@ namespace SecureAD.Audit.Connect;
 /// sequential; a forest of thirty domains at ten seconds each is five minutes an operator spends
 /// watching a window before he may press anything, and it buys nothing, because the reason for the
 /// original rule was never the count of connections but the risk of two requests meeting on one
-/// machine. That risk is now held where it belongs, by <see cref="PreflightDispatch"/>, which lets
+/// machine. That risk is now held where it belongs, by <see cref="DirectoryWorkDispatch"/>, which lets
 /// every controller be asked at once and each one only once at a time.
 /// </para>
 /// <para>
@@ -84,8 +84,19 @@ public static class Preflight
             }
         }
 
-        var outcomes = await PreflightDispatch.TogetherAsync(
-            [.. asking.Select(index => units[index])],
+        // The ceiling is the subject count: preflight asks every domain at once, which is what it
+        // has always done. Saying so explicitly rather than leaving it uncapped means the number
+        // has a meaning a reader can check, and capture - which does want a ceiling - passes a
+        // different one through the same door.
+        var asked = new List<CaptureUnit>(asking.Count);
+        foreach (var index in asking)
+        {
+            asked.Add(units[index]);
+        }
+
+        var outcomes = await DirectoryWorkDispatch.TogetherAsync(
+            asked,
+            atMostAtOnce: Math.Max(asked.Count, 1),
             (unit, turns) => AskOneDomainAsync(connections, plan, unit, turns, cancellationToken),
             cancellationToken)
             .ConfigureAwait(false);
@@ -117,7 +128,7 @@ public static class Preflight
     /// why the state is gone rather than guarded.
     /// </para>
     /// <para>
-    /// <b>Both reads take a turn from <see cref="PreflightDispatch"/>.</b> They are against
+    /// <b>Both reads take a turn from <see cref="DirectoryWorkDispatch"/>.</b> They are against
     /// different controllers, and different domains are almost always on different controllers
     /// again - but almost always is not a guarantee this code holds, so the turns make it one
     /// rather than inheriting it from Active Directory.
@@ -127,7 +138,7 @@ public static class Preflight
         IDirectoryChannelFactory connections,
         ForestPlan plan,
         CaptureUnit unit,
-        PreflightDispatch turns,
+        DirectoryWorkDispatch turns,
         CancellationToken cancellationToken)
     {
         var asked = await turns.OneAtATimeAsync(

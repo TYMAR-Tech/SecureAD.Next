@@ -64,7 +64,7 @@ public sealed class ConnectionSecurityLog
     /// guarantees no order at all. It happens to enumerate in insertion order while nothing is
     /// removed, and nothing here removes anything - so the sentence above was true by implementation
     /// accident, and a reader who rendered this collection directly could have had one forest come
-    /// back in a different order between two runs. <c>PreflightDispatch</c> is careful about stable
+    /// back in a different order between two runs. <c>DirectoryWorkDispatch</c> is careful about stable
     /// ordering for the same reason, in the same subsystem.
     /// </remarks>
     public IReadOnlyList<ControllerConnectionSecurity> Controllers => _inOrderConnected;

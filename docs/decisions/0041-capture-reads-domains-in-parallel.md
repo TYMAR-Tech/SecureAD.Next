@@ -3,6 +3,13 @@
 Date: 2026-08-14
 Status: Accepted
 
+> **Not implemented until 2026-09-13, and nothing said so.** This decision was accepted on
+> 2026-08-14 and the code went on reading domains one at a time for a month. It was found only when
+> the owner asked how many domains capture reads at once, days before a first production run against
+> nine of them - and it was invisible because an accepted decision in `DECISIONS.md` reads exactly
+> like an implemented one. The gap is recorded as `P-194`. **A decision document is not evidence
+> that the code does what it says.**
+
 ## Context
 
 Capture is sequential today: `CaptureRun` walks the plan one unit at a time and awaits each before
@@ -52,10 +59,46 @@ the domains that follow.
 transaction and is not thread-safe. Parallel reads funnel through a single writer, and a second
 writer is not the answer.
 
+> **Amended 2026-09-13 by the owner: each domain writes its own database, merged afterwards.**
+> The clause above is superseded. The predecessor did it this way - `DirectCaptureRunner` gives each
+> shard its own SQLite file and merges them into the bundle when all have finished - and that is the
+> design which actually read this forest.
+>
+> It also dissolves the cost recorded under Consequences below. A single writer cannot discard one
+> failed domain's partial read, because a SQLite savepoint is a stack; a shard that failed is simply
+> not merged, and nothing else has to be unwound.
+>
+> **The merge cannot be copied from the predecessor, and the reason is a real difference between the
+> two schemas.** The old `MergeShardDatabases` does `INSERT OR IGNORE ... SELECT *` from an ATTACHed
+> database, which is safe only because the old schema keyed on natural values - `object_guid`,
+> trustee SID strings. `BundleSchema` uses surrogate `INTEGER PRIMARY KEY` ids, so two shards each
+> assign id 1 to a different entity: `UNIQUE(sid)` would drop the second shard's trustee row and
+> leave that shard's ACEs pointing at the first shard's principal. A permission attributed to the
+> wrong account, with nothing downstream able to notice. The merge therefore remaps on the natural
+> keys the schema already carries - `trustee.sid` and `security_descriptor.sha256` - rather than
+> copying rows, and shards are given disjoint id ranges so nothing else can collide.
+
 **There is no switch.** One behaviour. An operator setting labelled as gentler on production would
 be the same failure `S-10` refused for a request rate limit: a number that reads as a lever, whose
 relationship to what a server actually experiences is loose enough that an operator choosing it is
 worse off than one with no choice.
+
+> **Confirmed 2026-09-13, and the predecessor is evidence for it rather than against it.** The old
+> product carried `PerDcQpsLimit` (15 queries per second per controller) and
+> `MaxInFlightRequestsPerDc` (50). The owner's judgement on reviewing this was that a per-controller
+> rate limit is useless given how this product reads - each domain pins one controller and opens one
+> connection that pages results - and the old code bears that out three times over: its
+> `SendRequestAsync` awaited each request before sending the next, so the conversation was already
+> serial; its `DcRateLimiter` was constructed *inside each shard task*, so it could never coordinate
+> across shards; and `MaxInFlightRequestsPerDc` was declared, range-validated, copied into all three
+> capture profiles, and consumed by nothing.
+>
+> A serial request/response loop is self-throttling: the client cannot outrun a server it is waiting
+> on. What bounds the load on a controller is **per-host turn-taking**, not a number - and that
+> becomes load-bearing under parallelism for a reason worth stating, since the configuration
+> partition, the schema partition and the root domain may all be pinned to the same controller.
+>
+> The concurrency cap itself stays a constant rather than a setting, which is this clause unchanged.
 
 **The guard is narrowed, never exempted.** Whatever replaces the current fan-out scan must still fail
 the build on two concurrent requests to one controller. A guard that permits the new shape by
@@ -77,5 +120,9 @@ This rules out the obvious mechanism for discarding a failed domain's partial re
 stack, so once domains write interleaved there is no way to unwind one domain's work without also
 unwinding whatever was written after it. Discarding a failed attempt must therefore be keyed on that
 attempt's own coverage handle, which every object already carries.
+
+> **No longer true, as of the 2026-09-13 amendment above.** Domains no longer write interleaved into
+> one database, so nothing has to be unwound: a shard that failed is not merged. The coverage-handle
+> approach remains available and is not needed for this.
 
 Nothing may restate this record. Rows, comments and notes cite `0041`.
