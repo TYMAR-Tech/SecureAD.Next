@@ -33,56 +33,11 @@ public enum Tier0DiscoveryReason
     MissingIdentity,
     /// <summary>The route kind is outside this producer's supported scope and was not guessed at.</summary>
     UnsupportedRoute,
-    /// <summary>The configured object budget stopped the scan with input left unvisited.</summary>
-    ObjectsBudgetExceeded,
-    /// <summary>The configured permission-entry budget stopped the scan.</summary>
-    PermissionBudgetExceeded,
-    /// <summary>The configured candidate budget stopped the scan.</summary>
-    CandidateBudgetExceeded,
-}
-
-/// <summary>Explicit work limits for automatic discovery; no production default has been selected.</summary>
-/// <remarks>
-/// A null budget disables automatic discovery entirely rather than substituting a guessed limit.
-/// Production values require measurement against the recorded nine-domain forest shape.
-/// </remarks>
-public sealed record Tier0DiscoveryBudget(long Objects, long PermissionEntries, int Candidates)
-{
-    /// <summary>
-    /// A bound large enough not to bind on a laboratory capture. <b>Not a production budget.</b>
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The laboratory forest holds 8,383 objects; the production shape this product is built for
-    /// holds roughly 347,000 objects and 5.9 million access control entries. These figures are
-    /// chosen to exceed the former comfortably, so the lab exercises discovery rather than its
-    /// limits. They are <b>not</b> derived from any measurement of the latter.
-    /// </para>
-    /// <para>
-    /// A production budget needs measurement against the nine-domain shape under explicit
-    /// authorization. Until then, a run that exceeds these limits stops and says so through
-    /// <see cref="Tier0DiscoveryCoverage.Verdict"/> - which is the honest outcome, and is why the
-    /// alternative of quietly assessing every object instead was rejected.
-    /// </para>
-    /// </remarks>
-    public static Tier0DiscoveryBudget Laboratory { get; } = new(1_000_000, 20_000_000, 1_000_000);
-
-    internal void Validate()
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(Objects);
-        ArgumentOutOfRangeException.ThrowIfNegative(PermissionEntries);
-        ArgumentOutOfRangeException.ThrowIfNegative(Candidates);
-    }
 }
 
 /// <summary>The captured source of a limitation, never a fabricated controller identity.</summary>
 public sealed record Tier0DiscoveryLimitation(Tier0DiscoveryReason Reason, string? TargetDn,
-    int? PermissionOrdinal, string? TrusteeSid)
-{
-    /// <summary>Whether available input was left unvisited because a configured limit was reached.</summary>
-    public bool IsProcessingStop => Reason is Tier0DiscoveryReason.ObjectsBudgetExceeded
-        or Tier0DiscoveryReason.PermissionBudgetExceeded or Tier0DiscoveryReason.CandidateBudgetExceeded;
-}
+    int? PermissionOrdinal, string? TrusteeSid);
 
 /// <summary>
 /// Scan progress and limitations; finishing a scan does not prove forest or membership completeness.
@@ -92,17 +47,22 @@ public sealed record Tier0DiscoveryLimitation(Tier0DiscoveryReason Reason, strin
 /// input was inspected and how many candidates came out of it. They do not say the forest is
 /// understood, and an object absent from every candidate was not examined and not cleared.
 /// </remarks>
-public sealed record Tier0DiscoveryCoverage(int Version, bool InputScanCompleted, bool CaptureIsComplete,
-    Tier0DiscoveryBudget? Budget, long ObjectsVisited, long PermissionEntriesVisited, long OwnersVisited,
+public sealed record Tier0DiscoveryCoverage(int Version, bool CaptureIsComplete,
+    long ObjectsVisited, long PermissionEntriesVisited, long OwnersVisited,
     int CandidatesDiscovered, IReadOnlyList<Tier0DiscoveryLimitation> Limitations)
 {
     /// <summary>The semantics that produced this coverage, distinct from the classifier and selector versions.</summary>
     public const int CurrentVersion = 1;
 
     /// <summary>The supported scan's state, not an admission verdict or a completeness claim.</summary>
-    public string Verdict => Budget is null ? "NotStarted"
-        : InputScanCompleted ? "CapturedInputScanFinished" : "ProcessingStopped";
+    /// <remarks>
+    /// <b>There is one reachable state, and that is the point.</b> The scan has no work ceiling, so it
+    /// reads what was captured or the operator cancels it - and a cancellation throws rather than
+    /// returning a coverage that under-reports itself. A second verdict here would name an outcome
+    /// the scan cannot produce.
+    /// </remarks>
+    public string Verdict => "CapturedInputScanFinished";
 
     /// <summary>Whether anything prevented this scan from inspecting all supported captured input.</summary>
-    public bool IsComplete => InputScanCompleted && CaptureIsComplete && Limitations.Count == 0;
+    public bool IsComplete => CaptureIsComplete && Limitations.Count == 0;
 }

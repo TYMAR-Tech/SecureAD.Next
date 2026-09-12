@@ -477,6 +477,19 @@
         <Setter Property="Padding" Value="{StaticResource DenseCellPadding}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
         <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+
+        <!-- SET FOR THE UNSELECTED STATE TOO, which is the state almost every row is in.
+             F-0056-2's sibling, found on screen 2026-09-12: the findings grid rendered every
+             unselected row blank, and clicking empty space made one appear. Judging had found 27
+             findings and the operator was looking at what reads as none - the worst outcome an
+             audit tool has, because a blank list is indistinguishable from a clean forest.
+
+             The cause is the half this style did not cover. The trigger below was added when the
+             SELECTED row went blank; nothing set the resting colour, so an unselected cell fell
+             through to the Fluent theme's own cell template and took a light foreground from it.
+             The row behind sets Foreground, but a value from the cell's own style beats one
+             inherited from the row, so the row's setting never reached the text. -->
+        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
         <Style.Triggers>
             <!-- A style trigger beats the template trigger that would otherwise whiten this. The
                  row behind supplies the tint, so the cell stays transparent. -->

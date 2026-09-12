@@ -72,4 +72,21 @@ internal sealed partial class AuditProgressViewModel(TimeProvider time) : Observ
     }
 
     private static string Duration(TimeSpan value) => TimeSpan.FromSeconds(Math.Max(0, Math.Floor(value.TotalSeconds))).ToString("c", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// A duration in words, for a line an operator reads rather than compares.
+    /// </summary>
+    /// <remarks>
+    /// <b>Distinct from <see cref="Duration"/>, which stays a clock value.</b> This renders the Tier-0
+    /// discovery line, where "3 min 41 sec" is read at a glance and "00:03:41" is not. Seconds are
+    /// truncated rather than rounded so the figure never runs ahead of the work it describes.
+    /// </remarks>
+    internal static string Spoken(TimeSpan value)
+    {
+        var total = (long)Math.Max(0, Math.Floor(value.TotalSeconds));
+        var (hours, minutes, seconds) = (total / 3600, total % 3600 / 60, total % 60);
+        return hours > 0 ? Text("DurationHours", hours, minutes, seconds)
+            : minutes > 0 ? Text("DurationMinutes", minutes, seconds)
+            : Text("DurationSeconds", seconds);
+    }
 }

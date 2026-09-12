@@ -53,6 +53,24 @@ public static class JudgingRun
     {
         /// <summary>The current operation, not an indication that a judgement has been published.</summary>
         public JudgingPhase Phase { get; init; }
+
+        /// <summary>How many objects Tier-0 discovery has inspected, when it is running.</summary>
+        /// <remarks>
+        /// <b>Not the same as <see cref="ObjectsRead"/>.</b> Discovery inspects the stream alongside
+        /// rule evaluation, so the two advance together but count different work, and an unscoped
+        /// judging leaves this at zero because discovery never runs.
+        /// </remarks>
+        public long Tier0ObjectsObserved { get; init; }
+
+        /// <summary>
+        /// Time spent inside Tier-0 discovery so far, so an operator can see a long scan progressing.
+        /// </summary>
+        /// <remarks>
+        /// <b>Elapsed, never remaining.</b> The scan has no work ceiling, so there is no endpoint to
+        /// forecast from and any estimate would be a guess on a screen an auditor trusts. This is the
+        /// accumulated discovery time only, not the wall clock of the whole judging.
+        /// </remarks>
+        public TimeSpan Tier0DiscoveryElapsed { get; init; }
     }
 
     /// <summary>
@@ -106,7 +124,7 @@ public static class JudgingRun
     {
         discoveryBudget?.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, discoveryBudget, null, startedUtc, evaluationAsOf,
-            progress, log, cancellationToken, tier0DiscoveryBudget: null);
+            progress, log, cancellationToken, tier0DiscoveryRequested: false);
     }
 
     /// <summary>Judges a bundle and evaluates only the explicit bounded Self-Membership requests supplied.</summary>
@@ -121,7 +139,7 @@ public static class JudgingRun
         IRunLog log,
         CancellationToken cancellationToken) =>
         JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, false, null, null, startedUtc,
-            evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryBudget: null);
+            evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: false);
 
     /// <summary>Judges with an explicit offline member-attribution budget; requester discovery remains inactive.</summary>
     public static Result<JudgementRunState> JudgeWithMemberAttribution(
@@ -132,7 +150,7 @@ public static class JudgingRun
         ArgumentNullException.ThrowIfNull(memberBudget);
         memberBudget.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, memberBudget,
-            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryBudget: null);
+            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: false);
     }
 
     /// <summary>
@@ -154,15 +172,17 @@ public static class JudgingRun
     /// Until that is done, choosing this behaviour is explicit.
     /// </para>
     /// </remarks>
-    /// <param name="discoveryBudget">
-    /// The bounded scan limits. No production default exists;
-    /// <see cref="Tier0DiscoveryBudget.Laboratory"/> is sized for a laboratory capture and is not a
-    /// measured production budget.
-    /// </param>
+    /// <para>
+    /// <b>The scan has no work ceiling.</b> It reads what was captured, and cancellation is the only
+    /// thing that stops it early - which throws, so a partial scan is never published as a whole one.
+    /// A configured limit was removed deliberately: the only value ever defined exceeded the recorded
+    /// production forest several times over, so it stopped nothing while implying the product would.
+    /// Progress is reported as elapsed time through <see cref="JudgingProgress.Tier0DiscoveryElapsed"/>.
+    /// </para>
+    /// </remarks>
     public static Result<JudgementRunState> JudgeWithTier0Discovery(
         string bundleDirectory,
         IReadOnlyList<IRule> rules,
-        Tier0DiscoveryBudget discoveryBudget,
         DateTimeOffset startedUtc,
         DateTimeOffset evaluationAsOf,
         IProgress<JudgingProgress> progress,
@@ -170,11 +190,9 @@ public static class JudgingRun
         CancellationToken cancellationToken,
         SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget)
     {
-        ArgumentNullException.ThrowIfNull(discoveryBudget);
-        discoveryBudget.Validate();
         selfMembershipDiscoveryBudget?.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, selfMembershipDiscoveryBudget, null,
-            startedUtc, evaluationAsOf, progress, log, cancellationToken, discoveryBudget);
+            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: true);
     }
 
     private static Result<JudgementRunState> JudgeCore(
@@ -190,7 +208,7 @@ public static class JudgingRun
         IProgress<JudgingProgress> progress,
         IRunLog log,
         CancellationToken cancellationToken,
-        Tier0DiscoveryBudget? tier0DiscoveryBudget)
+        bool tier0DiscoveryRequested)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -506,10 +524,10 @@ public static class JudgingRun
 
         // STARTED HERE BECAUSE THE SCOPING FLAG MUST MATCH WHAT ACTUALLY HAPPENS. Discovery needs a
         // pinned derivation binding to qualify seeds against; without one it does not run and every
-        // object is assessed. Recording "scoped" on the strength of the budget alone would put the
+        // object is assessed. Recording "scoped" on the strength of the request alone would put the
         // scope caveat on screen for a run that in fact covered the whole capture, understating real
         // coverage - the opposite error to the one the caveat exists to prevent.
-        var gated = tier0DiscoveryBudget is not null && ownershipBinding is not null;
+        var gated = tier0DiscoveryRequested && ownershipBinding is not null;
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete, gated);
         writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
 
@@ -527,7 +545,7 @@ public static class JudgingRun
         // not run and every object falls back to being assessed, which is the previous behaviour
         // rather than a silent claim that nothing mattered.
         var tier0Discovery = gated
-            ? new Tier0DiscoveryScheduler(ownershipBinding!, tier0DiscoveryBudget!,
+            ? new Tier0DiscoveryScheduler(ownershipBinding!,
                 scope.Value!.AllDeclaredDomainsAreComplete, attributes,
                 subject => OwnershipAuditRun.Target(subject, namingContexts.Value), cancellationToken)
             : null;
@@ -572,7 +590,11 @@ public static class JudgingRun
             objectsRead++;
 
             if (objectsRead % ProgressEvery == 0)
-                progress.Report(new JudgingProgress(objectsRead));
+                progress.Report(new JudgingProgress(objectsRead)
+                {
+                    Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
+                    Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
+                });
         }
 
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
@@ -581,8 +603,14 @@ public static class JudgingRun
                 new Tier0Target(null, root, root, null, null, null));
 
         // The last report is unconditional, so a run that ends between two reports does not leave
-        // the operator looking at a count short of what was actually read.
-        progress.Report(new JudgingProgress(objectsRead));
+        // the operator looking at a count short of what was actually read. The discovery figures
+        // travel with it for the same reason: a capture smaller than one reporting interval would
+        // otherwise finish a scan the screen never mentioned.
+        progress.Report(new JudgingProgress(objectsRead)
+        {
+            Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
+            Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
+        });
         if (tier0Discovery is not null)
         {
             progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });

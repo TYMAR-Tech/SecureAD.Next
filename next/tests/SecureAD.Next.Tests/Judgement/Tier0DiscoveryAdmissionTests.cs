@@ -23,8 +23,6 @@ namespace SecureAD.Next.Tests.Judgement;
 /// </remarks>
 public sealed class Tier0DiscoveryAdmissionTests
 {
-    private static readonly Tier0DiscoveryBudget Generous = new(10_000, 100_000, 10_000);
-
     [Fact]
     public void AnUnrelatedOrdinaryAccountProducesNoCandidateAtAll()
     {
@@ -210,23 +208,43 @@ public sealed class Tier0DiscoveryAdmissionTests
         Assert.False(lab.Run().Coverage().IsComplete);
     }
 
+    /// <summary>
+    /// The scan has no work ceiling, so a capture it can read is a capture it reads all of.
+    /// </summary>
+    /// <remarks>
+    /// Replaces an earlier pair asserting that an exhausted budget stopped the scan and that a null
+    /// budget started nothing. Both described a configured limit that no longer exists; the limit was
+    /// removed because the only value ever defined exceeded the recorded production forest several
+    /// times over, so it stopped nothing while implying the product would stop somewhere.
+    /// </remarks>
     [Fact]
-    public void AnExhaustedBudgetStopsTheScanAndSaysSo()
+    public void AScanWithNoCeilingReadsEveryCapturedObject()
     {
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, entries: [lab.Allow(0, lab.Helpdesk, Lab.WriteDacl)]);
-        var coverage = lab.Run(new(1, 100, 100)).Coverage();
-        Assert.Equal(("ProcessingStopped", true),
-            (coverage.Verdict, coverage.Limitations.Any(item => item.IsProcessingStop)));
+        var scheduler = lab.Run();
+        var coverage = scheduler.Coverage();
+        Assert.Equal(("CapturedInputScanFinished", true, true),
+            (coverage.Verdict, coverage.ObjectsVisited == scheduler.Observed.Count, coverage.CandidatesDiscovered > 0));
     }
 
+    /// <summary>
+    /// A cancelled scan throws rather than returning coverage that reads as a finished one.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is what makes the single verdict honest.</b> Cancellation is now the only thing that
+    /// stops discovery early. Were it to return quietly instead of throwing, the one reachable verdict
+    /// would claim a completed scan for a run the operator abandoned - the exact false statement the
+    /// removed <c>ProcessingStopped</c> verdict used to carry.
+    /// </remarks>
     [Fact]
-    public void DiscoveryWithoutABudgetDoesNotSilentlyScanEverything()
+    public void ACancelledScanThrowsRatherThanClaimingItFinished()
     {
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, entries: [lab.Allow(0, lab.Helpdesk, Lab.WriteDacl)]);
-        var coverage = lab.Run(budget: null).Coverage();
-        Assert.Equal(("NotStarted", 0), (coverage.Verdict, coverage.CandidatesDiscovered));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => lab.Run(cancellation.Token));
     }
 
     [Fact]
@@ -348,12 +366,12 @@ public sealed class Tier0DiscoveryAdmissionTests
             DaclCompleteness completeness = DaclCompleteness.Complete, params PermissionEntry[] entries) =>
             Evidence.Describe(subject, ownerSid, DaclState.Present, completeness, entries);
 
-        internal Tier0DiscoveryScheduler Run() => Run(Generous);
+        internal Tier0DiscoveryScheduler Run() => Run(CancellationToken.None);
 
-        internal Tier0DiscoveryScheduler Run(Tier0DiscoveryBudget? budget)
+        internal Tier0DiscoveryScheduler Run(CancellationToken cancellationToken)
         {
-            var scheduler = new Tier0DiscoveryScheduler(Evidence.Binding, budget, _captureComplete,
-                Evidence.Find, Evidence.Target, CancellationToken.None);
+            var scheduler = new Tier0DiscoveryScheduler(Evidence.Binding, _captureComplete,
+                Evidence.Find, Evidence.Target, cancellationToken);
             foreach (var subject in Evidence.Stream())
                 scheduler.Observe(subject, Evidence.Permissions(subject.DistinguishedName));
             return scheduler;

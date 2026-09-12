@@ -316,7 +316,7 @@ public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
 
     private static void JudgeGated(string directory)
     {
-        var result = JudgingRun.JudgeWithTier0Discovery(directory, [], Tier0DiscoveryBudget.Laboratory,
+        var result = JudgingRun.JudgeWithTier0Discovery(directory, [],
             Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
     }

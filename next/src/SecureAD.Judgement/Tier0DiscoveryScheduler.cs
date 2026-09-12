@@ -44,7 +44,6 @@ internal sealed class Tier0DiscoveryScheduler
     private const string AuthenticatedUsers = "S-1-5-11";
 
     private readonly Tier0InputBinding _input;
-    private readonly Tier0DiscoveryBudget? _budget;
     private readonly bool _captureComplete;
     private readonly Func<string, ObjectAttributes?> _attributes;
     private readonly Func<ObjectAttributes, Tier0Target> _target;
@@ -57,7 +56,6 @@ internal sealed class Tier0DiscoveryScheduler
     private long _objects;
     private long _permissions;
     private long _owners;
-    private bool _stopped;
     private bool _completed;
 
     private readonly record struct CandidateKey(string Target, string Holder, ControlCapability Capability, int Ordinal);
@@ -73,7 +71,7 @@ internal sealed class Tier0DiscoveryScheduler
     private readonly record struct PendingCandidate(string HolderSid, string? HolderScope, string? HolderDn,
         Tier0Target Affected, ControlCapability Capability, Tier0CaptureWitness Witness);
 
-    internal Tier0DiscoveryScheduler(Tier0InputBinding input, Tier0DiscoveryBudget? budget, bool captureComplete,
+    internal Tier0DiscoveryScheduler(Tier0InputBinding input, bool captureComplete,
         Func<string, ObjectAttributes?> attributes, Func<ObjectAttributes, Tier0Target> target,
         CancellationToken cancellationToken)
     {
@@ -81,9 +79,7 @@ internal sealed class Tier0DiscoveryScheduler
         ArgumentNullException.ThrowIfNull(attributes);
         ArgumentNullException.ThrowIfNull(target);
         if (!input.IsSupported) throw new ArgumentException(null, nameof(input));
-        budget?.Validate();
         _input = input;
-        _budget = budget;
         _captureComplete = captureComplete;
         _attributes = attributes;
         _target = target;
@@ -105,9 +101,9 @@ internal sealed class Tier0DiscoveryScheduler
         // Observing after resolution would produce a candidate list that silently omits it.
         if (_completed) throw new InvalidOperationException("Discovery has already resolved its candidates.");
 
-        // Recorded before any budget or descriptor check, so a target that discovery could not
-        // inspect is still known to have been captured. "Captured but unassessed" and "absent from
-        // the capture" are different answers and a reader must be able to tell them apart.
+        // Recorded before any descriptor check, so a target that discovery could not inspect is
+        // still known to have been captured. "Captured but unassessed" and "absent from the
+        // capture" are different answers and a reader must be able to tell them apart.
         var target = _target(subject);
         _observed[subject.DistinguishedName] = target;
         if (target.IsValid && target.Sid is { } observedSid)
@@ -118,12 +114,6 @@ internal sealed class Tier0DiscoveryScheduler
             _bySid[key] = _bySid.TryGetValue(key, out var previous) && previous != target ? null : target;
         }
 
-        if (_budget is null || _stopped) return;
-        if (_objects == _budget.Objects)
-        {
-            Stop(Tier0DiscoveryReason.ObjectsBudgetExceeded, subject.DistinguishedName);
-            return;
-        }
         _objects++;
         if (!target.IsValid)
         {
@@ -152,14 +142,8 @@ internal sealed class Tier0DiscoveryScheduler
         foreach (var entry in permissions.Entries)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            if (_permissions == _budget.PermissionEntries)
-            {
-                Stop(Tier0DiscoveryReason.PermissionBudgetExceeded, subject.DistinguishedName, entry.Ordinal, entry.Trustee.Sid);
-                return;
-            }
             _permissions++;
             Entry(subject, target, entry);
-            if (_stopped) return;
         }
     }
 
@@ -213,7 +197,7 @@ internal sealed class Tier0DiscoveryScheduler
     {
         Complete();
         return new(Tier0DiscoveryCoverage.CurrentVersion,
-            _budget is not null && !_stopped, _captureComplete, _budget, _objects, _permissions, _owners,
+            _captureComplete, _objects, _permissions, _owners,
             _resolved.Count, _limitations
                 .OrderBy(item => item.Reason)
                 .ThenBy(item => item.TargetDn, StringComparer.OrdinalIgnoreCase)
@@ -329,12 +313,6 @@ internal sealed class Tier0DiscoveryScheduler
         var key = new CandidateKey(affected.DistinguishedName.ToUpperInvariant(),
             trustee.Sid.ToUpperInvariant(), capability, witness.PermissionOrdinal ?? -1);
         if (_candidates.ContainsKey(key)) return;
-        if (_candidates.Count == _budget!.Candidates)
-        {
-            Stop(Tier0DiscoveryReason.CandidateBudgetExceeded, affected.DistinguishedName,
-                witness.PermissionOrdinal, witness.TrusteeSid);
-            return;
-        }
         _candidates.Add(key, new(trustee.Sid, trustee.DomainFqdn is { } domain && Sid.IsBuiltinDomain(trustee.Sid)
             ? domain : null, trustee.DistinguishedName, affected, capability, witness));
     }
@@ -343,12 +321,4 @@ internal sealed class Tier0DiscoveryScheduler
 
     private void Limit(Tier0DiscoveryReason reason, string? target, int? ordinal, string? trustee) =>
         _limitations.Add(new(reason, target, ordinal, trustee));
-
-    private void Stop(Tier0DiscoveryReason reason, string? target) => Stop(reason, target, null, null);
-
-    private void Stop(Tier0DiscoveryReason reason, string? target, int? ordinal, string? trustee)
-    {
-        Limit(reason, target, ordinal, trustee);
-        _stopped = true;
-    }
 }

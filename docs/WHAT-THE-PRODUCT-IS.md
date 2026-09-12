@@ -283,6 +283,93 @@ discovery reached rather than the whole forest, and says so only for a judgement
 scoped - schema 29 records which kind a stored product is, because the two are otherwise
 indistinguishable and a reader would take the first for the second.
 
+### Tier-0 discovery has no work ceiling — decided 2026-09-12
+
+**The owner's decision:** *"why does it stop at a budget is my question. it shouldnt have one, if we
+are building an app that is suppose to determine something and we have to stop arbitrarily then we
+built it wrong."* Tier-0 discovery now runs until it has read what was captured. **Cancellation is
+the only stop**, and it is an honest one: a scan the operator stopped is a fact about the run, where
+a constant in the source is not.
+
+`Tier0DiscoveryBudget` and its three `*BudgetExceeded` reasons are deleted rather than defaulted to a
+large number. The ceiling that existed was the laboratory bound - 1,000,000 objects against a
+recorded production shape of roughly 347,000, so it never bound anything in either forest. With no
+ceiling, and cancellation throwing rather than returning, a scan can no longer finish incomplete:
+the `ProcessingStopped` verdict and the corresponding `ProcessingIncomplete` mapping go with it,
+under the standing rule that a reason the scanner cannot emit tells a reader the product looks for
+something it never looks for.
+
+**What replaces it on screen, approved verbatim:** `Finding what can control Tier 0 — 214,000
+objects, 3 min 41 sec`. **No progress bar and no time remaining.** An unbounded scan has no endpoint
+to forecast from, and a wrong estimate on a screen an auditor trusts is worse than no estimate. The
+cost is accepted: at minute seven the operator knows it has taken seven minutes, not how many remain.
+
+### Permissions mirrors the directory; Findings carries the judgement — decided 2026-09-12
+
+**The owner's rule, stated at the screen and governing more than the case that prompted it:**
+*"permissions on this screen should 100% mirror what is in AD. Findings is where we identify issues
+and risk."*
+
+**This is a separation of two jobs that are easy to blur.** The Permissions and Control-edges views
+answer *what does the directory actually say*, and they answer it completely, including the parts
+Microsoft shipped and nobody chose. Nothing is suppressed there for being common, routine or
+uninteresting, because an operator checking what a principal can do needs the directory's own answer
+rather than this product's opinion of which parts are worth mentioning. **A permission hidden because
+it is ordinary is a permission the operator will not find when it stops being ordinary.**
+
+Risk, ranking, thresholds and advice belong to Findings, where a rule says why something matters and
+what to do about it. That is the place to argue an empty Account Operators is less urgent than a
+populated one. Doing the same thing by hiding rows on the Permissions screen would make the two
+views disagree about the same directory, which is the defect this product keeps finding in others.
+
+### A true permission is reported, even when Microsoft shipped it — decided 2026-09-12
+
+**The owner's decision, made at the screen.** Opening `CN=Cert Publishers,CN=Users,DC=ad,DC=lab`
+showed BUILTIN\Account Operators holding **Full control**, and his answer was: *"now that i know this
+is a permission then i have no issue with it showing up here, its the truth so it should show up."*
+
+**This settles the acceptance question P-145 exists to ask.** Account Operators accounts for 15 of
+the 29 unexpected control rows in the laboratory forest — just over half — and holds them in every
+forest Microsoft has ever shipped, because they are the default ACL rather than anything an
+administrator did. The question was whether a stock default dominating the screen means the
+classification or presentation model is wrong. It does not: **the permission is real, the group can
+genuinely rewrite that object, and a tool that hid it because it is common would be hiding a true
+fact about the customer's directory.**
+
+**What this does not license.** It is not a ruling that volume never matters, and it is not
+permission to let a real finding become unfindable. The same laboratory run put a genuinely
+forest-specific result — a `ph.ad.lab` principal, and `ph.ad.lab` Domain Admins, both holding
+WRITE_DAC on the **`ba.ad.lab` domain root** — among those same rows. Cross-domain control of another
+domain's root is the kind of thing an operator opens the product to find, and it must stay findable.
+The owner accepted the current visibility on the basis that sorting and filtering handle it.
+
+**The empty-group observation stands separately.** Account Operators is empty in all three
+laboratory domains, with a *complete* membership summary rather than an unread one, so those fifteen
+rows are a latent exposure rather than an active one. That distinction is worth surfacing and is
+recorded in the punch list; it is not a reason to suppress anything, because anyone who can add a
+member to that group inherits every one of those capabilities at once. **Empty, populated and
+membership-unknown are three states, not two**, and nothing may collapse the third into the first.
+
+### Self-membership requester discovery is deferred to Stage 7 — decided 2026-09-12
+
+**Two separate scans were being discussed as one, and only one of them changed.** Tier-0 discovery
+starts *at* Tier 0 and walks outward; self-membership discovery starts at *every* group in every
+domain and asks who holds the "Add/Remove self as member" right on it. The second is **not** Tier-0
+scoped - `JudgingRun` observes it for every streamed object, filtered only to groups - and it is
+**inactive in both hosts**, because for that scan a null budget means the scan never starts.
+
+Its budget therefore stays, along with `ProductionBudgetNotConfigured`, which is a true statement
+about the product today. **Two questions are deferred rather than answered now:** whether the scan
+should be forest-wide or scoped to Tier 0 plus identified controllers, and where its stated
+limitations - nested groups not followed, Everyone/Authenticated Users not expanded, computer
+accounts not treated as requesters - should surface. The owner's reasoning: both are the same
+question as "path to Tier 0", and answering them before the path work exists would mean deciding
+twice, the second time with better information.
+
+The argument against Tier-0 scoping, recorded so it need not be rediscovered: **the first hop of an
+escalation chain is never a Tier-0 group.** A self-membership right on an unremarkable group matters
+because of what that group can reach, which is not knowable until chained-path analysis reads it.
+
 Decision [0117](decisions/0117-naming-context-roots-are-tier-0-assets.md) was accepted alongside it.
 A naming-context root holds no SID, so no controller route can reach it, and replication rights are
 granted *on the root* — which on a domain root is every credential in the domain. Discovery-first as

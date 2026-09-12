@@ -25,6 +25,12 @@ param(
     # not acceptance of the unfinished stage-6 catalogue or P-145.
     [switch] $ControlEdges,
 
+    # Judge the way the application does, with Tier-0 discovery deciding which objects receive
+    # detailed control assessment. REQUIRED FOR THE P-145 TIER-0 ANALYSIS: an ungated judgement
+    # records no Tier-0 seeds, and the report would then have nothing to measure unexpected control
+    # against - which reads as "nothing controls Tier 0" rather than as "this run cannot tell you".
+    [switch] $Gated,
+
     # Where the built assemblies are - the FOLDER holding them, not one of the files. Only needed
     # when this script is not sitting in the repository: on a lab machine, copy the whole build
     # output folder across and either put this script inside it or point -BinPath at it.
@@ -61,6 +67,8 @@ if ($BinPath) {
 $candidates += $PSScriptRoot
 $candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows\win-x64')
 $candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows')
+$candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Release\net10.0-windows\win-x64')
+$candidates += (Join-Path $PSScriptRoot '..\tests\SecureAD.Next.Tests\bin\Release\net10.0-windows')
 $candidates += (Join-Path $PSScriptRoot 'net10.0-windows')
 
 $bin = $null
@@ -99,6 +107,17 @@ which holds the native SQLite library - and either put this script inside it or 
 pointing at it.
 "@
 }
+
+# WHICH BUILD THIS IS MEASURING, said out loud rather than assumed.
+#
+# The candidate list holds both Debug and Release, and a developer who builds one while an older
+# copy of the other is still on disk would otherwise get a report from whichever the list reached
+# first. That failed loudly on 2026-09-12 only because a signature had changed; a behavioural change
+# would have produced numbers from a month-old binary with nothing on screen saying so. A
+# measurement that cannot name its own provenance is not evidence.
+$stamp = (Get-Item (Join-Path $bin 'SecureAD.Judgement.dll')).LastWriteTime
+Write-Output "Assemblies: $bin"
+Write-Output "SecureAD.Judgement.dll built: $($stamp.ToString('yyyy-MM-dd HH:mm:ss'))"
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidence.dll'))
@@ -257,7 +276,107 @@ try {
                     Write-Output "DC $($subject.DistinguishedName) [$sid]: $($held.Count) counted primitives"
                 }
             } finally { $evidence.Value.Dispose() }
-            Write-Output 'P-145: NOT PASSED. Initial-slice diagnostics only; remaining capabilities, member expansion and lab gates are outstanding.'
+
+            # UNEXPECTED CONTROL AGAINST TIER 0, which is the measurement P-145 names and the one
+            # this report lacked. The seeds come from the judgement's own ownership_seed table rather
+            # than a list written here: a hand-kept list of privileged groups would disagree with the
+            # product about what Tier 0 is, and would do so silently.
+            #
+            # Reported as a count AND grouped, because the acceptance question is about dominance. A
+            # single total cannot distinguish one overdelegated group from a platform principal
+            # holding the same permission on a thousand objects.
+            $seeds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            $connection = [Microsoft.Data.Sqlite.SqliteConnection]::new("Data Source=$path;Mode=ReadOnly;Pooling=False")
+            try {
+                $connection.Open()
+                $seedQuery = $connection.CreateCommand()
+                $seedQuery.CommandText = 'SELECT target FROM ownership_seed'
+                $seedReader = $seedQuery.ExecuteReader()
+                try { while ($seedReader.Read()) { $null = $seeds.Add($seedReader.GetString(0)) } }
+                finally { $seedReader.Dispose(); $seedQuery.Dispose() }
+            } catch {
+                Write-Output "Tier-0 seeds unavailable: $($_.Exception.Message)"
+            } finally { $connection.Dispose() }
+
+            Write-Output "Tier-0 seeds recorded: $($seeds.Count)"
+            if ($seeds.Count -eq 0) {
+                # Said plainly rather than reported as zero unexpected edges. A judgement with no
+                # recorded seeds was not scoped, and "none against Tier 0" would read as reassurance.
+                Write-Output 'No Tier-0 seeds are recorded in this judgement, so no Tier-0 target analysis is possible. This is not a statement that nothing controls Tier 0.'
+            } else {
+                $againstTier0 = @($all | Where-Object { $seeds.Contains($_.Target) })
+                $unexpectedAgainstTier0 = @($againstTier0 | Where-Object Expectedness -eq Unexpected)
+                Write-Output "Counted primitives against Tier-0 seeds: $($againstTier0.Count); of those unexpected: $($unexpectedAgainstTier0.Count)"
+                Write-Output 'Unexpected against Tier 0, by holder and capability:'
+                $unexpectedAgainstTier0 | Group-Object HolderSid,HolderName,Capability |
+                    Sort-Object @{Expression='Count';Descending=$true},Name | Select-Object -First 30 Count,Name |
+                    Format-Table -AutoSize | Out-String -Width 220 | Write-Output
+                Write-Output 'Unexpected against Tier 0, by target:'
+                $unexpectedAgainstTier0 | Group-Object Target |
+                    Sort-Object @{Expression='Count';Descending=$true},Name | Select-Object -First 30 Count,Name |
+                    Format-Table -AutoSize | Out-String -Width 220 | Write-Output
+            }
+
+            # THE DOMINANCE RATIO, which is the acceptance question stated as a number. P-145 says a
+            # large unexpected count is not by itself a failure; the failure is a count dominated by
+            # behaviour already established as necessary platform operation. These five operator
+            # groups are the 0099 exclusions - present and privileged in every forest Microsoft ships
+            # - so the share of unexpected edges they account for is the thing to look at.
+            #
+            # READ FROM THE STORE'S OWN BASIS, not recomputed here. The headline counts come from one
+            # query, and nothing else reproduces it by accident: counted primitives that a full-control
+            # summary has absorbed are excluded, established summaries are unioned in, and duplicates
+            # across capabilities are NOT collapsed. Four attempts at counting it in this script gave
+            # four different answers - 46 by counting every primitive, 29, 20 by adding a DISTINCT the
+            # store does not have - before this query, which is the reader's own with the grouping
+            # changed from expectedness to holder. A measurement that disagrees with the screen it is
+            # measuring is worse than no measurement. Anyone changing this must change it to match
+            # ControlEdgeStorage, not to produce a number that looks more reasonable.
+            $share = $null
+            $connection = [Microsoft.Data.Sqlite.SqliteConnection]::new("Data Source=$path;Mode=ReadOnly;Pooling=False")
+            try {
+                $connection.Open()
+                $byHolder = $connection.CreateCommand()
+                $byHolder.CommandText = @'
+SELECT holder_sid, COUNT(*) AS rows_held FROM (
+    SELECT target,holder_sid,holder_scope,expectedness FROM control_edge e
+    WHERE counted=1 AND NOT EXISTS (SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id)
+    UNION ALL
+    SELECT target,holder_sid,holder_scope,expectedness FROM full_control_assessment WHERE evaluation='Established'
+) WHERE expectedness='Unexpected' GROUP BY holder_sid ORDER BY rows_held DESC
+'@
+                $holderRows = @()
+                $read = $byHolder.ExecuteReader()
+                try { while ($read.Read()) { $holderRows += [pscustomobject]@{ Sid = $read.GetString(0); Rows = $read.GetInt64(1) } } }
+                finally { $read.Dispose(); $byHolder.Dispose() }
+
+                $totalRows = ($holderRows | Measure-Object -Property Rows -Sum).Sum
+                $operators = @('S-1-5-32-548','S-1-5-32-549','S-1-5-32-550','S-1-5-32-551','S-1-5-32-552')
+                $operatorRows = ($holderRows | Where-Object { $operators -contains $_.Sid } | Measure-Object -Property Rows -Sum).Sum
+                if (-not $totalRows) { $totalRows = 0 }
+                if (-not $operatorRows) { $operatorRows = 0 }
+
+                Write-Output ''
+                Write-Output "Unexpected, on the store's own basis (the same count the reader is shown): $totalRows"
+                if ($totalRows -gt 0) {
+                    $share = '{0:P1}' -f ($operatorRows / $totalRows)
+                    Write-Output "  held by the five 0099-excluded operator groups: $operatorRows ($share)"
+                    foreach ($row in ($holderRows | Select-Object -First 10)) {
+                        $name = @($all | Where-Object HolderSid -eq $row.Sid | Select-Object -First 1).HolderName
+                        Write-Output ("    {0,5}  {1,-7}  {2} {3}" -f $row.Rows, ('{0:P1}' -f ($row.Rows / $totalRows)), $row.Sid, $name)
+                    }
+                }
+            } catch {
+                Write-Output "Dominance analysis unavailable: $($_.Exception.Message)"
+            } finally { $connection.Dispose() }
+
+            Write-Output ''
+            Write-Output 'P-145: MEASURED, NOT ACCEPTED. This report now carries the exploratory half of the gate,'
+            Write-Output 'including Tier-0 target analysis and the platform-dominance ratio. The planted half lives in'
+            Write-Output 'ControlEdgeExpectednessGateTests. Whether these numbers show the catalogue exposing real'
+            Write-Output 'permissions understandably, or a platform principal dominating the default screen, is the'
+            Write-Output 'owner''s acceptance decision and is not asserted here. A laboratory forest cannot establish'
+            Write-Output 'production volumes either way.'
         } finally { $reader.Dispose() }
         return
     }
@@ -448,14 +567,26 @@ try {
     $now = [DateTimeOffset]::UtcNow
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $judged = [SecureAD.Judgement.JudgingRun]::Judge(
-        $BundlePath,
-        $rules,
-        $now,
-        $now,
-        [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
-        [SecureAD.Kernel.RunLog]::Discarded,
-        [System.Threading.CancellationToken]::None)
+    $judged = if ($Gated) {
+        [SecureAD.Judgement.JudgingRun]::JudgeWithTier0Discovery(
+            $BundlePath,
+            $rules,
+            $now,
+            $now,
+            [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
+            [SecureAD.Kernel.RunLog]::Discarded,
+            [System.Threading.CancellationToken]::None,
+            $null)
+    } else {
+        [SecureAD.Judgement.JudgingRun]::Judge(
+            $BundlePath,
+            $rules,
+            $now,
+            $now,
+            [SecureAD.Judgement.JudgingRun]::NobodyIsWatching,
+            [SecureAD.Kernel.RunLog]::Discarded,
+            [System.Threading.CancellationToken]::None)
+    }
 
     $watch.Stop()
 

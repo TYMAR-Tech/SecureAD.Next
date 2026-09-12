@@ -29,6 +29,10 @@
   <data name="ObjectsRead"><value>Captured objects read: {0:N0}</value></data>
   <data name="ObjectsProcessed"><value>Objects processed: {0:N0}</value></data>
   <data name="Elapsed"><value>Elapsed: {0}</value></data>
+  <data name="Tier0Discovery"><value>Finding what can control Tier 0 — {0:N0} objects, {1}</value></data>
+  <data name="DurationSeconds"><value>{0} sec</value></data>
+  <data name="DurationMinutes"><value>{0} min {1:00} sec</value></data>
+  <data name="DurationHours"><value>{0} hr {1:00} min {2:00} sec</value></data>
   <data name="LastUpdate"><value>Last phase/progress update: {0} ago</value></data>
   <data name="Caveat"><value>Elapsed time is not a progress estimate. A phase may continue working between reports. No percentage or completion time is assumed.</value></data>
   <data name="Stopping"><value>Stopping — waiting for the current work to stop: {0}</value></data>

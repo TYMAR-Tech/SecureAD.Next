@@ -85,11 +85,15 @@ internal static class Tier0AdmissionRun
     /// Carries discovery's limitations into the selector's coverage, so an incomplete scan cannot
     /// produce a scope that claims completeness.
     /// </summary>
+    /// <remarks>
+    /// <b>The switch is exhaustive on purpose.</b> A default arm would silently give any reason added
+    /// later a mapping nobody chose, and the wrong limitation is worse than a build failure - it
+    /// understates what a scan could not follow. Adding a reason must mean deciding what it means here.
+    /// </remarks>
     private static Tier0Coverage Source(Tier0DiscoveryCoverage coverage)
     {
         var limitations = Tier0Limitations.None;
         if (!coverage.CaptureIsComplete) limitations |= Tier0Limitations.InputIncomplete;
-        if (!coverage.InputScanCompleted) limitations |= Tier0Limitations.ProcessingIncomplete;
         foreach (var limitation in coverage.Limitations)
             limitations |= limitation.Reason switch
             {
@@ -100,13 +104,12 @@ internal static class Tier0AdmissionRun
                 Tier0DiscoveryReason.UnresolvedTrustee or Tier0DiscoveryReason.MissingIdentity
                     => Tier0Limitations.IdentityUnverified,
                 Tier0DiscoveryReason.UnsupportedRoute => Tier0Limitations.DependencyQualificationUnsupported,
-                _ => Tier0Limitations.ProcessingIncomplete,
             };
 
         // Control qualification is unsupported by discovery in every case: a named permission is a
         // captured fact and never an established control operation.
         limitations |= Tier0Limitations.ControlQualificationUnsupported;
         return new(coverage.CaptureIsComplete && (limitations & Tier0Limitations.InputIncomplete) == 0,
-            false, coverage.InputScanCompleted, limitations);
+            false, true, limitations);
     }
 }

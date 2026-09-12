@@ -116,7 +116,7 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
     public void ARunWithoutDerivationInputsStillJudgesRatherThanFailing()
     {
         var directory = Captured();
-        var result = JudgingRun.JudgeWithTier0Discovery(directory, [], Tier0DiscoveryBudget.Laboratory,
+        var result = JudgingRun.JudgeWithTier0Discovery(directory, [],
             Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
@@ -149,12 +149,30 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
         Assert.Equal(0L, Convert.ToInt64(command.ExecuteScalar()));
     }
 
+    /// <summary>
+    /// A scoped run reports the discovery progress the screen shows, so a long scan is visible.
+    /// </summary>
+    /// <remarks>
+    /// Replaces an earlier test asserting a budget was required rather than quietly defaulted. There
+    /// is no budget to require: the scan runs until the capture is read or the operator cancels, and
+    /// elapsed discovery time is what the audit screen reports in place of a ceiling.
+    /// </remarks>
     [Fact]
-    public void ABudgetIsRequiredRatherThanQuietlyDefaulted()
+    public void AScopedRunReportsWhatDiscoveryHasObserved()
     {
         var directory = Captured();
-        Assert.Throws<ArgumentNullException>(() => JudgingRun.JudgeWithTier0Discovery(directory, [], null!,
-            Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null));
+        Derive(directory);
+        var observed = 0L;
+        var watching = new Watching(value => observed = Math.Max(observed, value.Tier0ObjectsObserved));
+        var result = JudgingRun.JudgeWithTier0Discovery(directory, [],
+            Started, Started, watching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        Assert.True(observed > 0, "Discovery reported nothing for a scoped run.");
+    }
+
+    private sealed class Watching(Action<JudgingRun.JudgingProgress> observe) : IProgress<JudgingRun.JudgingProgress>
+    {
+        public void Report(JudgingRun.JudgingProgress value) => observe(value);
     }
 
     private static SqliteConnection Database(string directory)
@@ -224,7 +242,7 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
 
     private static void JudgeGated(string directory, IReadOnlyList<IRule>? rules = null)
     {
-        var result = JudgingRun.JudgeWithTier0Discovery(directory, rules ?? [], Tier0DiscoveryBudget.Laboratory,
+        var result = JudgingRun.JudgeWithTier0Discovery(directory, rules ?? [],
             Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
     }

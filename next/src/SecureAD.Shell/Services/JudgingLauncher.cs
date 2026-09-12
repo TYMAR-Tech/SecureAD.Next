@@ -25,8 +25,9 @@ namespace SecureAD.Shell.Services;
 /// <para>
 /// <b><paramref name="discoveryBudget"/> is not the Tier-0 budget.</b> It governs automatic
 /// self-membership requester discovery, which the shell leaves unconfigured, and is retained so that
-/// activating it stays a deliberate act. Tier-0 discovery is separate and always on: it decides which
-/// objects receive detailed control assessment, and without it every captured object is assessed.
+/// activating it stays a deliberate act. Tier-0 discovery is separate, always on, and has no budget
+/// at all: it decides which objects receive detailed control assessment, and without it every
+/// captured object is assessed.
 /// </para>
 /// </remarks>
 internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget) : IJudgingLauncher
@@ -77,13 +78,13 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
         // route from a Tier-0 seed reached, rather than for every captured object. Ordinary rule
         // findings are unaffected: every rule is still offered every object exactly once.
         //
-        // The budget is the laboratory bound, which is not a measured production figure. It is well
-        // above the recorded forest shape, so it should not bind; if it ever does, the run stops and
-        // says so through the stored coverage rather than quietly assessing less than it claims.
+        // It runs without a work ceiling. The only limit ever defined was a laboratory bound several
+        // times larger than the recorded production forest, so it stopped nothing while implying the
+        // product would stop somewhere. Cancel is the stop, and elapsed time is what the screen shows
+        // instead - a scan the operator ended is a fact about the run, where a constant was not.
         var judged = JudgingRun.JudgeWithTier0Discovery(
             bundleDirectory,
             RuleCatalogue.All,
-            Tier0DiscoveryBudget.Laboratory,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             watched,

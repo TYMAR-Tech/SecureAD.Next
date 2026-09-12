@@ -1866,11 +1866,22 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     }
 
     /// <summary>Notes how far the judging has got, for the screen watching it.</summary>
+    /// <remarks>
+    /// <b>The Tier-0 line replaces the object counter rather than joining it.</b> Discovery inspects
+    /// the same streamed objects the rules are offered, so showing both would print one number twice
+    /// under two names and invite a reader to treat them as separate progress. Elapsed time is shown
+    /// because the scan has no ceiling: there is no endpoint to forecast from, so the screen reports
+    /// what has happened and never what remains.
+    /// </remarks>
     private void OnJudged(JudgingRun.JudgingProgress progress)
     {
         ObjectsJudged = Math.Max(ObjectsJudged, progress.ObjectsRead);
         Progress.Report(AuditProgressViewModel.PhaseText(progress.Phase.ToString()),
-            progress.Phase == JudgingPhase.PreparingInputs ? string.Empty : AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
+            progress.Phase == JudgingPhase.PreparingInputs ? string.Empty
+            : progress.Tier0ObjectsObserved > 0
+                ? AuditProgressViewModel.Text("Tier0Discovery", progress.Tier0ObjectsObserved,
+                    AuditProgressViewModel.Spoken(progress.Tier0DiscoveryElapsed))
+                : AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
     }
 
     /// <summary>
