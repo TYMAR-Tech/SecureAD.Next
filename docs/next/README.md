@@ -344,7 +344,7 @@ more than once, so each becomes a build failure in the rebuild tree rather than 
 | 3 | No artefact states the age or provenance of its evidence | Every artefact writer emits `run_id` and `SealedUtc` | **phase 2** |
 | 4 | "Found nothing" and "could not compute" rendered identically | No public method returns a bare count; it returns a vouched type or a `Result<T>` | **done** — `UnvouchedResultGateTests`, which is now the whole of the rule: the specification it was written from, `S-6-vouched-returns.md`, went with docs/layers/ on 2026-09-12. A count is recognised by its name, because an `int` carries no units and a rule firing on every `int` would forbid an access mask; a collection is bare when its declaring type carries no `Errors` or `Verdict` beside it. One exemption, `SchemaGuidCatalog`, with a decay test that fails when the catalogue gains a way to fail |
 | 4b | A member carrying a vouching *name* and a value that cannot vary | The vouching member must be reachable as both values: the gate drives each type's own public constructors and factories, and fails a boolean voucher it only ever saw say one thing | **done** — `VouchedValueReachabilityGateTests`, closing `P-63`. It reads nothing under `next/tests`, so a test can neither satisfy it nor break it. A cheaper check on the getter's IL is carried beside it, for the vouchers the driver cannot build. Four are named as beyond its reach, each with a reason, and a decay test deletes an entry the driver later learns to settle |
-| 5b | The same, but proved rather than promised | Every public type is reachable from a running entry point. Uses the compiler's own view of the code, so a mention in a comment does not count as use | **blocked** — nothing traces reachability. The entry point it once waited for exists: the shell ships and a run can be started from it. What is missing is the trace itself, from that root through the compilation. Recorded as `F-S7-42` |
+| 5b | The same, but proved rather than promised | Every public type is reachable from a running entry point. Walks the compiled product from its roots, so a mention in a comment does not count as use | **done** — `PublicTypeReachabilityGateTests` over `ReachabilityTrace`, closing `P-182` and `F-S7-42`. Roots are every method of the window and the command line. Twenty types are exempt, in four islands of planned-but-unwired work, each with a reason; a decay test fails when one becomes reachable. Measured 2026-09-12: 416 of 436 reached |
 | 6 | Names describing an intention rather than the code | Not mechanically testable. Review only | — |
 
 A seventh guard is not on that list because it is not a map finding: every `.cs` file under `next/`
@@ -368,13 +368,21 @@ looks like protection.
 The failure it exists to catch is not "nothing mentions this" — the old product's six unreachable
 grids mention plenty, and mention each other. It is **"nothing that runs can get to this"**. That
 is reachability from a root. When the gate was split there was no root to measure from; the shell
-has since shipped and there is one. What is still missing is the trace itself — nothing walks the
-compilation from that root — so 5b stays blocked on the measurement rather than on the entry point.
+has since shipped and there is one. **The trace was built on 2026-09-12** and lives in
+`ReachabilityTrace`, which walks the compiled product from every method of the window and the
+command line outward into the five library assemblies.
 
-**5a is gone, and with it the half that was working.** It was the surface register, deleted on
-2026-09-12 with the other paperwork gates because it only ever checked that a document and a list
-agreed. Its own page said so. So gate 5 now has no half at all: nothing enforces the bookkeeping and
-nothing traces reachability. That is `P-182`.
+**5a is gone and is not coming back.** It was the surface register, deleted on 2026-09-12 with the
+other paperwork gates because it only ever checked that a document and a list agreed — its own page
+said so. Its bookkeeping is not reinstated, because 5b answers the question 5a was a proxy for.
+
+**Three things a walk of the instructions misses, and each was found by a wrong number**: async and
+iterator bodies live in generated state machines, so a walk stops at the first `await`; type
+initialisers are run by the runtime and never called, and `RuleCatalogue` builds every rule in one;
+and an interface call names the declaration rather than the body that runs, so nothing a rule does
+inside `Evaluate` is seen. Missing all three reported 119 types dead. Missing none reports 20. **The
+measurement was wrong three times before it was right**, which is the reason the gate carries a
+positive control naming three types reached by three different mechanisms.
 
 Written so far, in [`next/tests/SecureAD.Next.Tests/Architecture/`](../../next/tests/SecureAD.Next.Tests/Architecture):
 [`ProductInvariantTests`](../../next/tests/SecureAD.Next.Tests/Architecture) asserts invariants I-1 and I-3 explicitly rather than inheriting them,
@@ -382,7 +390,8 @@ Written so far, in [`next/tests/SecureAD.Next.Tests/Architecture/`](../../next/t
 [`0008`](../decisions/0008-live-verification-is-removed.md) and holds the orphan guard, and
 `NullDefaultGateTests` holds gate 1's second half, and `ConceptRegistryTests` holds gate 2 as a table
 in its own code since `P-184` — [`CONCEPT-REGISTRY.md`](CONCEPT-REGISTRY.md) is now description, not
-the rule — and `UnvouchedResultGateTests` holds gate 4 while `VouchedValueReachabilityGateTests` holds gate 4b. Each
+the rule — and `UnvouchedResultGateTests` holds gate 4 while `VouchedValueReachabilityGateTests` holds gate 4b,
+and `PublicTypeReachabilityGateTests` holds gate 5b. Each
 carries the scanner self-tests below, and
 all were mutation-tested in both directions.
 
