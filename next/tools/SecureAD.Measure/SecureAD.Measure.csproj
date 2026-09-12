@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- THE DISCOVERY MEASUREMENT HARNESS. Not part of the product. It answers one question
        with numbers instead of a guess: what automatic Self-Membership discovery costs, so a
@@ -16,9 +16,11 @@
        shape is measured. Sealed Evidence, next/artifacts and the laboratory directory are never
        opened for writing.
 
-       DELETE THIS PROJECT once a budget is measured, approved and recorded in
-       docs/layers/judgement/the-judgement-store.md. Kept past that point it becomes a second
-       account of how judging performs, free to drift from the product it describes. -->
+       DELETE THIS PROJECT once a discovery budget is measured, approved and recorded. That record
+       was to go in docs/layers/judgement/the-judgement-store.md, which was deleted on 2026-09-12
+       with the other layer documents; an approved budget is an owner decision, so it now belongs in
+       docs/WHAT-THE-PRODUCT-IS.md. The open question is P-152. Kept past that point this becomes a
+       second account of how judging performs, free to drift from the product it describes. -->
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>

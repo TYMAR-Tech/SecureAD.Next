@@ -544,10 +544,16 @@ one session intended on one day and never stated current behaviour, and several 
 
 A brief handed to a session is an input, not authority — and it will contain wrong figures, because
 every one so far has. **Re-measure everything it asserts.** The tools under
-[`next/tools/`](../../next/tools) exist for that: `measure-rewrite-progress.ps1` regenerates the
-queue from the tree, `show-area-file-types.ps1` reports who owns what,
-`check-document-encoding.ps1` runs after any scripted edit to a document, and the `mutate-*.ps1`
-harnesses are the shape a proof of a gate should take.
+[`next/tools/`](../../next/tools) exist for that: `check-document-encoding.ps1` runs after any
+scripted edit to a document, and the `harvest-*.ps1` scripts re-read Microsoft's published values on
+demand.
+
+> **Two tools this paragraph named until 2026-09-12 are gone, and a third never existed.**
+> measure-rewrite-progress.ps1 and show-area-file-types.ps1 both read the surface register on their
+> second line and were deleted with it — they had been throwing *could not find file* since the
+> register went. The mutate-*.ps1 harnesses it also named have never been in this repository at
+> all. A gate is proved by mutating it by hand, watching it fail with the message it should, and
+> restoring — verified by hash, not by a script that does not exist.
 
 **Run the whole suite, never a filter.** A targeted run has passed 47 of 47 while the tree was
 broken.
