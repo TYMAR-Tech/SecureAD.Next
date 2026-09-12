@@ -346,6 +346,14 @@ public sealed class CaptureSession
         // which controller served each domain and how well protected the connection to it was.
         PreflightFile.Write(directory.Value!, report, _time.GetUtcNow());
 
+        // WHAT THIS RUN COSTS IS MEASURED FROM HERE, and it starts before the log opens rather than
+        // after, so the preflight file and the log itself are inside the disk figure. The reason
+        // there is a figure at all: 0041 puts a ceiling on how many domains are read at once, and
+        // until something measured a run that ceiling could only be a guess wearing a number. Peak
+        // disk is the half that sharding makes binding - every domain's database exists at once
+        // before the merge - and it is the one nothing else in the product would ever record.
+        using var cost = RunResourceWatch.Start(directory.Value!, _time);
+
         // THE LOG IS OPENED HERE RATHER THAN TAKEN AS AN ARGUMENT, and the reason is the line above
         // it: until CreateRun there is no directory to write beside, so no caller could have opened
         // one. Deriving and judging take an IRunLog because they are handed a bundle that already
@@ -400,8 +408,17 @@ public sealed class CaptureSession
         // A capture that ended badly carries its own error rather than returning a failure, so the
         // log reads it off the result. Both endings are written: a run that sealed nothing is the
         // case an operator most needs an account of.
+        //
+        // THE COST FIGURES GO ON BOTH ENDINGS TOO. A run that died at hour two is the one whose
+        // memory and disk profile is most worth having, and it is the ending where a reader is
+        // already asking what the machine was doing at the time.
+        var spent = cost.Stop();
+
         if (captured.Error is { } failure)
-            log.Record(CapturePhase, failure, [new RunLogDetail("bundle", captured.BundleDirectory)]);
+            log.Record(
+                CapturePhase,
+                failure,
+                [new RunLogDetail("bundle", captured.BundleDirectory), .. spent.Details()]);
         else
             log.Note(
                 CapturePhase,
@@ -409,6 +426,7 @@ public sealed class CaptureSession
                 [
                     new RunLogDetail("outcome", captured.Outcome.ToString()),
                     new RunLogDetail("bundle", captured.BundleDirectory),
+                    .. spent.Details(),
                 ]);
 
         return captured;

@@ -1422,6 +1422,212 @@ public sealed class BundleWriterTests : IDisposable
         Assert.Contains("dc01.contoso.com", refusal.Message, StringComparison.Ordinal);
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Shards: identifiers that cannot collide when domains are read in parallel
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An unsharded run numbers from one, exactly as it always has.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the compatibility guarantee, and it is load-bearing.</b> The frozen golden hashes
+    /// and classifier fixtures are recorded outputs of the old behaviour, kept to prove the rebuild
+    /// changed nothing. Had shard zero started anywhere but one, every object in every bundle would
+    /// have been renumbered and each of those values would have needed editing - which is a finding
+    /// rather than a fix.
+    /// </remarks>
+    [Fact]
+    public void TheWholeBundleStillNumbersFromOne()
+    {
+        Assert.Equal(1, BundleShard.Whole.FirstId);
+        Assert.Equal(BundleShard.Whole, default(BundleShard));
+    }
+
+    /// <summary>
+    /// One shard's identifiers begin after the last one the shard before it could reach.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(8)]
+    [InlineData(4095)]
+    public void EachShardBeginsAfterTheOneBeforeItEnds(int index)
+    {
+        var shard = BundleShard.Number(index);
+        var next = BundleShard.Number(index + 1);
+
+        Assert.True(shard.LastId < next.FirstId);
+        Assert.True(shard.Owns(shard.FirstId));
+        Assert.True(shard.Owns(shard.LastId));
+        Assert.False(shard.Owns(next.FirstId));
+    }
+
+    /// <summary>
+    /// Every surrogate key a shard's writer hands out falls inside that shard's range.
+    /// </summary>
+    /// <remarks>
+    /// All four counters are asserted together because they move together. A counter left
+    /// unseeded while its neighbours were seeded would collide in exactly one table, which is the
+    /// hardest possible version of this defect to find afterwards.
+    /// </remarks>
+    [Fact]
+    public void EverySurrogateKeyAShardWritesFallsInsideItsRange()
+    {
+        var shard = BundleShard.Number(3);
+
+        using (var writer = BundleWriter.Create(_directory, Started, shard))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var objectId = writer.WriteObject(ObjectWith(TextAttribute("cn", "Alice")));
+            WriteDescriptor(
+                writer,
+                objectId,
+                Descriptor(DaclState.Present, [Ace("S-1-5-21-1-2-3-512", 0x20000)], []));
+
+            writer.Complete(OneDomainRead(), Finished);
+        }
+
+        Assert.True(shard.Owns(ScalarLong("SELECT MIN(object_id) FROM captured_object")));
+        Assert.True(shard.Owns(ScalarLong("SELECT MAX(object_id) FROM captured_object")));
+        Assert.True(shard.Owns(ScalarLong("SELECT MIN(coverage_id) FROM partition_coverage")));
+        Assert.True(shard.Owns(ScalarLong("SELECT MIN(descriptor_id) FROM security_descriptor")));
+        Assert.True(shard.Owns(ScalarLong("SELECT MIN(trustee_id) FROM trustee")));
+    }
+
+    /// <summary>
+    /// Two shards reading identical content share no identifier at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the defect the whole mechanism exists to prevent, stated directly.</b> Both shards
+    /// are given the same object, the same descriptor and the same trustee, which is the worst case
+    /// rather than a contrived one: two domains genuinely do see the same well-known SIDs. Without
+    /// disjoint ranges each writer hands out 1 to a different entity, and a merge copying those rows
+    /// drops the second shard's trustee on <c>UNIQUE (sid)</c> and silently repoints its access
+    /// control entries at the first shard's principal.
+    /// </para>
+    /// <para>
+    /// A permission attributed to the wrong account, in a bundle that looks perfectly healthy.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TwoShardsReadingTheSameThingsShareNoIdentifier()
+    {
+        var first = WriteOneShard(BundleShard.Number(0));
+        var second = WriteOneShard(BundleShard.Number(1));
+
+        Assert.Empty(first.Intersect(second));
+    }
+
+    /// <summary>
+    /// An abandoned partition attempt rewinds the counters, but never below its shard's floor.
+    /// </summary>
+    /// <remarks>
+    /// <c>AbortPartition</c> restores the four counters from a checkpoint taken at
+    /// <c>BeginPartition</c>. That checkpoint is captured after the floor was set, so the floor
+    /// holds - but it holds by construction rather than by a check, which is exactly the kind of
+    /// property that survives a refactor only if something is asserting it.
+    /// </remarks>
+    [Fact]
+    public void AnAbandonedAttemptNeverRewindsBelowItsShard()
+    {
+        var shard = BundleShard.Number(5);
+
+        using (var writer = BundleWriter.Create(_directory, Started, shard))
+        {
+            writer.BeginPartition(
+                "DC=abandoned,DC=example",
+                NamingContextKind.Domain,
+                "dc09.example",
+                ConnectionSecurityLevel.SignedAndSealed);
+
+            writer.AbortPartition();
+
+            writer.WriteCoverage(SomeCoverage());
+            writer.WriteObject(ObjectWith(TextAttribute("cn", "Alice")));
+            writer.Complete(OneDomainRead(), Finished);
+        }
+
+        Assert.True(shard.Owns(ScalarLong("SELECT MIN(object_id) FROM captured_object")));
+        Assert.True(shard.Owns(ScalarLong("SELECT MIN(coverage_id) FROM partition_coverage")));
+    }
+
+    [Fact]
+    public void AShardBelowZeroIsRefused() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => BundleShard.Number(-1));
+
+    [Fact]
+    public void AShardBeyondTheLastIsRefused() =>
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => BundleShard.Number(BundleShard.MaxIndex + 1));
+
+    /// <summary>
+    /// The last shard a run may have owns identifiers that fit in the column holding them.
+    /// </summary>
+    /// <remarks>
+    /// <b>The bound is on the last identifier, not the first, and checking the first is not the
+    /// same check.</b> An earlier draft accepted a shard whose <c>FirstId</c> fitted while its
+    /// <c>LastId</c> passed <see cref="long.MaxValue"/> and wrapped negative - at which point
+    /// <c>Owns</c> refuses every identifier that shard legitimately holds, and it is <c>Owns</c>
+    /// the merge uses to satisfy itself it is reading the shard it thinks it is. Unreachable with
+    /// any real forest, and still a bounds check that did not check its bound.
+    /// </remarks>
+    [Fact]
+    public void TheLastShardsIdentifiersFitInTheColumnThatHoldsThem()
+    {
+        var last = BundleShard.Number(BundleShard.MaxIndex);
+
+        Assert.True(
+            last.FirstId > 0,
+            $"The last shard's first identifier is {last.FirstId}, which has overflowed.");
+
+        Assert.True(
+            last.LastId > last.FirstId,
+            $"The last shard runs from {last.FirstId} to {last.LastId}, so its range has wrapped "
+            + "and Owns will refuse every row it wrote.");
+
+        Assert.True(last.Owns(last.LastId));
+    }
+
+    /// <summary>
+    /// Every surrogate key one shard's bundle contains, as one set.
+    /// </summary>
+    private IReadOnlyCollection<long> WriteOneShard(BundleShard shard)
+    {
+        var directory = Path.Combine(_directory, "shard-" + shard.Index);
+
+        using (var writer = BundleWriter.Create(directory, Started, shard))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            var objectId = writer.WriteObject(ObjectWith(TextAttribute("cn", "Alice")));
+            WriteDescriptor(
+                writer,
+                objectId,
+                Descriptor(DaclState.Present, [Ace("S-1-5-32-544", 0x20000)], []));
+
+            writer.Complete(OneDomainRead(), Finished);
+        }
+
+        using var connection = OpenForWriting(BundleLayout.EvidencePath(directory));
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT object_id FROM captured_object
+            UNION SELECT coverage_id FROM partition_coverage
+            UNION SELECT descriptor_id FROM security_descriptor
+            UNION SELECT trustee_id FROM trustee
+            """;
+
+        var ids = new List<long>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            ids.Add(reader.GetInt64(0));
+
+        Assert.NotEmpty(ids);
+        return ids;
+    }
+
     private void WriteBundle(Action<BundleWriter> write)
     {
         using var writer = BundleWriter.Create(_directory, Started);

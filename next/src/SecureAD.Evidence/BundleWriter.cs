@@ -84,10 +84,10 @@ public sealed class BundleWriter : IDisposable
     private readonly DateTimeOffset _startedUtc;
 
     private SqliteTransaction? _transaction;
-    private long _nextObjectId = 1;
-    private long _nextCoverageId = 1;
-    private long _nextDescriptorId = 1;
-    private long _nextTrusteeId = 1;
+    private long _nextObjectId;
+    private long _nextCoverageId;
+    private long _nextDescriptorId;
+    private long _nextTrusteeId;
     private bool _completed;
     private bool _disposed;
     private AttemptCheckpoint? _attempt;
@@ -99,13 +99,31 @@ public sealed class BundleWriter : IDisposable
         long TrusteeId);
 
     private BundleWriter(
-        string bundleDirectory, string partialPath, SqliteConnection connection, DateTimeOffset startedUtc)
+        string bundleDirectory,
+        string partialPath,
+        SqliteConnection connection,
+        DateTimeOffset startedUtc,
+        BundleShard shard)
     {
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
         _startedUtc = startedUtc;
+        Shard = shard;
+
+        // EVERY SURROGATE KEY STARTS AT THIS SHARD'S FLOOR, which for an unsharded run is 1 and so
+        // is exactly what the product wrote before shards existed. The four counters move together
+        // because all four are keys the merge would otherwise have to reconcile, and a counter left
+        // at 1 while its neighbours were seeded would collide in precisely one table - the hardest
+        // possible version of this defect to find.
+        _nextObjectId = shard.FirstId;
+        _nextCoverageId = shard.FirstId;
+        _nextDescriptorId = shard.FirstId;
+        _nextTrusteeId = shard.FirstId;
     }
+
+    /// <summary>Which of a run's parallel readers wrote this, and therefore which identifiers it owns.</summary>
+    public BundleShard Shard { get; }
 
     /// <summary>
     /// Creates a bundle in <paramref name="bundleDirectory"/> and opens it for writing.
@@ -117,7 +135,12 @@ public sealed class BundleWriter : IDisposable
     /// </remarks>
     /// <param name="bundleDirectory">The directory the operator named. Created if absent.</param>
     /// <param name="startedUtc">When the run started.</param>
-    public static BundleWriter Create(string bundleDirectory, DateTimeOffset startedUtc)
+    /// <param name="shard">
+    /// Which of a run's parallel readers this is. Omitted means <see cref="BundleShard.Whole"/> -
+    /// one writer for the whole bundle, numbering from 1 as the product always has.
+    /// </param>
+    public static BundleWriter Create(
+        string bundleDirectory, DateTimeOffset startedUtc, BundleShard shard = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
@@ -169,7 +192,7 @@ public sealed class BundleWriter : IDisposable
 
         BundleSchema.CreateTables(connection);
 
-        var writer = new BundleWriter(bundleDirectory, partialPath, connection, startedUtc);
+        var writer = new BundleWriter(bundleDirectory, partialPath, connection, startedUtc, shard);
         writer._transaction = connection.BeginTransaction();
         return writer;
     }

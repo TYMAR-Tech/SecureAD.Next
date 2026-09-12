@@ -474,6 +474,17 @@ public sealed class VouchedValueReachabilityGateTests
     /// this type as well as by <c>Tier0Classification</c>, and gate 4 clears a leaf only when every
     /// type that hands it out vouches for it. It is named on <see cref="BeyondTheDriver"/> rather
     /// than settled here, for the reason given there.
+    /// 57 from 2026-09-13 with <c>RunResourceReading.IsComplete</c>, which says whether the peak
+    /// memory and peak disk figures a run reports were watched for the whole run. Sampling can stop
+    /// part way - the run's own directory becomes unreadable, a share drops - and the figures then
+    /// hold the largest values seen before the watching stopped, which are floors rather than peaks.
+    /// A floor presented as a peak is the reason this voucher exists: the whole purpose of the
+    /// figures is to size the concurrency ceiling in <c>0041</c> from a real forest, and an
+    /// understated peak would say a machine can take more parallelism than it can.
+    /// <b>It is a stored value rather than a test for a null reason</b>, and that is this gate's
+    /// doing: the first draft derived it from whether a reason string was present, which made an
+    /// empty reason a third state meaning neither thing, and left the member reachable as false
+    /// only. Read true from a watch that ran to the end and false from one that stopped.
     /// </para>
     /// </summary>
     [Fact]
@@ -488,7 +499,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 57 + 1 + 4 + 2 + 2;
+        var accountedFor = 58 + 1 + 4 + 2 + 2;
 
         Assert.True(
             found.Count == accountedFor,
