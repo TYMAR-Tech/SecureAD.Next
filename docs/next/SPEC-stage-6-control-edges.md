@@ -693,7 +693,9 @@ Naming these here so a reviewer does not read their absence as an omission.
   capability, for the named capability list. It does not claim layer 4 for every right.
 - **Tier 1 and Tier 2 classification.** `AC-54`: no principal is assigned Tier 1 or Tier 2 until an
   accepted catalogue defines those values, and the harder half - which computers those are - is
-  recorded as `F-S45-11`.
+  recorded as `F-S45-12`, deferred to the very end by the owner on 2026-09-12 and possibly never
+  built. This does **not** cover `SEC-073` and `SEC-074`, whose targets are built-in groups the
+  product already knows; those need multi-hop path chaining and are recorded as `F-S45-11`.
 
 ---
 

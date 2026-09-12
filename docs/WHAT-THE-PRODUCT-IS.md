@@ -889,17 +889,25 @@ layers/shell/what-a-run-counted.md.
 *enterprise servers and applications*: member servers and server administrator roles, the solutions
 that manage them (backup, monitoring, patching, hypervisors), Microsoft server applications such as
 Exchange, SharePoint and SQL Server, third-party server solutions, and line-of-business
-applications. Tier 2 is end-user devices and accounts. This settles the wording of `SEC-073` and
-`SEC-074`, which were recorded as *gap - Tier1 undefined*.
+applications. Tier 2 is end-user devices and accounts.
 
-**It does not settle how the product decides which computers those are, and that is the harder
-half.** Tier 0 is derivable from the directory - Microsoft names the groups. **Tier 1 is not.**
-Nothing in Active Directory marks a member server as an Exchange server or a line-of-business host;
-the tier model is an operational structure an organisation adopts, expressed in OUs and groups it
-chose the names of. `operatingSystem` distinguishes a server from a workstation and says nothing
-about what it carries. So a Tier 1 rule must either read a customer-supplied definition or infer
-one, and **inferring it would be this product asserting a tier boundary the customer never drew**.
-Recorded as `F-S45-11`; not blocking the dashboard.
+**Tracing to Tier 1 servers is deferred to the very end and may never be built, decided
+2026-09-12.** The owner: *"i care about teir 0 and teir 0 adjecent."* Tier 0 is derivable from the
+directory - Microsoft names the groups. **Tier 1 is not.** Nothing in Active Directory marks a
+member server as an Exchange server or a line-of-business host; the tier model is an operational
+structure an organisation adopts, expressed in OUs and groups it chose the names of.
+`operatingSystem` distinguishes a server from a workstation and says nothing about what it carries.
+So a Tier 1 rule must either read a customer-supplied definition or infer one, and **inferring it
+would be this product asserting a tier boundary the customer never drew**. Recorded as `F-S45-12`;
+nothing is waiting on it.
+
+**This does not defer `SEC-073` and `SEC-074`, which the owner does want.** Despite their names,
+neither rule targets a member server. Both name a fixed set of built-in groups - Account Operators,
+Server Operators, Print Operators, Backup Operators, Cert Publishers, RAS and IAS Servers, Remote
+Desktop Users, Incoming Forest Trust Builders - and every one is already known to the product
+through `ProtectedGroupCatalogue` and `WellKnownSidCatalog`, with membership resolved by
+`ProtectedPrincipalClosure`. They need no customer-supplied anything. What they need is multi-hop
+path chaining, which is Stage 6 control-edge work. Recorded as `F-S45-11`.
 
 **Group Policy is deferred to the end, decided 2026-09-05.** The owner: *"i may leave until the end
 unless it will be harder then but i dont see why it would be."* **It will not be harder later**, and
