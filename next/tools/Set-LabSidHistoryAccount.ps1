@@ -25,8 +25,9 @@
 #
 # Getting a PRIVILEGED identifier into SID history needs DsAddSidHistory, and Microsoft documents
 # that "the source and destination domains must not be in the same forest" - so it needs a second
-# forest and an external trust, which this lab does not have. See section 12 of
-# docs/layers/judgement/rules/SEC-027-privileged-sid-history.md for what is verified without it.
+# forest and an external trust, which this lab does not have. Section 12 of
+# docs/layers/judgement/rules/SEC-027-privileged-sid-history.md set out what is verified without it;
+# that document was deleted 2026-09-12 and is in git history.
 #
 # THIS RUNS UNDER WINDOWS POWERSHELL 5.1, the owner's default shell. It needs only the
 # ActiveDirectory module and rights to create and move an account in both domains.

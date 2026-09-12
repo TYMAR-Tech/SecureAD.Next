@@ -9,7 +9,7 @@ namespace SecureAD.Audit.Capture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B4's mechanism, and <c>docs/layers/audit/the-search-capture-issues.md</c> is the document
+/// This is inventory row B4's mechanism, and docs/layers/audit/the-search-capture-issues.md was the document
 /// bound to it. Everything a search does about referrals is decided here, in one place, and that
 /// is the point rather than a convenience. The policy has two halves - a setting on the connection
 /// and a control on the request - and a policy expressed in two places can be half-removed. Half

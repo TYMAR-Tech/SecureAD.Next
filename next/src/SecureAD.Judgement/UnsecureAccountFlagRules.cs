@@ -22,7 +22,7 @@ namespace SecureAD.Judgement;
 /// that impossible.
 /// </para>
 /// <para>
-/// Specified in <c>docs/layers/judgement/rules/SEC-028-029-033-unsecure-account-flags.md</c>.
+/// Specified in docs/layers/judgement/rules/SEC-028-029-033-unsecure-account-flags.md.
 /// </para>
 /// </remarks>
 internal static class UnsecureAccountFlagRules

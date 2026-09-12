@@ -30,9 +30,9 @@ namespace SecureAD.Next.Tests.EndToEnd;
 /// </para>
 /// <para>
 /// <b>They are written against the two sides' own rules rather than against the seam.</b> What a
-/// table means comes from <c>docs/layers/evidence/what-a-bundle-holds.md</c>; which files a finished
-/// bundle holds comes from <c>docs/layers/evidence/the-bundle-on-disk.md</c>; what a run that ended badly
-/// must leave behind comes from
+/// table means came from docs/layers/evidence/what-a-bundle-holds.md; which files a finished
+/// bundle holds came from docs/layers/evidence/the-bundle-on-disk.md, both deleted 2026-09-12 and
+/// in git history; what a run that ended badly must leave behind comes from
 /// <c>docs/decisions/0029-a-run-that-ends-badly-says-so.md</c>. A test written against the seam's
 /// own behaviour would agree with it by construction.
 /// </para>

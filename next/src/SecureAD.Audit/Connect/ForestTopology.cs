@@ -376,7 +376,7 @@ public sealed class ForestTopology
     /// forest gets reported as the whole of it.
     /// </para>
     /// <para>
-    /// One request is in flight at a time, which is <c>docs/layers/audit/limits-and-failures.md</c> and is also
+    /// One request is in flight at a time, which is docs/layers/audit/limits-and-failures.md and is also
     /// what makes a paged search correct: the state a controller keeps between pages comes out of
     /// one budget it relieves by discarding the oldest.
     /// </para>

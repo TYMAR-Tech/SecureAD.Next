@@ -91,7 +91,7 @@ public sealed class DangerousPermissionClassifier
     ///
     /// <para>
     /// <c>gPLink</c> and <c>scriptPath</c> are here by the owner's decision of 2026-08-10, recorded
-    /// in <c>docs/layers/kernel/permission-classification.md</c>. They were dangerous to the
+    /// in docs/layers/kernel/permission-classification.md. They were dangerous to the
     /// live effective-access panel and not to the stored one, and this settles that disagreement in
     /// favour of the wider reading: writing either runs code across everything in scope, and
     /// unlinking a hardening policy through <c>gPLink</c> needs no other privilege at all.

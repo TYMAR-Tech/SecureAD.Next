@@ -56,7 +56,7 @@ namespace SecureAD.Judgement;
 /// filtered view of the account.
 /// </para>
 /// <para>
-/// Specified in <c>docs/layers/judgement/rules/SEC-027-privileged-sid-history.md</c>.
+/// Specified in docs/layers/judgement/rules/SEC-027-privileged-sid-history.md.
 /// </para>
 /// </remarks>
 public sealed class PrivilegedSidHistory : IRule

@@ -94,8 +94,8 @@ public sealed class SerializedDirectoryAccessGateTests
             + "budget of paged-search state, which the controller resolves by discarding the "
             + "oldest, so a concurrent read can silently truncate another one. Running several "
             + "naming contexts at once is fine and is expected; running two requests at one "
-            + "controller is not. Split the dispatching from the reading. See "
-            + "docs/layers/audit/limits-and-failures.md:"
+            + "controller is not. Split the dispatching from the reading. The reasoning was in "
+            + "docs/layers/audit/limits-and-failures.md, deleted 2026-09-12 and in git history:"
             + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
 

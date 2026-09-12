@@ -4,10 +4,16 @@ namespace SecureAD.Derivation;
 /// What became of an attempt to expand one principal to everything inside it.
 /// </summary>
 /// <remarks>
-/// <b>Three of these are not failures and one is.</b> A principal that is not a group has nothing
-/// inside it, which is an answer; a principal nobody captured is a question this bundle cannot
-/// settle, which is a different answer; and an expansion that ran out of budget produced true
-/// members and an untrue silence about the rest.
+/// <b>Seven answers, and only one of them is a clean yes.</b> <see cref="Expanded"/> reached
+/// everything inside the principal. <see cref="PrincipalDoesNotExist"/> is an answer too rather
+/// than a failure: it says no such principal exists, which a rule can judge on. The other five each
+/// thin the answer in a different way, and the differences are the whole point.
+/// <see cref="StoppedAtBudget"/> is this product's own limit, so raising it would find the rest;
+/// <see cref="ExpandedWithUnidentifiedMember"/> is a hole in the capture that no amount of walking
+/// will fill; <see cref="ExpandedThroughUnknownGroupType"/> returned members that may carry no
+/// authorization at all; and <see cref="PrincipalNotFound"/> and <see cref="NoNestingDerived"/> say
+/// the derivation cannot settle the question. Collapsing any of them into another puts a false
+/// sentence in a run log.
 /// <para>
 /// <b><see cref="PrincipalNotFound"/> and <see cref="PrincipalDoesNotExist"/> look alike and are
 /// opposites.</b> The first is ignorance and the second is knowledge. Reading one as the other in

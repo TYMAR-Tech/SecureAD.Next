@@ -35,7 +35,7 @@ namespace SecureAD.Judgement;
 /// </para>
 /// <para>
 /// <b>Specified in</b>
-/// <c>docs/layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md</c>.
+/// docs/layers/judgement/rules/SEC-090-who-can-read-laps-passwords.md.
 /// </para>
 /// </remarks>
 public sealed class LapsPasswordReadAccess : IRule

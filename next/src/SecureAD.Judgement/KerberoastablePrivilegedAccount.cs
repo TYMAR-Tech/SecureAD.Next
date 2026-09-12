@@ -48,7 +48,7 @@ namespace SecureAD.Judgement;
 /// is named in the wording instead.
 /// </para>
 /// <para>
-/// Specified in <c>docs/layers/judgement/rules/SEC-021-kerberoastable-privileged-account.md</c>.
+/// Specified in docs/layers/judgement/rules/SEC-021-kerberoastable-privileged-account.md.
 /// </para>
 /// </remarks>
 public sealed class KerberoastablePrivilegedAccount : IRule

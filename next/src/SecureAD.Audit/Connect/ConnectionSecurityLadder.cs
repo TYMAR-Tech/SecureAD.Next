@@ -29,7 +29,7 @@ public sealed record ConnectionSecurityRung(
 /// <remarks>
 /// <para>
 /// This is <c>docs/decisions/0018-connection-security-is-an-ordered-ladder.md</c> expressed as
-/// data, and <c>docs/layers/connect/the-connection-ladder.md</c> is the document bound to it.
+/// data, and docs/layers/connect/the-connection-ladder.md was the document bound to it.
 /// </para>
 /// <para>
 /// <b>Why a list rather than a chain of branches.</b> Written as if/else - try LDAPS, else try

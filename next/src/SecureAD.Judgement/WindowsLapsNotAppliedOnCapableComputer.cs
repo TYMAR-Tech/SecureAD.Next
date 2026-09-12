@@ -44,7 +44,7 @@ namespace SecureAD.Judgement;
 /// </para>
 /// <para>
 /// Specified in
-/// <c>docs/layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md</c>.
+/// docs/layers/judgement/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md.
 /// </para>
 /// </remarks>
 public sealed class WindowsLapsNotAppliedOnCapableComputer : IRule

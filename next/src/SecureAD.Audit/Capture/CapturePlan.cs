@@ -9,9 +9,9 @@ namespace SecureAD.Audit.Capture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B6's other half, and <c>docs/layers/audit/how-a-controller-is-read.md</c> is the
+/// This is inventory row B6's other half, and docs/layers/audit/how-a-controller-is-read.md was the
 /// document bound to it. A capture unit is one partition on one controller
-/// (<c>docs/layers/audit/the-search-capture-issues.md</c>); this is the list of them.
+/// (docs/layers/audit/the-search-capture-issues.md); this is the list of them.
 /// </para>
 /// <para>
 /// <b>Nothing is discovered here.</b> The plan is built from what it is handed: the forest's domain

@@ -9,7 +9,7 @@ namespace SecureAD.Audit.Capture;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row B4, and <c>docs/layers/audit/the-search-capture-issues.md</c> is the document that says
+/// This is inventory row B4, and docs/layers/audit/the-search-capture-issues.md was the document that says
 /// what the search issued for a unit looks like and what was refused.
 /// </para>
 /// <para>

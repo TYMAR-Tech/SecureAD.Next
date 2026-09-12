@@ -67,7 +67,7 @@ public sealed record DirectoryFailure(
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the second half of inventory row B7, and <c>docs/layers/audit/limits-and-failures.md</c> is the
+/// This is the second half of inventory row B7, and docs/layers/audit/limits-and-failures.md was the
 /// document bound to it. The policy is decided here; the loop that applies it is inventory row B6.
 /// </para>
 /// <para>

@@ -6,7 +6,7 @@ namespace SecureAD.Kernel.Capture;
 /// <remarks>
 /// <para>
 /// This is the ceiling on everything the product can ever say. Inventory row B2 owns it, and
-/// <c>docs/layers/audit/the-attribute-catalogue.md</c> is the document that says, for each entry,
+/// docs/layers/audit/the-attribute-catalogue.md was the document that says, for each entry,
 /// what reads it and why - bound by <c>CapturedAttributeCatalogDocumentationTests</c>, so an
 /// attribute that cannot name a consumer fails the build rather than sitting in every bundle
 /// forever.
@@ -592,7 +592,7 @@ public static class CapturedAttributeCatalog
     /// asks every object for <see cref="All"/> whatever its class - see that member for why the
     /// request cannot be scoped by class at all. This answers the different question <i>which class's
     /// needs justify carrying this attribute in the catalogue</i>, which is what
-    /// <c>docs/layers/audit/the-attribute-catalogue.md</c> records and what
+    /// docs/layers/audit/the-attribute-catalogue.md records and what
     /// <c>CredentialAttributeGuardTests</c> asks when it checks that computers justify the LAPS
     /// expiry timestamp and never the LAPS password.
     /// </para>

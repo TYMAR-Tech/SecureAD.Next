@@ -46,7 +46,7 @@ namespace SecureAD.Judgement;
 /// it.
 /// </para>
 /// <para>
-/// Specified in <c>docs/layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md</c>.
+/// Specified in docs/layers/judgement/rules/SEC-091-laps-missing-on-a-computer.md.
 /// </para>
 /// </remarks>
 public sealed class LapsMissingOnComputer : IRule

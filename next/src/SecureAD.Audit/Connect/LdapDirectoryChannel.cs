@@ -10,7 +10,7 @@ namespace SecureAD.Audit.Connect;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is inventory row A2, and <c>docs/layers/connect/how-a-connection-is-opened.md</c> is the document
+/// This is inventory row A2, and docs/layers/connect/how-a-connection-is-opened.md was the document
 /// bound to it.
 /// It is the other half of the seam inventory row B6 wrote and left open. Everything above it -
 /// <see cref="PartitionCapture"/>, the paging loop, the range retrievals - was written against
