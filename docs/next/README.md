@@ -61,7 +61,7 @@ READMEs were folded into this file. See §`One fact, one home` below for what wa
 | What has this product decided? | [`docs/DECISIONS.md`](../DECISIONS.md) | **Generated.** Never edit it; run `next/tools/Build-DecisionIndex.ps1` |
 | Why was it decided that way? | [`docs/decisions/`](../decisions/) | The reasoning. **The only place a decision is stated** |
 | What may need doing? | [`docs/PUNCH-LIST.md`](../PUNCH-LIST.md) | Open work, findings without a decision, and what blocks each |
-| Which document owns a type? | [`SURFACE-REGISTER.md`](SURFACE-REGISTER.md) | Every public type and its one owning document. Generated against the assemblies |
+| Which document owns a type? | nothing, and nothing needs to | SURFACE-REGISTER.md answered this until 2026-09-12. A type's own XML documentation describes it now, and `PublicTypeReachabilityGateTests` answers the question that turned out to matter: whether anything running still reaches it |
 | What rules did the predecessor have? | [`docs/rules/`](../rules/) | One card per `SEC-*` rule of the **old** application, kept as reference for rebuilding them. Not documentation of this tree |
 | What has nobody consumed yet? | [`docs/areas/`](../areas/) | An input to the rewrite, not a fixture. Emptied as its content is moved; the folder retires with the last file |
 | What did somebody find on a Tuesday? | the archive, outside this repository | Dated narrative. **Never read to find out what is true** |

@@ -13,9 +13,9 @@ Contributions that violate these rules will not be accepted.
 The following documents describe how the system works and constrain contributions:
 
 - [`README.md`](../README.md) — solution overview and project responsibilities
-- [`docs/next/README.md`](../docs/next/README.md) — **the authority**: what counts as documentation, the gates, and how to continue the work
+- [`docs/WHAT-THE-PRODUCT-IS.md`](../docs/WHAT-THE-PRODUCT-IS.md) — **read this first**: what SecureAD is, the stages a run passes through, and the decisions already made
+- [`docs/next/README.md`](../docs/next/README.md) — **the authority on gates**: what each one prevents and which are built
 - [`docs/next/ARCHITECTURE.md`](../docs/next/ARCHITECTURE.md) — projects, layering, and which project may reference which
-- [`docs/next/SURFACE-REGISTER.md`](../docs/next/SURFACE-REGISTER.md) — every public type and the document that governs it
 - [`docs/PUNCH-LIST.md`](../docs/PUNCH-LIST.md) — working backlog of follow-ups and decisions to revisit
 - [`docs/decisions/`](../docs/decisions/) — the product's positions; only a record with `Status: Accepted` states one
 
