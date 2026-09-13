@@ -118,6 +118,69 @@ public sealed class CaptureRunEndToEndTests : IDisposable
     /// line a partition that never finished will have written.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// The stretch between the last partition and the end of the run accounts for itself.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It was silent until 2026-09-13, and in the owner's three-domain laboratory it was 47% of
+    /// the capture</b> - seven seconds of fifteen, between the last <c>partition read</c> line and
+    /// <c>finished</c>. Four separate things happen in there: the policy share is read, eleven
+    /// indexes are built, two set-based passes run over every object, and the file is checkpointed
+    /// and hashed.
+    /// </para>
+    /// <para>
+    /// <b>Against 347,000 objects and 5.9 million entries this is the part most likely to
+    /// dominate</b>, and an operator watching a capture that has read every domain and then sat
+    /// still for twenty minutes needs to know which of the four it is doing. A capture that looks
+    /// hung and a capture that is hashing are the same screen.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task TheStretchAfterTheLastPartitionAccountsForItself()
+    {
+        var (run, log) = await RunAndLogAsync(ForestOfThreeObjects());
+
+        Assert.Equal(RunCompletion.Sealed, run.Outcome);
+
+        Assert.Single(log.Saying("reading the policy share"));
+        Assert.Single(log.Saying("policy share read"));
+        Assert.Single(log.Saying("sealing the bundle"));
+        Assert.Single(log.Saying("bundle sealed"));
+
+        // The share was read even though this forest declares no policies, and how long it took is
+        // on the line. A run that read nothing and a run that could not reach the share take very
+        // different amounts of time, and only one of them is a problem.
+        var share = log.Saying("policy share read")[0];
+        Assert.NotNull(RecordingRunLog.Value(share, "policies"));
+        Assert.NotNull(RecordingRunLog.Value(share, "elapsedSeconds"));
+    }
+
+    /// <summary>
+    /// Sealing reports its phases separately, because they fail and scale differently.
+    /// </summary>
+    /// <remarks>
+    /// One figure covering all five would say a capture was slow without saying what to look at.
+    /// The index build is three sorts of the entries table; the backfill is two set-based passes
+    /// over every object; the seal is a hash of the whole file, so it grows with bytes rather than
+    /// rows.
+    /// </remarks>
+    [Theory]
+    [InlineData("commitSeconds")]
+    [InlineData("indexSeconds")]
+    [InlineData("backfillSeconds")]
+    [InlineData("checkpointSeconds")]
+    [InlineData("sealSeconds")]
+    [InlineData("totalSeconds")]
+    public async Task EverySealPhaseIsReportedSeparately(string name)
+    {
+        var (_, log) = await RunAndLogAsync(ForestOfThreeObjects());
+
+        var sealed_ = log.Saying("bundle sealed")[0];
+
+        Assert.NotNull(RecordingRunLog.Value(sealed_, name));
+    }
+
     [Fact]
     public async Task EveryPartitionIsAnnouncedBeforeItIsReadAndAccountedForAfterwards()
     {

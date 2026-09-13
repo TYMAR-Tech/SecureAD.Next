@@ -350,9 +350,32 @@ public sealed class CaptureRun
         // file share, permission problems on it are ordinary, and a run that died over one folder
         // out of four hundred would be unusable in the field. What stops that becoming a silence is
         // the coverage record, which names every policy that was missed.
+        //
+        // TIMED AND LOGGED, because until 2026-09-13 the log jumped from the last partition
+        // straight to "finished" and this was inside the gap. A share that answers slowly looks
+        // exactly like a capture that has hung, and an operator had nothing to tell them apart.
+        var sysvolStartedUtc = _time.GetUtcNow();
+        var declaredPolicies = sink.Policies.Policies.Count
+            .ToString(CultureInfo.InvariantCulture);
+
+        _log.Note(
+            PartitionCapture.PhaseName,
+            "reading the policy share",
+            [new RunLogDetail("policies", declaredPolicies)]);
+
         var sysvol = await new SysvolCapture(_sysvolFiles, writer)
             .ReadAsync(sink.Policies, cancellationToken)
             .ConfigureAwait(false);
+
+        _log.Note(
+            PartitionCapture.PhaseName,
+            "policy share read",
+            [
+                new RunLogDetail("policies", declaredPolicies),
+                Elapsed(sysvolStartedUtc),
+            ]);
+
+        _log.Note(PartitionCapture.PhaseName, "sealing the bundle", []);
 
         // The seal, the checkpoint and the rename happen here, and only here. Until Complete
         // returns there is no file by the name a reader opens.
@@ -362,7 +385,7 @@ public sealed class CaptureRun
         // made every declared domain report as read because it had been declared, which is the
         // statement RunCoverage.Of's guard exists to refuse - and while the assertion held, that
         // guard could not fire. Deriving costs a projection and makes the check real. F-S29-3, D3.
-        writer.Complete(
+        var sealing = writer.Complete(
             RunCoverage.Of(
                 declared,
                 recorded
@@ -388,6 +411,12 @@ public sealed class CaptureRun
                 sysvol),
             _time.GetUtcNow(),
             reconciliation);
+
+        // The five phases behind the one word "sealing". They are separated because they fail and
+        // scale differently: the index build is three sorts of the entries table, the backfill is
+        // two set-based passes over every object, and the seal is a hash of the whole file. A
+        // capture that spent twenty minutes here should say which of them it was.
+        _log.Note(PartitionCapture.PhaseName, "bundle sealed", SealDetail(sealing));
 
         return new CaptureRunResult(RunCompletion.Sealed, bundleDirectory, Error: null);
     }
@@ -422,4 +451,28 @@ public sealed class CaptureRun
             "elapsedSeconds",
             (_time.GetUtcNow() - startedUtc).TotalSeconds
                 .ToString("0.#", CultureInfo.InvariantCulture));
+
+    /// <summary>
+    /// The five phases of sealing, in the order they happened.
+    /// </summary>
+    /// <remarks>
+    /// <b>Formatted here rather than on <see cref="BundleSealTimings"/>, and gate 4 is the reason.</b>
+    /// A public member handing back a collection must come from a type that can say whether it
+    /// looked, so an empty list is never mistaken for a failed one. Those timings cannot be
+    /// incomplete - they exist only if every phase ran - so the honest answer was to leave them as
+    /// plain data and put the formatting where every other line of this log is already built.
+    /// Same shape of seconds as <see cref="Elapsed"/>, because a reader compares the two.
+    /// </remarks>
+    private static IReadOnlyList<RunLogDetail> SealDetail(BundleSealTimings sealing) =>
+    [
+        new("commitSeconds", Seconds(sealing.Commit)),
+        new("indexSeconds", Seconds(sealing.Indexes)),
+        new("backfillSeconds", Seconds(sealing.Backfill)),
+        new("checkpointSeconds", Seconds(sealing.Checkpoint)),
+        new("sealSeconds", Seconds(sealing.Seal)),
+        new("totalSeconds", Seconds(sealing.Total)),
+    ];
+
+    private static string Seconds(TimeSpan span) =>
+        span.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture);
 }

@@ -5,6 +5,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
 using SecureAD.Kernel.Capture;
+using SecureAD.Next.Tests.Capture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Judgement;
@@ -490,6 +491,56 @@ public sealed class JudgingEndToEndTests
 
         Assert.All(judgement.RulesRun, r => Assert.Equal(1, r.ObjectsNotJudged));
         Assert.All(judgement.RulesRun, r => Assert.Equal(1, r.ObjectsNotApplicable));
+    }
+
+    /// <summary>
+    /// Every rule says how long it took, so a slow judging can name what was slow.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The predecessor's own notes say this is the phase that matters.</b> Its punch list records
+    /// that in large production "LDAP capture may take ~30 minutes while analysis is the long
+    /// phase", and the owner's laboratory run of 2026-09-12 shows it starting already: judging took
+    /// 23 seconds against capture's 15, on only 8,407 objects.
+    /// </para>
+    /// <para>
+    /// <b>The judged count travels with the time because neither means much alone.</b> A rule that
+    /// spent four minutes over eighty thousand objects is working; one that spent four minutes over
+    /// none is broken, and the second is the case nothing else in the product would reveal.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryRuleReportsWhatItCost()
+    {
+        var directory = ABundleHolding(
+            Account("bob", "CN=bob,OU=People,DC=contoso,DC=com", OrdinaryAccount, 513, "user"),
+            NotAnAccount("OU=People,DC=contoso,DC=com", "organizationalUnit"));
+
+        var log = new RecordingRunLog();
+
+        JudgingRun.Judge(
+            directory,
+            [new UnconstrainedDelegationOnAccount()],
+            Started,
+            Started,
+            JudgingRun.NobodyIsWatching,
+            log,
+            CancellationToken.None);
+
+        var perRule = Assert.Single(log.Saying("a rule finished"));
+
+        Assert.Equal("SEC-010", RecordingRunLog.Value(perRule, "rule"));
+        Assert.NotNull(RecordingRunLog.Value(perRule, "outcome"));
+        Assert.NotNull(RecordingRunLog.Value(perRule, "ms"));
+
+        // One account and one organisational unit: the rule is about accounts, so it judged one and
+        // filtered one. Asserting both halves is what stops "judged" quietly becoming a count of
+        // everything offered, which would make a rule that examines nothing look busy.
+        Assert.Equal("1", RecordingRunLog.Value(perRule, "judged"));
+        Assert.Equal("1", RecordingRunLog.Value(perRule, "notAbout"));
+
+        Assert.NotNull(
+            RecordingRunLog.Value(Assert.Single(log.Saying("finished")), "ruleMs"));
     }
 
     /// <summary>

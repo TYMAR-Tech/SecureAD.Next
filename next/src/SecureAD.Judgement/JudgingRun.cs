@@ -752,12 +752,41 @@ public static class JudgingRun
                 ]);
         }
 
+        // ONE LINE PER RULE, SLOWEST FIRST, and the reason is the predecessor's own record: in
+        // large production it found "LDAP capture may take ~30 minutes while analysis is the long
+        // phase", and until now nothing here could say which rule that time belonged to. The
+        // judged count travels beside the time because the two are only meaningful together - a
+        // rule that took four minutes over eighty thousand objects is working, and one that took
+        // four minutes over none is broken.
+        foreach (var tally in tallies.OrderByDescending(t => t.Elapsed))
+        {
+            log.Note(
+                JudgePhase,
+                "a rule finished",
+                [
+                    new RunLogDetail("rule", tally.RuleId),
+                    new RunLogDetail("outcome", tally.Outcome.ToString()),
+                    new RunLogDetail(
+                        "judged", tally.Judged.ToString(CultureInfo.InvariantCulture)),
+                    new RunLogDetail(
+                        "notAbout", tally.NotApplicable.ToString(CultureInfo.InvariantCulture)),
+                    new RunLogDetail(
+                        "ms",
+                        ((long)tally.Elapsed.TotalMilliseconds).ToString(
+                            CultureInfo.InvariantCulture)),
+                ]);
+        }
+
         log.Note(
             JudgePhase,
             "finished",
             [
                 new RunLogDetail("state", state.ToString()),
                 new RunLogDetail("objects", objectsRead.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail(
+                    "ruleMs",
+                    ((long)tallies.Sum(t => t.Elapsed.TotalMilliseconds)).ToString(
+                        CultureInfo.InvariantCulture)),
             ]);
 
         return state;
@@ -869,6 +898,18 @@ public static class JudgingRun
         private readonly List<Finding> _findings = [];
         private readonly Dictionary<string, int> _missing = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// How long this rule has spent being offered objects.
+        /// </summary>
+        /// <remarks>
+        /// <b>The open half of P-193, and the predecessor says it is the half that matters.</b> Its
+        /// own notes record that in large production "LDAP capture may take ~30 minutes while
+        /// analysis is the long phase", and nothing in this product has ever said which rule that
+        /// time went to. Two counter reads per object per rule - about 12 million across a forest of
+        /// 347,000 - cost well under a second against a phase measured in hours.
+        /// </remarks>
+        private readonly System.Diagnostics.Stopwatch _clock = new();
+
         private int _judged;
         private int _notApplicable;
         private int _notJudged;
@@ -881,6 +922,15 @@ public static class JudgingRun
 
         /// <summary>Which rule this is tallying, so a log line can name it.</summary>
         public string RuleId => rule.Definition.Id;
+
+        /// <summary>How long this rule took, across every object it was offered.</summary>
+        public TimeSpan Elapsed => _clock.Elapsed;
+
+        /// <summary>How many objects this rule actually judged, as opposed to filtered out.</summary>
+        public int Judged => _judged;
+
+        /// <summary>How many objects were not this rule's concern.</summary>
+        public int NotApplicable => _notApplicable;
 
         /// <summary>
         /// Offers one object to the rule, unless it has already thrown or the rule is not about
@@ -901,6 +951,24 @@ public static class JudgingRun
             if (_error is not null)
                 return;
 
+            // THE FILTER IS INSIDE THE CLOCK, deliberately. IsAbout runs on every object for every
+            // rule and a costly one is a costly rule, whatever it goes on to judge. The judged count
+            // travels with the time on the log line so a rule that examined nothing cannot read as
+            // one that did.
+            _clock.Start();
+
+            try
+            {
+                Judge(subject, context);
+            }
+            finally
+            {
+                _clock.Stop();
+            }
+        }
+
+        private void Judge(ObjectAttributes subject, JudgingContext context)
+        {
             if (!rule.Definition.IsAbout(subject))
             {
                 _notApplicable++;

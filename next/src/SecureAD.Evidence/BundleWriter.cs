@@ -1171,14 +1171,19 @@ public sealed class BundleWriter : IDisposable
     /// <param name="coverage">What the run declared and what became of each part of it.</param>
     /// <param name="completedUtc">When the run finished.</param>
     /// <summary>Finishes a bundle from a producer that did not perform continuation reconciliation.</summary>
-    public void Complete(RunCoverage coverage, DateTimeOffset completedUtc) =>
+    /// <returns>How long each part of sealing took.</returns>
+    public BundleSealTimings Complete(RunCoverage coverage, DateTimeOffset completedUtc) =>
         Complete(coverage, completedUtc, ContinuationReconciliation.NotPerformed);
 
     /// <summary>Finishes a bundle with the capture's continuation-reference reconciliation.</summary>
     /// <param name="coverage">What the run declared and what became of each part of it.</param>
     /// <param name="completedUtc">When the run finished.</param>
     /// <param name="reconciliation">The comparison of received referrals with authorized scope.</param>
-    public void Complete(
+    /// <returns>
+    /// How long each part of sealing took. Ignored by most callers; the run driver writes it to the
+    /// log, because this is the stretch of a capture that had no account of itself at all.
+    /// </returns>
+    public BundleSealTimings Complete(
         RunCoverage coverage,
         DateTimeOffset completedUtc,
         ContinuationReconciliation reconciliation)
@@ -1274,11 +1279,23 @@ public sealed class BundleWriter : IDisposable
                 });
         }
 
+        // EVERY PHASE FROM HERE IS TIMED, because this is the stretch the run log used to skip.
+        // Stopwatch rather than the injected clock: these are durations rather than moments, and a
+        // monotonic counter is the right instrument for one. It is also what the derivation and
+        // judging phases already use.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
         _transaction!.Commit();
         _transaction.Dispose();
         _transaction = null;
 
+        var commit = clock.Elapsed;
+        clock.Restart();
+
         BundleSchema.CreateDeferredIndexes(_connection);
+
+        var indexes = clock.Elapsed;
+        clock.Restart();
 
         // After the indexes, and deliberately. Both of these are set-based passes over every object
         // and both join on a column the deferred indexes have just created; run before, each would
@@ -1286,15 +1303,23 @@ public sealed class BundleWriter : IDisposable
         ResolveParentGuids();
         CountEntriesPerObject();
 
+        var backfill = clock.Elapsed;
+        clock.Restart();
+
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
+
+        var checkpoint = clock.Elapsed;
+        clock.Restart();
 
         BundleSealing.Seal(_partialPath, BundleLayout.SealPath(_bundleDirectory));
         CreateAnnotationsSidecar();
 
         File.Move(_partialPath, BundleLayout.EvidencePath(_bundleDirectory));
         _completed = true;
+
+        return new BundleSealTimings(commit, indexes, backfill, checkpoint, clock.Elapsed);
     }
 
     private void WriteReconciliationItems(string kind, IReadOnlyList<string> values)
