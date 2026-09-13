@@ -40,7 +40,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var plan = await Session(libraryRoot)
+        var plan = await Session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
             .PlanAsync(forest, overrides, cancellationToken)
             .ConfigureAwait(false);
 
@@ -60,7 +60,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         ArgumentException.ThrowIfNullOrWhiteSpace(namingContext);
 
-        var answer = await Session(libraryRoot)
+        var answer = await Session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
             .CheckNamedControllerAsync(host, namingContext, cancellationToken)
             .ConfigureAwait(false);
 
@@ -77,7 +77,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var report = await Session(libraryRoot)
+        var report = await Session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
             .ValidateAsync(forest, overrides, cancellationToken)
             .ConfigureAwait(false);
 
@@ -92,6 +92,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         string? forest,
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyList<ExclusionAttestation> exclusions,
+        int domainsAtOnce,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
@@ -102,7 +103,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         // progress to offer, and a progress bar over a run that cannot report one is a picture of a
         // run rather than a report of it. What preflight found was shown on the Review step, before
         // the operator pressed Start.
-        var run = await Session(libraryRoot)
+        var run = await Session(libraryRoot, domainsAtOnce)
             .RunAsync(
                 forest,
                 overrides,
@@ -144,17 +145,27 @@ internal sealed class CaptureLauncher : ICaptureLauncher
     /// The session this surface drives, wired exactly as the command line wires it.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The library root is required by all three calls, including the two that write nothing. A
     /// session is constructed over a library, and <c>0025</c> forbids inventing a path for one - so
     /// the operator's own root is used, and the planning calls create no run inside it.
+    /// </para>
+    /// <para>
+    /// <b>The ceiling is a parameter because only one caller has a real answer for it.</b> Planning,
+    /// validating and checking a named controller read no domain, so the number governs nothing
+    /// there and they pass the default rather than reaching for the operator's setting - which would
+    /// suggest those calls are affected by it.
+    /// </para>
     /// </remarks>
-    private static CaptureSession Session(string libraryRoot)
+    /// <param name="libraryRoot">The operator's run library.</param>
+    /// <param name="domainsAtOnce">How many domains a capture may read at the same time.</param>
+    private static CaptureSession Session(string libraryRoot, int domainsAtOnce)
     {
         var addresses = MachineAddresses.OfThisMachine();
 
         return new CaptureSession(
             new RunLibrary(libraryRoot, TimeProvider.System),
-            DirectoryConnectionSettings.Default,
+            DirectoryConnectionSettings.Default with { DomainsAtOnce = domainsAtOnce },
             TimeProvider.System,
             new MachineDomain(),
             addresses.IsSuccess ? addresses.Value! : []);

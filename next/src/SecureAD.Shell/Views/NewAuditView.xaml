@@ -429,6 +429,27 @@
                       </ItemsControl.ItemTemplate>
                   </ItemsControl>
 
+                  <!-- What the run will actually do with the concurrency ceiling, stated rather
+                       than offered. There is no field here: the number is set in Settings, and a
+                       second control over one value is how two places come to disagree. 0047 as
+                       amended 2026-09-13.
+
+                       IT DESCRIBES THIS RUN, NOT THE SETTING. The ceiling is clamped to the number
+                       of domains, so nine over three domains reads all three at once - see
+                       AuditReview.ConcurrencyStatement.
+
+                       NOT A POLITENESS DIAL, and the caveat exists to stop it reading as one.
+                       Lowering it makes a capture slower and never gentler on a directory. -->
+                  <TextBlock Text="{Binding Review.ConcurrencyStatement}"
+                             TextWrapping="Wrap"
+                             Margin="0,10,0,0" />
+
+                  <TextBlock Text="{Binding Review.ConcurrencyCaveat, Mode=OneTime}"
+                             Style="{StaticResource Caption}"
+                             Foreground="{StaticResource SecondaryTextBrush}"
+                             TextWrapping="Wrap"
+                             Margin="0,2,0,0" />
+
                   <!-- F-0056-1. 0056 has every fact show in three states, and the third one was
                        visible only one cell at a time: an operator could see each gap and was nowhere
                        told there were eleven of them. This is the number he acts on before committing

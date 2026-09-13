@@ -5,11 +5,19 @@ namespace SecureAD.Cli;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Three options and no more.</b> Anything an operator could set that changes what a bundle
-/// contains would be a scope, and <c>docs/decisions/0052-the-domain-is-the-only-unit-of-scope.md</c>
-/// refuses one: nothing an operator can set makes a run smaller. So there is no partition list, no
+/// <b>Nothing here changes what a bundle contains.</b> Anything an operator could set that did
+/// would be a scope, and <c>docs/decisions/0052-the-domain-is-the-only-unit-of-scope.md</c> refuses
+/// one: nothing an operator can set makes a run smaller. So there is no partition list, no
 /// exclusion, and no choice of transport - the connection ladder is not configurable, because an
 /// operator who could pin a run to one rung could pin it to the bottom one.
+/// </para>
+/// <para>
+/// <b>This said "three options and no more" until 2026-09-13</b>, when <c>--concurrent</c> arrived
+/// and made the count wrong while leaving the rule untouched. The count was never the rule. What
+/// the sentence was really holding is the line above it, and a ceiling on how many domains are read
+/// at once passes that test: every domain of the forest is read at every setting, and a bundle
+/// captured at one is indistinguishable from a bundle captured at another. What changes is how long
+/// it takes and how hard this machine's disk works.
 /// </para>
 /// <para>
 /// <b>The run library root is required and there is no default.</b> That is
@@ -38,6 +46,22 @@ namespace SecureAD.Cli;
 /// </param>
 /// <param name="DeriveOnly">Derive from a bundle already captured, capturing nothing.</param>
 /// <param name="JudgeOnly">Judge a bundle already captured and derived, capturing nothing.</param>
+/// <param name="Concurrency">
+/// How many domains to read at the same time, or null where the operator did not say and the
+/// capture uses its own default.
+///
+/// <para>
+/// <b>It is not read from the settings file and never written to it</b>, per
+/// <c>docs/decisions/0047-settings-are-per-user-and-per-machine.md</c>. A scheduled capture does
+/// what its command line says rather than inheriting a number from the profile of whoever last used
+/// the window on that machine.
+/// </para>
+/// <para>
+/// <b>It governs this machine, not any controller.</b> Every domain in flight writes a database of
+/// its own, so what it spends is local disk - <c>0041</c> as amended. Lowering it makes a capture
+/// slower and never gentler on a directory.
+/// </para>
+/// </param>
 internal sealed record CommandLine(
     string? LibraryRoot,
     string? Forest,
@@ -46,7 +70,8 @@ internal sealed record CommandLine(
     bool PreviewOnly,
     bool CaptureOnly,
     string? DeriveOnly,
-    string? JudgeOnly)
+    string? JudgeOnly,
+    int? Concurrency)
 {
     /// <summary>
     /// What to print when the arguments were not understood.
@@ -60,7 +85,7 @@ internal sealed record CommandLine(
             Environment.NewLine,
             "Reads an Active Directory forest into a sealed evidence bundle.",
             string.Empty,
-            "  securead --library <directory> [--forest <name>]",
+            "  securead --library <directory> [--forest <name>] [--concurrent <count>]",
             "           [--controller <domain>=<host>]... [--validate | --preview | --capture]",
             "  securead --derive <bundle directory>",
             "  securead --judge <bundle directory>",
@@ -76,6 +101,12 @@ internal sealed record CommandLine(
             "                domain. It applies to this run only and is never remembered. A",
             "                controller that does not serve the domain named stops the run rather",
             "                than being quietly replaced.",
+            "  --concurrent  How many domains to read at the same time. Nine by default. This",
+            "                governs THIS machine, not your domain controllers: each domain being",
+            "                read writes its own database here, so it is the local disk it spends.",
+            "                Every controller is read exactly as it would be at any other setting.",
+            "                Lower it only for a slow or shared disk - it makes a capture take",
+            "                longer and never makes it gentler on the directory. One or more.",
             "  --validate    Connect, discover the forest and ask every domain's controller what",
             "                it can do, without reading a single object. Every domain is asked, and",
             "                every answer is reported. Seconds, rather than hours.",
@@ -122,6 +153,7 @@ internal sealed record CommandLine(
         var captureOnly = false;
         string? deriveOnly = null;
         string? judgeOnly = null;
+        int? concurrency = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -141,6 +173,25 @@ internal sealed record CommandLine(
                         return null;
                     }
 
+                    break;
+
+                // Zero is refused here rather than clamped, and it is the value that matters: a
+                // capture bounded at zero waits for ever while looking exactly like one that is
+                // working - 0041. A negative or non-numeric value is refused for the same reason
+                // a malformed --controller is, below: an operator whose typo is quietly ignored
+                // gets a run that did something other than what he asked for.
+                case "--concurrent" when i + 1 < args.Length:
+                    if (!int.TryParse(
+                            args[++i],
+                            System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var wanted)
+                        || wanted < 1)
+                    {
+                        return null;
+                    }
+
+                    concurrency = wanted;
                     break;
 
                 case "--validate":
@@ -182,6 +233,7 @@ internal sealed record CommandLine(
                 || library is not null
                 || forest is not null
                 || overrides.Count > 0
+                || concurrency is not null
                 || (deriveOnly is not null && judgeOnly is not null);
 
             var named = deriveOnly ?? judgeOnly;
@@ -190,7 +242,7 @@ internal sealed record CommandLine(
                 ? null
                 : new CommandLine(
                     library, forest, overrides, validateOnly, previewOnly, captureOnly, deriveOnly,
-                    judgeOnly);
+                    judgeOnly, concurrency);
         }
 
         // --preview writes nothing, so it does not need somewhere to write to. Requiring a library
@@ -201,16 +253,23 @@ internal sealed record CommandLine(
         // asking for a run and for no run at once, which is refused rather than resolved: an
         // operator who meant to look and instead read a forest for two hours has been failed by
         // this file.
+        // --concurrent bounds the pass that reads the domains, and neither --validate nor --preview
+        // performs one: a preview contacts nothing at all, and a validate asks each controller the
+        // four questions without reading an object. So a ceiling given beside either governs
+        // nothing. It is refused rather than ignored, on the same grounds as the contradictions
+        // above - an operator who states a number and is silently not given it has been failed by
+        // this file.
         if ((string.IsNullOrWhiteSpace(library) && !previewOnly)
             || (validateOnly && previewOnly)
-            || (captureOnly && (validateOnly || previewOnly)))
+            || (captureOnly && (validateOnly || previewOnly))
+            || (concurrency is not null && (validateOnly || previewOnly)))
         {
             return null;
         }
 
         return new CommandLine(
             library, forest, overrides, validateOnly, previewOnly, captureOnly, DeriveOnly: null,
-            JudgeOnly: null);
+            JudgeOnly: null, concurrency);
     }
 
     /// <summary>

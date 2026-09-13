@@ -540,7 +540,7 @@ public sealed class RunLibraryViewModelTests
 
     private RunLibraryViewModel Screen(string? chosenPath = null)
     {
-        _settings.Stored = new ShellSettings(chosenPath);
+        _settings.Stored = new ShellSettings(chosenPath, DomainsAtOnce: null);
 
         var location = new RunLibraryLocation(_settings);
         location.Load();

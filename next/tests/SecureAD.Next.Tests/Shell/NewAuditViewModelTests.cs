@@ -1,3 +1,4 @@
+using SecureAD.Audit.Connect;
 using SecureAD.Derivation;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
@@ -1288,12 +1289,59 @@ public sealed class NewAuditViewModelTests
     }
 
     /// <summary>
+    /// The ceiling the operator chose is the one the run is started with.
+    /// </summary>
+    /// <remarks>
+    /// <b>The defect this exists to catch is a number that is stated and then dropped.</b> The
+    /// review screen tells an operator how his forest will be read; if the setting were not carried
+    /// into the call, the screen would say one thing and the capture would do another, and nothing
+    /// else in the shell would notice. Both halves are asserted deliberately - that the screen says
+    /// it, and that the run receives it - because either alone passes while the other is broken.
+    /// </remarks>
+    [Fact]
+    public async Task TheChosenCeilingIsTheOneTheRunIsStartedWith()
+    {
+        _settings.Stored = new ShellSettings(@"D:\audits", 2);
+
+        var screen = await Opened();
+
+        Assert.Equal(
+            "It will be read on its own.",
+            screen.Review.ConcurrencyStatement);
+
+        await screen.StartAsync();
+
+        Assert.Equal(2, _capture.AskedWithDomainsAtOnce);
+    }
+
+    /// <summary>
+    /// An operator who has chosen nothing still starts a run with a usable ceiling.
+    /// </summary>
+    /// <remarks>
+    /// <b>Never zero, and this is where that would surface.</b> An unstated setting resolves to the
+    /// capture's own default; a run started with zero would wait for ever while the screen showed a
+    /// capture in progress.
+    /// </remarks>
+    [Fact]
+    public async Task ARunStartedWithoutAChosenCeilingUsesTheDefault()
+    {
+        var screen = await Opened();
+
+        await screen.StartAsync();
+
+        Assert.Equal(
+            DirectoryConnectionSettings.DefaultDomainsAtOnce,
+            _capture.AskedWithDomainsAtOnce);
+
+        Assert.NotEqual(0, _capture.AskedWithDomainsAtOnce);
+    }
+
+    /// <summary>
     /// A domain the operator took out is not read by the run he started.
     /// </summary>
     [Fact]
     public async Task ADomainTakenOutIsCarriedIntoTheRunAsAnExclusion()
-    {
-        var screen = await Opened();
+    {        var screen = await Opened();
         Assert.Single(screen.Domains).IsIncluded = false;
 
         await screen.ReviewAsync();
@@ -2015,14 +2063,24 @@ public sealed class NewAuditViewModelTests
 
     private NewAuditViewModel Screen()
     {
-        _settings.Stored = new ShellSettings(@"D:\audits");
+        // Only the path, so a test that arranged a concurrency ceiling still has one. This wrote a
+        // whole fresh record until 2026-09-13, which was lossless while there was one setting and
+        // silently discarded the other as soon as there were two.
+        _settings.Stored = _settings.Stored with { RunLibraryPath = @"D:\audits" };
 
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
+        // Loaded, exactly as the composition root loads it. An unloaded ceiling reports the default
+        // whatever the settings file says, which would have made the test that proves the operator's
+        // choice reaches the run pass against a value nobody chose.
+        var concurrency = new DomainConcurrency(_settings);
+        concurrency.Load();
+
         _deriving.Order = _order;
         _judging.Order = _order;
 
-        return new NewAuditViewModel(location, _capture, _dialogs, _opener, _deriving, _judging);
+        return new NewAuditViewModel(
+            location, _capture, _dialogs, _opener, _deriving, _judging, concurrency);
     }
 }

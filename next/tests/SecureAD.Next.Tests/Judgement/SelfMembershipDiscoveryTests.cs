@@ -38,12 +38,12 @@ public sealed class SelfMembershipDiscoveryTests
         var hash = Hash(directory);
         if (host == "shell")
         {
-            var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!) };
+            var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
             var location = new RunLibraryLocation(settings);
             location.Load();
             var capture = new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) };
             var screen = new NewAuditViewModel(location, capture, new FakeNewAuditDialog(), new FakeRunOpener(),
-                new DerivationLauncher(), new JudgingLauncher(TestBudget));
+                new DerivationLauncher(), new JudgingLauncher(TestBudget), new DomainConcurrency(settings));
             await screen.OpenAsync();
             await screen.StartAsync();
             Assert.DoesNotContain("could not be judged", screen.JudgingReport, StringComparison.OrdinalIgnoreCase);

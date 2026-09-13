@@ -40,12 +40,17 @@ internal sealed record ReviewedDomain(string Domain, string Controller);
 /// What the run has to say about particular domains, in the audit layer's own words. Empty where
 /// it has nothing to say, which is a different thing from having nothing to report.
 /// </param>
+/// <param name="DomainsAtOnce">
+/// How many domains this machine will read at the same time - the ceiling, not the number that will
+/// actually overlap, which <see cref="ConcurrencyStatement"/> works out.
+/// </param>
 internal sealed record AuditReview(
     string ForestFqdn,
     IReadOnlyList<ReviewedDomain> WillBeRead,
     IReadOnlyList<ExclusionView> WillNotBeRead,
     string UnestablishedFactSummary,
-    IReadOnlyList<string> Warnings)
+    IReadOnlyList<string> Warnings,
+    int DomainsAtOnce)
 {
     /// <summary>Whether anything is leaving this run.</summary>
     public bool HasExclusions => WillNotBeRead.Count > 0;
@@ -84,4 +89,43 @@ internal sealed record AuditReview(
         1 => "1 domain will not be read",
         _ => $"{NotReadCount} domains will not be read",
     };
+
+    /// <summary>
+    /// How many of this run's domains will actually be read at the same time.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It states what this run will do, not what the setting says.</b> The ceiling is clamped to
+    /// the number of domains there are, so a ceiling of nine over three domains reads all three at
+    /// once - and a review announcing "up to 9 at a time" over a three-domain forest would be
+    /// describing a capture nobody is about to run.
+    /// </para>
+    /// <para>
+    /// <b>One and many are worded rather than formatted</b>, for the reason
+    /// <see cref="ReadHeading"/> records: this is a sentence an auditor reads before committing a
+    /// machine for hours, and a count is a fact this record already holds.
+    /// </para>
+    /// <para>
+    /// The wording was approved by the owner on 2026-09-13 alongside the settings screen and the
+    /// command line's help, so that the three cannot describe the same number differently.
+    /// </para>
+    /// </remarks>
+    public string ConcurrencyStatement => ReadCount switch
+    {
+        0 => "Nothing will be read.",
+        1 => "It will be read on its own.",
+        _ when DomainsAtOnce <= 1 => "They will be read one at a time.",
+        _ when DomainsAtOnce >= ReadCount => $"All {ReadCount} will be read at the same time.",
+        _ => $"Up to {DomainsAtOnce} at a time; the rest follow as those finish.",
+    };
+
+    /// <summary>Whose machine the ceiling governs, said once and briefly.</summary>
+    /// <remarks>
+    /// <b>The long explanation lives on the settings screen; this is the short form.</b> What it
+    /// must not do is read as consideration for the directory - lowering the number makes a capture
+    /// slower and never gentler, per
+    /// <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c> as amended.
+    /// </remarks>
+    public string ConcurrencyCaveat =>
+        "A limit on this computer's disk, not on your domain controllers. Change it in Settings.";
 }

@@ -49,13 +49,13 @@ public sealed class SelfMembershipNoticeTests
     private static async Task<string> ShellReport(SelfMembershipDiscoveryBudget? budget)
     {
         var directory = SelfMembershipDiscoveryTests.Bundle();
-        var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!) };
+        var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
         var location = new RunLibraryLocation(settings);
         location.Load();
         var screen = new NewAuditViewModel(location,
             new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) },
             new FakeNewAuditDialog(), new FakeRunOpener(), new DerivationLauncher(),
-            new JudgingLauncher(budget));
+            new JudgingLauncher(budget), new DomainConcurrency(settings));
 
         await screen.OpenAsync();
         await screen.StartAsync();

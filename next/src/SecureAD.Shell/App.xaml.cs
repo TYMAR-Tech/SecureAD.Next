@@ -30,10 +30,17 @@ internal partial class App : Application
     {
         base.OnStartup(e);
 
-        var location = new RunLibraryLocation(
-            new JsonShellSettingsStore(JsonShellSettingsStore.DefaultPath));
+        // ONE STORE, TWO SETTINGS. The run library path and the concurrency ceiling live in the
+        // same file and each owns its own field; both read it back at the moment they write, so
+        // neither can erase the other. Two stores over one path would work today and would be the
+        // seam a third setting quietly breaks.
+        var settingsStore = new JsonShellSettingsStore(JsonShellSettingsStore.DefaultPath);
+
+        var location = new RunLibraryLocation(settingsStore);
+        var concurrency = new DomainConcurrency(settingsStore);
 
         location.Load();
+        concurrency.Load();
 
         // One launcher, shared by nothing else: the audit surface is the only place that plans,
         // checks or starts a run. Home chooses the library and starts an audit on it.
@@ -68,7 +75,8 @@ internal partial class App : Application
                 // No automatic own-account membership scan runs until a processing limit has been
                 // measured and approved. Passed explicitly so the absence is a stated decision
                 // rather than a default nobody chose.
-                new JudgingLauncher(discoveryBudget: null)),
+                new JudgingLauncher(discoveryBudget: null),
+                concurrency),
             audit => shell.Begin(audit),
             () => shell.Leave());
 
@@ -94,7 +102,8 @@ internal partial class App : Application
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
             new AssetsViewModel(assets),
-            new DashboardViewModel(assets));
+            new DashboardViewModel(assets),
+            new SettingsViewModel(concurrency));
 
         // Home is the section already showing, so nothing navigates to it and nothing would
         // otherwise ask the library to read itself before the first screen is painted.

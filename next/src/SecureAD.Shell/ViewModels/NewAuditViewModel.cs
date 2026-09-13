@@ -641,6 +641,16 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private readonly IDerivationLauncher _deriving;
     private readonly IJudgingLauncher _judging;
 
+    /// <summary>
+    /// How many domains this machine reads at the same time.
+    /// </summary>
+    /// <remarks>
+    /// <b>One value drives both the run and the sentence the review shows.</b> Reading the setting
+    /// twice - once to describe the capture and once to start it - is how a screen comes to promise
+    /// one thing and a run to do another.
+    /// </remarks>
+    private readonly DomainConcurrency _concurrency;
+
     private CancellationTokenSource? _stopping;
     private long _progressEpoch;
     private bool _auditHasGaps;
@@ -760,13 +770,19 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// reads it.
     /// </param>
     /// <param name="judging">How the sealed evidence is judged once the capture has produced it.</param>
+    /// <param name="concurrency">
+    /// How many domains this machine reads at the same time. Taken rather than read from a setting
+    /// here, so the run and the sentence the review shows come from one value and cannot describe
+    /// different captures.
+    /// </param>
     public NewAuditViewModel(
         RunLibraryLocation location,
         ICaptureLauncher capture,
         INewAuditDialog dialogs,
         IRunOpener opener,
         IDerivationLauncher deriving,
-        IJudgingLauncher judging)
+        IJudgingLauncher judging,
+        DomainConcurrency concurrency)
     {
         ArgumentNullException.ThrowIfNull(location);
         ArgumentNullException.ThrowIfNull(capture);
@@ -774,6 +790,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(opener);
         ArgumentNullException.ThrowIfNull(deriving);
         ArgumentNullException.ThrowIfNull(judging);
+        ArgumentNullException.ThrowIfNull(concurrency);
 
         Location = location;
         _capture = capture;
@@ -781,6 +798,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         _opener = opener;
         _deriving = deriving;
         _judging = judging;
+        _concurrency = concurrency;
     }
 
     /// <summary>Where this installation keeps its runs.</summary>
@@ -1255,7 +1273,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                         // the other three, and nothing saying which domain any of them concerned.
                         // A warning an operator cannot attribute is a warning he cannot act on.
                         .Select(note => $"{d.Domain}: {note}")),
-            ]);
+            ],
+            _concurrency.Effective);
 
     /// <summary>Shows everything the table no longer carries, for every domain at once.</summary>
     /// <remarks>
@@ -1618,7 +1637,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         try
         {
             var outcome = await _capture
-                .RunAsync(Location.Path!, forest: null, Overrides(), Attestations(), _stopping.Token)
+                .RunAsync(
+                    Location.Path!, forest: null, Overrides(), Attestations(),
+                    _concurrency.Effective, _stopping.Token)
                 .ConfigureAwait(true);
 
             Report = Describe(outcome);

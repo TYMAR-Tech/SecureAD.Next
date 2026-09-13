@@ -47,7 +47,7 @@ this is only a way in. Regenerate rather than correct a line here.
 | [0044](decisions/0044-sysvol-coverage-is-recorded-beside-the-capture-units.md) | 2026-08-13 | Accepted | SYSVOL coverage is recorded beside the capture units, and a SYSVOL failure does not fail the run |
 | [0045](decisions/0045-the-shell-is-built-before-the-judgement-half.md) | 2026-08-14 | Accepted | The shell is built before the judgement half, so that the rest can be reviewed |
 | [0046](decisions/0046-the-shell-is-wpf.md) | 2026-08-14 | Accepted | The shell is WPF, because of the grid and the single executable |
-| [0047](decisions/0047-settings-are-per-user-and-per-machine.md) | 2026-08-14 | Accepted | Settings are per-user and per-machine, and there is one of them |
+| [0047](decisions/0047-settings-are-per-user-and-per-machine.md) | 2026-08-14 | Accepted | Settings are per-user and per-machine |
 | [0048](decisions/0048-preflight-proves-a-controller-before-a-run-commits.md) | 2026-08-14 | Accepted *(see record)* | Preflight proves a controller before a run commits, and records what it proved |
 | [0050](decisions/0050-the-candidate-list-comes-from-the-configuration-partition.md) | 2026-08-14 | Accepted | The candidate list comes from the configuration partition, and a controller is chosen from it |
 | [0051](decisions/0051-trusts-describe-a-boundary-and-never-widen-a-run.md) | 2026-08-14 | Accepted | Trusts describe a boundary; they never widen a run |

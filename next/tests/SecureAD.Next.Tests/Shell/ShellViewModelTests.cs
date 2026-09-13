@@ -63,46 +63,54 @@ public sealed class ShellViewModelTests
     }
 
     // ---------------------------------------------------------------------------------------
-    // What stands behind a tab with nothing built
+    // Settings, which stood in for something unbuilt until 2026-09-13
     // ---------------------------------------------------------------------------------------
 
     /// <summary>
-    /// The tab exists so the shape of the navigation can be judged. What it shows says plainly
-    /// that it is not built.
+    /// The settings section shows the settings screen.
     /// </summary>
     /// <remarks>
-    /// <b>This read <c>ShellSection.Dashboard</c> until 2026-09-05</b>, when stage 2 was built and
-    /// the dashboard stopped being a placeholder. Settings is now the only section standing in for
-    /// something unbuilt, so it is the subject here. The test was retargeted rather than deleted
-    /// because the rule it holds - a section with nothing behind it says so rather than drawing an
-    /// empty result - is not about the dashboard and outlives it.
+    /// <para>
+    /// <b>This asserted the opposite until 2026-09-13</b>, and the history is the point. It read
+    /// <c>ShellSection.Dashboard</c> until 2026-09-05, was retargeted to Settings when the dashboard
+    /// was built, and was retargeted again - to the truth - when the settings screen was built. The
+    /// rule it used to hold is that a section with nothing behind it says so rather than drawing an
+    /// empty result. <b>That rule now has no subject: every section is built</b>, so
+    /// <c>SectionView.NotBuilt</c> has no production caller at all. Recorded as a finding rather
+    /// than answered by deleting a safeguard the owner asked for on 2026-08-20.
+    /// </para>
+    /// <para>
+    /// What replaces it here is not a weaker version of the same check. It is the check that the
+    /// operator reaches the screen, which is what the section is now for.
+    /// </para>
     /// </remarks>
     [Fact]
-    public void ASectionThatIsNotBuiltShowsSomethingSayingSo()
+    public void TheSettingsSectionShowsTheSettingsScreen()
     {
         var shell = AShell();
 
         shell.Show(ShellSection.Settings);
 
-        Assert.IsType<SectionView>(shell.Current);
+        Assert.Same(shell.Settings, shell.Current);
     }
 
     /// <summary>
-    /// This is the whole safeguard. <c>docs/decisions/0045</c> left these screens out because a
-    /// screen that appears to report and reports nothing is what a customer believes. What stands
-    /// behind an unbuilt tab must therefore say outright that it is not built.
+    /// Settings shows a real screen rather than a panel saying it does not exist.
     /// </summary>
+    /// <remarks>
+    /// <b>The negative half, kept deliberately.</b> Asserting only that <c>Current</c> is the
+    /// settings screen would still pass if a placeholder were reintroduced beside it, because the
+    /// placeholder is reached through a different property. This names the thing that must not come
+    /// back.
+    /// </remarks>
     [Fact]
-    public void ASectionThatIsNotBuiltSaysSoRatherThanReportingNothing()
+    public void TheSettingsSectionIsNoLongerAPlaceholder()
     {
         var shell = AShell();
 
         shell.Show(ShellSection.Settings);
 
-        Assert.Contains(
-            "no settings screen yet",
-            ((SectionView)shell.Current).Absent,
-            StringComparison.Ordinal);
+        Assert.IsNotType<SectionView>(shell.Current);
     }
 
     /// <summary>
@@ -279,6 +287,7 @@ public sealed class ShellViewModelTests
         return new ShellViewModel(
             new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
             new AssetsViewModel(new FakeAssetSource()),
-            new DashboardViewModel(new FakeAssetSource()));
+            new DashboardViewModel(new FakeAssetSource()),
+            new SettingsViewModel(new DomainConcurrency(settings)));
     }
 }

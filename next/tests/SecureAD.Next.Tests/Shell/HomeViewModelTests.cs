@@ -85,7 +85,7 @@ public sealed class HomeViewModelTests
     public void CancellingLeavesTheLibraryAlone()
     {
         _picker.Answer = null;
-        _settings.Stored = new ShellSettings(@"D:\audits");
+        _settings.Stored = new ShellSettings(@"D:\audits", DomainsAtOnce: null);
         var screen = Screen();
 
         screen.ChooseLibraryCommand.Execute(null);

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Kernel;
 
 namespace SecureAD.Shell.Settings;
@@ -12,6 +12,13 @@ namespace SecureAD.Shell.Settings;
 /// run library reads it; if each held its own, changing it in one place would leave the other
 /// listing the old library while appearing to list the new one. That is the shape of bug that shows
 /// an operator evidence from somewhere they are not looking at.
+/// </para>
+/// <para>
+/// <b><see cref="DomainConcurrency"/> is a second object over the same file, and it does not breach
+/// the rule above.</b> One owner per <i>setting</i> is what that rule requires; the two own disjoint
+/// fields and neither holds a copy of the other's. What would breach it is either of them keeping
+/// the whole record in memory and writing it back, which is why both read the file at the moment
+/// they write.
 /// </para>
 /// <para>
 /// <b>A path that could not be stored is not adopted.</b> If writing the settings file fails, the
@@ -59,12 +66,38 @@ internal sealed partial class RunLibraryLocation : ObservableObject
     }
 
     /// <summary>Adopts and stores <paramref name="path"/>.</summary>
+    /// <remarks>
+    /// <b>It replaces its own field and leaves the rest of the file alone.</b> This wrote
+    /// <c>new ShellSettings(path)</c> until 2026-09-13, when the run library path was the only
+    /// setting and a whole-record write could lose nothing. It is not any more: choosing a library
+    /// would have silently reset the concurrency ceiling to "not chosen", and the operator would
+    /// have discovered it on his next capture or never. The current settings are read back rather
+    /// than remembered, because this object holds no copy of anything but the path and inventing one
+    /// is how the two would come to disagree.
+    ///
+    /// <para>
+    /// <b>A settings file that cannot be read refuses the choice rather than replacing the file.</b>
+    /// If it cannot be read it cannot be preserved, and overwriting it would discard whatever is in
+    /// there unseen - which is the thing <see cref="JsonShellSettingsStore"/> already refuses to do
+    /// on the operator's behalf. The cost is that a corrupt file must be dealt with on disk: the
+    /// operator is told the same thing here that he was told at startup, rather than being handed a
+    /// product that appears to have accepted his answer.
+    /// </para>
+    /// </remarks>
     /// <param name="path">The directory the operator chose.</param>
     public Result<bool> Choose(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        var written = _store.Write(new ShellSettings(path));
+        var current = _store.Read();
+
+        if (!current.IsSuccess)
+        {
+            Problem = current.Error.Description;
+            return Result<bool>.Failure(current.Error);
+        }
+
+        var written = _store.Write(current.Value with { RunLibraryPath = path });
 
         if (!written.IsSuccess)
         {

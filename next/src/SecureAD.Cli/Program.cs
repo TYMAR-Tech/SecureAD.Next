@@ -144,9 +144,14 @@ internal static class Program
                 .ConfigureAwait(false);
         }
 
+        // The ceiling the operator stated, or the capture's own default where he said nothing. It
+        // is never read from the window's settings file - 0047 - so a scheduled run does what its
+        // command line says rather than inheriting a number from somebody's profile.
         var session = new CaptureSession(
             new RunLibrary(options.LibraryRoot!, TimeProvider.System),
-            DirectoryConnectionSettings.Default,
+            options.Concurrency is { } domainsAtOnce
+                ? DirectoryConnectionSettings.Default with { DomainsAtOnce = domainsAtOnce }
+                : DirectoryConnectionSettings.Default,
             TimeProvider.System,
             new MachineDomain(),
             localAddresses);

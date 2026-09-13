@@ -40,6 +40,7 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// <param name="runs">The runs the library holds.</param>
     /// <param name="assets">What the selected run captured.</param>
     /// <param name="dashboard">How much of the forest the selected run read, and what it held.</param>
+    /// <param name="settings">What this installation has been told.</param>
     /// <remarks>
     /// <b>The audit is not passed in.</b> It is handed over by <see cref="Begin"/> when the
     /// operator starts one from Home, and dropped by <see cref="Leave"/> when he leaves it, so that
@@ -49,15 +50,18 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// from Home.
     /// </remarks>
     public ShellViewModel(
-        HomeViewModel home, AssetsViewModel assets, DashboardViewModel dashboard)
+        HomeViewModel home, AssetsViewModel assets, DashboardViewModel dashboard,
+        SettingsViewModel settings)
     {
         ArgumentNullException.ThrowIfNull(home);
         ArgumentNullException.ThrowIfNull(assets);
         ArgumentNullException.ThrowIfNull(dashboard);
+        ArgumentNullException.ThrowIfNull(settings);
 
         Home = home;
         Assets = assets;
         Dashboard = dashboard;
+        Settings = settings;
     }
 
     /// <summary>Where the run library is chosen, and where a run is started from.</summary>
@@ -87,6 +91,16 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// an operator a coverage statement from one capture beside a tree from another.
     /// </remarks>
     public DashboardViewModel Dashboard { get; }
+
+    /// <summary>
+    /// What this installation has been told.
+    /// </summary>
+    /// <remarks>
+    /// <b>It holds no run and reads nothing from the library.</b> Everything on it describes this
+    /// machine rather than a capture, which is why arriving here does not refresh anything and why
+    /// it is the one section that is just as meaningful with no runs taken yet.
+    /// </remarks>
+    public SettingsViewModel Settings { get; }
 
     /// <summary>Whether the home section is the one showing.</summary>
     public bool IsHome => Section == ShellSection.Home;
@@ -123,16 +137,23 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>What stands in for a section that is not built.</summary>
     /// <remarks>
-    /// <b>The dashboard left this list on 2026-09-05</b>, when stage 2 was built. What replaced it
-    /// still never renders an empty result: a run whose coverage cannot be established refuses
-    /// rather than draws zeroes, which is the reasoning that put it here in the first place.
+    /// <para>
+    /// <b>Nothing is in this list, and both departures are worth naming.</b> The dashboard left it
+    /// on 2026-09-05 when stage 2 was built. Settings left it on 2026-09-13, when the screen behind
+    /// the tab became real: it had stood here saying <i>"There is no settings screen yet. The one
+    /// setting this product has - where your runs are kept - is chosen on Home"</i>, and every
+    /// clause of that became false at once.
+    /// </para>
+    /// <para>
+    /// <b>Kept rather than deleted, because the mechanism is still the honest answer for the next
+    /// section.</b> What it guarantees is that a section with nothing behind it never renders an
+    /// empty result - a run whose coverage cannot be established refuses rather than drawing zeroes,
+    /// which is the reasoning that put it here in the first place and does not expire with the last
+    /// occupant.
+    /// </para>
     /// </remarks>
     private SectionView? AbsentSection => Section switch
     {
-        ShellSection.Settings => SectionView.NotBuilt(
-            "Settings",
-            "There is no settings screen yet. The one setting this product has - where your runs "
-            + "are kept - is chosen on Home."),
         _ => null,
     };
 
@@ -231,6 +252,7 @@ internal sealed partial class ShellViewModel : ObservableObject
             {
                 ShellSection.Assets => Assets,
                 ShellSection.Dashboard => Dashboard,
+                ShellSection.Settings => Settings,
                 _ => Home,
             };
         }
@@ -400,8 +422,10 @@ internal sealed partial class ShellViewModel : ObservableObject
             return;
         }
 
-        // A section with nothing behind it reads no library. There is nothing to be current about,
-        // and re-reading the disk to show a panel saying "not built" would be work for nobody.
+        // Settings describes this machine, not a capture. There is nothing on it that a run could
+        // make stale, so arriving here re-reads no library - which said "a section with nothing
+        // behind it" until 2026-09-13, when the screen became real and the reason changed even
+        // though the behaviour did not.
         if (value is ShellSection.Settings)
             return;
 

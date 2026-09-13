@@ -188,12 +188,12 @@ public sealed class SelfMembershipWorkflowTests
 
     private static async Task<NewAuditViewModel> RunShellAsync(string directory, SelfMembershipDiscoveryBudget? budget)
     {
-        var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!) };
+        var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
         var location = new RunLibraryLocation(settings);
         location.Load();
         var capture = new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) };
         var screen = new NewAuditViewModel(location, capture, new FakeNewAuditDialog(), new FakeRunOpener(),
-            new DerivationLauncher(), new JudgingLauncher(budget));
+            new DerivationLauncher(), new JudgingLauncher(budget), new DomainConcurrency(settings));
         await screen.OpenAsync();
         await screen.StartAsync();
         return screen;

@@ -299,4 +299,155 @@ public sealed class CommandLineTests
         Assert.NotNull(parsed);
         Assert.Null(parsed.DeriveOnly);
     }
+
+    // -------------------------------------------------------------------------------------------
+    // --concurrent. How many domains are read at the same time - 0041 as amended 2026-09-13.
+    // -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An operator may state how many domains to read at once.
+    /// </summary>
+    [Fact]
+    public void ARunMayBeToldHowManyDomainsToReadAtOnce()
+    {
+        var parsed = CommandLine.Parse(["--library", @"D:\audits", "--concurrent", "4"]);
+
+        Assert.NotNull(parsed);
+        Assert.Equal(4, parsed.Concurrency);
+    }
+
+    /// <summary>
+    /// Saying nothing is not the same as saying a number, and it is not zero.
+    /// </summary>
+    /// <remarks>
+    /// The capture's own default applies when the operator does not state one. Reading an unstated
+    /// ceiling as zero is precisely the defect <see cref="ACeilingOfZeroIsRefused"/> guards the
+    /// other end of.
+    /// </remarks>
+    [Fact]
+    public void ARunThatSaysNothingCarriesNoCeiling()
+    {
+        var parsed = CommandLine.Parse(["--library", @"D:\audits"]);
+
+        Assert.NotNull(parsed);
+        Assert.Null(parsed.Concurrency);
+    }
+
+    /// <summary>
+    /// Zero is refused, because a capture bounded at zero never finishes.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the one value that must not be accepted quietly.</b> It would wait for ever while
+    /// looking exactly like a capture that is working - an operator would see a run in progress, no
+    /// error, and no end to it. <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c>
+    /// refuses it at construction; this refuses it before a run is even assembled.
+    /// </remarks>
+    [Fact]
+    public void ACeilingOfZeroIsRefused()
+    {
+        Assert.Null(CommandLine.Parse(["--library", @"D:\audits", "--concurrent", "0"]));
+    }
+
+    /// <summary>
+    /// A ceiling that is not a usable whole number is refused rather than ignored.
+    /// </summary>
+    /// <remarks>
+    /// Refused, not dropped. An operator who mistypes and has the option silently discarded gets a
+    /// run that did something other than what he asked for, with nothing telling him so - which is
+    /// the rule <c>CommandLine</c> already applies to a malformed <c>--controller</c>.
+    /// </remarks>
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("nine")]
+    [InlineData("2.5")]
+    [InlineData("")]
+    public void ACeilingThatIsNotAWholeNumberOfOneOrMoreIsRefused(string value)
+    {
+        Assert.Null(CommandLine.Parse(["--library", @"D:\audits", "--concurrent", value]));
+    }
+
+    /// <summary>
+    /// A ceiling with no value after it is refused.
+    /// </summary>
+    [Fact]
+    public void ACeilingWithNothingAfterItIsRefused()
+    {
+        Assert.Null(CommandLine.Parse(["--library", @"D:\audits", "--concurrent"]));
+    }
+
+    /// <summary>
+    /// A ceiling is refused where nothing would read a domain.
+    /// </summary>
+    /// <remarks>
+    /// <b>Neither mode reads an object</b>, so the number would govern nothing. A preview contacts
+    /// nothing at all and a validate asks each controller the four questions without reading. It is
+    /// refused rather than accepted-and-ignored so an operator is never told a number was taken
+    /// when it was not.
+    /// </remarks>
+    [Theory]
+    [InlineData("--validate")]
+    [InlineData("--preview")]
+    public void ACeilingIsRefusedWhereNoDomainWouldBeRead(string mode)
+    {
+        Assert.Null(CommandLine.Parse(["--library", @"D:\audits", mode, "--concurrent", "4"]));
+    }
+
+    /// <summary>
+    /// A ceiling is refused beside a bundle that has already been captured.
+    /// </summary>
+    /// <remarks>
+    /// Deriving and judging read evidence that already exists and contact no controller, so a
+    /// ceiling asks for two different things at once - which this file refuses rather than guesses
+    /// between.
+    /// </remarks>
+    [Theory]
+    [InlineData("--derive")]
+    [InlineData("--judge")]
+    public void ACeilingIsRefusedBesideABundleAlreadyCaptured(string mode)
+    {
+        Assert.Null(CommandLine.Parse([mode, @"D:\audits\run", "--concurrent", "4"]));
+    }
+
+    /// <summary>
+    /// A capture that stops after sealing may still be told how many domains to read at once.
+    /// </summary>
+    /// <remarks>
+    /// <c>--capture</c> does a whole capture and stops before deriving, so it reads every domain and
+    /// the ceiling governs it exactly as it governs a full run.
+    /// </remarks>
+    [Fact]
+    public void ACaptureThatStopsAfterSealingStillTakesACeiling()
+    {
+        var parsed = CommandLine.Parse(
+            ["--library", @"D:\audits", "--capture", "--concurrent", "2"]);
+
+        Assert.NotNull(parsed);
+        Assert.Equal(2, parsed.Concurrency);
+    }
+
+    /// <summary>
+    /// The usage names the option, and says whose machine it governs.
+    /// </summary>
+    /// <remarks>
+    /// <b>The wording is the safeguard, so the wording is what is asserted.</b> An operator reading
+    /// "how many domains at once" with nothing else said would reasonably take it for consideration
+    /// towards his domain controllers, lower it, and get a slower capture believing he had got a
+    /// gentler one. The owner approved this sentence on 2026-09-13 alongside the settings screen and
+    /// the review, and this holds the half that cannot be inferred from the option's name.
+    /// </remarks>
+    [Fact]
+    public void TheUsageSaysTheCeilingGovernsThisMachineAndNotTheDirectory()
+    {
+        Assert.Contains("--concurrent", CommandLine.Usage, StringComparison.Ordinal);
+
+        Assert.Contains(
+            "governs THIS machine, not your domain controllers",
+            CommandLine.Usage,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "never makes it gentler on the directory",
+            CommandLine.Usage,
+            StringComparison.Ordinal);
+    }
 }

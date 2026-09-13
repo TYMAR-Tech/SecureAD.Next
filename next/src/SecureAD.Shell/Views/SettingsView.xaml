@@ -1,0 +1,84 @@
+<UserControl x:Class="SecureAD.Shell.Views.SettingsView" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Settings. What this installation has been told.
+
+        EVERY SENTENCE HERE COMES FROM THE VIEW MODEL, and that is not house style for its own sake.
+        The same number is stated in three places - this screen, the command line's help, and the
+        sentence the new-audit review shows - and all three were approved together on 2026-09-13 so
+        they could not drift into describing the number differently. A string typed into this file is
+        a string no test can read, and the first one to be reworded here would be the one that
+        disagrees.
+
+        THE ONE THING THIS SCREEN MUST NOT IMPLY is that lowering the number is considerate. It
+        governs this machine's disk and never a customer's domain controller; 0041 refused a lever
+        over somebody else's server and still refuses one. A capture read more slowly is not a
+        capture read more gently, and the wording says so outright rather than leaving an
+        administrator to assume the kinder-sounding reading.
+
+        THE RUN LIBRARY IS NOT HERE. It is chosen on Home, where an operator meets the question at
+        the moment it matters. A second chooser over one value is how two controls come to disagree.
+    -->
+
+    <Grid Margin="{StaticResource ScreenPadding}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Settings"
+                   Style="{StaticResource ScreenTitle}"
+                   Margin="0,0,0,16" />
+
+        <Border Grid.Row="1" Style="{StaticResource Card}"
+                MaxWidth="640"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="{Binding ConcurrencyHeading, Mode=OneTime}"
+                           Style="{StaticResource SectionTitle}"
+                           Margin="0,0,0,8" />
+
+                <TextBlock Text="{Binding WhatItIs, Mode=OneTime}"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,10" />
+
+                <!-- The paragraph carrying the whole distinction: whose machine is governed. -->
+                <TextBlock Text="{Binding WhoseMachineItGoverns, Mode=OneTime}"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,10" />
+
+                <TextBlock Text="{Binding WhatLoweringItCosts, Mode=OneTime}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Margin="0,0,0,14" />
+
+                <StackPanel Orientation="Horizontal">
+                    <!-- Typed rather than stepped. A spinner cannot say why it refused, and the
+                         two mistakes available here - a value that is not a number, and one below
+                         one - deserve different sentences. Nothing is stored until it is
+                         understood; see SettingsViewModel.Save. -->
+                    <TextBox Text="{Binding Typed, UpdateSourceTrigger=PropertyChanged}"
+                             Width="80"
+                             VerticalAlignment="Center" />
+
+                    <Button Content="Save"
+                            Command="{Binding SaveCommand}"
+                            Margin="10,0,0,0" />
+                </StackPanel>
+
+                <!-- Amber, not red. 0056 decision 5 reserves red for critical findings and 0070
+                     spends it only on a control that stops something running. A number this screen
+                     would not accept is neither. -->
+                <TextBlock Text="{Binding Problem}"
+                           Tag="Fault"
+                           Style="{StaticResource StateText}"
+                           TextWrapping="Wrap"
+                           Margin="0,10,0,0"
+                           Visibility="{Binding HasProblem, Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

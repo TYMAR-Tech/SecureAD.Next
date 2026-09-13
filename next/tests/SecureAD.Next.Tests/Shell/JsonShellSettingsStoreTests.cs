@@ -49,7 +49,7 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
     [Fact]
     public void APathThatWasWrittenIsReadBack()
     {
-        Store().Write(new ShellSettings(@"D:\audits"));
+        Store().Write(new ShellSettings(@"D:\audits", DomainsAtOnce: null));
 
         Assert.Equal(@"D:\audits", Store().Read().Value.RunLibraryPath);
     }
@@ -60,14 +60,14 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
         var nested = new JsonShellSettingsStore(
             Path.Combine(_directory, "a", "b", "shell-settings.json"));
 
-        Assert.True(nested.Write(new ShellSettings(@"D:\audits")).IsSuccess);
+        Assert.True(nested.Write(new ShellSettings(@"D:\audits", DomainsAtOnce: null)).IsSuccess);
     }
 
     [Fact]
     public void APathCanBeChanged()
     {
-        Store().Write(new ShellSettings(@"D:\audits"));
-        Store().Write(new ShellSettings(@"E:\elsewhere"));
+        Store().Write(new ShellSettings(@"D:\audits", DomainsAtOnce: null));
+        Store().Write(new ShellSettings(@"E:\elsewhere", DomainsAtOnce: null));
 
         Assert.Equal(@"E:\elsewhere", Store().Read().Value.RunLibraryPath);
     }
@@ -98,7 +98,7 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
     [Fact]
     public void APathIsStoredWithoutBeingCheckedAgainstTheDisk()
     {
-        Store().Write(new ShellSettings(@"Z:\not-mounted"));
+        Store().Write(new ShellSettings(@"Z:\not-mounted", DomainsAtOnce: null));
 
         Assert.Equal(@"Z:\not-mounted", Store().Read().Value.RunLibraryPath);
     }
@@ -112,7 +112,7 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
     {
         Assert.False(File.Exists(_path));
 
-        Store().Write(new ShellSettings(@"D:\audits"));
+        Store().Write(new ShellSettings(@"D:\audits", DomainsAtOnce: null));
 
         Assert.True(File.Exists(_path));
     }
@@ -143,4 +143,91 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
     }
 
     private JsonShellSettingsStore Store() => new(_path);
+
+    // -------------------------------------------------------------------------------------------
+    // The concurrency ceiling, the second setting this product has ever had - 0047, amended
+    // 2026-09-13.
+    // -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A settings file written before this setting existed still reads, and does not mean zero.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the file already sitting in every operator's profile</b>, written by a build that
+    /// had never heard of a concurrency ceiling. It must read as "not chosen" rather than as a
+    /// ceiling of zero, which would be a capture that waits for ever while looking exactly like one
+    /// that is working. The JSON is written literally rather than produced by the current
+    /// serialiser, because a serialiser that has learned the new property cannot reproduce a file
+    /// written by one that had not.
+    /// </remarks>
+    [Fact]
+    public void AFileWrittenBeforeTheCeilingExistedReadsAsNotChosen()
+    {
+        File.WriteAllText(_path, """{ "RunLibraryPath": "D:\\audits" }""");
+
+        var read = Store().Read();
+
+        Assert.True(read.IsSuccess);
+        Assert.Equal(@"D:\audits", read.Value.RunLibraryPath);
+        Assert.Null(read.Value.DomainsAtOnce);
+    }
+
+    /// <summary>
+    /// A ceiling that was written is read back.
+    /// </summary>
+    [Fact]
+    public void ACeilingThatWasWrittenIsReadBack()
+    {
+        Store().Write(new ShellSettings(@"D:\audits", 4));
+
+        var read = Store().Read();
+
+        Assert.True(read.IsSuccess);
+        Assert.Equal(4, read.Value.DomainsAtOnce);
+    }
+
+    /// <summary>
+    /// A settings file asking for no domains at once is refused.
+    /// </summary>
+    /// <remarks>
+    /// <b>Nothing in the product writes this</b>, so a file carrying it was edited by hand. It is
+    /// refused rather than repaired: substituting the default would run a capture the operator did
+    /// not ask for while his file says otherwise, and this store already refuses to quietly correct
+    /// a file on his behalf.
+    /// </remarks>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public void ASettingsFileAskingForNoDomainsAtOnceIsRefused(int ceiling)
+    {
+        File.WriteAllText(
+            _path,
+            $$"""{ "RunLibraryPath": "D:\\audits", "DomainsAtOnce": {{ceiling}} }""");
+
+        var read = Store().Read();
+
+        Assert.False(read.IsSuccess);
+        Assert.Contains("1 or more", read.Error.Description, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// One domain at a time is a legitimate stored answer and is not refused with zero.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the refusal above. Without it, a guard that rejected every stored
+    /// ceiling would pass both tests that matter and lock every operator out of the one setting
+    /// this screen offers.
+    /// </remarks>
+    [Fact]
+    public void ASettingsFileAskingForOneDomainAtATimeIsAccepted()
+    {
+        File.WriteAllText(
+            _path,
+            """{ "RunLibraryPath": "D:\\audits", "DomainsAtOnce": 1 }""");
+
+        var read = Store().Read();
+
+        Assert.True(read.IsSuccess);
+        Assert.Equal(1, read.Value.DomainsAtOnce);
+    }
 }

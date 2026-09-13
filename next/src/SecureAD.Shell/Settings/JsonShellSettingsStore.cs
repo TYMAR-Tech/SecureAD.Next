@@ -18,10 +18,18 @@ namespace SecureAD.Shell.Settings;
 /// it there.
 /// </para>
 /// <para>
-/// <b>An absent file and an unreadable one are answered differently.</b> No file is a new
-/// installation and reads as <see cref="ShellSettings.Unconfigured"/>. A file that exists and
-/// cannot be parsed is a failure, because silently resetting it would throw away a path the
-/// operator chose and then present the result as though they had never chosen one.
+/// <b>An absent file, an unreadable one and an unusable value are answered differently.</b> No file
+/// is a new installation and reads as <see cref="ShellSettings.Unconfigured"/>. A file that exists
+/// and cannot be parsed is a failure, because silently resetting it would throw away a path the
+/// operator chose and then present the result as though they had never chosen one. A file that
+/// parses but carries a concurrency ceiling below one is also a failure, for the reason recorded
+/// at <see cref="Read"/>.
+/// </para>
+/// <para>
+/// <b>An absent property is none of those three.</b> Every settings file written before 2026-09-13
+/// is missing the ceiling, and that is not damage - it is an operator who has not been asked yet.
+/// It reads as not chosen and the capture uses its default. Treating it as a stored zero is the
+/// defect this store exists to not have; see <see cref="ShellSettings.DomainsAtOnce"/>.
 /// </para>
 /// <para>
 /// <b>The path stored here is not validated as a run library.</b> Whether the directory exists,
@@ -54,9 +62,11 @@ internal sealed class JsonShellSettingsStore : IShellSettingsStore
     /// <remarks>
     /// <b>Local rather than roaming, and the distinction is the whole decision.</b>
     /// <c>%LOCALAPPDATA%</c> stays on the machine; <c>%APPDATA%</c> follows the user between them.
-    /// The one setting kept here is a path to a run library, and a run library is expected to be a
-    /// local disk. A roamed <c>D:\audits</c> is a confident answer that is wrong on the next
-    /// machine, which is worse than having no answer and asking. Recorded in
+    /// Both settings kept here describe a particular machine - a path to a run library, which is
+    /// expected to be a local disk, and how many domains that machine reads at once, which is a fact
+    /// about its own storage. A roamed <c>D:\audits</c> is a confident answer that is wrong on the
+    /// next machine, which is worse than having no answer and asking; a roamed ceiling chosen for a
+    /// laptop's NVMe disk is the same mistake more quietly. Recorded in
     /// <c>docs/decisions/0047-settings-are-per-user-and-per-machine.md</c>.
     /// </remarks>
     public static string DefaultPath { get; } = Path.Combine(
@@ -74,8 +84,21 @@ internal sealed class JsonShellSettingsStore : IShellSettingsStore
         {
             var stored = JsonSerializer.Deserialize<ShellSettings>(File.ReadAllText(_path));
 
-            return stored is null
-                ? Failure<ShellSettings>("The settings file holds nothing.")
+            if (stored is null)
+                return Failure<ShellSettings>("The settings file holds nothing.");
+
+            // A ceiling below one is refused rather than repaired, and zero is the case that
+            // matters: a capture bounded at zero waits forever while looking exactly like one that
+            // is working - 0041. Nothing in the product writes such a value, so a file carrying one
+            // was edited by hand, and quietly substituting nine would run a capture the operator did
+            // not ask for while showing him the number he did. An ABSENT property is a different
+            // thing entirely and is not an error: it is every settings file written before this
+            // setting existed, and it reads as "not chosen".
+            return stored.DomainsAtOnce is { } ceiling && ceiling < 1
+                ? Failure<ShellSettings>(
+                    $"The settings file asks for {ceiling} domains at a time. It must be 1 or more: "
+                    + "a capture allowed to read no domains at once would wait for ever without "
+                    + "appearing to have stopped.")
                 : Result<ShellSettings>.Success(stored);
         }
         catch (JsonException ex)

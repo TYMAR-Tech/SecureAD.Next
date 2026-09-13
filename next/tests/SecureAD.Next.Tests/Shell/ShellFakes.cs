@@ -534,16 +534,28 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
     /// <summary>The attestations the run was started with, in the order they were gathered.</summary>
     public IReadOnlyList<ExclusionAttestation> AskedWithExclusions { get; private set; } = [];
 
+    /// <summary>
+    /// The concurrency ceiling the run was started with, or null where no run was started.
+    /// </summary>
+    /// <remarks>
+    /// Recorded rather than ignored so a test can prove the operator's setting reaches the capture.
+    /// A ceiling that is stated on a screen and dropped on the way to the run is the defect this
+    /// exists to catch, and nothing else in the shell would notice it.
+    /// </remarks>
+    public int? AskedWithDomainsAtOnce { get; private set; }
+
     public Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
         string? forest,
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyList<ExclusionAttestation> exclusions,
+        int domainsAtOnce,
         CancellationToken cancellationToken)
     {
         AskedForRoot = libraryRoot;
         AskedWithOverrides = overrides;
         AskedWithExclusions = exclusions;
+        AskedWithDomainsAtOnce = domainsAtOnce;
         WasRun = true;
 
         if (Cancels)

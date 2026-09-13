@@ -201,9 +201,10 @@ public sealed class AuditProgressTests
         // three sessions as an ordering defect that it never was.
         SynchronizationContext.SetSynchronizationContext(null);
 
-        var location = new RunLibraryLocation(new FakeSettingsStore { Stored = new ShellSettings(@"D:\audits") });
+        var store = new FakeSettingsStore { Stored = new ShellSettings(@"D:\audits", DomainsAtOnce: null) };
+        var location = new RunLibraryLocation(store);
         location.Load();
-        return new(location, capture ?? new FakeCaptureLauncher(), new FakeNewAuditDialog(), new FakeRunOpener(), deriving, judging)
+        return new(location, capture ?? new FakeCaptureLauncher(), new FakeNewAuditDialog(), new FakeRunOpener(), deriving, judging, new DomainConcurrency(store))
             { Screen = AuditScreen.Review };
     }
 

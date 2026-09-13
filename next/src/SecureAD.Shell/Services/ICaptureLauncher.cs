@@ -127,11 +127,19 @@ internal interface ICaptureLauncher
     /// bundle in full per
     /// <c>docs/decisions/0062-what-an-exclusion-attestation-asks-for.md</c>.
     /// </param>
+    /// <param name="domainsAtOnce">
+    /// How many domains to read at the same time. A limit on this machine rather than on any
+    /// controller - each domain in flight writes a database of its own - per
+    /// <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c> as amended. It is not passed
+    /// to the planning calls above because none of them reads a domain, so a ceiling would govern
+    /// nothing there and passing one would suggest otherwise.
+    /// </param>
     /// <param name="cancellationToken">Stops the run; it still records why it stopped.</param>
     Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
         string? forest,
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyList<ExclusionAttestation> exclusions,
+        int domainsAtOnce,
         CancellationToken cancellationToken);
 }
