@@ -48,9 +48,38 @@ public sealed record ControllerConnectionSecurity(
 /// the moment it answered. Nothing later overwrites a level with a better one, because the question
 /// this answers is what the run actually used.
 /// </para>
+/// <para>
+/// <b>One of these is shared by every domain a run reads, and as of 2026-09-13 those are read at
+/// once.</b> <c>CaptureSession</c> builds a single log per run and hands it to one channel factory;
+/// the fan-out of <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c> then connects to
+/// nine controllers from nine threads through it. Every member here is therefore guarded.
+/// </para>
+/// <para>
+/// <b>What that guard is actually preventing is worth naming, because none of it is theoretical.</b>
+/// <see cref="Record"/> tested a key and then wrote it, so two threads reaching the same controller
+/// could both pass the test and both append - one controller, two entries. Plain
+/// <see cref="List{T}.Add"/> called concurrently drops entries or throws, and this list is the record
+/// of how the forest was reached: an operator would be shown a run that connected to eight
+/// controllers when it connected to nine, with nothing saying one was lost. And a
+/// <see cref="Dictionary{TKey,TValue}"/> written from two threads can corrupt its own buckets, which
+/// surfaces later as an exception in an unrelated read and would end a capture measured in hours.
+/// Recorded as <c>P-171</c> from a review that had not verified it; verified 2026-09-13, by which
+/// time the fan-out had made it larger than the row described.
+/// </para>
+/// <para>
+/// <b>The reading members hand back copies.</b> Returning the live collections would move the race
+/// rather than remove it - a caller enumerating <see cref="Controllers"/> while another domain
+/// connects gets <see cref="InvalidOperationException"/>, which is the same defect one layer out.
+/// </para>
 /// </remarks>
 public sealed class ConnectionSecurityLog
 {
+    /// <summary>
+    /// Guards every field below. One lock rather than one per collection, because
+    /// <see cref="Record"/> writes two of them and they have to agree.
+    /// </summary>
+    private readonly Lock _gate = new();
+
     private readonly Dictionary<string, ControllerConnectionSecurity> _byController =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -60,14 +89,27 @@ public sealed class ConnectionSecurityLog
 
     /// <summary>Every controller this run connected to, in the order it first connected.</summary>
     /// <remarks>
+    /// <para>
     /// Backed by a list rather than by <see cref="Dictionary{TKey,TValue}.Values"/>, which
     /// guarantees no order at all. It happens to enumerate in insertion order while nothing is
     /// removed, and nothing here removes anything - so the sentence above was true by implementation
     /// accident, and a reader who rendered this collection directly could have had one forest come
     /// back in a different order between two runs. <c>DirectoryWorkDispatch</c> is careful about stable
     /// ordering for the same reason, in the same subsystem.
+    /// </para>
+    /// <para>
+    /// <b>A copy, taken under the lock.</b> Handing back the field would let a caller enumerate it
+    /// while another domain is connecting, which throws.
+    /// </para>
     /// </remarks>
-    public IReadOnlyList<ControllerConnectionSecurity> Controllers => _inOrderConnected;
+    public IReadOnlyList<ControllerConnectionSecurity> Controllers
+    {
+        get
+        {
+            lock (_gate)
+                return [.. _inOrderConnected];
+        }
+    }
 
     /// <summary>
     /// The controllers this run could not connect to at all, and why.
@@ -87,14 +129,27 @@ public sealed class ConnectionSecurityLog
     /// controller the question at once and report all the answers rather than the first.
     /// </para>
     /// </remarks>
-    public IReadOnlyList<AuditError> Errors => _errors;
+    public IReadOnlyList<AuditError> Errors
+    {
+        get
+        {
+            lock (_gate)
+                return [.. _errors];
+        }
+    }
 
     /// <summary>
     /// Whether any controller in this run was read over an unprotected connection. What the report
     /// has to disclose.
     /// </summary>
-    public bool AnyUnprotected =>
-        _byController.Values.Any(c => c.Level == ConnectionSecurityLevel.Unprotected);
+    public bool AnyUnprotected
+    {
+        get
+        {
+            lock (_gate)
+                return _byController.Values.Any(c => c.Level == ConnectionSecurityLevel.Unprotected);
+        }
+    }
 
     /// <summary>
     /// The controllers that declined every rung offering integrity. What the finding is about.
@@ -105,11 +160,21 @@ public sealed class ConnectionSecurityLog
     /// 2025 default are both about. A controller that accepted signing but not sealing is not a
     /// finding.
     /// </remarks>
-    public IReadOnlyList<ControllerConnectionSecurity> RefusedIntegrity =>
-        _byController.Values
-            .Where(c => c.Level == ConnectionSecurityLevel.Unprotected)
-            .OrderBy(c => c.DomainController, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+    public IReadOnlyList<ControllerConnectionSecurity> RefusedIntegrity
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return
+                [
+                    .. _byController.Values
+                        .Where(c => c.Level == ConnectionSecurityLevel.Unprotected)
+                        .OrderBy(c => c.DomainController, StringComparer.OrdinalIgnoreCase),
+                ];
+            }
+        }
+    }
 
     /// <summary>
     /// Records the rung a controller answered on. The first answer stands.
@@ -123,12 +188,18 @@ public sealed class ConnectionSecurityLog
         ArgumentOutOfRangeException.ThrowIfNegative(rungsRefused);
 
         var host = domainController.Trim();
-        if (_byController.ContainsKey(host))
-            return;
 
-        var recorded = new ControllerConnectionSecurity(host, level, rungsRefused);
-        _byController[host] = recorded;
-        _inOrderConnected.Add(recorded);
+        // The test and both writes are one step. Split, two threads reaching the same controller
+        // both pass the test and both append, and the run reports one controller twice.
+        lock (_gate)
+        {
+            if (_byController.ContainsKey(host))
+                return;
+
+            var recorded = new ControllerConnectionSecurity(host, level, rungsRefused);
+            _byController[host] = recorded;
+            _inOrderConnected.Add(recorded);
+        }
     }
 
     /// <summary>
@@ -139,6 +210,7 @@ public sealed class ConnectionSecurityLog
     {
         ArgumentNullException.ThrowIfNull(error);
 
-        _errors.Add(error);
+        lock (_gate)
+            _errors.Add(error);
     }
 }
