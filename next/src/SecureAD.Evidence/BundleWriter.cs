@@ -1182,6 +1182,121 @@ public sealed class BundleWriter : IDisposable
     private static string Text(Guid gpoGuid) => gpoGuid.ToString("D");
 
     /// <summary>
+    /// Folds one parallel reader's finished database into this bundle.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The merge itself is <see cref="BundleMerge"/>; what is here is everything around it that
+    /// only the writer can do.</b> There are three such things, and each of them would break a
+    /// real run.
+    /// </para>
+    /// <para>
+    /// <b>The transaction has to be let go of.</b> <see cref="Create"/> opens one transaction and
+    /// holds it until <see cref="Complete"/>, and SQLite refuses <c>ATTACH DATABASE</c> inside a
+    /// transaction - so the merge cannot run on this connection as it stands. The commit here is
+    /// safe rather than merely necessary: what makes a bundle readable is the rename in
+    /// <see cref="Complete"/>, not the commit, so a run that dies between two merges still leaves
+    /// nothing by the name a reader opens.
+    /// </para>
+    /// <para>
+    /// <b>The natural-key caches go stale, and this is the failure that is not obvious.</b>
+    /// <c>_trustees</c> and <c>_descriptors</c> exist so that a repeated SID or a repeated
+    /// descriptor costs a dictionary lookup rather than a query. They know nothing of rows the
+    /// merge brought in - and SYSVOL is read through this writer <i>after</i> the merges, per
+    /// <c>docs/decisions/0044</c>. A policy folder granting <c>BUILTIN\Administrators</c> would
+    /// therefore insert a SID a domain shard had already placed, against <c>UNIQUE(sid)</c>. That
+    /// fails loudly, which is the only reason it is not the worst defect here, and it would fail
+    /// on every real forest.
+    /// </para>
+    /// <para>
+    /// <b>Reloading only the absorbed shard's own range is exact, not an approximation.</b>
+    /// <c>BundleMerge</c> copies a new trustee or descriptor keeping the identifier its shard gave
+    /// it, and leaves an already-known one where it was; <c>RefuseForeignIdentifiers</c> has
+    /// already proved every row of the shard carries that shard's numbers. So the rows in that
+    /// range after a merge are exactly the rows the merge added, and the ones it did not add were
+    /// already cached by whatever put them there.
+    /// </para>
+    /// </remarks>
+    /// <param name="shardPath">The shard database one domain was read into, finished.</param>
+    /// <param name="shard">Which shard wrote it, so the merge can check the identifiers.</param>
+    /// <returns>What the shard contributed.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// This writer is a shard rather than the bundle, or a partition attempt is still open.
+    /// </exception>
+    public BundleMergeResult Absorb(string shardPath, BundleShard shard)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(shardPath);
+        ThrowIfFinished();
+
+        if (Shard.Index != BundleShard.Whole.Index)
+        {
+            throw new InvalidOperationException(
+                "This writer is a shard, not the bundle being assembled. A shard that absorbed "
+                + "another would carry both domains' rows into the merge that folds it in, and "
+                + "the second domain would be counted twice.");
+        }
+
+        if (_attempt is not null)
+        {
+            throw new InvalidOperationException(
+                "A shard is being merged while a partition attempt is open. Committing now would "
+                + "put the attempt's rows beyond the reach of the savepoint that exists to "
+                + "discard them, so a restart would leave a partial read in the bundle.");
+        }
+
+        // The commit, and then nothing is in flight while the merge runs. ATTACH is refused inside
+        // a transaction, which is the whole reason this method exists rather than the run driver
+        // calling BundleMerge against the connection directly.
+        _transaction!.Commit();
+        _transaction.Dispose();
+        _transaction = null;
+
+        var merged = BundleMerge.Absorb(_connection, shardPath, shard);
+
+        Recache("trustee", "sid", "trustee_id", shard, _trustees);
+        Recache("security_descriptor", "sha256", "descriptor_id", shard, _descriptors);
+
+        _transaction = _connection.BeginTransaction();
+
+        return merged;
+    }
+
+    /// <summary>
+    /// Reads back the rows a merge just added, so the cache in front of them stops being a lie.
+    /// </summary>
+    /// <remarks>
+    /// Bounded by the absorbed shard's identifier range rather than reloading the table, because a
+    /// bundle of nine domains would otherwise re-read every trustee and every distinct descriptor
+    /// nine times over. See the remarks on <see cref="Absorb"/> for why that range is exactly the
+    /// set of rows the merge added.
+    /// </remarks>
+    /// <param name="table">The table the merge remapped on a natural key.</param>
+    /// <param name="naturalKey">The column the cache is keyed by.</param>
+    /// <param name="key">The surrogate identifier, which the shard range is a range of.</param>
+    /// <param name="shard">The shard just absorbed, whose range bounds the read.</param>
+    /// <param name="cache">The cache to add to.</param>
+    private void Recache(
+        string table,
+        string naturalKey,
+        string key,
+        BundleShard shard,
+        Dictionary<string, long> cache)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            $"SELECT {naturalKey}, {key} FROM {table} WHERE {key} BETWEEN $first AND $last";
+        command.Parameters.AddWithValue("$first", shard.FirstId);
+        command.Parameters.AddWithValue("$last", shard.LastId);
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            cache[reader.GetString(0)] = reader.GetInt64(1);
+        }
+    }
+
+    /// <summary>
     /// Finishes one parallel reader's database so the merge can fold it into the bundle.
     /// </summary>
     /// <remarks>

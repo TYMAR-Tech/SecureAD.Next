@@ -1,4 +1,5 @@
 using SecureAD.Audit.Capture;
+using SecureAD.Audit.Connect;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
@@ -41,7 +42,8 @@ public sealed class OfflineAuditJourneyTests
             connections,
             new InMemorySysvolFileReader(),
             TimeProvider.System,
-            RunLog.Discarded).RunAsync(
+            RunLog.Discarded,
+            DirectoryConnectionSettings.DefaultDomainsAtOnce).RunAsync(
                 plan.Value!,
                 directory.Value!,
                 new Dictionary<string, AttestedExclusion>(),

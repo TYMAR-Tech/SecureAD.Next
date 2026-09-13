@@ -537,8 +537,16 @@ public sealed class CaptureRunEndToEndTests : IDisposable
     /// <summary>
     /// The same run, with what it said about itself.
     /// </summary>
+    /// <param name="controller">The fixture forest to read.</param>
+    /// <param name="excluding">A domain the operator attested for leaving out, or none.</param>
+    /// <param name="domainsAtOnce">
+    /// How many domains the run may read together. Defaulted to the ordinary ceiling so these
+    /// tests read as a real run does, and stated by the tests that are about the fan-out itself.
+    /// </param>
     private async Task<(CaptureRunResult Run, RecordingRunLog Log)> RunAndLogAsync(
-        ControllerModel controller, AttestedExclusion? excluding = null)
+        ControllerModel controller,
+        AttestedExclusion? excluding = null,
+        int domainsAtOnce = DirectoryConnectionSettings.DefaultDomainsAtOnce)
     {
         var time = new FakeTimeProvider(RunStarted);
         var connections = controller.Connections();
@@ -577,7 +585,8 @@ public sealed class CaptureRunEndToEndTests : IDisposable
         // An empty share. This forest's fixture declares no Group Policy, so there is nothing to
         // read and nothing missed - which the coverage record reports as such rather than as a
         // failure.
-        var run = new CaptureRun(connections, new InMemorySysvolFileReader(), time, log);
+        var run = new CaptureRun(
+            connections, new InMemorySysvolFileReader(), time, log, domainsAtOnce);
 
         var exclusions = excluding is null
             ? ImmutableDictionary<string, AttestedExclusion>.Empty

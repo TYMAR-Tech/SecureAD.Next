@@ -1,4 +1,5 @@
 using System.Globalization;
+using SecureAD.Audit.Connect;
 using SecureAD.Audit.Sysvol;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
@@ -72,6 +73,7 @@ public sealed class CaptureRun
     private readonly ISysvolFileReader _sysvolFiles;
     private readonly TimeProvider _time;
     private readonly IRunLog _log;
+    private readonly int _domainsAtOnce;
 
     /// <summary>
     /// Creates a run driver.
@@ -95,21 +97,36 @@ public sealed class CaptureRun
     /// SYSVOL reader: this loop is the only thing that knows when one domain ended and the next
     /// began, and a capture that ran for hours and stopped leaves nothing else to read.
     /// </param>
+    /// <param name="domainsAtOnce">
+    /// How many domains this machine may read at the same time, per
+    /// <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c>. Stated rather than
+    /// defaulted, because a run driver that could be built without it is one that would be, and
+    /// the setting would go on reading as plumbed and consumed by nothing.
+    /// <see cref="DirectoryConnectionSettings.DefaultDomainsAtOnce"/> is what an ordinary run
+    /// passes.
+    /// </param>
     public CaptureRun(
         IDirectoryChannelFactory connections,
         ISysvolFileReader sysvolFiles,
         TimeProvider time,
-        IRunLog log)
+        IRunLog log,
+        int domainsAtOnce)
     {
         ArgumentNullException.ThrowIfNull(connections);
         ArgumentNullException.ThrowIfNull(sysvolFiles);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(log);
 
+        // Zero waits forever while looking exactly like a capture that is working, which is the
+        // reason DirectoryConnectionSettings refuses it at construction too. Refused twice because
+        // a run driver reached by any other route would have no other wall.
+        ArgumentOutOfRangeException.ThrowIfLessThan(domainsAtOnce, 1);
+
         _connections = connections;
         _sysvolFiles = sysvolFiles;
         _time = time;
         _log = log;
+        _domainsAtOnce = domainsAtOnce;
     }
 
     /// <summary>
@@ -221,26 +238,113 @@ public sealed class CaptureRun
 
         foreach (var unit in prologue)
         {
-            var outcome = await ReadOneUnitAsync(
-                capture, bundleDirectory, unit, plan, recorded.Count, cancellationToken)
+            var outcome = await ReadOneUnitAsync(capture, unit, plan, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (outcome.Ended is { } ended)
-                return ended;
+            if (outcome.Ending is { } ended)
+                return End(bundleDirectory, ended);
 
             recorded.Add(outcome.Coverage!);
         }
 
-        foreach (var unit in domains)
+        // THE DOMAINS ARE READ TOGETHER, which is what 0041 is for and what the prologue above
+        // exists to have finished first. A forest of nine domains costs roughly its largest domain
+        // rather than the sum of all nine.
+        //
+        // THE CEILING IS ON THIS MACHINE, NOT ON THE DIRECTORY. Every domain in flight holds a
+        // connection and writes its own database, so what binds is this laptop's disk rather than
+        // anything a controller experiences - see DirectoryConnectionSettings.DefaultDomainsAtOnce.
+        // It is never raised above the number of domains there are, because a ceiling of nine over
+        // three domains is a number that reads as a promise the run cannot keep.
+        //
+        // NEVER TWO REQUESTS AT ONE CONTROLLER. Each domain takes that controller's turn from the
+        // dispatcher before it reads. Two domains on one machine is not something Active Directory
+        // produces, but ControllerSelection has no rule against it, and a concurrency that is safe
+        // because the directory happens to be shaped a certain way is the defect this arrangement
+        // exists to avoid.
+        var shards = new List<DomainShard>(domains.Count);
+        for (var at = 0; at < domains.Count; at++)
         {
-            var outcome = await ReadOneUnitAsync(
-                capture, bundleDirectory, unit, plan, recorded.Count, cancellationToken)
-                .ConfigureAwait(false);
+            // Shard zero is the bundle itself, which the prologue has just been written into, so
+            // the domains start at one. That is also why an unsharded run stays byte-for-byte what
+            // the product wrote before shards existed: nothing else numbers from 1.
+            shards.Add(new DomainShard(domains[at], BundleShard.Number(at + 1)));
+        }
 
-            if (outcome.Ended is { } ended)
-                return ended;
+        var atOnce = Math.Min(_domainsAtOnce, Math.Max(domains.Count, 1));
 
-            recorded.Add(outcome.Coverage!);
+        _log.Note(
+            PartitionCapture.PhaseName,
+            "reading the domains",
+            [
+                new RunLogDetail("domains", domains.Count.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("atOnce", atOnce.ToString(CultureInfo.InvariantCulture)),
+            ]);
+
+        var readDomains = await DirectoryWorkDispatch.TogetherAsync(
+            shards,
+            atOnce,
+            (shard, turns) => ReadOneDomainAsync(
+                bundleDirectory, startedUtc, shard, plan, turns, cancellationToken),
+            cancellationToken)
+            .ConfigureAwait(false);
+
+        // EVERY OUTCOME IS EXAMINED, IN PLAN ORDER, BEFORE ANYTHING IS MERGED. Several domains can
+        // fail at once, and the run reports the first of them in plan order rather than whichever
+        // thread finished last - so two runs against one broken forest name one cause.
+        //
+        // A FAILED DOMAIN'S SHARD IS SIMPLY NOT MERGED, which is the whole of how 0003 survives the
+        // fan-out. The run ends and no bundle is sealed; the shards that did finish are left on
+        // disk beside the partial file, because deleting the record of how far a run got is a
+        // decision for the run library rather than for the code that has just failed.
+        foreach (var domain in readDomains)
+        {
+            if (domain.Ending is { } ended)
+                return End(bundleDirectory, ended);
+        }
+
+        // MERGED IN PLAN ORDER, one at a time, into the writer already holding the prologue.
+        // TogetherAsync answers in the order it was handed its subjects rather than the order they
+        // arrived, so this is the plan's order and not the forest's timing - two runs of one forest
+        // assemble their bundles the same way round.
+        foreach (var domain in readDomains)
+        {
+            var shardPath = BundleLayout.ShardPath(bundleDirectory, domain.Shard.Shard);
+            var mergeStartedUtc = _time.GetUtcNow();
+
+            var merged = writer.Absorb(shardPath, domain.Shard.Shard);
+
+            // Deleted as soon as its rows are in the bundle. A shard is scaffolding rather than
+            // evidence - never sealed, never given the name a reader asks for - and nine of them
+            // left behind would roughly double what a capture costs on disk at the moment the
+            // bundle is at its largest.
+            File.Delete(shardPath);
+
+            // THE TWO THINGS THE SHARD DATABASE DOES NOT CARRY. The policy inventory and the
+            // unreadable-descriptor tally are accumulated in memory by each domain's own sink, so
+            // without this the SYSVOL pass below would run against the prologue's inventory alone
+            // and report full coverage of a denominator missing every domain's policies.
+            sink.Absorb(domain.Sink!);
+
+            recorded.Add(domain.Coverage!);
+
+            _log.Note(
+                PartitionCapture.PhaseName,
+                "domain merged into the bundle",
+                [
+                    new RunLogDetail("namingContext", domain.Shard.Unit.NamingContext),
+                    new RunLogDetail(
+                        "shard", domain.Shard.Shard.Index.ToString(CultureInfo.InvariantCulture)),
+                    new RunLogDetail("trustees", Count(merged.Trustees)),
+                    new RunLogDetail(
+                        "trusteesAlreadyPresent", Count(merged.TrusteesAlreadyPresent)),
+                    new RunLogDetail("descriptors", Count(merged.Descriptors)),
+                    new RunLogDetail(
+                        "descriptorsAlreadyPresent", Count(merged.DescriptorsAlreadyPresent)),
+                    new RunLogDetail(
+                        "accessControlEntries", Count(merged.AccessControlEntries)),
+                    Elapsed(mergeStartedUtc),
+                ]);
         }
 
         var reconciled = ContinuationReferenceReconciliation.Reconcile(
@@ -377,17 +481,135 @@ public sealed class CaptureRun
     }
 
     /// <summary>
-    /// What became of reading one naming context: its coverage, or the run's ending.
+    /// Writes down an ending a read described, at the one place entitled to write it.
+    /// </summary>
+    private static CaptureRunResult End(string bundleDirectory, RunEnding ending) =>
+        End(bundleDirectory, ending.Outcome, ending.Detail, ending.Error);
+
+    /// <summary>
+    /// What became of reading one naming context: its coverage, or how the run has to end.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>Both are carried so that a caller cannot forget to check.</b> The read either produced
     /// coverage or ended the run, never neither and never both, and a method returning only the
-    /// coverage would need the caller to remember that a failure had already written the outcome
-    /// file. Under the fan-out that follows, several of these come back at once and each has to be
-    /// examined; an ending that could be dropped would be a domain that failed and a bundle that
-    /// sealed anyway.
+    /// coverage would need the caller to remember that a failure had happened. Under the fan-out,
+    /// several of these come back at once and each has to be examined; an ending that could be
+    /// dropped would be a domain that failed and a bundle that sealed anyway.
+    /// </para>
+    /// <para>
+    /// <b>The ending is described here and written by <see cref="RunAsync"/>, which is not a
+    /// tidiness.</b> It used to be written where it was discovered. Nine domains read at once
+    /// means nine threads that can fail, and <c>run-outcome.json</c> is one file - so the account
+    /// a customer reads would have been whichever thread wrote last, and two runs of one broken
+    /// forest could name different causes. Writing it once, for the first failure in plan order,
+    /// makes the answer both single and deterministic.
+    /// </para>
     /// </remarks>
-    private sealed record UnitOutcome(PartitionCoverage? Coverage, CaptureRunResult? Ended);
+    private sealed record UnitOutcome(PartitionCoverage? Coverage, RunEnding? Ending);
+
+    /// <summary>
+    /// How a run has to end, before anything has been written down about it.
+    /// </summary>
+    /// <param name="Outcome">Whether the operator stopped it or it failed.</param>
+    /// <param name="Detail">What to tell whoever opens the run directory.</param>
+    /// <param name="Error">The error to log, or null where the ending is not one.</param>
+    private sealed record RunEnding(RunOutcome Outcome, string Detail, AuditError? Error);
+
+    /// <summary>
+    /// One domain of the plan, paired with the database it will be read into.
+    /// </summary>
+    /// <remarks>
+    /// The pairing is made before any reading starts, so which shard a domain owns is decided by
+    /// its place in the plan rather than by the order the controllers happen to answer in. A shard
+    /// handed out on arrival would give the same forest different identifiers every run, and the
+    /// bundle's own numbering would stop being something two runs could be compared through.
+    /// </remarks>
+    private sealed record DomainShard(CaptureUnit Unit, BundleShard Shard);
+
+    /// <summary>
+    /// What reading one domain produced: its coverage and the sink that accumulated beside it, or
+    /// how the run has to end.
+    /// </summary>
+    /// <remarks>
+    /// <b>The sink comes back because two of the things it holds are not in the shard
+    /// database.</b> The policy inventory and the unreadable-descriptor tally live in memory, and
+    /// under the fan-out there is one of each per domain. They are folded into the run's own sink
+    /// at the merge; see <see cref="BundleCaptureSink.Absorb"/> for why the inventory is the half
+    /// that would produce a wrong answer rather than an error.
+    /// </remarks>
+    private sealed record DomainRead(
+        DomainShard Shard,
+        PartitionCoverage? Coverage,
+        BundleCaptureSink? Sink,
+        RunEnding? Ending);
+
+    /// <summary>
+    /// Reads one domain into a database of its own, on its controller's turn.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A writer, a sink and a capture pass each, and that is the point of the method.</b> All
+    /// three were built once for the whole run before 0041's fan-out. <c>BundleWriter</c> is one
+    /// SQLite connection inside one transaction and is not thread-safe; <c>BundleCaptureSink</c>
+    /// refuses a second partition while one is open, by design. Sharing either between domains
+    /// read at once would not be a race to find later - it would be immediate and loud.
+    /// </para>
+    /// <para>
+    /// <b>The turn is taken around the whole read, not around each request.</b> A paged search
+    /// keeps state on the controller between its pages out of one budget, so two paged reads at
+    /// one machine can truncate each other silently; holding the turn for the duration is what
+    /// makes that impossible rather than unlikely.
+    /// </para>
+    /// <para>
+    /// <b>A domain that failed leaves its shard unfinished and unmerged.</b> The writer is
+    /// disposed without <c>CompleteShard</c>, so the file is never folded into the bundle and
+    /// never becomes a domain silently reporting that it held nothing.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's directory, which the shard is written inside.</param>
+    /// <param name="startedUtc">When the run started.</param>
+    /// <param name="domain">The domain and the shard it owns.</param>
+    /// <param name="plan">The plan, for the progress line.</param>
+    /// <param name="turns">Whose turn it is on each controller.</param>
+    /// <param name="cancellationToken">Cancellation for a run an operator stopped.</param>
+    private async Task<DomainRead> ReadOneDomainAsync(
+        string bundleDirectory,
+        DateTimeOffset startedUtc,
+        DomainShard domain,
+        CapturePlan plan,
+        DirectoryWorkDispatch turns,
+        CancellationToken cancellationToken)
+    {
+        using var writer = BundleWriter.Create(bundleDirectory, startedUtc, domain.Shard);
+
+        var sink = new BundleCaptureSink(writer, _time);
+        var capture = new PartitionCapture(_connections, sink, _time, _log);
+
+        var outcome = await turns.OneAtATimeAsync(
+            domain.Unit.DomainController,
+            () => ReadOneUnitAsync(capture, domain.Unit, plan, cancellationToken),
+            cancellationToken)
+            .ConfigureAwait(false);
+
+        if (outcome.Ending is { } ending)
+            return new DomainRead(domain, null, null, ending);
+
+        var finished = writer.CompleteShard();
+
+        _log.Note(
+            PartitionCapture.PhaseName,
+            "domain written to its own database",
+            [
+                new RunLogDetail("namingContext", domain.Unit.NamingContext),
+                new RunLogDetail(
+                    "shard", domain.Shard.Index.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("commitSeconds", Seconds(finished.Commit)),
+                new RunLogDetail("checkpointSeconds", Seconds(finished.Checkpoint)),
+            ]);
+
+        return new DomainRead(domain, outcome.Coverage, sink, null);
+    }
 
     /// <summary>
     /// Reads one naming context, logging what it did.
@@ -399,17 +621,13 @@ public sealed class CaptureRun
     /// bundle whose domains and whose configuration partition were recorded on different terms.
     /// </remarks>
     /// <param name="capture">The pass that does the reading, which holds the sink it writes to.</param>
-    /// <param name="bundleDirectory">The run's directory, for the outcome file if it ends.</param>
     /// <param name="unit">Which naming context, on which controller.</param>
     /// <param name="plan">The plan, for the count in the progress line.</param>
-    /// <param name="alreadyRead">How many units have finished, for the progress line.</param>
     /// <param name="cancellationToken">Cancellation for a run an operator stopped.</param>
     private async Task<UnitOutcome> ReadOneUnitAsync(
         PartitionCapture capture,
-        string bundleDirectory,
         CaptureUnit unit,
         CapturePlan plan,
-        int alreadyRead,
         CancellationToken cancellationToken)
     {
         Result<PartitionCoverage> read;
@@ -426,9 +644,16 @@ public sealed class CaptureRun
                 new RunLogDetail("namingContext", unit.NamingContext),
                 new RunLogDetail("kind", unit.Kind.ToString()),
                 new RunLogDetail("controller", unit.DomainController),
+
+                // WHERE THIS UNIT SITS IN THE PLAN, not how many have finished. It was the latter
+                // until the fan-out landed, which was a counter shared by every domain in flight -
+                // so nine domains would have reported themselves as unit 3 of 12 together, and the
+                // number an operator reads as "which one is this" would have been "how many were
+                // done when I started". The plan's own order is fixed, so this is the same figure
+                // it always was for a serial run and a true one for a parallel one.
                 new RunLogDetail(
                     "unit",
-                    $"{alreadyRead + 1} of {plan.Units.Count}"),
+                    $"{PositionInPlan(plan, unit)} of {plan.Units.Count}"),
             ]);
 
         try
@@ -448,12 +673,11 @@ public sealed class CaptureRun
 
             return new UnitOutcome(
                 null,
-                End(
-                    bundleDirectory,
+                new RunEnding(
                     RunOutcome.Cancelled,
                     $"The run was stopped while reading {unit.NamingContext} from "
                     + $"{unit.DomainController}.",
-                    error: null));
+                    Error: null));
         }
 
         if (!read.IsSuccess)
@@ -474,8 +698,7 @@ public sealed class CaptureRun
 
             return new UnitOutcome(
                 null,
-                End(
-                    bundleDirectory,
+                new RunEnding(
                     RunOutcome.Failed,
                     $"{unit.NamingContext} could not be read from {unit.DomainController}: "
                     + $"{error.Description}",
@@ -509,6 +732,32 @@ public sealed class CaptureRun
             ]);
 
         return new UnitOutcome(coverage, null);
+    }
+
+    /// <summary>
+    /// Which unit of the plan this is, counting from one.
+    /// </summary>
+    /// <remarks>
+    /// By naming context rather than by reference, because a unit can be re-pinned to a different
+    /// controller by preflight and a re-pinned unit is a different record of the same naming
+    /// context. Matched without regard to case, as a distinguished name is.
+    /// </remarks>
+    private static int PositionInPlan(CapturePlan plan, CaptureUnit unit)
+    {
+        for (var at = 0; at < plan.Units.Count; at++)
+        {
+            if (string.Equals(
+                    plan.Units[at].NamingContext,
+                    unit.NamingContext,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return at + 1;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"'{unit.NamingContext}' is being read but is not in the plan. A partition nothing "
+            + "authorised would be captured into a bundle whose coverage never mentions it.");
     }
 
     /// <summary>
@@ -548,4 +797,7 @@ public sealed class CaptureRun
 
     private static string Seconds(TimeSpan span) =>
         span.TotalSeconds.ToString("0.#", CultureInfo.InvariantCulture);
+
+    /// <summary>A count, spelled the one way every log line spells one.</summary>
+    private static string Count(int value) => value.ToString(CultureInfo.InvariantCulture);
 }

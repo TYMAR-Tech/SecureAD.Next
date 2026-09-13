@@ -188,6 +188,59 @@ public sealed class BundleCaptureSink : ICapturedObjectSink
     }
 
     /// <summary>
+    /// Takes on what another sink accumulated while reading its own domain.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This exists because there are nine of these now.</b> Under
+    /// <c>docs/decisions/0041</c> each domain is read into its own shard by its own sink, and
+    /// everything a sink accumulates across a whole run therefore becomes one partial copy per
+    /// domain. Two things do: the policy inventory and the unreadable-descriptor tally. The rows
+    /// themselves need nothing here - they are in the shard database and are carried by
+    /// <see cref="BundleMerge"/>.
+    /// </para>
+    /// <para>
+    /// <b>The inventory is the dangerous half.</b> Per <c>docs/decisions/0044</c> SYSVOL is
+    /// allowed to report coverage at all only because its denominator is built from LDAP before
+    /// any file is opened. An inventory merge that dropped entries would leave a run reporting
+    /// full SYSVOL coverage against a short denominator - a plausible answer rather than an
+    /// error - so <see cref="GpoInventory.Absorb"/> carries both of the lists that denominator
+    /// lives in.
+    /// </para>
+    /// <para>
+    /// <b>Only between partitions.</b> A sink with a partition still open has an inventory
+    /// checkpoint outstanding, and folding another sink's policies in underneath it would put
+    /// entries this sink never observed inside the range <see cref="AbortPartition"/> would roll
+    /// back - so a restart of the open partition would silently discard another domain's
+    /// policies.
+    /// </para>
+    /// </remarks>
+    /// <param name="other">The sink that read one domain, finished.</param>
+    public void Absorb(BundleCaptureSink other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (ReferenceEquals(other, this))
+        {
+            throw new InvalidOperationException(
+                "A sink cannot absorb itself. Every policy it saw would be counted twice, and a "
+                + "doubled SYSVOL denominator makes a share that was read whole report as half "
+                + "read.");
+        }
+
+        if (_openPartition is not null || other._openPartition is not null)
+        {
+            throw new InvalidOperationException(
+                "A sink is being merged while a partition is open. The open attempt holds an "
+                + "inventory checkpoint, so policies folded in now would sit inside the range a "
+                + "restart rolls back and another domain's policies would vanish with it.");
+        }
+
+        Policies.Absorb(other.Policies);
+        UnreadableDescriptors += other.UnreadableDescriptors;
+    }
+
+    /// <summary>
     /// Stores one object's security descriptor, or the fact that it never arrived.
     /// </summary>
     /// <remarks>

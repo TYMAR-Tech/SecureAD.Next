@@ -126,6 +126,45 @@ public sealed class GpoInventory
         _policies.Add(GpoTarget.Of(guid, displayName, fileSysPath));
     }
 
+    /// <summary>
+    /// Takes on everything another inventory saw, in the order it saw it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Both lists move, and dropping the second would be a wrong answer rather than a
+    /// crash.</b> Under <c>docs/decisions/0041</c> each domain is read by its own sink and builds
+    /// its own inventory, so the SYSVOL denominator is those inventories put back together. It
+    /// lives in two lists: the policies whose files can be found, and the policies whose files
+    /// cannot. Carrying only <see cref="Policies"/> would leave
+    /// <see cref="DeclaredPoliciesAreComplete"/> answering true for a run where a policy came back
+    /// with no <c>gPCFileSysPath</c> - SYSVOL reporting full coverage against a denominator short
+    /// by however many were dropped, which is exactly the arithmetic
+    /// <c>docs/decisions/0044</c> permits a coverage record only because it cannot happen.
+    /// </para>
+    /// <para>
+    /// <b>Appended rather than reconciled by identity.</b> A <c>groupPolicyContainer</c> lives in
+    /// one domain's System container, so two domains never return the same policy. Deduplicating
+    /// here would be machinery for an event that cannot occur, and the first time it was wrong
+    /// about that it would shrink the denominator rather than report a conflict.
+    /// </para>
+    /// </remarks>
+    /// <param name="other">An inventory built while reading one domain.</param>
+    public void Absorb(GpoInventory other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (ReferenceEquals(other, this))
+        {
+            throw new InvalidOperationException(
+                "An inventory cannot absorb itself. Every policy it holds would be counted "
+                + "twice, and a doubled denominator makes a SYSVOL share that was read whole "
+                + "report as half read.");
+        }
+
+        _policies.AddRange(other._policies);
+        _unlocatable.AddRange(other._unlocatable);
+    }
+
     private static bool IsAGroupPolicyObject(CapturedObject capturedObject) =>
         TextValuesOf(capturedObject, ObjectClassAttribute)
             .Any(v => string.Equals(
