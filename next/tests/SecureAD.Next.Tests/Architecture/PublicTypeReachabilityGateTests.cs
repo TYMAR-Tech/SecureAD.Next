@@ -75,14 +75,15 @@ public sealed class PublicTypeReachabilityGateTests
         new("SecureAD.Judgement.OwnershipCandidateAssessment", "Ownership takeover: approved, unbuilt."),
 
         // The shard merge. Written 2026-09-13 against the two remaps 0041 names, ahead of the
-        // caller that will use it: capture cannot yet produce a shard database at all, because
-        // BundleWriter.Complete is the only path that commits and it necessarily writes the
-        // run-level rows the merge refuses. That also means it is UNVERIFIED - no fire, no negative
-        // control, no test of any kind - and this exemption must not be read as saying otherwise.
-        // It is kept rather than deleted because it captures three hazards found while writing it,
-        // recorded in P-195, and the next session should not have to find them again.
-        new("SecureAD.Evidence.BundleMerge", "Shard merge: written ahead of its caller, untested."),
+        // caller that will use it. It was unreachable AND untested until BundleWriter.CompleteShard
+        // gave capture a way to produce a shard at all; BundleMergeTests now covers it with a fire
+        // and a negative control for each remap, and found two real defects on its first run - an
+        // unseeded ace_id that made every shard's entries collide, and a merge test of my own that
+        // contradicted another. It stays exempt because it is still unreachable: the fan-out in
+        // CaptureRun is the caller, and that has not landed. The hazards it captures are in P-195.
+        new("SecureAD.Evidence.BundleMerge", "Shard merge: tested, awaiting the fan-out that calls it."),
         new("SecureAD.Evidence.BundleMergeResult", "Shard merge: what it reports."),
+        new("SecureAD.Evidence.BundleShardTimings", "Shard merge: what finishing a shard cost."),
 
         // Findings storage. StoredFindings documents its own status: the reader that built it was
         // removed when decision 0085 moved findings out of the sealed evidence, and the judgement

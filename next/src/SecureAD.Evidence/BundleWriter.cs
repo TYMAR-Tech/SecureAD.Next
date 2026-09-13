@@ -88,6 +88,7 @@ public sealed class BundleWriter : IDisposable
     private long _nextCoverageId;
     private long _nextDescriptorId;
     private long _nextTrusteeId;
+    private long _nextAceId;
     private bool _completed;
     private bool _disposed;
     private AttemptCheckpoint? _attempt;
@@ -96,7 +97,8 @@ public sealed class BundleWriter : IDisposable
         long ObjectId,
         long CoverageId,
         long DescriptorId,
-        long TrusteeId);
+        long TrusteeId,
+        long AceId);
 
     private BundleWriter(
         string bundleDirectory,
@@ -112,14 +114,22 @@ public sealed class BundleWriter : IDisposable
         Shard = shard;
 
         // EVERY SURROGATE KEY STARTS AT THIS SHARD'S FLOOR, which for an unsharded run is 1 and so
-        // is exactly what the product wrote before shards existed. The four counters move together
-        // because all four are keys the merge would otherwise have to reconcile, and a counter left
+        // is exactly what the product wrote before shards existed. The five counters move together
+        // because all five are keys the merge would otherwise have to reconcile, and a counter left
         // at 1 while its neighbours were seeded would collide in precisely one table - the hardest
         // possible version of this defect to find.
+        //
+        // WHICH IS WHAT HAPPENED. ace_id was missing from this list until 2026-09-13, and the
+        // sentence above was already warning about it: entries were the one table left numbering
+        // from 1 in every shard. It was never spotted by reading, because ace_id is the only one of
+        // the five the writer does not name in its INSERT - SQLite assigns it - so it is invisible
+        // at the point the other four are obviously being set. The first run of the merge tests
+        // caught it immediately, which is the argument for those tests existing at all.
         _nextObjectId = shard.FirstId;
         _nextCoverageId = shard.FirstId;
         _nextDescriptorId = shard.FirstId;
         _nextTrusteeId = shard.FirstId;
+        _nextAceId = shard.FirstId;
     }
 
     /// <summary>Which of a run's parallel readers wrote this, and therefore which identifiers it owns.</summary>
@@ -154,7 +164,14 @@ public sealed class BundleWriter : IDisposable
                 + "one moment and is never written over; capture to a new directory.");
         }
 
-        var partialPath = BundleLayout.PartialPath(bundleDirectory);
+        // A shard writes its own file; only the whole bundle writes the partial one. Sharing the
+        // partial path would be the defect the shard ranges exist to prevent, arriving one layer
+        // earlier and more bluntly: nine writers appending to one SQLite file, each holding the
+        // single write lock the others are waiting for.
+        var partialPath = shard.Index == BundleShard.Whole.Index
+            ? BundleLayout.PartialPath(bundleDirectory)
+            : BundleLayout.ShardPath(bundleDirectory, shard);
+
         if (File.Exists(partialPath))
             File.Delete(partialPath);
 
@@ -253,7 +270,7 @@ public sealed class BundleWriter : IDisposable
         }
 
         var checkpoint = new AttemptCheckpoint(
-            _nextObjectId, _nextCoverageId, _nextDescriptorId, _nextTrusteeId);
+            _nextObjectId, _nextCoverageId, _nextDescriptorId, _nextTrusteeId, _nextAceId);
         Execute("SAVEPOINT partition_attempt");
         _attempt = checkpoint;
 
@@ -362,6 +379,13 @@ public sealed class BundleWriter : IDisposable
             _nextCoverageId = checkpoint.CoverageId;
             _nextDescriptorId = checkpoint.DescriptorId;
             _nextTrusteeId = checkpoint.TrusteeId;
+
+            // Rolled back with the rest, and it has to be. SQLite assigned ace_id until 2026-09-13,
+            // and its implicit counter is max(rowid) + 1 - so a restart reused the numbers the
+            // abandoned attempt had taken. An explicit counter that kept climbing would leave gaps
+            // where there were none, changing the bytes of an unsharded bundle that the frozen
+            // golden hashes cover. Editing one of those is a finding, not a fix.
+            _nextAceId = checkpoint.AceId;
             _attempt = null;
         }
     }
@@ -1158,6 +1182,80 @@ public sealed class BundleWriter : IDisposable
     private static string Text(Guid gpoGuid) => gpoGuid.ToString("D");
 
     /// <summary>
+    /// Finishes one parallel reader's database so the merge can fold it into the bundle.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>What it deliberately does not do is the whole of it.</b> A shard is not a bundle and must
+    /// not resemble one:
+    /// </para>
+    /// <para>
+    /// <b>No run-level rows.</b> <see cref="Complete"/> writes <c>bundle</c>, <c>domain_coverage</c>,
+    /// <c>forest_partition_coverage</c>, <c>sysvol_gpo_coverage</c> and the reconciliation items -
+    /// all of which describe the <i>run</i>, not the domain. Nine shards each writing their own
+    /// would give the merged bundle nine contradictory accounts of one run, and
+    /// <c>BundleMerge</c> refuses a shard carrying any of them. The run driver writes them once,
+    /// into the bundle, after every shard has been folded in.
+    /// </para>
+    /// <para>
+    /// <b>No backfill, and this is the one that would have produced a wrong answer rather than a
+    /// mess.</b> <c>ResolveParentGuids</c> matches each object's parent name against every
+    /// distinguished name it can see, and records a miss as <c>ParentContainer</c> /
+    /// <c>DomainNotCaptured</c> - a permanent statement in the evidence that a container was never
+    /// captured. Inside a shard it can only see one domain, so every cross-domain parent would be
+    /// written as missing, and the merged bundle would report thousands of objects as orphaned by a
+    /// forest that in fact held all of them. It runs once over the whole assembled bundle, where
+    /// the question it is asking is the question it can actually answer.
+    /// </para>
+    /// <para>
+    /// <b>No indexes and no seal.</b> Indexes are built once over the merged bundle rather than
+    /// nine times and then merged into. The seal is a fingerprint of finished evidence, and a shard
+    /// is never finished evidence - it is deleted as soon as its rows are in the bundle.
+    /// </para>
+    /// <para>
+    /// <b>What it keeps is the commit and the checkpoint,</b> because both are about getting bytes
+    /// safely onto disk under a name the merge can open. Reading a database whose recent writes are
+    /// still in a write-ahead log means depending on the reader to find the sidecar; folding it back
+    /// here makes the shard a single self-contained file.
+    /// </para>
+    /// </remarks>
+    /// <returns>How long the commit and the checkpoint took.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// This writer is writing the whole bundle rather than a shard of one.
+    /// </exception>
+    public BundleShardTimings CompleteShard()
+    {
+        ThrowIfFinished();
+
+        if (Shard.Index == BundleShard.Whole.Index)
+        {
+            throw new InvalidOperationException(
+                "This writer is writing the whole bundle, not a shard of one, so finishing it as a "
+                + "shard would leave a bundle with no run-level rows, no indexes and no seal - a "
+                + "file that is not evidence and that no reader can open. Call Complete instead.");
+        }
+
+        WriteUnreadableDescriptorCounts();
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        _transaction!.Commit();
+        _transaction.Dispose();
+        _transaction = null;
+
+        var commit = clock.Elapsed;
+        clock.Restart();
+
+        Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        _connection.Close();
+        SqliteConnection.ClearPool(_connection);
+
+        _completed = true;
+
+        return new BundleShardTimings(commit, clock.Elapsed);
+    }
+
+    /// <summary>
     /// Finishes the bundle: folds the write-ahead log back in, seals the file, and only then gives
     /// it the name a reader asks for.
     /// </summary>
@@ -1561,13 +1659,14 @@ public sealed class BundleWriter : IDisposable
         Execute(
             """
             INSERT INTO ace (
-                descriptor_id, ordinal, ace_type, trustee_id, access_mask, object_type_guid,
+                ace_id, descriptor_id, ordinal, ace_type, trustee_id, access_mask, object_type_guid,
                 inherited_object_type_guid, is_inherited, inheritance_flags, propagation_flags, ace_hash)
-            VALUES ($descriptor, $ordinal, $type, $trustee, $mask, $objectType,
+            VALUES ($ace, $descriptor, $ordinal, $type, $trustee, $mask, $objectType,
                     $inheritedType, $inherited, $inheritance, $propagation, $hash)
             """,
             command =>
             {
+                command.Parameters.AddWithValue("$ace", _nextAceId++);
                 command.Parameters.AddWithValue("$descriptor", descriptorId);
                 command.Parameters.AddWithValue("$ordinal", ordinal);
                 command.Parameters.AddWithValue("$type", ace.AceType.ToString());

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace SecureAD.Evidence;
 
 /// <summary>
@@ -203,6 +205,36 @@ public static class BundleLayout
     /// </remarks>
     public const string RunLogFileName = "run.log";
 
+    /// <summary>
+    /// The database one parallel reader writes before its rows are folded into the bundle.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A shard is scaffolding, not evidence.</b> Under
+    /// <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c> each domain is read into its
+    /// own database and merged afterwards, because SQLite takes one writer at a time and nine
+    /// readers sharing one file would spend the parallelism waiting for the lock. A shard holds
+    /// real captured rows, but it is never sealed, never named <see cref="EvidenceFileName"/> and
+    /// never opened by a reader - it exists between the read and the merge and then stops existing.
+    /// </para>
+    /// <para>
+    /// <b>It carries the suffix a reader refuses, and that is deliberate.</b> The name ends in
+    /// <c>.partial</c> for the same reason <see cref="PartialFileName"/> does: nothing asks for it,
+    /// so a run interrupted mid-merge leaves files that cannot be mistaken for a bundle. The shard
+    /// index is in the middle rather than the extension so that a directory listing sorts them
+    /// together and an operator can see at a glance how many readers a run had.
+    /// </para>
+    /// <para>
+    /// <b>In the bundle directory, by the owner's decision of 2026-09-13.</b> A shard could live in
+    /// the system temporary directory, and that would keep the bundle directory clean. It lives
+    /// here instead so that the peak-disk figure <c>RunResourceWatch</c> records is the truth: a run
+    /// needing forty gigabytes of scratch beside its evidence must report forty gigabytes, not hide
+    /// it on whichever volume <c>TEMP</c> happens to name. An operator sizing a disk for a capture
+    /// is asking about this number.
+    /// </para>
+    /// </remarks>
+    public const string ShardFileNameFormat = "evidence.shard-{0}.db.partial";
+
     /// <summary>The evidence database of a finished bundle in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string EvidencePath(string bundleDirectory) =>
@@ -289,6 +321,34 @@ public static class BundleLayout
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string PreflightPath(string bundleDirectory) =>
         Combine(bundleDirectory, PreflightFileName);
+
+    /// <summary>
+    /// The scratch database one parallel reader writes, in <paramref name="bundleDirectory"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="BundleShard.Whole"/> has no shard file: an unsharded run writes
+    /// <see cref="PartialFileName"/> directly, exactly as the product always has. Asking this for
+    /// the whole bundle is a caller that has confused the two, so it is refused rather than
+    /// answered with a file name that would quietly become a second database beside the evidence.
+    /// </remarks>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    /// <param name="shard">Which parallel reader's database is wanted.</param>
+    public static string ShardPath(string bundleDirectory, BundleShard shard)
+    {
+        if (shard.Index == BundleShard.Whole.Index)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(shard),
+                $"The whole bundle has no shard file - it is written to '{PartialFileName}' "
+                + "directly. Asking for a shard path for BundleShard.Whole means a caller has "
+                + "confused a sharded run with an unsharded one, and answering would create a "
+                + "second database beside the evidence.");
+        }
+
+        return Combine(
+            bundleDirectory,
+            string.Format(CultureInfo.InvariantCulture, ShardFileNameFormat, shard.Index));
+    }
 
     private static string Combine(string bundleDirectory, string fileName)
     {
