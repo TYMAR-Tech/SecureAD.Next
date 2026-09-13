@@ -469,18 +469,28 @@ public sealed class ConnectionSecurityLogTests
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This is <c>D-5</c>. The member said <i>in the order it first connected</i> and returned a
-    /// dictionary's values, which guarantee no order whatever. It enumerated in insertion order
-    /// while nothing was removed and nothing removed anything, so the claim was true by accident.
+    /// This is <c>D-5</c>, and the rule it holds has not changed even though the promise has. The
+    /// member once said <i>in the order it first connected</i> and returned a dictionary's values,
+    /// which guarantee no order whatever; it enumerated in insertion order while nothing was removed
+    /// and nothing removed anything, so the claim was true by accident. What <c>D-5</c> requires is
+    /// that the sentence and the behaviour agree, and that is what is asserted here.
     /// </para>
     /// <para>
-    /// The names here are chosen so that insertion order, alphabetical order and
-    /// <c>OrdinalIgnoreCase</c> order are all different: an implementation that sorted, or that fell
-    /// back to hash order, fails.
+    /// <b>The promise became host name order on 2026-09-13 - <c>P-206</c>.</b> Connection order was
+    /// never meaningful in itself, and once
+    /// <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c> had nine domains connecting
+    /// at once it became a race between them, so one forest came back in a different order on every
+    /// run. <see cref="ConnectionSecurityLog.RefusedIntegrity"/> already sorted by host, and two
+    /// views of one run ordering a customer's controllers differently is an inconsistency an
+    /// administrator has to stop and account for.
+    /// </para>
+    /// <para>
+    /// The names are chosen so that insertion order and host name order are different: an
+    /// implementation that went back to remembering the order it connected in fails.
     /// </para>
     /// </remarks>
     [Fact]
-    public void TheControllersAreGivenBackInTheOrderTheyFirstConnected()
+    public void TheControllersAreGivenBackInHostNameOrder()
     {
         var log = new ConnectionSecurityLog();
         log.Record("zulu.ad.lab", ConnectionSecurityLevel.Ldaps, rungsRefused: 0);
@@ -488,20 +498,47 @@ public sealed class ConnectionSecurityLogTests
         log.Record("mike.ad.lab", ConnectionSecurityLevel.Signed, rungsRefused: 2);
 
         Assert.Equal(
-            ["zulu.ad.lab", "alpha.ad.lab", "mike.ad.lab"],
+            ["alpha.ad.lab", "mike.ad.lab", "zulu.ad.lab"],
             log.Controllers.Select(c => c.DomainController));
     }
 
     /// <summary>
-    /// A controller recorded twice appears once, and keeps the place its first answer gave it.
+    /// One forest read twice gives its controllers back in the same order both times.
     /// </summary>
     /// <remarks>
-    /// The list and the dictionary have to stay in step. A second <c>Record</c> for the same host is
-    /// ignored - the first answer stands, because the question is what the run actually used - and
-    /// an ordered list that appended anyway would report the same machine twice.
+    /// <b>The property <c>P-206</c> is actually about</b>, asserted directly rather than inferred
+    /// from the sort. Two runs that reach the same controllers in opposite orders - which is what
+    /// the fan-out produces - must still describe the forest identically, because an administrator
+    /// comparing this week's run against last week's should not have to work out whether a
+    /// difference in order means a difference in fact.
     /// </remarks>
     [Fact]
-    public void AControllerRecordedTwiceAppearsOnceAndKeepsItsFirstPlace()
+    public void TwoRunsThatConnectInOppositeOrdersDescribeTheForestIdentically()
+    {
+        var first = new ConnectionSecurityLog();
+        first.Record("zulu.ad.lab", ConnectionSecurityLevel.Ldaps, rungsRefused: 0);
+        first.Record("alpha.ad.lab", ConnectionSecurityLevel.Signed, rungsRefused: 1);
+
+        var second = new ConnectionSecurityLog();
+        second.Record("alpha.ad.lab", ConnectionSecurityLevel.Signed, rungsRefused: 1);
+        second.Record("zulu.ad.lab", ConnectionSecurityLevel.Ldaps, rungsRefused: 0);
+
+        Assert.Equal(
+            first.Controllers.Select(c => c.DomainController),
+            second.Controllers.Select(c => c.DomainController));
+    }
+
+    /// <summary>
+    /// A controller recorded twice appears once, and keeps the answer it first gave.
+    /// </summary>
+    /// <remarks>
+    /// A second <c>Record</c> for the same host is ignored - the first answer stands, because the
+    /// question is what the run actually used, and a later attempt that got a better rung does not
+    /// change what was read over the earlier one. The host is matched without regard to case, so a
+    /// controller named twice in different case is one machine rather than two.
+    /// </remarks>
+    [Fact]
+    public void AControllerRecordedTwiceAppearsOnceAndKeepsItsFirstAnswer()
     {
         var log = new ConnectionSecurityLog();
         log.Record("zulu.ad.lab", ConnectionSecurityLevel.Ldaps, rungsRefused: 0);
@@ -509,9 +546,13 @@ public sealed class ConnectionSecurityLogTests
         log.Record("ZULU.ad.lab", ConnectionSecurityLevel.Unprotected, rungsRefused: 3);
 
         Assert.Equal(
-            ["zulu.ad.lab", "alpha.ad.lab"],
+            ["alpha.ad.lab", "zulu.ad.lab"],
             log.Controllers.Select(c => c.DomainController));
-        Assert.Equal(ConnectionSecurityLevel.Ldaps, log.Controllers[0].Level);
+
+        Assert.Equal(
+            ConnectionSecurityLevel.Ldaps,
+            log.Controllers.Single(c => c.DomainController == "zulu.ad.lab").Level);
+
         Assert.False(log.AnyUnprotected);
     }
 

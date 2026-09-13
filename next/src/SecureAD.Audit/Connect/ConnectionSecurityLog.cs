@@ -56,11 +56,11 @@ public sealed record ControllerConnectionSecurity(
 /// </para>
 /// <para>
 /// <b>What that guard is actually preventing is worth naming, because none of it is theoretical.</b>
-/// <see cref="Record"/> tested a key and then wrote it, so two threads reaching the same controller
-/// could both pass the test and both append - one controller, two entries. Plain
-/// <see cref="List{T}.Add"/> called concurrently drops entries or throws, and this list is the record
-/// of how the forest was reached: an operator would be shown a run that connected to eight
-/// controllers when it connected to nine, with nothing saying one was lost. And a
+/// <see cref="Record"/> tests a key and then writes it, so two threads reaching the same controller
+/// could both pass the test and the second overwrite the first answer - and the first is the one the
+/// run used. Plain <see cref="List{T}.Add"/> called concurrently drops entries or throws, which on
+/// <see cref="Errors"/> means a controller that refused every rung leaving no trace: the run would
+/// report reaching eight controllers when it reached nine, with nothing saying one was lost. And a
 /// <see cref="Dictionary{TKey,TValue}"/> written from two threads can corrupt its own buckets, which
 /// surfaces later as an exception in an unrelated read and would end a capture measured in hours.
 /// Recorded as <c>P-171</c> from a review that had not verified it; verified 2026-09-13, by which
@@ -83,23 +83,36 @@ public sealed class ConnectionSecurityLog
     private readonly Dictionary<string, ControllerConnectionSecurity> _byController =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly List<ControllerConnectionSecurity> _inOrderConnected = [];
-
     private readonly List<AuditError> _errors = [];
 
-    /// <summary>Every controller this run connected to, in the order it first connected.</summary>
+    /// <summary>Every controller this run connected to, by host name.</summary>
     /// <remarks>
     /// <para>
-    /// Backed by a list rather than by <see cref="Dictionary{TKey,TValue}.Values"/>, which
-    /// guarantees no order at all. It happens to enumerate in insertion order while nothing is
-    /// removed, and nothing here removes anything - so the sentence above was true by implementation
-    /// accident, and a reader who rendered this collection directly could have had one forest come
-    /// back in a different order between two runs. <c>DirectoryWorkDispatch</c> is careful about stable
-    /// ordering for the same reason, in the same subsystem.
+    /// <b>It said <i>in the order it first connected</i> until 2026-09-13, and the fan-out took that
+    /// away.</b> Connection order was never meaningful in itself - it followed whatever order the
+    /// plan happened to list domains in - and once
+    /// <c>docs/decisions/0041-capture-reads-domains-in-parallel.md</c> had nine domains connecting
+    /// at once it became a race, so two runs of one forest handed a customer's controllers back in
+    /// different orders. Recorded as <c>P-206</c>.
     /// </para>
     /// <para>
-    /// <b>A copy, taken under the lock.</b> Handing back the field would let a caller enumerate it
-    /// while another domain is connecting, which throws.
+    /// <b>This does not undo <c>D-5</c>. It is that same rule applied to a promise that changed.</b>
+    /// What <c>D-5</c> found was a member claiming an order while returning values that guarantee
+    /// none - the claim and the behaviour disagreed, and the list added then was how they were made
+    /// to agree. They agree here too, by sorting rather than by remembering, and a test still holds
+    /// the two together. The list is gone because a sorted read has no use for it, and two
+    /// collections holding one set of entries is a second place for them to disagree.
+    /// </para>
+    /// <para>
+    /// <b>Host name, because <see cref="RefusedIntegrity"/> already sorts that way.</b> Two views of
+    /// one run ordering a customer's controllers differently is the sort of small inconsistency an
+    /// administrator has to stop and account for. It deliberately does not group by domain: a
+    /// <see cref="ControllerConnectionSecurity"/> carries no domain to group by, and cutting one out
+    /// of a host name would be guessing at a boundary the forest already publishes.
+    /// </para>
+    /// <para>
+    /// <b>A copy, taken under the lock.</b> Handing back a live collection would let a caller
+    /// enumerate it while another domain is connecting, which throws.
     /// </para>
     /// </remarks>
     public IReadOnlyList<ControllerConnectionSecurity> Controllers
@@ -107,7 +120,13 @@ public sealed class ConnectionSecurityLog
         get
         {
             lock (_gate)
-                return [.. _inOrderConnected];
+            {
+                return
+                [
+                    .. _byController.Values
+                        .OrderBy(c => c.DomainController, StringComparer.OrdinalIgnoreCase),
+                ];
+            }
         }
     }
 
@@ -189,16 +208,15 @@ public sealed class ConnectionSecurityLog
 
         var host = domainController.Trim();
 
-        // The test and both writes are one step. Split, two threads reaching the same controller
-        // both pass the test and both append, and the run reports one controller twice.
+        // The test and the write are one step. Split, two threads reaching the same controller both
+        // pass the test and the second overwrites the first answer - and the first is the one the
+        // run actually used, which is the whole question this record exists to answer.
         lock (_gate)
         {
             if (_byController.ContainsKey(host))
                 return;
 
-            var recorded = new ControllerConnectionSecurity(host, level, rungsRefused);
-            _byController[host] = recorded;
-            _inOrderConnected.Add(recorded);
+            _byController[host] = new ControllerConnectionSecurity(host, level, rungsRefused);
         }
     }
 
