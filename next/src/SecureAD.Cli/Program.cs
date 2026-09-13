@@ -125,7 +125,7 @@ internal static class Program
         {
             if (options.PreviewOnly || options.ValidateOnly)
                 throw new ArgumentException("A capture substitute cannot perform preview or validation.", nameof(capture));
-            return FinishCapture(await capture(cancellationToken).ConfigureAwait(false), cancellationToken, discoveryBudget);
+            return FinishCapture(await capture(cancellationToken).ConfigureAwait(false), options.CaptureOnly, cancellationToken, discoveryBudget);
         }
 
         // A machine whose own addresses cannot be read has no site, and every domain then reports
@@ -182,10 +182,13 @@ internal static class Program
                 cancellationToken)
             .ConfigureAwait(false);
 
-        return FinishCapture(run, cancellationToken, discoveryBudget);
+        return FinishCapture(run, options.CaptureOnly, cancellationToken, discoveryBudget);
     }
 
-    private static int FinishCapture(Result<CaptureRunResult> run, CancellationToken cancellationToken,
+    private static int FinishCapture(
+        Result<CaptureRunResult> run,
+        bool captureOnly,
+        CancellationToken cancellationToken,
         SelfMembershipDiscoveryBudget? discoveryBudget)
     {
         if (!run.IsSuccess)
@@ -203,6 +206,22 @@ internal static class Program
         }
 
         Console.Out.WriteLine("Sealed: " + run.Value.BundleDirectory);
+
+        // ASKED FOR, AND THEREFORE SAID OUT LOUD. A bundle that was captured and not analysed is
+        // complete evidence rather than a partial run - but a reader who finds no findings beside
+        // it must not have to work out which of the two it is, and the absence of a judgement is
+        // exactly the silence docs/decisions/0002 refuses to let stand for a fact.
+        if (captureOnly)
+        {
+            Console.Out.WriteLine(
+                "Captured only, as asked. Nothing has been derived or judged, so this bundle has "
+                + "no findings yet - which is not the same as a forest with none. Run "
+                + "'securead --derive \"" + run.Value.BundleDirectory + "\"' and then "
+                + "'securead --judge \"" + run.Value.BundleDirectory + "\"' to analyse it, here or "
+                + "on another machine.");
+
+            return Success;
+        }
 
         // Capture, derive, judge - the whole audit, so a scheduled run finishes with findings rather
         // than stopping one stage short of an answer. Judging only runs if deriving succeeded: the

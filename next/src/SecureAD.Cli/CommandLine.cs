@@ -33,6 +33,9 @@ namespace SecureAD.Cli;
 /// </param>
 /// <param name="ValidateOnly">Check the run would work, without reading any object.</param>
 /// <param name="PreviewOnly">Print what would be read and from where, contacting no domain.</param>
+/// <param name="CaptureOnly">
+/// Read the forest and seal the bundle, stopping before anything is derived or judged.
+/// </param>
 /// <param name="DeriveOnly">Derive from a bundle already captured, capturing nothing.</param>
 /// <param name="JudgeOnly">Judge a bundle already captured and derived, capturing nothing.</param>
 internal sealed record CommandLine(
@@ -41,6 +44,7 @@ internal sealed record CommandLine(
     IReadOnlyDictionary<string, string> Overrides,
     bool ValidateOnly,
     bool PreviewOnly,
+    bool CaptureOnly,
     string? DeriveOnly,
     string? JudgeOnly)
 {
@@ -57,7 +61,7 @@ internal sealed record CommandLine(
             "Reads an Active Directory forest into a sealed evidence bundle.",
             string.Empty,
             "  securead --library <directory> [--forest <name>]",
-            "           [--controller <domain>=<host>]... [--validate | --preview]",
+            "           [--controller <domain>=<host>]... [--validate | --preview | --capture]",
             "  securead --derive <bundle directory>",
             "  securead --judge <bundle directory>",
             string.Empty,
@@ -78,6 +82,11 @@ internal sealed record CommandLine(
             "  --preview     Print which controller each domain would be read from, its site, what",
             "                the run would fall back to, and any domain the forest names no",
             "                controller for. Contacts no domain's controller.",
+            "  --capture     Read the forest and seal the bundle, then stop, without deriving or",
+            "                judging it. The bundle is complete evidence and can be derived and",
+            "                judged later, here or on another machine. Use it to find out what a",
+            "                capture of this forest costs, or to take the reading now and analyse",
+            "                it when there is time.",
             "  --derive      Derive from a bundle that has already been captured, without capturing",
             "                anything. Contacts no controller and opens the evidence read-only. Use",
             "                it to derive again after this tool has learned something new, or to",
@@ -110,6 +119,7 @@ internal sealed record CommandLine(
         var overrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var validateOnly = false;
         var previewOnly = false;
+        var captureOnly = false;
         string? deriveOnly = null;
         string? judgeOnly = null;
 
@@ -141,6 +151,10 @@ internal sealed record CommandLine(
                     previewOnly = true;
                     break;
 
+                case "--capture":
+                    captureOnly = true;
+                    break;
+
                 case "--derive" when i + 1 < args.Length:
                     deriveOnly = args[++i];
                     break;
@@ -164,6 +178,7 @@ internal sealed record CommandLine(
             var contradicted =
                 validateOnly
                 || previewOnly
+                || captureOnly
                 || library is not null
                 || forest is not null
                 || overrides.Count > 0
@@ -174,18 +189,27 @@ internal sealed record CommandLine(
             return contradicted || string.IsNullOrWhiteSpace(named)
                 ? null
                 : new CommandLine(
-                    library, forest, overrides, validateOnly, previewOnly, deriveOnly, judgeOnly);
+                    library, forest, overrides, validateOnly, previewOnly, captureOnly, deriveOnly,
+                    judgeOnly);
         }
 
         // --preview writes nothing, so it does not need somewhere to write to. Requiring a library
         // for it would create a directory during what is meant to be a read-only look.
-        if ((string.IsNullOrWhiteSpace(library) && !previewOnly) || (validateOnly && previewOnly))
+        //
+        // --capture DOES need one, because it seals a bundle like any other run - it stops after
+        // the seal rather than doing less of a capture. Naming it beside --validate or --preview is
+        // asking for a run and for no run at once, which is refused rather than resolved: an
+        // operator who meant to look and instead read a forest for two hours has been failed by
+        // this file.
+        if ((string.IsNullOrWhiteSpace(library) && !previewOnly)
+            || (validateOnly && previewOnly)
+            || (captureOnly && (validateOnly || previewOnly)))
         {
             return null;
         }
 
         return new CommandLine(
-            library, forest, overrides, validateOnly, previewOnly, DeriveOnly: null,
+            library, forest, overrides, validateOnly, previewOnly, captureOnly, DeriveOnly: null,
             JudgeOnly: null);
     }
 

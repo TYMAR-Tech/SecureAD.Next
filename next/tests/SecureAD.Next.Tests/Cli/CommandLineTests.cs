@@ -112,6 +112,65 @@ public sealed class CommandLineTests
     }
 
     /// <summary>
+    /// Capturing without analysing is asked for explicitly, and needs somewhere to write.
+    /// </summary>
+    /// <remarks>
+    /// <b>It is a whole capture that stops, not a smaller one.</b> The bundle it seals is complete
+    /// evidence and can be derived and judged later, here or elsewhere - which is why it needs a
+    /// library exactly as an ordinary run does, and why leaving the library out is refused rather
+    /// than defaulted.
+    /// </remarks>
+    [Fact]
+    public void CapturingWithoutAnalysingIsAskedForAndNeedsALibrary()
+    {
+        var parsed = CommandLine.Parse(["--library", @"D:\audits", "--capture"]);
+
+        Assert.NotNull(parsed);
+        Assert.True(parsed.CaptureOnly);
+        Assert.Equal(@"D:\audits", parsed.LibraryRoot);
+
+        Assert.Null(CommandLine.Parse(["--capture"]));
+    }
+
+    /// <summary>
+    /// An ordinary run is not a capture-only run, so the flag cannot be reached by omission.
+    /// </summary>
+    [Fact]
+    public void AnOrdinaryRunAnalysesWhatItCaptured()
+    {
+        var parsed = CommandLine.Parse(["--library", @"D:\audits"]);
+
+        Assert.NotNull(parsed);
+        Assert.False(parsed.CaptureOnly);
+    }
+
+    /// <summary>
+    /// Asking to capture and to look without capturing is a contradiction, and is refused.
+    /// </summary>
+    /// <remarks>
+    /// The cost of resolving it either way is severe and asymmetric: an operator who meant to spend
+    /// seconds looking and instead read a forest for two hours has been failed by the parser, and
+    /// one who meant to capture and got a preview finds out when there is no bundle.
+    /// </remarks>
+    [Theory]
+    [InlineData("--validate")]
+    [InlineData("--preview")]
+    public void CaptureBesideALookThatReadsNothingIsRefused(string other)
+    {
+        Assert.Null(CommandLine.Parse(["--library", @"D:\audits", "--capture", other]));
+    }
+
+    /// <summary>
+    /// Capturing and deriving an existing bundle are different runs and are not combined.
+    /// </summary>
+    [Fact]
+    public void CaptureBesideABundleOnlyModeIsRefused()
+    {
+        Assert.Null(CommandLine.Parse(["--derive", @"D:\b", "--capture"]));
+        Assert.Null(CommandLine.Parse(["--judge", @"D:\b", "--capture"]));
+    }
+
+    /// <summary>
     /// An unrecognised argument stops the run rather than being ignored.
     /// </summary>
     [Fact]
