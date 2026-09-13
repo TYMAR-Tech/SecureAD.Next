@@ -45,16 +45,56 @@ public sealed class SerializedDirectoryAccessGateTests
     private const string CaptureProject = "SecureAD.Audit";
 
     /// <summary>
-    /// Shapes that put two pieces of work in flight at once.
+    /// Shapes that put two pieces of work in flight at once, with no turn-taking of their own.
     /// </summary>
-    private static readonly Regex FanOut = new(
+    /// <remarks>
+    /// <b>These are the unsafe ones.</b> Nothing here knows which host a piece of work will reach,
+    /// so nothing here can stop two of them reaching the same one.
+    /// </remarks>
+    private static readonly Regex RawFanOut = new(
         @"\b(Task\.WhenAll|Task\.WhenAny|Task\.Run|Parallel\.For|Parallel\.ForEach"
         + @"|Parallel\.ForEachAsync|Parallel\.Invoke|AsParallel)\b",
         RegexOptions.Compiled);
 
     /// <summary>
-    /// Shapes that mean this file speaks to a directory. A file matching one of these is a file
-    /// where a second concurrent request would land on a real domain controller.
+    /// The one sanctioned way to run directory work at once.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>DirectoryWorkDispatch.TogetherAsync</c> is safe where the raw primitives are not</b>,
+    /// because it takes a turn per host before letting work start: two subjects on one controller
+    /// are serialised against each other while two on different controllers overlap. That is the
+    /// whole rule, implemented once.
+    /// </para>
+    /// <para>
+    /// <b>It was absent from this guard until 2026-09-13, and that was a hole rather than an
+    /// omission.</b> The rule below says a file may fan out or speak to a directory and never both;
+    /// <c>Preflight.cs</c> holds an <c>IDirectoryChannelFactory</c> and fans out through this, so by
+    /// the stated rule it was an offender and passed anyway - an invisible, untested allowlist keyed
+    /// on a method name, which is what <c>0041</c> forbids when it says narrow the guard and never
+    /// exempt a file. It mattered because <c>CaptureRun</c> is about to do the same thing under that
+    /// decision, and the guard would have stayed green through the whole change.
+    /// </para>
+    /// </remarks>
+    private static readonly Regex DispatchedFanOut = new(
+        @"\bTogetherAsync\b",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Shapes that put a request on a controller.
+    /// </summary>
+    /// <remarks>
+    /// <b>Sending, not naming.</b> A file that merely holds or passes a connection has not spoken
+    /// to anything - <c>Preflight</c> keeps the factory and hands it to <c>DomainPreflightRead</c>,
+    /// which does the reading and stays serial. Treating the two alike is what made the old pattern
+    /// fire on a file that cannot breach the rule while missing the shape that can.
+    /// </remarks>
+    private static readonly Regex SendsARequest = new(
+        @"\b(SendAsync|SendRequest|BeginSendRequest|EndSendRequest)\b",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Shapes that mean this file is holding the means to reach a controller.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -65,46 +105,94 @@ public sealed class SerializedDirectoryAccessGateTests
     /// </para>
     /// <para>
     /// <b>Only the first vocabulary was matched until 2026-08-16, and that was the whole defect.</b>
-    /// <c>Preflight.cs</c> opens a connection to every domain controller in the forest and reads
-    /// from each, and matched nothing here, because it says <c>channel.SendAsync</c> rather than
+    /// <c>Preflight.cs</c> opens a connection to every domain controller in the forest and matched
+    /// nothing here, because it says <c>channel.SendAsync</c> rather than
     /// <c>connection.SendRequest</c>. So did <c>ForestDiscovery</c>, <c>ForestRoles</c> and
     /// <c>CaptureSession</c>. The guard reported a clean project while ignoring every file that had
     /// been written in the newer style - passing, and measuring nothing where it mattered most.
     /// </para>
     /// </remarks>
-    private static readonly Regex TouchesADirectory = new(
+    private static readonly Regex HoldsAConnection = new(
         @"\b(LdapConnection|LdapSessionOptions|SearchRequest|SearchResponse|SendRequest"
         + @"|BeginSendRequest|DirectoryControl|DirectoryAttribute"
         + @"|IDirectoryChannel|IDirectoryChannelFactory|SendAsync)\b",
         RegexOptions.Compiled);
 
+    /// <summary>
+    /// A file that sends a request never runs work in parallel, however it runs it.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the rule itself.</b> Two requests in flight against one controller compete for a
+    /// single budget of paged-search state, which the controller resolves by discarding the oldest -
+    /// so a concurrent read can silently truncate another one. The code that sends must therefore
+    /// be serial, and that holds whether the concurrency came from a raw primitive or from the
+    /// dispatcher: even turn-taking per host cannot save a file that sends two requests inside one
+    /// turn.
+    /// </remarks>
     [Fact]
-    public void NoFileBothTalksToADirectoryAndFansOutItsWork()
+    public void NoFileBothSendsARequestAndRunsWorkInParallel()
     {
         var offenders = CaptureFiles()
-            .Where(f => Matches(f, TouchesADirectory) && Matches(f, FanOut))
+            .Where(f => Matches(f, SendsARequest)
+                        && (Matches(f, RawFanOut) || Matches(f, DispatchedFanOut)))
             .Select(f => "  " + f)
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
 
         Assert.True(
             offenders.Count == 0,
-            "A file that talks to a domain controller also runs work in parallel. Requests are "
-            + "never pipelined: two requests in flight against one controller compete for a single "
-            + "budget of paged-search state, which the controller resolves by discarding the "
-            + "oldest, so a concurrent read can silently truncate another one. Running several "
+            "A file that sends a request to a domain controller also runs work in parallel. "
+            + "Requests are never pipelined: two in flight against one controller compete for a "
+            + "single budget of paged-search state, which the controller resolves by discarding "
+            + "the oldest, so a concurrent read can silently truncate another one. Running several "
             + "naming contexts at once is fine and is expected; running two requests at one "
-            + "controller is not. Split the dispatching from the reading. The reasoning was in "
-            + "docs/layers/audit/limits-and-failures.md, deleted 2026-09-12 and in git history:"
+            + "controller is not. Split the dispatching from the reading, as Preflight and "
+            + "DomainPreflightRead are split:"
             + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
 
     /// <summary>
-    /// The scanner self-test. Without it the check above passes by scanning an empty set of files,
-    /// or by using patterns that match nothing, and reports a clean project either way.
+    /// A file holding the means to reach a controller fans out only through the dispatcher.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is what keeps the rule above true rather than lucky.</b> A raw primitive cannot take
+    /// turns, because it does not know which host a piece of work will reach. Work that touches a
+    /// directory therefore goes through <c>DirectoryWorkDispatch</c>, which does - and a file that
+    /// reaches for <c>Task.WhenAll</c> while holding connections has stepped outside the one place
+    /// the rule is implemented.
+    /// </para>
+    /// <para>
+    /// <b>It matters most where it looks least necessary.</b> The configuration partition, the
+    /// schema partition and the root domain are commonly served by the same machine, so a fan-out
+    /// that happens to be safe on a well-shaped forest is the defect this exists to refuse.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void NoFileHoldingAConnectionFansOutWithoutTakingTurns()
+    {
+        var offenders = CaptureFiles()
+            .Where(f => Matches(f, HoldsAConnection) && Matches(f, RawFanOut))
+            .Select(f => "  " + f)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            "A file that holds the means to reach a domain controller runs work in parallel "
+            + "through a primitive that cannot take turns. Task.WhenAll and its relatives do not "
+            + "know which host a piece of work will reach, so they cannot stop two pieces reaching "
+            + "the same one. Directory work that runs at once goes through "
+            + "DirectoryWorkDispatch.TogetherAsync, which takes a turn per host:"
+            + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
+    /// The scanner self-test. Without it the checks above pass by scanning an empty set of files,
+    /// or by using patterns that match nothing, and report a clean project either way.
     /// </summary>
     [Fact]
-    public void TheScannerReadsTheCaptureProjectAndBothPatternsMatch()
+    public void TheScannerReadsTheCaptureProjectAndEveryPatternMatches()
     {
         var files = CaptureFiles().ToList();
 
@@ -113,40 +201,170 @@ public sealed class SerializedDirectoryAccessGateTests
             $"Scanned no files under {CaptureProject}. The guard would report a clean project by "
             + "having failed to find the project.");
 
-        // The check is a conjunction, so it passes trivially if nothing in the tree talks to a
-        // directory at all. At least one file must, or there is nothing being guarded.
-        var directoryFiles = files.Where(f => Matches(f, TouchesADirectory)).ToList();
+        // Each check is a conjunction, so each passes trivially if one half of it matches nothing
+        // in the tree. Every half must find something real, or there is nothing being guarded.
         Assert.True(
-            directoryFiles.Count > 0,
-            "No file in the capture project talks to a directory, so this guard is watching "
-            + "nothing. Either the detection pattern has stopped matching, or the code that "
-            + "speaks to a controller has moved out of this project.");
+            files.Any(f => Matches(f, SendsARequest)),
+            "No file in the capture project sends a request, so the first rule is watching "
+            + "nothing. Either the pattern has stopped matching, or the code that speaks to a "
+            + "controller has moved out of this project.");
 
-        Assert.Matches(FanOut, "await Task.WhenAll(pages);");
-        Assert.Matches(FanOut, "Parallel.ForEach(units, u => Read(u));");
-        Assert.Matches(FanOut, "var q = items.AsParallel();");
-        Assert.DoesNotMatch(FanOut, "await ReadOnePageAsync(request);");
+        Assert.True(
+            files.Any(f => Matches(f, HoldsAConnection)),
+            "No file in the capture project holds the means to reach a controller, so the second "
+            + "rule is watching nothing.");
 
-        Assert.Matches(TouchesADirectory, "var response = connection.SendRequest(request);");
-        Assert.Matches(TouchesADirectory, "public SearchRequest ForUnit(CaptureUnit unit)");
-        Assert.DoesNotMatch(TouchesADirectory, "var total = objects.Count;");
+        Assert.True(
+            files.Any(f => Matches(f, DispatchedFanOut)),
+            "Nothing calls DirectoryWorkDispatch.TogetherAsync, so the shape this guard was "
+            + "widened to cover in 2026-09-13 has gone. Either the dispatcher has been renamed - "
+            + "in which case this pattern is now an invisible allowlist again - or parallel "
+            + "directory work has been removed.");
 
-        // The product's own vocabulary. Matching only the raw LDAP types left every file written
-        // since the rebuild unwatched, which is the defect these three lines exist to keep fixed.
-        Assert.Matches(TouchesADirectory, "var page = await channel.SendAsync(request, token);");
-        Assert.Matches(TouchesADirectory, "IDirectoryChannel channel,");
-        Assert.Matches(TouchesADirectory, "IDirectoryChannelFactory connections,");
+        Assert.True(
+            files.Any(f => Matches(f, RawFanOut)),
+            "Nothing uses a raw fan-out primitive anywhere in the capture project, so the second "
+            + "rule cannot fire. DirectoryWorkDispatch itself uses Task.WhenAll; if that has gone, "
+            + "this guard needs rewriting rather than relaxing.");
+    }
 
-        // And the file that prompted the widening must now be watched by name, because a pattern
-        // that stops matching it fails silently and returns this guard to reporting a clean project.
-        var preflight = files.Single(f => f.EndsWith(
+    /// <summary>
+    /// The patterns tell apart the things they are meant to tell apart.
+    /// </summary>
+    /// <remarks>
+    /// <b>A guard that matched everything or nothing would pass its own scanner self-test.</b>
+    /// These assert the discriminations the rules rest on: sending is not the same as holding, and
+    /// a dispatched fan-out is not the same as a raw one.
+    /// </remarks>
+    [Fact]
+    public void ThePatternsTellTheRightThingsApart()
+    {
+        Assert.Matches(RawFanOut, "await Task.WhenAll(pages);");
+        Assert.Matches(RawFanOut, "Parallel.ForEach(units, u => Read(u));");
+        Assert.Matches(RawFanOut, "var q = items.AsParallel();");
+        Assert.DoesNotMatch(RawFanOut, "await ReadOnePageAsync(request);");
+
+        // The dispatcher is a fan-out and must never be mistaken for a raw one, in either
+        // direction: counting it as raw would fail Preflight, and counting a raw primitive as
+        // dispatched would let the unsafe shape through.
+        Assert.Matches(DispatchedFanOut, "await DirectoryWorkDispatch.TogetherAsync(asked, 8,");
+        Assert.DoesNotMatch(RawFanOut, "await DirectoryWorkDispatch.TogetherAsync(asked, 8,");
+        Assert.DoesNotMatch(DispatchedFanOut, "await Task.WhenAll(pages);");
+
+        // Sending is not holding. This is the distinction the old single pattern collapsed, which
+        // is how Preflight was reported as an offender by the stated rule and passed anyway.
+        Assert.Matches(SendsARequest, "var page = await channel.SendAsync(request, token);");
+        Assert.Matches(SendsARequest, "var response = connection.SendRequest(request);");
+        Assert.DoesNotMatch(SendsARequest, "IDirectoryChannelFactory connections,");
+        Assert.DoesNotMatch(SendsARequest, "var total = objects.Count;");
+
+        Assert.Matches(HoldsAConnection, "IDirectoryChannelFactory connections,");
+        Assert.Matches(HoldsAConnection, "public SearchRequest ForUnit(CaptureUnit unit)");
+        Assert.DoesNotMatch(HoldsAConnection, "var total = objects.Count;");
+    }
+
+    /// <summary>
+    /// Both rules fire on the shapes they exist to refuse.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the check the guard did not have, and its absence is how the hole survived.</b>
+    /// Every assertion above proves a pattern matches something; none proved that the
+    /// <i>conjunction</i> would ever fail a file. A guard whose rule can never fire passes exactly
+    /// as a clean project does.
+    /// </para>
+    /// <para>
+    /// The planted lines are the two ways the rule can be broken: a file that sends inside a
+    /// fan-out of any kind, and a file that reaches for a raw primitive while holding connections.
+    /// </para>
+    /// </remarks>
+    [Theory]
+    [InlineData("await Task.WhenAll(units.Select(u => channel.SendAsync(For(u), token)));")]
+    [InlineData("await DirectoryWorkDispatch.TogetherAsync(units, 8, (u, t) => channel.SendAsync(For(u), token));")]
+    public void TheFirstRuleFiresOnAFileThatSendsInsideAFanOut(string planted)
+    {
+        Assert.Matches(SendsARequest, planted);
+        Assert.True(
+            RawFanOut.IsMatch(planted) || DispatchedFanOut.IsMatch(planted),
+            "The planted line no longer reads as a fan-out, so it would not fail the rule it was "
+            + "written to fail.");
+    }
+
+    /// <summary>
+    /// The second rule fires on a raw fan-out beside a connection.
+    /// </summary>
+    [Fact]
+    public void TheSecondRuleFiresOnARawFanOutBesideAConnection()
+    {
+        const string planted =
+            "await Task.WhenAll(domains.Select(d => Read(d, connections)));"
+            + " IDirectoryChannelFactory connections;";
+
+        Assert.Matches(HoldsAConnection, planted);
+        Assert.Matches(RawFanOut, planted);
+    }
+
+    /// <summary>
+    /// The shapes the rules must permit are permitted.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control, and it is the half that decides whether this guard is usable.</b> A
+    /// rule that failed these would be satisfied only by a product that reads one domain at a time,
+    /// which is what <c>0041</c> exists to stop. <c>S-10</c> recorded this obligation when the rule
+    /// was written: running several naming contexts at once is expected and safe, and a guard must
+    /// permit it rather than forbid it by accident.
+    /// </remarks>
+    [Fact]
+    public void TheShapesTheRulesMustPermitArePermitted()
+    {
+        // A dispatcher that fans out and holds nothing.
+        const string dispatcher = "await Task.WhenAll(subjects.Select(async (subject, at) =>";
+        Assert.DoesNotMatch(SendsARequest, dispatcher);
+        Assert.DoesNotMatch(HoldsAConnection, dispatcher);
+
+        // A caller that holds connections and fans out through the dispatcher - which is Preflight,
+        // and will be CaptureRun under 0041.
+        const string caller =
+            "var outcomes = await DirectoryWorkDispatch.TogetherAsync(asked, 8,"
+            + " (domain, turns) => Read(domain, connections, turns), token);"
+            + " IDirectoryChannelFactory connections;";
+        Assert.DoesNotMatch(SendsARequest, caller);
+        Assert.DoesNotMatch(RawFanOut, caller);
+
+        // A reader that sends and stays serial.
+        const string reader = "var page = await channel.SendAsync(request, token);";
+        Assert.DoesNotMatch(RawFanOut, reader);
+        Assert.DoesNotMatch(DispatchedFanOut, reader);
+    }
+
+    /// <summary>
+    /// The file that prompted the 2026-08-16 widening is still watched by name.
+    /// </summary>
+    /// <remarks>
+    /// A pattern that stops matching it fails silently and returns this guard to reporting a clean
+    /// project. It is watched under <see cref="HoldsAConnection"/> rather than
+    /// <see cref="SendsARequest"/> because it keeps the factory and hands it to
+    /// <c>DomainPreflightRead</c>, which does the reading - so the second rule is the one standing
+    /// between it and a raw fan-out.
+    /// </remarks>
+    [Fact]
+    public void PreflightIsStillWatched()
+    {
+        var preflight = CaptureFiles().Single(f => f.EndsWith(
             $"{Path.DirectorySeparatorChar}Preflight.cs", StringComparison.Ordinal));
 
         Assert.True(
-            Matches(preflight, TouchesADirectory),
+            Matches(preflight, HoldsAConnection),
             "Preflight.cs connects to every domain controller in the forest and is no longer "
-            + "recognised as touching a directory. The guard is back to the state it was in on "
+            + "recognised as holding a connection. The guard is back to the state it was in on "
             + "2026-08-16, when it passed while ignoring the file most able to breach the rule.");
+
+        Assert.True(
+            Matches(preflight, DispatchedFanOut),
+            "Preflight.cs no longer fans out through the dispatcher. If it now fans out some "
+            + "other way, the rules above should have failed; if it no longer fans out at all, "
+            + "this guard is watching a file that cannot breach the rule and the pattern that "
+            + "covers CaptureRun needs checking instead.");
     }
 
     /// <summary>
