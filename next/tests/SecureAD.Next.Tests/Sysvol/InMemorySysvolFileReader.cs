@@ -22,6 +22,7 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
     private readonly Dictionary<string, byte[]> _files = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, byte[]> _descriptors = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _denied = [];
+    private readonly HashSet<string> _vanished = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Puts a file on the share, beneath a policy's folder.</summary>
     public InMemorySysvolFileReader WithFile(string gpoFileSysPath, string relativePath, byte[] content)
@@ -47,6 +48,30 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
         return this;
     }
 
+    /// <summary>
+    /// Puts a file on the share that enumeration will list and that will then refuse to open,
+    /// answering success with no content.
+    /// </summary>
+    /// <remarks>
+    /// <b>Success carrying null, not a failure</b>, because that is the case that used to pass
+    /// silently. A refusal was always recorded; a share that listed a file and then produced
+    /// nothing for it read as "the file is not there" and left the policy's coverage complete -
+    /// <c>CAP-003</c>. It is what a policy being rewritten underneath an audit looks like.
+    /// </remarks>
+    /// <param name="gpoFileSysPath">The policy's folder.</param>
+    /// <param name="relativePath">The file that will be listed and will not open.</param>
+    public InMemorySysvolFileReader WithListedButUnopenableFile(
+        string gpoFileSysPath, string relativePath)
+    {
+        var key = Key(gpoFileSysPath, relativePath);
+
+        // Held in _files so enumeration finds it, and named in _vanished so the read declines.
+        _files[key] = [];
+        _vanished.Add(key);
+
+        return this;
+    }
+
     /// <inheritdoc />
     public Task<Result<byte[]?>> ReadFileAsync(
         string gpoFileSysPath, string relativePath, CancellationToken cancellationToken)
@@ -56,6 +81,11 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
         if (IsDenied(key))
         {
             return Task.FromResult(Denied(key));
+        }
+
+        if (_vanished.Contains(key))
+        {
+            return Task.FromResult(Result<byte[]?>.Success(null));
         }
 
         return Task.FromResult(

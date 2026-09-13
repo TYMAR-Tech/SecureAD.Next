@@ -211,19 +211,212 @@ public sealed class SysvolCaptureTests : IDisposable
     }
 
     /// <summary>
-    /// A file that was opened and could not be understood produces an error row. Without it, a
-    /// template that failed to parse and a policy that assigns no privileges are the same evidence.
+    /// A file that was opened and could not be understood leaves the policy explicitly incomplete.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This asserted only that an error row existed until 2026-09-13, and that is why it never
+    /// caught anything.</b> The row was always written; what was missing was the mark against the
+    /// policy's coverage, so a truncated <c>Machine\Registry.pol</c> yielded no settings and the
+    /// policy was still reported <c>Read</c> and complete. <c>SEC-093</c> then read an absent LAPS
+    /// decryptor setting as an assessed, finding-free policy. That is <c>CAP-002</c>, and this test
+    /// passed throughout it.
+    /// </para>
+    /// <para>
+    /// The outcome is what is asserted now. An error row is a diagnostic; coverage is the claim a
+    /// customer acts on, and nothing reads <c>gpo_file_error</c> back.
+    /// </para>
+    /// <para>
+    /// <b>Every folder and the file itself are given permissions deliberately, and mutation testing
+    /// is what forced it.</b> Without them the unreadable permissions were a second gap, so the
+    /// policy came out <c>PartiallyRead</c> whether the parse failure was marked or not - the
+    /// outcome assertion passed against a capture with the fix removed, and only the reason text
+    /// caught it. A fixture with more than one thing wrong cannot prove which one the check saw.
+    /// </para>
+    /// </remarks>
     [Fact]
-    public async Task AFileThatCouldNotBeParsedIsRecordedRatherThanReadAsEmpty()
+    public async Task AFileThatCouldNotBeParsedLeavesThePolicyExplicitlyIncomplete()
     {
         var reader = new InMemorySysvolFileReader()
             .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithDescriptor(PolicyPath, "Machine", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Registry.pol", ADescriptor())
+            .WithFile(PolicyPath, @"Machine\Registry.pol", Bytes("this is not a policy file"));
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+
+        var policy = Assert.Single(coverage.Policies);
+
+        Assert.Equal(GpoReadOutcome.PartiallyRead, policy.Outcome);
+        Assert.Contains(@"Machine\Registry.pol", policy.Reason, StringComparison.Ordinal);
+        Assert.Contains("could not be understood", policy.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The diagnostics survive alongside the coverage mark.
+    /// </summary>
+    /// <remarks>
+    /// The coverage mark says the policy is incomplete; the error rows say what the parser choked
+    /// on. Downgrading coverage must not cost the detail, because a fix that traded one for the
+    /// other would be answering a false-clean claim with a claim that explains nothing.
+    /// </remarks>
+    [Fact]
+    public async Task AFileThatCouldNotBeParsedStillRecordsWhatTheParserSaid()
+    {
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithDescriptor(PolicyPath, "Machine", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Registry.pol", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Registry.pol", Bytes("this is not a policy file"));
 
         var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
 
         Assert.NotEmpty(Query(bundle, "SELECT message FROM gpo_file_error"));
+    }
+
+    /// <summary>
+    /// A file enumeration listed, that then will not open, leaves the policy explicitly incomplete.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>CAP-003</c>.</b> Enumeration establishes the file is there. A later read returning
+    /// nothing is therefore not the same as a policy that simply has no <c>GptTmpl.inf</c> - the
+    /// share said the file existed and then would not produce it, which is a gap in the evidence
+    /// and used to leave coverage complete.
+    /// </para>
+    /// <para>
+    /// <b>Every folder on the way down, and the file itself, is given a readable descriptor, and
+    /// mutation testing is what forced it.</b> The policy folder alone was not enough: enumeration
+    /// walks the ancestors, and a folder without a descriptor is a second gap, so the policy came
+    /// out <c>PartiallyRead</c> whether the vanished file was marked or not. That keeps this a
+    /// <c>PartiallyRead</c> case rather than an <c>Unreadable</c> one, and makes the vanished file
+    /// the only thing that can produce the outcome.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task AListedFileThatWillNotOpenLeavesThePolicyExplicitlyIncomplete()
+    {
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithDescriptor(PolicyPath, "Machine", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Preferences", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Preferences\Groups", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Preferences\Groups\Groups.xml", ADescriptor())
+            .WithListedButUnopenableFile(PolicyPath, @"Machine\Preferences\Groups\Groups.xml");
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+
+        var policy = Assert.Single(coverage.Policies);
+
+        Assert.Equal(GpoReadOutcome.PartiallyRead, policy.Outcome);
+        Assert.Contains("Groups.xml", policy.Reason, StringComparison.Ordinal);
+        Assert.Contains("could not be opened", policy.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A well-known file a policy simply does not have is still an answer, not a gap.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control for the test above, and the reason the distinction exists at all.</b>
+    /// A policy with no <c>GptTmpl.inf</c> assigns no user rights - that is a complete answer. If
+    /// absence were read as a gap everywhere, every ordinary policy in a customer's forest would
+    /// report as incomplete and the caveat would stop meaning anything.
+    /// </remarks>
+    [Fact]
+    public async Task AWellKnownFileAPolicyDoesNotHaveIsNotAGap()
+    {
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor());
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(GpoReadOutcome.Read, Assert.Single(coverage.Policies).Outcome);
+    }
+
+    /// <summary>
+    /// An XML file under a scripts folder does not destroy the capture.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b><c>CAP-001</c> and <c>P-172</c>, and the cost of it was the whole night's work.</b> The
+    /// preference scan enumerates <c>*.xml</c> across the entire policy folder, so it reaches
+    /// <c>Machine\Scripts</c>; the script scan then enumerates everything under the script folders
+    /// and reaches the same file again. Both captured its descriptor, and
+    /// <c>sysvol_path_security_descriptor</c> is keyed <c>(gpo_guid, relative_path)</c> - so the
+    /// second insert threw, and nothing caught it. <c>SysvolCapture</c> has no <c>catch</c>,
+    /// <c>CaptureRun</c> has two and both are for cancellation, and <c>CaptureSession</c> has none,
+    /// so the exception unwound a run that had already read every domain and had not yet sealed.
+    /// </para>
+    /// <para>
+    /// <c>settings.xml</c> under <c>Machine\Scripts</c> is an ordinary layout rather than a
+    /// contrivance, which is what made this worth a P1.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task AnXmlFileUnderAScriptsFolderDoesNotDestroyTheCapture()
+    {
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithDescriptor(PolicyPath, "Machine", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
+            .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
+            .WithDescriptor(PolicyPath, @"Machine\Scripts\settings.xml", ADescriptor());
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+
+        var only = Assert.Single(coverage.Policies);
+        Assert.True(only.Outcome == GpoReadOutcome.Read, only.Reason);
+    }
+
+    /// <summary>
+    /// The doubly-reached file's permissions are stored once, not twice.
+    /// </summary>
+    /// <remarks>
+    /// The run surviving is not on its own proof the defect is gone - a fix that swallowed the
+    /// second write would also survive. This asserts the bundle holds exactly one row for the path,
+    /// which is what the key was always meant to guarantee and what the second acquisition broke.
+    /// </remarks>
+    [Fact]
+    public async Task AFileReachedByBothScansIsStoredOnce()
+    {
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithDescriptor(PolicyPath, "Machine", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
+            .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
+            .WithDescriptor(PolicyPath, @"Machine\Scripts\settings.xml", ADescriptor());
+
+        var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(
+            ["1"],
+            Query(
+                bundle,
+                "SELECT COUNT(*) FROM sysvol_path_security_descriptor "
+                + "WHERE relative_path = 'Machine\\Scripts\\settings.xml'"));
+    }
+
+    /// <summary>
+    /// A scripts-folder XML whose contents read and whose permissions are refused.
+    /// </summary>
+    /// <remarks>
+    /// <b>The case the review asked for by name</b>, because it is where the two scans disagree
+    /// about what they found. The preference scan opens the file and is refused its descriptor; the
+    /// script scan is refused the same descriptor again. The refusal is recorded once, the policy is
+    /// explicitly partial, and the run still reaches an outcome.
+    /// </remarks>
+    [Fact]
+    public async Task AScriptsFolderXmlWhoseDescriptorIsRefusedIsRecordedOnceAndSaysSo()
+    {
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
+            .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
+            .Denying(PolicyPath, @"Machine\Scripts\settings.xml");
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(GpoReadOutcome.PartiallyRead, Assert.Single(coverage.Policies).Outcome);
     }
 
     /// <summary>

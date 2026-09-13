@@ -187,7 +187,7 @@ public sealed class SysvolCapture
     {
         foreach (var (relativePath, scope) in RegistryPolicyFiles)
         {
-            var file = await ReadFileAsync(target, progress, relativePath, cancellationToken)
+            var file = await ReadFileAsync(target, progress, relativePath, FileExpectation.MayNotExist, cancellationToken)
                 .ConfigureAwait(false);
 
             if (file is null)
@@ -210,7 +210,7 @@ public sealed class SysvolCapture
     private async Task ReadSecurityTemplateAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
-        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, cancellationToken)
+        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, FileExpectation.MayNotExist, cancellationToken)
             .ConfigureAwait(false);
 
         if (file is null)
@@ -260,7 +260,7 @@ public sealed class SysvolCapture
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var content = await ReadFileAsync(target, progress, relativePath, cancellationToken)
+            var content = await ReadFileAsync(target, progress, relativePath, FileExpectation.WasListed, cancellationToken)
                 .ConfigureAwait(false);
 
             if (content is null)
@@ -310,14 +310,46 @@ public sealed class SysvolCapture
             relativePath.StartsWith(folder + "\\", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
+    /// Whether a file this capture asks for is one the policy may simply not have.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same absent file means opposite things depending on who asked.</b> A policy with no
+    /// <c>GptTmpl.inf</c> assigns no user rights, and that is an answer. A <c>Groups.xml</c> that
+    /// enumeration has just listed and that will not open is a gap, because something established it
+    /// was there. Reading both as "not there" is <c>CAP-003</c>, and it let a policy report complete
+    /// coverage of a file it never captured.
+    /// </remarks>
+    private enum FileExpectation
+    {
+        /// <summary>
+        /// A well-known path a policy is free not to have. Absent is an answer, not a gap.
+        /// </summary>
+        MayNotExist,
+
+        /// <summary>
+        /// A path enumeration returned, so the share said it was there. Absent is a gap.
+        /// </summary>
+        WasListed,
+    }
+
+    /// <summary>
     /// Reads one file's contents, recording a refusal against the policy and writing the
     /// permissions of every file it did open, per <c>docs/decisions/0043</c>.
     /// </summary>
+    /// <param name="target">The policy being read.</param>
+    /// <param name="progress">Where failures and permissions are recorded.</param>
+    /// <param name="relativePath">The file inside the policy.</param>
+    /// <param name="expectation">
+    /// Whether this path is one the policy may not have, or one enumeration already listed. It
+    /// decides what an absent file means, and nothing else here can tell the two apart.
+    /// </param>
+    /// <param name="cancellationToken">Stops the read.</param>
     /// <returns>The bytes, or null if the file is not there or could not be read.</returns>
     private async Task<byte[]?> ReadFileAsync(
         GpoTarget target,
         PolicyProgress progress,
         string relativePath,
+        FileExpectation expectation,
         CancellationToken cancellationToken)
     {
         var file = await _reader
@@ -334,6 +366,16 @@ public sealed class SysvolCapture
         {
             // Genuinely absent, and that is an answer rather than a gap. A policy with no
             // GptTmpl.inf assigns no user rights.
+            //
+            // UNLESS ENUMERATION JUST LISTED IT, in which case the share said the file was there
+            // and then would not produce it - CAP-003. That is the same event RecordVanished
+            // already covers for permissions, happening to a file's contents instead, and reading
+            // it as "absent" let the policy keep reporting complete coverage.
+            if (expectation == FileExpectation.WasListed)
+            {
+                progress.RecordVanishedContents(relativePath);
+            }
+
             return null;
         }
 
@@ -383,6 +425,35 @@ public sealed class SysvolCapture
     private sealed class PolicyProgress(GpoTarget target, BundleWriter writer)
     {
         private readonly List<string> _failures = [];
+
+        /// <summary>
+        /// Every path whose permissions this policy has already captured.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>Two scans reach the same file, and the bundle will not have it twice.</b> The
+        /// preference scan enumerates <c>*.xml</c> across the whole policy folder and captures the
+        /// descriptor of every file it opens; <c>ReadScriptPermissionsAsync</c> then enumerates
+        /// everything under the script folders and captures them again. An ordinary
+        /// <c>Machine\Scripts\settings.xml</c> is therefore reached twice, and
+        /// <c>sysvol_path_security_descriptor</c> is keyed <c>(gpo_guid, relative_path)</c> - so the
+        /// second insert violated the key and the exception unwound the entire run, after every
+        /// domain had been read and before anything was sealed. <c>CAP-001</c>, and <c>P-172</c>.
+        /// </para>
+        /// <para>
+        /// <b>Case-insensitive, because a share is.</b> <c>Machine\Scripts</c> and
+        /// <c>MACHINE\SCRIPTS</c> are one path to Windows, and a case-sensitive set would let the
+        /// same defect back in through a policy whose folders are cased differently from the
+        /// pattern.
+        /// </para>
+        /// <para>
+        /// <b>The second acquisition is skipped, not overwritten.</b> Overwriting would conceal a
+        /// second observation that genuinely differed from the first, and this record exists to say
+        /// what the run saw.
+        /// </para>
+        /// </remarks>
+        private readonly HashSet<string> _descriptorsCaptured =
+            new(StringComparer.OrdinalIgnoreCase);
         private int _registryOrdinal;
         private int _securityOrdinal;
         private int _restrictedGroupOrdinal;
@@ -392,6 +463,14 @@ public sealed class SysvolCapture
 
         public void WriteDescriptor(string relativePath, byte[] descriptorBytes)
         {
+            // Already captured by the other scan. See _descriptorsCaptured: the bundle keys this
+            // table on (gpo_guid, relative_path), so a second insert is not a duplicate row but a
+            // failed capture.
+            if (!_descriptorsCaptured.Add(relativePath))
+            {
+                return;
+            }
+
             var parsed = SecurityDescriptorParser.Parse(descriptorBytes);
             var normalized = AceNormalizer.Normalize(Guid.Empty, parsed);
 
@@ -461,11 +540,50 @@ public sealed class SysvolCapture
             _anythingRead = true;
         }
 
+        /// <summary>
+        /// Records what a parser could not make sense of: a row per diagnostic, and a mark against
+        /// the policy's coverage.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>The coverage mark was missing until 2026-09-13, and its absence was a false clean
+        /// answer.</b> This wrote the diagnostic rows and returned, so a policy whose
+        /// <c>Machine\Registry.pol</c> was truncated or malformed yielded no settings and was still
+        /// reported as <c>Read</c> and complete. <c>SEC-093</c> then treated an absent LAPS decryptor
+        /// setting as an assessed, finding-free policy rather than as evidence it never got - which
+        /// is the product telling an administrator his directory is clean when it failed to read it.
+        /// Recorded as <c>CAP-002</c> of the capture review.
+        /// </para>
+        /// <para>
+        /// <b>What the file did yield is kept.</b> A half-parsed file is facts plus a gap, not a
+        /// write-off: the caller writes every recovered setting and this marks the gap beside them.
+        /// Coverage becomes <see cref="GpoCoverage.PartiallyRead"/> rather than
+        /// <see cref="GpoCoverage.Unreadable"/>, because reaching a parser at all means the bytes
+        /// were read and the file's own permissions were captured.
+        /// </para>
+        /// <para>
+        /// <b>The reason names the file.</b> The obvious alternative was a generic sentence, because
+        /// <see cref="Summarize"/> shows three distinct reasons and counts the rest - so per-file
+        /// reasons can crowd a different kind of failure out of the summary. That was the wrong
+        /// trade: <c>gpo_file_error</c> is written, merged, and never read back by anything, so a
+        /// generic reason would leave an operator told his policy was incomplete with no way to find
+        /// out which file did it. Owner's call, 2026-09-13.
+        /// </para>
+        /// </remarks>
+        /// <param name="relativePath">The file inside the policy, as the parser was given it.</param>
+        /// <param name="errors">What the parser could not make sense of. Empty is the ordinary case.</param>
         public void WriteFileErrors(string relativePath, IReadOnlyList<string> errors)
         {
             foreach (var error in errors)
             {
                 writer.WriteGpoFileError(target.GpoGuid, _errorOrdinal++, relativePath, error);
+            }
+
+            if (errors.Count > 0)
+            {
+                _failures.Add(
+                    $"{relativePath} was read but could not be understood. Whatever it configures "
+                    + "is missing from the evidence, so this policy has not been read in full.");
             }
         }
 
@@ -475,7 +593,17 @@ public sealed class SysvolCapture
         /// </summary>
         public void RecordUnreadablePermissions(string relativePath, AuditError error)
         {
-            writer.WriteUnreadableSysvolDescriptor(target.GpoGuid, relativePath, error.Description);
+            // The refusal is recorded once per path, for the reason WriteDescriptor is:
+            // unreadable_sysvol_descriptor is keyed (gpo_guid, relative_path) too, and both scans
+            // reach a denied file under a scripts folder. The coverage failure is still recorded
+            // every time, because Summarize distincts them and a policy's coverage should not
+            // depend on which scan happened to reach a path first.
+            if (_descriptorsCaptured.Add(relativePath))
+            {
+                writer.WriteUnreadableSysvolDescriptor(
+                    target.GpoGuid, relativePath, error.Description);
+            }
+
             RecordFailure(error);
         }
 
@@ -489,8 +617,37 @@ public sealed class SysvolCapture
                 "This path was listed and then was gone before its permissions could be read. "
                 + "Something changed the policy's folder while the audit was reading it.";
 
-            writer.WriteUnreadableSysvolDescriptor(target.GpoGuid, relativePath, reason);
+            // Once per path, as above: this writes to the same keyed table.
+            if (_descriptorsCaptured.Add(relativePath))
+            {
+                writer.WriteUnreadableSysvolDescriptor(target.GpoGuid, relativePath, reason);
+            }
+
             _failures.Add(reason);
+        }
+
+        /// <summary>
+        /// Records a file that was listed and then would not open when its contents were read.
+        /// </summary>
+        /// <remarks>
+        /// <b>The same event as <see cref="RecordVanished"/>, happening to a file's contents rather
+        /// than to its permissions</b>, and worded almost identically on purpose: an operator who
+        /// meets both should recognise them as one kind of problem. Until 2026-09-13 this case
+        /// returned quietly and the policy went on reporting complete coverage of a file it never
+        /// captured - <c>CAP-003</c> of the capture review.
+        ///
+        /// <para>
+        /// No <c>unreadable_sysvol_descriptor</c> row is written here. That table is about
+        /// permissions, and the permissions of a file that would not open were never attempted; a
+        /// row there would claim an attempt that did not happen.
+        /// </para>
+        /// </remarks>
+        /// <param name="relativePath">The file that was listed and then would not open.</param>
+        public void RecordVanishedContents(string relativePath)
+        {
+            _failures.Add(
+                $"{relativePath} was listed and then could not be opened when its contents were "
+                + "read. Something changed the policy's folder while the audit was reading it.");
         }
 
         public void RecordFailure(AuditError error)
