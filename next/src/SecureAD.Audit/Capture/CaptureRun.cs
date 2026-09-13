@@ -208,101 +208,39 @@ public sealed class CaptureRun
 
         var recorded = new List<PartitionCoverage>();
 
-        foreach (var unit in plan.Units)
+        // THE PLAN IS READ IN TWO PASSES, and the split is 0041's. The forest-wide partitions -
+        // configuration and schema - come first and finish before any domain starts, because the
+        // schema partition says what the attributes a domain's objects carry actually mean. A
+        // domain read beside the schema rather than after it would be interpreted against whatever
+        // had arrived so far.
+        //
+        // CapturePlan already orders them first and tags each unit with its Kind, so this is a
+        // partition at the point of use rather than a change to the plan.
+        var prologue = plan.Units.Where(u => u.Kind != NamingContextKind.Domain).ToList();
+        var domains = plan.Units.Where(u => u.Kind == NamingContextKind.Domain).ToList();
+
+        foreach (var unit in prologue)
         {
-            Result<PartitionCoverage> read;
+            var outcome = await ReadOneUnitAsync(
+                capture, bundleDirectory, unit, plan, recorded.Count, cancellationToken)
+                .ConfigureAwait(false);
 
-            // Written before the read rather than after it, and that is the whole point. A capture
-            // that stops at hour two leaves a "started" line with a controller name and a clock
-            // time on it, which is the difference between diagnosing the run and repeating it.
-            var unitStartedUtc = _time.GetUtcNow();
+            if (outcome.Ended is { } ended)
+                return ended;
 
-            _log.Note(
-                PartitionCapture.PhaseName,
-                "reading a partition",
-                [
-                    new RunLogDetail("namingContext", unit.NamingContext),
-                    new RunLogDetail("kind", unit.Kind.ToString()),
-                    new RunLogDetail("controller", unit.DomainController),
-                    new RunLogDetail(
-                        "unit",
-                        $"{recorded.Count + 1} of {plan.Units.Count}"),
-                ]);
+            recorded.Add(outcome.Coverage!);
+        }
 
-            try
-            {
-                read = await capture.ReadAsync(unit, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                _log.Note(
-                    PartitionCapture.PhaseName,
-                    "partition stopped by the operator",
-                    [
-                        new RunLogDetail("namingContext", unit.NamingContext),
-                        new RunLogDetail("controller", unit.DomainController),
-                        Elapsed(unitStartedUtc),
-                    ]);
+        foreach (var unit in domains)
+        {
+            var outcome = await ReadOneUnitAsync(
+                capture, bundleDirectory, unit, plan, recorded.Count, cancellationToken)
+                .ConfigureAwait(false);
 
-                return End(
-                    bundleDirectory,
-                    RunOutcome.Cancelled,
-                    $"The run was stopped while reading {unit.NamingContext} from "
-                    + $"{unit.DomainController}.",
-                    error: null);
-            }
+            if (outcome.Ended is { } ended)
+                return ended;
 
-            if (!read.IsSuccess)
-            {
-                var error = read.Error!;
-
-                // The elapsed time goes on the failure as well as on the success. How long a
-                // partition ran before it gave up is what separates a controller that refused at
-                // once from one that answered for an hour and then stopped.
-                _log.Record(
-                    PartitionCapture.PhaseName,
-                    error,
-                    [
-                        new RunLogDetail("namingContext", unit.NamingContext),
-                        new RunLogDetail("controller", unit.DomainController),
-                        Elapsed(unitStartedUtc),
-                    ]);
-
-                return End(
-                    bundleDirectory,
-                    RunOutcome.Failed,
-                    $"{unit.NamingContext} could not be read from {unit.DomainController}: "
-                    + $"{error.Description}",
-                    error);
-            }
-
-            var coverage = read.Value!;
-
-            _log.Note(
-                PartitionCapture.PhaseName,
-                "partition read",
-                [
-                    new RunLogDetail("namingContext", coverage.NamingContextDn),
-                    new RunLogDetail("controller", coverage.Controller),
-                    new RunLogDetail("connection", coverage.ConnectionSecurity.ToString()),
-                    new RunLogDetail(
-                        "objects", coverage.ObjectsRead.ToString(CultureInfo.InvariantCulture)),
-                    new RunLogDetail(
-                        "pages", coverage.PagesRead.ToString(CultureInfo.InvariantCulture)),
-                    new RunLogDetail(
-                        "attributeBlocks",
-                        coverage.AttributeBlocksFetched.ToString(CultureInfo.InvariantCulture)),
-                    new RunLogDetail(
-                        "continuationReferences",
-                        coverage.ContinuationReferences.Count.ToString(
-                            CultureInfo.InvariantCulture)),
-                    new RunLogDetail(
-                        "referralsSuppressed",
-                        coverage.ReferralsSuppressed ? "yes" : "no"),
-                    Elapsed(unitStartedUtc),
-                ]);
-
-            recorded.Add(coverage);
+            recorded.Add(outcome.Coverage!);
         }
 
         var reconciled = ContinuationReferenceReconciliation.Reconcile(
@@ -436,6 +374,141 @@ public sealed class CaptureRun
         RunOutcomeFile.Write(bundleDirectory, outcome, detail);
 
         return new CaptureRunResult(RunCompletion.Ended, bundleDirectory, error);
+    }
+
+    /// <summary>
+    /// What became of reading one naming context: its coverage, or the run's ending.
+    /// </summary>
+    /// <remarks>
+    /// <b>Both are carried so that a caller cannot forget to check.</b> The read either produced
+    /// coverage or ended the run, never neither and never both, and a method returning only the
+    /// coverage would need the caller to remember that a failure had already written the outcome
+    /// file. Under the fan-out that follows, several of these come back at once and each has to be
+    /// examined; an ending that could be dropped would be a domain that failed and a bundle that
+    /// sealed anyway.
+    /// </remarks>
+    private sealed record UnitOutcome(PartitionCoverage? Coverage, CaptureRunResult? Ended);
+
+    /// <summary>
+    /// Reads one naming context, logging what it did.
+    /// </summary>
+    /// <remarks>
+    /// Extracted from the loop it used to be the body of so that the prologue and the domains can
+    /// be read differently without the reading itself differing. Two copies of this would be two
+    /// accounts of what a partition read means, and the first sign of them disagreeing would be a
+    /// bundle whose domains and whose configuration partition were recorded on different terms.
+    /// </remarks>
+    /// <param name="capture">The pass that does the reading, which holds the sink it writes to.</param>
+    /// <param name="bundleDirectory">The run's directory, for the outcome file if it ends.</param>
+    /// <param name="unit">Which naming context, on which controller.</param>
+    /// <param name="plan">The plan, for the count in the progress line.</param>
+    /// <param name="alreadyRead">How many units have finished, for the progress line.</param>
+    /// <param name="cancellationToken">Cancellation for a run an operator stopped.</param>
+    private async Task<UnitOutcome> ReadOneUnitAsync(
+        PartitionCapture capture,
+        string bundleDirectory,
+        CaptureUnit unit,
+        CapturePlan plan,
+        int alreadyRead,
+        CancellationToken cancellationToken)
+    {
+        Result<PartitionCoverage> read;
+
+        // Written before the read rather than after it, and that is the whole point. A capture
+        // that stops at hour two leaves a "started" line with a controller name and a clock
+        // time on it, which is the difference between diagnosing the run and repeating it.
+        var unitStartedUtc = _time.GetUtcNow();
+
+        _log.Note(
+            PartitionCapture.PhaseName,
+            "reading a partition",
+            [
+                new RunLogDetail("namingContext", unit.NamingContext),
+                new RunLogDetail("kind", unit.Kind.ToString()),
+                new RunLogDetail("controller", unit.DomainController),
+                new RunLogDetail(
+                    "unit",
+                    $"{alreadyRead + 1} of {plan.Units.Count}"),
+            ]);
+
+        try
+        {
+            read = await capture.ReadAsync(unit, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _log.Note(
+                PartitionCapture.PhaseName,
+                "partition stopped by the operator",
+                [
+                    new RunLogDetail("namingContext", unit.NamingContext),
+                    new RunLogDetail("controller", unit.DomainController),
+                    Elapsed(unitStartedUtc),
+                ]);
+
+            return new UnitOutcome(
+                null,
+                End(
+                    bundleDirectory,
+                    RunOutcome.Cancelled,
+                    $"The run was stopped while reading {unit.NamingContext} from "
+                    + $"{unit.DomainController}.",
+                    error: null));
+        }
+
+        if (!read.IsSuccess)
+        {
+            var error = read.Error!;
+
+            // The elapsed time goes on the failure as well as on the success. How long a
+            // partition ran before it gave up is what separates a controller that refused at
+            // once from one that answered for an hour and then stopped.
+            _log.Record(
+                PartitionCapture.PhaseName,
+                error,
+                [
+                    new RunLogDetail("namingContext", unit.NamingContext),
+                    new RunLogDetail("controller", unit.DomainController),
+                    Elapsed(unitStartedUtc),
+                ]);
+
+            return new UnitOutcome(
+                null,
+                End(
+                    bundleDirectory,
+                    RunOutcome.Failed,
+                    $"{unit.NamingContext} could not be read from {unit.DomainController}: "
+                    + $"{error.Description}",
+                    error));
+        }
+
+        var coverage = read.Value!;
+
+        _log.Note(
+            PartitionCapture.PhaseName,
+            "partition read",
+            [
+                new RunLogDetail("namingContext", coverage.NamingContextDn),
+                new RunLogDetail("controller", coverage.Controller),
+                new RunLogDetail("connection", coverage.ConnectionSecurity.ToString()),
+                new RunLogDetail(
+                    "objects", coverage.ObjectsRead.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail(
+                    "pages", coverage.PagesRead.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail(
+                    "attributeBlocks",
+                    coverage.AttributeBlocksFetched.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail(
+                    "continuationReferences",
+                    coverage.ContinuationReferences.Count.ToString(
+                        CultureInfo.InvariantCulture)),
+                new RunLogDetail(
+                    "referralsSuppressed",
+                    coverage.ReferralsSuppressed ? "yes" : "no"),
+                Elapsed(unitStartedUtc),
+            ]);
+
+        return new UnitOutcome(coverage, null);
     }
 
     /// <summary>

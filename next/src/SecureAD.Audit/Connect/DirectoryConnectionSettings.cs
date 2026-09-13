@@ -42,11 +42,15 @@ namespace SecureAD.Audit.Connect;
 /// How long the client waits for a controller to answer one request, once a connection is open.
 /// A different question from <paramref name="ConnectTimeout"/>, and a much longer answer.
 /// </param>
+/// <param name="DomainsAtOnce">
+/// How many domains this machine reads at the same time.
+/// </param>
 public sealed record DirectoryConnectionSettings(
     DirectoryCredential Credential,
     UnprotectedConnectionAllowance Allowance,
     TimeSpan ConnectTimeout,
-    TimeSpan ResponseTimeout)
+    TimeSpan ResponseTimeout,
+    int DomainsAtOnce)
 {
     /// <summary>
     /// The connect timeout used when a run does not state one.
@@ -103,6 +107,35 @@ public sealed record DirectoryConnectionSettings(
         ServerLimits.QueryDuration + ResponseMargin;
 
     /// <summary>
+    /// How many domains a run reads at the same time when it does not say.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Nine, decided by the owner on 2026-09-13, which is every domain of the forest this is
+    /// built for.</b> These are run from laptops on NVMe storage, where nothing is gained by making
+    /// domains queue.
+    /// </para>
+    /// <para>
+    /// <b>This is a fact about the machine running the audit, and never about the directory.</b>
+    /// The distinction is the whole reason it exists as a setting at all.
+    /// <c>docs/decisions/0041</c> refused an operator switch, and was right to: a lever labelled as
+    /// gentler on production is a number whose relationship to what a controller experiences is too
+    /// loose to choose well, and the predecessor proved it by shipping
+    /// <c>MaxInFlightRequestsPerDc</c> - declared, range-validated, copied into all three capture
+    /// profiles, and read by nothing. Reading domains at once does not make any one controller work
+    /// harder than reading them in turn; the same objects are fetched from the same machines either
+    /// way. What changes is this machine's own load, and the binding constraint is its disk: each
+    /// domain in flight writes its own database, so nine domains write nine files at once. On
+    /// spinning or network-attached storage that contention can cost more than the overlap wins.
+    /// </para>
+    /// <para>
+    /// <b>Lowering it makes a capture slower and never safer.</b> Anything reading this as a
+    /// politeness dial has misread it, and so has anything presenting it to an operator that way.
+    /// </para>
+    /// </remarks>
+    public const int DefaultDomainsAtOnce = 9;
+
+    /// <summary>
     /// Settings for a run binding as the logged-on user, refusing unprotected connections.
     /// </summary>
     /// <remarks>
@@ -113,5 +146,27 @@ public sealed record DirectoryConnectionSettings(
         DirectoryCredential.LoggedOnUser,
         UnprotectedConnectionAllowance.Refused,
         DefaultConnectTimeout,
-        DefaultResponseTimeout);
+        DefaultResponseTimeout,
+        DefaultDomainsAtOnce);
+
+    /// <summary>
+    /// Refuses a ceiling that would stop a run reading anything.
+    /// </summary>
+    /// <remarks>
+    /// Checked here rather than where the fan-out happens, because zero domains at once is a
+    /// capture that waits forever while looking exactly like a capture that is working. A run that
+    /// cannot proceed should say so before it connects to anything, not after an operator has
+    /// watched a progress screen for an hour.
+    /// </remarks>
+    public int DomainsAtOnce
+    {
+        get => field;
+        init => field = value >= 1
+            ? value
+            : throw new ArgumentOutOfRangeException(
+                nameof(value),
+                value,
+                "A run must read at least one domain at a time. Zero would wait forever while "
+                + "looking like a capture that is working.");
+    } = DomainsAtOnce;
 }
