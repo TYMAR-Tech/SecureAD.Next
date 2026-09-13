@@ -9,6 +9,14 @@ Status: Accepted
 > nine of them - and it was invisible because an accepted decision in `DECISIONS.md` reads exactly
 > like an implemented one. The gap is recorded as `P-194`. **A decision document is not evidence
 > that the code does what it says.**
+>
+> **Implemented 2026-09-13.** `CaptureRun` reads the domains through
+> `DirectoryWorkDispatch.TogetherAsync`, each into a shard of its own, merged in plan order. What
+> makes that statement worth more than the one above it is not that it is written here: it is that
+> removing the fan-out, the ceiling or the per-host turn each fails a named test, and that those
+> tests were themselves proven able to fail before they were believed. Two of them were not, at
+> first - they counted overlapping reads in a fixture too fast to ever overlap, and passed against
+> a capture with its turn-taking deleted.
 
 ## Context
 
@@ -99,6 +107,32 @@ worse off than one with no choice.
 > partition, the schema partition and the root domain may all be pinned to the same controller.
 >
 > The concurrency cap itself stays a constant rather than a setting, which is this clause unchanged.
+
+> **Amended 2026-09-13 by the owner: the concurrency ceiling is a setting, and a rate limit still is
+> not.** *There is no switch* is superseded as it applies to this ceiling, and so is the line above.
+> `DirectoryConnectionSettings.DomainsAtOnce` defaults to nine - every domain of the forest
+> this is built for - and one is reachable, which is exactly the behaviour the product had before
+> the fan-out. Zero is refused at construction, because a ceiling of zero waits forever while
+> looking precisely like a capture that is working.
+>
+> **The distinction is what the clause above missed, and it is about whose machine is being
+> governed.** *There is no switch* refused a lever over **somebody else's domain controller**, and
+> was right to: an operator cannot tell what a number like that does to a server they do not own,
+> so offering the choice leaves them worse off than having none. Reading domains at once does not
+> make any one controller work harder than reading them in turn - the same objects are fetched from
+> the same machines either way, at the same rate, by the same serial per-host conversation. What
+> changes is the load on **the machine running the audit**, because every domain in flight writes a
+> database of its own. That is a checkable fact about a laptop rather than a guess about a server,
+> and it is the kind of thing an operator can actually answer.
+>
+> **This does not reopen the rate limit.** Everything above about `PerDcQpsLimit` and
+> `MaxInFlightRequestsPerDc` stands unchanged, including the reason the predecessor's version of it
+> was inert. Per-host turn-taking is still what bounds the load on a controller, and it is still not
+> a number anybody sets.
+>
+> **Lowering this makes a capture slower and never safer**, and anything presenting it to an
+> operator as a politeness dial has misread it. That sentence is carried on the constant itself for
+> the same reason it is here.
 
 **The guard is narrowed, never exempted.** Whatever replaces the current fan-out scan must still fail
 the build on two concurrent requests to one controller. A guard that permits the new shape by
