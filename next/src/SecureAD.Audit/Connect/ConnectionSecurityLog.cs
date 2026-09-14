@@ -131,7 +131,7 @@ public sealed class ConnectionSecurityLog
     }
 
     /// <summary>
-    /// The controllers this run could not connect to at all, and why.
+    /// The controllers for which this run could not open a usable capture channel, and why.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -221,9 +221,10 @@ public sealed class ConnectionSecurityLog
     }
 
     /// <summary>
-    /// Records that a controller accepted no connection this run was permitted to offer.
+    /// Records a failed attempt to obtain a usable capture channel, including a failed RootDSE read
+    /// after authentication succeeded.
     /// </summary>
-    /// <param name="error">Why, naming the controller and the rungs that were tried.</param>
+    /// <param name="error">Why, naming the controller and the failed connection or operation.</param>
     public void RecordFailure(AuditError error)
     {
         ArgumentNullException.ThrowIfNull(error);

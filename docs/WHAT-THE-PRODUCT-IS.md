@@ -56,6 +56,18 @@ unattended path, and the GUI is the worked path.
 before capture can start.” No layout change was approved; saved preflight output must retain those
 declared domains separately from any valid exclusion attestations, without claiming they answered.
 
+## Capture connection failures after authentication
+
+**Owner-approved correction and wording for P-214.** Once authentication succeeds, a failed
+RootDSE read is an operation failure, not a refusal of connection protection; do not try weaker
+protection, and do not return a usable capture connection without the required capabilities.
+Use the existing error displays without layout changes: “Connected to {controller} using
+{protection level}, but could not read its directory capabilities (RootDSE). This connection cannot
+be used for capture. {error details}” The details retain the returned diagnostic message and,
+when available, the LDAP result name and number, such as “LDAP result: Busy (51)”.
+Classify actual response codes rather than treating every directory error as a security refusal;
+existing retry/failover policies and the explicit allowance for unprotected connections are unchanged.
+
 ## SYSVOL acquisition must not hold a run indefinitely
 
 **Owner-approved requirements, 2026-09-13.** A production capture reached “reading the policy

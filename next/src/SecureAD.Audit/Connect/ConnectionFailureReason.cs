@@ -49,6 +49,12 @@ internal static class ConnectionFailureReason
     /// <summary>It failed, and the protocol did not say anything this code understands.</summary>
     public const string Refused = "ConnectionRungRefused";
 
+    /// <summary>The controller returned an operation error, not a refusal of protection.</summary>
+    public const string OperationFailed = "DirectoryOperationFailed";
+
+    /// <summary>Authentication succeeded, but the required capability read failed.</summary>
+    public const string RootDseReadFailed = "RootDseReadFailed";
+
     /// <summary>Nothing answered at that address, so nothing about it was observed.</summary>
     private const int ServerDown = 81;
 
@@ -85,8 +91,16 @@ internal static class ConnectionFailureReason
         LdapException { ErrorCode: StrongerAuthRequired } => ProtectionWasRefused,
         LdapException { ErrorCode: ConfidentialityRequired } => ProtectionWasRefused,
 
-        // A DirectoryOperationException is a response: the controller answered and said no.
-        DirectoryOperationException => ProtectionWasRefused,
+        // The response describes the failed operation, not necessarily connection protection.
+        // Microsoft ResultCode defines Busy (51) separately from StrongAuthRequired (8).
+        DirectoryOperationException { Response.ResultCode: (ResultCode)InvalidCredentials }
+            => CredentialsWereRejected,
+        DirectoryOperationException { Response.ResultCode:
+            ResultCode.StrongAuthRequired or ResultCode.ConfidentialityRequired }
+            => ProtectionWasRefused,
+        DirectoryOperationException { Response: { } response }
+            when response.ResultCode != ResultCode.Success && Enum.IsDefined(response.ResultCode)
+            => OperationFailed,
 
         _ => Refused,
     };

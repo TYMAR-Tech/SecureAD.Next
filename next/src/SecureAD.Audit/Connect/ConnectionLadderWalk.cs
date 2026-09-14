@@ -31,7 +31,7 @@ public static class ConnectionLadderWalk
     /// <param name="log">Where the rung that answered is recorded, by controller.</param>
     /// <param name="attempt">
     /// Opens a connection at one rung, or says why it could not. Called at most once per rung, in
-    /// order, and not at all once one has succeeded.
+    /// order, and not at all once one has succeeded or authenticated but failed its RootDSE read.
     /// </param>
     public static Result<IDirectoryChannel> Descend(
         string domainController,
@@ -57,12 +57,30 @@ public static class ConnectionLadderWalk
                 return outcome;
             }
 
+            // Protection was accepted. Descending now would trade protection for an unrelated
+            // operation failure, and a later refusal must not erase that successful bind (P-214).
+            if (ConnectionFailureReason.Is(outcome.Error!.Code, ConnectionFailureReason.RootDseReadFailed))
+            {
+                log.RecordFailure(outcome.Error);
+                return outcome;
+            }
+
             refused++;
             declined.Add($"{rung.Level}: {outcome.Error!.Description}");
             failures.Add(outcome.Error!);
         }
 
         var tried = string.Join("; ", declined) + ".";
+
+        var operationFailure = failures.FirstOrDefault(failure => ConnectionFailureReason.Is(
+            failure.Code, ConnectionFailureReason.OperationFailed));
+
+        if (operationFailure is not null && !failures.Any(failure => ConnectionFailureReason.Is(
+            failure.Code, ConnectionFailureReason.CredentialsWereRejected)))
+        {
+            log.RecordFailure(operationFailure);
+            return operationFailure;
+        }
 
         // Nothing came back from this machine at any rung, so nothing about it was observed. What
         // is wrong is between here and there - a name, a route, a firewall, a switched-off server -

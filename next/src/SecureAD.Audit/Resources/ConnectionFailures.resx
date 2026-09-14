@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="RootDseReadFailed" xml:space="preserve">
+    <value>Connected to {0} using {1}, but could not read its directory capabilities (RootDSE). This connection cannot be used for capture. {2}</value>
+  </data>
+  <data name="ConnectionRejected" xml:space="preserve">
+    <value>{0} did not accept a {1} connection on port {2}: {3}</value>
+  </data>
+  <data name="LdapResult" xml:space="preserve">
+    <value>LDAP result: {0} ({1}). {2}</value>
+  </data>
+  <data name="RootDseMissing" xml:space="preserve">
+    <value>The controller did not answer a read of its own RootDSE. Without it neither the controls it advertises nor the partitions it serves are known, and a capture pass refuses to run on a connection that cannot say.</value>
+  </data>
+</root>

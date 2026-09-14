@@ -1,4 +1,6 @@
 using System.DirectoryServices.Protocols;
+using System.Globalization;
+using System.Resources;
 using SecureAD.Audit.Capture;
 using SecureAD.Kernel;
 
@@ -33,8 +35,13 @@ namespace SecureAD.Audit.Connect;
 /// </remarks>
 public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
 {
+    private static readonly ResourceManager Wording = new(
+        "SecureAD.Audit.Resources.ConnectionFailures", typeof(LdapDirectoryChannelFactory).Assembly);
+
     private readonly DirectoryConnectionSettings _settings;
     private readonly ConnectionSecurityLog _log;
+    private readonly Action<LdapConnection> _bind;
+    private readonly Func<LdapConnection, SearchRequest, SearchResponse> _sendRequest;
 
     /// <summary>
     /// Creates the factory for one run.
@@ -50,12 +57,34 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
     /// </param>
     public LdapDirectoryChannelFactory(
         DirectoryConnectionSettings settings, ConnectionSecurityLog log)
+        : this(settings, log, connection => connection.Bind(),
+            (connection, request) => (SearchResponse)connection.SendRequest(request))
+    {
+    }
+
+    /// <summary>
+    /// Creates the factory with replaceable LDAP operations for offline verification of the
+    /// bind/RootDSE boundary. Connection creation, protection, timeouts and disposal stay here.
+    /// </summary>
+    /// <param name="settings">How this run connects.</param>
+    /// <param name="log">Where connection outcomes are recorded.</param>
+    /// <param name="bind">Authenticates the configured connection, or throws a directory error.</param>
+    /// <param name="sendRequest">Sends the RootDSE request, or throws a directory error.</param>
+    public LdapDirectoryChannelFactory(
+        DirectoryConnectionSettings settings,
+        ConnectionSecurityLog log,
+        Action<LdapConnection> bind,
+        Func<LdapConnection, SearchRequest, SearchResponse> sendRequest)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(log);
+        ArgumentNullException.ThrowIfNull(bind);
+        ArgumentNullException.ThrowIfNull(sendRequest);
 
         _settings = settings;
         _log = log;
+        _bind = bind;
+        _sendRequest = sendRequest;
     }
 
     /// <inheritdoc/>
@@ -83,11 +112,9 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>This is the part no test reaches, and that is stated rather than glossed.</b> There is no
-    /// domain controller in a build agent. What is checked is everything around it: that the ladder
-    /// is descended in order and stops where it should - <see cref="ConnectionLadderWalk"/> - and
-    /// that nothing else in the tree does any of this, which is the build guard's. The rest waits
-    /// on the lab session that inventory row B20 carries.
+    /// The LDAP calls can be replaced in offline tests, so a successful bind followed by a failed
+    /// RootDSE read exercises this boundary rather than an invented ladder outcome. Real transport
+    /// negotiation still requires lab verification; synthetic success is not evidence of that.
     /// </para>
     /// <para>
     /// <b>The RootDSE read is part of opening, not a later question.</b> A connection whose
@@ -110,6 +137,7 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
     private Result<IDirectoryChannel> Open(string domainController, ConnectionSecurityRung rung)
     {
         LdapConnection? connection = null;
+        var bound = false;
 
         try
         {
@@ -129,7 +157,8 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
 
             CaptureSearchRequestFactory.ApplyReferralPolicy(connection.SessionOptions);
 
-            connection.Bind();
+            _bind(connection);
+            bound = true;
 
             // The connection is open and a controller answered it. Everything after this line is a
             // request waiting on an answer, and a page of a thousand objects with their security
@@ -150,18 +179,20 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
         }
         catch (DirectoryException failure)
         {
-            connection?.Dispose();
-
-            // Classified rather than flattened. What the directory said is the difference between
-            // "check your network" and "your password expired", and between a security finding
-            // about the forest and a claim this run has no right to make.
+            // A bind that succeeded cannot become a refusal of protection because a later read
+            // failed, even if that read itself asks for stronger authentication (P-214).
             return AuditError.Create(
                 ErrorCategory.Capture,
-                ConnectionFailureReason.Of(failure),
+                bound ? ConnectionFailureReason.RootDseReadFailed : ConnectionFailureReason.Of(failure),
                 ErrorSeverity.Failed,
-                $"{domainController} did not accept a {rung.Level} connection on port {rung.Port}: "
-                + failure.Message,
+                bound
+                    ? Format("RootDseReadFailed", domainController, rung.Level, Details(failure))
+                    : Format("ConnectionRejected", domainController, rung.Level, rung.Port, Details(failure)),
                 context: domainController);
+        }
+        finally
+        {
+            connection?.Dispose();
         }
     }
 
@@ -169,25 +200,43 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
     /// Reads the two things about a controller that the rest of a capture depends on: which controls
     /// it advertises, and which partitions it serves.
     /// </summary>
-    private static (IReadOnlyList<string> SupportedControls, IReadOnlyList<string> NamingContexts)
+    private (IReadOnlyList<string> SupportedControls, IReadOnlyList<string> NamingContexts)
         ReadRootDse(LdapConnection connection)
     {
-        var response = (SearchResponse)connection.SendRequest(
+        var response = _sendRequest(connection,
             CaptureSearchRequestFactory.ForRootDse());
 
-        if (response.ResultCode != ResultCode.Success || response.Entries.Count == 0)
-        {
-            throw new LdapException(
-                (int)response.ResultCode,
-                "The controller did not answer a read of its own RootDSE. Without it neither the "
-                + "controls it advertises nor the partitions it serves are known, and a capture "
-                + "pass refuses to run on a connection that cannot say.");
-        }
+        if (response.ResultCode != ResultCode.Success)
+            throw new DirectoryOperationException(response);
+
+        if (response.Entries.Count == 0)
+            throw new DirectoryException(Format("RootDseMissing"));
 
         var entry = response.Entries[0];
 
         return (Values(entry, "supportedControl"), Values(entry, "namingContexts"));
     }
+
+    private static string Details(DirectoryException failure)
+    {
+        var response = (failure as DirectoryOperationException)?.Response;
+        var message = failure.Message;
+        if (!string.IsNullOrWhiteSpace(response?.ErrorMessage)
+            && !message.Contains(response.ErrorMessage, StringComparison.Ordinal))
+            message += " " + response.ErrorMessage;
+
+        int? code = response is not null ? (int)response.ResultCode
+            : failure is LdapException ldap ? ldap.ErrorCode : null;
+
+        return code is { } result
+            ? Format("LdapResult", (ResultCode)result, result, message)
+            : message;
+    }
+
+    private static string Format(string key, params object[] values) =>
+        string.Format(CultureInfo.CurrentCulture,
+            Wording.GetString(key, CultureInfo.CurrentUICulture)
+                ?? throw new InvalidOperationException(key), values);
 
     private static List<string> Values(SearchResultEntry entry, string attributeName)
     {
