@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Resources;
 using SecureAD.Audit.Connect;
 using SecureAD.Audit.Sysvol;
 using SecureAD.Evidence;
@@ -69,6 +70,9 @@ public enum RunCompletion
 /// </remarks>
 public sealed class CaptureRun
 {
+    private static readonly ResourceManager Wording = new(
+        "SecureAD.Audit.Resources.CaptureFailures", typeof(CaptureRun).Assembly);
+
     private readonly IDirectoryChannelFactory _connections;
     private readonly ISysvolFileReader _sysvolFiles;
     private readonly TimeProvider _time;
@@ -238,7 +242,8 @@ public sealed class CaptureRun
 
         foreach (var unit in prologue)
         {
-            var outcome = await ReadOneUnitAsync(capture, unit, plan, cancellationToken)
+            var outcome = await ReadOneUnitAsync(
+                capture, unit, plan, cancellationToken, CancellationToken.None)
                 .ConfigureAwait(false);
 
             if (outcome.Ending is { } ended)
@@ -281,17 +286,48 @@ public sealed class CaptureRun
                 new RunLogDetail("atOnce", atOnce.ToString(CultureInfo.InvariantCulture)),
             ]);
 
-        var readDomains = await DirectoryWorkDispatch.TogetherAsync(
-            shards,
-            atOnce,
-            (shard, turns) => ReadOneDomainAsync(
-                bundleDirectory, startedUtc, shard, plan, turns, cancellationToken),
-            cancellationToken)
-            .ConfigureAwait(false);
+        using var failedDomainCancellation = new CancellationTokenSource();
+        using var domainCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, failedDomainCancellation.Token);
+        RunEnding? terminalFailure = null;
+        DomainRead[] readDomains;
 
-        // EVERY OUTCOME IS EXAMINED, IN PLAN ORDER, BEFORE ANYTHING IS MERGED. Several domains can
-        // fail at once, and the run reports the first of them in plan order rather than whichever
-        // thread finished last - so two runs against one broken forest name one cause.
+        try
+        {
+            readDomains = await DirectoryWorkDispatch.TogetherAsync(
+                shards,
+                atOnce,
+                async (shard, turns) =>
+                {
+                    var read = await ReadOneDomainAsync(
+                        bundleDirectory, startedUtc, shard, plan, turns,
+                        domainCancellation.Token, failedDomainCancellation.Token)
+                        .ConfigureAwait(false);
+
+                    // Recovery is exhausted only when the whole domain read returns. Remember
+                    // its cause before signalling siblings: their cancellation is not the reason
+                    // the run failed, even if they precede this domain in the plan (P-215).
+                    if (read.Ending is { Outcome: RunOutcome.Failed } ending
+                        && Interlocked.CompareExchange(ref terminalFailure, ending, null) is null)
+                        await failedDomainCancellation.CancelAsync().ConfigureAwait(false);
+
+                    return read;
+                },
+                domainCancellation.Token)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (terminalFailure is not null)
+        {
+            // TogetherAsync has awaited every admitted task, including its writer disposal.
+            // A cancelled queue slot supplies no DomainRead, but must not erase the real cause.
+            return End(bundleDirectory, terminalFailure);
+        }
+
+        if (terminalFailure is not null)
+            return End(bundleDirectory, terminalFailure);
+
+        // EVERY OUTCOME IS EXAMINED BEFORE ANYTHING IS MERGED. A terminal domain failure has
+        // already stopped the run; any remaining ending here is an operator cancellation.
         //
         // A FAILED DOMAIN'S SHARD IS SIMPLY NOT MERGED, which is the whole of how 0003 survives the
         // fan-out. The run ends and no bundle is sealed; the shards that did finish are left on
@@ -507,9 +543,9 @@ public sealed class CaptureRun
     /// <b>The ending is described here and written by <see cref="RunAsync"/>, which is not a
     /// tidiness.</b> It used to be written where it was discovered. Nine domains read at once
     /// means nine threads that can fail, and <c>run-outcome.json</c> is one file - so the account
-    /// a customer reads would have been whichever thread wrote last, and two runs of one broken
-    /// forest could name different causes. Writing it once, for the first failure in plan order,
-    /// makes the answer both single and deterministic.
+    /// a customer reads would have been whichever thread wrote last. The coordinator writes once,
+    /// preserving the terminal domain failure that triggered shutdown rather than a sibling's
+    /// induced cancellation or later failure.
     /// </para>
     /// </remarks>
     private sealed record UnitOutcome(PartitionCoverage? Coverage, RunEnding? Ending);
@@ -559,7 +595,8 @@ public sealed class CaptureRun
         DomainShard domain,
         CapturePlan plan,
         DirectoryWorkDispatch turns,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken failedDomainCancellationToken)
     {
         var alternatives = plan.Failover.TryGetValue(domain.Unit.NamingContext, out var ranked)
             ? ranked : [];
@@ -576,7 +613,8 @@ public sealed class CaptureRun
             var attempt = domain with { Unit = domain.Unit with { DomainController = controller } };
             var attemptStartedUtc = _time.GetUtcNow();
             var read = await ReadDomainAttemptAsync(
-                bundleDirectory, startedUtc, attempt, plan, turns, cancellationToken)
+                bundleDirectory, startedUtc, attempt, plan, turns,
+                cancellationToken, failedDomainCancellationToken)
                 .ConfigureAwait(false);
 
             if (read.Ending is null)
@@ -626,14 +664,16 @@ public sealed class CaptureRun
     /// <param name="domain">The domain and the shard it owns.</param>
     /// <param name="plan">The plan, for the progress line.</param>
     /// <param name="turns">Whose turn it is on each controller.</param>
-    /// <param name="cancellationToken">Cancellation for a run an operator stopped.</param>
+    /// <param name="cancellationToken">Cancellation for an operator stop or terminal domain failure.</param>
+    /// <param name="failedDomainCancellationToken">Distinguishes a domain failure from an operator stop.</param>
     private async Task<DomainRead> ReadDomainAttemptAsync(
         string bundleDirectory,
         DateTimeOffset startedUtc,
         DomainShard domain,
         CapturePlan plan,
         DirectoryWorkDispatch turns,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken failedDomainCancellationToken)
     {
         using var writer = BundleWriter.Create(bundleDirectory, startedUtc, domain.Shard);
 
@@ -642,7 +682,8 @@ public sealed class CaptureRun
 
         var outcome = await turns.OneAtATimeAsync(
             domain.Unit.DomainController,
-            () => ReadOneUnitAsync(capture, domain.Unit, plan, cancellationToken),
+            () => ReadOneUnitAsync(
+                capture, domain.Unit, plan, cancellationToken, failedDomainCancellationToken),
             cancellationToken)
             .ConfigureAwait(false);
 
@@ -677,12 +718,14 @@ public sealed class CaptureRun
     /// <param name="capture">The pass that does the reading, which holds the sink it writes to.</param>
     /// <param name="unit">Which naming context, on which controller.</param>
     /// <param name="plan">The plan, for the count in the progress line.</param>
-    /// <param name="cancellationToken">Cancellation for a run an operator stopped.</param>
+    /// <param name="cancellationToken">Cancellation for an operator stop or terminal domain failure.</param>
+    /// <param name="failedDomainCancellationToken">Distinguishes a domain failure from an operator stop.</param>
     private async Task<UnitOutcome> ReadOneUnitAsync(
         PartitionCapture capture,
         CaptureUnit unit,
         CapturePlan plan,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken failedDomainCancellationToken)
     {
         Result<PartitionCoverage> read;
 
@@ -718,7 +761,10 @@ public sealed class CaptureRun
         {
             _log.Note(
                 PartitionCapture.PhaseName,
-                "partition stopped by the operator",
+                failedDomainCancellationToken.IsCancellationRequested
+                    ? Wording.GetString("PartitionStoppedAfterDomainFailure", CultureInfo.CurrentUICulture)
+                        ?? throw new InvalidOperationException("PartitionStoppedAfterDomainFailure")
+                    : "partition stopped by the operator",
                 [
                     new RunLogDetail("namingContext", unit.NamingContext),
                     new RunLogDetail("controller", unit.DomainController),

@@ -104,6 +104,7 @@ internal sealed class DirectoryWorkDispatch
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 answers[at] = await ask(subject, turns).ConfigureAwait(false);
             }
             finally
@@ -142,6 +143,7 @@ internal sealed class DirectoryWorkDispatch
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return await work().ConfigureAwait(false);
         }
         finally

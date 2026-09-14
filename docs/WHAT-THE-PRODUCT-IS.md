@@ -68,6 +68,16 @@ when available, the LDAP result name and number, such as “LDAP result: Busy (5
 Classify actual response codes rather than treating every directory error as a security refusal;
 existing retry/failover policies and the explicit allowance for unprotected connections are unchanged.
 
+## Capture stops after a domain exhausts recovery
+
+**Owner-approved correction and log wording for P-215.** Existing retries and next-controller
+attempts run before a domain failure ends capture. The first terminal domain failure that triggers
+shutdown remains the recorded cause; cancel active domain reads, prevent queued reads from starting,
+and await connection and writer cleanup rather than abandoning work or sealing incomplete evidence.
+An internally stopped domain must not turn the failed run into an operator cancellation; its log
+says “partition stopped because another domain failed”. No layout change or new timeout is approved;
+cancellation remains cooperative, and the LDAP abort race and pre-seal cancellation remain separate.
+
 ## SYSVOL acquisition must not hold a run indefinitely
 
 **Owner-approved requirements, 2026-09-13.** A production capture reached “reading the policy
