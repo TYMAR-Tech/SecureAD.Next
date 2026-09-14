@@ -470,33 +470,46 @@ public sealed class CaptureRun
         // made every declared domain report as read because it had been declared, which is the
         // statement RunCoverage.Of's guard exists to refuse - and while the assertion held, that
         // guard could not fire. Deriving costs a projection and makes the check real. F-S29-3, D3.
-        var sealing = writer.Complete(
-            RunCoverage.Of(
-                declared,
-                recorded
-                    .Where(c => c.Kind == NamingContextKind.Domain)
-                    .Select(c => DomainCoverage.Read(DnHelper.DnToFqdn(c.NamingContextDn)))
-                    // Every declared domain needs an outcome, and an excluded one was never read,
-                    // so nothing above reports it. Without this the run throws at the seal - the
-                    // guard in RunCoverage.Of refusing a declared domain that no outcome accounts
-                    // for, which is exactly its job.
-                    //
-                    // The cause is carried into the outcome rather than left to the reason text,
-                    // per docs/decisions/0063-excluded-never-looks-like-unreachable.md: a reader of
-                    // coverage tells a domain the operator left out from one nothing could reach
-                    // without going back to another table.
-                    .Concat(exclusions.Values.Select(e => DomainCoverage.Excluded(
-                        e.DomainFqdn,
-                        e.Kind,
-                        $"Left out of this run under an attestation ({e.Reason}), authorised by "
-                        + $"{e.AuthorisedBy} and recorded against {e.RunBy}."))),
-                recorded
-                    .Where(c => c.Kind != NamingContextKind.Domain)
-                    .Select(c => ForestPartitionCoverage.Read(c.NamingContextDn, c.Kind)),
-                sysvol),
-            _time.GetUtcNow(),
-            reconciliation,
-            plan.ObjectScope);
+        var coverage = RunCoverage.Of(
+            declared,
+            recorded
+                .Where(c => c.Kind == NamingContextKind.Domain)
+                .Select(c => DomainCoverage.Read(DnHelper.DnToFqdn(c.NamingContextDn)))
+                // Every declared domain needs an outcome, and an excluded one was never read,
+                // so nothing above reports it. Without this the run throws at the seal - the
+                // guard in RunCoverage.Of refusing a declared domain that no outcome accounts
+                // for, which is exactly its job.
+                //
+                // The cause is carried into the outcome rather than left to the reason text,
+                // per docs/decisions/0063-excluded-never-looks-like-unreachable.md: a reader of
+                // coverage tells a domain the operator left out from one nothing could reach
+                // without going back to another table.
+                .Concat(exclusions.Values.Select(e => DomainCoverage.Excluded(
+                    e.DomainFqdn,
+                    e.Kind,
+                    $"Left out of this run under an attestation ({e.Reason}), authorised by "
+                    + $"{e.AuthorisedBy} and recorded against {e.RunBy}."))),
+            recorded
+                .Where(c => c.Kind != NamingContextKind.Domain)
+                .Select(c => ForestPartitionCoverage.Read(c.NamingContextDn, c.Kind)),
+            sysvol);
+
+        BundleSealTimings sealing;
+        try
+        {
+            sealing = writer.Complete(
+                coverage, _time.GetUtcNow(), reconciliation, plan.ObjectScope, cancellationToken);
+        }
+        catch (OperationCanceledException cancellation) when (
+            cancellationToken.IsCancellationRequested && cancellation.CancellationToken == cancellationToken)
+        {
+            return End(
+                bundleDirectory,
+                RunOutcome.Cancelled,
+                Wording.GetString("StoppedWhileSealing", CultureInfo.CurrentUICulture)
+                    ?? throw new InvalidOperationException("StoppedWhileSealing"),
+                error: null);
+        }
 
         // The five phases behind the one word "sealing". They are separated because they fail and
         // scale differently: the index build is three sorts of the entries table, the backfill is

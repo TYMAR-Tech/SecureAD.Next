@@ -42,6 +42,9 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
     private readonly ConnectionSecurityLog _log;
     private readonly Action<LdapConnection> _bind;
     private readonly Func<LdapConnection, SearchRequest, SearchResponse> _sendRequest;
+    private readonly Func<LdapConnection, SearchRequest, IAsyncResult> _beginSearch;
+    private readonly Func<LdapConnection, IAsyncResult, DirectoryResponse> _endSearch;
+    private readonly Action<LdapConnection, IAsyncResult> _abortSearch;
 
     /// <summary>
     /// Creates the factory for one run.
@@ -75,16 +78,49 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
         ConnectionSecurityLog log,
         Action<LdapConnection> bind,
         Func<LdapConnection, SearchRequest, SearchResponse> sendRequest)
+        : this(settings, log, bind, sendRequest,
+            (connection, request) => connection.BeginSendRequest(
+                request, PartialResultProcessing.NoPartialResultSupport, callback: null, state: null),
+            (connection, pending) => connection.EndSendRequest(pending),
+            (connection, pending) => connection.Abort(pending))
+    {
+    }
+
+    /// <summary>
+    /// Creates the factory with replaceable LDAP calls, including asynchronous search operations.
+    /// Connection creation, protection and disposal remain owned by the factory and channel.
+    /// </summary>
+    /// <param name="settings">How this run connects.</param>
+    /// <param name="log">Where connection outcomes are recorded.</param>
+    /// <param name="bind">Authenticates the configured connection.</param>
+    /// <param name="sendRequest">Reads RootDSE.</param>
+    /// <param name="beginSearch">Starts a non-partial search whose wait handle signals completion, even after abort.</param>
+    /// <param name="endSearch">Consumes the completed search and returns its response or throws its directory error.</param>
+    /// <param name="abortSearch">Consumes and aborts an outstanding search.</param>
+    public LdapDirectoryChannelFactory(
+        DirectoryConnectionSettings settings,
+        ConnectionSecurityLog log,
+        Action<LdapConnection> bind,
+        Func<LdapConnection, SearchRequest, SearchResponse> sendRequest,
+        Func<LdapConnection, SearchRequest, IAsyncResult> beginSearch,
+        Func<LdapConnection, IAsyncResult, DirectoryResponse> endSearch,
+        Action<LdapConnection, IAsyncResult> abortSearch)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(log);
         ArgumentNullException.ThrowIfNull(bind);
         ArgumentNullException.ThrowIfNull(sendRequest);
+        ArgumentNullException.ThrowIfNull(beginSearch);
+        ArgumentNullException.ThrowIfNull(endSearch);
+        ArgumentNullException.ThrowIfNull(abortSearch);
 
         _settings = settings;
         _log = log;
         _bind = bind;
         _sendRequest = sendRequest;
+        _beginSearch = beginSearch;
+        _endSearch = endSearch;
+        _abortSearch = abortSearch;
     }
 
     /// <inheritdoc/>
@@ -172,7 +208,10 @@ public sealed class LdapDirectoryChannelFactory : IDirectoryChannelFactory
                 domainController,
                 rung.Level,
                 rootDse.SupportedControls,
-                rootDse.NamingContexts);
+                rootDse.NamingContexts,
+                _beginSearch,
+                _endSearch,
+                _abortSearch);
 
             connection = null;
             return channel;

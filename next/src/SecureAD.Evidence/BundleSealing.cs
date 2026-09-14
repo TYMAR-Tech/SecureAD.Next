@@ -97,12 +97,37 @@ public static class BundleSealing
     /// Hashes a file, lowercase hexadecimal.
     /// </summary>
     /// <param name="filePath">The file to hash.</param>
-    public static string HashFile(string filePath)
+    public static string HashFile(string filePath) => HashFile(filePath, CancellationToken.None);
+
+    /// <summary>Hashes a file cooperatively, without leaving a reader running after cancellation.</summary>
+    /// <param name="filePath">The file to hash.</param>
+    /// <param name="cancellationToken">Cancellation checked between reads.</param>
+    public static string HashFile(string filePath, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        cancellationToken.ThrowIfCancellationRequested();
 
         using var stream = File.OpenRead(filePath);
-        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+        return HashStream(stream, cancellationToken);
+    }
+
+    /// <summary>Hashes the remaining stream contents, leaving the caller-owned stream open.</summary>
+    /// <param name="stream">The evidence bytes to hash.</param>
+    /// <param name="cancellationToken">Cancellation checked before and after each read, including EOF.</param>
+    public static string HashStream(Stream stream, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[81920];
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = stream.Read(buffer, 0, buffer.Length);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (read == 0)
+                return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+            hash.AppendData(buffer, 0, read);
+        }
     }
 
     /// <summary>
@@ -110,12 +135,20 @@ public static class BundleSealing
     /// </summary>
     /// <param name="evidenceFilePath">The evidence file being sealed.</param>
     /// <param name="sealFilePath">Where the seal is written.</param>
-    public static void Seal(string evidenceFilePath, string sealFilePath)
+    public static void Seal(string evidenceFilePath, string sealFilePath) =>
+        Seal(evidenceFilePath, sealFilePath, CancellationToken.None);
+
+    /// <summary>Prepares a seal without publishing the evidence file.</summary>
+    /// <param name="evidenceFilePath">The evidence file being sealed.</param>
+    /// <param name="sealFilePath">Where the seal is written.</param>
+    /// <param name="cancellationToken">Cancellation during hashing and before writing the seal.</param>
+    public static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(evidenceFilePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(sealFilePath);
 
-        var contents = new BundleSealContents(Algorithm, HashFile(evidenceFilePath));
+        var contents = new BundleSealContents(Algorithm, HashFile(evidenceFilePath, cancellationToken));
+        cancellationToken.ThrowIfCancellationRequested();
         File.WriteAllText(sealFilePath, JsonSerializer.Serialize(contents, ProofSerialization.Options));
     }
 

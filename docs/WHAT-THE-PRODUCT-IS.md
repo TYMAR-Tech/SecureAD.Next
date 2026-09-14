@@ -49,6 +49,23 @@ later the same day: *"i will be making it so the user can run the audit and it c
 via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
 unattended path, and the GUI is the worked path.
 
+## Fix and feature priority
+
+**Owner-approved next work:** complete a bounded correctness pass in the order **P-41, P-136,
+P-162, P-173**, reproducing P-136's risky case before choosing its correction, then move to
+**Stage 7 — paths to Tier 0**. Do not extend that pass into general capture cleanup or require the
+punch list to be empty before building the next feature; retain validated, self-contained checkpoints
+and the existing stop rules for false security claims, evidence loss and invalid verification.
+
+The remaining P-216 caller-status gap, nonblocking presentation/readback work, standalone rule and
+inventory additions, and speculative performance tuning are deferred as listed in
+[the work queue](PUNCH-LIST.md#deferred-from-the-next-pass). P-217 gates deletion of valuable evidence;
+P-157 must be addressed before relying on the affected LAPS results, without automatically blocking all
+path development. P-93 remains a Stage 10 acceptance-lifecycle question and P-96 waits for actual path
+results; Self-Membership requester discovery and P-142/P-143 asset coverage belong in Stage 7 planning.
+This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
+live access, or waive the normal approval of concrete product and UI changes.
+
 ## Enatel SSO object capture scope
 
 **Owner-approved default and presentation, tracked as P-224.** New captures exclude
@@ -98,6 +115,18 @@ and await connection and writer cleanup rather than abandoning work or sealing i
 An internally stopped domain must not turn the failed run into an operator cancellation; its log
 says “partition stopped because another domain failed”. No layout change or new timeout is approved;
 cancellation remains cooperative, and the LDAP abort race and pre-seal cancellation remain separate.
+
+## Capture cancellation at publication
+
+**Owner-approved correction and saved wording for P-216.** Honor cancellation during sealing
+preparation, including cancellation from the “sealing the bundle” log callback, before one final
+publication boundary. If cancellation wins, save: “The run was stopped while sealing the bundle;
+no bundle was published.” If publication wins, later cancellation must not relabel completed
+evidence as cancelled. No abandoned work may continue modifying or publishing evidence after a
+cancelled return, and genuine sealing failures and safe cleanup must be preserved; no layout or
+other wording change is approved.
+The evidence-publication correction is implemented; the remaining CLI/screen cancelled-versus-ended
+status correction is explicitly deferred under the priority decision above.
 
 ## SYSVOL acquisition must not hold a run indefinitely
 
@@ -312,7 +341,7 @@ changes are approved and implemented; an on-demand action and any further wordin
 retain their separate approval boundary.
 No live access, recapture, production expansion budget, commit or push is authorized.
 
-**Owner-confirmed next direction: Tier-0-driven detailed assessment, not implemented yet.**
+**Owner-confirmed direction: Tier-0-driven detailed assessment.**
 The owner clarified that captured owners and permissions already exist in Evidence; asking to
 "preserve capture" must not be presented as new work or a reason to build another complete permission
 copy. An unrelated ordinary account such as `jimmy.strand` needs those captured facts and applicable
@@ -456,9 +485,9 @@ remediation or all-path enumeration, and none of those become prerequisites here
 At the catalogue-2 checkpoint, re-judging alone obtained that correction. The current member-attribution
 product requires current Derivation inputs: re-derive and re-judge an isolated copy, without re-capture.
 The judgement-store document
-records the implementation and before/after lab checks. P-145 now has initial-slice measurements,
-not an acceptance pass: the remaining capabilities, member-attribution scale measurements, Tier 0-target review and
-claim-specific laboratory gates remain outstanding. The
+records the implementation and before/after lab checks. P-145's expectedness and visibility acceptance
+has since passed, as recorded above; separate capability-specific laboratory gates and member-attribution
+scale measurements are not discharged by that acceptance. The
 membership slice
 has automated coverage, an isolated offline comparison and an
 isolated live Self-Membership measurement.
@@ -1420,8 +1449,9 @@ checkpoint and disabled-refusal control have since been implemented with P-146, 
 
 **P-147's measured blocker is resolved.** That correction built no control edges or multi-route
 presentation; P-146 subsequently implemented 0108's route explanation. Stage 6 has since produced
-initial-slice output, and its measured P-150 correction is linked above. P-145 remains open for the
-remaining acceptance work, not for lack of any control-edge output. The ten remaining ownership
+control-edge output, and its measured P-150 correction is linked above. P-145's expectedness and
+visibility acceptance subsequently closed on 2026-09-12, without closing separate capability-specific
+laboratory or customer-scale gates. The ten remaining ownership
 findings and four undecided objects are not a claim of a clean forest.
 
 ### Measured ownership volume on ad.lab, 2026-09-05

@@ -1458,17 +1458,55 @@ public sealed class BundleWriter : IDisposable
         RunCoverage coverage,
         DateTimeOffset completedUtc,
         ContinuationReconciliation reconciliation,
-        CaptureObjectScope objectScope)
+        CaptureObjectScope objectScope) =>
+        Complete(coverage, completedUtc, reconciliation, objectScope, CancellationToken.None);
+
+    /// <summary>Prepares a bundle cooperatively, then publishes it only if cancellation has not won.</summary>
+    /// <param name="coverage">The declared domain coverage and its outcomes.</param>
+    /// <param name="completedUtc">When capture finished.</param>
+    /// <param name="reconciliation">The comparison of received referrals with authorized scope.</param>
+    /// <param name="objectScope">The class exclusions actually applied by capture.</param>
+    /// <param name="cancellationToken">Cancellation until the final publication claim.</param>
+    public BundleSealTimings Complete(
+        RunCoverage coverage,
+        DateTimeOffset completedUtc,
+        ContinuationReconciliation reconciliation,
+        CaptureObjectScope objectScope,
+        CancellationToken cancellationToken) =>
+        Complete(coverage, completedUtc, reconciliation, objectScope, cancellationToken, BundleSealing.Seal);
+
+    /// <summary>Completes a bundle with a replaceable synchronous file-sealing operation.</summary>
+    /// <param name="coverage">The declared domain coverage and its outcomes.</param>
+    /// <param name="completedUtc">When capture finished.</param>
+    /// <param name="reconciliation">The comparison of received referrals with authorized scope.</param>
+    /// <param name="objectScope">The class exclusions actually applied by capture.</param>
+    /// <param name="cancellationToken">Cancellation until the final publication claim.</param>
+    /// <param name="seal">Prepares the seal and closes its files before returning; must not publish or leave background work.</param>
+    public BundleSealTimings Complete(
+        RunCoverage coverage,
+        DateTimeOffset completedUtc,
+        ContinuationReconciliation reconciliation,
+        CaptureObjectScope objectScope,
+        CancellationToken cancellationToken,
+        Action<string, string, CancellationToken> seal)
     {
         ArgumentNullException.ThrowIfNull(coverage);
         ArgumentNullException.ThrowIfNull(reconciliation);
         ArgumentNullException.ThrowIfNull(objectScope);
+        ArgumentNullException.ThrowIfNull(seal);
         ThrowIfFinished();
+
+        // 0 = preparation, 1 = cancellation owns the ending, 2 = publication owns it.
+        // This callback owns no file or connection, and cannot interrupt cleanup or rename.
+        var publication = 0;
+        using var stopping = cancellationToken.Register(() => Interlocked.CompareExchange(ref publication, 1, 0));
+        cancellationToken.ThrowIfCancellationRequested();
 
         WriteUnreadableDescriptorCounts();
 
         foreach (var objectClass in objectScope.ExcludedClasses)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Execute("INSERT INTO capture_object_class_exclusion (class_name) VALUES ($class)",
                 command => command.Parameters.AddWithValue("$class", objectClass));
         }
@@ -1500,12 +1538,13 @@ public sealed class BundleWriter : IDisposable
             });
 
         WriteReconciliationItems(
-            "UnplannedNamingContext", reconciliation.UnplannedNamingContexts);
-        WriteReconciliationItems("UnreadableReference", reconciliation.UnreadableReferences);
-        WriteReconciliationItems("SuppressedUnit", reconciliation.UnitsWithSuppressedReferrals);
+            "UnplannedNamingContext", reconciliation.UnplannedNamingContexts, cancellationToken);
+        WriteReconciliationItems("UnreadableReference", reconciliation.UnreadableReferences, cancellationToken);
+        WriteReconciliationItems("SuppressedUnit", reconciliation.UnitsWithSuppressedReferrals, cancellationToken);
 
         foreach (var domain in coverage.Domains)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Execute(
                 "INSERT INTO domain_coverage (domain_fqdn, outcome, reason) "
                 + "VALUES ($domain, $outcome, $reason)",
@@ -1520,6 +1559,7 @@ public sealed class BundleWriter : IDisposable
 
         foreach (var partition in coverage.ForestPartitions)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Execute(
                 "INSERT INTO forest_partition_coverage (naming_context_dn, kind, outcome, reason) "
                 + "VALUES ($dn, $kind, $outcome, $reason)",
@@ -1540,6 +1580,7 @@ public sealed class BundleWriter : IDisposable
         // were not examined.
         foreach (var policy in coverage.Sysvol.Policies)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Execute(
                 """
                 INSERT INTO sysvol_gpo_coverage (
@@ -1564,6 +1605,7 @@ public sealed class BundleWriter : IDisposable
         // judging phases already use.
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
+        cancellationToken.ThrowIfCancellationRequested();
         DisposeInsertCommands();
         _transaction!.Commit();
         _transaction.Dispose();
@@ -1572,7 +1614,7 @@ public sealed class BundleWriter : IDisposable
         var commit = clock.Elapsed;
         clock.Restart();
 
-        BundleSchema.CreateDeferredIndexes(_connection);
+        BundleSchema.CreateDeferredIndexes(_connection, cancellationToken);
 
         var indexes = clock.Elapsed;
         clock.Restart();
@@ -1580,12 +1622,15 @@ public sealed class BundleWriter : IDisposable
         // After the indexes, and deliberately. Both of these are set-based passes over every object
         // and both join on a column the deferred indexes have just created; run before, each would
         // be a scan per row.
+        cancellationToken.ThrowIfCancellationRequested();
         ResolveParentGuids();
+        cancellationToken.ThrowIfCancellationRequested();
         CountEntriesPerObject();
 
         var backfill = clock.Elapsed;
         clock.Restart();
 
+        cancellationToken.ThrowIfCancellationRequested();
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
@@ -1593,19 +1638,28 @@ public sealed class BundleWriter : IDisposable
         var checkpoint = clock.Elapsed;
         clock.Restart();
 
-        BundleSealing.Seal(_partialPath, BundleLayout.SealPath(_bundleDirectory));
+        cancellationToken.ThrowIfCancellationRequested();
+        seal(_partialPath, BundleLayout.SealPath(_bundleDirectory), cancellationToken);
         CreateAnnotationsSidecar();
 
+        // Preparation has fully returned; nothing is left running that can publish later.
+        // The claim is the cancellation boundary. Once claimed, rename errors remain errors,
+        // and cancellation cannot relabel a successful rename as a cancelled capture.
+        // The token is set before callbacks run; a different callback may still be blocking ours.
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Interlocked.CompareExchange(ref publication, 2, 0) != 0)
+            throw new OperationCanceledException(cancellationToken);
         File.Move(_partialPath, BundleLayout.EvidencePath(_bundleDirectory));
         _completed = true;
 
         return new BundleSealTimings(commit, indexes, backfill, checkpoint, clock.Elapsed);
     }
 
-    private void WriteReconciliationItems(string kind, IReadOnlyList<string> values)
+    private void WriteReconciliationItems(string kind, IReadOnlyList<string> values, CancellationToken cancellationToken)
     {
         for (var ordinal = 0; ordinal < values.Count; ordinal++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Execute(
                 "INSERT INTO continuation_reconciliation_item (kind, ordinal, value) "
                 + "VALUES ($kind, $ordinal, $value)",

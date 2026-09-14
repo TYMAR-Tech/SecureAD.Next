@@ -36,6 +36,9 @@ namespace SecureAD.Audit.Connect;
 public sealed class LdapDirectoryChannel : IDirectoryChannel
 {
     private readonly LdapConnection _connection;
+    private readonly Func<LdapConnection, SearchRequest, IAsyncResult> _beginSearch;
+    private readonly Func<LdapConnection, IAsyncResult, DirectoryResponse> _endSearch;
+    private readonly Action<LdapConnection, IAsyncResult> _abortSearch;
     private bool _disposed;
 
     internal LdapDirectoryChannel(
@@ -43,9 +46,15 @@ public sealed class LdapDirectoryChannel : IDirectoryChannel
         string domainController,
         ConnectionSecurityLevel securityLevel,
         IReadOnlyList<string> supportedControls,
-        IReadOnlyList<string> namingContextsServed)
+        IReadOnlyList<string> namingContextsServed,
+        Func<LdapConnection, SearchRequest, IAsyncResult> beginSearch,
+        Func<LdapConnection, IAsyncResult, DirectoryResponse> endSearch,
+        Action<LdapConnection, IAsyncResult> abortSearch)
     {
         _connection = connection;
+        _beginSearch = beginSearch;
+        _endSearch = endSearch;
+        _abortSearch = abortSearch;
         DomainController = domainController;
         SecurityLevel = securityLevel;
         SupportedControls = supportedControls;
@@ -116,14 +125,32 @@ public sealed class LdapDirectoryChannel : IDirectoryChannel
     private async Task<SearchResponse> SendOneAsync(
         SearchRequest request, CancellationToken cancellationToken)
     {
-        var pending = _connection.BeginSendRequest(
-            request, PartialResultProcessing.NoPartialResultSupport, callback: null, state: null);
+        var pending = _beginSearch(_connection, request);
 
-        using var abort = cancellationToken.Register(() => _connection.Abort(pending));
+        // Protocols 9.0.0 Abort and EndSendRequest both remove the async result from the
+        // library's table. FromAsync must observe only the signal, not consume that result.
+        // WaitAsync selects one winner; only this flow then calls either Abort or End.
+        var completed = Task.Factory.FromAsync(pending, static _ => { });
+        try
+        {
+            await completed.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                _abortSearch(_connection, pending);
+            }
+            finally
+            {
+                // The library signals even after Abort (but suppresses its callback).
+                // Drain its response processing before the caller can dispose the connection.
+                await completed.ConfigureAwait(false);
+            }
+            throw;
+        }
 
-        var response = await Task<DirectoryResponse>.Factory
-            .FromAsync(pending, _connection.EndSendRequest)
-            .ConfigureAwait(false);
+        var response = _endSearch(_connection, pending);
 
         if (response is not SearchResponse search)
         {

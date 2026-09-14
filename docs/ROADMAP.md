@@ -96,8 +96,8 @@ that explanation is now implemented in derivation schema 10, SEC-021 version 2, 
 and both existing finding views. P-149's independent schema-layout checkpoint and disabled-refusal
 control are also implemented; semantic-only version changes still need behavioral tests. Re-running
 the same ad.lab evidence on a new copy retained the ownership counts, ten finding details and four
-undecided objects. Stage 6 has since started with the initial slice described below. `P-145` requires stage 6 output and gates its
-acceptance, not its start.
+undecided objects. Stage 6 has since started with the slices described below. P-145's expectedness and
+visibility acceptance passed on 2026-09-12; separate capability-specific and customer-scale gates remain.
 
 **A useful product exists at stage 4.** Stages 5 to 8 are the hard half, and stage 8 is where the
 predecessor went wrong.
@@ -825,18 +825,19 @@ unchanged; old judgements require re-judging to obtain the wider slice.
 
 **Concrete requester analysis is implemented.** [Decision 0111](decisions/0111-bounded-self-membership-requesters.md)
 introduced the bounded requester assessment in schema 17; schema 18 added automatic
-discovery coverage. Shared discovery is implemented in judging, but Shell supplies no discovery budget
-and the current CLI capture workflow does not invoke judging. Neither production host activates it.
-Explicit request batches are a library input, not an
-administrator-maintained selection list. No numerical production budget has been approved.
+requester-discovery coverage. That Self-Membership requester scan remains inactive in both hosts and
+its scope/enablement is deferred to Stage 7 by the 2026-09-12 decision. It is separate from the active,
+unbounded Tier-0 discovery used for assessment admission; CLI capture now invokes deriving and judging
+unless capture-only was requested. Explicit request batches are a library input, not an
+administrator-maintained selection list, and no requester-discovery budget is approved here.
 
 The approved R7 table wording and expandable selected-answer evidence are implemented with R6 sizing
 and R4 generation/failure safeguards preserved. R8 reconciles the current delivered scope and verifies
 the real stored-result-to-object-screen workflow using synthetic evidence. These are implementation
 and offline-verification results, not real-product acceptance. See the
 R8 current-state record.
-R2 enablement and real-product/laptop/monitor verification remain open; further discovery tuning is
-paused rather than replaced by an assumed budget.
+Requester-discovery enablement belongs to Stage 7; unperformed real-product/laptop/monitor verification
+remains outstanding, without becoming a separate prerequisite session or an assumed numerical budget.
 
 **Password-reset permission is implemented in schema 19, control engine 3**, following explicit
 approval of the bounded capability-first slice and its wording. Normal judging stores
@@ -897,11 +898,10 @@ excluded, 799/799 targeted coverage tests and a successful solution build. The
 member-attribution record
 owns the final artifacts, approved timing clarification and publication authorization.
 
-**Current versions, 2026-09-11: judgement schema 30, control engine 9, derivation schema 13,
-principal catalogue 3, protected-group catalogue 3.** The paragraphs above record the version each
-slice was completed at and are left as written; this line records where the product actually is, so
-a reader working from the last slice described does not take *judgement schema 24 / control engine
-8* for the present state. What moved since: judgement 25-27 completing the control slices, 28 and 29
+**Historical version checkpoint, 2026-09-11: judgement schema 30, control engine 9, derivation schema 13,
+principal catalogue 3, protected-group catalogue 3.** These are the versions at that checkpoint, not
+the current format declarations, which live in code. The changes leading to that checkpoint were
+judgement 25-27 completing the control slices, 28 and 29
 for discovery-first scoping under [`0116`](decisions/0116-discovery-first-assessment-admission.md),
 30 for name-pinned stored proofs under
 [`0119`](decisions/0119-a-stored-proof-records-enum-names.md); derivation 12 retaining partition
@@ -911,31 +911,38 @@ primary-group protection under
 
 ### Remaining Stage 6 work
 
+**These are claim-specific support and acceptance limits, not a blanket prerequisite list for Stage 7.**
+The owner-approved next-work order is in [the punch list](PUNCH-LIST.md#agreed-next-work).
+
 1. Measure customer-shaped synthetic expansion, storage and forward/reverse readback, including
    full-control proof validation, against approximately 347,000 objects, 5.9 million ACEs and nine
-   domains. No production budget or customer-scale performance acceptance follows from small fixtures.
-2. Resolve supported authorization-context gaps on evidence: non-domain/serving-DC scope (P-90),
+   domains before claiming customer-scale acceptance. Small fixtures do not establish production suitability.
+2. Retain explicit Unknown results for unsupported authorization-context cases: non-domain scope (P-90),
    constrained ownership changes, validated-write-only key-credential access, constrained secret reveal
-   and unresolved full-control cases. Unsupported cases remain Unknown; do not infer a complete token
-   or widen the accepted bounded requester semantics.
+   and unresolved full-control cases. P-90's forest-wide BUILTIN case is a documented limit under 0120,
+   not an unanswered request for a resource domain; its application-partition case remains open.
+   Supporting a new case requires evidence, not an inferred complete token or widened requester semantics.
 3. Complete the claim-specific controlled evidence gates: serving-DC behavior, WRITE_OWNER-only and
    resulting-owner cases, AdminSDHolder owner-only restoration, and the remaining requester acceptance
    cases. Existing direct/single-group Self-Membership observations are historical evidence, not
    acceptance of every later implementation. New live work requires separate authorization.
-4. Obtain separately approved production discovery/member-expansion budgets and host activation only
-   after the measurements and behavior gates justify them. Both products remain inactive in normal
-   host flows without approval; CLI end-to-end orchestration is separately tracked in the workflow.
-5. Complete normal laptop/external-monitor verification and P-145's Tier 0-target, planted-positive,
-   expectedness and visible-volume review before final Stage 6 acceptance. The cancelled stage-status
-   script/self-test remains unverified and must not be retried without authorization.
+4. Handle Self-Membership requester discovery's scope, limitations and enablement with Stage 7 rather
+   than requiring it before paths exist. Any requester/member-expansion activation needs its own
+   justified scope and approval; this does not reintroduce a work ceiling on active Tier-0 discovery.
+5. Keep normal laptop/external-monitor checks outstanding where unperformed. P-145's planted-positive,
+   Tier-0-target expectedness and visibility acceptance already passed and is not reopened by those
+   checks. The cancelled stage-status script/self-test must not be retried without authorization.
 
 These are implementation, measurement and acceptance boundaries, not a reopening of accepted catalogue
-policy. P-142/P-143 asset-classification/declaration mechanisms are explicitly scheduled after Stage 6;
-P-144 is an unscheduled rule candidate. Chained paths, proven remediation and reports remain later stages.
+policy. P-142/P-143 asset-classification/declaration mechanisms belong in Stage 7 planning;
+P-144 remains an unscheduled rule candidate. Proven remediation and reports remain later stages.
 
 *Criteria:* `AC-24`, `AC-27`, `AC-37`, `AC-55`, `AC-56`, `AC-76`.
 
 ## Stage 7 — paths to Tier 0
+
+**The next major feature milestone after the agreed bounded correctness pass**, not after clearing the
+general capture, presentation, performance or documentation backlog.
 
 Chain the edges: who can reach the control plane, and how far away. Restores escalation paths and the
 tier counts.

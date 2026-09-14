@@ -7,4 +7,7 @@
   <data name="PartitionStoppedAfterDomainFailure" xml:space="preserve">
     <value>partition stopped because another domain failed</value>
   </data>
+  <data name="StoppedWhileSealing" xml:space="preserve">
+    <value>The run was stopped while sealing the bundle; no bundle was published.</value>
+  </data>
 </root>

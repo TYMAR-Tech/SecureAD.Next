@@ -986,23 +986,30 @@ public static class BundleSchema
     public static void CreateTables(SqliteConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
-        Execute(connection, TableDdl);
+        Execute(connection, TableDdl, CancellationToken.None);
     }
 
     /// <summary>
     /// Creates the indexes, once the writing is finished.
     /// </summary>
     /// <param name="connection">An open read-write connection to the evidence database.</param>
-    public static void CreateDeferredIndexes(SqliteConnection connection)
+    public static void CreateDeferredIndexes(SqliteConnection connection) =>
+        CreateDeferredIndexes(connection, CancellationToken.None);
+
+    /// <summary>Builds indexes with cooperative cancellation between synchronous SQLite statements.</summary>
+    /// <param name="connection">The open evidence connection.</param>
+    /// <param name="cancellationToken">Cancellation that prevents the next statement from starting.</param>
+    public static void CreateDeferredIndexes(SqliteConnection connection, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(connection);
-        Execute(connection, DeferredIndexDdl);
+        Execute(connection, DeferredIndexDdl, cancellationToken);
     }
 
-    private static void Execute(SqliteConnection connection, IEnumerable<string> statements)
+    private static void Execute(SqliteConnection connection, IEnumerable<string> statements, CancellationToken cancellationToken)
     {
         foreach (var statement in statements)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using var command = connection.CreateCommand();
             command.CommandText = statement;
             command.ExecuteNonQuery();
