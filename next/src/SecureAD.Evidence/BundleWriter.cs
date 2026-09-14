@@ -49,9 +49,27 @@ public sealed class BundleWriter : IDisposable
     /// <remarks>
     /// Keyed without regard to case, because an LDAP display name is.
     /// </remarks>
-    private static readonly Dictionary<string, CapturedAttribute> SingleValuedColumns =
-        BundleSchema.SingleValuedColumns.ToDictionary(
-            a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase);
+    private const int ObjectAttributeParameterOffset = 8;
+    private static readonly Dictionary<string, (CapturedAttribute Attribute, int ParameterIndex)> SingleValuedColumns =
+        BundleSchema.SingleValuedColumns
+            .Select((attribute, index) => (Attribute: attribute, ParameterIndex: index + ObjectAttributeParameterOffset))
+            .ToDictionary(a => a.Attribute.LdapDisplayName, StringComparer.OrdinalIgnoreCase);
+
+    // One shape for every object, including omitted attributes. Rebuilding sparse INSERTs per
+    // object would retain an unbounded set of statements as attribute combinations change.
+    private static readonly string ObjectInsertSql =
+        "INSERT INTO captured_object "
+        + "(object_id, coverage_id, object_guid, distinguished_name, dn_reversed, "
+        + "parent_dn, parent_guid, domain_fqdn, captured_utc, ace_count"
+        + string.Concat(BundleSchema.SingleValuedColumns.Select(a => ", " + BundleSchema.ColumnNameFor(a.LdapDisplayName)))
+        + ") VALUES ($id, $coverage, $guid, $dn, $dnReversed, $parentDn, NULL, $domain, $captured, NULL"
+        + string.Concat(SingleValuedColumns.Values.Select(a => $", $a{a.ParameterIndex}")) + ")";
+
+    private static readonly string[] ObjectInsertParameters =
+    [
+        "$id", "$coverage", "$guid", "$dn", "$dnReversed", "$parentDn", "$domain", "$captured",
+        .. SingleValuedColumns.Values.Select(a => $"$a{a.ParameterIndex}"),
+    ];
 
     private static readonly Dictionary<string, CapturedAttribute> MultiValuedTables =
         BundleSchema.MultiValuedTables.ToDictionary(
@@ -69,6 +87,14 @@ public sealed class BundleWriter : IDisposable
     private readonly SqliteConnection _connection;
     private readonly Dictionary<string, long> _trustees = new(StringComparer.Ordinal);
     private readonly Dictionary<(string NamingContextDn, string Controller), long> _coverageIds = [];
+
+    private readonly List<SqliteCommand> _insertCommands = [];
+    private readonly Dictionary<string, SqliteCommand> _attributeInserts = new(StringComparer.OrdinalIgnoreCase);
+    private SqliteCommand? _objectInsert;
+    private SqliteCommand? _descriptorInsert;
+    private SqliteCommand? _descriptorLinkInsert;
+    private SqliteCommand? _aceInsert;
+    private SqliteCommand? _trusteeInsert;
 
     /// <summary>
     /// Distinct descriptors already stored, by the hexadecimal SHA-256 of their bytes. This is what
@@ -588,8 +614,10 @@ public sealed class BundleWriter : IDisposable
         var objectId = _nextObjectId++;
         var dn = evidenceObject.DistinguishedName;
 
-        var columns = new List<string>();
-        var columnValues = new List<object>();
+        var command = RetainInsert(ref _objectInsert, ObjectInsertSql, ObjectInsertParameters);
+        // Also clears bindings left by a row that failed validation before it was executed.
+        for (var i = ObjectAttributeParameterOffset; i < command.Parameters.Count; i++)
+            command.Parameters[i].Value = DBNull.Value;
         var valueTableWrites = new List<EvidenceAttribute>();
 
         foreach (var attribute in evidenceObject.Attributes)
@@ -613,8 +641,11 @@ public sealed class BundleWriter : IDisposable
                         + "One column cannot hold them and choosing one would discard evidence.");
                 }
 
-                columns.Add(BundleSchema.ColumnNameFor(attribute.LdapDisplayName));
-                columnValues.Add(StorageMatched(dn, single, attribute.Values[0]));
+                var value = StorageMatched(dn, single.Attribute, attribute.Values[0]);
+                var parameter = command.Parameters[single.ParameterIndex];
+                // SQLite used the first value when a sparse INSERT named a column twice.
+                if (parameter.Value is DBNull)
+                    parameter.Value = value;
                 continue;
             }
 
@@ -640,31 +671,15 @@ public sealed class BundleWriter : IDisposable
                 + "lose evidence that was read.");
         }
 
-        var columnList = string.Concat(columns.Select(c => ", " + c));
-        var parameterList = string.Concat(columns.Select((_, i) => $", $a{i}"));
-
-        Execute(
-            "INSERT INTO captured_object "
-            + "(object_id, coverage_id, object_guid, distinguished_name, dn_reversed, "
-            + $"parent_dn, parent_guid, domain_fqdn, captured_utc, ace_count{columnList}) "
-            + "VALUES ($id, $coverage, $guid, $dn, $dnReversed, "
-            + $"$parentDn, NULL, $domain, $captured, NULL{parameterList})",
-            command =>
-            {
-                command.Parameters.AddWithValue("$id", objectId);
-                command.Parameters.AddWithValue("$coverage", coverageId);
-                command.Parameters.AddWithValue(
-                    "$guid", (object?)evidenceObject.ObjectGuid?.ToString("D") ?? DBNull.Value);
-                command.Parameters.AddWithValue("$dn", dn);
-                command.Parameters.AddWithValue("$dnReversed", DnHelper.ReverseDn(dn));
-                command.Parameters.AddWithValue(
-                    "$parentDn", (object?)DnHelper.GetParentDn(dn) ?? DBNull.Value);
-                command.Parameters.AddWithValue("$domain", DnHelper.DnToFqdn(dn));
-                command.Parameters.AddWithValue(
-                    "$captured", evidenceObject.CapturedUtc.UtcDateTime.ToString("O"));
-                for (var i = 0; i < columnValues.Count; i++)
-                    command.Parameters.AddWithValue($"$a{i}", columnValues[i]);
-            });
+        command.Parameters[0].Value = objectId;
+        command.Parameters[1].Value = coverageId;
+        command.Parameters[2].Value = (object?)evidenceObject.ObjectGuid?.ToString("D") ?? DBNull.Value;
+        command.Parameters[3].Value = dn;
+        command.Parameters[4].Value = DnHelper.ReverseDn(dn);
+        command.Parameters[5].Value = (object?)DnHelper.GetParentDn(dn) ?? DBNull.Value;
+        command.Parameters[6].Value = DnHelper.DnToFqdn(dn);
+        command.Parameters[7].Value = evidenceObject.CapturedUtc.UtcDateTime.ToString("O");
+        command.ExecuteNonQuery();
 
         _objectCoverage[objectId] = coverageId;
 
@@ -738,14 +753,13 @@ public sealed class BundleWriter : IDisposable
 
         var descriptorId = EnsureDescriptor(sha256, descriptorBytes, normalization);
 
-        Execute(
+        var command = RetainInsert(ref _descriptorLinkInsert,
             "INSERT INTO object_security_descriptor (object_id, descriptor_id) "
             + "VALUES ($object, $descriptor)",
-            command =>
-            {
-                command.Parameters.AddWithValue("$object", objectId);
-                command.Parameters.AddWithValue("$descriptor", descriptorId);
-            });
+            ["$object", "$descriptor"]);
+        command.Parameters[0].Value = objectId;
+        command.Parameters[1].Value = descriptorId;
+        command.ExecuteNonQuery();
     }
 
     /// <summary>
@@ -777,7 +791,7 @@ public sealed class BundleWriter : IDisposable
     private void WriteDistinctDescriptor(
         long descriptorId, string sha256, byte[] descriptorBytes, AceNormalizationResult normalization)
     {
-        Execute(
+        var command = RetainInsert(ref _descriptorInsert,
             """
             INSERT INTO security_descriptor (
                 descriptor_id, sha256, byte_length, raw_bytes, owner_sid, group_sid,
@@ -787,21 +801,21 @@ public sealed class BundleWriter : IDisposable
                     $dacl, $completeness, $canonical,
                     $protected, $setHash, $version)
             """,
-            command =>
-            {
-                command.Parameters.AddWithValue("$id", descriptorId);
-                command.Parameters.AddWithValue("$sha", sha256);
-                command.Parameters.AddWithValue("$length", descriptorBytes.Length);
-                command.Parameters.AddWithValue("$raw", descriptorBytes);
-                command.Parameters.AddWithValue("$owner", (object?)normalization.OwnerSid ?? DBNull.Value);
-                command.Parameters.AddWithValue("$group", (object?)normalization.GroupSid ?? DBNull.Value);
-                command.Parameters.AddWithValue("$dacl", normalization.DaclState.ToString());
-                command.Parameters.AddWithValue("$completeness", normalization.DaclCompleteness.ToString());
-                command.Parameters.AddWithValue("$canonical", normalization.DaclWasCanonical ? 1 : 0);
-                command.Parameters.AddWithValue("$protected", normalization.IsDaclProtected ? 1 : 0);
-                command.Parameters.AddWithValue("$setHash", AceSetHash.Compute(normalization.Aces));
-                command.Parameters.AddWithValue("$version", CanonicalizationVersionOf(normalization));
-            });
+            ["$id", "$sha", "$length", "$raw", "$owner", "$group", "$dacl", "$completeness",
+                "$canonical", "$protected", "$setHash", "$version"]);
+        command.Parameters[0].Value = descriptorId;
+        command.Parameters[1].Value = sha256;
+        command.Parameters[2].Value = descriptorBytes.Length;
+        command.Parameters[3].Value = descriptorBytes;
+        command.Parameters[4].Value = (object?)normalization.OwnerSid ?? DBNull.Value;
+        command.Parameters[5].Value = (object?)normalization.GroupSid ?? DBNull.Value;
+        command.Parameters[6].Value = normalization.DaclState.ToString();
+        command.Parameters[7].Value = normalization.DaclCompleteness.ToString();
+        command.Parameters[8].Value = normalization.DaclWasCanonical ? 1 : 0;
+        command.Parameters[9].Value = normalization.IsDaclProtected ? 1 : 0;
+        command.Parameters[10].Value = AceSetHash.Compute(normalization.Aces);
+        command.Parameters[11].Value = CanonicalizationVersionOf(normalization);
+        command.ExecuteNonQuery();
 
         for (var ordinal = 0; ordinal < normalization.Errors.Count; ordinal++)
         {
@@ -1386,6 +1400,7 @@ public sealed class BundleWriter : IDisposable
 
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
+        DisposeInsertCommands();
         _transaction!.Commit();
         _transaction.Dispose();
         _transaction = null;
@@ -1530,6 +1545,7 @@ public sealed class BundleWriter : IDisposable
         // judging phases already use.
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
+        DisposeInsertCommands();
         _transaction!.Commit();
         _transaction.Dispose();
         _transaction = null;
@@ -1727,6 +1743,7 @@ public sealed class BundleWriter : IDisposable
             return;
 
         _disposed = true;
+        DisposeInsertCommands();
         _transaction?.Dispose();
         _connection.Dispose();
     }
@@ -1783,27 +1800,32 @@ public sealed class BundleWriter : IDisposable
     private void WriteAttributeValues(long objectId, string distinguishedName, EvidenceAttribute attribute)
     {
         var attributeDefinition = MultiValuedTables[attribute.LdapDisplayName];
-        var table = BundleSchema.ValueTableNameFor(attribute.LdapDisplayName);
+        if (attribute.Values.Count == 0)
+            return;
+
+        if (!_attributeInserts.TryGetValue(attribute.LdapDisplayName, out var command))
+        {
+            var table = BundleSchema.ValueTableNameFor(attribute.LdapDisplayName);
+            command = RetainInsert(ref command,
+                $"INSERT INTO {table} (object_id, ordinal, value) VALUES ($object, $ordinal, $value)",
+                ["$object", "$ordinal", "$value"]);
+            _attributeInserts.Add(attribute.LdapDisplayName, command);
+        }
+        command.Transaction = _transaction;
 
         for (var ordinal = 0; ordinal < attribute.Values.Count; ordinal++)
         {
             var value = StorageMatched(distinguishedName, attributeDefinition, attribute.Values[ordinal]);
-            var position = ordinal;
-
-            Execute(
-                $"INSERT INTO {table} (object_id, ordinal, value) VALUES ($object, $ordinal, $value)",
-                command =>
-                {
-                    command.Parameters.AddWithValue("$object", objectId);
-                    command.Parameters.AddWithValue("$ordinal", position);
-                    command.Parameters.AddWithValue("$value", value);
-                });
+            command.Parameters[0].Value = objectId;
+            command.Parameters[1].Value = ordinal;
+            command.Parameters[2].Value = value;
+            command.ExecuteNonQuery();
         }
     }
 
     private void WriteAce(long descriptorId, int ordinal, CanonicalAce ace)
     {
-        Execute(
+        var command = RetainInsert(ref _aceInsert,
             """
             INSERT INTO ace (
                 ace_id, descriptor_id, ordinal, ace_type, trustee_id, access_mask, object_type_guid,
@@ -1811,22 +1833,21 @@ public sealed class BundleWriter : IDisposable
             VALUES ($ace, $descriptor, $ordinal, $type, $trustee, $mask, $objectType,
                     $inheritedType, $inherited, $inheritance, $propagation, $hash)
             """,
-            command =>
-            {
-                command.Parameters.AddWithValue("$ace", _nextAceId++);
-                command.Parameters.AddWithValue("$descriptor", descriptorId);
-                command.Parameters.AddWithValue("$ordinal", ordinal);
-                command.Parameters.AddWithValue("$type", ace.AceType.ToString());
-                command.Parameters.AddWithValue("$trustee", TrusteeId(ace.TrusteeSid));
-                command.Parameters.AddWithValue("$mask", ace.AccessMask);
-                command.Parameters.AddWithValue("$objectType", (object?)ace.ObjectTypeGuid ?? DBNull.Value);
-                command.Parameters.AddWithValue(
-                    "$inheritedType", (object?)ace.InheritedObjectTypeGuid ?? DBNull.Value);
-                command.Parameters.AddWithValue("$inherited", ace.IsInherited ? 1 : 0);
-                command.Parameters.AddWithValue("$inheritance", ace.InheritanceFlags);
-                command.Parameters.AddWithValue("$propagation", ace.PropagationFlags);
-                command.Parameters.AddWithValue("$hash", ace.AceHash);
-            });
+            ["$ace", "$descriptor", "$ordinal", "$type", "$trustee", "$mask", "$objectType",
+                "$inheritedType", "$inherited", "$inheritance", "$propagation", "$hash"]);
+        command.Parameters[0].Value = _nextAceId++;
+        command.Parameters[1].Value = descriptorId;
+        command.Parameters[2].Value = ordinal;
+        command.Parameters[3].Value = ace.AceType.ToString();
+        command.Parameters[4].Value = TrusteeId(ace.TrusteeSid);
+        command.Parameters[5].Value = ace.AccessMask;
+        command.Parameters[6].Value = (object?)ace.ObjectTypeGuid ?? DBNull.Value;
+        command.Parameters[7].Value = (object?)ace.InheritedObjectTypeGuid ?? DBNull.Value;
+        command.Parameters[8].Value = ace.IsInherited ? 1 : 0;
+        command.Parameters[9].Value = ace.InheritanceFlags;
+        command.Parameters[10].Value = ace.PropagationFlags;
+        command.Parameters[11].Value = ace.AceHash;
+        command.ExecuteNonQuery();
     }
 
     /// <summary>
@@ -1843,13 +1864,12 @@ public sealed class BundleWriter : IDisposable
             return existing;
 
         var trusteeId = _nextTrusteeId++;
-        Execute(
+        var command = RetainInsert(ref _trusteeInsert,
             "INSERT INTO trustee (trustee_id, sid) VALUES ($id, $sid)",
-            command =>
-            {
-                command.Parameters.AddWithValue("$id", trusteeId);
-                command.Parameters.AddWithValue("$sid", sid);
-            });
+            ["$id", "$sid"]);
+        command.Parameters[0].Value = trusteeId;
+        command.Parameters[1].Value = sid;
+        command.ExecuteNonQuery();
 
         _trustees[sid] = trusteeId;
         return trusteeId;
@@ -1890,6 +1910,44 @@ public sealed class BundleWriter : IDisposable
                 "This bundle is sealed. Evidence is what a forest looked like at one moment, so "
                 + "there is no way to add to it after that moment has been attested.");
         }
+    }
+
+    private SqliteCommand RetainInsert(ref SqliteCommand? command, string sql, ReadOnlySpan<string> parameters)
+    {
+        if (command is null)
+        {
+            var created = _connection.CreateCommand();
+            try
+            {
+                created.CommandText = sql;
+                foreach (var name in parameters)
+                    created.Parameters.AddWithValue(name, DBNull.Value);
+                _insertCommands.Add(created);
+                command = created;
+            }
+            catch
+            {
+                created.Dispose();
+                throw;
+            }
+        }
+
+        // Absorb commits and replaces the transaction, but not this writer's connection.
+        // Savepoint rollback keeps both; the next row must overwrite every binding either way.
+        command.Transaction = _transaction;
+        return command;
+    }
+
+    private void DisposeInsertCommands()
+    {
+        foreach (var command in _insertCommands)
+        {
+            command.Dispose();
+            command.Parameters.Clear();
+        }
+        _insertCommands.Clear();
+        _attributeInserts.Clear();
+        _objectInsert = _descriptorInsert = _descriptorLinkInsert = _aceInsert = _trusteeInsert = null;
     }
 
     private void Execute(string sql, Action<SqliteCommand> bind)
