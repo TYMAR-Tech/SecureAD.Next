@@ -1446,13 +1446,32 @@ public sealed class BundleWriter : IDisposable
     public BundleSealTimings Complete(
         RunCoverage coverage,
         DateTimeOffset completedUtc,
-        ContinuationReconciliation reconciliation)
+        ContinuationReconciliation reconciliation) =>
+        Complete(coverage, completedUtc, reconciliation, CaptureObjectScope.Default);
+
+    /// <summary>Finishes a bundle with its explicit object-class capture policy.</summary>
+    /// <param name="coverage">The declared domain coverage and its outcomes.</param>
+    /// <param name="completedUtc">When capture finished.</param>
+    /// <param name="reconciliation">The comparison of received referrals with authorized scope.</param>
+    /// <param name="objectScope">The class exclusions actually applied by capture.</param>
+    public BundleSealTimings Complete(
+        RunCoverage coverage,
+        DateTimeOffset completedUtc,
+        ContinuationReconciliation reconciliation,
+        CaptureObjectScope objectScope)
     {
         ArgumentNullException.ThrowIfNull(coverage);
         ArgumentNullException.ThrowIfNull(reconciliation);
+        ArgumentNullException.ThrowIfNull(objectScope);
         ThrowIfFinished();
 
         WriteUnreadableDescriptorCounts();
+
+        foreach (var objectClass in objectScope.ExcludedClasses)
+        {
+            Execute("INSERT INTO capture_object_class_exclusion (class_name) VALUES ($class)",
+                command => command.Parameters.AddWithValue("$class", objectClass));
+        }
 
         Execute(
             """

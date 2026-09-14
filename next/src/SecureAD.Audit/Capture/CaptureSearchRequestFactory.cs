@@ -54,11 +54,11 @@ public static class CaptureSearchRequestFactory
     /// unread.
     /// </summary>
     /// <remarks>
-    /// Built from <see cref="CapturedAttributeCatalog.UnreadObjectClasses"/> rather than written
-    /// out, so the DNS scope decision is stated once. It is an exclusion and not an inclusion: a
+    /// Built from <see cref="CaptureObjectScope.Default"/> rather than written
+    /// out, so the default class scope is stated once. It is an exclusion and not an inclusion: a
     /// dangerous permission on an object class nobody anticipated is still read.
     /// </remarks>
-    public static string Filter { get; } = BuildFilter();
+    public static string Filter { get; } = BuildFilter(CaptureObjectScope.Default);
 
     /// <summary>
     /// The search request for the first page of one capture unit.
@@ -83,7 +83,14 @@ public static class CaptureSearchRequestFactory
     /// is sent only if it appears here.
     /// </param>
     public static SearchRequest ForUnit(CaptureUnit unit, IEnumerable<string> supportedControls) =>
-        Build(unit, supportedControls, EmptyCookie);
+        ForUnit(unit, supportedControls, CaptureObjectScope.Default);
+
+    /// <summary>Builds a first-page request with the run's explicit object-class scope.</summary>
+    /// <param name="unit">The naming context and controller.</param>
+    /// <param name="supportedControls">Controls advertised by the controller.</param>
+    /// <param name="objectScope">The run's class exclusions.</param>
+    public static SearchRequest ForUnit(CaptureUnit unit, IEnumerable<string> supportedControls,
+        CaptureObjectScope objectScope) => Build(unit, supportedControls, EmptyCookie, objectScope);
 
     /// <summary>
     /// The search request for the next page of a unit already part-read.
@@ -117,7 +124,16 @@ public static class CaptureSearchRequestFactory
     /// previous page was the last, and asking for another page is a defect rather than an outcome.
     /// </param>
     public static SearchRequest ForNextPage(
-        CaptureUnit unit, IEnumerable<string> supportedControls, byte[] pagingCookie)
+        CaptureUnit unit, IEnumerable<string> supportedControls, byte[] pagingCookie) =>
+        ForNextPage(unit, supportedControls, pagingCookie, CaptureObjectScope.Default);
+
+    /// <summary>Builds a continuation request without changing the run's object-class scope.</summary>
+    /// <param name="unit">The naming context and controller.</param>
+    /// <param name="supportedControls">Controls advertised by the controller.</param>
+    /// <param name="pagingCookie">The nonempty bookmark from the previous page.</param>
+    /// <param name="objectScope">The same class exclusions used on the first page.</param>
+    public static SearchRequest ForNextPage(
+        CaptureUnit unit, IEnumerable<string> supportedControls, byte[] pagingCookie, CaptureObjectScope objectScope)
     {
         ArgumentNullException.ThrowIfNull(pagingCookie);
 
@@ -130,21 +146,22 @@ public static class CaptureSearchRequestFactory
                 nameof(pagingCookie));
         }
 
-        return Build(unit, supportedControls, pagingCookie);
+        return Build(unit, supportedControls, pagingCookie, objectScope);
     }
 
     private static readonly byte[] EmptyCookie = [];
 
     private static SearchRequest Build(
-        CaptureUnit unit, IEnumerable<string> supportedControls, byte[] pagingCookie)
+        CaptureUnit unit, IEnumerable<string> supportedControls, byte[] pagingCookie, CaptureObjectScope objectScope)
     {
         ArgumentNullException.ThrowIfNull(unit);
         ArgumentNullException.ThrowIfNull(supportedControls);
+        ArgumentNullException.ThrowIfNull(objectScope);
 
         var request = new SearchRequest
         {
             DistinguishedName = unit.NamingContext,
-            Filter = Filter,
+            Filter = BuildFilter(objectScope),
             Scope = SearchScope.Subtree,
 
             // Zero means "no client-imposed limit". Stated rather than left at its default,
@@ -616,10 +633,10 @@ public static class CaptureSearchRequestFactory
     public static SecurityDescriptorFlagControl SecurityDescriptorFlags() =>
         new(SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl);
 
-    private static string BuildFilter()
+    private static string BuildFilter(CaptureObjectScope objectScope)
     {
         var exclusions = string.Concat(
-            CapturedAttributeCatalog.UnreadObjectClasses.Select(c => $"(!(objectClass={c}))"));
+            objectScope.ExcludedClasses.Select(c => $"(!(objectClass={c}))"));
 
         return "(&(objectClass=*)" + exclusions + ")";
     }

@@ -134,6 +134,7 @@ internal interface ICaptureLauncher
     /// to the planning calls above because none of them reads a domain, so a ceiling would govern
     /// nothing there and passing one would suggest otherwise.
     /// </param>
+    /// <param name="includeEnatelSso">Includes the three otherwise-excluded Enatel SSO classes for this run.</param>
     /// <param name="cancellationToken">Stops the run; it still records why it stopped.</param>
     Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
@@ -141,5 +142,6 @@ internal interface ICaptureLauncher
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
+        bool includeEnatelSso,
         CancellationToken cancellationToken);
 }

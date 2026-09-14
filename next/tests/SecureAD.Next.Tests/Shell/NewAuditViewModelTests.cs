@@ -29,6 +29,80 @@ public sealed class NewAuditViewModelTests
     private readonly FakeDerivationLauncher _deriving = new();
     private readonly FakeJudgingLauncher _judging = new();
 
+    [Fact]
+    public void EnatelInclusionStartsUnchecked()
+    {
+        Assert.False(Screen().IncludeEnatelSso);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TheEnatelChoiceReachesTheCaptureLauncher(bool includeEnatelSso)
+    {
+        var screen = await Planned();
+        screen.IncludeEnatelSso = includeEnatelSso;
+
+        await screen.StartAsync();
+
+        Assert.Equal((bool?)includeEnatelSso, _capture.AskedToIncludeEnatelSso);
+    }
+
+    [Fact]
+    public void EnatelInclusionIsNotRememberedByANewWizard()
+    {
+        var first = Screen();
+        first.IncludeEnatelSso = true;
+
+        var next = Screen();
+
+        Assert.False(next.IncludeEnatelSso);
+    }
+
+    [Fact]
+    public void ARunningAuditCannotHaveItsObjectScopeChanged()
+    {
+        var screen = Screen();
+        screen.IsCapturing = true;
+
+        screen.IncludeEnatelSso = true;
+
+        Assert.False(screen.IncludeEnatelSso);
+    }
+
+    [Fact]
+    public void AFinishedAuditCannotHaveItsObjectScopeChanged()
+    {
+        var screen = Screen();
+        screen.HasFinished = true;
+
+        screen.IncludeEnatelSso = true;
+
+        Assert.False(screen.IncludeEnatelSso);
+    }
+
+    [Fact]
+    public void IncludingEnatelLeavesOnlyDnsInTheDisplayedExclusions()
+    {
+        var screen = Screen();
+
+        screen.IncludeEnatelSso = true;
+
+        Assert.Equal(["dnsNode", "dnsZone"], screen.ExcludedObjectClasses);
+    }
+
+    [Fact]
+    public void ChangingEnatelInclusionRefreshesTheDisplayedExclusions()
+    {
+        var screen = Screen();
+        var changed = new List<string?>();
+        screen.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        screen.IncludeEnatelSso = true;
+
+        Assert.Contains(nameof(NewAuditViewModel.ExcludedObjectClasses), changed);
+    }
+
     /// <summary>
     /// Where the derivation and the judging record that they ran, in the order they ran.
     /// </summary>

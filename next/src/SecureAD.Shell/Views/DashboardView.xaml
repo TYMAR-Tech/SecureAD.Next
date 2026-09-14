@@ -74,6 +74,8 @@
                     <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource ScreenTitle}" />
                     <TextBlock Text="{Binding CoverageHeadline}" TextWrapping="Wrap"
                                Style="{StaticResource BlockLabel}" Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding ObjectClassScopeStatement}" TextWrapping="Wrap"
+                               Style="{StaticResource Caption}" Margin="0,6,0,0" />
                 </StackPanel>
 
                 <!-- THEN WHAT THE GROUPS COULD NOT SAY, directly under the coverage headline

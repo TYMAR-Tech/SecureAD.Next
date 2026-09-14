@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
@@ -127,6 +128,13 @@ internal sealed class DomainInventoryRowViewModel
 /// </remarks>
 internal sealed partial class DashboardViewModel : ObservableObject
 {
+    private static readonly ResourceManager ScopeWording = new(
+        "SecureAD.Shell.Resources.CaptureObjectScope", typeof(DashboardViewModel).Assembly);
+
+    private static string ScopeText(string key, params object[] values) => string.Format(
+        CultureInfo.CurrentCulture,
+        ScopeWording.GetString(key, CultureInfo.CurrentUICulture) ?? throw new InvalidOperationException(key), values);
+
     private readonly IAssetSource _assets;
 
     [ObservableProperty]
@@ -186,6 +194,11 @@ internal sealed partial class DashboardViewModel : ObservableObject
     /// <summary>The forest the run captured.</summary>
     public string? ForestFqdn => _inventory?.ForestFqdn;
 
+    /// <summary>Names the exclusions saved by the opened run rather than the current capture default.</summary>
+    public string ObjectClassScopeStatement => _inventory is { } inventory
+        ? ScopeText("RecordedExclusions", string.Join(", ", inventory.ExcludedObjectClasses))
+        : string.Empty;
+
     /// <summary>
     /// How much of the forest this run read, said before any number below it.
     /// </summary>
@@ -205,10 +218,8 @@ internal sealed partial class DashboardViewModel : ObservableObject
             var counted = inventory.DomainsCounted;
 
             return inventory.AllDeclaredDomainsAreComplete
-                ? $"All {Count(declared, "domain")} in this forest were read in full."
-                : $"{counted:N0} of {Count(declared, "domain")} were read in full. "
-                  + "The counts below cover only those, and the rest are listed with what "
-                  + "happened to them.";
+                ? ScopeText("AllDomains", Count(declared, "domain"))
+                : ScopeText("SomeDomains", counted, Count(declared, "domain"));
         }
     }
 
@@ -481,6 +492,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
         OnPropertyChanged(nameof(HasRefusal));
         OnPropertyChanged(nameof(ForestFqdn));
         OnPropertyChanged(nameof(CoverageHeadline));
+        OnPropertyChanged(nameof(ObjectClassScopeStatement));
         OnPropertyChanged(nameof(EveryDomainCounted));
         OnPropertyChanged(nameof(Warning));
         OnPropertyChanged(nameof(HasWarning));

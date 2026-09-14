@@ -49,6 +49,7 @@ public sealed class PartitionCapture
     private readonly ICapturedObjectSink _sink;
     private readonly TimeProvider _time;
     private readonly IRunLog _log;
+    private readonly CaptureObjectScope _objectScope;
 
     /// <summary>
     /// Creates a capture.
@@ -72,17 +73,30 @@ public sealed class PartitionCapture
         IDirectoryChannelFactory connections,
         ICapturedObjectSink sink,
         TimeProvider time,
-        IRunLog log)
+        IRunLog log) : this(connections, sink, time, log, CaptureObjectScope.Default)
+    {
+    }
+
+    /// <summary>Creates a partition reader bound to one object-class policy for every retry.</summary>
+    /// <param name="connections">How controller connections are opened.</param>
+    /// <param name="sink">Where captured objects are written.</param>
+    /// <param name="time">The retry clock.</param>
+    /// <param name="log">Where capture and recovery are recorded.</param>
+    /// <param name="objectScope">The run's class exclusions, unchanged across pages and restarts.</param>
+    public PartitionCapture(IDirectoryChannelFactory connections, ICapturedObjectSink sink,
+        TimeProvider time, IRunLog log, CaptureObjectScope objectScope)
     {
         ArgumentNullException.ThrowIfNull(connections);
         ArgumentNullException.ThrowIfNull(sink);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(log);
+        ArgumentNullException.ThrowIfNull(objectScope);
 
         _connections = connections;
         _sink = sink;
         _time = time;
         _log = log;
+        _objectScope = objectScope;
     }
 
     /// <summary>
@@ -220,8 +234,8 @@ public sealed class PartitionCapture
                 cancellationToken.ThrowIfCancellationRequested();
 
             var request = pages == 0
-                ? CaptureSearchRequestFactory.ForUnit(unit, channel.SupportedControls)
-                : CaptureSearchRequestFactory.ForNextPage(unit, channel.SupportedControls, cookie);
+                ? CaptureSearchRequestFactory.ForUnit(unit, channel.SupportedControls, _objectScope)
+                : CaptureSearchRequestFactory.ForNextPage(unit, channel.SupportedControls, cookie, _objectScope);
 
             var sent = await SendAsync(channel, request, unit, cancellationToken)
                 .ConfigureAwait(false);

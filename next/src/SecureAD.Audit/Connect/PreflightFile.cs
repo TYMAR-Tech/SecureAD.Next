@@ -98,12 +98,14 @@ public sealed record PreflightDomainRecord(
 /// <param name="RunMayProceed">Whether the run may proceed with the recorded attestations.</param>
 /// <param name="Domains">One entry per domain, in the order the plan lists them.</param>
 /// <param name="DeclaredDomains">Every domain the forest declared, including domains with no controller to ask.</param>
+/// <param name="ExcludedObjectClasses">The object classes deliberately excluded by this run's policy.</param>
 public sealed record PreflightContents(
     string Forest,
     DateTimeOffset WrittenAt,
     bool RunMayProceed,
     IReadOnlyList<PreflightDomainRecord> Domains,
-    IReadOnlyList<string> DeclaredDomains)
+    IReadOnlyList<string> DeclaredDomains,
+    IReadOnlyList<string> ExcludedObjectClasses)
 {
     /// <summary>Declared domains with no candidate controller, keyed by naming context.</summary>
     public IReadOnlyDictionary<string, string> DomainsWithNoCandidates { get; init; } =
@@ -205,7 +207,8 @@ public static class PreflightFile
             writtenAt,
             report.Refusal(exclusions.Keys.ToList()) is null,
             [.. report.Domains.Select(Record)],
-            report.Plan.DeclaredDomains)
+            report.Plan.DeclaredDomains,
+            report.Plan.ObjectScope.ExcludedClasses)
         {
             DomainsWithNoCandidates = report.DomainsWithNoCandidates,
             Exclusions = [.. exclusions.Values],

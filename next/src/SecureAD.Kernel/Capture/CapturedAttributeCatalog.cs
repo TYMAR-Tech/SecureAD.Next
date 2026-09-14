@@ -17,10 +17,9 @@ namespace SecureAD.Kernel.Capture;
 /// rebuild has one behaviour: every object in every naming context capture reads is captured,
 /// with <see cref="Universal"/> requested for it whatever its class, and the classes enumerated in
 /// <see cref="ObjectClasses"/> getting the extra attributes listed for them. Nothing is invisible
-/// because nobody thought of its class. The one exclusion is
-/// <see cref="UnreadObjectClasses"/>, which is the 2026-08-11 decision that DNS zones and records
-/// are out of scope, stated as a named exclusion so a report can say so rather than reporting
-/// silence.
+/// because nobody thought of its class. <see cref="CaptureObjectScope"/> applies the fixed
+/// <see cref="UnreadObjectClasses"/> DNS exclusions and the owner's optional Enatel exclusions.
+/// Excluded objects are unassessed, not known harmless, and the run records which classes it left out.
 /// </para>
 /// <para>
 /// <b>This type is a table compiled into the assembly.</b> It reads nothing, opens nothing and
@@ -480,7 +479,7 @@ public static class CapturedAttributeCatalog
         ClassSpecific.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray();
 
     /// <summary>
-    /// The only object classes capture does not read at all.
+    /// The object classes always excluded, including when optional Enatel objects are included.
     /// </summary>
     /// <remarks>
     /// The DNS scope decision of 2026-08-11, recorded at
@@ -500,6 +499,13 @@ public static class CapturedAttributeCatalog
     /// </para>
     /// </remarks>
     public static IReadOnlyList<string> UnreadObjectClasses { get; } = ["dnsNode", "dnsZone"];
+
+    /// <summary>
+    /// Vendor metadata classes excluded by default under the owner's P-224 scope decision.
+    /// Inclusion restores these objects only, not credential attributes or DNS objects.
+    /// </summary>
+    public static IReadOnlyList<string> EnatelSsoObjectClasses { get; } = Array.AsReadOnly<string>(
+        ["enatelSSOAccountParameter", "enatelUserManagedAuth", "enatelSSOStorageV3"]);
 
     /// <summary>
     /// Every distinct attribute the catalogue asks for anywhere, ordered so the list reads the same

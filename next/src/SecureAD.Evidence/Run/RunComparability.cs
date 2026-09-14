@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+
 namespace SecureAD.Evidence.Run;
 
 /// <summary>
@@ -30,6 +33,12 @@ namespace SecureAD.Evidence.Run;
 /// </remarks>
 public static class RunComparability
 {
+    private static readonly ResourceManager ScopeWording = new(
+        "SecureAD.Evidence.Resources.CaptureObjectScope", typeof(RunComparability).Assembly);
+
+    private static string ScopeText(string key) =>
+        ScopeWording.GetString(key, CultureInfo.CurrentUICulture) ?? throw new InvalidOperationException(key);
+
     /// <summary>There is no earlier run of this forest.</summary>
     public static ComparabilityVerdict NoEarlierRun() => new(
         ComparabilityOutcome.NoEarlierRun,
@@ -109,6 +118,14 @@ public static class RunComparability
                 + "baseline; this audit is sound and can serve as one.");
         }
 
+        // Completed-run construction requires scope; an unfinished run was refused above.
+        if (!thisRun.ExcludedObjectClasses!.SequenceEqual(
+                earlierRun.ExcludedObjectClasses!, StringComparer.OrdinalIgnoreCase))
+        {
+            return new ComparabilityVerdict(ComparabilityOutcome.ObjectClassScopeDiffers,
+                DriftCardShape.Qualified, ScopeText("DifferentScopes"));
+        }
+
         if (thisRun.Coverage.Declared.Value != earlierRun.Coverage.Declared.Value)
         {
             return new ComparabilityVerdict(
@@ -144,8 +161,7 @@ public static class RunComparability
         return new ComparabilityVerdict(
             ComparabilityOutcome.FullyComparable,
             DriftCardShape.Measured,
-            "Both audits covered the whole forest with nothing withheld, so this comparison is "
-            + "complete.");
+            ScopeText("SameScope"));
     }
 
     /// <summary>
@@ -188,7 +204,7 @@ public static class RunComparability
 
         return new BaselineVerdict(
             IsEligible: true,
-            "This audit covered the whole forest, so later audits can be measured against it.");
+            ScopeText("Baseline"));
     }
 
     private static string Name(IReadOnlyList<string> domains) =>

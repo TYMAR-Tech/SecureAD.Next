@@ -5,6 +5,7 @@ using SecureAD.Audit.Sysvol;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 
 namespace SecureAD.Audit.Connect;
 
@@ -286,15 +287,32 @@ public sealed class CaptureSession
     /// alone: nothing here is stored for a later one and nothing is read back from an earlier one.
     /// </param>
     /// <param name="cancellationToken">Cancellation for a capture an operator stopped.</param>
+    public Task<Result<CaptureRunResult>> RunAsync(
+        string? typedName,
+        IReadOnlyDictionary<string, string> overrides,
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions,
+        Action<PreflightReport>? reportPreflight,
+        CancellationToken cancellationToken) =>
+        RunAsync(typedName, overrides, exclusions, reportPreflight, CaptureObjectScope.Default, cancellationToken);
+
+    /// <summary>Starts a capture with its explicit per-run object-class scope.</summary>
+    /// <param name="typedName">The optional forest or controller name.</param>
+    /// <param name="overrides">Explicit controller choices.</param>
+    /// <param name="exclusions">Validated per-domain exclusion attestations.</param>
+    /// <param name="reportPreflight">Receives the preflight report and selected scope.</param>
+    /// <param name="objectScope">The object classes this run will not read.</param>
+    /// <param name="cancellationToken">Cancellation for the run.</param>
     public async Task<Result<CaptureRunResult>> RunAsync(
         string? typedName,
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyDictionary<string, AttestedExclusion> exclusions,
         Action<PreflightReport>? reportPreflight,
+        CaptureObjectScope objectScope,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(overrides);
         ArgumentNullException.ThrowIfNull(exclusions);
+        ArgumentNullException.ThrowIfNull(objectScope);
 
         var preflight = await ValidateAsync(typedName, overrides, cancellationToken)
             .ConfigureAwait(false);
@@ -304,7 +322,10 @@ public sealed class CaptureSession
             return Result<CaptureRunResult>.Failure(preflight.Error!);
         }
 
-        var report = preflight.Value!;
+        var report = preflight.Value with
+        {
+            Plan = preflight.Value.Plan with { ObjectScope = objectScope },
+        };
 
         if (report.Plan.ValidateExclusions(exclusions) is { } invalidExclusion)
             return Result<CaptureRunResult>.Failure(invalidExclusion);
@@ -370,6 +391,7 @@ public sealed class CaptureSession
                     report.Plan.Units.Count(u => u.Kind == NamingContextKind.Domain)
                         .ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("excluded", exclusions.Count.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("excludedObjectClasses", string.Join(", ", objectScope.ExcludedClasses)),
             ]);
 
         var connections = _connections(new ConnectionSecurityLog());

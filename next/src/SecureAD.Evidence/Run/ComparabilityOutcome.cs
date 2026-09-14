@@ -62,6 +62,9 @@ public enum ComparabilityOutcome
     /// nothing changed.
     /// </summary>
     FullyComparable,
+
+    /// <summary>The runs deliberately excluded different object classes.</summary>
+    ObjectClassScopeDiffers,
 }
 
 /// <summary>

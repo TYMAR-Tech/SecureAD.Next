@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidScope" xml:space="preserve">
+    <value>This bundle does not record a recognized object-class capture scope.</value>
+  </data>
+  <data name="DifferentScopes" xml:space="preserve"><value>These audits captured different object-class scopes. Only classes captured in both audits can be compared; excluded classes are not assessed, not added or removed.</value></data>
+  <data name="SameScope" xml:space="preserve"><value>Both audits completed the same declared domain and object-class scope, with nothing withheld from the comparison.</value></data>
+  <data name="Baseline" xml:space="preserve"><value>This audit completed its declared capture scope and can be used as a baseline.</value></data>
+</root>

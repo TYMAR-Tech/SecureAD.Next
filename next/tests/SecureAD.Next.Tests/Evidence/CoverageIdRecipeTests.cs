@@ -100,6 +100,9 @@ public sealed class CoverageIdRecipeTests
 
         // Version 11 adds controller failure history; the declared scope and identity recipe stay unchanged.
         [11] = "57cf8ba5a9e7fb10",
+
+        // Version 12 records class exclusions separately; the domain identity recipe is unchanged.
+        [12] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

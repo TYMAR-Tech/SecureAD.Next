@@ -240,7 +240,8 @@ public sealed class RunComparabilityTests
             ProfileId.ForForest("fabrikam.com"),
             CoverageFor("fabrikam.com", ["fabrikam.com"], allRead: true),
             Version,
-            graphFindingsWithheld: false);
+            graphFindingsWithheld: false,
+            SecureAD.Kernel.Capture.CaptureObjectScope.Default.ExcludedClasses);
 
         Assert.Throws<ArgumentException>(() => RunComparability.Evaluate(Complete(), other));
     }
@@ -313,6 +314,41 @@ public sealed class RunComparabilityTests
             () => RunSummary.OfUnfinishedRun(ProfileId.ForForest("contoso.com"), RunState.Sealed));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DifferentClassScopesCannotProduceAnUnqualifiedComparison(bool includeEnatelSso)
+    {
+        var verdict = RunComparability.Evaluate(Complete(includeEnatelSso: includeEnatelSso),
+            Complete(includeEnatelSso: !includeEnatelSso));
+
+        Assert.Equal((ComparabilityOutcome.ObjectClassScopeDiffers, DriftCardShape.Qualified),
+            (verdict.Outcome, verdict.Shape));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MatchingClassScopesRemainComparable(bool includeEnatelSso)
+    {
+        var verdict = RunComparability.Evaluate(Complete(includeEnatelSso: includeEnatelSso),
+            Complete(includeEnatelSso: includeEnatelSso));
+
+        Assert.Equal(ComparabilityOutcome.FullyComparable, verdict.Outcome);
+    }
+
+    [Fact]
+    public void ACompletedSummaryCopiesItsClassScope()
+    {
+        var classes = new[] { "dnsNode", "dnsZone" };
+        var run = RunSummary.OfCompletedRun(ProfileId.ForForest("contoso.com"),
+            CoverageFor("contoso.com", TwoDomains, allRead: true), Version, false, classes);
+
+        classes[0] = "user";
+
+        Assert.Equal(["dnsNode", "dnsZone"], run.ExcludedObjectClasses);
+    }
+
     // --- helpers -------------------------------------------------------------------------------
 
     private static IEnumerable<ComparabilityVerdict> EveryVerdict() =>
@@ -326,24 +362,28 @@ public sealed class RunComparabilityTests
         RunComparability.Evaluate(Complete(withheld: true), Complete()),
         RunComparability.Evaluate(Complete(majorVersion: 5), Complete()),
         RunComparability.Evaluate(Complete(), Complete()),
+        RunComparability.Evaluate(Complete(includeEnatelSso: true), Complete()),
     ];
 
     private static RunSummary Complete(
         string[]? domains = null,
         bool withheld = false,
-        int majorVersion = Version) =>
+        int majorVersion = Version,
+        bool includeEnatelSso = false) =>
         RunSummary.OfCompletedRun(
             ProfileId.ForForest("contoso.com"),
             CoverageFor("contoso.com", domains ?? TwoDomains, allRead: true),
             majorVersion,
-            withheld);
+            withheld,
+            SecureAD.Kernel.Capture.CaptureObjectScope.For(includeEnatelSso).ExcludedClasses);
 
     private static RunSummary MissingADomain(string[]? domains = null) =>
         RunSummary.OfCompletedRun(
             ProfileId.ForForest("contoso.com"),
             CoverageFor("contoso.com", domains ?? TwoDomains, allRead: false),
             Version,
-            graphFindingsWithheld: false);
+            graphFindingsWithheld: false,
+            SecureAD.Kernel.Capture.CaptureObjectScope.Default.ExcludedClasses);
 
     private static RunSummary Incomplete(RunState state) =>
         RunSummary.OfUnfinishedRun(ProfileId.ForForest("contoso.com"), state);

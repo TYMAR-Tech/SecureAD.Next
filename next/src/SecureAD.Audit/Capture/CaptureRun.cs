@@ -5,6 +5,7 @@ using SecureAD.Audit.Sysvol;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
 
 namespace SecureAD.Audit.Capture;
@@ -208,7 +209,7 @@ public sealed class CaptureRun
         using var writer = BundleWriter.Create(bundleDirectory, startedUtc);
 
         var sink = new BundleCaptureSink(writer, _time);
-        var capture = new PartitionCapture(_connections, sink, _time, _log);
+        var capture = new PartitionCapture(_connections, sink, _time, _log, plan.ObjectScope);
 
         // Written before the first read, because it is a fact about the plan rather than about
         // anything a pass discovered. These are the partitions the forest declares and this product
@@ -494,7 +495,8 @@ public sealed class CaptureRun
                     .Select(c => ForestPartitionCoverage.Read(c.NamingContextDn, c.Kind)),
                 sysvol),
             _time.GetUtcNow(),
-            reconciliation);
+            reconciliation,
+            plan.ObjectScope);
 
         // The five phases behind the one word "sealing". They are separated because they fail and
         // scale differently: the index build is three sorts of the entries table, the backfill is
@@ -678,7 +680,7 @@ public sealed class CaptureRun
         using var writer = BundleWriter.Create(bundleDirectory, startedUtc, domain.Shard);
 
         var sink = new BundleCaptureSink(writer, _time);
-        var capture = new PartitionCapture(_connections, sink, _time, _log);
+        var capture = new PartitionCapture(_connections, sink, _time, _log, plan.ObjectScope);
 
         var outcome = await turns.OneAtATimeAsync(
             domain.Unit.DomainController,

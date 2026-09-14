@@ -12,6 +12,39 @@ namespace SecureAD.Next.Tests.Cli;
 /// </remarks>
 public sealed class CommandLineTests
 {
+    [Fact]
+    public void EnatelObjectsAreExcludedUnlessRequested()
+    {
+        Assert.False(CommandLine.Parse(["--library", "synthetic"])!.IncludeEnatelSso);
+    }
+
+    [Theory]
+    [InlineData("--capture")]
+    [InlineData("--preview")]
+    [InlineData("--validate")]
+    public void AnEnatelInclusionChoiceIsRetainedForCaptureRelatedCommands(string mode)
+    {
+        var options = CommandLine.Parse(["--library", "synthetic", mode, "--include-enatel-sso"]);
+
+        Assert.Equal(new[] { "dnsNode", "dnsZone" }, options?.ObjectScope.ExcludedClasses);
+    }
+
+    [Theory]
+    [InlineData("--derive")]
+    [InlineData("--judge")]
+    public void EnatelScopeCannotChangeAnExistingBundle(string mode)
+    {
+        Assert.Null(CommandLine.Parse([mode, "synthetic", "--include-enatel-sso"]));
+    }
+
+    [Fact]
+    public void TheCliDisclosesTheIncludedScopesRemainingDnsExclusions()
+    {
+        var options = CommandLine.Parse(["--library", "synthetic", "--include-enatel-sso"]);
+
+        Assert.Equal("Excluded object classes: dnsNode, dnsZone", options?.ClassScopeDescription);
+    }
+
     /// <summary>
     /// A preview writes nothing, so it needs nowhere to write to.
     /// </summary>

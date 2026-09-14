@@ -17,7 +17,7 @@ namespace SecureAD.Evidence;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the <c>bundle</c> row, and it is a different question from the seal. The seal says
+/// This is the <c>bundle</c> row and its class exclusions, a different question from the seal. The seal says
 /// whether these bytes have changed since the run finished; this says what the run claimed to
 /// have done. A sealed bundle whose capture reached one domain of nine is entirely possible, and
 /// <see cref="EveryDeclaredUnitRecordedAsRead"/> is where a reader learns it.
@@ -40,6 +40,7 @@ namespace SecureAD.Evidence;
 /// the bundle is sealed evidence of an incomplete capture, which is a fact about the run and never
 /// about the forest.
 /// </param>
+/// <param name="ExcludedObjectClasses">The classes this capture explicitly did not read.</param>
 public sealed record BundleDescription(
     int SchemaVersion,
     int CapturedAttributeCatalogVersion,
@@ -50,7 +51,8 @@ public sealed record BundleDescription(
     DateTimeOffset CaptureCompletedUtc,
     string CoverageId,
     bool EveryDeclaredUnitRecordedAsRead,
-    ContinuationReconciliationOutcome ContinuationReconciliationOutcome);
+    ContinuationReconciliationOutcome ContinuationReconciliationOutcome,
+    IReadOnlyList<string> ExcludedObjectClasses);
 
 /// <summary>
 /// The one way a bundle gets read.
@@ -961,6 +963,7 @@ public sealed class BundleReader : IDisposable
     private static BundleDescription ReadDescription(
         SqliteConnection connection, string evidencePath)
     {
+        var excludedClasses = ReadExcludedObjectClasses(connection);
         using var command = connection.CreateCommand();
         command.CommandText =
             """
@@ -992,7 +995,32 @@ public sealed class BundleReader : IDisposable
             ParseUtc(reader.GetString(3)),
             reader.GetString(4),
             reader.GetInt64(5) != 0,
-            Enum.Parse<ContinuationReconciliationOutcome>(reader.GetString(9)));
+            Enum.Parse<ContinuationReconciliationOutcome>(reader.GetString(9)),
+            excludedClasses);
+    }
+
+    private static IReadOnlyList<string> ReadExcludedObjectClasses(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT class_name FROM capture_object_class_exclusion ORDER BY class_name COLLATE NOCASE";
+        var excluded = new List<string>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            excluded.Add(reader.GetString(0));
+
+        // Absence is not the inclusion option. Every supported capture records DNS exclusions,
+        // and a malformed class scope must not be read as a more comprehensive audit.
+        var recorded = excluded.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!recorded.SetEquals(CaptureObjectScope.Default.ExcludedClasses)
+            && !recorded.SetEquals(CaptureObjectScope.WithEnatelSso.ExcludedClasses))
+        {
+            var resources = new ResourceManager(
+                "SecureAD.Evidence.Resources.CaptureObjectScope", typeof(BundleReader).Assembly);
+            throw new InvalidBundleException(resources.GetString("InvalidScope", CultureInfo.CurrentUICulture)
+                ?? throw new InvalidOperationException("InvalidScope"));
+        }
+
+        return excluded.AsReadOnly();
     }
 
     private static ContinuationReconciliation ReadReconciliation(SqliteConnection connection)

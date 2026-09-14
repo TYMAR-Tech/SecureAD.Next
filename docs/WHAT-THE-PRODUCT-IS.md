@@ -49,6 +49,27 @@ later the same day: *"i will be making it so the user can run the audit and it c
 via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
 unattended path, and the GUI is the worked path.
 
+## Enatel SSO object capture scope
+
+**Owner-approved default and presentation, tracked as P-224.** New captures exclude
+`enatelSSOAccountParameter`, `enatelUserManagedAuth` and `enatelSSOStorageV3` by default.
+On the wizard's review page, an **Object classes** section below the domain list offers
+**Include Enatel SSO metadata objects**, unchecked for each new audit and not saved as a setting.
+Its help says: “Excluded by default to reduce capture volume. Excluded objects and their permissions
+are not assessed.” The command line has the same default and an `--include-enatel-sso` option.
+DNS exclusions remain unchanged, all other classes remain in scope, and inclusion does not add
+credential attributes to the capture catalogue.
+
+This is an explicit scope trade-off, not a claim that these objects are harmless or unused by all
+rules: generic ownership and permission rules can examine them. Exclusions belong in LDAP requests,
+not just the display; each saved run must record its actual class scope and disclose it on readback,
+and differing choices must not appear as ordinary additions or deletions in a comparison.
+Replace the review's “Nothing is being left out of this audit” with “No domains are being left out”
+and show class exclusions separately. Existing captures must not be rewritten or relabelled using
+the new default; the historical two-thirds observation is not a measured speedup for this change.
+The existing no-compatibility decision (`0001`) still applies: an older evidence format is refused,
+not migrated, and original files are preserved.
+
 ## Capture preflight: domains with no controller
 
 **Owner-approved wording for P-213.** In the existing error area, report:

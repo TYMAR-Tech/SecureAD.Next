@@ -2,6 +2,7 @@ using SecureAD.Audit.Connect;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 
 namespace SecureAD.Shell.Services;
 
@@ -96,6 +97,16 @@ internal sealed class CaptureLauncher : ICaptureLauncher
             : Result<AuditCheck>.Failure(report.Error!);
     }
 
+    /// <summary>Runs capture with the default object-class scope.</summary>
+    public Task<Result<CaptureOutcome>> RunAsync(
+        string libraryRoot,
+        string? forest,
+        IReadOnlyDictionary<string, string> overrides,
+        IReadOnlyList<ExclusionAttestation> exclusions,
+        int domainsAtOnce,
+        CancellationToken cancellationToken) =>
+        RunAsync(libraryRoot, forest, overrides, exclusions, domainsAtOnce, false, cancellationToken);
+
     /// <inheritdoc/>
     public async Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
@@ -103,6 +114,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
+        bool includeEnatelSso,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
@@ -119,6 +131,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
                 overrides,
                 exclusions.ToDictionary(e => e.NamingContext, Describe, StringComparer.OrdinalIgnoreCase),
                 reportPreflight: null,
+                CaptureObjectScope.For(includeEnatelSso),
                 cancellationToken)
             .ConfigureAwait(false);
 

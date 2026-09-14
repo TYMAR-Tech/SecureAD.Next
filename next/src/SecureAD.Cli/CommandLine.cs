@@ -1,3 +1,7 @@
+using System.Globalization;
+using System.Resources;
+using SecureAD.Kernel.Capture;
+
 namespace SecureAD.Cli;
 
 /// <summary>
@@ -5,10 +9,10 @@ namespace SecureAD.Cli;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Nothing here changes what a bundle contains.</b> Anything an operator could set that did
-/// would be a scope, and <c>docs/decisions/0052-the-domain-is-the-only-unit-of-scope.md</c> refuses
-/// one: nothing an operator can set makes a run smaller. So there is no partition list, no
-/// exclusion, and no choice of transport - the connection ladder is not configurable, because an
+/// <b>An operator may widen the shipped class scope, never narrow it.</b> P-224's Enatel inclusion
+/// option restores three classes to the capture; it neither enables DNS nor requests credential
+/// attributes. There is no arbitrary partition/class exclusion list and no choice of transport -
+/// the connection ladder is not configurable, because an
 /// operator who could pin a run to one rung could pin it to the bottom one.
 /// </para>
 /// <para>
@@ -73,6 +77,17 @@ internal sealed record CommandLine(
     string? JudgeOnly,
     int? Concurrency)
 {
+    private static readonly ResourceManager ScopeWording = new(
+        "SecureAD.Cli.Resources.CaptureObjectScope", typeof(CommandLine).Assembly);
+
+    public bool IncludeEnatelSso { get; init; }
+    public CaptureObjectScope ObjectScope => CaptureObjectScope.For(IncludeEnatelSso);
+    public string ClassScopeDescription => string.Format(CultureInfo.CurrentCulture,
+        ScopeText("ExcludedClasses"), string.Join(", ", ObjectScope.ExcludedClasses));
+
+    private static string ScopeText(string key) =>
+        ScopeWording.GetString(key, CultureInfo.CurrentUICulture) ?? throw new InvalidOperationException(key);
+
     /// <summary>
     /// What to print when the arguments were not understood.
     /// </summary>
@@ -87,6 +102,7 @@ internal sealed record CommandLine(
             string.Empty,
             "  securead --library <directory> [--forest <name>] [--concurrent <count>]",
             "           [--controller <domain>=<host>]... [--validate | --preview | --capture]",
+            "           [--include-enatel-sso]",
             "  securead --derive <bundle directory>",
             "  securead --judge <bundle directory>",
             string.Empty,
@@ -107,6 +123,7 @@ internal sealed record CommandLine(
             "                Every controller is read exactly as it would be at any other setting.",
             "                Lower it only for a slow or shared disk - it makes a capture take",
             "                longer and never makes it gentler on the directory. One or more.",
+            ScopeText("Usage"),
             "  --validate    Connect, discover the forest and ask every domain's controller what",
             "                it can do, without reading a single object. Every domain is asked, and",
             "                every answer is reported. Seconds, rather than hours.",
@@ -154,11 +171,16 @@ internal sealed record CommandLine(
         string? deriveOnly = null;
         string? judgeOnly = null;
         int? concurrency = null;
+        var includeEnatelSso = false;
 
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
             {
+                case "--include-enatel-sso":
+                    includeEnatelSso = true;
+                    break;
+
                 case "--library" when i + 1 < args.Length:
                     library = args[++i];
                     break;
@@ -234,6 +256,7 @@ internal sealed record CommandLine(
                 || forest is not null
                 || overrides.Count > 0
                 || concurrency is not null
+                || includeEnatelSso
                 || (deriveOnly is not null && judgeOnly is not null);
 
             var named = deriveOnly ?? judgeOnly;
@@ -269,7 +292,7 @@ internal sealed record CommandLine(
 
         return new CommandLine(
             library, forest, overrides, validateOnly, previewOnly, captureOnly, DeriveOnly: null,
-            JudgeOnly: null, concurrency);
+            JudgeOnly: null, concurrency) { IncludeEnatelSso = includeEnatelSso };
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using SecureAD.Evidence;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 
 namespace SecureAD.Audit.Capture;
 
@@ -62,6 +63,9 @@ public sealed record CapturePlan(
     IReadOnlyList<string> DeclaredDomains,
     string ForestFqdn)
 {
+    /// <summary>The immutable object-class policy used by every partition and attempt in this run.</summary>
+    public CaptureObjectScope ObjectScope { get; init; } = CaptureObjectScope.Default;
+
     /// <summary>
     /// The DNS name the forest declared for each domain naming context.
     /// </summary>

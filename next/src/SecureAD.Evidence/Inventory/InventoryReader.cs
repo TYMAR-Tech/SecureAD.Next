@@ -69,7 +69,7 @@ internal static class InventoryReader
                 : DomainInventory.NotCounted(coverage));
 
         return Result<ForestInventory>.Success(ForestInventory.Of(
-            description.ForestFqdn, domains, policies.Declared, policies.Read));
+            description.ForestFqdn, domains, policies.Declared, policies.Read, description.ExcludedObjectClasses));
     }
 
     /// <summary>

@@ -14,6 +14,17 @@ namespace SecureAD.Next.Tests.EndToEnd;
 
 public sealed class CaptureRunFailureTests(ITestOutputHelper output)
 {
+    [Fact]
+    public async Task SyntheticCaptureDoesNotInheritTheTestSchedulingContext()
+    {
+        var scenario = new FailureScenario(output);
+
+        await scenario.FailAsync();
+
+        Assert.Equal(((bool?)false, (bool?)false),
+            (scenario.CaptureHadSynchronizationContext, scenario.DriverHadSynchronizationContext));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -175,6 +186,8 @@ public sealed class CaptureRunFailureTests(ITestOutputHelper output)
 
         public ConcurrentQueue<CaptureUnit> OpenedDomains { get; } = new();
         public ConcurrentQueue<AuditError> Errors { get; } = new();
+        public bool? CaptureHadSynchronizationContext { get; private set; }
+        public bool? DriverHadSynchronizationContext { get; private set; }
         public TaskCompletionSource CancellationObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public IEnumerable<object> ActiveChannels => _active.Keys;
         public IEnumerable<string> StopMessages => _notes.Where(message => message.StartsWith("partition stopped", StringComparison.Ordinal));
@@ -183,16 +196,29 @@ public sealed class CaptureRunFailureTests(ITestOutputHelper output)
         public Task<CaptureRunResult> RecoverAsync() => ExecuteAsync(operatorStop: false, recover: true);
         public Task<CaptureRunResult> CancelAsync() => ExecuteAsync(operatorStop: true, recover: false);
 
-        private async Task<CaptureRunResult> ExecuteAsync(bool operatorStop, bool recover)
+        // Both capture and the driver that releases its rendezvous must be outside the runner's
+        // constrained context. Isolating capture alone still lets the driver time out behind
+        // unrelated tests before it can inject the failure (P-225).
+        private Task<CaptureRunResult> ExecuteAsync(bool operatorStop, bool recover) =>
+            Task.Run(() => ExecuteOnWorkerAsync(operatorStop, recover));
+
+        private async Task<CaptureRunResult> ExecuteOnWorkerAsync(bool operatorStop, bool recover)
         {
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             using var caller = new CancellationTokenSource();
-            var run = new CaptureRun(this, new InMemorySysvolFileReader(), TimeProvider.System, this,
-                domainsAtOnce: _sharedHost || _completedDomain ? 3 : 2)
-                .RunAsync(Plan(), _directory, new Dictionary<string, AttestedExclusion>(), caller.Token);
+            Task<CaptureRunResult> CaptureAsync()
+            {
+                CaptureHadSynchronizationContext = SynchronizationContext.Current is not null;
+                return new CaptureRun(this, new InMemorySysvolFileReader(), TimeProvider.System, this,
+                    domainsAtOnce: _sharedHost || _completedDomain ? 3 : 2)
+                    .RunAsync(Plan(), _directory, new Dictionary<string, AttestedExclusion>(), caller.Token);
+            }
+
+            var run = CaptureAsync();
             try
             {
                 await _blockedReady.Task.WaitAsync(deadline.Token);
+                DriverHadSynchronizationContext = SynchronizationContext.Current is not null;
                 if (_completedDomain)
                     await _completedWritten.Task.WaitAsync(deadline.Token);
 

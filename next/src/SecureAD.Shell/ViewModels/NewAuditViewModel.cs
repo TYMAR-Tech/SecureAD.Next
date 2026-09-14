@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Derivation;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
 
@@ -803,6 +806,35 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     /// <summary>Where this installation keeps its runs.</summary>
     public RunLibraryLocation Location { get; }
+
+    private static readonly ResourceManager ScopeWording = new(
+        "SecureAD.Shell.Resources.CaptureObjectScope", typeof(NewAuditViewModel).Assembly);
+    private bool _includeEnatelSso;
+
+    /// <summary>The inclusion-only override for this audit, never a remembered setting.</summary>
+    public bool IncludeEnatelSso
+    {
+        get => _includeEnatelSso;
+        set
+        {
+            if (MayChangeObjectScope && SetProperty(ref _includeEnatelSso, value))
+                OnPropertyChanged(nameof(ExcludedObjectClasses));
+        }
+    }
+
+    /// <summary>A running or finished audit cannot have its displayed scope changed.</summary>
+    public bool MayChangeObjectScope => !IsBusy && !IsCapturing && !HasFinished;
+
+    /// <summary>The exact classes that the current choice leaves unassessed.</summary>
+    public IReadOnlyList<string> ExcludedObjectClasses => CaptureObjectScope.For(IncludeEnatelSso).ExcludedClasses;
+
+    public string ObjectClassesHeading => ScopeText("Heading");
+    public string IncludeEnatelSsoLabel => ScopeText("IncludeEnatel");
+    public string ObjectScopeHelp => ScopeText("Help");
+    public string ExcludedClassesHeading => ScopeText("ExcludedClasses");
+
+    private static string ScopeText(string key) =>
+        ScopeWording.GetString(key, CultureInfo.CurrentUICulture) ?? throw new InvalidOperationException(key);
 
     /// <summary>One row per domain a controller was found for.</summary>
     public ObservableCollection<DomainRowViewModel> Domains { get; } = [];
@@ -1662,7 +1694,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             var outcome = await _capture
                 .RunAsync(
                     Location.Path!, forest: null, Overrides(), Attestations(),
-                    _concurrency.Effective, _stopping.Token)
+                    _concurrency.Effective, IncludeEnatelSso, _stopping.Token)
                 .ConfigureAwait(true);
 
             Report = Describe(outcome);
@@ -2222,6 +2254,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <summary>A finished run changes what the screen offers and what it is headed by.</summary>
     partial void OnHasFinishedChanged(bool value)
     {
+        OnPropertyChanged(nameof(MayChangeObjectScope));
         OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(ResultsNote));
         OnPropertyChanged(nameof(CanGoBack));
@@ -2246,6 +2279,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     partial void OnIsBusyChanged(bool value)
     {
+        OnPropertyChanged(nameof(MayChangeObjectScope));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanStop));
         OnPropertyChanged(nameof(CanLeave));
@@ -2257,6 +2291,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     partial void OnIsCapturingChanged(bool value)
     {
+        OnPropertyChanged(nameof(MayChangeObjectScope));
         OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanStop));

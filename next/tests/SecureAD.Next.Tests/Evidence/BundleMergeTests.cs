@@ -409,6 +409,24 @@ public sealed class BundleMergeTests : IDisposable
     // What the merge refuses
     // ---------------------------------------------------------------------------------------
 
+    [Fact]
+    public void AShardCannotOverrideTheRunsObjectClassScope()
+    {
+        WriteShard(1, w => w.WriteCoverage(SomeCoverage("DC=contoso,DC=com")));
+        var shardPath = BundleLayout.ShardPath(_directory, BundleShard.Number(1));
+        using (var shard = OpenForWriting(shardPath))
+        {
+            using var command = shard.CreateCommand();
+            command.CommandText = "INSERT INTO capture_object_class_exclusion (class_name) VALUES ('dnsNode')";
+            command.ExecuteNonQuery();
+        }
+        using var bundle = OpenBundle();
+
+        var error = Assert.Throws<InvalidOperationException>(() => Absorb(bundle, 1));
+
+        Assert.StartsWith($"The shard '{shardPath}' carries rows in 'capture_object_class_exclusion',", error.Message);
+    }
+
     /// <summary>
     /// A shard carrying run-level rows is refused. Nine shards each with their own account of one
     /// run would give the merged bundle nine contradictory answers about what the run covered.

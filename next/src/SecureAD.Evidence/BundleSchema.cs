@@ -74,7 +74,8 @@ public static class BundleSchema
     /// references were reconciled against the authorized plan.
     /// </para>
     // 11 records 0040's failed-controller history separately from successful partition coverage.
-    public const int Version = 11;
+    // 12 records the classes deliberately excluded from this capture (P-224).
+    public const int Version = 12;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -107,6 +108,7 @@ public static class BundleSchema
     private static readonly string[] FixedTableNames =
     [
         "bundle",
+        "capture_object_class_exclusion",
         "partition_coverage",
         "domain_capture_failure",
         "domain_coverage",
@@ -234,6 +236,12 @@ public static class BundleSchema
             error_description TEXT NOT NULL,
             error_context TEXT NULL,
             PRIMARY KEY (naming_context_dn, attempt)
+        )
+        """,
+
+        """
+        CREATE TABLE capture_object_class_exclusion (
+            class_name TEXT NOT NULL COLLATE NOCASE PRIMARY KEY
         )
         """,
 

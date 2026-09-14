@@ -1,10 +1,14 @@
 using System.Net;
+using System.DirectoryServices.Protocols;
+using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
 using System.Reflection;
 using System.Text.Json;
 using SecureAD.Audit.Capture;
 using SecureAD.Audit.Connect;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
 using SecureAD.Next.Tests.Capture;
 using SecureAD.Next.Tests.Connect;
 using SecureAD.Shell.Services;
@@ -24,6 +28,64 @@ public sealed class CaptureReviewBoundaryTests
     private const string Orphan = "DC=legacy," + Root;
     private const string OrphanDns = "departed.example.net";
     private const string FailedDomain = "DC=failed," + Root;
+
+    [Theory]
+    [InlineData(false, false, 3, First)]
+    [InlineData(true, false, 6, First)]
+    [InlineData(false, true, 3, Second)]
+    [InlineData(true, true, 6, Second)]
+    public async Task TheWizardScopeControlsActualPagedCaptureAndFailover(
+        bool includeEnatelSso, bool failover, int expectedObjects, string expectedController)
+    {
+        var fixture = new Fixture();
+        fixture.ScopeObjects(failover);
+
+        var directory = await CaptureScopeAsync(fixture, includeEnatelSso);
+
+        using var database = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.EvidencePath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        database.Open();
+        using var command = database.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) || '|' || MIN(p.controller) FROM captured_object o "
+            + "JOIN partition_coverage p ON p.coverage_id=o.coverage_id WHERE o.distinguished_name LIKE 'CN=scope-%'";
+        Assert.Equal($"{expectedObjects}|{expectedController}", command.ExecuteScalar());
+    }
+
+    [Theory]
+    [InlineData(false, 5)]
+    [InlineData(true, 2)]
+    public async Task RecordedScopeSurvivesPreflightEvidenceAndDashboard(bool includeEnatelSso, int excludedCount)
+    {
+        var fixture = new Fixture();
+        fixture.ScopeObjects(failover: false);
+
+        var directory = await CaptureScopeAsync(fixture, includeEnatelSso);
+
+        using var reader = BundleReader.Open(directory).Value;
+        using var preflight = ReadPreflight(directory);
+        using var assets = new BundleAssetSource();
+        var dashboard = new DashboardViewModel(assets);
+        dashboard.Show(directory);
+        Assert.Equal((excludedCount, excludedCount, !includeEnatelSso),
+            (reader.Description.ExcludedObjectClasses.Count,
+                preflight.RootElement.GetProperty("ExcludedObjectClasses").GetArrayLength(),
+                dashboard.ObjectClassScopeStatement.Contains("enatelSSOStorageV3", StringComparison.Ordinal)));
+    }
+
+    private static async Task<string> CaptureScopeAsync(Fixture fixture, bool includeEnatelSso)
+    {
+        var screen = fixture.Screen();
+        await screen.OpenAsync();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = First;
+        await screen.ValidateOverrideAsync(row);
+        screen.IncludeEnatelSso = includeEnatelSso;
+        await screen.StartAsync();
+        Assert.True(screen.BundleDirectory is not null, screen.Problem ?? screen.Report);
+        return screen.BundleDirectory!;
+    }
 
     [Theory]
     [InlineData("example.com")]
@@ -375,10 +437,12 @@ public sealed class CaptureReviewBoundaryTests
     {
         internal string Library { get; } = TempDirectories.Create("capture-review");
         internal ControllerModel Bootstrap { get; } = new(First);
+        private ControllerModel Secondary { get; } = new(Second);
         internal ForestModel Connections { get; } = new();
         internal FakeNewAuditDialog Dialogs { get; } = new();
         internal CaptureLauncher Launcher { get; }
         internal Action? BeforeConnections { get; set; }
+        private Func<IDirectoryChannelFactory, IDirectoryChannelFactory>? DecorateConnections { get; set; }
         private readonly string _rootDns;
 
         internal Fixture(string rootDns = "example.com")
@@ -393,11 +457,27 @@ public sealed class CaptureReviewBoundaryTests
             RegisterController(First, Root);
             RegisterController(Second, Root);
             Connections.Answering(rootDns, Bootstrap).Answering(First, Bootstrap);
-            var second = new ControllerModel(Second);
+            var second = Secondary;
             Add(second, Root);
             Add(second, "CN=Password Settings Container,CN=System," + Root);
             Connections.Answering(Second, second);
             Launcher = new CaptureLauncher(Session);
+        }
+
+        internal void ScopeObjects(bool failover)
+        {
+            string[] classes = ["user", "group", "unanticipatedSecurityExtension",
+                "ENATELSSOACCOUNTPARAMETER", "enatelUserManagedAuth", "enatelSSOStorageV3", "dnsNode", "dnsZone"];
+            var byDn = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var at = 0; at < classes.Length; at++)
+            {
+                var dn = $"CN=scope-{at},{Root}";
+                byDn.Add(dn, classes[at]);
+                foreach (var model in new[] { Bootstrap, Secondary })
+                    model.AddObject(dn, ("objectGUID", [Guid.NewGuid().ToByteArray()]),
+                        ("objectClass", ["top", classes[at]]));
+            }
+            DecorateConnections = source => new ScopedDirectory(source, byDn, failover);
         }
 
         internal void NoCandidate(string namingContext = Orphan, string dns = OrphanDns) =>
@@ -425,7 +505,7 @@ public sealed class CaptureReviewBoundaryTests
             Func<ConnectionSecurityLog, IDirectoryChannelFactory> connections = _ =>
             {
                 BeforeConnections?.Invoke();
-                return Connections;
+                return DecorateConnections?.Invoke(Connections) ?? Connections;
             };
             return (CaptureSession)constructor.Invoke(
             [
@@ -463,6 +543,57 @@ public sealed class CaptureReviewBoundaryTests
             ControllerModel model, string dn, params (string Attribute, object[] Values)[] attributes) =>
             model.AddObject(dn,
                 [("objectGUID", [Guid.NewGuid().ToByteArray()]), ("objectClass", ["top"]), .. attributes]);
+    }
+
+    private sealed class ScopedDirectory(IDirectoryChannelFactory inner,
+        IReadOnlyDictionary<string, string> classes, bool failover) : IDirectoryChannelFactory
+    {
+        public Result<IDirectoryChannel> Connect(CaptureUnit unit) => Wrap(inner.Connect(unit));
+        public Result<IDirectoryChannel> Connect(string host) => Wrap(inner.Connect(host));
+        private Result<IDirectoryChannel> Wrap(Result<IDirectoryChannel> opened) => opened.IsSuccess
+            ? new ScopeChannel(opened.Value, classes, failover) : opened;
+    }
+
+    private sealed class ScopeChannel(IDirectoryChannel inner,
+        IReadOnlyDictionary<string, string> classes, bool failover) : IDirectoryChannel
+    {
+        private DirectoryPage? _remaining;
+        public string DomainController => inner.DomainController;
+        public ConnectionSecurityLevel SecurityLevel => inner.SecurityLevel;
+        public ReferralChasingOptions ReferralChasing => inner.ReferralChasing;
+        public IReadOnlyList<string> SupportedControls => inner.SupportedControls;
+        public IReadOnlyList<string> NamingContextsServed => inner.NamingContextsServed;
+        public bool IsComplete => inner.IsComplete;
+        public void Dispose() => inner.Dispose();
+
+        public async Task<DirectoryPage> SendAsync(SearchRequest request, CancellationToken cancellationToken)
+        {
+            if (request.Scope != SearchScope.Subtree || request.DistinguishedName != Root)
+                return await inner.SendAsync(request, cancellationToken);
+
+            DirectoryPage page;
+            if (_remaining is null)
+            {
+                var whole = await inner.SendAsync(request, cancellationToken);
+                _remaining = whole with { Entries = whole.Entries.Skip(4).ToArray() };
+                page = whole with { Entries = whole.Entries.Take(4).ToArray(),
+                    Completeness = PageCompleteness.MoreToCome, PagingCookie = [9, 1] };
+            }
+            else
+            {
+                if (failover && DomainController == First)
+                    throw new LdapException(81, "Synthetic connection loss on the later page.");
+                page = _remaining;
+                _remaining = null;
+            }
+
+            // Simulate server-side NOT-objectClass clauses using the request itself, never the
+            // product's chosen scope. Dropping a clause therefore makes extra objects arrive.
+            var excluded = Regex.Matches((string)request.Filter, @"\(!\(objectClass=([^)]+)\)\)")
+                .Select(match => match.Groups[1].Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return page with { Entries = page.Entries.Where(entry =>
+                !classes.TryGetValue(entry.DistinguishedName, out var name) || !excluded.Contains(name)).ToArray() };
+        }
     }
 
     private sealed record Machine(string DnsDomain) : IMachineDomain

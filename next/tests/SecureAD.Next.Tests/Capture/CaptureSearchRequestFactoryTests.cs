@@ -1,6 +1,7 @@
 using System.DirectoryServices.Protocols;
 using SecureAD.Audit.Capture;
 using SecureAD.Evidence;
+using SecureAD.Kernel.Capture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Capture;
@@ -26,6 +27,36 @@ public sealed class CaptureSearchRequestFactoryTests
 
     private static PageResultRequestControl PageControl(SearchRequest request) =>
         request.Controls.OfType<PageResultRequestControl>().Single();
+
+    [Fact]
+    public void TheDefaultRequestExcludesTheThreeEnatelClassesAndDns()
+    {
+        var request = CaptureSearchRequestFactory.ForUnit(Unit(), Controls());
+
+        Assert.Equal("(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))"
+            + "(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))"
+            + "(!(objectClass=enatelSSOStorageV3)))", request.Filter);
+    }
+
+    [Theory]
+    [InlineData(false, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))(!(objectClass=enatelSSOStorageV3)))")]
+    [InlineData(true, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone)))")]
+    public void TheFirstPageUsesTheExplicitClassScope(bool includeEnatelSso, string expected)
+    {
+        var request = CaptureSearchRequestFactory.ForUnit(Unit(), Controls(), CaptureObjectScope.For(includeEnatelSso));
+
+        Assert.Equal(expected, request.Filter);
+    }
+
+    [Theory]
+    [InlineData(false, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))(!(objectClass=enatelSSOStorageV3)))")]
+    [InlineData(true, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone)))")]
+    public void ALaterPageUsesTheExplicitClassScope(bool includeEnatelSso, string expected)
+    {
+        var request = CaptureSearchRequestFactory.ForNextPage(Unit(), Controls(), [1], CaptureObjectScope.For(includeEnatelSso));
+
+        Assert.Equal(expected, request.Filter);
+    }
 
     [Fact]
     public void TheFirstPageIsRequestedWithNoBookmark()

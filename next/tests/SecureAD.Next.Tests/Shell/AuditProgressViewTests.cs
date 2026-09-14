@@ -13,6 +13,50 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class AuditProgressViewTests
 {
+    [Fact]
+    public void TheRealEnatelCheckboxStartsUnchecked() => OnSta(() =>
+    {
+        var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher());
+        var view = ScopeView(model);
+
+        Assert.Equal(false, ((CheckBox)view.FindName("IncludeEnatelSsoCheckBox")).IsChecked);
+    });
+
+    [Fact]
+    public void CheckingTheRealEnatelCheckboxChangesTheRunChoice() => OnSta(() =>
+    {
+        var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher());
+        var view = ScopeView(model);
+        var checkbox = (CheckBox)view.FindName("IncludeEnatelSsoCheckBox");
+
+        checkbox.SetCurrentValue(CheckBox.IsCheckedProperty, true);
+
+        Assert.True(model.IncludeEnatelSso);
+    });
+
+    [Fact]
+    public void TheRealEnatelCheckboxIsDisabledDuringCapture() => OnSta(() =>
+    {
+        var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher());
+        var view = ScopeView(model);
+
+        model.IsCapturing = true;
+        view.UpdateLayout();
+
+        Assert.False(((CheckBox)view.FindName("IncludeEnatelSsoCheckBox")).IsEnabled);
+    });
+
+    private static FrameworkElement ScopeView(NewAuditViewModel model)
+    {
+        model.Screen = AuditScreen.Review;
+        var view = LoadView();
+        view.DataContext = model;
+        view.Measure(new Size(900, 430));
+        view.Arrange(new Rect(0, 0, 900, 430));
+        view.UpdateLayout();
+        return view;
+    }
+
     [Theory]
     [InlineData(900, 430)]
     [InlineData(1300, 650)]

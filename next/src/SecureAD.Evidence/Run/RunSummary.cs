@@ -19,13 +19,15 @@ public sealed record RunSummary
         RunState state,
         RunCoverage? coverage,
         int majorVersion,
-        bool graphFindingsWithheld)
+        bool graphFindingsWithheld,
+        IReadOnlyList<string>? excludedObjectClasses)
     {
         Profile = profile;
         State = state;
         Coverage = coverage;
         MajorVersion = majorVersion;
         GraphFindingsWithheld = graphFindingsWithheld;
+        ExcludedObjectClasses = excludedObjectClasses;
     }
 
     /// <summary>The forest this run assessed.</summary>
@@ -52,22 +54,30 @@ public sealed record RunSummary
     /// </summary>
     public bool GraphFindingsWithheld { get; }
 
+    /// <summary>Recorded class exclusions; absent for a run that never completed.</summary>
+    public IReadOnlyList<string>? ExcludedObjectClasses { get; }
+
     /// <summary>Describes a run that finished and sealed.</summary>
     /// <param name="profile">The forest it assessed.</param>
     /// <param name="coverage">What it read. May be incomplete; that is what makes it refusable.</param>
     /// <param name="majorVersion">The major version that produced it.</param>
     /// <param name="graphFindingsWithheld">Whether graph analysis was withheld.</param>
+    /// <param name="excludedObjectClasses">The actual class exclusions from the sealed evidence.</param>
     public static RunSummary OfCompletedRun(
         ProfileId profile,
         RunCoverage coverage,
         int majorVersion,
-        bool graphFindingsWithheld)
+        bool graphFindingsWithheld,
+        IEnumerable<string> excludedObjectClasses)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(coverage);
+        ArgumentNullException.ThrowIfNull(excludedObjectClasses);
 
         return new RunSummary(
-            profile, RunState.Sealed, coverage, majorVersion, graphFindingsWithheld);
+            profile, RunState.Sealed, coverage, majorVersion, graphFindingsWithheld,
+            Array.AsReadOnly(excludedObjectClasses.Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray()));
     }
 
     /// <summary>Describes a run that did not finish.</summary>
@@ -88,6 +98,6 @@ public sealed record RunSummary
                 nameof(state));
         }
 
-        return new RunSummary(profile, state, coverage: null, majorVersion: 0, false);
+        return new RunSummary(profile, state, coverage: null, majorVersion: 0, false, null);
     }
 }

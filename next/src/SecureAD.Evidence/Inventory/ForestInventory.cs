@@ -214,16 +214,21 @@ public sealed record ForestInventory
         string forestFqdn,
         IReadOnlyList<DomainInventory> domains,
         int policiesDeclared,
-        int policiesRead)
+        int policiesRead,
+        IReadOnlyList<string> excludedObjectClasses)
     {
         ForestFqdn = forestFqdn;
         Domains = domains;
         PoliciesDeclared = policiesDeclared;
         PoliciesRead = policiesRead;
+        ExcludedObjectClasses = excludedObjectClasses;
     }
 
     /// <summary>The forest the run captured.</summary>
     public string ForestFqdn { get; }
+
+    /// <summary>The excluded classes recorded by this run, not inferred from current defaults.</summary>
+    public IReadOnlyList<string> ExcludedObjectClasses { get; }
 
     /// <summary>Every declared domain, counted or not, sorted by name.</summary>
     public IReadOnlyList<DomainInventory> Domains { get; }
@@ -310,14 +315,17 @@ public sealed record ForestInventory
     /// <param name="domains">Every declared domain, counted or not.</param>
     /// <param name="policiesDeclared">How many policies the directory declared.</param>
     /// <param name="policiesRead">How many of them were read in full.</param>
+    /// <param name="excludedObjectClasses">The class exclusions recorded with this evidence.</param>
     public static ForestInventory Of(
         string forestFqdn,
         IEnumerable<DomainInventory> domains,
         int policiesDeclared,
-        int policiesRead)
+        int policiesRead,
+        IEnumerable<string> excludedObjectClasses)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(forestFqdn);
         ArgumentNullException.ThrowIfNull(domains);
+        ArgumentNullException.ThrowIfNull(excludedObjectClasses);
         ArgumentOutOfRangeException.ThrowIfNegative(policiesDeclared);
         ArgumentOutOfRangeException.ThrowIfNegative(policiesRead);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(policiesRead, policiesDeclared);
@@ -327,6 +335,8 @@ public sealed record ForestInventory
             .OrderBy(d => d.DomainFqdn, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return new ForestInventory(forestFqdn, ordered, policiesDeclared, policiesRead);
+        return new ForestInventory(forestFqdn, ordered, policiesDeclared, policiesRead,
+            Array.AsReadOnly(excludedObjectClasses.Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray()));
     }
 }

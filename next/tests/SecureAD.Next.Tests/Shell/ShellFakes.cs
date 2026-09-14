@@ -544,18 +544,22 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
     /// </remarks>
     public int? AskedWithDomainsAtOnce { get; private set; }
 
+    public bool? AskedToIncludeEnatelSso { get; private set; }
+
     public Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
         string? forest,
         IReadOnlyDictionary<string, string> overrides,
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
+        bool includeEnatelSso,
         CancellationToken cancellationToken)
     {
         AskedForRoot = libraryRoot;
         AskedWithOverrides = overrides;
         AskedWithExclusions = exclusions;
         AskedWithDomainsAtOnce = domainsAtOnce;
+        AskedToIncludeEnatelSso = includeEnatelSso;
         WasRun = true;
 
         if (Cancels)

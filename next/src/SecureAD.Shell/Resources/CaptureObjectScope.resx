@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>Object classes</value></data>
+  <data name="IncludeEnatel" xml:space="preserve"><value>Include Enatel SSO metadata objects</value></data>
+  <data name="Help" xml:space="preserve"><value>Excluded by default to reduce capture volume. Excluded objects and their permissions are not assessed.</value></data>
+  <data name="ExcludedClasses" xml:space="preserve"><value>Excluded object classes</value></data>
+  <data name="RecordedExclusions" xml:space="preserve"><value>Excluded object classes: {0}. Excluded objects and their permissions are not assessed.</value></data>
+  <data name="AllDomains" xml:space="preserve"><value>The capture read {0} in this forest within the recorded object-class scope.</value></data>
+  <data name="SomeDomains" xml:space="preserve"><value>{0:N0} of {1} were read within the recorded object-class scope. The counts below cover only those, and the rest are listed with what happened to them.</value></data>
+</root>

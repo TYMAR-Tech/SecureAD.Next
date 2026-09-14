@@ -32,6 +32,37 @@ public class DashboardViewModelTests
 {
     private const string Bundle = @"C:\runs\ad.lab-20260905";
 
+    [Theory]
+    [InlineData(false, "dnsNode, dnsZone, enatelSSOAccountParameter, enatelSSOStorageV3, enatelUserManagedAuth")]
+    [InlineData(true, "dnsNode, dnsZone")]
+    public void TheDashboardDisclosesTheRecordedClassScope(bool includeEnatelSso, string names)
+    {
+        var dashboard = Showing(ForestInventory.Of("ad.lab", [Counted("ad.lab", ObjectCounts.None)],
+            0, 0, SecureAD.Kernel.Capture.CaptureObjectScope.For(includeEnatelSso).ExcludedClasses));
+
+        Assert.Equal($"Excluded object classes: {names}. Excluded objects and their permissions are not assessed.",
+            dashboard.ObjectClassScopeStatement);
+    }
+
+    [Fact]
+    public void ClearingTheDashboardRemovesThePreviousClassScope()
+    {
+        var dashboard = Showing(AForestOf(Counted("ad.lab", ObjectCounts.None)));
+
+        dashboard.Clear();
+
+        Assert.Empty(dashboard.ObjectClassScopeStatement);
+    }
+
+    [Fact]
+    public void CompleteDomainCoverageDoesNotClaimEveryObjectClassWasRead()
+    {
+        var dashboard = Showing(AForestOf(Counted("ad.lab", ObjectCounts.None)));
+
+        Assert.Equal("The capture read 1 domain in this forest within the recorded object-class scope.",
+            dashboard.CoverageHeadline);
+    }
+
     // -------------------------------------------------------------------------------------------
     // The distinction itself.
 
@@ -280,7 +311,7 @@ public class DashboardViewModelTests
             "ad.lab",
             [Counted("one.ad.lab", ObjectCounts.None)],
             policiesDeclared: 50,
-            policiesRead: 47));
+            policiesRead: 47, SecureAD.Kernel.Capture.CaptureObjectScope.Default.ExcludedClasses));
 
         Assert.True(dashboard.SomePoliciesWereNotRead);
         Assert.Contains("47 of 50", dashboard.Policies, StringComparison.Ordinal);
@@ -295,7 +326,7 @@ public class DashboardViewModelTests
             "ad.lab",
             [Counted("one.ad.lab", ObjectCounts.None)],
             policiesDeclared: 12,
-            policiesRead: 12));
+            policiesRead: 12, SecureAD.Kernel.Capture.CaptureObjectScope.Default.ExcludedClasses));
 
         Assert.False(dashboard.SomePoliciesWereNotRead);
         Assert.Contains("12 Group Policy objects", dashboard.Policies, StringComparison.Ordinal);
@@ -528,7 +559,8 @@ public class DashboardViewModelTests
         });
 
     private static ForestInventory AForestOf(params DomainInventory[] domains) =>
-        ForestInventory.Of("ad.lab", domains, policiesDeclared: 0, policiesRead: 0);
+        ForestInventory.Of("ad.lab", domains, policiesDeclared: 0, policiesRead: 0,
+            SecureAD.Kernel.Capture.CaptureObjectScope.Default.ExcludedClasses);
 
     private static DashboardViewModel Showing(ForestInventory inventory)
     {

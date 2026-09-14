@@ -125,6 +125,8 @@ internal static class Program
         if (options.JudgeOnly is not null)
             return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget);
 
+        Console.WriteLine(options.ClassScopeDescription);
+
         if (capture is not null)
         {
             if (options.PreviewOnly || options.ValidateOnly)
@@ -188,6 +190,7 @@ internal static class Program
                 options.Overrides,
                 ImmutableDictionary<string, AttestedExclusion>.Empty,
                 Warn,
+                options.ObjectScope,
                 cancellationToken)
             .ConfigureAwait(false);
 

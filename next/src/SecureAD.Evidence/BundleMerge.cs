@@ -77,6 +77,7 @@ public static class BundleMerge
     private static readonly string[] RunLevelTables =
     [
         "bundle",
+        "capture_object_class_exclusion",
         "domain_capture_failure",
         "domain_coverage",
         "excluded_domain",
