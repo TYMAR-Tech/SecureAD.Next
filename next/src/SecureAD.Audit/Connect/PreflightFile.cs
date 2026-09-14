@@ -95,14 +95,23 @@ public sealed record PreflightDomainRecord(
 /// </summary>
 /// <param name="Forest">The forest the run was about to read.</param>
 /// <param name="WrittenAt">When preflight finished, before any capture traffic was sent.</param>
-/// <param name="RunMayProceed">Whether every domain the forest declared could be read.</param>
+/// <param name="RunMayProceed">Whether the run may proceed with the recorded attestations.</param>
 /// <param name="Domains">One entry per domain, in the order the plan lists them.</param>
+/// <param name="DeclaredDomains">Every domain the forest declared, including domains with no controller to ask.</param>
 public sealed record PreflightContents(
     string Forest,
     DateTimeOffset WrittenAt,
     bool RunMayProceed,
-    IReadOnlyList<PreflightDomainRecord> Domains)
+    IReadOnlyList<PreflightDomainRecord> Domains,
+    IReadOnlyList<string> DeclaredDomains)
 {
+    /// <summary>Declared domains with no candidate controller, keyed by naming context.</summary>
+    public IReadOnlyDictionary<string, string> DomainsWithNoCandidates { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The validated attestations used to decide whether this run may proceed.</summary>
+    public IReadOnlyList<AttestedExclusion> Exclusions { get; init; } = [];
+
     /// <summary>
     /// Whether every domain in this file was asked all four questions.
     /// </summary>
@@ -117,7 +126,10 @@ public sealed record PreflightContents(
     /// </para>
     /// </remarks>
     public bool AllDomainsWereAsked =>
-        Domains.Count > 0 && Domains.All(d => d.AllQuestionsWereAsked);
+        Domains.Count > 0
+        && Domains.Count == DeclaredDomains.Count
+        && DomainsWithNoCandidates.Count == 0
+        && Domains.All(d => d.AllQuestionsWereAsked);
 }
 
 /// <summary>
@@ -172,16 +184,32 @@ public static class PreflightFile
     /// <param name="report">What preflight found.</param>
     /// <param name="writtenAt">When, from the run's own clock.</param>
     public static void Write(
-        string bundleDirectory, PreflightReport report, DateTimeOffset writtenAt)
+        string bundleDirectory, PreflightReport report, DateTimeOffset writtenAt) =>
+        Write(bundleDirectory, report, writtenAt,
+            new Dictionary<string, AttestedExclusion>(StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>Writes preflight facts and the validated attestations used to permit this run.</summary>
+    public static void Write(
+        string bundleDirectory, PreflightReport report, DateTimeOffset writtenAt,
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(report);
 
+        ArgumentNullException.ThrowIfNull(exclusions);
+        if (report.Plan.ValidateExclusions(exclusions) is { } invalid)
+            throw new ArgumentException(invalid.Description, nameof(exclusions));
+
         var contents = new PreflightContents(
             report.Plan.ForestFqdn,
             writtenAt,
-            report.RunMayProceed,
-            [.. report.Domains.Select(Record)]);
+            report.Refusal(exclusions.Keys.ToList()) is null,
+            [.. report.Domains.Select(Record)],
+            report.Plan.DeclaredDomains)
+        {
+            DomainsWithNoCandidates = report.DomainsWithNoCandidates,
+            Exclusions = [.. exclusions.Values],
+        };
 
         File.WriteAllText(
             BundleLayout.PreflightPath(bundleDirectory),

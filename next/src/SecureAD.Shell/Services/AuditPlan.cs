@@ -279,7 +279,11 @@ internal sealed record DomainAnswers(
 /// </summary>
 /// <param name="RunMayProceed">Whether every domain the forest declared can be read.</param>
 /// <param name="Domains">One entry per domain, in the order the plan lists them.</param>
-internal sealed record AuditCheck(bool RunMayProceed, IReadOnlyList<DomainAnswers> Domains);
+internal sealed record AuditCheck(bool RunMayProceed, IReadOnlyList<DomainAnswers> Domains)
+{
+    /// <summary>Domains that prevent capture unless each has its own exclusion attestation.</summary>
+    public IReadOnlyList<string> BlockingDomains { get; init; } = [];
+}
 
 /// <summary>
 /// What a run would read and from where, as discovery established it and before anything was

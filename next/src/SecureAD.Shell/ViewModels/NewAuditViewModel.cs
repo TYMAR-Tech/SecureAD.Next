@@ -1044,6 +1044,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <summary>Whether preflight found every domain readable.</summary>
     public bool RunMayProceed { get; private set; }
 
+    private IReadOnlyList<string> _blockingDomains = [];
+
     /// <summary>
     /// Checks one row's named controller by asking that controller, and nothing else.
     /// </summary>
@@ -1138,6 +1140,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
         await WithBusy(async token =>
         {
+            ForgetPreflight();
             BusyMessage = AskingEveryDomain;
 
             var check = await _capture
@@ -1147,6 +1150,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             if (!check.IsSuccess)
             {
                 Problem = check.Error.Description;
+                MayLookAgain = true;
                 return;
             }
 
@@ -1360,6 +1364,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
         await WithBusy(async token =>
         {
+            ForgetPreflight();
             BusyMessage = "Finding the forest and working out what would be read\u2026";
 
             var plan = await _capture
@@ -1434,12 +1439,21 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
 
         RunMayProceed = check.RunMayProceed;
+        _blockingDomains = check.BlockingDomains;
         OnPropertyChanged(nameof(CanStart));
         StartCommand.NotifyCanExecuteChanged();
         ReviewCommand.NotifyCanExecuteChanged();
 
         // The per-domain states have just moved, and the forest-wide total is derived from them.
         InclusionChanged();
+    }
+
+    /// <summary>A fresh pass cannot inherit permission to start from a previous pass.</summary>
+    private void ForgetPreflight()
+    {
+        RunMayProceed = false;
+        _blockingDomains = [];
+        Problem = null;
     }
 
     /// <summary>
@@ -1601,12 +1615,21 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// </para>
     /// </remarks>
     public bool CanStart =>
-        RunMayProceed
+        (RunMayProceed || EveryBlockingDomainIsAttested())
         && UnattestedExclusionCount == 0
         && Domains.All(d => d.Problem is null)
         && !IsBusy
         && !IsCapturing
         && Location.IsChosen;
+
+    private bool EveryBlockingDomainIsAttested()
+    {
+        var attested = Attestations()
+            .Select(attestation => attestation.NamingContext)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return _blockingDomains.Count > 0 && _blockingDomains.All(attested.Contains);
+    }
 
     /// <summary>
     /// Starts the capture. The Review step was the confirmation; there is no second prompt.
@@ -2039,13 +2062,16 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// The controllers the operator named, keyed by domain naming context. Per run and never
+    /// The controllers the operator named, keyed by the forest's declared DNS name. Per run and never
     /// stored, per <c>docs/decisions/0047-settings-are-per-user-and-per-machine.md</c>.
     /// </summary>
     private Dictionary<string, string> Overrides() =>
         Domains
             .Where(d => !string.IsNullOrWhiteSpace(d.NamedController))
-            .ToDictionary(d => d.NamingContext, d => d.NamedController.Trim(), StringComparer.Ordinal);
+            .ToDictionary(
+                d => _domainDnsNames[d.NamingContext],
+                d => d.NamedController.Trim(),
+                StringComparer.OrdinalIgnoreCase);
 
     private DomainRowViewModel? Row(string namingContext) =>
         Domains.FirstOrDefault(d =>

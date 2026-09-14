@@ -30,6 +30,16 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal sealed class CaptureLauncher : ICaptureLauncher
 {
+    private readonly Func<string, int, CaptureSession> _session;
+
+    internal CaptureLauncher() : this(Session) { }
+
+    internal CaptureLauncher(Func<string, int, CaptureSession> session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        _session = session;
+    }
+
     /// <inheritdoc/>
     public async Task<Result<AuditPlanView>> PlanAsync(
         string libraryRoot,
@@ -40,7 +50,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var plan = await Session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
+        var plan = await _session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
             .PlanAsync(forest, overrides, cancellationToken)
             .ConfigureAwait(false);
 
@@ -60,7 +70,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         ArgumentException.ThrowIfNullOrWhiteSpace(namingContext);
 
-        var answer = await Session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
+        var answer = await _session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
             .CheckNamedControllerAsync(host, namingContext, cancellationToken)
             .ConfigureAwait(false);
 
@@ -77,7 +87,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var report = await Session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
+        var report = await _session(libraryRoot, DirectoryConnectionSettings.DefaultDomainsAtOnce)
             .ValidateAsync(forest, overrides, cancellationToken)
             .ConfigureAwait(false);
 
@@ -103,7 +113,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         // progress to offer, and a progress bar over a run that cannot report one is a picture of a
         // run rather than a report of it. What preflight found was shown on the Review step, before
         // the operator pressed Start.
-        var run = await Session(libraryRoot, domainsAtOnce)
+        var run = await _session(libraryRoot, domainsAtOnce)
             .RunAsync(
                 forest,
                 overrides,
@@ -182,7 +192,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
 
         var operatorSite = plan.Selection.OperatorSite;
 
-        var dnsNames = PairDnsNamesToDomains(plan);
+        var dnsNames = plan.Capture.DomainDnsNames;
 
         return new AuditPlanView(
             plan.Capture.ForestFqdn,
@@ -198,43 +208,6 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         {
             DomainDnsNames = dnsNames,
         };
-    }
-
-    /// <summary>
-    /// Pairs each domain's declared DNS name to its naming context, where the two can be paired.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Both sides come from the forest.</b> The naming contexts are the partitions it plans to
-    /// read and the DNS names are the ones it declared, and this only says which goes with which.
-    /// Turning <c>DC=ph,DC=ad,DC=lab</c> into <c>ph.ad.lab</c> by string surgery would be inventing
-    /// a name nobody published - true in almost every forest and wrong in the one that renamed a
-    /// domain.
-    /// </para>
-    /// <para>
-    /// A domain that pairs with nothing is absent from the result and shows its naming context,
-    /// which is what it did before this existed.
-    /// </para>
-    /// </remarks>
-    private static IReadOnlyDictionary<string, string> PairDnsNamesToDomains(ForestPlan plan)
-    {
-        var paired = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var dnsName in plan.Capture.DeclaredDomains)
-        {
-            var asNamingContext = string.Join(
-                ',', dnsName.Split('.').Select(label => "DC=" + label));
-
-            var match = plan.Selection.Domains.FirstOrDefault(domain => string.Equals(
-                domain.NamingContext, asNamingContext, StringComparison.OrdinalIgnoreCase));
-
-            if (match is not null)
-            {
-                paired[match.NamingContext] = dnsName;
-            }
-        }
-
-        return paired;
     }
 
     /// <summary>
@@ -269,7 +242,14 @@ internal sealed class CaptureLauncher : ICaptureLauncher
     /// What preflight found, as a window shows it.
     /// </summary>
     private static AuditCheck Describe(PreflightReport report) =>
-        new(report.RunMayProceed, [.. report.Domains.Select(Describe)]);
+        new(report.RunMayProceed, [.. report.Domains.Select(Describe)])
+        {
+            BlockingDomains =
+            [
+                .. report.Blocking.Select(domain => domain.NamingContext),
+                .. report.DomainsWithNoCandidates.Keys,
+            ],
+        };
 
     /// <summary>
     /// One domain's preflight answers.

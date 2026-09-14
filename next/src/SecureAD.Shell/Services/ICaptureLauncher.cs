@@ -65,7 +65,7 @@ internal interface ICaptureLauncher
     /// own. Null or blank for the ordinary case.
     /// </param>
     /// <param name="overrides">
-    /// Controllers the operator named, keyed by domain naming context. A name the forest does not
+    /// Controllers the operator named, keyed by the domain's declared DNS name. A name the forest does not
     /// list for that domain fails this call rather than being replaced by the ranked choice.
     /// </param>
     /// <param name="cancellationToken">Stops the look; nothing has been written.</param>
@@ -118,7 +118,7 @@ internal interface ICaptureLauncher
     /// own. Null or blank for the ordinary case, where the run finds the forest it is already in.
     /// </param>
     /// <param name="overrides">
-    /// Controllers the operator named, keyed by domain naming context. Per run and never stored,
+    /// Controllers the operator named, keyed by the domain's declared DNS name. Per run and never stored,
     /// per <c>docs/decisions/0047-settings-are-per-user-and-per-machine.md</c>.
     /// </param>
     /// <param name="exclusions">

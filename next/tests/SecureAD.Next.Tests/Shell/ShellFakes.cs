@@ -598,7 +598,13 @@ internal static class Forests
             {
                 [Controller] = "Default-First-Site-Name",
                 [Other] = "Default-First-Site-Name",
-            });
+            })
+        {
+            DomainDnsNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [Root] = "ad.lab",
+            },
+        };
 
     public static DomainPlanRow Domain(params string[] alternatives) =>
         new(

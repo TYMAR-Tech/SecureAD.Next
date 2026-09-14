@@ -53,6 +53,7 @@ public sealed class CaptureSession
     private readonly TimeProvider _time;
     private readonly IMachineDomain _machine;
     private readonly IReadOnlyList<IPAddress> _localAddresses;
+    private readonly Func<ConnectionSecurityLog, IDirectoryChannelFactory> _connections;
 
     /// <summary>
     /// Creates the session.
@@ -78,18 +79,34 @@ public sealed class CaptureSession
         TimeProvider time,
         IMachineDomain machine,
         IReadOnlyList<IPAddress> localAddresses)
+        : this(library, settings, time, machine, localAddresses,
+            log => new LdapDirectoryChannelFactory(settings, log))
+    {
+    }
+
+    // Keep offline connection substitution inside the assembly: callers still use the one
+    // production connection policy, while boundary tests can exercise the complete session.
+    internal CaptureSession(
+        RunLibrary library,
+        DirectoryConnectionSettings settings,
+        TimeProvider time,
+        IMachineDomain machine,
+        IReadOnlyList<IPAddress> localAddresses,
+        Func<ConnectionSecurityLog, IDirectoryChannelFactory> connections)
     {
         ArgumentNullException.ThrowIfNull(library);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(machine);
         ArgumentNullException.ThrowIfNull(localAddresses);
+        ArgumentNullException.ThrowIfNull(connections);
 
         _library = library;
         _settings = settings;
         _time = time;
         _machine = machine;
         _localAddresses = localAddresses;
+        _connections = connections;
     }
 
     /// <summary>
@@ -127,7 +144,7 @@ public sealed class CaptureSession
     /// of its own. Null for the ordinary case.
     /// </param>
     /// <param name="overrides">
-    /// Controllers an operator named for particular domains, keyed by domain naming context. Per
+    /// Controllers an operator named for particular domains, keyed by declared DNS name. Per
     /// run and never stored, per <c>docs/decisions/0047-settings-are-per-user-and-per-machine.md</c>.
     /// </param>
     /// <param name="cancellationToken">Cancellation for a check an operator stopped.</param>
@@ -138,7 +155,7 @@ public sealed class CaptureSession
     {
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var connections = new LdapDirectoryChannelFactory(_settings, new ConnectionSecurityLog());
+        var connections = _connections(new ConnectionSecurityLog());
 
         var entry = Enter(connections, typedName);
         if (!entry.IsSuccess)
@@ -182,7 +199,7 @@ public sealed class CaptureSession
     public async Task<NamedControllerAnswer> CheckNamedControllerAsync(
         string host, string namingContext, CancellationToken cancellationToken)
     {
-        var connections = new LdapDirectoryChannelFactory(_settings, new ConnectionSecurityLog());
+        var connections = _connections(new ConnectionSecurityLog());
 
         return await NamedControllerCheck
             .AskAsync(connections, host, namingContext, cancellationToken)
@@ -213,7 +230,7 @@ public sealed class CaptureSession
     {
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var connections = new LdapDirectoryChannelFactory(_settings, new ConnectionSecurityLog());
+        var connections = _connections(new ConnectionSecurityLog());
 
         var entry = Enter(connections, typedName);
         if (!entry.IsSuccess)
@@ -254,7 +271,7 @@ public sealed class CaptureSession
     /// of its own. Null for the ordinary case.
     /// </param>
     /// <param name="overrides">
-    /// Controllers an operator named for particular domains, keyed by domain naming context.
+    /// Controllers an operator named for particular domains, keyed by declared DNS name.
     /// </param>
     /// <param name="reportPreflight">
     /// Called once with what preflight found, before any object is read. It is how a caller says
@@ -296,41 +313,13 @@ public sealed class CaptureSession
         // printed it beside "Sealed" has told an operator about a choice he could no longer change.
         reportPreflight?.Invoke(report);
 
-        // 0054 requires a domain the forest names no controller for to be excluded under an
-        // operator's attestation. That attestation now exists - 0062 and the New Audit window's
-        // exclusion step - so an incomplete plan is allowed through exactly as far as it has been
-        // accounted for, and no further. A shortfall nobody has put a name to still stops the run
-        // rather than sealing a bundle silently missing a domain, which is the one outcome that
-        // record exists to prevent. --validate and --preview still report it.
-        if (!report.Plan.IsComplete)
-        {
-            var planned = report.Plan.Units.Count(u => u.Kind == NamingContextKind.Domain);
-            var unread = report.Plan.DeclaredDomains.Count - planned;
-
-            if (unread > exclusions.Count)
-            {
-                return Result<CaptureRunResult>.Failure(AuditError.Create(
-                    ErrorCategory.Capture,
-                    "ADomainHasNoCandidateControllers",
-                    ErrorSeverity.Failed,
-                    $"This forest declares {report.Plan.DeclaredDomains.Count} domains and a "
-                    + $"controller was found for {planned} of them. The forest names no writable "
-                    + $"controller holding the rest, so nothing can read them, and "
-                    + $"{unread - exclusions.Count} of those have no attestation against them. "
-                    + "Leaving a domain out of an audit requires an operator's attestation, so no "
-                    + "bundle is produced rather than one that is silently missing a domain. Run "
-                    + "with --preview to see which domains the forest says this about.",
-                    context: null));
-            }
-        }
-
         // Every domain was asked before any of them was allowed to stop the run, per 0048, so the
         // refusal names all of them rather than the first one met.
         //
         // The exclusions go in because a domain nobody is going to read cannot be a reason not to
         // start. A domain with no candidate controllers fails preflight for precisely the reason it
-        // was excluded, and counting it here turned a deliberate exclusion into an unreachable
-        // forest. The coverage record is unaffected: report.Blocking still holds it.
+        // was excluded. Refusal matches each missing or failed domain, not exclusion counts;
+        // excluding a different domain cannot account for this one's absence.
         if (report.Refusal(exclusions.Keys.ToList()) is { } refused)
         {
             return Result<CaptureRunResult>.Failure(refused);
@@ -344,7 +333,7 @@ public sealed class CaptureSession
 
         // Before any capture traffic, per 0048. A run that dies at hour two still leaves behind
         // which controller served each domain and how well protected the connection to it was.
-        PreflightFile.Write(directory.Value!, report, _time.GetUtcNow());
+        PreflightFile.Write(directory.Value!, report, _time.GetUtcNow(), exclusions);
 
         // WHAT THIS RUN COSTS IS MEASURED FROM HERE, and it starts before the log opens rather than
         // after, so the preflight file and the log itself are inside the disk figure. The reason
@@ -383,7 +372,7 @@ public sealed class CaptureSession
                 new RunLogDetail("excluded", exclusions.Count.ToString(CultureInfo.InvariantCulture)),
             ]);
 
-        var connections = new LdapDirectoryChannelFactory(_settings, new ConnectionSecurityLog());
+        var connections = _connections(new ConnectionSecurityLog());
 
         // The share is read with the token the run already holds. There is no alternate-credential
         // path, per docs/decisions/0039: one way to start a capture, and the predecessor's

@@ -49,6 +49,13 @@ later the same day: *"i will be making it so the user can run the audit and it c
 via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
 unattended path, and the GUI is the worked path.
 
+## Capture preflight: domains with no controller
+
+**Owner-approved wording for P-213.** In the existing error area, report:
+“No writable controller was found for: {domain names}. Each domain needs an exclusion attestation
+before capture can start.” No layout change was approved; saved preflight output must retain those
+declared domains separately from any valid exclusion attestations, without claiming they answered.
+
 ## SYSVOL acquisition must not hold a run indefinitely
 
 **Owner-approved requirements, 2026-09-13.** A production capture reached “reading the policy

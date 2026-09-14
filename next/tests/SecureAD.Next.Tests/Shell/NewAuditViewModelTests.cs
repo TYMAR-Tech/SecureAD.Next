@@ -611,7 +611,7 @@ public sealed class NewAuditViewModelTests
 
         await screen.StartAsync();
 
-        Assert.Equal("dc02.ad.lab", _capture.AskedWithOverrides[Forests.Root]);
+        Assert.Equal("dc02.ad.lab", _capture.AskedWithOverrides["ad.lab"]);
     }
 
     /// <summary>

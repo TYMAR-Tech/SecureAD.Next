@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using SecureAD.Audit.Capture;
 using SecureAD.Evidence;
 using SecureAD.Kernel;
@@ -218,6 +220,20 @@ public sealed record DomainPreflight(
 /// <param name="Domains">One row per domain partition, in the order the plan lists them.</param>
 public sealed record PreflightReport(CapturePlan Plan, IReadOnlyList<DomainPreflight> Domains)
 {
+    private static readonly ResourceManager Wording = new(
+        "SecureAD.Audit.Resources.CapturePreflight", typeof(PreflightReport).Assembly);
+
+    /// <summary>
+    /// Declared domains for which discovery could not plan a controller, keyed by naming context.
+    /// These are not failed connections: no controller was available to ask.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> DomainsWithNoCandidates =>
+        Plan.DomainDnsNames
+            .Where(domain => !Plan.Units.Any(unit =>
+                unit.Kind == NamingContextKind.Domain
+                && string.Equals(unit.NamingContext, domain.Key, StringComparison.OrdinalIgnoreCase)))
+            .ToDictionary(domain => domain.Key, domain => domain.Value, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Whether every domain the forest declared was asked, and asked everything.
     /// </summary>
@@ -284,7 +300,7 @@ public sealed record PreflightReport(CapturePlan Plan, IReadOnlyList<DomainPrefl
     /// <summary>
     /// Whether every domain the forest declared can be read.
     /// </summary>
-    public bool RunMayProceed => Blocking.Count == 0;
+    public bool RunMayProceed => Refusal([]) is null;
 
     /// <summary>
     /// Why the run may not proceed, naming every domain that failed rather than the first.
@@ -323,6 +339,27 @@ public sealed record PreflightReport(CapturePlan Plan, IReadOnlyList<DomainPrefl
             : [.. Blocking.Where(d => !excludedNamingContexts.Contains(
                 d.NamingContext, StringComparer.OrdinalIgnoreCase))];
 
+        var unattested = DomainsWithNoCandidates
+            .Where(domain => !excludedNamingContexts.Contains(domain.Key, StringComparer.OrdinalIgnoreCase))
+            .Select(domain => domain.Value)
+            .ToList();
+
+        if (unattested.Count > 0)
+        {
+            var description = string.Format(
+                CultureInfo.CurrentCulture,
+                Wording.GetString("MissingControllerAttestation", CultureInfo.CurrentUICulture)
+                    ?? throw new MissingManifestResourceException("MissingControllerAttestation"),
+                string.Join(", ", unattested));
+
+            return AuditError.Create(
+                ErrorCategory.Capture,
+                "ADomainHasNoCandidateControllers",
+                ErrorSeverity.Failed,
+                description + (blocking.Count == 0 ? string.Empty : " " + string.Join(" ", blocking.Select(Describe))),
+                context: Plan.ForestFqdn);
+        }
+
         if (blocking.Count == 0)
         {
             return null;
@@ -334,7 +371,7 @@ public sealed record PreflightReport(CapturePlan Plan, IReadOnlyList<DomainPrefl
             ErrorCategory.Capture,
             "PreflightRefusedTheRun",
             ErrorSeverity.Failed,
-            $"{blocking.Count} of {Domains.Count} domains cannot be read, so no capture was "
+            $"{blocking.Count} of {Plan.DeclaredDomains.Count} domains cannot be read, so no capture was "
             + "started. A capture that cannot read every domain the forest declares produces no "
             + "bundle at all, so this is reported before hours are spent rather than after. "
             + string.Join(" ", reasons),
