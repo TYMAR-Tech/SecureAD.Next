@@ -4,7 +4,10 @@ using SecureAD.Audit.Capture;
 using SecureAD.Audit.Sysvol;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
 using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.Security;
+using SecureAD.Next.Tests.Capture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Sysvol;
@@ -463,10 +466,136 @@ public sealed class SysvolCaptureTests : IDisposable
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
 
-        var capture = new SysvolCapture(new InMemorySysvolFileReader(), writer);
+        var capture = new SysvolCapture(new InMemorySysvolFileReader(), writer, RunLog.Discarded, TimeProvider.System);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => capture.ReadAsync(Inventory(OnePolicy()), cancelled.Token));
+    }
+
+    [Fact]
+    public async Task ATimedOutEnumerationMarksOnlyItsPolicyIncomplete()
+    {
+        var files = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, "", ADescriptor())
+            .WithDescriptor(SecondPolicyPath, "", ADescriptor());
+        var reader = new TimedOutReader(files, "directories", "*");
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy(),
+            GpoTarget.Of(SecondPolicyGuid, "Second policy", SecondPolicyPath)));
+
+        Assert.Equal([GpoReadOutcome.PartiallyRead, GpoReadOutcome.Read],
+            coverage.Policies.Select(policy => policy.Outcome));
+    }
+
+    [Fact]
+    public async Task NoFurtherAcquisitionRunsForAPolicyWhoseEnumerationTimedOut()
+    {
+        var reader = new TimedOutReader(new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, "", ADescriptor()), "directories", "*");
+
+        await ReadAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(["acl:", "directories:*"], reader.Calls.Select(call => call.Operation + ":" + call.Path));
+    }
+
+    [Fact]
+    public async Task CompletedRootEvidenceSurvivesAnEnumerationTimeoutInASealedBundle()
+    {
+        var reader = new TimedOutReader(new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, "", ADescriptor()), "directories", "*");
+
+        var directory = await CaptureAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal([PolicyGuid.ToString("D") + "|PartiallyRead|"], Query(directory,
+            "SELECT c.gpo_guid || '|' || c.outcome || '|' || d.relative_path "
+            + "FROM sysvol_gpo_coverage c JOIN sysvol_path_security_descriptor d ON c.gpo_guid = d.gpo_guid"));
+    }
+
+    [Fact]
+    public async Task CompletedFileContentsSurviveTheSubsequentAclTimeout()
+    {
+        var files = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, "", ADescriptor())
+            .WithDescriptor(PolicyPath, "Machine", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Microsoft", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Microsoft\Windows NT", ADescriptor())
+            .WithDescriptor(PolicyPath, @"Machine\Microsoft\Windows NT\SecEdit", ADescriptor())
+            .WithDescriptor(PolicyPath, TemplatePath, ADescriptor())
+            .WithFile(PolicyPath, TemplatePath, TemplateBytes("[Privilege Rights]\r\nSeDebugPrivilege = *S-1-5-32-545"));
+        var reader = new TimedOutReader(files, "acl", TemplatePath);
+
+        var directory = await CaptureAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(["SeDebugPrivilege|*S-1-5-32-545"], Query(directory,
+            "SELECT name || '|' || value FROM gpo_security_setting"));
+    }
+
+    [Fact]
+    public async Task ARootTimeoutIsUnreadableRatherThanAnEmptySuccessfulPolicy()
+    {
+        var reader = new TimedOutReader(new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, "", ADescriptor()), "acl", "");
+
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(GpoReadOutcome.Unreadable, Assert.Single(coverage.Policies).Outcome);
+    }
+
+    [Fact]
+    public async Task ADatabaseConstraintFailureEscapesThePolicyTimeoutBoundary()
+    {
+        using var writer = BundleWriter.Create(Directory.CreateDirectory(_root).FullName, Started);
+        var descriptor = ADescriptor();
+        writer.WriteSysvolSecurityDescriptor(PolicyGuid, "", descriptor,
+            AceNormalizer.Normalize(Guid.Empty, SecurityDescriptorParser.Parse(descriptor)));
+        var reader = new InMemorySysvolFileReader().WithDescriptor(PolicyPath, "", descriptor);
+        var capture = new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System);
+
+        await Assert.ThrowsAsync<SqliteException>(() => capture.ReadAsync(Inventory(OnePolicy()), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task PolicyProgressCountsAccountForTimeoutsWithoutCallingThemCompleteReads()
+    {
+        using var writer = BundleWriter.Create(Directory.CreateDirectory(_root).FullName, Started);
+        var reader = new TimedOutReader(new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, "", ADescriptor())
+            .WithDescriptor(SecondPolicyPath, "", ADescriptor()), "directories", "*");
+        var log = new RecordingRunLog();
+
+        await new SysvolCapture(reader, writer, log, TimeProvider.System).ReadAsync(Inventory(OnePolicy(),
+            GpoTarget.Of(SecondPolicyGuid, "Second policy", SecondPolicyPath)), CancellationToken.None);
+
+        Assert.Equal(["1|2|PartiallyRead", "2|2|Read"], log.Saying("SYSVOL policy accounted for")
+            .Select(row => RecordingRunLog.Value(row, "policiesCompleted") + "|"
+                + RecordingRunLog.Value(row, "policiesTotal") + "|" + RecordingRunLog.Value(row, "outcome")));
+    }
+
+    private sealed class TimedOutReader(ISysvolFileReader inner, string operation, string path) : ISysvolFileReader
+    {
+        internal List<(Guid Gpo, string Operation, string Path)> Calls { get; } = [];
+
+        public Task<Result<byte[]?>> ReadFileAsync(GpoTarget target, string relativePath, CancellationToken cancellationToken) =>
+            ReadAsync(target, "file", relativePath, () => inner.ReadFileAsync(target, relativePath, cancellationToken));
+
+        public Task<Result<byte[]?>> ReadSecurityDescriptorAsync(GpoTarget target, string relativePath, CancellationToken cancellationToken) =>
+            ReadAsync(target, "acl", relativePath, () => inner.ReadSecurityDescriptorAsync(target, relativePath, cancellationToken));
+
+        public Task<Result<IReadOnlyList<string>>> EnumerateRelativeFilesAsync(GpoTarget target, string searchPattern, CancellationToken cancellationToken) =>
+            ReadAsync(target, "files", searchPattern, () => inner.EnumerateRelativeFilesAsync(target, searchPattern, cancellationToken));
+
+        public Task<Result<IReadOnlyList<string>>> EnumerateRelativeDirectoriesAsync(GpoTarget target, CancellationToken cancellationToken) =>
+            ReadAsync(target, "directories", "*", () => inner.EnumerateRelativeDirectoriesAsync(target, cancellationToken));
+
+        private Task<Result<T>> ReadAsync<T>(GpoTarget target, string requestedOperation, string requestedPath, Func<Task<Result<T>>> read)
+        {
+            Calls.Add((target.GpoGuid, requestedOperation, requestedPath));
+            return target.GpoGuid == PolicyGuid && requestedOperation == operation && requestedPath == path
+                ? Task.FromResult(Result<T>.Failure(AuditError.Create(ErrorCategory.Capture,
+                    "SysvolOperationTimedOut", ErrorSeverity.Failed,
+                    $"Synthetic timeout at {target.FileSysPath}\\{requestedPath}; remaining policy operations were not attempted.", target.FileSysPath)))
+                : read();
+        }
     }
 
     private static GpoTarget OnePolicy() =>
@@ -555,7 +684,7 @@ public sealed class SysvolCaptureTests : IDisposable
     {
         using var writer = BundleWriter.Create(Directory.CreateDirectory(_root).FullName, Started);
 
-        return await new SysvolCapture(reader, writer).ReadAsync(inventory, CancellationToken.None);
+        return await new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System).ReadAsync(inventory, CancellationToken.None);
     }
 
     /// <summary>Runs a SYSVOL capture and seals the bundle, returning its directory.</summary>
@@ -565,7 +694,7 @@ public sealed class SysvolCaptureTests : IDisposable
 
         using var writer = BundleWriter.Create(directory, Started);
 
-        var coverage = await new SysvolCapture(reader, writer)
+        var coverage = await new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System)
             .ReadAsync(inventory, CancellationToken.None);
 
         writer.Complete(

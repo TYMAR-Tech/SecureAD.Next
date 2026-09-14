@@ -392,8 +392,10 @@ public sealed class CaptureSession
         // The concurrency ceiling comes from the connection settings because that is where an
         // operator states it, and it is a fact about this machine rather than about the directory -
         // every domain in flight writes its own database, so what binds is this laptop's disk.
+        await using var sysvol = new IsolatedSysvolFileReader(
+            SysvolWorker.CurrentCommand, IsolatedSysvolFileReader.InactivityLimit, log, _time);
         var run = new CaptureRun(
-            connections, new SmbSysvolFileReader(), _time, log, _settings.DomainsAtOnce);
+            connections, sysvol, _time, log, _settings.DomainsAtOnce);
 
         // An attested exclusion takes the domain out of the reading, not only out of the evidence.
         // Recording that a domain was left out while still capturing it produces a bundle that

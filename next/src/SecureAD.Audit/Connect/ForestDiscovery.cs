@@ -287,7 +287,11 @@ public static class ForestDiscovery
             schema,
             domains,
             partitions,
-            forest.Value.PartitionsNotRead);
+            forest.Value.PartitionsNotRead,
+            selection.Value.Domains.ToDictionary(
+                domain => domain.NamingContext,
+                domain => domain.Failover,
+                StringComparer.OrdinalIgnoreCase));
 
         if (!capture.IsSuccess)
         {

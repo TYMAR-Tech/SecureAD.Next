@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using SecureAD.Audit.Capture;
 using SecureAD.Audit.Connect;
+using SecureAD.Audit.Sysvol;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
@@ -52,6 +53,9 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
+        if (SysvolWorker.IsInvocation(args))
+            return await SysvolWorker.RunAsync(args).ConfigureAwait(false);
+
         var parsed = CommandLine.Parse(args);
 
         if (parsed is null)

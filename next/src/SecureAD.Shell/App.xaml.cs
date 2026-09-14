@@ -1,4 +1,5 @@
 using System.Windows;
+using SecureAD.Audit.Sysvol;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -26,8 +27,14 @@ internal partial class App : Application
 {
     /// <summary>Assembles the product and shows its window.</summary>
     /// <param name="e">The startup arguments.</param>
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
+        if (SysvolWorker.IsInvocation(e.Args))
+        {
+            Shutdown(await SysvolWorker.RunAsync(e.Args));
+            return;
+        }
+
         base.OnStartup(e);
 
         // ONE STORE, TWO SETTINGS. The run library path and the concurrency ceiling live in the

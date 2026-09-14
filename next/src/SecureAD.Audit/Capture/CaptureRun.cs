@@ -303,6 +303,12 @@ public sealed class CaptureRun
                 return End(bundleDirectory, ended);
         }
 
+        foreach (var domain in readDomains)
+        {
+            foreach (var failure in domain.Failures)
+                writer.RecordDomainCaptureFailure(failure);
+        }
+
         // MERGED IN PLAN ORDER, one at a time, into the writer already holding the prologue.
         // TogetherAsync answers in the order it was handed its subjects rather than the order they
         // arrived, so this is the plan's order and not the forest's timing - two runs of one forest
@@ -405,7 +411,7 @@ public sealed class CaptureRun
             "reading the policy share",
             [new RunLogDetail("policies", declaredPolicies)]);
 
-        var sysvol = await new SysvolCapture(_sysvolFiles, writer)
+        var sysvol = await new SysvolCapture(_sysvolFiles, writer, _log, _time)
             .ReadAsync(sink.Policies, cancellationToken)
             .ConfigureAwait(false);
 
@@ -542,7 +548,56 @@ public sealed class CaptureRun
         DomainShard Shard,
         PartitionCoverage? Coverage,
         BundleCaptureSink? Sink,
-        RunEnding? Ending);
+        RunEnding? Ending)
+    {
+        public IReadOnlyList<DomainCaptureFailure> Failures { get; init; } = [];
+    }
+
+    private async Task<DomainRead> ReadOneDomainAsync(
+        string bundleDirectory,
+        DateTimeOffset startedUtc,
+        DomainShard domain,
+        CapturePlan plan,
+        DirectoryWorkDispatch turns,
+        CancellationToken cancellationToken)
+    {
+        var alternatives = plan.Failover.TryGetValue(domain.Unit.NamingContext, out var ranked)
+            ? ranked : [];
+        var controllers = new[] { domain.Unit.DomainController }.Concat(alternatives)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var failures = new List<DomainCaptureFailure>();
+        DomainRead? firstFailure = null;
+
+        foreach (var controller in controllers)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 0040: a new pairing, never a channel substituted beneath an existing unit.
+            var attempt = domain with { Unit = domain.Unit with { DomainController = controller } };
+            var attemptStartedUtc = _time.GetUtcNow();
+            var read = await ReadDomainAttemptAsync(
+                bundleDirectory, startedUtc, attempt, plan, turns, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (read.Ending is null)
+                return read with { Failures = failures };
+
+            // ReadDomainAttemptAsync has disposed the writer, including its transaction and
+            // connection. Only now may this domain's stable shard slot be reused; no other
+            // domain can own it, and no failed attempt's database is opened as its replacement.
+            File.Delete(BundleLayout.ShardPath(bundleDirectory, domain.Shard));
+
+            if (read.Ending.Outcome == RunOutcome.Cancelled)
+                return read;
+
+            firstFailure ??= read;
+            failures.Add(new DomainCaptureFailure(
+                domain.Unit.NamingContext, controller, failures.Count + 1,
+                attemptStartedUtc, _time.GetUtcNow(), read.Ending.Error!));
+        }
+
+        return firstFailure! with { Failures = failures };
+    }
 
     /// <summary>
     /// Reads one domain into a database of its own, on its controller's turn.
@@ -562,9 +617,8 @@ public sealed class CaptureRun
     /// makes that impossible rather than unlikely.
     /// </para>
     /// <para>
-    /// <b>A domain that failed leaves its shard unfinished and unmerged.</b> The writer is
-    /// disposed without <c>CompleteShard</c>, so the file is never folded into the bundle and
-    /// never becomes a domain silently reporting that it held nothing.
+    /// <b>A failed attempt is disposed before its caller discards the shard under 0040.</b>
+    /// It never reaches <c>CompleteShard</c> and cannot contribute coverage or policy inventory.
     /// </para>
     /// </remarks>
     /// <param name="bundleDirectory">The run's directory, which the shard is written inside.</param>
@@ -573,7 +627,7 @@ public sealed class CaptureRun
     /// <param name="plan">The plan, for the progress line.</param>
     /// <param name="turns">Whose turn it is on each controller.</param>
     /// <param name="cancellationToken">Cancellation for a run an operator stopped.</param>
-    private async Task<DomainRead> ReadOneDomainAsync(
+    private async Task<DomainRead> ReadDomainAttemptAsync(
         string bundleDirectory,
         DateTimeOffset startedUtc,
         DomainShard domain,

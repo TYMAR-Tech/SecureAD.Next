@@ -26,8 +26,14 @@ namespace SecureAD.Audit.Sysvol;
 /// </para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed class SmbSysvolFileReader : ISysvolFileReader
+internal sealed class SmbSysvolFileReader(Action<SysvolIoEvent> progress) : ISysvolFileReader
 {
+    private long _items;
+    private long _bytes;
+
+    private void Report(string operation, string path, string state) =>
+        progress(new SysvolIoEvent(operation, path, state, _items, _bytes));
+
     /// <summary>
     /// Owner, group and DACL - never the SACL. Reading the audit part of a descriptor needs a
     /// privilege that is not granted over a share even to a domain administrator, and asking for
@@ -38,10 +44,12 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public async Task<Result<byte[]?>> ReadFileAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         string relativePath,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(target);
+        var gpoFileSysPath = target.FileSysPath;
         ArgumentException.ThrowIfNullOrWhiteSpace(gpoFileSysPath);
         ArgumentNullException.ThrowIfNull(relativePath);
 
@@ -51,7 +59,23 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
 
         try
         {
-            return await File.ReadAllBytesAsync(fullPath, cancellationToken).ConfigureAwait(false);
+            Report("OpenFile", fullPath, "Started");
+            await using var file = new FileStream(fullPath, FileMode.Open, FileAccess.Read,
+                FileShare.Read, 65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            Report("OpenFile", fullPath, "Completed");
+            using var content = new MemoryStream();
+            var buffer = new byte[65536];
+            while (true)
+            {
+                Report("ReadFile", fullPath, "Started");
+                var read = await file.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                _bytes += read;
+                Report("ReadFile", fullPath, "Completed");
+                if (read == 0)
+                    break;
+                content.Write(buffer, 0, read);
+            }
+            return content.ToArray();
         }
         catch (OperationCanceledException)
         {
@@ -77,10 +101,12 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<byte[]?>> ReadSecurityDescriptorAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         string relativePath,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(target);
+        var gpoFileSysPath = target.FileSysPath;
         ArgumentException.ThrowIfNullOrWhiteSpace(gpoFileSysPath);
         ArgumentNullException.ThrowIfNull(relativePath);
 
@@ -90,14 +116,19 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
 
         try
         {
+            Report("GetAttributes", fullPath, "Started");
             var attributes = File.GetAttributes(fullPath);
+            Report("GetAttributes", fullPath, "Completed");
 
+            Report("GetAccessControl", fullPath, "Started");
             var descriptor = attributes.HasFlag(FileAttributes.Directory)
                 ? new DirectoryInfo(fullPath).GetAccessControl(DescriptorSections)
                     .GetSecurityDescriptorBinaryForm()
                 : new FileInfo(fullPath).GetAccessControl(DescriptorSections)
                     .GetSecurityDescriptorBinaryForm();
 
+            _bytes += descriptor.Length;
+            Report("GetAccessControl", fullPath, "Completed");
             return Task.FromResult<Result<byte[]?>>(descriptor);
         }
         catch (FileNotFoundException)
@@ -120,10 +151,12 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<IReadOnlyList<string>>> EnumerateRelativeFilesAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         string searchPattern,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(target);
+        var gpoFileSysPath = target.FileSysPath;
         ArgumentException.ThrowIfNullOrWhiteSpace(gpoFileSysPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(searchPattern);
 
@@ -132,9 +165,11 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<IReadOnlyList<string>>> EnumerateRelativeDirectoriesAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(target);
+        var gpoFileSysPath = target.FileSysPath;
         ArgumentException.ThrowIfNullOrWhiteSpace(gpoFileSysPath);
 
         return Task.FromResult(Enumerate(gpoFileSysPath, "*", files: false, cancellationToken));
@@ -149,7 +184,7 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
     /// from the middle of an otherwise complete-looking list. That silent truncation is the shape
     /// of the defect this whole seam is built to avoid.
     /// </remarks>
-    private static Result<IReadOnlyList<string>> Enumerate(
+    private Result<IReadOnlyList<string>> Enumerate(
         string gpoFileSysPath,
         string searchPattern,
         bool files,
@@ -171,34 +206,31 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
             {
                 if (files)
                 {
+                    Report("EnumerateFiles", directory, "Started");
                     foreach (var file in Directory.EnumerateFiles(directory, searchPattern))
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         results.Add(file[prefixLength..]);
+                        _items++;
+                        Report("EnumerateFiles", directory, "Progress");
                     }
+                    Report("EnumerateFiles", directory, "Completed");
                 }
 
+                Report("EnumerateDirectories", directory, "Started");
                 foreach (var child in Directory.EnumerateDirectories(directory))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     pending.Enqueue(child);
+                    _items++;
+                    Report("EnumerateDirectories", directory, "Progress");
 
                     if (!files)
                     {
                         results.Add(child[prefixLength..]);
                     }
                 }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // Only reachable for the GPO folder itself; a child was listed a moment ago by its
-                // own parent. A GPO whose folder is not on the share is a real state of the
-                // directory - the object exists and its files do not - and it is reported as an
-                // empty listing rather than a failure, because nothing was denied.
-                if (!string.Equals(directory, basePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    return UnreadableListing(directory, new IOException("The folder disappeared while it was being read."));
-                }
-
-                return Result<IReadOnlyList<string>>.Success([]);
+                Report("EnumerateDirectories", directory, "Completed");
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -206,6 +238,8 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
             }
             catch (IOException ex)
             {
+                // A vanished root is a failed listing too. Its ACL may already have been read;
+                // returning an empty list here would turn lost scope into complete coverage.
                 return UnreadableListing(directory, ex);
             }
         }
@@ -214,7 +248,7 @@ public sealed class SmbSysvolFileReader : ISysvolFileReader
     }
 
     /// <summary>Joins a GPO folder and a path beneath it, accepting either separator.</summary>
-    private static string Combine(string gpoFileSysPath, string relativePath)
+    internal static string Combine(string gpoFileSysPath, string relativePath)
     {
         var basePath = TrimTrailingSeparators(gpoFileSysPath);
         if (relativePath.Length == 0)

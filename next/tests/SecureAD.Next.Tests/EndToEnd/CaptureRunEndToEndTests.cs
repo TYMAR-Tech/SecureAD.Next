@@ -572,7 +572,8 @@ public sealed class CaptureRunEndToEndTests : IDisposable
             "CN=Schema,CN=Configuration,DC=example,DC=com",
             [("DC=example,DC=com", "example.com", controller.DomainController)],
             controller.NamingContexts,
-            ["DC=DomainDnsZones,DC=example,DC=com"]);
+            ["DC=DomainDnsZones,DC=example,DC=com"],
+            new Dictionary<string, IReadOnlyList<string>>());
 
         Assert.True(plan.IsSuccess, plan.Error?.Description);
 

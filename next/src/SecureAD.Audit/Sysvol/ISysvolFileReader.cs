@@ -35,12 +35,12 @@ public interface ISysvolFileReader
     /// <summary>
     /// Reads the full bytes of a file beneath a GPO's SYSVOL folder.
     /// </summary>
-    /// <param name="gpoFileSysPath">
+    /// <param name="target">
     /// The GPO's <c>gPCFileSysPath</c>, for example
     /// <c>\\contoso.com\SysVol\contoso.com\Policies\{GUID}</c>.
     /// </param>
     /// <param name="relativePath">
-    /// Path beneath <paramref name="gpoFileSysPath"/>, using either separator, for example
+    /// Path beneath <see cref="GpoTarget.FileSysPath"/>, using either separator, for example
     /// <c>Machine\Registry.pol</c>.
     /// </param>
     /// <param name="cancellationToken">Cancels the read.</param>
@@ -50,7 +50,7 @@ public interface ISysvolFileReader
     /// two is true.
     /// </returns>
     Task<Result<byte[]?>> ReadFileAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         string relativePath,
         CancellationToken cancellationToken);
 
@@ -58,9 +58,9 @@ public interface ISysvolFileReader
     /// Reads the raw security descriptor - owner, group and DACL - of a file or folder beneath a
     /// GPO's SYSVOL folder.
     /// </summary>
-    /// <param name="gpoFileSysPath">The GPO's <c>gPCFileSysPath</c>.</param>
+    /// <param name="target">The GPO identity and its captured share path.</param>
     /// <param name="relativePath">
-    /// Path beneath <paramref name="gpoFileSysPath"/>, or empty for the GPO folder itself.
+    /// Path beneath <see cref="GpoTarget.FileSysPath"/>, or empty for the GPO folder itself.
     /// </param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>
@@ -73,14 +73,14 @@ public interface ISysvolFileReader
     /// asking for it turns every read into an exception. The DACL is what the rules judge.
     /// </remarks>
     Task<Result<byte[]?>> ReadSecurityDescriptorAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         string relativePath,
         CancellationToken cancellationToken);
 
     /// <summary>
     /// Lists the files beneath a GPO's SYSVOL folder matching a wildcard pattern, at any depth.
     /// </summary>
-    /// <param name="gpoFileSysPath">The GPO's <c>gPCFileSysPath</c>.</param>
+    /// <param name="target">The GPO identity and the folder to enumerate.</param>
     /// <param name="searchPattern">A wildcard file pattern, for example <c>*.xml</c>.</param>
     /// <param name="cancellationToken">Cancels the enumeration.</param>
     /// <returns>
@@ -93,14 +93,14 @@ public interface ISysvolFileReader
     /// extension list, because the files on the share are what a workstation actually applies.
     /// </remarks>
     Task<Result<IReadOnlyList<string>>> EnumerateRelativeFilesAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         string searchPattern,
         CancellationToken cancellationToken);
 
     /// <summary>
     /// Lists the folders beneath a GPO's SYSVOL folder, at any depth.
     /// </summary>
-    /// <param name="gpoFileSysPath">The GPO's <c>gPCFileSysPath</c>.</param>
+    /// <param name="target">The GPO identity and the folder to enumerate.</param>
     /// <param name="cancellationToken">Cancels the enumeration.</param>
     /// <returns>
     /// Paths relative to the GPO folder, ordered so a parent precedes what it contains; empty when
@@ -114,6 +114,6 @@ public interface ISysvolFileReader
     /// <c>Machine\Scripts</c> folder is writable by everyone is a logon script anybody can rewrite.
     /// </remarks>
     Task<Result<IReadOnlyList<string>>> EnumerateRelativeDirectoriesAsync(
-        string gpoFileSysPath,
+        GpoTarget target,
         CancellationToken cancellationToken);
 }

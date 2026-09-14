@@ -44,6 +44,14 @@
     <ProjectReference Include="..\..\src\SecureAD.Cli\SecureAD.Cli.csproj" />
     <ProjectReference Include="..\..\src\SecureAD.Shell\SecureAD.Shell.csproj" />
     <ProjectReference Include="..\..\src\SecureAD.Derivation\SecureAD.Derivation.csproj" />
+    <ProjectReference Include="..\SecureAD.Sysvol.TestWorker\SecureAD.Sysvol.TestWorker.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="CopySysvolTestWorker" AfterTargets="Build">
+    <ItemGroup>
+      <SysvolTestWorkerFiles Include="$(MSBuildThisFileDirectory)..\SecureAD.Sysvol.TestWorker\bin\$(Configuration)\net10.0-windows\win-x64\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SysvolTestWorkerFiles)" DestinationFolder="$(OutDir)SysvolTestWorker" />
+  </Target>
 
 </Project>

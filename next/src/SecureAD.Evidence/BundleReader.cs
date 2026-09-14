@@ -279,6 +279,44 @@ public sealed class BundleReader : IDisposable
     /// </remarks>
     public DirectoryTree ReadTree() => DirectoryTreeReader.Read(Connection);
 
+    /// <summary>Reads failed-controller history; an unreadable history never means no failures.</summary>
+    public Result<IReadOnlyList<DomainCaptureFailure>> ReadDomainCaptureFailures()
+    {
+        try
+        {
+            using var command = Connection.CreateCommand();
+            command.CommandText =
+                """
+                SELECT naming_context_dn, controller, attempt, started_utc, failed_utc,
+                       error_category, error_code, error_severity, error_description, error_context
+                FROM domain_capture_failure ORDER BY naming_context_dn, attempt
+                """;
+            using var reader = command.ExecuteReader();
+            var failures = new List<DomainCaptureFailure>();
+            while (reader.Read())
+            {
+                failures.Add(new DomainCaptureFailure(
+                    reader.GetString(0), reader.GetString(1), reader.GetInt32(2),
+                    ParseUtc(reader.GetString(3)), ParseUtc(reader.GetString(4)),
+                    new AuditError(
+                        Enum.Parse<ErrorCategory>(reader.GetString(5)), reader.GetString(6),
+                        Enum.Parse<ErrorSeverity>(reader.GetString(7)), reader.GetString(8),
+                        reader.IsDBNull(9) ? null : reader.GetString(9))));
+            }
+
+            return Result<IReadOnlyList<DomainCaptureFailure>>.Success(failures);
+        }
+        catch (SqliteException error)
+        {
+            var resources = new ResourceManager("SecureAD.Evidence.Resources.CaptureFailover", typeof(BundleReader).Assembly);
+            var text = resources.GetString("HistoryUnreadable", CultureInfo.CurrentUICulture)
+                ?? throw new MissingManifestResourceException("HistoryUnreadable");
+            return Result<IReadOnlyList<DomainCaptureFailure>>.Failure(ScopeError(
+                "DomainCaptureHistoryUnreadable",
+                string.Format(CultureInfo.CurrentCulture, text, error.Message)));
+        }
+    }
+
     /// <summary>
     /// Reads the exact roots and kinds of captured naming contexts from partition coverage.
     /// Absence means no captured root, not an empty partition or permission denial.

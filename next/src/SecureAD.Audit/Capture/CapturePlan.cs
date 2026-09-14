@@ -68,6 +68,10 @@ public sealed record CapturePlan(
     public IReadOnlyDictionary<string, string> DomainDnsNames { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The discovery-ranked alternatives for each domain, consumed only between attempts (0040).</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Failover { get; init; } =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Whether this plan reads every domain the forest declared.
     /// </summary>
@@ -235,6 +239,7 @@ public sealed record CapturePlan(
     /// <param name="partitionsNotRead">
     /// Partitions the forest declares that this run does not read.
     /// </param>
+    /// <param name="failover">The finite, ranked alternatives keyed by domain naming context.</param>
     public static Result<CapturePlan> For(
         string domainController,
         string forestFqdn,
@@ -242,13 +247,15 @@ public sealed record CapturePlan(
         string schemaNamingContext,
         IEnumerable<(string NamingContext, string DnsName, string DomainController)> domains,
         IEnumerable<string> namingContextsPublished,
-        IEnumerable<string> partitionsNotRead)
+        IEnumerable<string> partitionsNotRead,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> failover)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(domainController);
         ArgumentException.ThrowIfNullOrWhiteSpace(forestFqdn);
         ArgumentNullException.ThrowIfNull(domains);
         ArgumentNullException.ThrowIfNull(namingContextsPublished);
         ArgumentNullException.ThrowIfNull(partitionsNotRead);
+        ArgumentNullException.ThrowIfNull(failover);
 
         var published = namingContextsPublished
             .Where(nc => !string.IsNullOrWhiteSpace(nc))
@@ -326,6 +333,10 @@ public sealed record CapturePlan(
             DomainDnsNames = forestDomains.ToDictionary(
                 domain => domain.NamingContext,
                 domain => domain.DnsName,
+                StringComparer.OrdinalIgnoreCase),
+            Failover = failover.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyList<string>)Array.AsReadOnly(pair.Value.ToArray()),
                 StringComparer.OrdinalIgnoreCase),
         };
     }

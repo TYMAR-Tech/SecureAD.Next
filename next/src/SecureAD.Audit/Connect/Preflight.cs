@@ -109,7 +109,14 @@ public static class Preflight
             domains.Add(outcomes[at].Row);
         }
 
-        return new PreflightReport(plan.Capture with { Units = units }, domains);
+        return new PreflightReport(plan.Capture with
+        {
+            Units = units,
+            Failover = outcomes.ToDictionary(
+                outcome => outcome.Unit.NamingContext,
+                outcome => (IReadOnlyList<string>)Array.AsReadOnly(outcome.Row.Alternatives.ToArray()),
+                StringComparer.OrdinalIgnoreCase),
+        }, domains);
     }
 
     /// <summary>

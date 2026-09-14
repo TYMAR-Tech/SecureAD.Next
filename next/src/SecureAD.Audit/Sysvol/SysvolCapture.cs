@@ -1,3 +1,4 @@
+using System.Globalization;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
@@ -63,19 +64,27 @@ public sealed class SysvolCapture
 
     private readonly ISysvolFileReader _reader;
     private readonly BundleWriter _writer;
+    private readonly IRunLog _log;
+    private readonly TimeProvider _time;
 
     /// <summary>
     /// Creates a SYSVOL capture writing into <paramref name="writer"/>.
     /// </summary>
     /// <param name="reader">How the share is read.</param>
     /// <param name="writer">The bundle being written.</param>
-    public SysvolCapture(ISysvolFileReader reader, BundleWriter writer)
+    /// <param name="log">The run's operational log.</param>
+    /// <param name="time">The diagnostic clock.</param>
+    public SysvolCapture(ISysvolFileReader reader, BundleWriter writer, IRunLog log, TimeProvider time)
     {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(writer);
+        ArgumentNullException.ThrowIfNull(log);
+        ArgumentNullException.ThrowIfNull(time);
 
         _reader = reader;
         _writer = writer;
+        _log = log;
+        _time = time;
     }
 
     /// <summary>
@@ -106,11 +115,27 @@ public sealed class SysvolCapture
         foreach (var target in inventory.Policies)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            policies.Add(await ReadPolicyAsync(target, cancellationToken).ConfigureAwait(false));
+            var started = _time.GetTimestamp();
+            var total = inventory.Policies.Count + inventory.UnlocatablePolicies.Count;
+            _log.Note("Capture", SysvolText.Get("PolicyStarted"), PolicyDetails(target, policies.Count, total, started, "Started"));
+            var coverage = await ReadPolicyAsync(target, cancellationToken).ConfigureAwait(false);
+            policies.Add(coverage);
+            _log.Note("Capture", SysvolText.Get("PolicyFinished"), PolicyDetails(target, policies.Count, total, started, coverage.Outcome.ToString()));
         }
 
         return SysvolCoverage.Of(policies);
     }
+
+    private IReadOnlyList<RunLogDetail> PolicyDetails(GpoTarget target, int completed, int total, long started, string outcome) =>
+    [
+        new("gpo", target.GpoGuid.ToString("D")), new("policy", target.DisplayName),
+        new("uncPath", target.FileSysPath), new("outcome", outcome),
+        new("policiesCompleted", completed.ToString(CultureInfo.InvariantCulture)),
+        new("policiesTotal", total.ToString(CultureInfo.InvariantCulture)),
+        new("elapsedSeconds", _time.GetElapsedTime(started).TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)),
+    ];
+
+    private sealed class PolicyAbandonedException : Exception { }
 
     /// <summary>
     /// Reads one policy's folder, recording what it holds and what could not be reached.
@@ -121,8 +146,21 @@ public sealed class SysvolCapture
 
         var progress = new PolicyProgress(target, _writer);
 
+        try
+        {
+            return await ReadPolicyContentsAsync(target, progress, cancellationToken).ConfigureAwait(false);
+        }
+        catch (PolicyAbandonedException)
+        {
+            return progress.Outcome();
+        }
+    }
+
+    private async Task<GpoCoverage> ReadPolicyContentsAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
+    {
         var root = await _reader
-            .ReadSecurityDescriptorAsync(target.FileSysPath, PolicyRoot, cancellationToken)
+            .ReadSecurityDescriptorAsync(target, PolicyRoot, cancellationToken)
             .ConfigureAwait(false);
 
         if (!root.IsSuccess)
@@ -164,8 +202,9 @@ public sealed class SysvolCapture
     private async Task ReadFolderPermissionsAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
+        progress.ThrowIfAbandoned();
         var folders = await _reader
-            .EnumerateRelativeDirectoriesAsync(target.FileSysPath, cancellationToken)
+            .EnumerateRelativeDirectoriesAsync(target, cancellationToken)
             .ConfigureAwait(false);
 
         if (!folders.IsSuccess)
@@ -246,8 +285,9 @@ public sealed class SysvolCapture
     private async Task ReadPreferenceFilesAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
+        progress.ThrowIfAbandoned();
         var files = await _reader
-            .EnumerateRelativeFilesAsync(target.FileSysPath, "*.xml", cancellationToken)
+            .EnumerateRelativeFilesAsync(target, "*.xml", cancellationToken)
             .ConfigureAwait(false);
 
         if (!files.IsSuccess)
@@ -287,8 +327,9 @@ public sealed class SysvolCapture
     private async Task ReadScriptPermissionsAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
+        progress.ThrowIfAbandoned();
         var files = await _reader
-            .EnumerateRelativeFilesAsync(target.FileSysPath, "*", cancellationToken)
+            .EnumerateRelativeFilesAsync(target, "*", cancellationToken)
             .ConfigureAwait(false);
 
         if (!files.IsSuccess)
@@ -352,8 +393,9 @@ public sealed class SysvolCapture
         FileExpectation expectation,
         CancellationToken cancellationToken)
     {
+        progress.ThrowIfAbandoned();
         var file = await _reader
-            .ReadFileAsync(target.FileSysPath, relativePath, cancellationToken)
+            .ReadFileAsync(target, relativePath, cancellationToken)
             .ConfigureAwait(false);
 
         if (!file.IsSuccess)
@@ -379,8 +421,15 @@ public sealed class SysvolCapture
             return null;
         }
 
-        await ReadPermissionsAsync(target, progress, relativePath, cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            await ReadPermissionsAsync(target, progress, relativePath, cancellationToken).ConfigureAwait(false);
+        }
+        catch (PolicyAbandonedException)
+        {
+            // The content acquisition completed before the ACL timed out. Let its caller persist
+            // the parsed content; the recorded gap remains and every subsequent acquisition stops.
+        }
 
         return file.Value;
     }
@@ -392,8 +441,9 @@ public sealed class SysvolCapture
         string relativePath,
         CancellationToken cancellationToken)
     {
+        progress.ThrowIfAbandoned();
         var descriptor = await _reader
-            .ReadSecurityDescriptorAsync(target.FileSysPath, relativePath, cancellationToken)
+            .ReadSecurityDescriptorAsync(target, relativePath, cancellationToken)
             .ConfigureAwait(false);
 
         if (!descriptor.IsSuccess)
@@ -425,6 +475,13 @@ public sealed class SysvolCapture
     private sealed class PolicyProgress(GpoTarget target, BundleWriter writer)
     {
         private readonly List<string> _failures = [];
+        private bool _abandoned;
+
+        public void ThrowIfAbandoned()
+        {
+            if (_abandoned)
+                throw new PolicyAbandonedException();
+        }
 
         /// <summary>
         /// Every path whose permissions this policy has already captured.
@@ -653,6 +710,14 @@ public sealed class SysvolCapture
         public void RecordFailure(AuditError error)
         {
             ArgumentNullException.ThrowIfNull(error);
+            if (error.Code == "Capture.SysvolOperationTimedOut")
+            {
+                // The reason remaining operations were not attempted must survive the coverage
+                // summary's existing cap even if earlier files had already recorded parse errors.
+                _failures.Insert(0, error.Description);
+                _abandoned = true;
+                throw new PolicyAbandonedException();
+            }
             _failures.Add(error.Description);
         }
 

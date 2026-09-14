@@ -30,7 +30,8 @@ public sealed class CapturePlanTests
             Schema,
             domains ?? [(Domain, "example.com", Controller)],
             published ?? Published(),
-            notRead ?? [ForestDnsZones]);
+            notRead ?? [ForestDnsZones],
+            new Dictionary<string, IReadOnlyList<string>>());
 
     [Fact]
     public void TheConfigurationAndSchemaPartitionsAreReadFirst()

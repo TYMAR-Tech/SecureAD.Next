@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Started" xml:space="preserve"><value>SYSVOL operation started</value></data>
+  <data name="Completed" xml:space="preserve"><value>SYSVOL operation completed</value></data>
+  <data name="Progress" xml:space="preserve"><value>SYSVOL acquisition progress</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>SYSVOL acquisition cancelled; no abandoned result accepted</value></data>
+  <data name="TimedOut" xml:space="preserve"><value>SYSVOL operation {0} at {1} made no progress for {2} seconds. Its acquisition was abandoned; completed evidence is retained and the remaining operations in this policy were not attempted.</value></data>
+  <data name="WorkerFailed" xml:space="preserve"><value>SYSVOL acquisition could not complete at {0}: {1}</value></data>
+  <data name="WorkerUnavailable" xml:space="preserve"><value>The previous SYSVOL worker could not be confirmed stopped. No replacement worker was started; this acquisition was not performed.</value></data>
+  <data name="WorkerStopped" xml:space="preserve"><value>SYSVOL worker stopped</value></data>
+  <data name="ProtocolInvalid" xml:space="preserve"><value>The SYSVOL worker returned an invalid or unrelated message; no acquisition result was accepted.</value></data>
+  <data name="NoExecutable" xml:space="preserve"><value>The running executable could not be located for isolated SYSVOL acquisition.</value></data>
+  <data name="LogFailed" xml:space="preserve"><value>The SYSVOL operation log could not be written; this is a logging failure, not missing directory evidence.</value></data>
+  <data name="PolicyStarted" xml:space="preserve"><value>reading a SYSVOL policy</value></data>
+  <data name="PolicyFinished" xml:space="preserve"><value>SYSVOL policy accounted for</value></data>
+</root>

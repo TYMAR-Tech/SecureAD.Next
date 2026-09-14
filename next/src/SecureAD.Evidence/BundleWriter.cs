@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Findings;
@@ -418,6 +419,37 @@ public sealed class BundleWriter : IDisposable
         Execute(
             "INSERT INTO unread_partition (naming_context_dn) VALUES ($dn)",
             command => command.Parameters.AddWithValue("$dn", namingContextDn));
+    }
+
+    /// <summary>Records 0040's controller failure history outside discarded attempt evidence.</summary>
+    /// <param name="failure">The failed controller attempt, in domain-local attempt order.</param>
+    public void RecordDomainCaptureFailure(DomainCaptureFailure failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        ArgumentNullException.ThrowIfNull(failure.Error);
+        ThrowIfFinished();
+
+        Execute(
+            """
+            INSERT INTO domain_capture_failure (
+                naming_context_dn, controller, attempt, started_utc, failed_utc,
+                error_category, error_code, error_severity, error_description, error_context)
+            VALUES ($dn, $controller, $attempt, $started, $failed,
+                    $category, $code, $severity, $description, $context)
+            """,
+            command =>
+            {
+                command.Parameters.AddWithValue("$dn", failure.NamingContextDn);
+                command.Parameters.AddWithValue("$controller", failure.Controller);
+                command.Parameters.AddWithValue("$attempt", failure.Attempt);
+                command.Parameters.AddWithValue("$started", failure.StartedUtc.ToString("O", CultureInfo.InvariantCulture));
+                command.Parameters.AddWithValue("$failed", failure.FailedUtc.ToString("O", CultureInfo.InvariantCulture));
+                command.Parameters.AddWithValue("$category", failure.Error.Category.ToString());
+                command.Parameters.AddWithValue("$code", failure.Error.Code);
+                command.Parameters.AddWithValue("$severity", failure.Error.Severity.ToString());
+                command.Parameters.AddWithValue("$description", failure.Error.Description);
+                command.Parameters.AddWithValue("$context", (object?)failure.Error.Context ?? DBNull.Value);
+            });
     }
 
     private static void RemoveValuesAllocatedAtOrAfter<TKey>(

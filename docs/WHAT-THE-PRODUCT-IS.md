@@ -49,6 +49,24 @@ later the same day: *"i will be making it so the user can run the audit and it c
 via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
 unattended path, and the GUI is the worked path.
 
+## SYSVOL acquisition must not hold a run indefinitely
+
+**Owner-approved requirements, 2026-09-13.** A production capture reached “reading the policy
+share” and showed no visible disk changes for roughly 1–2 hours before manual abortion; the
+blocked operation has not been identified. SYSVOL acquisition must log and flush the start and
+outcome of individual operations, naming the GPO, UNC path, operation, elapsed time and actual
+progress counts. A cancellation token or a timed-out wait around synchronous SMB work is not
+containment: abandoned work must not retain access to evidence persistence, supply late accepted
+results, or accumulate without bound.
+
+The owner selected **30 seconds without progress on an individual SMB operation** as a provisional
+limit, not a production-measured default. On timeout, retain trustworthy completed evidence,
+explicitly mark the affected policy incomplete (or unreadable if nothing usable was acquired),
+abandon its remaining operations and **move to the next GPO**. An incomplete enumeration must not
+mean an empty or complete listing, and database-integrity failures must still prevent sealing.
+Implementation and offline verification are tracked as `P-221`; this does not authorize live access
+or claim that the original production stall's cause is established.
+
 ## How judging works
 
 **Release-run feedback changes the immediate priority.** The owner's lab investigation of

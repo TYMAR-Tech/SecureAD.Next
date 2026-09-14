@@ -81,3 +81,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## GitHub Actions CI Management
 
 - **Do not block a session waiting for a GitHub Actions CI run to finish after pushing.** Push and carry on with the next piece of work. Check the CI result opportunistically instead — at the start of the next session, before building on top of a push, or when a clean-machine failure is actually suspected. The GitHub CLI is installed and authenticated, so `gh run list --branch main --limit 1 --json headSha,conclusion` gives the answer in one non-blocking call.
+
+## SecureAD.Next Regression Work
+
+- For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.

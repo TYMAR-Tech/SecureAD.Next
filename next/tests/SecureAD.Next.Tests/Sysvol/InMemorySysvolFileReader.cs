@@ -74,8 +74,9 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<byte[]?>> ReadFileAsync(
-        string gpoFileSysPath, string relativePath, CancellationToken cancellationToken)
+        GpoTarget target, string relativePath, CancellationToken cancellationToken)
     {
+        var gpoFileSysPath = target.FileSysPath;
         var key = Key(gpoFileSysPath, relativePath);
 
         if (IsDenied(key))
@@ -96,8 +97,9 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<byte[]?>> ReadSecurityDescriptorAsync(
-        string gpoFileSysPath, string relativePath, CancellationToken cancellationToken)
+        GpoTarget target, string relativePath, CancellationToken cancellationToken)
     {
+        var gpoFileSysPath = target.FileSysPath;
         var key = Key(gpoFileSysPath, relativePath);
 
         if (IsDenied(key))
@@ -113,8 +115,9 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<IReadOnlyList<string>>> EnumerateRelativeFilesAsync(
-        string gpoFileSysPath, string searchPattern, CancellationToken cancellationToken)
+        GpoTarget target, string searchPattern, CancellationToken cancellationToken)
     {
+        var gpoFileSysPath = target.FileSysPath;
         var root = Key(gpoFileSysPath, string.Empty);
 
         if (IsDenied(root))
@@ -137,8 +140,9 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
 
     /// <inheritdoc />
     public Task<Result<IReadOnlyList<string>>> EnumerateRelativeDirectoriesAsync(
-        string gpoFileSysPath, CancellationToken cancellationToken)
+        GpoTarget target, CancellationToken cancellationToken)
     {
+        var gpoFileSysPath = target.FileSysPath;
         var root = Key(gpoFileSysPath, string.Empty);
 
         if (IsDenied(root))

@@ -97,6 +97,9 @@ public sealed class CoverageIdRecipeTests
         // the exclusions. A differing value here would have meant the recipe moved under cover of
         // a change that cannot touch it.
         [10] = "57cf8ba5a9e7fb10",
+
+        // Version 11 adds controller failure history; the declared scope and identity recipe stay unchanged.
+        [11] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

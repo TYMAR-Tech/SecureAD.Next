@@ -73,7 +73,8 @@ public static class BundleSchema
     /// state which catalogue and parser semantics produced it, or whether its continuation
     /// references were reconciled against the authorized plan.
     /// </para>
-    public const int Version = 10;
+    // 11 records 0040's failed-controller history separately from successful partition coverage.
+    public const int Version = 11;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -107,6 +108,7 @@ public static class BundleSchema
     [
         "bundle",
         "partition_coverage",
+        "domain_capture_failure",
         "domain_coverage",
         "forest_partition_coverage",
         "continuation_reference",
@@ -217,6 +219,24 @@ public static class BundleSchema
 
     private static readonly string[] TablesBeforeObject =
     [
+        // Only the run writer records history, after domain attempts finish. An empty table in
+        // this schema means no controller attempt failed, not that capture omitted the history.
+        """
+        CREATE TABLE domain_capture_failure (
+            naming_context_dn TEXT NOT NULL,
+            controller TEXT NOT NULL,
+            attempt INTEGER NOT NULL CHECK (attempt > 0),
+            started_utc TEXT NOT NULL,
+            failed_utc TEXT NOT NULL,
+            error_category TEXT NOT NULL,
+            error_code TEXT NOT NULL,
+            error_severity TEXT NOT NULL,
+            error_description TEXT NOT NULL,
+            error_context TEXT NULL,
+            PRIMARY KEY (naming_context_dn, attempt)
+        )
+        """,
+
         // One row, written when the run finishes. The bundle's own account of itself.
         //
         // This is a different question from the seal and the two must not be confused. The seal

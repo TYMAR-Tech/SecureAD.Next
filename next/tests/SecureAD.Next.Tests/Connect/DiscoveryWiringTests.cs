@@ -230,9 +230,7 @@ public sealed class DiscoveryWiringTests
     /// The alternatives are carried in the order ranking put them, and shown that way.
     /// </summary>
     /// <remarks>
-    /// <b>What this does not prove.</b> Nothing walks the list. <c>0040</c>'s retry is not
-    /// implemented, and this asserts only that the order a retry would follow is produced and
-    /// displayed. Recorded as a finding at <c>S-40</c> rather than left to look like enforcement.
+    /// The capture-plan boundary is checked here; DomainFailoverTests exercises 0040's attempts.
     /// Sort the failover list differently and this fails in both the selection and the preview.
     /// </remarks>
     [Fact]
@@ -244,6 +242,7 @@ public sealed class DiscoveryWiringTests
 
         Assert.Equal("dc01.example.com", domain.PinnedController);
         Assert.Equal(["dc02.example.com", "dc03.example.com"], domain.Failover);
+        Assert.Equal(["dc02.example.com", "dc03.example.com"], plan.Value.Capture.Failover[Root]);
 
         var preview = PlanPreview.Describe(plan.Value!);
 
@@ -380,6 +379,7 @@ public sealed class DiscoveryWiringTests
         // Moved off the emulator, and the alternatives it was ranked against are stated.
         Assert.True(domain.WasRepinnedOffPdcEmulator);
         Assert.Equal(2, domain.OtherControllersInTheForest);
+        Assert.Equal(["dc03.example.com", "dc01.example.com"], report.Plan.Failover[Root]);
     }
 
     /// <summary>

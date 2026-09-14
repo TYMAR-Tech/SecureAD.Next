@@ -268,7 +268,8 @@ public sealed class ParallelDomainCaptureTests : IDisposable
                 (SecondDomain, "two.example.com", forest.HostOf(SecondDomain)),
             ],
             [Configuration, Schema, FirstDomain, SecondDomain],
-            []);
+            [],
+            new Dictionary<string, IReadOnlyList<string>>());
 
         Assert.True(plan.IsSuccess, plan.Error?.Description);
 
