@@ -23,8 +23,12 @@ Self-Membership requester discovery and P-142/P-143 asset coverage belong in Sta
 permission proof, the authoritative Tier-0 definition and explicit Unknown results remain mandatory.
 The owner-approved CLI/GUI judging alignment is implemented as P-226; P-227 records the fresh
 two-processor full-suite failure rather than accepting that run as clean.
-Stage 7's saved-input/passive-readback checkpoint is complete as P-228; path verdicts, distances,
-tier counts and presentation remain unbuilt and require a separately approved checkpoint.
+Stage 7's saved-input/passive-readback checkpoint is complete as P-228.
+Checkpoint 2's [bounded path-calculation scope](WHAT-THE-PRODUCT-IS.md#stage-7-second-checkpoint-first-bounded-path-calculation)
+is owner-approved but not implemented: qualified captured membership routes and terminal DACL control
+of fixed Tier-0 targets, with explicit uncertainty rather than inferred account-takeover chains.
+P-227 stays open; P-142, P-143 and requester discovery remain planning work with discovery inactive,
+while tier counts, remediation and screen changes remain outside this checkpoint.
 Do not expand the four-item pass for ordinary newly found bugs; the safety stop conditions in the
 repository instructions still apply to false security claims, evidence loss and invalid verification.
 

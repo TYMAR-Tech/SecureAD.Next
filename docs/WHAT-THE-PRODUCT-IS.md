@@ -83,6 +83,41 @@ Stage 6 acceptance is not a blanket prerequisite.
 checkpoint: new formats need neither migration nor legacy-reading support. Existing evidence,
 historical tests, failed validation artifacts and pre-existing uncommitted work must still be preserved.
 
+## Stage 7 second checkpoint: first bounded path calculation
+
+**Owner-approved scope; not implemented.** Calculate and save qualified existing membership routes
+and terminal DACL-control routes to the shared classifier's fixed Tier-0 targets, without screen changes.
+This is not yet an engine for arbitrary chains through account takeovers.
+
+- Fixed targets have distance zero; effective members and assessment candidates are not extra destinations.
+- Follow qualified captured security-group membership links, including nested and primary-group links
+  where their evidence supports them; retain and count the actual links rather than collapsing a chain.
+- An established `WRITE_DAC` or fully established current-owner DACL-rewrite proof may terminate at a
+  fixed target only for its supported operation and resource. It does not establish the ability to act
+  as the target account. Group membership alone does not establish a member's authority to exercise
+  a group-held permission; without the required requester/resource proof, that join remains Unknown.
+- General membership-write permission, password reset, key-credential writes, replication rights,
+  `WRITE_OWNER`, unresolved owner transitions and Self-Membership candidates remain possible or
+  unsupported steps, with their evidence and reasons retained rather than promoted to completed paths.
+  Admission, expected administration and a Full Control summary are not independent takeover proof.
+
+Reachable requires a fully supported route. Unknown retains relevant missing evidence or unsupported
+steps; NotReachable requires excluding relevant possible routes too, never merely finding no definite
+route in incomplete inputs. Keep capture gaps, unsupported analysis, unresolved identities and unfinished
+processing separate, preserve symbolic uncertainty scopes, and do not invalidate a proven route for an
+unrelated gap. Work backward from fixed targets without an arbitrary path-depth cutoff; save one
+deterministic shortest proven route, qualifying its length when uncertain alternatives could be shorter.
+
+Bind saved results to the exact Evidence, Derivation and Judgement generations and analysis versions.
+Readers remain passive; cancellation or failure must not replace the previous valid result. Preserve
+permission supports and group-held counts independently of member and route counts. Verification is
+synthetic/offline, with deliberate-defect checks for every new behavior, explicit rebuilds and retained
+artifacts; this grants no customer-scale or outstanding Stage 6 acceptance.
+
+P-142, P-143 and Self-Membership requester discovery remain planning work; requester discovery and new
+member-expansion activation stay outside this slice. P-227 remains open. No backward compatibility,
+tier counts, remediation, screen changes, optimization, live access, commit or push is included.
+
 ## CLI and GUI judging parity
 
 **Owner-approved requirement:** the same sealed evidence and analysis inputs must receive the same
