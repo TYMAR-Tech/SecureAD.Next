@@ -1,5 +1,12 @@
+using SecureAD.Audit.Capture;
+using SecureAD.Cli;
+using SecureAD.Derivation;
+using SecureAD.Evidence;
 using SecureAD.Judgement;
+using SecureAD.Kernel;
+using SecureAD.Next.Tests.Judgement;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SecureAD.Next.Tests.Architecture;
 
@@ -7,13 +14,13 @@ namespace SecureAD.Next.Tests.Architecture;
 /// Binds the product's stage flow and current host paths to the source tree.
 /// </summary>
 /// <remarks>
-/// <b>Everything here reads source, never a document.</b> Three checks that read WORKFLOW.md,
+/// <b>These checks inspect code or run an offline host, never a document.</b> Three checks that read WORKFLOW.md,
 /// WORKFLOW-PATHS.md and the solution file were removed on 2026-09-12 under the owner's rule that a
 /// test keeps the code honest rather than a document. What survives cannot be satisfied by editing
 /// prose: judging a bundle before deriving it refuses every rule that reads a derived fact, and a
 /// host building its own rule set makes two runs of one bundle disagree.
 /// </remarks>
-public sealed class WorkflowArchitectureTests
+public sealed class WorkflowArchitectureTests(ITestOutputHelper output)
 {
     /// <summary>The Shell's current production path preserves capture, derive, judge order.</summary>
     [Fact]
@@ -46,19 +53,25 @@ public sealed class WorkflowArchitectureTests
     /// </para>
     /// </remarks>
     [Fact]
-    public void TheCliRunsItsCurrentDocumentedStagesInOrder()
+    public async Task TheCliRunsItsCurrentStagesInOrderAsync()
     {
-        var source = Source("SecureAD.Cli", "Program.cs");
+        var directory = SelfMembershipDiscoveryTests.Bundle(tier0Route: true);
+        output.WriteLine(directory);
+        var options = Assert.IsType<CommandLine>(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!]));
 
-        var capture = source.IndexOf("new CaptureSession(", StringComparison.Ordinal);
-        var derive = source.IndexOf("Stage2aRun.Derive(", StringComparison.Ordinal);
-        var judge = source.IndexOf("JudgingRun.Judge(", StringComparison.Ordinal);
+        var exit = await Program.RunAsync(options, CancellationToken.None, discoveryBudget: null,
+            capture: token =>
+            {
+                token.ThrowIfCancellationRequested();
+                Assert.False(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Derivation)));
+                Assert.False(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement)));
+                return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
+            });
 
-        Assert.True(
-            capture >= 0 && derive >= 0 && judge >= 0,
-            "The command line must still capture, derive and judge. Update WORKFLOW.md and "
-            + "ARCHITECTURE.md with the accepted replacement rather than letting host sequencing "
-            + "drift.");
+        Assert.Equal(0, exit);
+        using var derived = Assert.IsType<DerivationReader>(DerivationReader.Open(directory).Value);
+        using var judged = Assert.IsType<JudgementReader>(JudgementReader.Open(directory).Value);
+        Assert.Equal(derived.Description.GenerationId, judged.Description.DerivationGenerationId);
     }
 
     /// <summary>Executable rules are instantiated only by Judgement's single catalogue.</summary>

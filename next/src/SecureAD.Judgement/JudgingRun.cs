@@ -530,6 +530,7 @@ public static class JudgingRun
         var gated = tier0DiscoveryRequested && ownershipBinding is not null;
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete, gated);
         writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
+        writer.StartPathInputs(ownershipDescription, tier0DiscoveryRequested);
 
         var scanWatch = new System.Diagnostics.Stopwatch();
         var discoveryWatch = new System.Diagnostics.Stopwatch();

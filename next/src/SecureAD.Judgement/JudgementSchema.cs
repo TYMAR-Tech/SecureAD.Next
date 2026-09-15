@@ -61,8 +61,10 @@ public static class JudgementSchema
     /// rehydrated flags value could read back as a different limitation entirely. Refused rather
     /// than reinterpreted; re-judge, and nothing is lost because the evidence was never touched.
     /// </para>
+    /// <para>31 retains fixed path-input anchors and individually scoped discovery gaps. Existing
+    /// ownership seeds include members and are not interchangeable with zero-distance targets.</para>
     /// </remarks>
-    public const int Version = 30;
+    public const int Version = 31;
 
     private static readonly string[] TableDdl =
     [
@@ -620,6 +622,7 @@ public static class JudgementSchema
         SecureAD.Storage.MembershipRouteStorage.CreateTables(connection);
         ControlEdgeStorage.CreateTables(connection);
         SelfMembershipStorage.CreateTables(connection);
+        PathInputStorage.CreateTables(connection);
     }
 
     /// <summary>

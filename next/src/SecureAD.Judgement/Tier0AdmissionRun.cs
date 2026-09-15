@@ -59,6 +59,7 @@ internal static class Tier0AdmissionRun
         OwnershipAuditStorage.Plan(connection, selection,
             target => target.Sid is { } sid ? context.ProtectedPrincipals?.Lookup(sid, target.SidScope)?.MembershipRoutes : null,
             cancellationToken);
+        PathInputStorage.Write(connection, selection, coverage, discovery.Observed, cancellationToken);
 
         var admitted = 0;
         foreach (var decision in selection.Decisions.Where(item => item.State == OwnershipScopeState.Included))

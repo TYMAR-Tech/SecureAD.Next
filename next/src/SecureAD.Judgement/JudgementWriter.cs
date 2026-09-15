@@ -84,6 +84,12 @@ public sealed class JudgementWriter : IDisposable
         ControlEdgeStorage.Complete(_connection);
     }
 
+    internal void StartPathInputs(JudgementDescription description, bool requested)
+    {
+        ThrowIfFinished();
+        PathInputStorage.Start(_connection, description, requested);
+    }
+
     internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
     {
         ThrowIfFinished();

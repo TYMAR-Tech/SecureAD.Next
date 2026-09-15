@@ -392,15 +392,17 @@ internal static class Program
 
         try
         {
-            judged = JudgingRun.Judge(
+            // Match the GUI's assessment scope; the all-object overload remains for historical tests,
+            // not a different production policy for unattended judging.
+            judged = JudgingRun.JudgeWithTier0Discovery(
                 bundleDirectory,
                 RuleCatalogue.All,
-                discoveryBudget,
                 started,
                 started,
                 JudgingRun.NobodyIsWatching,
                 log,
-                cancellationToken);
+                cancellationToken,
+                discoveryBudget);
         }
         catch (OperationCanceledException)
         {

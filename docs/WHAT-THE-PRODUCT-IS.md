@@ -67,6 +67,35 @@ results; Self-Membership requester discovery and P-142/P-143 asset coverage belo
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
+## Stage 7 first checkpoint: saved path inputs
+
+**Owner-approved implementation scope:** save source-bound path inputs in new Judgement generations,
+with passive validation/readback and no reachability verdicts, distances, tier counts or screen changes.
+Reuse the authoritative Tier-0 classifier; fixed anchor targets are distinct from effective membership
+and assessment-admission relationships. Preserve individual uncertainty scopes, resource context,
+permission proof and generation binding without treating a permission or admission as a completed path.
+Verification is synthetic/offline, with mutation checks and explicit rebuilds; requester discovery,
+live access, optimization, commit and push are not authorized. P-142 enterprise CA classification,
+P-143 declared assets and Self-Membership requester discovery remain later Stage 7 work; outstanding
+Stage 6 acceptance is not a blanket prerequisite.
+
+**No backward compatibility is required.** The owner explicitly clarified this when approving the
+checkpoint: new formats need neither migration nor legacy-reading support. Existing evidence,
+historical tests, failed validation artifacts and pre-existing uncommitted work must still be preserved.
+
+## CLI and GUI judging parity
+
+**Owner-approved requirement:** the same sealed evidence and analysis inputs must receive the same
+judging behavior through the CLI and GUI. Both hosts must use Tier-0 discovery to select detailed
+control assessment, while ordinary rules continue to examine every captured object; a host must not
+silently select a different assessment scope. Host-specific presentation does not authorize different
+security conclusions, and historical all-object test entry points are not the production CLI policy.
+
+Stage 6's implemented, offline-verified slices are not acceptance of every capability or completion of
+its outstanding controlled-evidence, customer-scale and display checks. This alignment does not enable
+Self-Membership requester discovery: that separate scan remains inactive in both hosts, with its scope,
+limitations and enablement deferred to Stage 7 rather than treated as working Tier-0 requester analysis.
+
 ## LAPS attribute-read findings: encrypted values
 
 **Owner-approved wording and scope for P-162.** SEC-090 distinguishes permission to read a

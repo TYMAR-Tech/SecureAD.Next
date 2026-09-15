@@ -166,6 +166,16 @@ public sealed class JudgementReader : IDisposable
     /// <summary>What the judging recorded about itself.</summary>
     public JudgementDescription Description { get; }
 
+    /// <summary>
+    /// Validates and reads saved path inputs. Replays only stored source witnesses; never discovers
+    /// requesters, evaluates permissions, writes analysis or returns a reachability verdict.
+    /// </summary>
+    public PathInputs ReadPathInputs()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return PathInputStorage.Read(_connection, Description, BundleDirectory);
+    }
+
     /// <summary>Reads the stored control product, object-first or named-trustee-first, with coverage and hidden counts.</summary>
     public ControlEdgePage ReadControlEdges(string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
     {

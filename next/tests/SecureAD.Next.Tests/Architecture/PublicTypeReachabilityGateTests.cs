@@ -40,8 +40,8 @@ public sealed class PublicTypeReachabilityGateTests
     private sealed record Exempt(string FullName, string Reason);
 
     /// <summary>
-    /// The twenty types nothing running reaches, confirmed with the owner on 2026-09-12. Each is
-    /// planned work whose caller does not exist yet, not surface anyone has abandoned.
+    /// Types whose callers are deliberately deferred by the owner-approved scope. Each is planned
+    /// work whose caller does not exist yet, not surface anyone has abandoned.
     /// </summary>
     /// <remarks>
     /// Held here as code rather than in a document, per `P-184`: a gate whose input lives in
@@ -73,6 +73,10 @@ public sealed class PublicTypeReachabilityGateTests
         new("SecureAD.Judgement.OwnershipAssessmentAvailability", "Ownership takeover: approved, unbuilt."),
         new("SecureAD.Judgement.OwnershipAssessmentOrigin", "Ownership takeover: approved, unbuilt."),
         new("SecureAD.Judgement.OwnershipCandidateAssessment", "Ownership takeover: approved, unbuilt."),
+
+        // Stage 7 checkpoint 1 explicitly approves saved inputs and passive API readback, not a
+        // screen or path evaluator. Do not manufacture a host call merely to satisfy this gate.
+        new("SecureAD.Judgement.PathInputs", "Stage 7 checkpoint 1: passive readback is approved; its screen/path-analysis consumer is deferred."),
 
         // Findings storage. StoredFindings documents its own status: the reader that built it was
         // removed when decision 0085 moved findings out of the sealed evidence, and the judgement

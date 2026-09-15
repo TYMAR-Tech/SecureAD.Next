@@ -9,10 +9,11 @@ namespace SecureAD.Judgement;
 internal static class OwnershipAuditValidation
 {
     // Replay only stored seed witnesses and inclusion links. No new discovery, membership walk or assessment is performed.
-    internal static void Validate(SqliteConnection connection, JudgementDescription description, string directory)
+    internal static (IReadOnlyList<Tier0Classification> Classifications, IReadOnlyList<Tier0RelevanceRelation> Relations)
+        Validate(SqliteConnection connection, JudgementDescription description, string directory)
     {
         var header = OwnershipAuditStorage.ValidateCounts(connection, description);
-        if (header is null) return;
+        if (header is null) return ([], []);
         var rows = OwnershipAuditStorage.Targets(connection);
         var targets = rows.ToDictionary(item => item.Identity.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         var seeds = OwnershipAuditStorage.Seeds(connection);
@@ -47,7 +48,7 @@ internal static class OwnershipAuditValidation
         if (header.Input is null)
         {
             if (header.Coverage.InputsComplete || seeds.Count != 0 || links.Count != 0) throw OwnershipAuditStorage.InvalidProof();
-            return;
+            return ([], []);
         }
         if (header.DerivationGeneration is not { } generation
             || OwnershipAuditRun.Binding(directory, description.EvidenceSeal, generation, bundle.Description.ForestFqdn) != header.Input)
@@ -125,5 +126,6 @@ internal static class OwnershipAuditValidation
         var selected = replay.Decisions.Where(item => item.State == OwnershipScopeState.Included).Select(item => item.Target).ToHashSet();
         if (!selected.SetEquals(rows.Where(item => item.Selection == OwnershipScopeState.Included).Select(item => item.Identity)))
             throw OwnershipAuditStorage.InvalidProof();
+        return (classifications, relations);
     }
 }

@@ -51,6 +51,9 @@ public sealed class ControlEdgeLayoutTests
         // difference - this guard would pass unchanged if the bump had been forgotten, which is why
         // ProofSerializationGateTests holds the behavioural check.
         [30] = "1702E41D511FB64ED4DF4371A3FD6721788FA453096740E78B3EBEDCE8B5DC3C",
+        // Schema 31 adds saved path inputs, fixed anchors and scoped discovery gaps. This is the
+        // observed layout of the approved checkpoint, not an independent historical forest anchor.
+        [31] = "9BCAD0674D3FA0CC96C2C303A839CD541C0348CD4057FFA5E750EEBE60F8EC38",
     };
 
     [Fact]
