@@ -9,7 +9,8 @@ namespace SecureAD.Judgement;
 internal static class Tier0PathStorage
 {
     private static readonly ResourceManager Resources = new("SecureAD.Judgement.Resources.Tier0Path", typeof(Tier0PathStorage).Assembly);
-    private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount);
+    private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount,
+        IReadOnlyList<SavedRequesterDaclProof> Requesters);
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
@@ -19,7 +20,7 @@ internal static class Tier0PathStorage
         """);
 
     internal static void Write(SqliteConnection connection, JudgementDescription description, string directory,
-        CancellationToken cancellationToken)
+        IReadOnlyList<RequesterDaclRequest> requests, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var inputs = PathInputStorage.Read(connection, description, directory);
@@ -34,6 +35,8 @@ internal static class Tier0PathStorage
             nodes = Tier0PathCalculation.Calculate(inputs, OwnershipAuditStorage.Targets(connection).Select(row => row.Identity).ToArray(),
                 TerminalPermissions(connection, description), bundle.ReadObjectAttributes, contexts.Value, cancellationToken);
         }
+        var requesters = RequesterDaclProofs.Create(connection, description, directory, inputs, requests, cancellationToken);
+        nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
         using var transaction = connection.BeginTransaction();
         foreach (var node in nodes)
         {
@@ -44,7 +47,7 @@ internal static class Tier0PathStorage
                 ("$proof", json), ("$hash", OwnershipAuditStorage.Hash(json)));
         }
         var header = JsonSerializer.Serialize(new Header(Tier0PathCalculation.Version, description.GenerationId,
-            Tier0PathCalculation.Fingerprint(inputs), nodes.Count), ProofSerialization.Options);
+            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters), ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
         cancellationToken.ThrowIfCancellationRequested();
@@ -65,16 +68,24 @@ internal static class Tier0PathStorage
             return new(inputs, null, Tier0Reachability.Unknown, null, []);
         }
         if (header.Version != Tier0PathCalculation.Version || header.Generation != description.GenerationId
-            || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != nodes.Count) throw InvalidProof();
+            || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != nodes.Count
+            || header.Requesters is null) throw InvalidProof();
+        RequesterDaclProofs.Validate(connection, description, directory, inputs, header.Requesters);
+        var assessments = header.Requesters.Select(proof => proof.Assessment)
+            .Where(value => string.Equals(value.Request.RequesterDn, subjectDn, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (inputs.Availability != PathInputAvailability.Recorded)
         {
             if (nodes.Count != 0) throw InvalidProof();
-            return new(inputs, null, Tier0Reachability.Unknown, null, []);
+            return new(inputs, null, Tier0Reachability.Unknown, null, []) { RequesterAssessments = assessments };
         }
         Validate(connection, description, directory, inputs, nodes);
-        if (!nodes.TryGetValue(subjectDn, out var subject)) return new(inputs, null, Tier0Reachability.Unknown, null, []);
+        if (nodes.Values.Any(node => node.RequesterRoute != RequesterDaclProofs.Best(node, header.Requesters))) throw InvalidProof();
+        if (!nodes.TryGetValue(subjectDn, out var subject))
+            return new(inputs, null, Tier0Reachability.Unknown, null, []) { RequesterAssessments = assessments };
         var steps = new List<Tier0PathStep>();
-        if (subject.MembershipDistance != 0 && subject.Terminal is { } terminal)
+        if (subject.RequesterRoute is { } request)
+            steps.AddRange(assessments.Single(value => value.Request == request).Steps);
+        else if (subject.MembershipDistance != 0 && subject.Terminal is { } terminal)
             steps.Add(terminal);
         else
         {
@@ -86,7 +97,7 @@ internal static class Tier0PathStorage
             }
         }
         return new(inputs, subject.Subject, subject.Reachability,
-            subject.Reachability == Tier0Reachability.Reachable ? steps.Count : null, steps);
+            subject.Reachability == Tier0Reachability.Reachable ? steps.Count : null, steps) { RequesterAssessments = assessments };
     }
 
     private static Dictionary<string, Tier0PathNode> ReadNodes(SqliteConnection connection)
@@ -172,10 +183,19 @@ internal static class Tier0PathStorage
     private static T Decode<T>(string json, byte[] fingerprint)
     {
         if (!OwnershipAuditStorage.Hash(json).AsSpan().SequenceEqual(fingerprint)) throw InvalidProof();
-        return JsonSerializer.Deserialize<T>(json, ProofSerialization.Options) ?? throw InvalidProof();
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, ProofSerialization.Options) ?? throw InvalidProof();
+        }
+        catch (JsonException)
+        {
+            throw InvalidProof();
+        }
     }
 
     internal static InvalidDataException InvalidProof() => new(Resources.GetString("InvalidProof", System.Globalization.CultureInfo.CurrentUICulture));
+
+    internal static string InvalidRequestMessage() => Resources.GetString("InvalidRequest", System.Globalization.CultureInfo.CurrentUICulture)!;
 
     private static void Execute(SqliteConnection connection, SqliteTransaction? transaction, string sql, params (string Name, object? Value)[] parameters)
     {

@@ -57,6 +57,8 @@ public sealed class ControlEdgeLayoutTests
         // Schema 32 adds the saved path calculation and predecessor records. Observed from the
         // new build; all historical layouts above remain unchanged.
         [32] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
+        // Schema 33 adds requester proof semantics inside the existing path certificate, not DDL.
+        [33] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
     };
 
     [Fact]

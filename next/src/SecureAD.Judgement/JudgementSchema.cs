@@ -65,8 +65,10 @@ public static class JudgementSchema
     /// ownership seeds include members and are not interchangeable with zero-distance targets.</para>
     /// <para>32 adds a source-bound path calculation and separate membership/terminal-control predecessors.
     /// Terminal permission authority is not a membership-transfer or account-takeover step.</para>
+    /// <para>33 retains explicit requester WRITE_DAC proofs in the versioned path certificate.
+    /// Existing table layouts and named-holder permission semantics are unchanged.</para>
     /// </remarks>
-    public const int Version = 32;
+    public const int Version = 33;
 
     private static readonly string[] TableDdl =
     [

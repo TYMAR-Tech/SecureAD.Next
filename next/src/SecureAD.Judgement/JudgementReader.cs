@@ -177,8 +177,9 @@ public sealed class JudgementReader : IDisposable
     }
 
     /// <summary>
-    /// Validates and reads one saved Tier-0 path result. Never runs discovery, permission evaluation,
-    /// a path search or publication. An uncaptured subject remains Unknown, not NotReachable.
+    /// Validates and reads one saved Tier-0 path result, replaying only saved requester questions
+    /// to verify their source proof. Never discovers new questions, searches paths or publishes results.
+    /// An uncaptured subject remains Unknown, not NotReachable.
     /// </summary>
     public Tier0PathResult ReadTier0Path(string subjectDn)
     {

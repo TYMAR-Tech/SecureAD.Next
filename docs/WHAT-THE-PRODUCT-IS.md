@@ -119,6 +119,48 @@ P-142, P-143 and Self-Membership requester discovery remain planning work; reque
 member-expansion activation stay outside this slice. P-227 remains open. No backward compatibility,
 tier counts, remediation, screen changes, optimization, live access, commit or push is included.
 
+## Stage 7 third checkpoint: concrete requester DACL permission proof
+
+**Owner-approved scope; implemented and offline verified as P-230.** After preparation against the
+saved P-229 baseline, the owner selected “Approve the requester-proof slice”. Establish whether a
+particular captured user can exercise an explicit `WRITE_DAC` permission on a fixed Tier-0 target,
+rather than transferring a group-held permission to every member without a requester access check.
+
+- Support direct user authorization or one explicit global-security-group membership, evaluating
+  all relevant allows and denies in captured order. Requester, granting group and target must be in
+  the same domain, and the target must belong to a verified domain naming context. Reuse the existing
+  authoritative fixed-target classifier; this narrower new proof does not remove existing routes.
+- Retain original permission entries, requester identity, membership support, resource context and
+  exact Evidence/Derivation/Judgement generations. Preserve the actual membership and permission
+  steps in the saved path explanation; requester proofs do not multiply group-held permission counts.
+- This is an offline-verified calculation and passive-readback building block, not production
+  requester coverage. Both hosts' scheduling and requester discovery remain unchanged; no manual
+  administrator-maintained selection list, screen changes or production processing budget is approved.
+- Existing ownership findings and independent owner proofs remain unchanged. No account takeover,
+  new ownership-transition inference or hypothetical membership-change step is included.
+- Missing evidence, unsupported authorization routes, unresolved identities and work not performed
+  remain distinct. Relevant uncertainty must not become a definite route; unrelated gaps must not
+  erase one. The bounded calculation continues to emit Reachable or Unknown, not NotReachable.
+
+The examined follow-on route is an own-account addition to a same-domain global security group,
+followed only by qualified existing memberships to a fixed Tier-0 target. It remains preparation
+work: Self-Membership authorization alone does not establish Add readiness, and an omitted captured
+member value does not prove non-membership. A separately justified operation rule is required before
+promoting that candidate; this approval does not weaken the existing readiness safeguard or authorize
+recapture. Verification of the approved requester slice must cover positive routes, applicable denies,
+unsupported contexts, unchanged counts, source mismatches and cancelled publication, with deliberate
+defects for every new behavior check and explicit rebuilds. No live access, optimization, commit or
+push is authorized.
+
+Judgement format 33 saves these explicit requester answers and their source-bound path steps, with
+passive proof validation and unchanged production scheduling. All 5,058 offline tests pass normally,
+all 156 focused cases pass under separate coverage, and all 50 new cases detect deliberate defects
+with explicit rebuilds and verified restoration. The original evidence, historical validation and
+deliberate-defect records are preserved; the final validation summary is
+`next/artifacts/stage7-requester-dacl-validation/0bf5064e17794e3fa8a34630dd2cb31a/final-summary.json`.
+This does not establish production requester coverage, customer-scale acceptance, live-operation
+success or the deferred membership-change operation proof; P-227 remains open.
+
 ## CLI and GUI judging parity
 
 **Owner-approved requirement:** the same sealed evidence and analysis inputs must receive the same

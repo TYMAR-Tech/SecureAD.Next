@@ -9,13 +9,15 @@ namespace SecureAD.Judgement;
 internal sealed record Tier0PathNode(Tier0Target Subject, int? MembershipDistance,
     Tier0PathStep? MembershipNext, Tier0PathStep? Terminal, string? PermissionFingerprint)
 {
-    internal Tier0Reachability Reachability => MembershipDistance is not null || Terminal is not null
+    public RequesterDaclRequest? RequesterRoute { get; init; }
+
+    internal Tier0Reachability Reachability => MembershipDistance is not null || Terminal is not null || RequesterRoute is not null
         ? Tier0Reachability.Reachable : Tier0Reachability.Unknown;
 }
 
 internal static class Tier0PathCalculation
 {
-    internal const int Version = 1;
+    internal const int Version = 2;
 
     internal static IReadOnlyList<Tier0PathNode> Calculate(PathInputs inputs, IReadOnlyList<Tier0Target> targets,
         IEnumerable<ControlEdge> permissions, Func<string, ObjectAttributes?> attributes,

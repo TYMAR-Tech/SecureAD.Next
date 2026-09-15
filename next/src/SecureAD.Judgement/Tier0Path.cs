@@ -29,7 +29,11 @@ public enum Tier0PathStepKind
 /// permission steps name the unchanged control edge in the same Judgement generation.
 /// </summary>
 public sealed record Tier0PathStep(Tier0Target From, Tier0Target To, Tier0PathStepKind Kind,
-    string? MembershipSubject, int? MembershipSupport, Tier0Evidence? MembershipWitness, long? PermissionId);
+    string? MembershipSubject, int? MembershipSupport, Tier0Evidence? MembershipWitness, long? PermissionId)
+{
+    /// <summary>The saved concrete access check supporting this step, not a transferable group-held grant.</summary>
+    public RequesterDaclRequest? RequesterRequest { get; init; }
+}
 
 /// <summary>
 /// Passive reading of a saved calculation. Inputs retain availability, coverage, scoped uncertainty
@@ -39,6 +43,9 @@ public sealed record Tier0PathStep(Tier0Target From, Tier0Target To, Tier0PathSt
 public sealed record Tier0PathResult(PathInputs Inputs, Tier0Target? Subject, Tier0Reachability Reachability,
     int? ShortestProvenDistance, IReadOnlyList<Tier0PathStep> Steps)
 {
+    /// <summary>Saved explicit questions for this requester; an empty set never means discovery ran.</summary>
+    public IReadOnlyList<RequesterDaclAssessment> RequesterAssessments { get; init; } = [];
+
     /// <summary>Overall coverage, not merely whether a positive route was proved.</summary>
     public Tier0Coverage Coverage => Inputs.Coverage;
 
