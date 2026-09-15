@@ -244,10 +244,9 @@ internal static class ObjectListingReader
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Answered from what the run recorded about the domain the container belongs to, rather than
-    /// from the shape of the answer. A listing cannot tell from its own rows that objects are
-    /// missing - that is the whole difficulty, and it is why the run's own account of its coverage
-    /// has to be consulted instead.
+    /// Answered from the domains reached by the scope and the recorded exclusions, not just the
+    /// domain of the selected object. An excluded domain has no captured objects to join, so its
+    /// absence must be checked against its recorded naming-context DN independently.
     /// </para>
     /// <para>
     /// <b>Only a widened scope can be short.</b> At <see cref="ListingScope.Base"/> the object is
@@ -267,29 +266,68 @@ internal static class ObjectListingReader
 
         using var command = connection.CreateCommand();
         command.CommandText =
-            """
+            $"""
             SELECT d.domain_fqdn, d.outcome, d.reason
             FROM domain_coverage AS d
             WHERE d.outcome <> 'Read'
               AND EXISTS (
                   SELECT 1 FROM captured_object AS o
                   WHERE o.domain_fqdn = d.domain_fqdn
-                    AND o.distinguished_name = $dn COLLATE NOCASE)
+                    AND ({WhereFor(scope)}))
+            ORDER BY d.domain_fqdn COLLATE NOCASE
             """;
 
-        command.Parameters.AddWithValue("$dn", containerDn);
+        Bind(command, containerDn);
 
-        using var reader = command.ExecuteReader();
-        if (!reader.Read())
-            return (true, null);
+        using (var reader = command.ExecuteReader())
+        {
+            if (reader.Read())
+                return ShortfallFor(reader.GetString(0), reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2));
+        }
 
-        var domain = reader.GetString(0);
-        var outcome = reader.GetString(1);
-        var why = reader.IsDBNull(2) ? null : reader.GetString(2);
+        using var exclusions = connection.CreateCommand();
+        exclusions.CommandText =
+            """
+            SELECT naming_context_dn, kind, COALESCE(note, reason)
+            FROM excluded_domain
+            ORDER BY naming_context_dn COLLATE NOCASE
+            """;
 
-        return (
+        using (var reader = exclusions.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                var excludedDn = reader.GetString(0);
+                if (IntersectsExclusion(containerDn, scope, excludedDn))
+                    return ShortfallFor(excludedDn, "Excluded" + reader.GetString(1), reader.GetString(2));
+            }
+        }
+
+        return (true, null);
+    }
+
+    private static bool IntersectsExclusion(string containerDn, ListingScope scope, string excludedDn) =>
+        IsAtOrUnder(containerDn, excludedDn)
+        || (scope == ListingScope.Subtree
+            ? IsAtOrUnder(excludedDn, containerDn)
+            : string.Equals(DnHelper.GetParentDn(excludedDn), containerDn, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsAtOrUnder(string dn, string root)
+    {
+        // A raw suffix can begin inside an escaped value; walk actual component boundaries.
+        for (string? current = dn; current is not null; current = DnHelper.GetParentDn(current))
+        {
+            if (string.Equals(current, root, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static (bool Complete, string? Shortfall) ShortfallFor(string domain, string outcome, string? why) =>
+        (
             false,
             $"'{domain}' was recorded as {outcome}, so this list is short by an unknown number of "
             + "objects." + (why is null ? string.Empty : " " + why));
-    }
 }

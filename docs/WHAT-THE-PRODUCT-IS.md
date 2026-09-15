@@ -51,11 +51,12 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
-**Owner-approved next work:** complete a bounded correctness pass in the order **P-41, P-136,
-P-162, P-173**, reproducing P-136's risky case before choosing its correction, then move to
-**Stage 7 — paths to Tier 0**. Do not extend that pass into general capture cleanup or require the
-punch list to be empty before building the next feature; retain validated, self-contained checkpoints
-and the existing stop rules for false security claims, evidence loss and invalid verification.
+**Owner-approved next work: Stage 7 — paths to Tier 0.** The bounded correctness pass **P-41,
+P-136, P-162, P-173** is implemented and offline verified, as recorded in
+[the work queue](PUNCH-LIST.md#agreed-next-work); P-136's reported case was already guarded and
+received regression coverage rather than a production change. Do not replace the next feature with
+general capture cleanup or require the punch list to be empty; retain validated, self-contained
+checkpoints and the existing stop rules for false security claims, evidence loss and invalid verification.
 
 The remaining P-216 caller-status gap, nonblocking presentation/readback work, standalone rule and
 inventory additions, and speculative performance tuning are deferred as listed in
