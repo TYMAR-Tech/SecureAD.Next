@@ -85,7 +85,7 @@ historical tests, failed validation artifacts and pre-existing uncommitted work 
 
 ## Stage 7 second checkpoint: first bounded path calculation
 
-**Owner-approved scope; not implemented.** Calculate and save qualified existing membership routes
+**Owner-approved scope; implemented and offline verified as P-229.** Calculate and save qualified existing membership routes
 and terminal DACL-control routes to the shared classifier's fixed Tier-0 targets, without screen changes.
 This is not yet an engine for arbitrary chains through account takeovers.
 
@@ -103,7 +103,8 @@ This is not yet an engine for arbitrary chains through account takeovers.
 
 Reachable requires a fully supported route. Unknown retains relevant missing evidence or unsupported
 steps; NotReachable requires excluding relevant possible routes too, never merely finding no definite
-route in incomplete inputs. Keep capture gaps, unsupported analysis, unresolved identities and unfinished
+route in incomplete inputs. **The current bounded calculation returns Reachable or Unknown; it does
+not emit NotReachable while unsupported alternatives remain.** Keep capture gaps, unsupported analysis, unresolved identities and unfinished
 processing separate, preserve symbolic uncertainty scopes, and do not invalidate a proven route for an
 unrelated gap. Work backward from fixed targets without an arbitrary path-depth cutoff; save one
 deterministic shortest proven route, qualifying its length when uncertain alternatives could be shorter.
@@ -566,12 +567,12 @@ forest, permanently. Roots are now Tier-0 seeds on the strength of what they are
 one *means* still differs by partition: the configuration and schema partitions hold no credential
 material, and `ReplicationControlDeriver` already keeps that distinction.
 
-**Path to Tier 0 is not implemented and is not part of this work.** Nothing in `next/src` builds or
-stores a chain from an ordinary account to a Tier-0 asset. `OwnershipScopeSelector` performs a backward
+**Assessment admission remains separate from paths.** `OwnershipScopeSelector` performs a backward
 walk from Tier-0 seeds and produces an admission decision — `Included`, `OutsideComputedScope` or
-`Undetermined` — not a route. The retained-route change above keeps that walk's own answer so a later
-path stage reads stored facts rather than re-traversing; it adds no path presentation, ranking,
-remediation or all-path enumeration, and none of those become prerequisites here.
+`Undetermined` — not a route. Its retained relationships preserve that decision without becoming
+completed control steps. The separate [bounded Stage 7 calculation](#stage-7-second-checkpoint-first-bounded-path-calculation)
+now consumes qualified saved witnesses; it adds no path presentation, ranking, remediation or
+all-path enumeration, and none of those become prerequisites to the admission work.
 
 At the catalogue-2 checkpoint, re-judging alone obtained that correction. The current member-attribution
 product requires current Derivation inputs: re-derive and re-judge an isolated copy, without re-capture.

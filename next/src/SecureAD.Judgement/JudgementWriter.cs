@@ -90,6 +90,12 @@ public sealed class JudgementWriter : IDisposable
         PathInputStorage.Start(_connection, description, requested);
     }
 
+    internal void CalculateTier0Paths(JudgementDescription description, CancellationToken cancellationToken)
+    {
+        ThrowIfFinished();
+        Tier0PathStorage.Write(_connection, description, _bundleDirectory, cancellationToken);
+    }
+
     internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
     {
         ThrowIfFinished();

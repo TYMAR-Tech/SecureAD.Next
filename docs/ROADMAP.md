@@ -46,7 +46,7 @@ direction is the one that would have caught Stage 5 on the day it was finished. 
 | 4 | The simple posture rules | **built** | `LapsPasswordReadAccess` |
 | 5 | Group expansion | **built** | `PrincipalExpansion` |
 | 6 | Control edges | started | `ControlEdge` |
-| 7 | Paths to Tier 0 | not started | `Tier0Reachability` |
+| 7 | Paths to Tier 0 | started | `Tier0Reachability` |
 | 8 | Proven remediation | not started | `RemediationIssue` |
 | 9 | Reports and export | not started | `ReportDefinition` |
 | 10 | Comparing runs | not started | `RunComparison` |

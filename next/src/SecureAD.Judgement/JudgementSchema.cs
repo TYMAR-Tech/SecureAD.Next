@@ -63,8 +63,10 @@ public static class JudgementSchema
     /// </para>
     /// <para>31 retains fixed path-input anchors and individually scoped discovery gaps. Existing
     /// ownership seeds include members and are not interchangeable with zero-distance targets.</para>
+    /// <para>32 adds a source-bound path calculation and separate membership/terminal-control predecessors.
+    /// Terminal permission authority is not a membership-transfer or account-takeover step.</para>
     /// </remarks>
-    public const int Version = 31;
+    public const int Version = 32;
 
     private static readonly string[] TableDdl =
     [
@@ -623,6 +625,7 @@ public static class JudgementSchema
         ControlEdgeStorage.CreateTables(connection);
         SelfMembershipStorage.CreateTables(connection);
         PathInputStorage.CreateTables(connection);
+        Tier0PathStorage.CreateTables(connection);
     }
 
     /// <summary>

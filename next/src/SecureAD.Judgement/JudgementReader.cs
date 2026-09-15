@@ -176,6 +176,17 @@ public sealed class JudgementReader : IDisposable
         return PathInputStorage.Read(_connection, Description, BundleDirectory);
     }
 
+    /// <summary>
+    /// Validates and reads one saved Tier-0 path result. Never runs discovery, permission evaluation,
+    /// a path search or publication. An uncaptured subject remains Unknown, not NotReachable.
+    /// </summary>
+    public Tier0PathResult ReadTier0Path(string subjectDn)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
+        return Tier0PathStorage.Read(_connection, Description, BundleDirectory, subjectDn);
+    }
+
     /// <summary>Reads the stored control product, object-first or named-trustee-first, with coverage and hidden counts.</summary>
     public ControlEdgePage ReadControlEdges(string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
     {

@@ -86,3 +86,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## SecureAD.Next Regression Work
 
 - For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.
+
+## Documentation Commits
+
+- For documentation-only commits in SecureAD.Next, prefer a fast commit and push after reviewing the pending diff and running whitespace checks. Do not rebuild or rerun tests unnecessarily, and do not wait for CI to finish after pushing.

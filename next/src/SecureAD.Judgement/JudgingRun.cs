@@ -731,6 +731,8 @@ public static class JudgingRun
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
+        writer.CalculateTier0Paths(ownershipDescription, cancellationToken);
+
         cancellationToken.ThrowIfCancellationRequested();
         progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });
         writer.Complete(DateTimeOffset.UtcNow, cancellationToken);

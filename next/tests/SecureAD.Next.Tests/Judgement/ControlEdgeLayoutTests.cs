@@ -54,6 +54,9 @@ public sealed class ControlEdgeLayoutTests
         // Schema 31 adds saved path inputs, fixed anchors and scoped discovery gaps. This is the
         // observed layout of the approved checkpoint, not an independent historical forest anchor.
         [31] = "9BCAD0674D3FA0CC96C2C303A839CD541C0348CD4057FFA5E750EEBE60F8EC38",
+        // Schema 32 adds the saved path calculation and predecessor records. Observed from the
+        // new build; all historical layouts above remain unchanged.
+        [32] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
     };
 
     [Fact]

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="InvalidProof" xml:space="preserve"><value>The saved Tier-0 path calculation does not match its source evidence, generation or supported format. No path conclusion can be read from it. Judge the sealed evidence again to produce new analysis; the original evidence is unchanged.</value></data>
+</root>
