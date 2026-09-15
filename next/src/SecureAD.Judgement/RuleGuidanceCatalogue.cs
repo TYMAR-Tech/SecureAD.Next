@@ -279,43 +279,9 @@ public static class RuleGuidanceCatalogue
             // tag looks copied rather than reasoned. No technique is claimed rather than a wrong
             // one asserted.
             MitreTechnique: null,
-            WhyItMatters:
-                "A principal that is broad in every organisation - Everyone, Authenticated Users, "
-                + "Domain Users, Domain Computers, Guests or Anonymous - can read this machine's "
-                + "local administrator password. That yields administrative control of the "
-                + "machine, and the access is local, so no domain authentication is involved and "
-                + "nothing is logged centrally. The principal is usually not the one named in the "
-                + "permission: it falls out of the group nesting underneath it, which is why "
-                + "nobody notices. Microsoft describes finding delegations that, expanded, reveal "
-                + "thousands of accounts holding local administrator rights.",
-            WhatToDo:
-                "Follow the membership path on the finding and cut the link that brings the broad "
-                + "principal into the delegated group, or narrow the permission so it names only "
-                + "the administrators who need it. Do not simply remove the delegation: this "
-                + "product cannot know which principals your organisation intended to hold LAPS "
-                + "read access, and the group named may be entirely legitimate apart from what is "
-                + "nested inside it. Where the permission carries no object type it reaches every "
-                + "attribute on the object rather than only the password, and Microsoft's "
-                + "Find-LapsADExtendedRights cmdlet is the way to review that on an "
-                + "organizational unit.",
-            About:
-                "Reports a computer whose LAPS password attributes can be read by a principal that "
-                + "is broad in every organisation, found by expanding whichever principal the "
-                + "permission actually names all the way down. It reports only that, and "
-                + "deliberately: nothing in the directory says which principals an organisation "
-                + "intended to hold this access, so a rule firing on an 'unexpected' principal "
-                + "would be imposing somebody else's idea of normal. The scope a permission is "
-                + "inherited from is stated as a fact rather than as an error, because a "
-                + "delegation made high in the tree may be deliberate. Every LAPS password "
-                + "attribute is confidential, which Microsoft says requires both Read Property and "
-                + "Control Access to read - this rule requires both before reporting anyone, so it "
-                + "names fewer principals than a tool testing Control Access alone, and every one "
-                + "it names can genuinely read the password. A Control Access grant on its own is "
-                + "recorded as a fact and is not reported as an exposure. Disabled computer "
-                + "accounts are out of scope, having no running machine behind them, and a forest "
-                + "whose schema carries no LAPS attribute is not reported at all. Where the "
-                + "membership walk could not reach everything nested inside a delegated principal, "
-                + "the finding says so rather than implying nothing else is inside.",
+            WhyItMatters: LapsPasswordReadMessages.Get("WhyItMatters"),
+            WhatToDo: LapsPasswordReadMessages.Get("WhatToDo"),
+            About: LapsPasswordReadMessages.Get("About"),
             MicrosoftReference:
                 "https://learn.microsoft.com/troubleshoot/windows-server/windows-security/mark-attribute-as-confidential"),
 

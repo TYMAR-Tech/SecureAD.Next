@@ -279,6 +279,86 @@ public sealed class DnHelperTests
         Assert.Throws<ArgumentNullException>(() => DnHelper.DnToFqdn(null!));
     }
 
+    // --- P-41: escaped backslashes do not hide component boundaries ---
+
+    /// <summary>
+    /// Paired backslashes leave a separator; an unmatched backslash keeps the comma in the name.
+    /// </summary>
+    [Theory]
+    [InlineData(@"CN=Agent\\,OU=Tier 0,DC=corp,DC=com")]
+    [InlineData(@"CN=Agent\\\\,OU=Tier 0,DC=corp,DC=com")]
+    [InlineData(@"CN=Agent\\\,Suffix,OU=Tier 0,DC=corp,DC=com")]
+    [InlineData(@"CN=Agent\\\\\,Suffix,OU=Tier 0,DC=corp,DC=com")]
+    public void WhenBackslashRunsPrecedeCommas_ThenTheParentKeepsItsWholeName(string dn)
+    {
+        Assert.Equal("OU=Tier 0,DC=corp,DC=com", DnHelper.GetParentDn(dn));
+    }
+
+    /// <summary>
+    /// P-41 changes boundaries, not the existing comma-only value decoding convention.
+    /// </summary>
+    [Theory]
+    [InlineData(@"CN=Agent\\,OU=Tier 0,DC=corp,DC=com", @"Agent\\")]
+    [InlineData(@"CN=Agent\\\,Suffix,OU=Tier 0,DC=corp,DC=com", @"Agent\\,Suffix")]
+    public void WhenBackslashRunsPrecedeCommas_ThenTheFirstNameEndsAtTheSeparator(
+        string dn, string expected)
+    {
+        Assert.Equal(expected, DnHelper.ExtractFirstRdn(dn));
+    }
+
+    /// <summary>The nullable name entry point uses the same component boundary.</summary>
+    [Theory]
+    [InlineData(@"CN=Agent\\,OU=Tier 0,DC=corp,DC=com", @"Agent\\")]
+    [InlineData(@"CN=Agent\\\,Suffix,OU=Tier 0,DC=corp,DC=com", @"Agent\\,Suffix")]
+    public void WhenBackslashRunsPrecedeCommas_ThenTheNullableNameEndsAtTheSeparator(
+        string dn, string expected)
+    {
+        Assert.Equal(expected, DnHelper.ExtractFirstRdnOrNull(dn));
+    }
+
+    /// <summary>The principal-name entry point uses the same component boundary.</summary>
+    [Theory]
+    [InlineData(@"CN=Agent\\,OU=Tier 0,DC=corp,DC=com", @"Agent\\")]
+    [InlineData(@"CN=Agent\\\,Suffix,OU=Tier 0,DC=corp,DC=com", @"Agent\\,Suffix")]
+    public void WhenBackslashRunsPrecedeCommas_ThenThePrincipalNameEndsAtTheSeparator(
+        string dn, string expected)
+    {
+        Assert.Equal(expected, DnHelper.ExtractNameFromDn(dn));
+    }
+
+    /// <summary>
+    /// A real domain component after a backslash pair must not be lost, and text after an escaped
+    /// comma must not manufacture a domain component just because it begins with DC=.
+    /// </summary>
+    [Theory]
+    [InlineData(@"CN=Agent\\,DC=corp,DC=com")]
+    [InlineData(@"CN=Agent\\\\,DC=corp,DC=com")]
+    [InlineData(@"CN=Agent\\\,DC=decoy,DC=corp,DC=com")]
+    [InlineData(@"CN=Agent\\\\\,DC=decoy,DC=corp,DC=com")]
+    public void WhenBackslashRunsPrecedeCommas_ThenOnlyRealDomainComponentsAreUsed(string dn)
+    {
+        Assert.Equal("corp.com", DnHelper.DnToFqdn(dn));
+    }
+
+    /// <summary>An escaped backslash in an intermediate container must not skip its parent.</summary>
+    [Fact]
+    public void WhenAnIntermediateContainerEndsInAnEscapedBackslash_ThenEveryAncestorIsVisited()
+    {
+        var visited = new List<string>();
+
+        for (var dn = DnHelper.GetParentDn(@"CN=Agent,OU=Controllers\\,OU=Tier 0,DC=corp,DC=com");
+             dn is not null;
+             dn = DnHelper.GetParentDn(dn))
+        {
+            visited.Add(dn);
+        }
+
+        Assert.Equal(
+            [@"OU=Controllers\\,OU=Tier 0,DC=corp,DC=com", "OU=Tier 0,DC=corp,DC=com",
+                "DC=corp,DC=com", "DC=com"],
+            visited);
+    }
+
     // --- Documented limits, not requirements ---
 
     /// <summary>
@@ -306,19 +386,14 @@ public sealed class DnHelperTests
     }
 
     /// <summary>
-    /// <b>This test pins a defect, not a specification.</b> See <c>P-41</c> on the punch list.
-    ///
-    /// <para>
-    /// An escaped backslash at the end of a value &#8212; <c>CN=corp\\</c> &#8212; ends with a
-    /// literal backslash, so the comma after it <i>is</i> a separator. The scan looks only at the
-    /// character before the comma, so it treats the separator as escaped and swallows the rest of
-    /// the DN into the value &#8212; and then unescapes the comma it wrongly believed was escaped.
-    /// </para>
+    /// P-41's historical defect-pin now requires the correct parent. Microsoft Distinguished
+    /// Names specifies that a backslash itself is escaped with a backslash, so the comma after
+    /// that pair separates components rather than belonging to the value.
+    /// https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ldap/distinguished-names
     /// </summary>
     [Fact]
-    public void WhenAValueEndsInAnEscapedBackslash_ThenTheFollowingSeparatorIsMissed()
+    public void WhenAValueEndsInAnEscapedBackslash_ThenTheFollowingSeparatorIsRecognized()
     {
-        Assert.Equal(@"corp\,DC=com", DnHelper.ExtractFirstRdn(@"DC=corp\\,DC=com"));
-        Assert.Null(DnHelper.GetParentDn(@"DC=corp\\,DC=com"));
+        Assert.Equal("DC=com", DnHelper.GetParentDn(@"DC=corp\\,DC=com"));
     }
 }

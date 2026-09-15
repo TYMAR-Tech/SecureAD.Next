@@ -7,7 +7,7 @@ using SecureAD.Kernel.Security;
 namespace SecureAD.Judgement;
 
 /// <summary>
-/// SEC-090 - a principal broad in every organisation can read a machine's LAPS password.
+/// SEC-090 - a principal broad in every organisation can read a machine's LAPS password attributes.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -59,7 +59,7 @@ public sealed class LapsPasswordReadAccess : IRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         RuleId,
-        "A broad principal can read LAPS passwords",
+        LapsPasswordReadMessages.Get("Title"),
         Severity.High,
         Version: RuleVersion,
         SubjectClasses: ["computer"],
@@ -455,10 +455,13 @@ public sealed class LapsPasswordReadAccess : IRule
             ? "directly"
             : $"through {evidence.NestingDepth} nested group(s): {evidence.Route}";
         var reach = evidence.Reach is LapsGrantReach.EveryAttribute
-            ? "The entry carries no object type, so it reaches every attribute on this object "
-                + "rather than only the password - which is the blanket extended-rights grant "
-                + "Microsoft warns about, because all LAPS password attributes are confidential."
+            ? LapsPasswordReadMessages.Get("EveryAttributeReach")
             : $"The entry is scoped to {evidence.Attribute}.";
+
+        // Attribute read permission does not establish the separate right to decrypt its value.
+        var readEffect = LapsPasswordReadMessages.Get(
+            string.Equals(evidence.Attribute, LapsAttributes.WindowsLapsEncryptedPassword,
+                StringComparison.OrdinalIgnoreCase) ? "EncryptedRead" : "ClearTextRead");
 
         var scope = evidence.InheritedFrom is null
             ? "The entry is set on this object itself."
@@ -479,9 +482,7 @@ public sealed class LapsPasswordReadAccess : IRule
         return $"{name}'s LAPS password attribute {evidence.Attribute} can be read by "
             + $"{evidence.BroadPrincipalName ?? evidence.BroadPrincipalSid} "
             + $"({evidence.BroadPrincipalSid}), a principal that is broad in every organisation, "
-            + $"reached {route}. Reading it yields the machine's local administrator password, "
-            + "which grants administrative control of the machine locally - with no domain "
-            + $"authentication and nothing logged centrally. {reach} {scope} Cut the link in the "
+            + $"reached {route}. {readEffect} {reach} {scope} Cut the link in the "
             + "membership path above, or narrow the entry, rather than removing the delegation "
             + "outright: this product cannot know which principals your organisation intended to "
             + "hold this access, and reports only the one that is wrong everywhere."

@@ -66,6 +66,32 @@ results; Self-Membership requester discovery and P-142/P-143 asset coverage belo
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
+## LAPS attribute-read findings: encrypted values
+
+**Owner-approved wording and scope for P-162.** SEC-090 distinguishes permission to read a
+password attribute from permission to decrypt its value, and neither is a claim that a password
+was retrieved or a machine taken over. High severity, detection, finding identities, membership
+paths and scope remain unchanged; no layout change, decryption assessment or rewrite of saved
+findings is authorized, and corrected finding text is produced when judging runs again.
+
+- Title: “A broad principal can read LAPS password attributes”.
+- Encrypted-attribute explanation: “This attribute stores an encrypted LAPS password. Read
+  permission allows retrieval of the encrypted value, if present; it does not by itself grant
+  permission to decrypt it. This finding does not establish that this principal can obtain the
+  local administrator password or take control of the machine.”
+- Clear-text-attribute explanation: “This attribute stores a LAPS password in clear text. If a
+  password value is present, reading it exposes the local administrator password and may enable
+  local administrative access.”
+- Opening of **Why it matters**: “A broad principal has read access to a LAPS password attribute.
+  A clear-text value can expose the local administrator password; an encrypted value requires
+  separate decryption permission. Read access alone is not proof of password retrieval or control
+  of the machine.” The existing subsequent group-nesting explanation remains.
+- In **About**, replace “it names can genuinely read the password” with “it names has permission
+  to read the attribute. For encrypted values, decryption permission is separate and is not
+  established by this rule.”
+- In the finding's scope explanation and **What to do**, replace “rather than only the password”
+  with “rather than only this LAPS attribute”.
+
 ## Enatel SSO object capture scope
 
 **Owner-approved default and presentation, tracked as P-224.** New captures exclude

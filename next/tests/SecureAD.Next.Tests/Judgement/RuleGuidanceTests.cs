@@ -23,6 +23,42 @@ namespace SecureAD.Next.Tests.Judgement;
 /// </remarks>
 public sealed class RuleGuidanceTests
 {
+    /// <summary>P-162: shared guidance must distinguish encrypted reads from password retrieval.</summary>
+    [Fact]
+    public void LapsReadGuidanceSeparatesReadPermissionFromDecryption()
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-090"));
+
+        Assert.StartsWith(
+            "A broad principal has read access to a LAPS password attribute. A clear-text value "
+                + "can expose the local administrator password; an encrypted value requires "
+                + "separate decryption permission. Read access alone is not proof of password "
+                + "retrieval or control of the machine.",
+            guidance.WhyItMatters, StringComparison.Ordinal);
+    }
+
+    /// <summary>The rule's stated limits must not promise a decryption check it never performs.</summary>
+    [Fact]
+    public void LapsReadAboutDoesNotEstablishDecryptionPermission()
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-090"));
+
+        Assert.Contains(
+            "every one it names has permission to read the attribute. For encrypted values, "
+                + "decryption permission is separate and is not established by this rule.",
+            guidance.About, StringComparison.Ordinal);
+    }
+
+    /// <summary>The action addresses the permission's scope without asserting password retrieval.</summary>
+    [Fact]
+    public void LapsReadAdviceNamesTheAttributeScope()
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-090"));
+
+        Assert.Contains("every attribute on the object rather than only this LAPS attribute",
+            guidance.WhatToDo, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Every rule that can produce a finding tells the operator what to do about it.
     /// </summary>

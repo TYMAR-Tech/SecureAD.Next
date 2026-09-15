@@ -85,3 +85,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## SecureAD.Next Regression Work
 
 - For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.
+
+## Task Status Reporting
+
+- When reporting SecureAD.Next task status after chat history disappears, verify saved code, Git changes, governing documents and test records before answering. Do not infer that work was not started merely because it is absent from the visible conversation.

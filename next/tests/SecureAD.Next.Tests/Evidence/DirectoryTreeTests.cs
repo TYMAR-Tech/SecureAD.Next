@@ -118,6 +118,45 @@ public sealed class DirectoryTreeTests : IDisposable
         Assert.Equal("Smith, John", tree.Roots[0].Children.Single().Name);
     }
 
+    /// <summary>
+    /// Only the ordinary leaf is captured, so its stored parent is correct even before P-41;
+    /// this isolates reconstruction of the ancestors above the escaped-backslash container.
+    /// </summary>
+    [Fact]
+    public void AnEscapedBackslashContainerRetainsItsUncapturedAncestor()
+    {
+        const string parent = "OU=Tier 0," + DomainDn;
+        const string container = @"OU=Controllers\\," + parent;
+        WriteBundle(writer =>
+            writer.WriteObject(ObjectAt("CN=Agent," + container, GuidNumbered(1))));
+
+        var tree = ReadTree();
+
+        Assert.Equal([parent], ChildrenOf(tree.Roots.Single(r => r.DistinguishedName == DomainDn)));
+    }
+
+    /// <summary>
+    /// The parent already exists here, independently of ancestor reconstruction; the container
+    /// must attach to it rather than skip it or become an orphan root.
+    /// </summary>
+    [Fact]
+    public void AnEscapedBackslashContainerAttachesToItsImmediateParent()
+    {
+        const string parent = "OU=Tier 0," + DomainDn;
+        const string container = @"OU=Controllers\\," + parent;
+        WriteBundle(writer =>
+        {
+            writer.WriteObject(ContainerAt(parent, GuidNumbered(1)));
+            writer.WriteObject(ObjectAt("CN=Agent," + container, GuidNumbered(2)));
+        });
+
+        var tree = ReadTree();
+        var parentNode = tree.Roots.Single(r => r.DistinguishedName == DomainDn)
+            .Children.Single(c => c.DistinguishedName == parent);
+
+        Assert.Equal([container], ChildrenOf(parentNode));
+    }
+
     [Fact]
     public void ChildrenAreOrderedByNameSoTheTreeReadsTheSameEveryTime()
     {

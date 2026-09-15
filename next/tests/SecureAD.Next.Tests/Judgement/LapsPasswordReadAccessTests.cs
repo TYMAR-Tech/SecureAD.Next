@@ -48,6 +48,130 @@ public sealed class LapsPasswordReadAccessTests
     private const int ReadProperty = 0x10;
     private const int ControlAccess = 0x100;
 
+    /// <summary>P-162: the title claims attribute access, not successful password retrieval.</summary>
+    [Fact]
+    public void TheRuleTitleNamesPasswordAttributesRatherThanRetrievedPasswords()
+    {
+        Assert.Equal("A broad principal can read LAPS password attributes",
+            new LapsPasswordReadAccess().Definition.Name);
+    }
+
+    /// <summary>
+    /// Microsoft's LAPS security model separates attribute-read permission from decryption.
+    /// https://learn.microsoft.com/windows-server/identity/laps/laps-concepts-overview
+    /// </summary>
+    [Fact]
+    public void AnEncryptedOnlyGrantDoesNotEstablishPasswordDecryptionOrTakeover()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, EncryptedGuid)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+        Assert.Contains(
+            "This attribute stores an encrypted LAPS password. Read permission allows retrieval "
+                + "of the encrypted value, if present; it does not by itself grant permission to "
+                + "decrypt it. This finding does not establish that this principal can obtain the "
+                + "local administrator password or take control of the machine.",
+            finding.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>The caveat must replace the old claim, not merely sit beside a contradiction.</summary>
+    [Fact]
+    public void AnEncryptedOnlyGrantDoesNotRetainTheOldPasswordRetrievalClaim()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, EncryptedGuid)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+        Assert.DoesNotContain("Reading it yields the machine's local administrator password",
+            finding.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>Both clear-text products keep their exposure explanation without claiming use.</summary>
+    [Theory]
+    [InlineData(PasswordGuid)]
+    [InlineData(LegacyGuid)]
+    public void AClearTextGrantExplainsExposureOnlyIfAPasswordValueIsPresent(string attributeGuid)
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, attributeGuid)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+        Assert.Contains(
+            "This attribute stores a LAPS password in clear text. If a password value is present, "
+                + "reading it exposes the local administrator password and may enable local "
+                + "administrative access.",
+            finding.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>Encryption changes the explanation, not severity, identity or the matched permission.</summary>
+    [Theory]
+    [InlineData(PasswordGuid, "msLAPS-Password")]
+    [InlineData(EncryptedGuid, "msLAPS-EncryptedPassword")]
+    [InlineData(LegacyGuid, "ms-Mcs-AdmPwd")]
+    public void EachPasswordAttributeRetainsTheHighSeverityFindingIdentity(
+        string attributeGuid, string attributeName)
+    {
+        var subject = Computer();
+
+        var verdict = new LapsPasswordReadAccess().Judge(subject,
+            Context(_ => Permissions(DescriptorAvailability.Read,
+                [Allow(Delegated, ReadProperty | ControlAccess, attributeGuid)]),
+                Nested(Delegated, AuthenticatedUsers)));
+        var finding = Assert.Single(verdict.Findings);
+        var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
+
+        Assert.Equal(
+            ("SEC-090", 1, Severity.High, "Authenticated Users (S-1-5-11)", subject.ObjectGuid,
+                Machine, attributeName, LapsReadRights.Both),
+            (finding.RuleId, finding.RuleVersion, finding.Severity, finding.Subject.Key,
+                (Guid?)finding.ObjectGuid, finding.DistinguishedName, evidence.Attribute, evidence.Rights));
+    }
+
+    /// <summary>The encrypted-value explanation must not displace the inherited-scope statement.</summary>
+    [Fact]
+    public void AnEncryptedGrantStillDisclosesInheritedScope()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, EncryptedGuid) with { IsInherited = true }],
+            Nested(Delegated, AuthenticatedUsers)));
+
+        Assert.Contains("The entry is inherited rather than set on this object;", finding.Detail,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>The new explanation cannot turn a partially expanded permission into complete evidence.</summary>
+    [Fact]
+    public void AnEncryptedGrantStillDisclosesIncompleteExpansion()
+    {
+        const string unresolvedSid = "S-1-5-21-9-9-9-4242";
+        var expansions = new Dictionary<string, PrincipalExpansion>
+        {
+            [AuthenticatedUsers] = new(AuthenticatedUsers, PrincipalExpansionOutcome.Expanded, []),
+            [unresolvedSid] = new(unresolvedSid, PrincipalExpansionOutcome.PrincipalNotFound, null),
+        };
+
+        var finding = Assert.Single(Judge(
+            [Allow(AuthenticatedUsers, ReadProperty | ControlAccess, EncryptedGuid),
+                Allow(unresolvedSid, ReadProperty | ControlAccess, EncryptedGuid)],
+            sid => expansions[sid]));
+
+        Assert.Contains("Not every principal holding this access could be expanded", finding.Detail,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>A blanket permission is described as attribute scope rather than password retrieval.</summary>
+    [Fact]
+    public void ABlanketLapsGrantNamesItsAttributeScope()
+    {
+        var finding = Assert.Single(Judge(
+            [Allow(Delegated, ReadProperty | ControlAccess, objectTypeGuid: null)],
+            Nested(Delegated, AuthenticatedUsers)));
+
+        Assert.Contains("every attribute on this object rather than only this LAPS attribute",
+            finding.Detail, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Two delegated groups that both reach the same broad principal produce one finding, by the
     /// shortest route.

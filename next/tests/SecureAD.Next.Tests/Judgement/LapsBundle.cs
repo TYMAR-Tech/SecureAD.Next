@@ -54,6 +54,9 @@ internal static class LapsBundle
     /// Its <c>primaryGroupID</c>, or null to leave it absent. 516 is Domain Controllers, which is
     /// the domain-controller signal a machine can carry without the trust-account bit.
     /// </param>
+    /// <param name="connectionSecurity">The computer partition's connection, independent of the schema read.</param>
+    /// <param name="windowsLapsConfidential">Overrides the shared confidentiality choice for the modern timestamp.</param>
+    /// <param name="legacyLapsConfidential">Overrides the shared confidentiality choice for the legacy timestamp.</param>
     public static string Build(
         string dn,
         IReadOnlyList<string> objectClasses,
@@ -65,15 +68,19 @@ internal static class LapsBundle
         bool confidential,
         bool windowsLapsInSchema,
         DateTimeOffset started,
-        int? primaryGroupId = null)
+        int? primaryGroupId = null,
+        ConnectionSecurityLevel connectionSecurity = ConnectionSecurityLevel.SignedAndSealed,
+        bool? windowsLapsConfidential = null,
+        bool? legacyLapsConfidential = null)
     {
         var directory = TempDirectories.Create("laps-tests");
+        var partition = Partition with { ConnectionSecurity = connectionSecurity };
 
         Directory.CreateDirectory(directory);
 
         using (var writer = BundleWriter.Create(directory, started))
         {
-            writer.WriteCoverage(Partition);
+            writer.WriteCoverage(partition);
 
             // Both partitions' coverage first. Coverage is what the absence of an object is
             // interpreted against, so the writer refuses an object attributed to a partition it has
@@ -114,16 +121,17 @@ internal static class LapsBundle
                 attributes.Add(Text(LegacyAttribute, legacyLapsExpiration));
 
             writer.WriteObject(
-                new EvidenceObject(Partition, dn, Guid.NewGuid(), attributes, started));
+                new EvidenceObject(partition, dn, Guid.NewGuid(), attributes, started));
 
             // The schema partition. searchFlags of 0 is what Microsoft ships and what ad.lab
             // returned on 2026-09-03; 128 is the hardened forest that no lab run will produce.
-            var flags = confidential ? SchemaAttributeFlags.Confidential : 0;
+            var modernFlags = (windowsLapsConfidential ?? confidential) ? SchemaAttributeFlags.Confidential : 0;
+            var legacyFlags = (legacyLapsConfidential ?? confidential) ? SchemaAttributeFlags.Confidential : 0;
 
             if (windowsLapsInSchema)
-                WriteSchemaAttribute(writer, ModernAttribute, flags, started);
+                WriteSchemaAttribute(writer, ModernAttribute, modernFlags, started);
 
-            WriteSchemaAttribute(writer, LegacyAttribute, flags, started);
+            WriteSchemaAttribute(writer, LegacyAttribute, legacyFlags, started);
 
             writer.Complete(Coverage, started.AddMinutes(1));
         }

@@ -20,6 +20,7 @@ public sealed class ObjectListingTests : IDisposable
     private const string DomainDn = "DC=contoso,DC=com";
     private const string PeopleDn = "OU=People," + DomainDn;
     private const string StaffDn = "OU=Staff," + PeopleDn;
+    private const string BackslashContainerDn = @"OU=Tier 0\\," + DomainDn;
 
     // ---------------------------------------------------------------------------------------
     // The three scopes
@@ -107,6 +108,62 @@ public sealed class ObjectListingTests : IDisposable
         Assert.Equal(
             ["CN=IIS_IUSRS," + DomainDn, "CN=Real,CN=IIS_IUSRS," + DomainDn],
             page.Objects.Select(o => o.DistinguishedName));
+    }
+
+    /// <summary>A backslash in the selected name does not broaden single-object scope.</summary>
+    [Fact]
+    public void BaseOnAnEscapedBackslashContainerListsOnlyThatObject()
+    {
+        WriteBackslashTree();
+
+        var page = List(BackslashContainerDn, ListingScope.Base);
+
+        Assert.Equal([BackslashContainerDn], page.Objects.Select(o => o.DistinguishedName));
+    }
+
+    /// <summary>
+    /// This reads the parent written into evidence, rather than recomputing it in the test.
+    /// A backslash-ending child must not disappear or let a grandchild into one-level scope.
+    /// </summary>
+    [Fact]
+    public void OneLevelOnAnEscapedBackslashContainerUsesTheStoredImmediateParent()
+    {
+        WriteBackslashTree();
+
+        var page = List(BackslashContainerDn, ListingScope.OneLevel);
+
+        Assert.Equal(
+            [@"CN=Agent\\," + BackslashContainerDn, "OU=Nested," + BackslashContainerDn,
+                BackslashContainerDn],
+            page.Objects.Select(o => o.DistinguishedName));
+    }
+
+    /// <summary>The reversed-name query includes descendants without admitting similar names.</summary>
+    [Fact]
+    public void SubtreeOnAnEscapedBackslashContainerListsOnlyItsBranch()
+    {
+        WriteBackslashTree();
+
+        var page = List(BackslashContainerDn, ListingScope.Subtree);
+
+        Assert.Equal(
+            [@"CN=Agent\\," + BackslashContainerDn, "CN=Deep,OU=Nested," + BackslashContainerDn,
+                "OU=Nested," + BackslashContainerDn, BackslashContainerDn],
+            page.Objects.Select(o => o.DistinguishedName));
+    }
+
+    /// <summary>The total must describe the selected scope, not a different set of objects.</summary>
+    [Theory]
+    [InlineData(ListingScope.Base, 1)]
+    [InlineData(ListingScope.OneLevel, 3)]
+    [InlineData(ListingScope.Subtree, 4)]
+    public void AnEscapedBackslashContainerTotalUsesTheSelectedScope(ListingScope scope, int expected)
+    {
+        WriteBackslashTree();
+
+        var page = List(BackslashContainerDn, scope);
+
+        Assert.Equal(expected, page.Total);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -289,6 +346,16 @@ public sealed class ObjectListingTests : IDisposable
     }
 
     private void WriteATree() => WriteATree(OneDomainRead());
+
+    private void WriteBackslashTree() => WriteBundle(writer =>
+    {
+        writer.WriteObject(ObjectAt(BackslashContainerDn, GuidNumbered(1)));
+        writer.WriteObject(ObjectAt(@"CN=Agent\\," + BackslashContainerDn, GuidNumbered(2)));
+        writer.WriteObject(ObjectAt("OU=Nested," + BackslashContainerDn, GuidNumbered(3)));
+        writer.WriteObject(ObjectAt("CN=Deep,OU=Nested," + BackslashContainerDn, GuidNumbered(4)));
+        writer.WriteObject(ObjectAt("CN=Outside," + DomainDn, GuidNumbered(5)));
+        writer.WriteObject(ObjectAt(@"CN=Similar,OU=Tier 0\\\\," + DomainDn, GuidNumbered(6)));
+    });
 
     private void WriteATree(RunCoverage coverage) => WriteBundle(
         writer =>

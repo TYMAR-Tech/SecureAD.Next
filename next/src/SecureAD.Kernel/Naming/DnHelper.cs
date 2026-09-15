@@ -187,8 +187,18 @@ public static class DnHelper
     /// Whether the character at <paramref name="index"/> separates two components, as opposed to
     /// being a comma the value itself contains.
     /// </summary>
-    private static bool IsUnescapedComma(ReadOnlySpan<char> value, int index) =>
-        value[index] == ',' && (index == 0 || value[index - 1] != '\\');
+    private static bool IsUnescapedComma(ReadOnlySpan<char> value, int index)
+    {
+        if (value[index] != ',')
+            return false;
+
+        // Backslashes escape each other in pairs; only an unmatched one escapes the comma.
+        var backslashes = 0;
+        for (var i = index - 1; i >= 0 && value[i] == '\\'; i--)
+            backslashes++;
+
+        return backslashes % 2 == 0;
+    }
 
     /// <summary>
     /// The index of the first component separator, or <c>-1</c> when the whole input is one
