@@ -40,10 +40,11 @@ public sealed class PasswordResetWorkflowTests
     }
 
     [Theory]
-    [InlineData("GA", 1)]
+    [InlineData("0x000f01ff", 1)]
+    [InlineData("GA", 0)]
     [InlineData("CR", 1)]
     [InlineData("GW", 0)]
-    public void RealPermissionReaderUsesGenericMappingsForTheResetOperation(string rights, int expected)
+    public void RealPermissionReaderUsesStoredBitsForTheResetOperation(string rights, int expected)
     {
         var directory = Prepared($"O:SYG:SYD:(A;;{rights};;;{TargetSid})");
         Judge(directory, null);

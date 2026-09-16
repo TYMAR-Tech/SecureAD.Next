@@ -161,8 +161,10 @@ public sealed class JudgingEndToEndTests
     [Theory]
     [InlineData("WP", true, false)]
     [InlineData("SW", false, true)]
-    [InlineData("GW", true, true)]
-    [InlineData("GA", true, true)]
+    [InlineData("0x00020028", true, true)]
+    [InlineData("0x000f01ff", true, true)]
+    [InlineData("GW", false, false)]
+    [InlineData("GA", false, false)]
     public void SealedGroupDescriptorProducesSeparateMembershipCapabilities(string rights, bool general, bool self)
     {
         var directory = TempDirectories.Create("membership-control-e2e");

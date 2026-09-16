@@ -40,8 +40,10 @@ internal static class OwnAccountMembershipProofs
             cancellationToken.ThrowIfCancellationRequested();
             var permissions = bundle.ReadPermissions(request.TargetDn);
             using var query = connection.CreateCommand();
-            query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND capability='CanAddSelfToGroup' ORDER BY id";
+            query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND capability=$capability ORDER BY id";
             query.Parameters.AddWithValue("$target", request.TargetDn);
+            query.Parameters.AddWithValue("$capability", request.PermissionKind == OwnAccountMembershipPermissionKind.WriteMembers
+                ? nameof(ControlCapability.CanModifyGroupMembership) : nameof(ControlCapability.CanAddSelfToGroup));
             var ids = new List<long>();
             using (var read = query.ExecuteReader()) while (read.Read())
             {
@@ -50,7 +52,7 @@ internal static class OwnAccountMembershipProofs
             }
             var edges = ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id)).ToArray();
             var assessment = OwnAccountMembershipEvaluator.Assess(request, inputs, description, identities,
-                bundle.ReadObjectAttributes, permissions, schema, contexts.Value, edges,
+                bundle.ReadObjectAttributes, permissions, schema, catalogue, contexts.Value, edges,
                 bundle.Description.ForestFqdn, cancellationToken);
             var steps = Steps(assessment, inputs, nodes, cancellationToken);
             if (assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
@@ -77,7 +79,8 @@ internal static class OwnAccountMembershipProofs
         PathInputs inputs, IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<SavedOwnAccountMembershipProof> proofs)
     {
         if (proofs.Any(proof => proof is null || proof.Assessment is null || proof.Assessment.Request is null
-            || string.IsNullOrWhiteSpace(proof.Assessment.Request.RequesterDn) || string.IsNullOrWhiteSpace(proof.Assessment.Request.TargetDn))
+            || string.IsNullOrWhiteSpace(proof.Assessment.Request.RequesterDn) || string.IsNullOrWhiteSpace(proof.Assessment.Request.TargetDn)
+            || !Enum.IsDefined(proof.Assessment.Request.PermissionKind))
             || proofs.Select(proof => Key(proof.Assessment.Request)).Distinct(StringComparer.Ordinal).Count() != proofs.Count)
             throw Tier0PathStorage.InvalidProof();
         // Only saved questions are replayed. A changed outcome or witness is rejected even when
@@ -130,5 +133,6 @@ internal static class OwnAccountMembershipProofs
         return steps;
     }
 
-    internal static string Key(OwnAccountMembershipRequest value) => value.RequesterDn.ToUpperInvariant() + "\0" + value.TargetDn.ToUpperInvariant();
+    internal static string Key(OwnAccountMembershipRequest value) => value.RequesterDn.ToUpperInvariant() + "\0"
+        + value.TargetDn.ToUpperInvariant() + "\0" + value.PermissionKind;
 }

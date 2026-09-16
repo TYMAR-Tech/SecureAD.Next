@@ -37,15 +37,17 @@ public sealed class KeyCredentialLinkWorkflowTests
     }
 
     [Theory]
-    [InlineData("GA", 1)]
-    [InlineData("GW", 1)]
+    [InlineData("0x000f01ff", 1)]
+    [InlineData("0x00020028", 1)]
+    [InlineData("GA", 0)]
+    [InlineData("GW", 0)]
     [InlineData("WP", 1)]
     [InlineData("CR", 0)]
     [InlineData("SW", 0)]
     [InlineData("RP", 0)]
     [InlineData("WD", 0)]
     [InlineData("WO", 0)]
-    public void RealPermissionReaderUsesPropertyWriteGenericMappings(string rights, int count)
+    public void RealPermissionReaderUsesStoredPropertyWriteBits(string rights, int count)
     {
         var directory = Prepared($"O:SYG:SYD:(A;;{rights};;;{TargetSid})");
         using var reader = JudgementReader.Open(directory).Value;

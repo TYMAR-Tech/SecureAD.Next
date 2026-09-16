@@ -18,7 +18,7 @@ internal sealed record Tier0PathNode(Tier0Target Subject, int? MembershipDistanc
 
 internal static class Tier0PathCalculation
 {
-    internal const int Version = 3;
+    internal const int Version = 4;
 
     internal static IReadOnlyList<Tier0PathNode> Calculate(PathInputs inputs, IReadOnlyList<Tier0Target> targets,
         IEnumerable<ControlEdge> permissions, Func<string, ObjectAttributes?> attributes,

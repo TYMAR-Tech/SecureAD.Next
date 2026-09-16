@@ -106,14 +106,14 @@ public sealed record PermissionTrustee(
 /// <see cref="DangerousPermissionClassifier"/> decides whether it matters, both separately and both
 /// on the reader's terms.
 /// </remarks>
-/// <param name="Ordinal">Where the entry sits in the canonicalised DACL, counting from zero.</param>
+/// <param name="Ordinal">Where the entry sits in the captured DACL, counting from zero.</param>
 /// <param name="AceType">
 /// The entry's type as stored - <c>AccessAllowed</c>, <c>AccessDenied</c> and the object variants.
 /// Kept as the stored text rather than parsed to <see cref="Kernel.Security.AceType"/>, so a value
 /// this build has no member for reaches a reader instead of being dropped.
 /// </param>
 /// <param name="Trustee">Who the entry names.</param>
-/// <param name="AccessMask">The mask, with generic rights already expanded.</param>
+/// <param name="AccessMask">The raw captured mask; generic rights are not expanded for authorization.</param>
 /// <param name="ObjectTypeGuid">What the entry is limited to, or null when it applies to all.</param>
 /// <param name="InheritedObjectTypeGuid">
 /// The class of descendant the entry is inherited by, or null when it is inherited by all.
@@ -485,7 +485,9 @@ internal static class ObjectPermissionsReader
                     ace.Ordinal,
                     ace.AceType.ToString(),
                     ace.TrusteeSid,
-                    GenericRightsExpander.Expand(ace.AccessMask),
+                    // MS-DTYP 2.4.3 does not map generic bits in a stored ACE during access checks.
+                    // Comparison keeps its expanded projection; authorization must read the actual mask.
+                    ace.AccessMask,
                     ace.ObjectTypeGuid,
                     ace.InheritedObjectTypeGuid,
                     ace.IsInherited,

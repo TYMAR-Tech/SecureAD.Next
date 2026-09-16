@@ -14,7 +14,7 @@ using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
 
 namespace SecureAD.Next.Tests.Judgement;
 
-public sealed class OwnAccountMembershipPathTests(ITestOutputHelper output)
+public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper output)
 {
     private const string SchemaDn = "CN=Schema,CN=Configuration,DC=contoso,DC=com";
     private const string HolderDn = "CN=Holder,DC=contoso,DC=com";

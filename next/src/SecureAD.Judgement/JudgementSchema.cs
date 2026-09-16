@@ -69,8 +69,10 @@ public static class JudgementSchema
     /// Existing table layouts and named-holder permission semantics are unchanged.</para>
     /// <para>34 adds separate own-account membership-obtainability proofs and inferred operation steps.
     /// Ordinary Add readiness and the physical table layout remain unchanged.</para>
+    /// <para>35 distinguishes ordinary Write Members from Self-Membership in explicit operation requests
+    /// and saves separate ordered requester authorization evidence without changing holder counts.</para>
     /// </remarks>
-    public const int Version = 34;
+    public const int Version = 35;
 
     private static readonly string[] TableDdl =
     [

@@ -61,6 +61,8 @@ public sealed class ControlEdgeLayoutTests
         [33] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
         // Schema 34 adds own-account operation proof semantics; observed with the existing DDL.
         [34] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
+        // Schema 35 adds ordinary member-write proof semantics; the observed DDL is unchanged.
+        [35] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
     };
 
     [Fact]

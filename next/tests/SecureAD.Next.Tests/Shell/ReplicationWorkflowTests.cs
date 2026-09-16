@@ -41,7 +41,8 @@ public sealed class ReplicationWorkflowTests
     }
 
     [Theory]
-    [InlineData("GA", 2)]
+    [InlineData("0x000f01ff", 2)]
+    [InlineData("GA", 0)]
     [InlineData("CR", 2)]
     [InlineData("GW", 0)]
     [InlineData("WP", 0)]
@@ -49,7 +50,7 @@ public sealed class ReplicationWorkflowTests
     [InlineData("RP", 0)]
     [InlineData("WD", 0)]
     [InlineData("WO", 0)]
-    public void RealPermissionReaderUsesTheControlAccessGenericMapping(string mask, int count)
+    public void RealPermissionReaderUsesStoredControlAccessBits(string mask, int count)
     {
         var directory = Prepared($"O:SYG:SYD:(A;;{mask};;;{TargetSid})");
         using var reader = JudgementReader.Open(directory).Value;

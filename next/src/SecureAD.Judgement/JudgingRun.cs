@@ -267,7 +267,8 @@ public static class JudgingRun
         foreach (var request in ownAccountRequests)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (request is null || string.IsNullOrWhiteSpace(request.RequesterDn) || string.IsNullOrWhiteSpace(request.TargetDn))
+            if (request is null || string.IsNullOrWhiteSpace(request.RequesterDn) || string.IsNullOrWhiteSpace(request.TargetDn)
+                || !Enum.IsDefined(request.PermissionKind))
                 throw new ArgumentException(Tier0PathStorage.InvalidOwnAccountRequestMessage(), nameof(ownAccountRequests));
             ownAccountQuestions.TryAdd(OwnAccountMembershipProofs.Key(request), request);
         }

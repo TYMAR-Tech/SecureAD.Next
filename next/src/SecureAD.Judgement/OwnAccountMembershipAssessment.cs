@@ -6,8 +6,21 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
+/// <summary>The permission route requested for an own-account membership operation.</summary>
+public enum OwnAccountMembershipPermissionKind
+{
+    /// <summary>The fixed Self-Membership validated write; ordinary member write is not substituted.</summary>
+    SelfMembership,
+    /// <summary>Ordinary write access to member; the operation still adds only the requester's own DN.</summary>
+    WriteMembers,
+}
+
 /// <summary>An explicit offline question about obtaining membership with the requester's own account.</summary>
-public sealed record OwnAccountMembershipRequest(string RequesterDn, string TargetDn);
+public sealed record OwnAccountMembershipRequest(string RequesterDn, string TargetDn)
+{
+    /// <summary>The separate permission proof to evaluate; no automatic requester discovery is implied.</summary>
+    public OwnAccountMembershipPermissionKind PermissionKind { get; init; }
+}
 
 /// <summary>The proof used, not a claim that a directory modification was performed.</summary>
 public enum OwnAccountMembershipBasis
@@ -76,6 +89,9 @@ public sealed record OwnAccountMembershipAssessment(OwnAccountMembershipRequest 
     /// <summary>The captured account, group and domain values used by the operation check.</summary>
     public IReadOnlyList<Tier0Evidence> OperationEvidence { get; init; } = [];
 
+    /// <summary>Ordinary member-write proof when requested, never a relabeled Self-Membership answer.</summary>
+    public MemberWriteAssessment? MemberWrite { get; init; }
+
     /// <summary>The operation answer that vouches its evidence, not a negative reachability verdict.</summary>
     public string Verdict => Obtainability.ToString();
 }
@@ -85,7 +101,7 @@ internal static class OwnAccountMembershipEvaluator
     internal static OwnAccountMembershipAssessment Assess(OwnAccountMembershipRequest request, PathInputs inputs,
         JudgementDescription description, IReadOnlyDictionary<string, Tier0Target> identities,
         Func<string, ObjectAttributes?> attributes, ObjectPermissions? permissions,
-        IReadOnlyList<ObjectAttributes> schema, IReadOnlyDictionary<string, NamingContextKind> contexts,
+        IReadOnlyList<ObjectAttributes> schema, SchemaGuidCatalog catalogue, IReadOnlyDictionary<string, NamingContextKind> contexts,
         IReadOnlyList<ControlEdge> edges, string forest, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -99,6 +115,8 @@ internal static class OwnAccountMembershipEvaluator
                 && Qualified(attributes(dn), identities.GetValueOrDefault(dn)) && Domain(identities[dn]) ? attributes(dn) : null,
             forest, description.EvidenceSeal, description.GenerationId, description.DerivationGenerationId,
             SelfMembershipBudget.Default, []);
+        MemberWriteAssessment? memberWrite = request.PermissionKind == OwnAccountMembershipPermissionKind.WriteMembers
+            ? new(ControlEvaluationState.Unknown, permission.Readiness, permission.MemberPresent, [MemberWriteIssue.ContextNotEstablished], []) : null;
         if (inputs.Availability != PathInputAvailability.Recorded) return Unknown(OwnAccountMembershipIssue.PathInputsUnavailable);
         if (user is null || group is null) return Unknown(OwnAccountMembershipIssue.ObjectMissing);
         if (!Qualified(user, requester) || !Qualified(group, target)) return Unknown(OwnAccountMembershipIssue.IdentityUnresolved);
@@ -114,6 +132,11 @@ internal static class OwnAccountMembershipEvaluator
         if (requester is null || target is null || !Domain(requester) || !Domain(target)
             || !Same(requester.NamingContext, target.NamingContext)) return Unknown(OwnAccountMembershipIssue.ResourceContextUnsupported);
 
+        if (request.PermissionKind == OwnAccountMembershipPermissionKind.WriteMembers)
+            memberWrite = MemberWriteEvaluator.Assess(user, group, permissions, trustee => trustee.DistinguishedName is { } dn
+                && Qualified(attributes(dn), identities.GetValueOrDefault(dn)) && Domain(identities[dn]) ? attributes(dn) : null,
+                forest, catalogue, permission.Readiness, permission.MemberPresent, cancellationToken);
+
         var current = new List<Tier0Evidence>();
         var member = group.Find("member")?.Values.FirstOrDefault(value => Same(value.Text, user.DistinguishedName));
         if (member is not null) current.Add(new(target, "member", member.Ordinal, user.DistinguishedName));
@@ -125,15 +148,18 @@ internal static class OwnAccountMembershipEvaluator
             current.Add(new(requester, "primaryGroupID", 0, primary.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         if (current.Count != 0) return Result(ControlEvaluationState.Established, OwnAccountMembershipBasis.ExistingMembership, current, []);
 
-        // MS-ADTS 3.1.1.5.3.1.1.1 validates the requester's DN, not the granting group's identity.
+        // Self-Membership validates the requester's DN; ordinary Write Members is a separate
+        // authorization route to the same bounded own-DN operation, not a validated-write grant.
         // Neither an omitted member value nor the hypothetical added membership may authorize this check.
-        if (permission.Authorization != ControlEvaluationState.Established || permission.OwnAccount != ControlEvaluationState.Established)
+        var authorization = memberWrite?.Authorization ?? permission.Authorization;
+        if (authorization != ControlEvaluationState.Established || permission.OwnAccount != ControlEvaluationState.Established)
             return Unknown(OwnAccountMembershipIssue.AuthorizationNotEstablished);
-        var grant = permission.Evidence.LastOrDefault();
-        if (grant is null || grant.Trustee.Reason is not (RequesterTrusteeReason.DirectIdentity or RequesterTrusteeReason.DirectGlobalMembership))
+        var grantEntry = memberWrite is not null ? memberWrite.Evidence.LastOrDefault()?.Entry : permission.Evidence.LastOrDefault()?.Entry;
+        var grantTrustee = memberWrite is not null ? memberWrite.Evidence.LastOrDefault()?.Trustee : permission.Evidence.LastOrDefault()?.Trustee;
+        if (grantEntry is null || grantTrustee is null || grantTrustee.Reason is not (RequesterTrusteeReason.DirectIdentity or RequesterTrusteeReason.DirectGlobalMembership))
             return Unknown(OwnAccountMembershipIssue.GrantRouteUnsupported);
-        if (grant.Trustee.Reason == RequesterTrusteeReason.DirectGlobalMembership
-            && (grant.Trustee.HolderDn is not { } holderDn || !identities.TryGetValue(holderDn, out var holder)
+        if (grantTrustee.Reason == RequesterTrusteeReason.DirectGlobalMembership
+            && (grantTrustee.HolderDn is not { } holderDn || !identities.TryGetValue(holderDn, out var holder)
                 || !Domain(holder) || !Same(holder.NamingContext, requester.NamingContext)))
             return Unknown(OwnAccountMembershipIssue.ResourceContextUnsupported);
         if (permission.UserAccountControl is not { } uac) return Unknown(OwnAccountMembershipIssue.AccountStatusMissing);
@@ -159,12 +185,13 @@ internal static class OwnAccountMembershipEvaluator
                 || !QualifiedSchema(definition, name)) return Unknown(OwnAccountMembershipIssue.SchemaUnsupported);
         }
 
-        var sid = grant.Entry.Trustee.Sid == "S-1-5-10" ? target.Sid : grant.Entry.Trustee.Sid;
-        var edge = edges.Where(value => value.Capability == ControlCapability.CanAddSelfToGroup
+        var sid = grantEntry.Trustee.Sid == "S-1-5-10" ? target.Sid : grantEntry.Trustee.Sid;
+        var capability = memberWrite is not null ? ControlCapability.CanModifyGroupMembership : ControlCapability.CanAddSelfToGroup;
+        var edge = edges.Where(value => value.Capability == capability
             && Same(value.Target, target.DistinguishedName) && value.TargetGuid == target.ObjectGuid
             && value.GenerationId == description.GenerationId && value.DerivationGenerationId == description.DerivationGenerationId
             && Same(value.HolderSid, sid) && value.HolderScope is null
-            && value.Evidence.Any(original => Tier0PathCalculation.Fingerprint(original) == Tier0PathCalculation.Fingerprint(grant.Entry)))
+            && value.Evidence.Any(original => Tier0PathCalculation.Fingerprint(original) == Tier0PathCalculation.Fingerprint(grantEntry)))
             .OrderBy(value => value.Id).FirstOrDefault();
         if (edge is null) return Unknown(OwnAccountMembershipIssue.PermissionReferenceUnavailable);
 
@@ -183,7 +210,7 @@ internal static class OwnAccountMembershipEvaluator
             IReadOnlyList<Tier0Evidence> membership, IReadOnlyList<OwnAccountMembershipPermission> references) =>
             new(request, description.GenerationId, description.DerivationGenerationId, description.EvidenceSeal,
                 requester, target, permission, state, basis, issues.Distinct().Order().ToArray(), membership, schema, references)
-            { OperationEvidence = Witnesses() };
+            { OperationEvidence = Witnesses(), MemberWrite = memberWrite };
 
         IReadOnlyList<Tier0Evidence> Witnesses()
         {

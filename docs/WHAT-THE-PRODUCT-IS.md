@@ -217,6 +217,73 @@ the initially masked mutation check and the unsuccessful coverage-collector atte
 This is not production requester coverage, customer-scale acceptance or proof of live-operation success;
 further operation/path expansion requires a separately approved checkpoint.
 
+## Stage 7 fifth checkpoint: own-account addition through ordinary Write Members
+
+**Owner-approved scope; implemented and offline verified as P-233.** After reviewing the saved
+`e48fca4` baseline, the owner selected “Approve bounded scope” for the next implementation checkpoint.
+The owner subsequently selected “Implement approved checkpoint 5”, authorizing implementation without
+activating production requester coverage or changing the other boundaries below.
+
+**P-232 correction also approved:** after a raw-GENERIC_WRITE regression exposed the shared reader
+expanding stored permission bits into authorization, the owner selected “Approve correction and continue”.
+Preserve raw stored masks for permission interpretation, leave comparison/hashing normalization unchanged,
+and verify affected consumers offline before accepting checkpoint 5; repair the separate malformed
+callback fixture without weakening its expected uncertainty. Preserve failed runs and frozen evidence,
+and stop again if a frozen expectation needs editing; no screen wording/layout or scheduling change is authorized.
+
+- Support one captured ordinary user obtaining membership in one same-domain global security group
+  through ordinary write access to `member`, followed only by qualified existing memberships to the
+  authoritative fixed Tier-0 targets, including a target group that is itself fixed.
+- Establish concrete requester authorization directly or through one proved, pre-existing explicit
+  membership in a same-domain global security group. Evaluate applicable allows and denies together
+  in captured order; do not transfer the holder's permission to every member without this check.
+- Support member-specific and all-properties writes, plus class/property-set scopes where captured
+  schema establishes that they cover `member`. Preserve original entries and scope evidence; neither
+  a Full Control summary nor Self-Membership authorization substitutes for ordinary member-write proof.
+- Assess adding only the requester's own distinguished name. This is the checkpoint's deliberate
+  restriction, not a restriction inherent in ordinary Write Members; adding other accounts or groups
+  remains later work, not a claim that those operations are impossible. Reuse P-231's identity,
+  account-status, group, schema and verified-domain operation safeguards without relabeling its
+  Self-Membership assessment.
+- Retain a proved existing membership without inventing an Add. If current membership is unknown,
+  establish obtainability only when both the already-present branch and the absent-with-supported-
+  authorized-Add branch hold; current membership and ordinary Add readiness remain Unknown.
+- Permit at most one hypothetical membership step. Never use the proposed membership to authorize
+  its own creation, exercise another group-held permission, chain a further change or infer account
+  takeover. Afterwards follow only qualified captured membership links, retaining the actual links
+  and qualified shortest-proven length rather than inventing a new Tier-0 definition or depth limit.
+- Keep missing captured evidence, unsupported analysis, unresolved identities and unrequested or
+  unfinished work distinct. Unsupported authorization nesting, primary-group/SID-history routes,
+  cross-domain/resource contexts and conditional or uninterpreted permission entries remain possible
+  where relevant, not denied or safe; these limits do not remove previously supported membership paths.
+- A disabled requester blocks the new operation proof without erasing permission evidence or proved
+  existing membership; enabled status does not establish authentication. Failure of ordinary-write
+  authorization does not invalidate an independently proved Self-Membership route, and unrelated gaps
+  do not erase a proved route. Continue to emit Reachable or Unknown, not a new NotReachable claim.
+- Save ordinary-write authorization separately from Self-Membership while reusing operation safeguards
+  and membership continuation. Retain original permission references, membership witnesses, assumptions
+  and exact Evidence/Derivation/Judgement generations; keep holder counts independent, readers passive
+  and previous valid results intact on cancellation or failure. No backward compatibility is required,
+  and historical evidence or generations must not be rewritten.
+
+Verification must be synthetic/offline and cover permission separation, ordered denies, property scope,
+unknown membership, self-authorization prevention, membership-only continuation, unchanged counts,
+source mismatches and cancelled/failed publication. Every new behavior check must detect a deliberate
+defect, with explicit rebuilds before mutations and after restoration; retain all original and new
+validation artifacts. Requester discovery and host scheduling remain unchanged; no new production
+budgets, live access, optimization, screen changes, commit or push are authorized. This is a calculation
+and passive-readback building block, not production requester coverage or live-operation/customer-scale
+acceptance; P-227 remains open.
+
+Judgement format 35 and path-calculation version 4 implement this checkpoint, including P-232's
+approved raw-mask correction without changing comparison normalization or historical layout hashes.
+All **5,200 offline tests pass**, all **778 focused cases pass under verified coverage**, and all
+**95 new or updated behavior cases detect deliberate defects across 11 accepted variants**, with
+explicit rebuilds and verified restoration. Original artifacts, failed runs, the interrupted mutation
+and the corrected masked proof check are retained with exact source/build provenance in
+`next/artifacts/stage7-member-write-validation/ef9369e3a2db4e7285912e1fd3c71d75/final-summary.json`;
+further operation/path expansion still requires a separately approved checkpoint.
+
 ## CLI and GUI judging parity
 
 **Owner-approved requirement:** the same sealed evidence and analysis inputs must receive the same
