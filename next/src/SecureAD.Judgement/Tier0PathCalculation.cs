@@ -11,14 +11,15 @@ internal sealed record Tier0PathNode(Tier0Target Subject, int? MembershipDistanc
 {
     public RequesterDaclRequest? RequesterRoute { get; init; }
     public OwnAccountMembershipRequest? OwnAccountRoute { get; init; }
+    public MembershipDaclRequest? MembershipDaclRoute { get; init; }
 
-    internal Tier0Reachability Reachability => MembershipDistance is not null || Terminal is not null || RequesterRoute is not null || OwnAccountRoute is not null
+    internal Tier0Reachability Reachability => MembershipDistance is not null || Terminal is not null || RequesterRoute is not null || OwnAccountRoute is not null || MembershipDaclRoute is not null
         ? Tier0Reachability.Reachable : Tier0Reachability.Unknown;
 }
 
 internal static class Tier0PathCalculation
 {
-    internal const int Version = 4;
+    internal const int Version = 5;
 
     internal static IReadOnlyList<Tier0PathNode> Calculate(PathInputs inputs, IReadOnlyList<Tier0Target> targets,
         IEnumerable<ControlEdge> permissions, Func<string, ObjectAttributes?> attributes,

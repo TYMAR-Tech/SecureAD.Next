@@ -36,6 +36,10 @@ public enum RequesterDaclIssue
     GrantRouteUnsupported,
     /// <summary>The granting entry cannot be bound to its original stored holder permission.</summary>
     PermissionReferenceUnavailable,
+    /// <summary>The supplied membership context does not qualify this requester and resource.</summary>
+    MembershipContextUnsupported,
+    /// <summary>The successful grant does not name the group required by the combined route.</summary>
+    GrantNotHeldByObtainedGroup,
 }
 
 /// <summary>An original ordered permission entry and its applicability to this requester.</summary>
@@ -54,7 +58,11 @@ public sealed record RequesterDaclAssessment(RequesterDaclRequest Request, Guid 
     Guid? DerivationGenerationId, string EvidenceSeal, Tier0Target? Requester, Tier0Target? Target,
     ControlEvaluationState Authorization, IReadOnlyList<RequesterDaclIssue> Issues,
     IReadOnlyList<RequesterDaclAceEvidence> Evidence, IReadOnlyList<RequesterDaclPermission> Permissions,
-    IReadOnlyList<Tier0PathStep> Steps);
+    IReadOnlyList<Tier0PathStep> Steps)
+{
+    /// <summary>The separate membership context, when this answer belongs to a combined proof rather than captured membership alone.</summary>
+    public OwnAccountMembershipRequest? ObtainedMembership { get; init; }
+}
 
 internal static class RequesterDaclEvaluator
 {
@@ -64,7 +72,7 @@ internal static class RequesterDaclEvaluator
         JudgementDescription description, IReadOnlyDictionary<string, Tier0Target> identities,
         Func<string, ObjectAttributes?> attributes, ObjectPermissions? permissions,
         IReadOnlyDictionary<string, NamingContextKind> contexts, IReadOnlyList<ControlEdge> edges,
-        string forest, CancellationToken cancellationToken)
+        string forest, CancellationToken cancellationToken, OwnAccountMembershipAssessment? obtainedMembership)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var issues = new List<RequesterDaclIssue>();
@@ -83,6 +91,16 @@ internal static class RequesterDaclEvaluator
             return Unknown(RequesterDaclIssue.IdentityUnresolved);
         if (!Domain(requester) || !Domain(target) || !Same(requester.DomainFqdn, target.DomainFqdn))
             return Unknown(RequesterDaclIssue.ResourceContextUnsupported);
+        var obtainedGroup = obtainedMembership?.Target;
+        var group = obtainedGroup is null ? null : attributes(obtainedGroup.DistinguishedName);
+        if (obtainedMembership is not null && (obtainedMembership.Obtainability != ControlEvaluationState.Established
+            || obtainedMembership.Requester != requester || obtainedGroup is null || !Qualified(group, obtainedGroup)
+            || !Domain(obtainedGroup) || !Same(obtainedGroup.NamingContext, requester.NamingContext)
+            || !Same(target.NamingContext, requester.NamingContext)
+            || obtainedMembership.GenerationId != description.GenerationId
+            || obtainedMembership.DerivationGenerationId != description.DerivationGenerationId
+            || obtainedMembership.EvidenceSeal != description.EvidenceSeal))
+            return Unknown(RequesterDaclIssue.MembershipContextUnsupported);
         if (permissions is null || permissions.Availability != DescriptorAvailability.Read || permissions.DaclState == DaclState.Unreadable)
             return Unknown(RequesterDaclIssue.DescriptorUnreadable);
         // NULL DACL access has no explicit user/group grant to witness in this slice.
@@ -98,6 +116,23 @@ internal static class RequesterDaclEvaluator
             var holder = entry.Trustee.DistinguishedName is { } dn ? attributes(dn) : null;
             var trustee = RequesterTrusteeReading.Read(user, resource, entry.Trustee, holder, forest);
             if (entry.Trustee.Sid == "S-1-5-10") holder = resource;
+            if (obtainedMembership?.Basis == OwnAccountMembershipBasis.ExistingOrAuthorizedAdd)
+            {
+                var sid = entry.Trustee.Sid == "S-1-5-10" ? target.Sid : entry.Trustee.Sid;
+                if (Same(sid, obtainedGroup!.Sid))
+                {
+                    holder = group;
+                    trustee = new(entry.Trustee.Sid, RequesterTrusteeState.Matches, RequesterTrusteeReason.ObtainedGlobalMembership,
+                        obtainedGroup.ObjectGuid, obtainedGroup.DistinguishedName, obtainedGroup.DomainFqdn,
+                        RequesterTrusteeReading.Number(group, "groupType"), group!.CapturedUtc, null);
+                }
+                else if (trustee.Reason is RequesterTrusteeReason.OtherCurrentUser or RequesterTrusteeReason.DistributionGroup)
+                {
+                    // The added group's carried identities are outside this bounded model. A current
+                    // nonmatching identity cannot exclude a historical SID introduced by that group.
+                    trustee = trustee with { State = RequesterTrusteeState.Unknown, Reason = RequesterTrusteeReason.UnsupportedIdentity };
+                }
+            }
             if (trustee.Reason == RequesterTrusteeReason.DirectGlobalMembership
                 && (holder is null || !Qualified(holder, identities.GetValueOrDefault(holder.DistinguishedName))
                     || !Domain(identities[holder.DistinguishedName])))
@@ -110,7 +145,8 @@ internal static class RequesterDaclEvaluator
             if (!allow && !deny) issues.Add(RequesterDaclIssue.UnsupportedAce);
             if (scope == ControlEvaluationState.Unknown) issues.Add(RequesterDaclIssue.ScopeUnsupported);
             if (trustee.State == RequesterTrusteeState.Unknown) issues.Add(RequesterDaclIssue.TrusteeUnknown);
-            var grantRoute = trustee.Reason is RequesterTrusteeReason.DirectIdentity or RequesterTrusteeReason.DirectGlobalMembership;
+            var grantRoute = trustee.Reason is RequesterTrusteeReason.DirectIdentity or RequesterTrusteeReason.DirectGlobalMembership
+                or RequesterTrusteeReason.ObtainedGlobalMembership;
             if (allow && !grantRoute) issues.Add(RequesterDaclIssue.GrantRouteUnsupported);
             possibleAllow |= !deny;
             possibleDeny |= !allow;
@@ -129,13 +165,16 @@ internal static class RequesterDaclEvaluator
 
         RequesterDaclAssessment Result(ControlEvaluationState state, IReadOnlyList<RequesterDaclPermission> references,
             IReadOnlyList<Tier0PathStep> steps) => new(request, description.GenerationId, description.DerivationGenerationId,
-                description.EvidenceSeal, requester, target, state, issues.Distinct().Order().ToArray(), evidence, references, steps);
+                description.EvidenceSeal, requester, target, state, issues.Distinct().Order().ToArray(), evidence, references, steps)
+                { ObtainedMembership = obtainedMembership?.Request };
 
         RequesterDaclAssessment Finish(ControlEvaluationState state, PermissionEntry? grant,
             RequesterTrusteeEvidence? route, ObjectAttributes? holder)
         {
             if (state != ControlEvaluationState.Established) return Result(state, [], []);
             var resolvedSid = grant!.Trustee.Sid == "S-1-5-10" ? target!.Sid : grant.Trustee.Sid;
+            if (obtainedMembership is not null && !Same(resolvedSid, obtainedGroup!.Sid))
+                return Unknown(RequesterDaclIssue.GrantNotHeldByObtainedGroup);
             var edge = edges.Where(value => value.Capability == ControlCapability.CanWriteDacl
                 && Same(value.Target, target!.DistinguishedName) && value.TargetGuid == target.ObjectGuid
                 && value.GenerationId == description.GenerationId && value.DerivationGenerationId == description.DerivationGenerationId
@@ -152,6 +191,12 @@ internal static class RequesterDaclEvaluator
                 from = identities[holder.DistinguishedName];
                 steps.Add(new(requester!, from, Tier0PathStepKind.Membership, null, null,
                     new Tier0Evidence(from, "member", membership.Ordinal, requester!.DistinguishedName), null) { RequesterRequest = request });
+            }
+            else if (route.Reason == RequesterTrusteeReason.ObtainedGlobalMembership)
+            {
+                from = obtainedGroup!;
+                steps.Add(new(requester!, from, Tier0PathStepKind.OwnAccountMembership, null, null, null,
+                    obtainedMembership!.Permissions.Single().Id) { OwnAccountRequest = obtainedMembership.Request });
             }
             steps.Add(new(from, target!, Tier0PathStepKind.WriteDacl, null, null, null, edge.Id) { RequesterRequest = request });
             return Result(state, [new(edge.Id, Tier0PathCalculation.Fingerprint(edge))], steps);

@@ -61,7 +61,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 - For SecureAD explanations, orient the owner within the Stage 6 control-edge work and its Tier 0 purpose before discussing narrow requester fixes. Distinguish existing ownership findings, permission-derived control edges, and later chained paths to Tier 0. Explain incomplete captured evidence separately from unsupported analysis and proposed processing limits. Use Tier 0-relevant examples without implying arbitrary example group names are hard-coded product scope.
 - **For SecureAD.Next Stage 6 work, start from current documented requirements and accepted decisions without asking the owner to restate them.** Present concrete bounded implementation scope and screen wording/grouping for explicit approval before editing. Use synthetic/offline verification only unless separately authorized; preserve frozen evidence/measurement artifacts and subsequent uncommitted work. Do not commit or push without a new request. Keep permission evidence separate from operations, credential extraction, takeover and completed Tier 0 paths.
 - **For SecureAD.Next Stage 6 preparation, keep group-held permission counts independent of member and route counts, distinguish stored membership attribution from concrete requester authorization, preserve resource scope and explicit incomplete results, and retain historical tests, frozen hashes and measurement artifacts.** Production expansion budgets require measurements against the documented nine-domain forest shape, not small fixtures; discovery stays inactive without an approved budget.
-- **For SecureAD.Next Stage 7 checkpoint preparation, verify saved code, Git changes, governing decisions and original validation artifacts before reporting status.** Preserve uncommitted work and evidence, and obtain explicit approval of concrete supported-step and uncertainty scope before implementation. No backward compatibility is required. Approval of a bounded calculation does not authorize live access, optimization, screen changes, requester discovery activation, commits or pushes.
+- **For SecureAD.Next Stage 7, keep preparation/scope approval separate from implementation.** Approval explicitly reserved for the next implementation session does not authorize code changes now. Preserve historical validation summaries, their pre-commit provenance and frozen artifacts rather than rewriting them after publication or later documentation decisions; record approved product scope in the existing governing documents.
 
 ## Ownership-Takeover Analysis
 
@@ -86,7 +86,3 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## SecureAD.Next Regression Work
 
 - For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.
-
-## Documentation Commits
-
-- For documentation-only commits in SecureAD.Next, prefer a fast commit and push after reviewing the pending diff and running whitespace checks. Do not rebuild or rerun tests unnecessarily, and do not wait for CI to finish after pushing.

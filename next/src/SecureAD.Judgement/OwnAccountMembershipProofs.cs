@@ -12,7 +12,7 @@ internal static class OwnAccountMembershipProofs
     internal static IReadOnlyList<SavedOwnAccountMembershipProof> Create(SqliteConnection connection,
         JudgementDescription description, string directory, PathInputs inputs,
         IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<OwnAccountMembershipRequest> requests,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool membershipContinuation = true)
     {
         if (requests.Count == 0) return [];
         var opened = BundleReader.Open(directory);
@@ -54,8 +54,8 @@ internal static class OwnAccountMembershipProofs
             var assessment = OwnAccountMembershipEvaluator.Assess(request, inputs, description, identities,
                 bundle.ReadObjectAttributes, permissions, schema, catalogue, contexts.Value, edges,
                 bundle.Description.ForestFqdn, cancellationToken);
-            var steps = Steps(assessment, inputs, nodes, cancellationToken);
-            if (assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
+            var steps = membershipContinuation ? Steps(assessment, inputs, nodes, cancellationToken) : [];
+            if (membershipContinuation && assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
                 assessment = assessment with { Issues = [.. assessment.Issues, OwnAccountMembershipIssue.MembershipContinuationUnresolved] };
             var holders = new List<ObjectAttributes?>();
             foreach (var dn in (permissions?.Entries ?? []).Select(entry => entry.Trustee.DistinguishedName)

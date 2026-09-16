@@ -14,9 +14,10 @@ public enum RequesterTrusteeReason
     DirectIdentity, AuthenticatedIdentity, DirectGlobalMembership, DistributionGroup,
     OtherCurrentUser, NonUserIdentity, IdentityMissing, UnsupportedIdentity,
     ResourceContextUnknown, GroupTypeMissing, UnsupportedGroupScope, MembershipNotEstablished,
+    ObtainedGlobalMembership,
 }
 
-/// <summary>A captured authorization route, not an AdminSDHolder protection route or a complete token.</summary>
+/// <summary>A source-backed authorization route, not an AdminSDHolder protection route or a complete token.</summary>
 public sealed record RequesterTrusteeEvidence(
     string TrusteeSid,
     RequesterTrusteeState State,

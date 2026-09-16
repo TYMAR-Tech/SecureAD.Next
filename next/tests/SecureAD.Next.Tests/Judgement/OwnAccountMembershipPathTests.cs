@@ -592,10 +592,12 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
         EvidenceAttribute[]? userAttributes = null, string[]? userClasses = null, bool schema = true,
         EvidenceAttribute[]? memberSchema = null, bool membershipTail = true, bool daclTail = false,
         bool existingUserRoute = false, string[]? holderMembers = null, string? coreDescriptor = null, string userSid = UserSid,
-        bool crossDomainRequester = false, string? selfGuidOverride = null)
+        bool crossDomainRequester = false, string? selfGuidOverride = null,
+        Action<BundleWriter, PartitionCoverage>? additional = null, bool missingCoreDescriptor = false, string? rootDescriptor = null)
     {
         var directory = Bundle(users: 0, members: members ?? [], groupType: groupType,
             sddl: descriptor ?? $"O:SYG:SYD:(OA;;SW;{MemberGuid};;{UserSid})",
+            rootDescriptor: rootDescriptor,
             writeAdditional: (writer, coverage) =>
             {
                 Write(writer, coverage, UserDn, userClasses ?? ["top", "person", "organizationalPerson", "user"], userSid,
@@ -604,7 +606,8 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
                     [Text("groupType", "-2147483646"), Values("member", holderMembers ?? [UserDn])], "O:SYG:SYD:");
                 Write(writer, coverage, CoreDn, ["top", "group"], "S-1-5-21-1-2-3-512",
                     [Text("groupType", "-2147483646"), Values("member", existingUserRoute ? [UserDn] : membershipTail ? [TargetDn] : [])],
-                    coreDescriptor ?? (daclTail ? $"O:SYG:SYD:(A;;WD;;;{TargetSid})" : "O:SYG:SYD:"));
+                    missingCoreDescriptor ? null : coreDescriptor ?? (daclTail ? $"O:SYG:SYD:(A;;WD;;;{TargetSid})" : "O:SYG:SYD:"));
+                additional?.Invoke(writer, coverage);
                 if (crossDomainRequester)
                 {
                     var child = new PartitionCoverage("DC=child,DC=contoso,DC=com", NamingContextKind.Domain, "dc01.child.contoso.com",

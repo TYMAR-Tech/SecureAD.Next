@@ -38,6 +38,9 @@ public sealed record Tier0PathStep(Tier0Target From, Tier0Target To, Tier0PathSt
 
     /// <summary>The separate saved own-account proof, without asserting current membership or Add success.</summary>
     public OwnAccountMembershipRequest? OwnAccountRequest { get; init; }
+
+    /// <summary>The combined requester check using an explicit obtained-membership context.</summary>
+    public MembershipDaclRequest? MembershipDaclRequest { get; init; }
 }
 
 /// <summary>
@@ -53,6 +56,9 @@ public sealed record Tier0PathResult(PathInputs Inputs, Tier0Target? Subject, Ti
 
     /// <summary>Saved own-account operation questions, separate from ordinary Add readiness and holder counts.</summary>
     public IReadOnlyList<OwnAccountMembershipAssessment> OwnAccountAssessments { get; init; } = [];
+
+    /// <summary>Saved combined questions, not automatic requester coverage or captured-only authorization.</summary>
+    public IReadOnlyList<MembershipDaclAssessment> MembershipDaclAssessments { get; init; } = [];
 
     /// <summary>Overall coverage, not merely whether a positive route was proved.</summary>
     public Tier0Coverage Coverage => Inputs.Coverage;

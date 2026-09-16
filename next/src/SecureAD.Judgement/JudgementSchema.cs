@@ -71,8 +71,10 @@ public static class JudgementSchema
     /// Ordinary Add readiness and the physical table layout remain unchanged.</para>
     /// <para>35 distinguishes ordinary Write Members from Self-Membership in explicit operation requests
     /// and saves separate ordered requester authorization evidence without changing holder counts.</para>
+    /// <para>36 saves combined membership-to-DACL proofs with a separate post-membership authorization
+    /// context; the physical layout and captured-only requester semantics are unchanged.</para>
     /// </remarks>
-    public const int Version = 35;
+    public const int Version = 36;
 
     private static readonly string[] TableDdl =
     [

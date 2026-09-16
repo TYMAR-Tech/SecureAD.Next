@@ -284,6 +284,71 @@ and the corrected masked proof check are retained with exact source/build proven
 `next/artifacts/stage7-member-write-validation/ef9369e3a2db4e7285912e1fd3c71d75/final-summary.json`;
 further operation/path expansion still requires a separately approved checkpoint.
 
+## Stage 7 sixth checkpoint: obtained membership followed by requester DACL permission
+
+**Owner-approved scope; implemented and offline verified as P-234.** After preparation
+against `3fb945b`, the owner selected "Approve scope for next implementation session" for one supported
+own-account membership-obtainability step followed by concrete requester `WRITE_DAC` authorization on
+a same-domain fixed Tier-0 target. This approval records the supported-step and uncertainty boundaries;
+the preparation session did not authorize implementation. The owner subsequently selected
+"Implement approved checkpoint 6", explicitly authorizing implementation with the same boundaries.
+
+- Support one captured ordinary user obtaining membership in one same-domain global security group
+  through either the existing Self-Membership or ordinary Write Members proof, keeping those permissions
+  separate. Reuse the identity, account-status, schema and verified-domain safeguards; authorize the
+  membership using pre-change evidence only, directly or through the supported pre-existing explicit
+  global-group membership, never using the proposed membership to authorize itself.
+- Retain proved existing membership without inventing an Add or widening existing requester support.
+  Where current membership is unknown, require both the already-present and absent-with-supported-
+  authorized-Add branches; current membership and ordinary Add readiness remain Unknown.
+- The terminal grant must name the obtained group and carry concrete `WRITE_DAC` applying to the
+  authoritative classifier's fixed target in the same verified domain. No intervening nested-group
+  permission route, second hypothetical membership, ownership transition, account takeover or onward
+  operation is included; configuration/schema-partition authorization remains outside this slice.
+- Evaluate the target's DACL for the user in a separate post-membership context, not as the group.
+  The obtained group's SID participates in both allows and denies, without removing the user's other
+  applicable identities or fabricating captured membership. Evaluate relevant entries in captured order,
+  including denies for the user, obtained group, supported pre-existing groups and applicable broad
+  identities; a later deny does not undo an already completed grant.
+- Reassess trustee applicability after the membership change. Relevant unresolved nested-group,
+  primary-group, SID-history, conditional or uninterpreted permission effects remain Unknown where
+  they could change the answer, not excluded using the pre-change context. An earlier potentially
+  applicable deny prevents a definite positive answer when its applicability cannot be settled.
+- State the ordinary authenticated-context assumption with the obtained membership available for
+  authorization. This is not a claim that existing sessions or tickets immediately acquire it, that
+  authentication or replication convergence was proved, or that any live operation succeeded.
+- Save a separate combined proof naming the requester, group, fixed target and membership-permission
+  kind, original permission references, witnesses, assumptions and exact Evidence/Derivation/Judgement
+  generations. Do not weaken captured-membership proofs, multiply holder counts by requesters or routes,
+  activate discovery, or imply an administrator-maintained selection list.
+- Keep missing evidence, unsupported analysis, unresolved identity/resource context and unrequested,
+  cancelled or unfinished work distinct. Only a fully supported route contributes Reachable; otherwise
+  preserve Unknown rather than NotReachable, without erasing independent proven routes or overstating
+  shortest-proven length. Readers remain passive and failed/cancelled publication preserves the previous
+  valid result; no backward compatibility is required and historical generations are not rewritten.
+
+Microsoft's [ordered access-check rules](https://learn.microsoft.com/windows/win32/secauthz/how-dacls-control-access-to-an-object),
+[SID applicability](https://learn.microsoft.com/windows/win32/secauthz/sid-attributes-in-an-access-token)
+and [session/ticket membership behavior](https://learn.microsoft.com/troubleshoot/windows-client/group-policy/group-membership-changes-not-updating-over-some-vpn-connections#effects-on-the-user-security-context-and-access-control)
+anchor these distinctions. Verification must be synthetic/offline, cover both membership mechanisms,
+ordered and newly applicable denies, self-authorization prevention, uncertainty, unchanged counts,
+source binding and publication safety, and mutation-test every new behavior with explicit rebuilds
+before mutations and after restoration. Preserve original evidence, failed runs and validation records;
+checkpoint 5's pre-commit provenance and saved document hashes remain historical, not updated for this
+decision. No requester discovery, production host-scheduling changes, new budgets, screen changes,
+optimization, live access, commit or push is authorized; P-227 remains open, and P-142/P-143 assets,
+broader requester coverage, fuller paths, SEC-071 findings and product presentation remain later work.
+
+Judgement format 36 and path-calculation version 5 implement this bounded checkpoint, including the
+saved authorization-context assumption and passive proof validation, without changing production
+requester scheduling. All **5,271 offline tests pass**, all **849 focused cases pass under verified
+coverage**, and all **71 new behavior cases detect deliberate defects across 11 accepted variants**,
+with explicit rebuilds and verified restoration. Original evidence, failed runs and mutation records
+remain preserved with exact source/build provenance in
+`next/artifacts/stage7-membership-dacl-validation/8c39670d898a4514b72c9d41437203fe/final-summary.json`.
+This is not production requester coverage, customer-scale acceptance or proof of live-operation
+success; further operation/path expansion requires separately approved scope.
+
 ## CLI and GUI judging parity
 
 **Owner-approved requirement:** the same sealed evidence and analysis inputs must receive the same

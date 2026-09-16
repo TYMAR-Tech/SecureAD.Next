@@ -10,7 +10,8 @@ internal static class RequesterDaclProofs
 {
     internal static IReadOnlyList<SavedRequesterDaclProof> Create(SqliteConnection connection,
         JudgementDescription description, string directory, PathInputs inputs,
-        IReadOnlyList<RequesterDaclRequest> requests, CancellationToken cancellationToken)
+        IReadOnlyList<RequesterDaclRequest> requests, CancellationToken cancellationToken,
+        OwnAccountMembershipAssessment? obtainedMembership)
     {
         if (requests.Count == 0) return [];
         var opened = BundleReader.Open(directory);
@@ -36,7 +37,7 @@ internal static class RequesterDaclProofs
             }
             var edges = ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id)).ToArray();
             var assessment = RequesterDaclEvaluator.Assess(request, inputs, description, identities,
-                bundle.ReadObjectAttributes, permissions, contexts.Value, edges, bundle.Description.ForestFqdn, cancellationToken);
+                bundle.ReadObjectAttributes, permissions, contexts.Value, edges, bundle.Description.ForestFqdn, cancellationToken, obtainedMembership);
             var holders = new List<ObjectAttributes?>();
             foreach (var dn in (permissions?.Entries ?? []).Select(entry => entry.Trustee.DistinguishedName)
                 .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
@@ -49,6 +50,7 @@ internal static class RequesterDaclProofs
                 Requester = bundle.ReadObjectAttributes(request.RequesterDn), Target = bundle.ReadObjectAttributes(request.TargetDn),
                 Permissions = permissions, Holders = holders, Forest = bundle.Description.ForestFqdn,
                 Contexts = contexts.Value.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToArray(),
+                ObtainedMembership = obtainedMembership,
             });
             results.Add(new(assessment, source));
         }
@@ -64,7 +66,7 @@ internal static class RequesterDaclProofs
             throw Tier0PathStorage.InvalidProof();
         // Replay only the saved questions as a proof check, never as discovery or replacement output.
         // This also rejects a changed verdict, membership witness or source reference with a refreshed hash.
-        var replay = Create(connection, description, directory, inputs, proofs.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
+        var replay = Create(connection, description, directory, inputs, proofs.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, obtainedMembership: null);
         if (Tier0PathCalculation.Fingerprint(proofs) != Tier0PathCalculation.Fingerprint(replay)) throw Tier0PathStorage.InvalidProof();
     }
 

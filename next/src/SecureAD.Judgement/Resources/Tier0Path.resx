@@ -7,4 +7,5 @@
   <data name="InvalidProof" xml:space="preserve"><value>The saved Tier-0 path calculation does not match its source evidence, generation or supported format. No path conclusion can be read from it. Judge the sealed evidence again to produce new analysis; the original evidence is unchanged.</value></data>
   <data name="InvalidRequest" xml:space="preserve"><value>Each requester DACL question must specify a requester and a target distinguished name.</value></data>
   <data name="InvalidOwnAccountRequest" xml:space="preserve"><value>Each own-account membership question must specify a requester and a target distinguished name.</value></data>
+  <data name="InvalidMembershipDaclRequest" xml:space="preserve"><value>Each combined membership and DACL question must specify requester, group and fixed-target distinguished names and a supported membership-permission kind.</value></data>
 </root>

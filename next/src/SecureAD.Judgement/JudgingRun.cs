@@ -124,7 +124,7 @@ public static class JudgingRun
     {
         discoveryBudget?.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, discoveryBudget, null, startedUtc, evaluationAsOf,
-            progress, log, cancellationToken, tier0DiscoveryRequested: false, requesterDaclRequests: [], ownAccountRequests: []);
+            progress, log, cancellationToken, tier0DiscoveryRequested: false, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: []);
     }
 
     /// <summary>Judges a bundle and evaluates only the explicit bounded Self-Membership requests supplied.</summary>
@@ -139,7 +139,7 @@ public static class JudgingRun
         IRunLog log,
         CancellationToken cancellationToken) =>
         JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, false, null, null, startedUtc,
-            evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: false, requesterDaclRequests: [], ownAccountRequests: []);
+            evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: false, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: []);
 
     /// <summary>Judges with an explicit offline member-attribution budget; requester discovery remains inactive.</summary>
     public static Result<JudgementRunState> JudgeWithMemberAttribution(
@@ -150,7 +150,7 @@ public static class JudgingRun
         ArgumentNullException.ThrowIfNull(memberBudget);
         memberBudget.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, memberBudget,
-            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: false, requesterDaclRequests: [], ownAccountRequests: []);
+            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: false, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: []);
     }
 
     /// <summary>
@@ -224,10 +224,27 @@ public static class JudgingRun
         IRunLog log,
         SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget,
         CancellationToken cancellationToken)
+        => JudgeWithTier0Discovery(bundleDirectory, rules, requesterDaclRequests, ownAccountRequests, [], startedUtc,
+            evaluationAsOf, progress, log, selfMembershipDiscoveryBudget, cancellationToken);
+
+    /// <summary>
+    /// Judges explicit combined own-account membership and fixed-target WRITE_DAC questions.
+    /// Pre-change membership authorization and post-membership requester checks are saved separately;
+    /// this does not activate requester discovery, change host scheduling or predict live success.
+    /// </summary>
+    public static Result<JudgementRunState> JudgeWithTier0Discovery(
+        string bundleDirectory, IReadOnlyList<IRule> rules,
+        IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
+        IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
+        DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
+        IRunLog log, SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(membershipDaclRequests);
         selfMembershipDiscoveryBudget?.Validate();
         return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, selfMembershipDiscoveryBudget, null,
-            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: true, requesterDaclRequests, ownAccountRequests);
+            startedUtc, evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: true,
+            requesterDaclRequests, ownAccountRequests, membershipDaclRequests);
     }
 
     private static Result<JudgementRunState> JudgeCore(
@@ -245,7 +262,8 @@ public static class JudgingRun
         CancellationToken cancellationToken,
         bool tier0DiscoveryRequested,
         IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
-        IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests)
+        IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -271,6 +289,14 @@ public static class JudgingRun
                 || !Enum.IsDefined(request.PermissionKind))
                 throw new ArgumentException(Tier0PathStorage.InvalidOwnAccountRequestMessage(), nameof(ownAccountRequests));
             ownAccountQuestions.TryAdd(OwnAccountMembershipProofs.Key(request), request);
+        }
+        var membershipDaclQuestions = new Dictionary<string, MembershipDaclRequest>(StringComparer.Ordinal);
+        foreach (var request in membershipDaclRequests)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!MembershipDaclProofs.Valid(request))
+                throw new ArgumentException(Tier0PathStorage.InvalidMembershipDaclRequestMessage(), nameof(membershipDaclRequests));
+            membershipDaclQuestions.TryAdd(MembershipDaclProofs.Key(request), request);
         }
         if (selfMembershipRequests.Count > selfMembershipBudget.Requests)
             throw new ArgumentException($"The request batch contains {selfMembershipRequests.Count} requests; its explicit budget is {selfMembershipBudget.Requests}.", nameof(selfMembershipRequests));
@@ -787,7 +813,8 @@ public static class JudgingRun
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
-        writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(), cancellationToken);
+        writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
+            cancellationToken, membershipDaclQuestions.Values.ToArray());
 
         cancellationToken.ThrowIfCancellationRequested();
         progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });
