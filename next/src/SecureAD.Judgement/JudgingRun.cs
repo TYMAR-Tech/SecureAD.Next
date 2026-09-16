@@ -247,6 +247,17 @@ public static class JudgingRun
             requesterDaclRequests, ownAccountRequests, membershipDaclRequests);
     }
 
+    /// <summary>
+    /// Selects supported path requester questions from captured permissions for offline verification.
+    /// This does not enable production requester discovery or change authorization semantics.
+    /// </summary>
+    public static Result<JudgementRunState> JudgeWithOfflinePathRequesterSelection(
+        string bundleDirectory, IReadOnlyList<IRule> rules, DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress, IRunLog log, CancellationToken cancellationToken) =>
+        JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, null, startedUtc,
+            evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: true,
+            requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: [], offlineSelection: true);
+
     private static Result<JudgementRunState> JudgeCore(
         string bundleDirectory,
         IReadOnlyList<IRule> rules,
@@ -263,7 +274,8 @@ public static class JudgingRun
         bool tier0DiscoveryRequested,
         IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
-        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests)
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
+        bool offlineSelection = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -814,7 +826,7 @@ public static class JudgingRun
             writer.Write(tally.ToExecution());
 
         writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
-            cancellationToken, membershipDaclQuestions.Values.ToArray());
+            cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection);
 
         cancellationToken.ThrowIfCancellationRequested();
         progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });

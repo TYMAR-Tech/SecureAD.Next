@@ -67,6 +67,16 @@ results; Self-Membership requester discovery and P-142/P-143 asset coverage belo
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
+**Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
+specifications and implement the remaining rule coverage.** The review and its retained source set are
+recorded as P-235–P-239 in [the work queue](PUNCH-LIST.md#rule-specification-review--after-stage-7).
+The proposed handoff is a basis for later bounded implementation, not blanket approval of its severities,
+thresholds, collection extensions, compatibility requirements or screen changes; inventory/correlation
+dispositions must not become duplicate scheduled rules merely to reproduce the predecessor's rule count.
+Stage 7's own requester coverage, supported path compositions, SEC-071 findings and presentation remain
+Stage 7 work, not postponed to that later rule pass. Existing safety stops and outstanding acceptance,
+including the published CI failure recorded under P-227, remain explicit rather than accepted by this order.
+
 ## Stage 7 first checkpoint: saved path inputs
 
 **Owner-approved implementation scope:** save source-bound path inputs in new Judgement generations,
@@ -348,6 +358,68 @@ remain preserved with exact source/build provenance in
 `next/artifacts/stage7-membership-dacl-validation/8c39670d898a4514b72c9d41437203fe/final-summary.json`.
 This is not production requester coverage, customer-scale acceptance or proof of live-operation
 success; further operation/path expansion requires separately approved scope.
+
+## Stage 7 seventh checkpoint: offline requester selection for supported paths
+
+**Owner-approved scope and implementation; implemented and focused-offline verified as P-240; full-suite verification remains open.** After preparation
+against published `385e312` and review of the preserved P-227 failure, the owner selected
+"Approve scope for next session" for permission-led selection of requester questions for the three
+existing supported path families. This records the next bounded scope, not permission to implement
+it during preparation, activate discovery in normal audits or claim Stage 7 complete.
+The owner subsequently selected "Implement approved checkpoint 7", authorizing implementation
+with the same boundaries; that authorization remains recorded when recovering an interrupted chat.
+
+- Derive questions from captured permissions and the shared classifier's fixed Tier-0 targets,
+  rather than every possible user/object pair or an administrator-maintained requester list.
+  Cover existing requester `WRITE_DAC`, own-account membership followed by qualified existing
+  memberships, and P-234's obtained-membership-to-requester-`WRITE_DAC` composition.
+- Include relevant non-Tier-0 intermediate groups; do not require the group where a route begins
+  to be Tier 0. Keep the existing ordinary-user, same-domain and direct/single-global-group requester
+  authorization boundaries, including the existing qualified membership continuations; this adds
+  selection, not new nested-group authorization, permission semantics or hypothetical operations.
+- Selection identifies questions, not proven permissions or paths. Reuse the existing permission,
+  operation and combined-proof evaluators, including pre-change authorization, post-membership
+  ordered denies and both Self-Membership and ordinary Write Members mechanisms without merging them.
+  Preserve Unknown current membership and ordinary Add readiness, independent holder counts,
+  existing ownership findings and independently proven routes.
+- Save the source reasons for selecting each question and the selection's coverage, bound to the
+  exact Evidence, Derivation and Judgement generations and analysis versions. Keep missing captured
+  evidence, unsupported analysis, unresolved identities/resource context and unrequested, cancelled
+  or unfinished work distinct; broad identities remain explicitly unexpanded rather than absent.
+  Neither an empty selection nor a completed supported scan establishes forest-wide requester
+  coverage or NotReachable, and relevant uncertainty must not be discarded because no concrete
+  requester could be identified.
+- Exercise the selector only through synthetic/offline verification in this checkpoint. Both
+  production hosts retain inactive requester discovery and unchanged scheduling, without a new
+  budget, processing limit or customer-scale acceptance claim. This bounded selector does not
+  settle the full production discovery scope or limitation presentation deferred under P-189b.
+- Readers remain passive: verify saved questions, source provenance and proofs without discovering
+  new requesters on reopening. Failed or cancelled publication must preserve the previous valid
+  generation; historical evidence, validation summaries and their pre-commit provenance remain
+  unchanged, with no migration or legacy-reading requirement.
+
+Verification must cover all three route families, relevant groups outside Tier 0, applicable denies,
+uncertainty, duplicate inputs, independent permission counts, source binding, passive reopening and
+cancellation. Every new behavior check must detect a deliberate defect, with explicit rebuilds before
+running mutated code and after restoration; retain failed runs and original artifacts. P-227 stays
+open with cause unconfirmed: the preserved CI overlap failure is not replaced by local verification,
+and neither its assertion nor its watchdog is weakened.
+
+This checkpoint produces no screen changes or SEC-071 findings and does not activate requester
+discovery, change budgets, add account-takeover claims, authorize live access or measurement/optimization
+work, commit or push. Production requester coverage, further justified path compositions, P-142/P-143
+asset coverage, canonical SEC-071 findings and path presentation/counts remain Stage 7 work, ahead of
+P-235–P-239 and the broader rule rollout; implementation authorization covers only this bounded checkpoint.
+
+Judgement format 37 and path-calculation version 6 implement this checkpoint with unchanged production
+scheduling. All **908 focused cases pass under verified coverage**, including **59 new behavior cases**
+that detect deliberate defects across **12 variants**, with explicit rebuilds and verified restoration.
+The corrected full offline run passed **5,326 of 5,330 tests**: four unchanged layout checks timed out
+under P-241, despite all 46 layout cases passing separately, so no clean full-suite or display-acceptance
+claim is made. P-227 remains open independently of its local passing result, and this is not completed
+Stage 7 or production requester coverage. Original evidence, failed runs and exact source/build
+provenance are preserved in
+`next/artifacts/stage7-requester-selection-validation/ffedb6f851754854a0f224d53cfdbfb7/final-summary.json`.
 
 ## CLI and GUI judging parity
 

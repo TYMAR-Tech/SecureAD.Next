@@ -60,6 +60,9 @@ public sealed record Tier0PathResult(PathInputs Inputs, Tier0Target? Subject, Ti
     /// <summary>Saved combined questions, not automatic requester coverage or captured-only authorization.</summary>
     public IReadOnlyList<MembershipDaclAssessment> MembershipDaclAssessments { get; init; } = [];
 
+    /// <summary>Saved offline selection and its limitations; null means selection was not requested.</summary>
+    public PathRequesterSelection? RequesterSelection { get; init; }
+
     /// <summary>Overall coverage, not merely whether a positive route was proved.</summary>
     public Tier0Coverage Coverage => Inputs.Coverage;
 

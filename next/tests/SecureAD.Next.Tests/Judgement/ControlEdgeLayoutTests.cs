@@ -65,6 +65,8 @@ public sealed class ControlEdgeLayoutTests
         [35] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
         // Schema 36 adds combined membership-to-DACL proof semantics, not physical tables.
         [36] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
+        // Schema 37 adds selection provenance inside the same certificate, not physical tables.
+        [37] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
     };
 
     [Fact]

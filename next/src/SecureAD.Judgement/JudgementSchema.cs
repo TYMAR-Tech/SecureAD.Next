@@ -73,8 +73,10 @@ public static class JudgementSchema
     /// and saves separate ordered requester authorization evidence without changing holder counts.</para>
     /// <para>36 saves combined membership-to-DACL proofs with a separate post-membership authorization
     /// context; the physical layout and captured-only requester semantics are unchanged.</para>
+    /// <para>37 records offline requester selection sources, questions and independent coverage
+    /// within the path certificate; production scheduling and physical tables are unchanged.</para>
     /// </remarks>
-    public const int Version = 36;
+    public const int Version = 37;
 
     private static readonly string[] TableDdl =
     [

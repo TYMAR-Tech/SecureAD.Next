@@ -11,7 +11,7 @@ internal static class Tier0PathStorage
     private static readonly ResourceManager Resources = new("SecureAD.Judgement.Resources.Tier0Path", typeof(Tier0PathStorage).Assembly);
     private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount,
         IReadOnlyList<SavedRequesterDaclProof> Requesters, IReadOnlyList<SavedOwnAccountMembershipProof> OwnAccounts,
-        IReadOnlyList<SavedMembershipDaclProof> MembershipDacls);
+        IReadOnlyList<SavedMembershipDaclProof> MembershipDacls, bool OfflineSelection, PathRequesterSelection? Selection);
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
@@ -22,7 +22,7 @@ internal static class Tier0PathStorage
 
     internal static void Write(SqliteConnection connection, JudgementDescription description, string directory,
         IReadOnlyList<RequesterDaclRequest> requests, IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
-        CancellationToken cancellationToken, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests)
+        CancellationToken cancellationToken, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var inputs = PathInputStorage.Read(connection, description, directory);
@@ -36,6 +36,15 @@ internal static class Tier0PathStorage
             if (!contexts.IsSuccess) throw InvalidProof();
             nodes = Tier0PathCalculation.Calculate(inputs, OwnershipAuditStorage.Targets(connection).Select(row => row.Identity).ToArray(),
                 TerminalPermissions(connection, description), bundle.ReadObjectAttributes, contexts.Value, cancellationToken);
+        }
+        PathRequesterSelection? selection = null;
+        if (offlineSelection)
+        {
+            using var bundle = OpenSelectionBundle(directory);
+            selection = Selector(bundle, inputs, nodes, cancellationToken).Select();
+            requests = PathRequesterSelector.Requests(selection);
+            ownAccountRequests = PathRequesterSelector.OwnAccounts(selection);
+            membershipDaclRequests = PathRequesterSelector.MembershipDacls(selection);
         }
         var requesters = RequesterDaclProofs.Create(connection, description, directory, inputs, requests, cancellationToken, obtainedMembership: null);
         nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
@@ -56,7 +65,7 @@ internal static class Tier0PathStorage
                 ("$proof", json), ("$hash", OwnershipAuditStorage.Hash(json)));
         }
         var header = JsonSerializer.Serialize(new Header(Tier0PathCalculation.Version, description.GenerationId,
-            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters, ownAccounts, membershipDacls), ProofSerialization.Options);
+            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters, ownAccounts, membershipDacls, offlineSelection, selection), ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
         cancellationToken.ThrowIfCancellationRequested();
@@ -78,11 +87,20 @@ internal static class Tier0PathStorage
         }
         if (header.Version != Tier0PathCalculation.Version || header.Generation != description.GenerationId
             || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != nodes.Count
-            || header.Requesters is null || header.OwnAccounts is null || header.MembershipDacls is null) throw InvalidProof();
+            || header.Requesters is null || header.OwnAccounts is null || header.MembershipDacls is null
+            || header.OfflineSelection != (header.Selection is not null)) throw InvalidProof();
         RequesterDaclProofs.Validate(connection, description, directory, inputs, header.Requesters);
         if (inputs.Availability == PathInputAvailability.Recorded) Validate(connection, description, directory, inputs, nodes);
         OwnAccountMembershipProofs.Validate(connection, description, directory, inputs, nodes, header.OwnAccounts);
         MembershipDaclProofs.Validate(connection, description, directory, inputs, nodes, header.MembershipDacls);
+        if (header.Selection is { } selection)
+        {
+            using var bundle = OpenSelectionBundle(directory);
+            Selector(bundle, inputs, nodes.Values.ToArray(), CancellationToken.None).Validate(selection,
+                header.Requesters.Select(value => value.Assessment.Request).ToArray(),
+                header.OwnAccounts.Select(value => value.Assessment.Request).ToArray(),
+                header.MembershipDacls.Select(value => value.Assessment.Request).ToArray());
+        }
         var assessments = header.Requesters.Select(proof => proof.Assessment)
             .Where(value => string.Equals(value.Request.RequesterDn, subjectDn, StringComparison.OrdinalIgnoreCase)).ToArray();
         var ownAssessments = header.OwnAccounts.Select(proof => proof.Assessment)
@@ -93,14 +111,14 @@ internal static class Tier0PathStorage
         {
             if (nodes.Count != 0) throw InvalidProof();
             return new(inputs, null, Tier0Reachability.Unknown, null, [])
-                { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments };
+                { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments, RequesterSelection = header.Selection };
         }
         if (nodes.Values.Any(node => node.RequesterRoute != RequesterDaclProofs.Best(node, header.Requesters))) throw InvalidProof();
         if (nodes.Values.Any(node => node.OwnAccountRoute != OwnAccountMembershipProofs.Best(node, header.OwnAccounts, header.Requesters))) throw InvalidProof();
         if (nodes.Values.Any(node => node.MembershipDaclRoute != MembershipDaclProofs.Best(node, header.MembershipDacls, header.Requesters, header.OwnAccounts))) throw InvalidProof();
         if (!nodes.TryGetValue(subjectDn, out var subject))
             return new(inputs, null, Tier0Reachability.Unknown, null, [])
-                { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments };
+                { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments, RequesterSelection = header.Selection };
         var steps = new List<Tier0PathStep>();
         if (subject.MembershipDaclRoute is { } membershipDaclRequest)
             steps.AddRange(header.MembershipDacls.Single(proof => proof.Assessment.Request == membershipDaclRequest).Assessment.Steps);
@@ -121,7 +139,23 @@ internal static class Tier0PathStorage
         }
         return new(inputs, subject.Subject, subject.Reachability,
             subject.Reachability == Tier0Reachability.Reachable ? steps.Count : null, steps)
-        { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments };
+        { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments, RequesterSelection = header.Selection };
+    }
+
+    private static BundleReader OpenSelectionBundle(string directory)
+    {
+        var opened = BundleReader.Open(directory);
+        if (!opened.IsSuccess) throw InvalidProof();
+        return opened.Value;
+    }
+
+    private static PathRequesterSelector Selector(BundleReader bundle, PathInputs inputs, IReadOnlyList<Tier0PathNode> nodes,
+        CancellationToken cancellationToken)
+    {
+        var contexts = bundle.ReadNamingContexts();
+        if (!contexts.IsSuccess) throw InvalidProof();
+        return new(bundle, inputs, nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
+            contexts.Value, cancellationToken);
     }
 
     private static Dictionary<string, Tier0PathNode> ReadNodes(SqliteConnection connection)
