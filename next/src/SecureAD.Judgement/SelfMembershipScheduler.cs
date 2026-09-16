@@ -10,7 +10,6 @@ internal sealed class SelfMembershipScheduler
     private readonly SelfMembershipDiscoveryBudget? _budget;
     private readonly bool _captureComplete;
     private readonly Func<string, ObjectAttributes?> _attributes;
-    private readonly SchemaGuidCatalog _catalogue;
     private readonly string _forest;
     private readonly CancellationToken _cancellationToken;
     private readonly Dictionary<(string Requester, string Target), (string Requester, string Target)> _pairs = [];
@@ -21,13 +20,12 @@ internal sealed class SelfMembershipScheduler
     private bool _stopped;
 
     internal SelfMembershipScheduler(SelfMembershipDiscoveryBudget? budget, bool captureComplete,
-        Func<string, ObjectAttributes?> attributes, SchemaGuidCatalog catalogue, string forest, CancellationToken cancellationToken)
+        Func<string, ObjectAttributes?> attributes, string forest, CancellationToken cancellationToken)
     {
         budget?.Validate();
         _budget = budget;
         _captureComplete = captureComplete;
         _attributes = attributes;
-        _catalogue = catalogue;
         _forest = forest;
         _cancellationToken = cancellationToken;
         if (!captureComplete) Limit(SelfMembershipDiscoveryReason.CaptureIncomplete, null);
@@ -71,7 +69,7 @@ internal sealed class SelfMembershipScheduler
             if ((entry.AccessMask & 0x08) == 0 || EntryReachReader.FromPropagationFlags(entry.PropagationFlags) != EntryReach.ThisObject)
                 continue;
             if (entry.HasObjectType && entry.ObjectTypeGuid is { } guid
-                && !string.Equals(guid, _catalogue.GuidFor("Self-Membership"), StringComparison.OrdinalIgnoreCase)) continue;
+                && !string.Equals(guid, SchemaGuidCatalog.Embedded.GuidFor("Self-Membership"), StringComparison.OrdinalIgnoreCase)) continue;
             var holder = entry.Trustee.Sid == "S-1-5-10" ? target
                 : entry.Trustee.DistinguishedName is { } holderDn ? _attributes(holderDn) : null;
             if (holder is null)

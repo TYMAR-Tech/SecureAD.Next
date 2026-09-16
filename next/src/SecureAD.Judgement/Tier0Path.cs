@@ -13,7 +13,7 @@ public enum Tier0Reachability
     Unknown,
 }
 
-/// <summary>Supported path steps; permission steps terminate at a fixed target and never transfer account identity.</summary>
+/// <summary>Supported path steps; DACL steps terminate at a fixed target and no step transfers account identity.</summary>
 public enum Tier0PathStepKind
 {
     /// <summary>A qualified existing security-group membership, including supported primary-group links.</summary>
@@ -22,6 +22,8 @@ public enum Tier0PathStepKind
     WriteDacl,
     /// <summary>The captured owner has an established bounded DACL-rewrite operation on the fixed target.</summary>
     CurrentOwnerDacl,
+    /// <summary>Membership is obtainable by the own-account two-case operation proof, not observed as added.</summary>
+    OwnAccountMembership,
 }
 
 /// <summary>
@@ -33,6 +35,9 @@ public sealed record Tier0PathStep(Tier0Target From, Tier0Target To, Tier0PathSt
 {
     /// <summary>The saved concrete access check supporting this step, not a transferable group-held grant.</summary>
     public RequesterDaclRequest? RequesterRequest { get; init; }
+
+    /// <summary>The separate saved own-account proof, without asserting current membership or Add success.</summary>
+    public OwnAccountMembershipRequest? OwnAccountRequest { get; init; }
 }
 
 /// <summary>
@@ -45,6 +50,9 @@ public sealed record Tier0PathResult(PathInputs Inputs, Tier0Target? Subject, Ti
 {
     /// <summary>Saved explicit questions for this requester; an empty set never means discovery ran.</summary>
     public IReadOnlyList<RequesterDaclAssessment> RequesterAssessments { get; init; } = [];
+
+    /// <summary>Saved own-account operation questions, separate from ordinary Add readiness and holder counts.</summary>
+    public IReadOnlyList<OwnAccountMembershipAssessment> OwnAccountAssessments { get; init; } = [];
 
     /// <summary>Overall coverage, not merely whether a positive route was proved.</summary>
     public Tier0Coverage Coverage => Inputs.Coverage;

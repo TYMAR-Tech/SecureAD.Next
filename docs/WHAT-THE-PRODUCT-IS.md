@@ -161,6 +161,62 @@ deliberate-defect records are preserved; the final validation summary is
 This does not establish production requester coverage, customer-scale acceptance, live-operation
 success or the deferred membership-change operation proof; P-227 remains open.
 
+## Stage 7 fourth checkpoint: own-account membership obtainability
+
+**Owner-approved scope; implemented and offline verified as P-231.** After preparation against `812286b`, the owner selected
+“Approve the bounded checkpoint” for a separate saved assessment of whether a requester can obtain
+membership, without changing genuine Self-Membership authorization or ordinary Add-readiness
+answer. The owner subsequently selected “Implement approved checkpoint 4” to start implementation.
+
+**Narrow correctness correction also approved:** the owner selected “Approve correction and continue”
+after an offline regression exposed captured right-name metadata redefining Self-Membership as an
+arbitrary GUID. Holder and requester interpretation, including the inactive discovery filter, must
+use Microsoft's fixed Self-Membership identifier; retain the captured metadata as evidence rather than
+rewriting it. Genuine permissions and ordinary Add readiness stay unchanged, and this does not
+authorize changes to unrelated rights or activation of requester discovery.
+
+- Support one captured ordinary user and one same-domain global security group, with qualified
+  identities and domain context. Establish Self-Membership authorization directly or through one
+  pre-existing explicit global-security-group membership, retaining relevant allows, denies and
+  uncertainty in captured order; never use the proposed new membership to authorize its own creation.
+- Assess addition of only the requester's own DN, not another account, replacement of the member
+  list or removal. Validate applicable membership-operation prerequisites separately; missing required
+  schema, identity or resource evidence remains Unknown, never defaulted to supported.
+- Where membership is already proved, retain the existing route without inventing an Add. Where
+  current membership is unknown, establish obtainability only if both possibilities are justified:
+  already a member, or absent and a supported own-account Add is authorized. Keep current membership
+  and ordinary Add readiness Unknown; an unresolved branch cannot become a proven path.
+- Follow the resulting membership only through qualified existing memberships to the shared fixed
+  Tier-0 targets, including a target group that is itself fixed. Do not transfer every group-held
+  permission, infer account takeover or chain additional hypothetical changes; general member-write
+  rights and unsupported requester routes remain outside this slice.
+- A disabled account blocks the new operation proof without erasing permission evidence; an enabled
+  flag does not prove authentication. Keep missing captured evidence, unsupported analysis, unresolved
+  identities and work not performed distinct, preserve independently proven routes despite unrelated
+  gaps, and emit no new NotReachable claim.
+- Save original permissions, operation assumptions, membership witnesses and exact source generations
+  for passive readback. Keep operation assessments separate from holder counts, distinguish the inferred operation from captured
+  membership, qualify path length, and preserve the previous valid result on cancellation or failure.
+
+Microsoft's [member validated-write rule](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/1dea6a2c-a692-427f-8571-68a8a5c7b735)
+and [modify constraints](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/76df255d-dc67-4c1f-adc6-1e5b60021304)
+anchor the distinction between own-account permission and operation success. The two-case obtainability
+inference is the approved product rule, not evidence that a missing member value proves absence or that
+a live Add succeeded. Verification must be synthetic/offline, with deliberate-defect checks for each
+new behavior and explicit rebuilds; original evidence, historical tests and validation artifacts remain
+untouched. Requester discovery stays inactive, with no production budget, screen changes, live access,
+optimization, commit or push authorized; P-227 and outstanding acceptance remain open.
+
+Judgement format 34 and path-calculation version 3 implement this bounded checkpoint, including the
+approved fixed-identifier correction, with unchanged production scheduling and passive readback.
+All **5,128 offline tests pass**, all **523 focused cases pass under separately verified coverage**,
+and all **70 new cases detect deliberate defects across 13 accepted variants**, with explicit rebuilds
+and verified source restoration. Original evidence and validation artifacts remain preserved, including
+the initially masked mutation check and the unsuccessful coverage-collector attempt; the final record is
+`next/artifacts/stage7-own-account-validation/f881c28fc86e4e98b79301c0636b5e00/final-summary.json`.
+This is not production requester coverage, customer-scale acceptance or proof of live-operation success;
+further operation/path expansion requires a separately approved checkpoint.
+
 ## CLI and GUI judging parity
 
 **Owner-approved requirement:** the same sealed evidence and analysis inputs must receive the same

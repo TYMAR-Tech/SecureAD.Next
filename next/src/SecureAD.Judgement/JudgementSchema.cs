@@ -67,8 +67,10 @@ public static class JudgementSchema
     /// Terminal permission authority is not a membership-transfer or account-takeover step.</para>
     /// <para>33 retains explicit requester WRITE_DAC proofs in the versioned path certificate.
     /// Existing table layouts and named-holder permission semantics are unchanged.</para>
+    /// <para>34 adds separate own-account membership-obtainability proofs and inferred operation steps.
+    /// Ordinary Add readiness and the physical table layout remain unchanged.</para>
     /// </remarks>
-    public const int Version = 33;
+    public const int Version = 34;
 
     private static readonly string[] TableDdl =
     [

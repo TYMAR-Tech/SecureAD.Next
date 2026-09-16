@@ -59,6 +59,8 @@ public sealed class ControlEdgeLayoutTests
         [32] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
         // Schema 33 adds requester proof semantics inside the existing path certificate, not DDL.
         [33] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
+        // Schema 34 adds own-account operation proof semantics; observed with the existing DDL.
+        [34] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
     };
 
     [Fact]

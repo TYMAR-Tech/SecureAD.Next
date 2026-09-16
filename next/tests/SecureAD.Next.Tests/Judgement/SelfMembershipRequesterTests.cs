@@ -279,7 +279,7 @@ public sealed class SelfMembershipRequesterTests
         SelfMembershipOperation operation = SelfMembershipOperation.Add) =>
         SelfMembershipEvaluator.Assess(new(RequesterDn, TargetDn, operation, member?.DistinguishedName),
             requester, target, member ?? requester, permissions, trustee => trustee.DistinguishedName == HolderDn ? holder : null,
-            SchemaGuidCatalog.Embedded, "contoso.com", new('a', 64), Guid.Empty, null, SelfMembershipBudget.Default, []);
+            "contoso.com", new('a', 64), Guid.Empty, null, SelfMembershipBudget.Default, []);
 
     private static PermissionEntry Entry(int ordinal, string sid, string? dn, string type = "AccessAllowedObject") =>
         new(ordinal, type, new(sid, sid, dn, "contoso.com", null, null, null), 0x08,

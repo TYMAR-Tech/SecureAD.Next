@@ -11,7 +11,7 @@ internal static class SelfMembershipEvaluator
 
     public static SelfMembershipAssessment Assess(SelfMembershipRequest request, ObjectAttributes? requester,
         ObjectAttributes? target, ObjectAttributes? member, ObjectPermissions? permissions,
-        Func<PermissionTrustee, ObjectAttributes?> holder, SchemaGuidCatalog catalogue, string forest,
+        Func<PermissionTrustee, ObjectAttributes?> holder, string forest,
         string evidenceSeal, Guid generation, Guid? derivationGeneration, SelfMembershipBudget budget,
         IReadOnlyList<long> holderEdgeIds)
     {
@@ -32,7 +32,7 @@ internal static class SelfMembershipEvaluator
             || issues.Contains(SelfMembershipIssue.TargetNotGroup))
             return Result(ControlEvaluationState.Unknown, own, ControlEvaluationState.Unknown, "NotEvaluated", null, null, [], []);
 
-        var (authorization, descriptor, evidence) = Authorization(requester, target, permissions, holder, catalogue,
+        var (authorization, descriptor, evidence) = Authorization(requester, target, permissions, holder,
             forest, budget, issues);
         var (readiness, uac, present) = Readiness(requester, target, member, request.Operation, own, issues);
         issues.Add(SelfMembershipIssue.LiveOperationNotEvaluated);
@@ -49,7 +49,7 @@ internal static class SelfMembershipEvaluator
 
     private static (ControlEvaluationState State, string Outcome, IReadOnlyList<SelfMembershipAceEvidence> Evidence)
         Authorization(ObjectAttributes requester, ObjectAttributes target, ObjectPermissions? permissions,
-            Func<PermissionTrustee, ObjectAttributes?> holder, SchemaGuidCatalog catalogue, string forest,
+            Func<PermissionTrustee, ObjectAttributes?> holder, string forest,
             SelfMembershipBudget budget, List<SelfMembershipIssue> issues)
     {
         if (permissions is null || permissions.Availability != DescriptorAvailability.Read)
@@ -79,7 +79,7 @@ internal static class SelfMembershipEvaluator
         var possibleDeny = possibleAllow;
         foreach (var entry in relevant)
         {
-            var scope = Scope(entry, catalogue);
+            var scope = Scope(entry);
             var trustee = RequesterTrusteeReading.Read(requester, target, entry.Trustee, holder(entry.Trustee), forest);
             evidence.Add(new(entry, scope, trustee));
             if (scope == ControlEvaluationState.NotEstablished || trustee.State == RequesterTrusteeState.DoesNotMatch)
@@ -140,11 +140,12 @@ internal static class SelfMembershipEvaluator
             : (ControlEvaluationState.Unknown, uac, present);
     }
 
-    private static ControlEvaluationState Scope(PermissionEntry entry, SchemaGuidCatalog catalogue)
+    private static ControlEvaluationState Scope(PermissionEntry entry)
     {
         if (!entry.HasObjectType) return ControlEvaluationState.Established;
         if (entry.ObjectTypeGuid is null) return ControlEvaluationState.Unknown;
-        return Same(entry.ObjectTypeGuid, catalogue.GuidFor("Self-Membership"))
+        // The validated-write GUID is fixed by AD, not by mutable captured display-name metadata.
+        return Same(entry.ObjectTypeGuid, SchemaGuidCatalog.Embedded.GuidFor("Self-Membership"))
             ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished;
     }
     private static bool Applies(PermissionEntry entry) =>

@@ -10,7 +10,7 @@ internal static class Tier0PathStorage
 {
     private static readonly ResourceManager Resources = new("SecureAD.Judgement.Resources.Tier0Path", typeof(Tier0PathStorage).Assembly);
     private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount,
-        IReadOnlyList<SavedRequesterDaclProof> Requesters);
+        IReadOnlyList<SavedRequesterDaclProof> Requesters, IReadOnlyList<SavedOwnAccountMembershipProof> OwnAccounts);
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
@@ -20,7 +20,8 @@ internal static class Tier0PathStorage
         """);
 
     internal static void Write(SqliteConnection connection, JudgementDescription description, string directory,
-        IReadOnlyList<RequesterDaclRequest> requests, CancellationToken cancellationToken)
+        IReadOnlyList<RequesterDaclRequest> requests, IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var inputs = PathInputStorage.Read(connection, description, directory);
@@ -37,6 +38,9 @@ internal static class Tier0PathStorage
         }
         var requesters = RequesterDaclProofs.Create(connection, description, directory, inputs, requests, cancellationToken);
         nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
+        var ownAccounts = OwnAccountMembershipProofs.Create(connection, description, directory, inputs,
+            nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), ownAccountRequests, cancellationToken);
+        nodes = nodes.Select(node => node with { OwnAccountRoute = OwnAccountMembershipProofs.Best(node, ownAccounts, requesters) }).ToArray();
         using var transaction = connection.BeginTransaction();
         foreach (var node in nodes)
         {
@@ -47,7 +51,7 @@ internal static class Tier0PathStorage
                 ("$proof", json), ("$hash", OwnershipAuditStorage.Hash(json)));
         }
         var header = JsonSerializer.Serialize(new Header(Tier0PathCalculation.Version, description.GenerationId,
-            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters), ProofSerialization.Options);
+            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters, ownAccounts), ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
         cancellationToken.ThrowIfCancellationRequested();
@@ -69,21 +73,27 @@ internal static class Tier0PathStorage
         }
         if (header.Version != Tier0PathCalculation.Version || header.Generation != description.GenerationId
             || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != nodes.Count
-            || header.Requesters is null) throw InvalidProof();
+            || header.Requesters is null || header.OwnAccounts is null) throw InvalidProof();
         RequesterDaclProofs.Validate(connection, description, directory, inputs, header.Requesters);
+        if (inputs.Availability == PathInputAvailability.Recorded) Validate(connection, description, directory, inputs, nodes);
+        OwnAccountMembershipProofs.Validate(connection, description, directory, inputs, nodes, header.OwnAccounts);
         var assessments = header.Requesters.Select(proof => proof.Assessment)
+            .Where(value => string.Equals(value.Request.RequesterDn, subjectDn, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var ownAssessments = header.OwnAccounts.Select(proof => proof.Assessment)
             .Where(value => string.Equals(value.Request.RequesterDn, subjectDn, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (inputs.Availability != PathInputAvailability.Recorded)
         {
             if (nodes.Count != 0) throw InvalidProof();
-            return new(inputs, null, Tier0Reachability.Unknown, null, []) { RequesterAssessments = assessments };
+            return new(inputs, null, Tier0Reachability.Unknown, null, []) { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments };
         }
-        Validate(connection, description, directory, inputs, nodes);
         if (nodes.Values.Any(node => node.RequesterRoute != RequesterDaclProofs.Best(node, header.Requesters))) throw InvalidProof();
+        if (nodes.Values.Any(node => node.OwnAccountRoute != OwnAccountMembershipProofs.Best(node, header.OwnAccounts, header.Requesters))) throw InvalidProof();
         if (!nodes.TryGetValue(subjectDn, out var subject))
-            return new(inputs, null, Tier0Reachability.Unknown, null, []) { RequesterAssessments = assessments };
+            return new(inputs, null, Tier0Reachability.Unknown, null, []) { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments };
         var steps = new List<Tier0PathStep>();
-        if (subject.RequesterRoute is { } request)
+        if (subject.OwnAccountRoute is { } ownRequest)
+            steps.AddRange(header.OwnAccounts.Single(proof => proof.Assessment.Request == ownRequest).Steps);
+        else if (subject.RequesterRoute is { } request)
             steps.AddRange(assessments.Single(value => value.Request == request).Steps);
         else if (subject.MembershipDistance != 0 && subject.Terminal is { } terminal)
             steps.Add(terminal);
@@ -97,7 +107,8 @@ internal static class Tier0PathStorage
             }
         }
         return new(inputs, subject.Subject, subject.Reachability,
-            subject.Reachability == Tier0Reachability.Reachable ? steps.Count : null, steps) { RequesterAssessments = assessments };
+            subject.Reachability == Tier0Reachability.Reachable ? steps.Count : null, steps)
+        { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments };
     }
 
     private static Dictionary<string, Tier0PathNode> ReadNodes(SqliteConnection connection)
@@ -196,6 +207,8 @@ internal static class Tier0PathStorage
     internal static InvalidDataException InvalidProof() => new(Resources.GetString("InvalidProof", System.Globalization.CultureInfo.CurrentUICulture));
 
     internal static string InvalidRequestMessage() => Resources.GetString("InvalidRequest", System.Globalization.CultureInfo.CurrentUICulture)!;
+
+    internal static string InvalidOwnAccountRequestMessage() => Resources.GetString("InvalidOwnAccountRequest", System.Globalization.CultureInfo.CurrentUICulture)!;
 
     private static void Execute(SqliteConnection connection, SqliteTransaction? transaction, string sql, params (string Name, object? Value)[] parameters)
     {

@@ -207,10 +207,13 @@ internal static class ControlEdgeDeriver
         string name, string? targetClass, SchemaGuidCatalog catalogue)
     {
         if (!entry.HasObjectType) return (ControlEvaluationState.Established, "Unscoped entry reaches all operations of this access-mask kind.");
-        if (!Guid.TryParse(catalogue.GuidFor(name), out _))
+        // MS-ADTS 3.1.1.5.3.1.1.1 fixes the validated-write identity. Renaming a captured
+        // controlAccessRight cannot define a different Self-Membership operation on the server.
+        var operationCatalogue = right == 0x08 && Same(name, "Self-Membership") ? SchemaGuidCatalog.Embedded : catalogue;
+        if (!Guid.TryParse(operationCatalogue.GuidFor(name), out _))
             return (ControlEvaluationState.Unknown, name);
-        if (entry.ObjectTypeGuid is { } guid && Same(guid, catalogue.GuidFor(name)))
-            return (ControlEvaluationState.Established, $"{name}: {guid}; {catalogue.FindByLdapName(name)!.Source} schema catalogue.");
+        if (entry.ObjectTypeGuid is { } guid && Same(guid, operationCatalogue.GuidFor(name)))
+            return (ControlEvaluationState.Established, $"{name}: {guid}; {operationCatalogue.FindByLdapName(name)!.Source} schema catalogue.");
         if (right == 0x20 && entry.ObjectTypeGuid is { } propertySet)
         {
             var meanings = catalogue.FindByGuid(propertySet);
