@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Title" xml:space="preserve"><value>Saved Tier 0 path</value></data>
+  <data name="ResultHeading" xml:space="preserve"><value>Saved result</value></data>
+  <data name="RouteHeading" xml:space="preserve"><value>Recorded route</value></data>
+  <data name="CoverageHeading" xml:space="preserve"><value>Coverage and limitations</value></data>
+  <data name="ChecksHeading" xml:space="preserve"><value>Automatic account checks</value></data>
+  <data name="Supported" xml:space="preserve"><value>Supported route recorded</value></data>
+  <data name="FixedTarget" xml:space="preserve"><value>This object is a Tier 0 target</value></data>
+  <data name="Unknown" xml:space="preserve"><value>Not determined</value></data>
+  <data name="Absent" xml:space="preserve"><value>No saved path result</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>Saved result unavailable</value></data>
+  <data name="NotRead" xml:space="preserve"><value>Saved results have not been read.</value></data>
+  <data name="AbsentDetail" xml:space="preserve"><value>This run has no saved path result to display. This does not establish that no route exists.</value></data>
+  <data name="UnknownDetail" xml:space="preserve"><value>The saved analysis does not establish a supported route for this object. This is not a finding that the object is safe.</value></data>
+  <data name="Boundary" xml:space="preserve"><value>This displays saved membership and permission evidence, not account takeover or proof that a live operation succeeded. Permission to change a target's permissions does not establish the ability to act as that target.</value></data>
+  <data name="Distance" xml:space="preserve"><value>Shortest proven route: {0} steps</value></data>
+  <data name="SingleStepDistance" xml:space="preserve"><value>Shortest proven route: 1 step</value></data>
+  <data name="ShorterUnknown" xml:space="preserve"><value>Unsupported alternatives might be shorter. This is one recorded supported route, not all routes or a remediation recommendation.</value></data>
+  <data name="ZeroDistance" xml:space="preserve"><value>Shortest proven route: 0 steps. The object is already a fixed Tier 0 target; no extra hop is added.</value></data>
+  <data name="Destination" xml:space="preserve"><value>Destination: {0}</value></data>
+  <data name="Generation" xml:space="preserve"><value>Saved judgement generation: {0}
+Completed: {1:O}
+Evidence seal: {2}
+Derivation generation: {3}</value></data>
+  <data name="NotUsed" xml:space="preserve"><value>not used</value></data>
+  <data name="NotRequested" xml:space="preserve"><value>Not requested</value></data>
+  <data name="InputsUnavailable" xml:space="preserve"><value>Required inputs unavailable</value></data>
+  <data name="EvaluatedSupportedQuestions" xml:space="preserve"><value>Supported questions evaluated</value></data>
+  <data name="ChecksCaveat" xml:space="preserve"><value>Automatic account checks cover only the supported questions. Explicit saved questions are separate. A completed scan or zero questions establishes neither forest-wide coverage nor safety.</value></data>
+  <data name="CoverageScope" xml:space="preserve"><value>These limitations describe the saved analysis scope. A gap does not erase an independently supported route, and is not necessarily a gap affecting this object.</value></data>
+  <data name="CapturedIncomplete" xml:space="preserve"><value>Missing captured evidence: required directory evidence is incomplete.</value></data>
+  <data name="Unsupported" xml:space="preserve"><value>Unsupported analysis: this build does not evaluate every possible relationship or operation.</value></data>
+  <data name="UnfinishedProcessing" xml:space="preserve"><value>Unfinished processing: the saved input work did not complete.</value></data>
+  <data name="UnresolvedQuestions" xml:space="preserve"><value>Some saved supported questions remain unresolved; completing their evaluation did not establish their authorization or membership outcome.</value></data>
+  <data name="Degraded" xml:space="preserve"><value>The saved judging completed with limitations. This is not a clean-forest result.</value></data>
+  <data name="Unfinished" xml:space="preserve"><value>An unpublished analysis attempt is present or the saved judging did not finish. A retained earlier generation is not shown as this attempt's result; this does not establish whether a worker is currently running.</value></data>
+  <data name="InvalidEvidence" xml:space="preserve"><value>The saved result or its supporting evidence could not be validated.</value></data>
+  <data name="GenerationChanged" xml:space="preserve"><value>The saved result and its source generation do not match, or the selected generation changed while reading. The result is withheld.</value></data>
+  <data name="SubjectChanged" xml:space="preserve"><value>The saved result identifies a different object. The result is withheld.</value></data>
+  <data name="EvidenceHeading" xml:space="preserve"><value>Supporting evidence</value></data>
+  <data name="StepMembership" xml:space="preserve"><value>Captured security-group membership</value></data>
+  <data name="StepWriteDacl" xml:space="preserve"><value>Permission to change the target's permissions</value></data>
+  <data name="StepCurrentOwnerDacl" xml:space="preserve"><value>Current owner's supported permission change</value></data>
+  <data name="StepOwnAccountMembership" xml:space="preserve"><value>Own-account membership is obtainable</value></data>
+  <data name="Step" xml:space="preserve"><value>{0}. {1}
+From: {2}
+To: {3}</value></data>
+  <data name="Identity" xml:space="preserve"><value>{0}
+Object: {1}; SID: {2}; naming context: {3}; captured domain: {4}; holder scope: {5}</value></data>
+  <data name="NoneRecorded" xml:space="preserve"><value>not recorded</value></data>
+  <data name="MembershipWitness" xml:space="preserve"><value>Captured membership witness: {0}
+Attribute: {1}; value ordinal: {2}; value: {3}</value></data>
+  <data name="MembershipSupport" xml:space="preserve"><value>Saved membership classification: {0}; support: {1}</value></data>
+  <data name="Permission" xml:space="preserve"><value>Original holder permission {0}:
+{1}</value></data>
+  <data name="RequesterProof" xml:space="preserve"><value>Saved concrete requester authorization and ordered permission evidence:
+{0}</value></data>
+  <data name="OwnProof" xml:space="preserve"><value>Saved own-account membership proof ({0}):
+{1}</value></data>
+  <data name="CombinedProof" xml:space="preserve"><value>Saved membership followed by requester authorization:
+{0}</value></data>
+  <data name="SelfMembership" xml:space="preserve"><value>Self-Membership validated write</value></data>
+  <data name="WriteMembers" xml:space="preserve"><value>ordinary Write Members</value></data>
+  <data name="OwnContext" xml:space="preserve"><value>Obtainable membership does not mean an Add was performed. Unknown current membership and unknown ordinary Add readiness remain unknown. The saved proof uses an ordinary authenticated directory user on a writable same-domain replica, with only the user's own membership value; authentication, replication convergence and live success are not proved.</value></data>
+  <data name="RegionCapturedEvidenceIncomplete" xml:space="preserve"><value>Missing captured evidence</value></data>
+  <data name="RegionAnalysisUnsupported" xml:space="preserve"><value>Unsupported analysis</value></data>
+  <data name="RegionIdentityUnresolved" xml:space="preserve"><value>Unresolved identity</value></data>
+  <data name="RegionBroadPrincipalNotExpanded" xml:space="preserve"><value>Work not performed: broad-principal expansion</value></data>
+  <data name="Region" xml:space="preserve"><value>{0}
+Saved scope and reason: {1}</value></data>
+  <data name="SelectionInputsUnavailable" xml:space="preserve"><value>Required saved inputs unavailable</value></data>
+  <data name="SelectionCapturedInputUncertainty" xml:space="preserve"><value>Saved input uncertainty; see its separate scope and reason</value></data>
+  <data name="SelectionOtherPathFamiliesNotSelected" xml:space="preserve"><value>Unsupported analysis: other path families were not selected</value></data>
+  <data name="SelectionDescriptorUnavailable" xml:space="preserve"><value>Missing captured evidence: descriptor unavailable</value></data>
+  <data name="SelectionMembershipVisibilityUnknown" xml:space="preserve"><value>Missing captured evidence: full membership visibility is unknown</value></data>
+  <data name="SelectionIdentityUnresolved" xml:space="preserve"><value>Unresolved identity</value></data>
+  <data name="SelectionResourceContextUnsupported" xml:space="preserve"><value>Unsupported analysis: resource authorization context</value></data>
+  <data name="SelectionRequesterKindUnsupported" xml:space="preserve"><value>Unsupported analysis: requester kind</value></data>
+  <data name="SelectionGlobalGroupRequired" xml:space="preserve"><value>Unsupported analysis: a global security group is required</value></data>
+  <data name="SelectionBroadIdentityNotExpanded" xml:space="preserve"><value>Work not performed: broad identity was not expanded</value></data>
+  <data name="SelectionPermissionUnsupported" xml:space="preserve"><value>Unsupported analysis: captured permission</value></data>
+  <data name="Selection" xml:space="preserve"><value>{0}
+Saved selection scope: {1}</value></data>
+  <data name="SavedQuestions" xml:space="preserve"><value>Saved questions for this object, including unresolved outcomes and operation assumptions</value></data>
+</root>

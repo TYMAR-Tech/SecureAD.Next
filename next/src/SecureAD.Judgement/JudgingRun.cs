@@ -40,6 +40,9 @@ namespace SecureAD.Judgement;
 /// </remarks>
 public static class JudgingRun
 {
+    /// <summary>Production activation remains a separate approval from offline integration and measurement.</summary>
+    public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.Disabled;
+
     /// <summary>
     /// How far a judging has got.
     /// </summary>
@@ -71,6 +74,12 @@ public static class JudgingRun
         /// accumulated discovery time only, not the wall clock of the whole judging.
         /// </remarks>
         public TimeSpan Tier0DiscoveryElapsed { get; init; }
+
+        /// <summary>Diagnostic requester work within the existing screen phase, not a published result.</summary>
+        public PathRequesterWorkPhase? RequesterPhase { get; init; }
+
+        /// <summary>The staged generation performing requester work; it is not current until publication.</summary>
+        public Guid? JudgementGenerationId { get; init; }
     }
 
     /// <summary>
@@ -257,6 +266,69 @@ public static class JudgingRun
         JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true, null, null, startedUtc,
             evaluationAsOf, progress, log, cancellationToken, tier0DiscoveryRequested: true,
             requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: [], offlineSelection: true);
+
+    /// <summary>
+    /// Runs the shared host judging policy against sealed evidence. Supported selection reuses the
+    /// existing three proof families; production activation, legacy discovery and budgets are separate.
+    /// Failed and cancelled attempts are logged separately and never replace a previous valid generation.
+    /// </summary>
+    public static Result<JudgementRunState> JudgeAudit(
+        string bundleDirectory, IReadOnlyList<IRule> rules, PathRequesterPolicy requesterPolicy,
+        DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
+        IRunLog log, CancellationToken cancellationToken, SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        ArgumentNullException.ThrowIfNull(progress);
+        ArgumentNullException.ThrowIfNull(log);
+        if (!Enum.IsDefined(requesterPolicy)) throw new ArgumentOutOfRangeException(nameof(requesterPolicy));
+        selfMembershipDiscoveryBudget?.Validate();
+        if (requesterPolicy == PathRequesterPolicy.Disabled)
+            return JudgeWithTier0Discovery(bundleDirectory, rules, startedUtc, evaluationAsOf, progress, log,
+                cancellationToken, selfMembershipDiscoveryBudget);
+
+        var previous = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
+        var attempt = Guid.NewGuid();
+        var watched = new RequesterProgress(progress);
+        var recorded = false;
+        void Record(string state) => log.Note(JudgePhase, "path-requester-attempt",
+        [
+            new("attempt", attempt.ToString("D")), new("state", state), new("policy", requesterPolicy.ToString()),
+            new("previous-generation", previous.IsSuccess ? previous.Value.GenerationId.ToString("D") : "none"),
+            new("generation", watched.GenerationId?.ToString("D") ?? "none"),
+        ]);
+        Record("Started");
+        try
+        {
+            var result = JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true,
+                selfMembershipDiscoveryBudget, null, startedUtc, evaluationAsOf, watched, log, cancellationToken,
+                tier0DiscoveryRequested: true, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: [], offlineSelection: true);
+            Record(result.IsSuccess ? "Published" : "Failed");
+            recorded = true;
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            Record("Cancelled");
+            recorded = true;
+            throw;
+        }
+        finally
+        {
+            // Preserve unexpected failures without catching or replacing their exception. A process
+            // interruption leaves Started without a terminal record, not a fabricated completed batch.
+            if (!recorded) Record("Failed");
+        }
+    }
+
+    private sealed class RequesterProgress(IProgress<JudgingProgress> target) : IProgress<JudgingProgress>
+    {
+        internal Guid? GenerationId { get; private set; }
+        public void Report(JudgingProgress value)
+        {
+            GenerationId = value.JudgementGenerationId ?? GenerationId;
+            target.Report(value);
+        }
+    }
 
     private static Result<JudgementRunState> JudgeCore(
         string bundleDirectory,
@@ -825,8 +897,41 @@ public static class JudgingRun
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
-        writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
-            cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection);
+        var pathWatch = new System.Diagnostics.Stopwatch();
+        PathRequesterWorkPhase? pathPhase = null;
+        void RecordPathPhase(bool completed)
+        {
+            if (pathPhase is not { } phase) return;
+            log.Note(JudgePhase, "path-requester-phase",
+            [
+                new("generation", writer.GenerationId.ToString("D")), new("phase", phase.ToString()),
+                new("selection-requested", offlineSelection.ToString(CultureInfo.InvariantCulture)),
+                new("completed", completed.ToString(CultureInfo.InvariantCulture)),
+                new("ms", pathWatch.Elapsed.TotalMilliseconds.ToString("F1", CultureInfo.InvariantCulture)),
+            ]);
+        }
+        void BeginPathPhase(PathRequesterWorkPhase phase)
+        {
+            RecordPathPhase(completed: true);
+            pathPhase = null;
+            cancellationToken.ThrowIfCancellationRequested();
+            pathPhase = phase;
+            pathWatch.Restart();
+            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.WritingFindings,
+                RequesterPhase = phase, JudgementGenerationId = writer.GenerationId });
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        var pathsCompleted = false;
+        try
+        {
+            writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
+                cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection, BeginPathPhase);
+            pathsCompleted = true;
+        }
+        finally
+        {
+            RecordPathPhase(pathsCompleted);
+        }
 
         cancellationToken.ThrowIfCancellationRequested();
         progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });

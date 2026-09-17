@@ -25,7 +25,7 @@ namespace SecureAD.Shell.Services;
 /// to sealed evidence.
 /// </para>
 /// </remarks>
-internal sealed class BundleAssetSource : IAssetSource, IDisposable
+internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 {
     /// <inheritdoc/>
     public Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,

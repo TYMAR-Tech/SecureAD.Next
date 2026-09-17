@@ -44,6 +44,7 @@
     <ProjectReference Include="..\..\src\SecureAD.Cli\SecureAD.Cli.csproj" />
     <ProjectReference Include="..\..\src\SecureAD.Shell\SecureAD.Shell.csproj" />
     <ProjectReference Include="..\..\src\SecureAD.Derivation\SecureAD.Derivation.csproj" />
+    <ProjectReference Include="..\..\tools\SecureAD.Measure\SecureAD.Measure.csproj" />
     <ProjectReference Include="..\SecureAD.Sysvol.TestWorker\SecureAD.Sysvol.TestWorker.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

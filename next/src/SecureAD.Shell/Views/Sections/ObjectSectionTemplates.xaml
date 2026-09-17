@@ -14,6 +14,58 @@
          NOTHING HERE IS A VERDICT. No severity, no risk, no colour an administrator would read as
          a security judgement. -->
 
+    <DataTemplate DataType="{x:Type vm:SavedTier0PathSectionViewModel}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <StackPanel.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="TextWrapping" Value="Wrap" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                    </Style>
+                </StackPanel.Resources>
+                <TextBlock Text="{Binding ResultHeading}" FontWeight="SemiBold" />
+                <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" />
+                <TextBlock Text="{Binding Detail}" />
+                <TextBlock Text="{Binding Boundary}" />
+                <TextBlock x:Name="SavedPathProvenance" Text="{Binding Provenance}" />
+
+                <TextBlock Text="{Binding RouteHeading}" FontWeight="SemiBold" Margin="0,16,0,8" />
+                <TextBlock x:Name="SavedPathDistance" Text="{Binding Distance}" />
+                <TextBlock Text="{Binding Destination}" />
+                <ItemsControl x:Name="SavedPathSteps" ItemsSource="{Binding Steps}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,0,0,12">
+                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                <Expander IsExpanded="False">
+                                    <Expander.Header><TextBlock Text="{Binding EvidenceHeading}" TextWrapping="Wrap" /></Expander.Header>
+                                    <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Margin="8" />
+                                </Expander>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{Binding CoverageHeading}" FontWeight="SemiBold" Margin="0,16,0,8" />
+                <TextBlock Text="{Binding ChecksHeading}" FontWeight="SemiBold" />
+                <TextBlock x:Name="SavedPathChecks" Text="{Binding AutomaticChecks}" />
+                <TextBlock Text="{Binding ChecksCaveat}" />
+                <TextBlock Text="{Binding CoverageScope}" />
+                <ItemsControl x:Name="SavedPathLimitations" ItemsSource="{Binding Limitations}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Expander IsExpanded="False">
+                    <Expander.Header><TextBlock Text="{Binding SavedQuestionsHeading}" TextWrapping="Wrap" /></Expander.Header>
+                    <TextBlock Text="{Binding SavedQuestions}" TextWrapping="Wrap" Margin="8" />
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </DataTemplate>
+
     <DataTemplate DataType="{x:Type vm:ControlEdgesSectionViewModel}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <ScrollViewer.Resources>

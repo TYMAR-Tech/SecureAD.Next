@@ -1,5 +1,6 @@
 using System.Windows;
 using SecureAD.Audit.Sysvol;
+using SecureAD.Judgement;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -82,7 +83,7 @@ internal partial class App : Application
                 // No automatic own-account membership scan runs until a processing limit has been
                 // measured and approved. Passed explicitly so the absence is a stated decision
                 // rather than a default nobody chose.
-                new JudgingLauncher(discoveryBudget: null),
+                new JudgingLauncher(discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy),
                 concurrency),
             audit => shell.Begin(audit),
             () => shell.Leave());

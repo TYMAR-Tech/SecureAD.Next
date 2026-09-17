@@ -80,7 +80,8 @@ internal static class Program
             // No automatic own-account membership scan runs until a processing limit has been
             // measured and approved, and a real run always captures for itself. Both are stated
             // here rather than defaulted, per gate 1.
-            return await RunAsync(parsed, stopping.Token, discoveryBudget: null, capture: null)
+            return await RunAsync(parsed, stopping.Token, discoveryBudget: null, capture: null,
+                requesterPolicy: JudgingRun.ProductionPathRequesterPolicy)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -114,7 +115,8 @@ internal static class Program
     internal static async Task<int> RunAsync(
         CommandLine options, CancellationToken cancellationToken,
         SelfMembershipDiscoveryBudget? discoveryBudget,
-        Func<CancellationToken, Task<Result<CaptureRunResult>>>? capture)
+        Func<CancellationToken, Task<Result<CaptureRunResult>>>? capture,
+        PathRequesterPolicy requesterPolicy = JudgingRun.ProductionPathRequesterPolicy)
     {
         // Before this machine's own addresses are read, because deriving contacts nothing: it opens
         // a sealed bundle that already exists. Asking the network anything first would make a
@@ -123,7 +125,7 @@ internal static class Program
             return Derive(options.DeriveOnly, afterCapture: false, cancellationToken);
 
         if (options.JudgeOnly is not null)
-            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget);
+            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget, requesterPolicy);
 
         Console.WriteLine(options.ClassScopeDescription);
 
@@ -131,7 +133,7 @@ internal static class Program
         {
             if (options.PreviewOnly || options.ValidateOnly)
                 throw new ArgumentException("A capture substitute cannot perform preview or validation.", nameof(capture));
-            return FinishCapture(await capture(cancellationToken).ConfigureAwait(false), options.CaptureOnly, cancellationToken, discoveryBudget);
+            return FinishCapture(await capture(cancellationToken).ConfigureAwait(false), options.CaptureOnly, cancellationToken, discoveryBudget, requesterPolicy);
         }
 
         // A machine whose own addresses cannot be read has no site, and every domain then reports
@@ -194,14 +196,14 @@ internal static class Program
                 cancellationToken)
             .ConfigureAwait(false);
 
-        return FinishCapture(run, options.CaptureOnly, cancellationToken, discoveryBudget);
+        return FinishCapture(run, options.CaptureOnly, cancellationToken, discoveryBudget, requesterPolicy);
     }
 
     private static int FinishCapture(
         Result<CaptureRunResult> run,
         bool captureOnly,
         CancellationToken cancellationToken,
-        SelfMembershipDiscoveryBudget? discoveryBudget)
+        SelfMembershipDiscoveryBudget? discoveryBudget, PathRequesterPolicy requesterPolicy)
     {
         if (!run.IsSuccess)
         {
@@ -242,7 +244,7 @@ internal static class Program
         var derived = Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken);
 
         return derived is Success
-            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken, discoveryBudget)
+            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken, discoveryBudget, requesterPolicy)
             : derived;
     }
 
@@ -370,7 +372,7 @@ internal static class Program
     /// </remarks>
     private static int Judge(
         string bundleDirectory, bool afterCapture, CancellationToken cancellationToken,
-        SelfMembershipDiscoveryBudget? discoveryBudget)
+        SelfMembershipDiscoveryBudget? discoveryBudget, PathRequesterPolicy requesterPolicy)
     {
         if (!afterCapture && !Directory.Exists(bundleDirectory))
         {
@@ -394,9 +396,10 @@ internal static class Program
         {
             // Match the GUI's assessment scope; the all-object overload remains for historical tests,
             // not a different production policy for unattended judging.
-            judged = JudgingRun.JudgeWithTier0Discovery(
+            judged = JudgingRun.JudgeAudit(
                 bundleDirectory,
                 RuleCatalogue.All,
+                requesterPolicy,
                 started,
                 started,
                 JudgingRun.NobodyIsWatching,
@@ -422,7 +425,16 @@ internal static class Program
 
             // After a capture this is still a success: the run was asked to read a forest and it
             // did. Asked only to judge, it is a failure - the operator wanted findings and has none.
-            return afterCapture ? Success : Failed;
+            return afterCapture && requesterPolicy == PathRequesterPolicy.Disabled ? Success : Failed;
+        }
+
+        if (requesterPolicy == PathRequesterPolicy.SupportedCapturedQuestions)
+        {
+            var openedCoverage = JudgementReader.Open(bundleDirectory);
+            if (!openedCoverage.IsSuccess) return Failed;
+            using var coverageReader = openedCoverage.Value;
+            if (coverageReader.ReadPathRequesterCoverage().Verdict != PathRequesterCoverageState.EvaluatedSupportedQuestions)
+                return Failed;
         }
 
         Console.Out.WriteLine(Summarise(bundleDirectory));

@@ -78,6 +78,114 @@ Stage 7's own requester coverage, supported path compositions, SEC-071 findings 
 Stage 7 work, not postponed to that later rule pass. Existing safety stops and outstanding acceptance,
 including the published CI failure recorded under P-227, remain explicit rather than accepted by this order.
 
+**Owner-selected next Stage 7 priority: production requester coverage**, before broader path
+compositions, P-143 declarations, SEC-071 findings and path presentation. Start from checkpoint 7's
+offline permission-led selector and checkpoint 8's shared targets, and prepare a bounded proposal
+for normal GUI/CLI account selection, execution and coverage accounting, including the representative
+measurements and activation decisions needed for approval. This priority is not authorization for
+new implementation, requester activation, budgets, screen changes, live access, optimization or new
+measurement-harness code, commit or push; it does not reopen the rule-catalogue review or require an
+administrator-maintained requester list.
+
+**Separately owner-approved measurement scope, for a later session only:** preservation-safe offline
+measurement of the three supported requester families, including minimal runner code, using isolated
+sealed-evidence copies and retained synthetic workloads at the documented nine-domain forest scale.
+Record exact source/build and evidence-generation provenance, verify that each family actually does
+work, vary relevant-group/member density, and measure selection, each proof family, storage, reopening,
+memory and cancellation response without changing originals or frozen historical artifacts. This is
+scope approval, not authorization to start during preparation; the subsequent implementation approval
+below authorizes starting this work, while production activation, numerical budgets, screen changes, optimization, live access, recapture,
+commit and push still require separate authorization.
+
+**Owner-approved implementation: shared GUI/CLI requester coverage.** The subsequent request
+"approved lets implement it" authorizes the proposed integration and approved offline measurement work.
+Both hosts use one explicit selection policy, disabled in production pending activation approval, for
+the same three checkpoint-7 families and checkpoint-8 shared targets without widening authorization.
+Read coverage from saved selection sources and proof batches, reconcile question identities before
+publication, and keep missing inputs, unsupported analysis, unresolved identities and unrequested work
+distinct; empty or completed supported scans never establish safety or forest-wide coverage.
+Failed, cancelled and unfinished attempts remain separate from the previous valid generation, with
+passive reopening and independent group-held permission counts preserved. Verification includes both
+hosts, rebuilt deliberate-defect checks, focused coverage, the full offline suite and the approved
+measurements; activation is a subsequent explicit decision, not an unrelated backlog prerequisite.
+No screen changes, numerical budgets, broader path compositions, optimization, live access, recapture,
+commit or push are authorized; P-227, P-240 verification and P-241 remain independently open.
+
+**P-242: integration implemented and offline verified; measurements paused and unfinished.** The full
+offline suite passes 5,432 cases and focused coverage passes all 42 new cases, with rebuilt
+deliberate-defect witnesses and an additional check that the coverage verdict cannot claim unrequested
+or unavailable work completed. The failed first full run, unchanged historical records and hash-checked
+source-snapshot archive are retained with the qualified implementation handoff at
+`next/artifacts/stage7-requester-integration-validation/6c4fc88314a14c2788580ed29d93f5c5/implementation-summary.json`;
+this is not production activation, completed Stage 7, measurement acceptance or closure of P-227,
+P-240 verification or P-241.
+
+The preservation-safe runner is now offline verified with 5,444 full-suite cases and 54 focused
+coverage cases, including 12 runner checks with rebuilt deliberate-defect witnesses. Initial
+measurements and retained failures are qualified in
+`next/artifacts/p242-measurement/d48f66126b064a9f8157fe1a1a79f6f0/measurement-handoff.json`;
+the small synthetic workload executes all three families, including post-membership authorization,
+but its combined authorization answers remain Unknown rather than established routes. The retained
+lab capture uses evidence version 10 while this build reads version 12; it was not migrated or
+recaptured. Nine-domain volume/density results and separate established combined-authorization
+workloads remain outstanding, not customer-scale acceptance or grounds for activation or budgets.
+
+**Owner-directed return to ordinary Stage 7 development:** measurements are paused, not accepted or
+permanently cancelled; do not resume them, investigate the stopped process, optimize, or activate
+requester discovery by interpreting "continue" as authorization. The first nine-domain volume input
+was generated and independently verified, but its measurement stopped without a completed result;
+the other two variants never started, and the termination cause remains unproven. Retain all inputs,
+partial databases, WAL files, failures, diagnostics and historical source-snapshot mappings unchanged;
+older launch records do not establish current liveness. P-242 plan steps 1–8 remain complete,
+step 9 unfinished and step 10 pending. Reconcile the remaining Stage 7 requirements and propose one
+small non-measurement feature for explicit scope and UI approval before implementation, without
+reopening the approved P-242 integration or treating Stage 7 as complete.
+
+**Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
+against the existing specifications, the owner selected "Approve for next implementation session" for
+the following bounded display scope and wording; this preparation session does not authorize code changes.
+The subsequent "begin implementation" request authorizes this bounded implementation with the same
+wording, proof and preservation boundaries; measurements remain paused and requester activation disabled.
+
+- Add **Saved Tier 0 path** immediately after **Control edges** in the object view, with three groups:
+  **Saved result**, **Recorded route**, and **Coverage and limitations**.
+- Word the saved result **Supported route recorded**, **This object is a Tier 0 target**,
+  **Not determined**, or **No saved path result**, as applicable; failed validation instead says
+  **Saved result unavailable** with its reason, never an empty or negative security answer.
+- Show the saved ordered route steps, destination, supporting evidence and assumptions. Label length
+  **Shortest proven route**, stating that unsupported alternatives might be shorter; a fixed target's
+  zero distance is not an extra hop. Permission to change permissions is not account takeover, obtained
+  membership is not an observed successful Add, and a supported route is not proof of live-operation success.
+- Keep missing captured evidence, unsupported analysis and unresolved identities distinct. Under
+  **Automatic account checks**, show **Not requested**, **Required inputs unavailable**, or
+  **Supported questions evaluated** from the typed saved execution-coverage verdict, never from counts;
+  a completed supported scan does not establish forest-wide coverage or safety.
+- Read and validate saved results from the same exact generation only when the section is opened;
+  do not discover accounts, calculate new paths, write results, contact AD or present an older result
+  as a failed/unfinished attempt's current result. Preserve original permission supports, independent
+  group-held counts and passive readback, including validation of recorded proof questions.
+- Verification is synthetic/offline, with rebuilt deliberate-defect checks and normal laptop/external-
+  monitor display checks; unperformed checks remain outstanding. No measurement, optimization,
+  requester activation, new budget, recapture, original-artifact deletion, commit or push is included.
+
+This makes already-saved analysis inspectable, not broader detection coverage or Stage 7 completion.
+SEC-071 finding production, P-143 declarations, wider compositions, summary counts and remediation remain
+separate work; P-242's unfinished measurement/acceptance steps and the independent verification issues
+remain open. No separate graph screen or changes to existing ownership/permission findings are included.
+
+**Saved-path presentation is implemented and offline verified; physical-display checks remain outstanding.** The retained verification
+at `next/artifacts/stage7-saved-path-presentation-validation/24b9a2507ad64923b6943b1c957083c9/verification-df1a23bdf1f04c359a0e97f2bd4a24e3/`
+records all 65 new checks passing under coverage collection and all 65 detecting deliberate defects
+across ten explicitly rebuilt variants, with successful restoration rebuilds and all six mutation-target
+source hashes checked against the restored baseline. The successor verification at
+`next/artifacts/stage7-saved-path-presentation-validation/24b9a2507ad64923b6943b1c957083c9/verification-full-suite-e6bd37ae0f124ec5934e767971a2c4b5/`
+records an explicit Release rebuild and all 5,509 offline tests passing with no skipped cases, matching
+test identities and source/executable hashes, and a preservation review finding only the intended
+source changes and no existence/length/last-write changes across the 15,215 original artifact records;
+the earlier run without a final result and the subsequent 5,507/5,509 failure remain retained, physical
+laptop/external-monitor checks remain unperformed, and this does not accept P-242 measurements,
+complete Stage 7 or close P-227, P-240 verification or P-241.
+
 ## Stage 7 first checkpoint: saved path inputs
 
 **Owner-approved implementation scope:** save source-bound path inputs in new Judgement generations,
@@ -478,6 +586,13 @@ Original evidence, historical checkpoints and failed runs remain preserved; the 
 `next/artifacts/stage7-enterprise-ca-validation/37e2af93ddd741329736ca392d070b7f/final-summary.json`.
 This is not completed Stage 7, production requester coverage, customer-scale or display acceptance,
 and does not close P-227, P-240's qualified verification or P-241.
+
+**Subsequent publication verification:** CI run 35174500509 for published `00a5e8f` passed
+5,389 of 5,390 tests and failed P-227's capture-overlap assertion at line 72; the matching assertion
+does not establish the same cause as earlier failures. The local 5,390-test pass remains a separate
+result, and the handoff above keeps its original pre-publication provenance. CI metadata and
+failed-step logs are retained under
+`next/artifacts/stage7-enterprise-ca-validation/37e2af93ddd741329736ca392d070b7f/ci-35174500509/`.
 
 ## CLI and GUI judging parity
 

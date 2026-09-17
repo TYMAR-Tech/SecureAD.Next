@@ -11,10 +11,14 @@
        nobody can assert in advance. Folding it into the tests would let an execution time be
        mistaken for a passing check, which docs/next/README.md gate 1 exists to prevent.
 
-       IT CONTACTS NOTHING AND WRITES NOTHING INTO THE REPOSITORY. Every bundle it judges it
+       THE LEGACY MODE CONTACTS NOTHING AND WRITES NOTHING INTO THE REPOSITORY. Every bundle it judges it
        wrote itself, beneath the system temporary directory, and each is deleted as soon as its
        shape is measured. Sealed Evidence, next/artifacts and the laboratory directory are never
        opened for writing.
+
+       The explicitly selected requester mode instead retains every input and result in a new
+       caller-supplied directory. Existing captures are copied and hash-checked, never judged in
+       place. This is the approved P-242 offline measurement, not production activation.
 
        DELETE THIS PROJECT once a discovery budget is measured, approved and recorded. That record
        was to go in docs/layers/judgement/the-judgement-store.md, which was deleted on 2026-09-12
@@ -37,6 +41,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
     <ProjectReference Include="..\..\src\SecureAD.Kernel\SecureAD.Kernel.csproj" />
     <ProjectReference Include="..\..\src\SecureAD.Evidence\SecureAD.Evidence.csproj" />
     <ProjectReference Include="..\..\src\SecureAD.Derivation\SecureAD.Derivation.csproj" />

@@ -30,7 +30,8 @@ namespace SecureAD.Shell.Services;
 /// captured object is assessed.
 /// </para>
 /// </remarks>
-internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget) : IJudgingLauncher
+internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget,
+    PathRequesterPolicy requesterPolicy = JudgingRun.ProductionPathRequesterPolicy) : IJudgingLauncher
 {
     /// <inheritdoc/>
     public Task<Result<JudgingOutcome>> RunAsync(
@@ -82,9 +83,10 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
         // times larger than the recorded production forest, so it stopped nothing while implying the
         // product would stop somewhere. Cancel is the stop, and elapsed time is what the screen shows
         // instead - a scan the operator ended is a fact about the run, where a constant was not.
-        var judged = JudgingRun.JudgeWithTier0Discovery(
+        var judged = JudgingRun.JudgeAudit(
             bundleDirectory,
             RuleCatalogue.All,
+            requesterPolicy,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow,
             watched,
@@ -102,6 +104,7 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
 
         using var reader = opened.Value!;
         var stored = reader.Read();
+        var pathRequesters = requesterPolicy == PathRequesterPolicy.Disabled ? null : reader.ReadPathRequesterCoverage();
 
         var bySeverity = stored.Findings
             .GroupBy(f => f.Severity)
@@ -121,12 +124,14 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
 
         return Result<JudgingOutcome>.Success(
             new JudgingOutcome(
-                judged.Value,
+                pathRequesters is { Verdict: not PathRequesterCoverageState.EvaluatedSupportedQuestions }
+                    ? JudgementRunState.CompletedDegraded : judged.Value,
                 objectsRead,
                 bySeverity,
                 couldNotDecide)
             {
                 Requesters = reader.ReadSelfMembershipSummary(),
+                PathRequesters = pathRequesters,
             });
     }
 

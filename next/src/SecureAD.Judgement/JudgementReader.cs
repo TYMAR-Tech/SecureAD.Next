@@ -188,6 +188,16 @@ public sealed class JudgementReader : IDisposable
         return Tier0PathStorage.Read(_connection, Description, BundleDirectory, subjectDn);
     }
 
+    /// <summary>
+    /// Reads coverage from the saved selection and reconciled proof batches in this exact generation.
+    /// Replays only saved proof questions for validation; never selects new accounts or publishes analysis.
+    /// </summary>
+    public PathRequesterCoverage ReadPathRequesterCoverage()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return Tier0PathStorage.ReadCoverage(_connection, Description, BundleDirectory);
+    }
+
     /// <summary>Reads the stored control product, object-first or named-trustee-first, with coverage and hidden counts.</summary>
     public ControlEdgePage ReadControlEdges(string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
     {

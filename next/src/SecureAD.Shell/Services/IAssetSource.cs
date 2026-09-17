@@ -26,6 +26,9 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal interface IAssetSource
 {
+    /// <summary>Reads one saved path and its coverage from the same validated generation, without new analysis.</summary>
+    Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName);
+
     /// <summary>Reads a page of stored control statements, with coverage and hidden expected counts.</summary>
     Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
         string? holderScope, bool includeExpected, long afterId);

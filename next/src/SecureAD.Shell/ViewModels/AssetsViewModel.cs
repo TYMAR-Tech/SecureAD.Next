@@ -724,6 +724,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
                 principalSid is null ? null : (expected, after) => _assets.ReadPermissionsThroughMembership(bundleDirectory, principalSid, principalScope, expected, after));
         }
 
+        if (Opened.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
+            path.Configure(distinguishedName, () => _assets.ReadSavedTier0Path(bundleDirectory, distinguishedName));
+
         Opened.Show(section);
         Announce();
     }

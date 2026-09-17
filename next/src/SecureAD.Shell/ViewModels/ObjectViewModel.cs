@@ -179,6 +179,8 @@ internal sealed partial class ObjectViewModel : ObservableObject
                 new FindingsSectionViewModel(definition, findings, findingsRefusal),
             ObjectSectionCatalog.ControlEdges =>
                 new ControlEdgesSectionViewModel(definition),
+            ObjectSectionCatalog.SavedTier0Path =>
+                new SavedTier0PathSectionViewModel(definition),
             ObjectSectionCatalog.OtherValues =>
                 new OtherValuesSectionViewModel(definition),
             _ => new NotBuiltSectionViewModel(definition),
@@ -196,5 +198,8 @@ internal sealed partial class ObjectViewModel : ObservableObject
 
         if (newValue is not null)
             newValue.IsSelected = true;
+
+        if (newValue is SavedTier0PathSectionViewModel path)
+            path.Read();
     }
 }

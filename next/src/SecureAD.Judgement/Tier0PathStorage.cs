@@ -22,9 +22,11 @@ internal static class Tier0PathStorage
 
     internal static void Write(SqliteConnection connection, JudgementDescription description, string directory,
         IReadOnlyList<RequesterDaclRequest> requests, IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
-        CancellationToken cancellationToken, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection = false)
+        CancellationToken cancellationToken, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection,
+        Action<PathRequesterWorkPhase> beginPhase)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        beginPhase(PathRequesterWorkPhase.PreparingPaths);
         var inputs = PathInputStorage.Read(connection, description, directory);
         IReadOnlyList<Tier0PathNode> nodes = [];
         if (inputs.Availability == PathInputAvailability.Recorded)
@@ -40,21 +42,27 @@ internal static class Tier0PathStorage
         PathRequesterSelection? selection = null;
         if (offlineSelection)
         {
+            beginPhase(PathRequesterWorkPhase.SelectingQuestions);
             using var bundle = OpenSelectionBundle(directory);
             selection = Selector(bundle, inputs, nodes, cancellationToken).Select();
             requests = PathRequesterSelector.Requests(selection);
             ownAccountRequests = PathRequesterSelector.OwnAccounts(selection);
             membershipDaclRequests = PathRequesterSelector.MembershipDacls(selection);
         }
+        beginPhase(PathRequesterWorkPhase.RequesterDacl);
         var requesters = RequesterDaclProofs.Create(connection, description, directory, inputs, requests, cancellationToken, obtainedMembership: null);
         nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
+        beginPhase(PathRequesterWorkPhase.OwnAccountMembership);
         var ownAccounts = OwnAccountMembershipProofs.Create(connection, description, directory, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), ownAccountRequests, cancellationToken);
         nodes = nodes.Select(node => node with { OwnAccountRoute = OwnAccountMembershipProofs.Best(node, ownAccounts, requesters) }).ToArray();
+        beginPhase(PathRequesterWorkPhase.MembershipDacl);
         var membershipDacls = MembershipDaclProofs.Create(connection, description, directory, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), membershipDaclRequests, cancellationToken);
         nodes = nodes.Select(node => node with
             { MembershipDaclRoute = MembershipDaclProofs.Best(node, membershipDacls, requesters, ownAccounts) }).ToArray();
+        beginPhase(PathRequesterWorkPhase.WritingProofs);
+        Reconcile(selection, requesters, ownAccounts, membershipDacls);
         using var transaction = connection.BeginTransaction();
         foreach (var node in nodes)
         {
@@ -72,7 +80,8 @@ internal static class Tier0PathStorage
         transaction.Commit();
     }
 
-    internal static Tier0PathResult Read(SqliteConnection connection, JudgementDescription description, string directory, string subjectDn)
+    private static (PathInputs Inputs, Header? Header, Dictionary<string, Tier0PathNode> Nodes) ReadValidated(
+        SqliteConnection connection, JudgementDescription description, string directory)
     {
         var inputs = PathInputStorage.Read(connection, description, directory);
         using var query = connection.CreateCommand();
@@ -83,7 +92,7 @@ internal static class Tier0PathStorage
         if (header is null)
         {
             if (inputs.Availability == PathInputAvailability.Recorded || nodes.Count != 0) throw InvalidProof();
-            return new(inputs, null, Tier0Reachability.Unknown, null, []);
+            return (inputs, null, nodes);
         }
         if (header.Version != Tier0PathCalculation.Version || header.Generation != description.GenerationId
             || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != nodes.Count
@@ -101,6 +110,17 @@ internal static class Tier0PathStorage
                 header.OwnAccounts.Select(value => value.Assessment.Request).ToArray(),
                 header.MembershipDacls.Select(value => value.Assessment.Request).ToArray());
         }
+        Reconcile(header.Selection, header.Requesters, header.OwnAccounts, header.MembershipDacls);
+        if (nodes.Values.Any(node => node.RequesterRoute != RequesterDaclProofs.Best(node, header.Requesters))) throw InvalidProof();
+        if (nodes.Values.Any(node => node.OwnAccountRoute != OwnAccountMembershipProofs.Best(node, header.OwnAccounts, header.Requesters))) throw InvalidProof();
+        if (nodes.Values.Any(node => node.MembershipDaclRoute != MembershipDaclProofs.Best(node, header.MembershipDacls, header.Requesters, header.OwnAccounts))) throw InvalidProof();
+        return (inputs, header, nodes);
+    }
+
+    internal static Tier0PathResult Read(SqliteConnection connection, JudgementDescription description, string directory, string subjectDn)
+    {
+        var (inputs, header, nodes) = ReadValidated(connection, description, directory);
+        if (header is null) return new(inputs, null, Tier0Reachability.Unknown, null, []);
         var assessments = header.Requesters.Select(proof => proof.Assessment)
             .Where(value => string.Equals(value.Request.RequesterDn, subjectDn, StringComparison.OrdinalIgnoreCase)).ToArray();
         var ownAssessments = header.OwnAccounts.Select(proof => proof.Assessment)
@@ -113,9 +133,6 @@ internal static class Tier0PathStorage
             return new(inputs, null, Tier0Reachability.Unknown, null, [])
                 { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments, RequesterSelection = header.Selection };
         }
-        if (nodes.Values.Any(node => node.RequesterRoute != RequesterDaclProofs.Best(node, header.Requesters))) throw InvalidProof();
-        if (nodes.Values.Any(node => node.OwnAccountRoute != OwnAccountMembershipProofs.Best(node, header.OwnAccounts, header.Requesters))) throw InvalidProof();
-        if (nodes.Values.Any(node => node.MembershipDaclRoute != MembershipDaclProofs.Best(node, header.MembershipDacls, header.Requesters, header.OwnAccounts))) throw InvalidProof();
         if (!nodes.TryGetValue(subjectDn, out var subject))
             return new(inputs, null, Tier0Reachability.Unknown, null, [])
                 { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments, RequesterSelection = header.Selection };
@@ -140,6 +157,50 @@ internal static class Tier0PathStorage
         return new(inputs, subject.Subject, subject.Reachability,
             subject.Reachability == Tier0Reachability.Reachable ? steps.Count : null, steps)
         { RequesterAssessments = assessments, OwnAccountAssessments = ownAssessments, MembershipDaclAssessments = membershipDaclAssessments, RequesterSelection = header.Selection };
+    }
+
+    internal static PathRequesterCoverage ReadCoverage(SqliteConnection connection, JudgementDescription description, string directory)
+    {
+        var (inputs, header, _) = ReadValidated(connection, description, directory);
+        var selection = header?.Selection;
+        var requesters = header?.Requesters ?? [];
+        var ownAccounts = header?.OwnAccounts ?? [];
+        var membershipDacls = header?.MembershipDacls ?? [];
+        int Selected(PathRequesterFamily family) => selection?.Candidates.Count(value => value.Family == family) ?? 0;
+        return new(description.EvidenceSeal, description.DerivationGenerationId, inputs, selection?.Version, selection?.InputScanCompleted ?? false,
+        [
+            new(PathRequesterFamily.RequesterDacl, Selected(PathRequesterFamily.RequesterDacl), requesters.Count,
+                requesters.Count(value => value.Assessment.Authorization == ControlEvaluationState.Unknown), 0, 0),
+            new(PathRequesterFamily.OwnAccountMembership, Selected(PathRequesterFamily.OwnAccountMembership), ownAccounts.Count,
+                ownAccounts.Count(value => value.Assessment.Obtainability == ControlEvaluationState.Unknown),
+                ownAccounts.Count(value => value.Assessment.Permission.MemberPresent is null),
+                ownAccounts.Count(value => value.Assessment.Permission.Readiness == ControlEvaluationState.Unknown)),
+            new(PathRequesterFamily.MembershipDacl, Selected(PathRequesterFamily.MembershipDacl), membershipDacls.Count,
+                membershipDacls.Count(value => value.Assessment.Authorization == ControlEvaluationState.Unknown),
+                membershipDacls.Count(value => value.Assessment.Membership.Permission.MemberPresent is null),
+                membershipDacls.Count(value => value.Assessment.Membership.Permission.Readiness == ControlEvaluationState.Unknown)),
+        ], selection?.Limitations ?? []);
+    }
+
+    private static void Reconcile(PathRequesterSelection? selection, IReadOnlyList<SavedRequesterDaclProof> requesters,
+        IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts, IReadOnlyList<SavedMembershipDaclProof> membershipDacls)
+    {
+        if (selection is null) return;
+        RequireSameQuestions(PathRequesterSelector.Requests(selection).Select(RequesterDaclProofs.Key),
+            requesters.Select(value => RequesterDaclProofs.Key(value.Assessment.Request)));
+        RequireSameQuestions(PathRequesterSelector.OwnAccounts(selection).Select(OwnAccountMembershipProofs.Key),
+            ownAccounts.Select(value => OwnAccountMembershipProofs.Key(value.Assessment.Request)));
+        RequireSameQuestions(PathRequesterSelector.MembershipDacls(selection).Select(MembershipDaclProofs.Key),
+            membershipDacls.Select(value => MembershipDaclProofs.Key(value.Assessment.Request)));
+    }
+
+    private static void RequireSameQuestions(IEnumerable<string> selected, IEnumerable<string> evaluated)
+    {
+        var expected = selected.Order(StringComparer.Ordinal).ToArray();
+        var actual = evaluated.Order(StringComparer.Ordinal).ToArray();
+        // Equal totals can conceal a missing question replaced by a duplicate or a different target.
+        if (expected.Distinct(StringComparer.Ordinal).Count() != expected.Length
+            || !expected.SequenceEqual(actual, StringComparer.Ordinal)) throw InvalidProof();
     }
 
     private static BundleReader OpenSelectionBundle(string directory)

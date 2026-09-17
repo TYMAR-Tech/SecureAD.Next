@@ -74,10 +74,6 @@ public sealed class PublicTypeReachabilityGateTests
         new("SecureAD.Judgement.OwnershipAssessmentOrigin", "Ownership takeover: approved, unbuilt."),
         new("SecureAD.Judgement.OwnershipCandidateAssessment", "Ownership takeover: approved, unbuilt."),
 
-        // Stage 7 checkpoint 2 consumes PathInputs in shared judging. Its saved per-object result
-        // has passive API readback but deliberately no screen; do not fabricate a display caller.
-        new("SecureAD.Judgement.Tier0PathResult", "Stage 7 checkpoint 2: saved calculation/readback is approved; its screen is deferred."),
-
         // Findings storage. StoredFindings documents its own status: the reader that built it was
         // removed when decision 0085 moved findings out of the sealed evidence, and the judgement
         // store that will build it has no shape yet. Kept because the guarantee it carries - that

@@ -132,6 +132,21 @@ public sealed class EnterpriseCaPathTests(ITestOutputHelper output)
         Assert.Equal(before, AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);
     }
 
+    [Fact]
+    public void CoverageKeepsCaHostQuestionsSeparateFromConfigurationRegistrationLimits()
+    {
+        var directory = Capture();
+        Derive(directory);
+        Assert.True(JudgingRun.JudgeAudit(directory, [], PathRequesterPolicy.SupportedCapturedQuestions, Started, Started,
+            JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, null).IsSuccess);
+        using var reader = Open(directory);
+        var coverage = reader.ReadPathRequesterCoverage();
+
+        Assert.Equal((true, true), (reader.ReadTier0Path(UserDn).RequesterAssessments.Any(value => value.Request.TargetDn == HostDn),
+            coverage.Limitations.Any(value => value.ResourceDn == RegistrationDn
+                && value.Reason == PathRequesterSelectionReason.ResourceContextUnsupported)));
+    }
+
     private string Judged(bool hostNamed = true, bool twoRegistrations = false, bool groupHeld = false)
     {
         var directory = Capture(hostNamed, twoRegistrations, groupHeld);

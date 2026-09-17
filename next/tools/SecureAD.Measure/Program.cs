@@ -57,6 +57,11 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--requester-generate")
+            return RequesterWorkload.Run(args[1..]);
+        if (args.Length > 0 && args[0] == "--requester")
+            return RequesterMeasurement.Run(args[1..]);
+
         var repeats = args.Length > 0 && int.TryParse(args[0], NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var value) && value > 0 ? value : 3;
 
