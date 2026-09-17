@@ -43,8 +43,8 @@ internal sealed class Tier0DiscoveryEvidence
     internal string DomainFqdn { get; }
 
     internal Tier0InputBinding Binding => new(new string('A', 64), Generation, new string('B', 64),
-        PrincipalClassificationRegistry.Version, PolicyVersion: 1, ContractVersion: 1,
-        ForestRootNamingContext: Domain.DistinguishedName);
+        PrincipalClassificationRegistry.Version, PolicyVersion: 2, ContractVersion: 2,
+        ForestRootNamingContext: Domain.DistinguishedName, ConfigurationNamingContext: null);
 
     internal IReadOnlyCollection<ObjectAttributes> Objects => _objects.Values;
 

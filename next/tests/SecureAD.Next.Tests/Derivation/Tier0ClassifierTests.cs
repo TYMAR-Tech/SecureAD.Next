@@ -217,7 +217,7 @@ public sealed class Tier0ClassifierTests
     public void UnsupportedPolicyVersionCannotProduceACurrentClassification()
     {
         var (evidence, member, root) = MembershipFixture();
-        Assert.Throws<ArgumentException>(() => Tier0Classifier.Qualify(evidence.Binding with { PolicyVersion = 2 },
+        Assert.Throws<ArgumentException>(() => Tier0Classifier.Qualify(evidence.Binding with { PolicyVersion = 1 },
             evidence.Target(member), evidence.Input(member, root), routes: null));
     }
 
@@ -237,8 +237,8 @@ internal sealed class Tier0TestEvidence
     internal ObjectAttributes Domain { get; } = new("DC=contoso,DC=com", Guid.NewGuid(), DateTimeOffset.UnixEpoch, default,
         [Attribute("objectSid", "S-1-5-21-1-2-3"), Attribute("objectClass", "top", "domain", "domainDNS")], "contoso.com");
     internal Tier0InputBinding Binding => new(new string('A', 64), Generation, new string('B', 64),
-        PrincipalClassificationRegistry.Version, PolicyVersion: 1, ContractVersion: 1,
-        ForestRootNamingContext: Domain.DistinguishedName);
+        PrincipalClassificationRegistry.Version, PolicyVersion: 2, ContractVersion: 2,
+        ForestRootNamingContext: Domain.DistinguishedName, ConfigurationNamingContext: null);
     internal Tier0Target Target(ObjectAttributes subject) => Tier0Target.From(subject, Domain.DistinguishedName);
     internal CapturedMembershipInput Input(params ObjectAttributes[] subjects) => new(Generation, true, [Domain, .. subjects]);
     internal ObjectAttributes Principal(string name, string sid, string objectClass = "group", params ObjectAttribute[] extras) =>

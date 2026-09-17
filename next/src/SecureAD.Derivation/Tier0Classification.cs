@@ -44,6 +44,10 @@ public enum Tier0Basis
     /// silence the product could produce. Decision 0117.
     /// </remarks>
     PartitionRoot,
+    /// <summary>A directory registration in the captured configuration partition names an enterprise CA.</summary>
+    EnterpriseCaRegistration,
+    /// <summary>A unique captured computer matches the host explicitly named by an enterprise CA registration.</summary>
+    EnterpriseCaHost,
 }
 
 /// <summary>Limits retained alongside any established positive witnesses.</summary>
@@ -72,6 +76,10 @@ public enum Tier0Limitations
     ConditionalOperation = 256,
     /// <summary>Processing stopped before completing the supported work.</summary>
     ProcessingIncomplete = 512,
+    /// <summary>The CA registration did not supply a usable host value.</summary>
+    AssetHostEvidenceMissing = 1024,
+    /// <summary>The CA host value does not identify one qualified captured computer.</summary>
+    AssetHostIdentityUnresolved = 2048,
 }
 
 /// <summary>Exact source and semantic identities; validation is not a substitute for verifying file seals.</summary>
@@ -83,16 +91,17 @@ public enum Tier0Limitations
 /// </remarks>
 public sealed record Tier0InputBinding(string EvidenceSeal, Guid DerivationGenerationId, string DerivationSeal,
     int PrincipalCatalogueVersion, int PolicyVersion, int ContractVersion,
-    string? ForestRootNamingContext)
+    string? ForestRootNamingContext, string? ConfigurationNamingContext)
 {
     /// <summary>Whether source identities are structurally usable.</summary>
     public bool IsValid => IsSeal(EvidenceSeal) && DerivationGenerationId != Guid.Empty && IsSeal(DerivationSeal)
         && PrincipalCatalogueVersion > 0 && PolicyVersion > 0 && ContractVersion > 0
-        && (ForestRootNamingContext is null || !string.IsNullOrWhiteSpace(ForestRootNamingContext));
+        && (ForestRootNamingContext is null || !string.IsNullOrWhiteSpace(ForestRootNamingContext))
+        && (ConfigurationNamingContext is null || !string.IsNullOrWhiteSpace(ConfigurationNamingContext));
 
     /// <summary>The only semantic versions produced by the current shared foundation.</summary>
     public bool IsSupported => IsValid && PrincipalCatalogueVersion == PrincipalClassificationRegistry.Version
-        && PolicyVersion == 1 && ContractVersion == 1;
+        && PolicyVersion == 2 && ContractVersion == 2;
 
     internal static bool IsSeal(string? value) => value is { Length: 64 } && value.All(char.IsAsciiHexDigit);
 }
@@ -151,7 +160,7 @@ public sealed record Tier0Support
 
     /// <summary>The claim established by these witnesses.</summary>
     public Tier0Basis Basis { get; }
-    /// <summary>The canonical core object supporting the classification.</summary>
+    /// <summary>The canonical root or CA registration supporting the classification, not an inferred control step.</summary>
     public Tier0Target Root { get; }
     /// <summary>Original attribute witnesses, retained independently for each support.</summary>
     public ImmutableArray<Tier0Evidence> Evidence { get; }

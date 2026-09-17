@@ -14,7 +14,7 @@ public sealed record CapturedMembershipInput(
     internal static readonly string[] AttributeNames =
     [
         "objectSid", "objectClass", "groupType", "primaryGroupID", "member", "memberOf",
-        "sIDHistory", "userAccountControl", "isDeleted", "sAMAccountName",
+        "sIDHistory", "userAccountControl", "isDeleted", "sAMAccountName", "dNSHostName",
     ];
 
     internal static ObjectAttributes? Project(ObjectAttributes source)
@@ -26,6 +26,9 @@ public sealed record CapturedMembershipInput(
         // makes it a Tier-0 seed in its own right and the classifier cannot qualify what the index
         // does not contain. Its objectClass is the qualifying witness and is already projected.
         if (classes?.Any(value => value.Text is "domainDNS" or "configuration" or "dMD") == true) return Projected(source);
+        // A CA registration is a target, not a principal; dropping it would lose the host's source witness.
+        if (classes?.Any(value => string.Equals(value.Text, "pKIEnrollmentService", StringComparison.OrdinalIgnoreCase)) == true)
+            return Projected(source);
         if (source.Find("objectSid")?.HasValue != true
             && classes?.Any(value => value.Text is "group" or "user" or "computer" or "foreignSecurityPrincipal") != true
             && source.Find("member")?.HasValue != true && source.Find("memberOf")?.HasValue != true)

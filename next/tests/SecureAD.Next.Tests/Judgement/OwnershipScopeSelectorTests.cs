@@ -305,7 +305,7 @@ public sealed class OwnershipScopeSelectorTests
     {
         var graph = new Graph();
         Assert.Throws<ArgumentException>(() => OwnershipScopeSelector.Select(graph.Input, graph.Audit, [], [],
-            graph.Coverage with { Limitations = (Tier0Limitations)1024 }, CancellationToken.None, progress: null));
+            graph.Coverage with { Limitations = (Tier0Limitations)(1 << 30) }, CancellationToken.None, progress: null));
     }
 
     private static IEnumerable<Tier0Classification> CancelInput(Tier0Classification first, CancellationTokenSource cancellation)

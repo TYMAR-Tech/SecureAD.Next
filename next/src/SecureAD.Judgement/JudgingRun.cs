@@ -614,7 +614,7 @@ public static class JudgingRun
         var ownershipDescription = new JudgementDescription(seal.Hash, writer.GenerationId, derivationGeneration,
             JudgementRunState.Running, evaluationAsOf, startedUtc, default);
         var ownershipBinding = memberInput is not null && derivationGeneration is { } sourceGeneration
-            ? OwnershipAuditRun.Binding(bundleDirectory, seal.Hash, sourceGeneration, bundle.Description.ForestFqdn) : null;
+            ? OwnershipAuditRun.Binding(bundleDirectory, seal.Hash, sourceGeneration, bundle.Description.ForestFqdn, namingContexts.Value) : null;
 
         // STARTED HERE BECAUSE THE SCOPING FLAG MUST MATCH WHAT ACTUALLY HAPPENS. Discovery needs a
         // pinned derivation binding to qualify seeds against; without one it does not run and every

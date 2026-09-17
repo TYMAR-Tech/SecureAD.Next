@@ -13,14 +13,18 @@ internal static class OwnershipAuditRun
     internal static string OwnerRightsHash(OwnerImplicitRightsSetting? setting) =>
         Convert.ToHexString(OwnershipAuditStorage.Hash(JsonSerializer.Serialize(setting, ProofSerialization.Options)));
 
-    internal static Tier0InputBinding Binding(string directory, string evidenceSeal, Guid derivationGeneration, string? forest)
+    internal static Tier0InputBinding Binding(string directory, string evidenceSeal, Guid derivationGeneration, string? forest,
+        IReadOnlyDictionary<string, NamingContextKind> namingContexts)
     {
         var path = BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Derivation, derivationGeneration);
         var seal = JsonSerializer.Deserialize<BundleSealContents>(File.ReadAllText(path), ProofSerialization.Options) ?? throw OwnershipAuditStorage.InvalidProof();
         if (seal.Algorithm != BundleSealing.Algorithm) throw OwnershipAuditStorage.InvalidProof();
         var root = string.IsNullOrWhiteSpace(forest) ? null : string.Join(',', forest.Split('.').Select(part => "DC=" + part));
+        var configurations = namingContexts.Where(item => item.Value == NamingContextKind.Configuration)
+            .Select(item => item.Key).Take(2).ToArray();
         var binding = new Tier0InputBinding(evidenceSeal, derivationGeneration, seal.Hash,
-            PrincipalClassificationRegistry.Version, PolicyVersion: 1, ContractVersion: 1, ForestRootNamingContext: root);
+            PrincipalClassificationRegistry.Version, PolicyVersion: 2, ContractVersion: 2, ForestRootNamingContext: root,
+            ConfigurationNamingContext: configurations.Length == 1 ? configurations[0] : null);
         if (!binding.IsSupported) throw OwnershipAuditStorage.InvalidProof();
         return binding;
     }

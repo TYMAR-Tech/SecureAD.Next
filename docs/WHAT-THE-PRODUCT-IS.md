@@ -63,7 +63,8 @@ inventory additions, and speculative performance tuning are deferred as listed i
 [the work queue](PUNCH-LIST.md#deferred-from-the-next-pass). P-217 gates deletion of valuable evidence;
 P-157 must be addressed before relying on the affected LAPS results, without automatically blocking all
 path development. P-93 remains a Stage 10 acceptance-lifecycle question and P-96 waits for actual path
-results; Self-Membership requester discovery and P-142/P-143 asset coverage belong in Stage 7 planning.
+results; production requester discovery and P-143 declarations remain Stage 7 work, while P-142's
+bounded enterprise CA classification is implemented and offline verified.
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
@@ -420,6 +421,63 @@ claim is made. P-227 remains open independently of its local passing result, and
 Stage 7 or production requester coverage. Original evidence, failed runs and exact source/build
 provenance are preserved in
 `next/artifacts/stage7-requester-selection-validation/ffedb6f851754854a0f224d53cfdbfb7/final-summary.json`.
+
+**Subsequent publication verification:** CI run 35157219659 for `9bb8423` completed successfully
+with 5,330 tests. This later result does not explain or close P-241's local full-run timeouts or
+P-227's earlier CI overlap failure; P-240's qualified full-suite verification remains open.
+The handoff above remains a pre-publication record: its commit, publication flags, source hashes
+and failed-run history must not be rewritten to describe the later push.
+
+## Stage 7 eighth checkpoint: directory-registered enterprise CA targets
+
+**Owner-approved scope and implementation; implemented and offline verified as P-142.** After preparation
+against published `9bb8423`, the owner selected "Approve scope for next session" for the bounded
+P-142 scope below. This records the scope, not authorization to implement during preparation;
+the subsequent separate request "begin implementation" authorizes implementation with these same
+boundaries, without authorizing live access, requester activation, budgets, screens, commit or push.
+
+- Retain `dNSHostName` in future captures, including enterprise CA registrations and computer
+  accounts, and retain CA registrations and host values in the source-bound derived inputs.
+  The capture catalogue before version 8 omitted this field; reading the configuration partition does not
+  capture every attribute. Do not rewrite or recapture historical evidence to supply missing values.
+- Recognize `pKIEnrollmentService` registrations in the verified Enrollment Services container of
+  the captured configuration partition. Add the registration and its uniquely matched captured
+  computer account to the existing authoritative Tier-0 definition, not a separate CA target list.
+  Retain the registration, recorded host value, matched identity and exact source generations as
+  classification evidence; absent, conflicting or ambiguous host evidence remains unresolved.
+  Do not use live DNS, server-name conventions or service-principal-name guesses as substitutes.
+- Carry those targets through existing assessment admission and saved path inputs, retaining
+  current permission checks, supported operations, independent holder counts and resource scope.
+  Asset classification does not make controlling principals expected, suppress edges or change
+  severity. A directory-registered CA is not proof of a running service; control of its registration
+  is not automatically control of its host, certificate issuance or account takeover.
+- Do not newly classify certificate templates or `NTAuthCertificates` in this checkpoint. AD FS
+  remains declaration-only under `0099`; P-143 declarations are not included. These exclusions
+  do not label unassessed assets safe or remove existing independently supported conclusions.
+- Requester discovery remains inactive, with unchanged GUI/CLI scheduling and budgets. No new
+  path composition, SEC-071 finding, screen wording/layout or summary count is included; those and
+  production requester coverage remain Stage 7 work before P-235–P-239 and the broader rule rollout.
+  There is no live access, recapture, optimization/measurement-harness work, commit or push approval.
+
+Verification is synthetic/offline: capture-to-readback retention, correct container and class,
+missing or duplicate host identities, shared-target integration, unchanged permission behavior and
+counts, exact generation binding, passive reopening and cancellation. Every new behavior check must
+detect a deliberate defect, with explicit rebuilds before mutated runs and after restoration;
+focused coverage and full-suite results retain failures without weakening watchdogs or assertions.
+P-227, P-240's qualified full-suite verification and P-241 remain open despite the later successful
+published CI run; no customer-scale or outstanding display acceptance follows from this scope.
+
+Capture catalogue 8, derivation format 15, judgement format 38 and Tier-0 policy/contract 2 implement
+this checkpoint; path-calculation version 6 and requester-selection version 1 are unchanged.
+All **5,390 offline tests pass**, and all **1,294 focused coverage cases pass**, with execution hits
+for all **27 new test methods**. The **59 new cases**, three updated rejection checks and two
+presentation-accounting checks have assertion-based negative controls across **10 rebuilt defect
+variants**, with explicit rebuilds and verified restoration. The non-display catalogue records the
+host field's analysis purpose without changing runtime sections, labels or layout.
+Original evidence, historical checkpoints and failed runs remain preserved; the qualified handoff is
+`next/artifacts/stage7-enterprise-ca-validation/37e2af93ddd741329736ca392d070b7f/final-summary.json`.
+This is not completed Stage 7, production requester coverage, customer-scale or display acceptance,
+and does not close P-227, P-240's qualified verification or P-241.
 
 ## CLI and GUI judging parity
 
@@ -1629,7 +1687,8 @@ the directory names, in a partition capture already reads, so classifying it is 
 an AD FS server, so naming one would be a guess - and a guess printed as a fact is the one thing this
 product must not do.
 
-The classification and declaration mechanisms remain implementation work on P-142 and P-143.
+P-142's bounded enterprise CA classification is implemented and offline verified; the declaration
+mechanism remains implementation work on P-143.
 
 **Customers may declare Tier 0 assets, never Tier 0 principals.** Declaring an asset adds something
 to watch and hides nothing. Declaring a principal would hide edges by default and make conclusions

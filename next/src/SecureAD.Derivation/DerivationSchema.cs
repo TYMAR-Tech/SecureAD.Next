@@ -106,7 +106,9 @@ internal static class DerivationSchema
     // carried such a link - the evidence was never written - and the forest-wide list it does hold
     // cannot stand in, because reading that would mark every expansion in a nine-domain forest
     // incomplete. Refused rather than read as though the absence of rows meant there were none.
-    public const int Version = 14;
+    // Version 15 retains CA registrations and dNSHostName in source-bound inputs. The tables are
+    // unchanged, but a version 14 derivation cannot establish a CA host match from values it dropped.
+    public const int Version = 15;
 
 
     private static readonly string[] TableDdl =

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 
@@ -105,6 +106,7 @@ public static class Tier0Classifier
         }
         if (Core(subject) is { } core) supports.Add(core);
         if (PartitionRoot(subject) is { } root) supports.Add(root);
+        EnterpriseCa(binding, target, subject, index, supports, ref limitations, cancellationToken);
         if (routes is null) return Result();
         var uniqueSupports = new HashSet<string>(StringComparer.Ordinal);
         foreach (var group in routes.Memberships)
@@ -246,11 +248,106 @@ public static class Tier0Classifier
         }
     }
 
+    private static void EnterpriseCa(Tier0InputBinding binding, Tier0Target target, ObjectAttributes subject,
+        CapturedIndex index, ImmutableArray<Tier0Support>.Builder supports, ref Tier0Limitations limitations,
+        CancellationToken cancellationToken)
+    {
+        var isRegistration = HasClass(subject, "pKIEnrollmentService");
+        IEnumerable<ObjectAttributes> registrations = isRegistration ? [subject]
+            : HasClass(subject, "computer") ? index.RegistrationsFor(subject) : [];
+        foreach (var registration in registrations.OrderBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var configuration = index.Find(binding.ConfigurationNamingContext);
+            if (configuration is null)
+            {
+                limitations |= Tier0Limitations.InputIncomplete | Tier0Limitations.IdentityUnverified;
+                continue;
+            }
+            var context = configuration.DistinguishedName;
+            var container = "CN=Enrollment Services,CN=Public Key Services,CN=Services," + context;
+            if (!AssetIdentity(configuration, index) || !LastClass(configuration, "configuration")
+                || !AssetIdentity(registration, index) || !LastClass(registration, "pKIEnrollmentService")
+                || !Tier0Target.Same(DnHelper.GetParentDn(registration.DistinguishedName), container))
+            {
+                limitations |= Tier0Limitations.IdentityUnverified;
+                continue;
+            }
+            var registrationTarget = Tier0Target.From(registration, context);
+            if (!registrationTarget.IsValid || isRegistration && registrationTarget != target)
+            {
+                limitations |= Tier0Limitations.IdentityUnverified;
+                continue;
+            }
+            var evidence = ImmutableArray.CreateBuilder<Tier0Evidence>();
+            AddAttribute(evidence, Tier0Target.From(configuration, context), configuration, "objectClass");
+            AddAttribute(evidence, registrationTarget, registration, "objectClass");
+            AddAttribute(evidence, registrationTarget, registration, "dNSHostName");
+            AddAttribute(evidence, registrationTarget, registration, "isDeleted");
+
+            // The registration is independently established even when its named host cannot be resolved.
+            // Neither support transfers a permission between these two separate directory resources.
+            if (isRegistration) supports.Add(new(Tier0Basis.EnterpriseCaRegistration, registrationTarget, evidence.ToImmutable()));
+            if (registration.Find("dNSHostName")?.Values is not { Count: > 0 })
+            {
+                limitations |= Tier0Limitations.InputIncomplete | Tier0Limitations.AssetHostEvidenceMissing;
+                continue;
+            }
+            var hostName = SingleHostName(registration);
+            var matches = hostName is null ? [] : index.ComputersFor(hostName);
+            var host = matches.Count == 1 ? matches[0] : null;
+            var domain = host is null ? null : index.DomainRoot(host, cancellationToken);
+            if (host is null || domain is null || !AssetIdentity(domain, index)
+                || !LastClass(host, "computer") || !AssetIdentity(host, index)
+                || !index.UniqueIdentity(host) || !Tier0Target.Same(SingleHostName(host), hostName)
+                || !Tier0Target.Same(Sid.IssuingDomain(Tier0Target.ReadSid(host)), Tier0Target.ReadSid(domain)))
+            {
+                limitations |= Tier0Limitations.IdentityUnverified | Tier0Limitations.AssetHostIdentityUnresolved;
+                continue;
+            }
+            var hostTarget = Tier0Target.From(host, domain.DistinguishedName);
+            if (!hostTarget.IsValid || !isRegistration && hostTarget != target)
+            {
+                limitations |= Tier0Limitations.IdentityUnverified | Tier0Limitations.AssetHostIdentityUnresolved;
+                continue;
+            }
+            if (isRegistration) continue;
+            AddAttribute(evidence, Tier0Target.From(domain, domain.DistinguishedName), domain, "objectClass");
+            AddAttribute(evidence, Tier0Target.From(domain, domain.DistinguishedName), domain, "objectSid");
+            AddAttribute(evidence, hostTarget, host, "objectClass");
+            AddAttribute(evidence, hostTarget, host, "objectSid");
+            AddAttribute(evidence, hostTarget, host, "dNSHostName");
+            AddAttribute(evidence, hostTarget, host, "isDeleted");
+            supports.Add(new(Tier0Basis.EnterpriseCaHost, registrationTarget, evidence.ToImmutable()));
+        }
+    }
+
+    private static bool LastClass(ObjectAttributes item, string name) =>
+        Tier0Target.Same(item.Find("objectClass")?.Values.LastOrDefault()?.Text, name);
+
+    private static bool AssetIdentity(ObjectAttributes item, CapturedIndex index) =>
+        index.Find(item.DistinguishedName) == item && index.UniqueGuid(item)
+        && (item.Find("objectSid")?.HasValue != true
+            || Tier0Target.ReadSid(item) is { } sid && Sid.ToBytes(sid) is not null && index.UniqueIdentity(item))
+        && (item.Find("isDeleted")?.Values is not { Count: > 0 } deleted
+            || deleted.Count == 1 && Tier0Target.Same(deleted[0].Text, "FALSE"));
+
+    // dNSHostName is a single-valued DNS name in the Microsoft schema. Match the recorded full
+    // name only; shortening it or deriving a name from an SPN would turn missing identity into a guess.
+    private static string? SingleHostName(ObjectAttributes item) => item.Find("dNSHostName") is
+        { Cardinality: AttributeCardinality.SingleValued, Values.Count: 1 } attribute
+        && attribute.Values[0] is { Text: { } name, Bytes: null, Ordinal: 0 }
+        && !string.IsNullOrWhiteSpace(name) && name.Contains('.', StringComparison.Ordinal)
+        && Uri.CheckHostName(name) == UriHostNameType.Dns ? name : null;
+
     private sealed class CapturedIndex
     {
         private readonly Dictionary<string, List<ObjectAttributes>> objects = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<ObjectAttributes>> domains = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<(string Sid, string? Scope), int> identities = [];
+        private readonly Dictionary<Guid, int> guids = [];
+        private readonly Dictionary<string, List<ObjectAttributes>> computersByHost = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<ObjectAttributes>> registrationsByHost = new(StringComparer.OrdinalIgnoreCase);
 
         internal CapturedIndex(IEnumerable<ObjectAttributes> input, CancellationToken cancellationToken)
         {
@@ -259,6 +356,9 @@ public static class Tier0Classifier
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!objects.TryGetValue(item.DistinguishedName, out var matches)) objects[item.DistinguishedName] = matches = [];
                 matches.Add(item);
+                if (item.ObjectGuid is { } guid) guids[guid] = guids.GetValueOrDefault(guid) + 1;
+                if (HasClass(item, "computer")) IndexHost(computersByHost, item);
+                if (HasClass(item, "pKIEnrollmentService")) IndexHost(registrationsByHost, item);
                 var sid = Tier0Target.ReadSid(item);
                 if (sid is not null && Sid.ToBytes(sid) is not null)
                 {
@@ -279,6 +379,26 @@ public static class Tier0Classifier
 
         internal bool UniqueIdentity(ObjectAttributes item) => Tier0Target.ReadSid(item) is { } sid
             && identities.GetValueOrDefault(IdentityKey(sid, item.DomainFqdn)) == 1;
+
+        internal bool UniqueGuid(ObjectAttributes item) => item.ObjectGuid is { } guid && guid != Guid.Empty
+            && guids.GetValueOrDefault(guid) == 1;
+
+        internal IReadOnlyList<ObjectAttributes> ComputersFor(string name) => computersByHost.GetValueOrDefault(name) ?? [];
+
+        internal IEnumerable<ObjectAttributes> RegistrationsFor(ObjectAttributes computer) =>
+            (computer.Find("dNSHostName")?.Values ?? []).Where(value => value.Text is not null)
+                .SelectMany(value => registrationsByHost.GetValueOrDefault(value.Text ?? "") ?? []).Distinct();
+
+        private static void IndexHost(Dictionary<string, List<ObjectAttributes>> index, ObjectAttributes item)
+        {
+            // Include contradictory values in the candidate index so uniqueness cannot hide a malformed competitor.
+            foreach (var value in item.Find("dNSHostName")?.Values ?? [])
+            {
+                if (value.Text is not { } name) continue;
+                if (!index.TryGetValue(name, out var matches)) index[name] = matches = [];
+                matches.Add(item);
+            }
+        }
 
         internal ObjectAttributes? DomainRoot(ObjectAttributes item, CancellationToken cancellationToken)
         {

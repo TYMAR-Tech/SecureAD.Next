@@ -126,7 +126,8 @@ internal static class PathInputStorage
         new(description.GenerationId, availability, null, OwnershipAuditStorage.UnavailableCoverage, [], [], [], [], [], null);
 
     private static IEnumerable<Tier0Target> FixedTargets(IEnumerable<Tier0Classification> classifications) =>
-        classifications.Where(item => item.Supports.Any(support => support.Basis is Tier0Basis.Core or Tier0Basis.PartitionRoot))
+        classifications.Where(item => item.Supports.Any(support => support.Basis is Tier0Basis.Core or Tier0Basis.PartitionRoot
+            or Tier0Basis.EnterpriseCaRegistration or Tier0Basis.EnterpriseCaHost))
             .Select(item => item.Target).Distinct().OrderBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase);
 
     private static PathUncertaintyRegion Region(Tier0DiscoveryLimitation source, Tier0Target? target)

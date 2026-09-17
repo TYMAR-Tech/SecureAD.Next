@@ -368,6 +368,9 @@ internal static class ObjectSectionCatalog
     public static IReadOnlyDictionary<string, string> NotShown { get; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["dNSHostName"] =
+                "Retained as source-bound enterprise CA registration and host-matching evidence under P-142. "
+                + "Checkpoint 8 adds no dedicated object-view presentation; path presentation remains separate Stage 7 work.",
             ["objectCategory"] =
                 "The same fact as objectClass, in a form an operator does not use. The overview "
                 + "shows the class.",

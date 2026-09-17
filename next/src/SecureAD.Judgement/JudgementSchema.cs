@@ -75,8 +75,10 @@ public static class JudgementSchema
     /// context; the physical layout and captured-only requester semantics are unchanged.</para>
     /// <para>37 records offline requester selection sources, questions and independent coverage
     /// within the path certificate; production scheduling and physical tables are unchanged.</para>
+    /// <para>38 binds enterprise CA registration/host classification to the captured configuration
+    /// context and admits those fixed targets; permission and path-operation semantics are unchanged.</para>
     /// </remarks>
-    public const int Version = 37;
+    public const int Version = 38;
 
     private static readonly string[] TableDdl =
     [

@@ -115,7 +115,7 @@ public static class CapturedAttributeCatalog
     /// </para>
     /// </para>
     /// </remarks>
-    public const int Version = 7;
+    public const int Version = 8;
 
     /// <summary>
     /// Requested for every object, of every class, in every naming context capture reads.
@@ -163,6 +163,9 @@ public static class CapturedAttributeCatalog
         // between 9 and 14 days. Anything worded from it must say so.
         new("lastLogonTimestamp", AttributeCardinality.SingleValued, AttributeStorage.Text),
     ];
+
+    private static readonly CapturedAttribute DnsHostName =
+        new("dNSHostName", AttributeCardinality.SingleValued, AttributeStorage.Text);
 
     /// <summary>
     /// A computer is an account plus the things that decide whether its local administrator
@@ -212,6 +215,7 @@ public static class CapturedAttributeCatalog
     private static IReadOnlyList<CapturedAttribute> ComputerAttributes { get; } =
     [
         .. AccountAttributes,
+        DnsHostName,
         new("operatingSystem", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("operatingSystemVersion", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("ms-Mcs-AdmPwdExpirationTime", AttributeCardinality.SingleValued, AttributeStorage.Text),
@@ -423,6 +427,8 @@ public static class CapturedAttributeCatalog
             ["domainDNS"] = DomainAttributes,
             ["msDS-PasswordSettings"] = PasswordSettingsAttributes,
             ["nTDSService"] = DirectoryServiceAttributes,
+            // The registration names the CA host; computers supply the other side of the offline match.
+            ["pKIEnrollmentService"] = [DnsHostName],
         };
 
     /// <summary>

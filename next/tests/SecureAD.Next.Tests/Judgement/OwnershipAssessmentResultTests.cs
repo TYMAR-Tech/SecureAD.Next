@@ -89,7 +89,7 @@ public sealed class OwnershipAssessmentResultTests
     public void UnsupportedClassificationVersionCannotBeReused()
     {
         var result = Result();
-        var changed = result with { Binding = result.Binding with { Input = result.Binding.Input with { PolicyVersion = 2 } } };
+        var changed = result with { Binding = result.Binding with { Input = result.Binding.Input with { PolicyVersion = 1 } } };
         Assert.Equal(OwnershipAssessmentAvailability.UnsupportedVersion, changed.CheckBinding(result.Binding));
     }
 

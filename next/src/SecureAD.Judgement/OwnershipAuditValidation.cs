@@ -50,16 +50,16 @@ internal static class OwnershipAuditValidation
             if (header.Coverage.InputsComplete || seeds.Count != 0 || links.Count != 0) throw OwnershipAuditStorage.InvalidProof();
             return ([], []);
         }
+        var contexts = bundle.ReadNamingContexts();
+        if (!contexts.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
         if (header.DerivationGeneration is not { } generation
-            || OwnershipAuditRun.Binding(directory, description.EvidenceSeal, generation, bundle.Description.ForestFqdn) != header.Input)
+            || OwnershipAuditRun.Binding(directory, description.EvidenceSeal, generation, bundle.Description.ForestFqdn, contexts.Value) != header.Input)
             throw OwnershipAuditStorage.InvalidProof();
         var derived = DerivationReader.Open(directory);
         if (!derived.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
         using var derivation = derived.Value;
         var input = derivation.ReadMembershipInput();
         if (input.DerivationGenerationId != generation) throw OwnershipAuditStorage.InvalidProof();
-        var contexts = bundle.ReadNamingContexts();
-        if (!contexts.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
         var identities = input.Objects.GroupBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
         foreach (var row in rows.Where(item => item.Selection == OwnershipScopeState.Included))
