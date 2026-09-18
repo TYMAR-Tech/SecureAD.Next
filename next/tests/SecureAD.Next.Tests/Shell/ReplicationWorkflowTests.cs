@@ -150,12 +150,14 @@ public sealed class ReplicationWorkflowTests
         using var source = new BundleAssetSource();
         var section = Open(source, directory, Root, false);
         Assert.Equal(2, section.Rows.Count);
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = mutation;
             Assert.True(command.ExecuteNonQuery() > 0);
         });
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);

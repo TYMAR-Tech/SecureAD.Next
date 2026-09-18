@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
@@ -148,7 +149,10 @@ public sealed record StoredJudgement(
 /// </remarks>
 public sealed class JudgementReader : IDisposable
 {
+    private static readonly Meter ReadbackMeter = new("SecureAD.Judgement.Readback");
+    private static readonly Counter<long> AnalyticalReads = ReadbackMeter.CreateCounter<long>("judgement.analytical_reads");
     private readonly SqliteConnection _connection;
+    private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
     private bool _ownershipValidated;
 
@@ -173,6 +177,7 @@ public sealed class JudgementReader : IDisposable
     public PathInputs ReadPathInputs()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        RecordAnalyticalRead();
         return PathInputStorage.Read(_connection, Description, BundleDirectory);
     }
 
@@ -185,6 +190,7 @@ public sealed class JudgementReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
+        RecordAnalyticalRead();
         return Tier0PathStorage.Read(_connection, Description, BundleDirectory, subjectDn);
     }
 
@@ -195,6 +201,7 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
         cancellationToken.ThrowIfCancellationRequested();
+        RecordAnalyticalRead();
         return Tier0PathStorage.ReadWithCoverage(_connection, Description, BundleDirectory, subjectDn, cancellationToken);
     }
 
@@ -205,6 +212,7 @@ public sealed class JudgementReader : IDisposable
     public PathRequesterCoverage ReadPathRequesterCoverage()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        RecordAnalyticalRead();
         return Tier0PathStorage.ReadCoverage(_connection, Description, BundleDirectory);
     }
 
@@ -239,10 +247,14 @@ public sealed class JudgementReader : IDisposable
         // The reader holds one opened immutable generation; a new generation gets its own validation.
         if (!_ownershipValidated)
         {
+            RecordAnalyticalRead();
             OwnershipAuditValidation.Validate(_connection, Description, BundleDirectory);
             _ownershipValidated = true;
         }
     }
+
+    private void RecordAnalyticalRead() =>
+        AnalyticalReads.Add(1, new KeyValuePair<string, object?>("bundle", Path.GetFullPath(BundleDirectory)));
 
     /// <summary>Reads explicit requester assessments object-first, requester-first, or together.</summary>
     public SelfMembershipAssessmentSet ReadSelfMembershipAssessments(string? target, string? requester)
@@ -321,9 +333,30 @@ public sealed class JudgementReader : IDisposable
                 Pooling = false,
             }.ToString());
 
+        return OpenConnection(bundleDirectory, generation, connection);
+    }
+
+    /// <summary>Opens an independent stored-result reader under an existing protected generation.</summary>
+    public static Result<JudgementReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        if (store.Generation is not { Kind: AnalysisStoreKind.Judgement } generation) throw new ArgumentException(nameof(store));
+        ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
-            connection.Open();
+            var opened = OpenConnection(store.BundleDirectory, generation, lease.Connection);
+            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            return opened;
+        }
+        finally { lease?.Dispose(); }
+    }
+
+    private static Result<JudgementReader> OpenConnection(string bundleDirectory, AnalysisStoreGeneration generation, SqliteConnection connection)
+    {
+        var judgementPath = BundleLayout.AnalysisGenerationDataPath(bundleDirectory, generation.Kind, generation.GenerationId);
+        try
+        {
+            if (connection.State != System.Data.ConnectionState.Open) connection.Open();
             var description = ReadDescription(connection);
 
             if (description is null)
@@ -1160,6 +1193,7 @@ public sealed class JudgementReader : IDisposable
             return;
 
         _connection.Dispose();
+        _protection?.Dispose();
         _disposed = true;
     }
 

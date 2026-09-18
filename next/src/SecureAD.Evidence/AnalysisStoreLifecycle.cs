@@ -33,6 +33,24 @@ public static class AnalysisStoreLifecycle
 
     private const int ManifestVersion = 1;
 
+    /// <summary>Marks a new attempt before replacing its staging file; failure leaves the attempt visible.</summary>
+    public static void BeginAttempt(string bundleDirectory, AnalysisStoreKind kind)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        WritePendingManifest(ManifestPath(bundleDirectory, kind) + ".partial", new(ManifestVersion, ""));
+    }
+
+    /// <summary>Whether a newer attempt is unfinished, including the interval after its database was renamed.</summary>
+    public static bool HasUnpublishedChanges(string bundleDirectory, AnalysisStoreKind kind) =>
+        Exists(StagingPath(bundleDirectory, kind)) || Exists(ManifestPath(bundleDirectory, kind) + ".partial");
+
+    private static bool Exists(string path)
+    {
+        try { _ = File.GetAttributes(path); return true; }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+    }
+
     /// <summary>Returns the private staging database path used while a generation is being written.</summary>
     public static string StagingPath(string bundleDirectory, AnalysisStoreKind kind)
     {
@@ -88,16 +106,23 @@ public static class AnalysisStoreLifecycle
                 + "are immutable and cannot be published twice.");
         }
 
+        var manifestPath = ManifestPath(bundleDirectory, kind);
+        var stagedManifestPath = manifestPath + ".partial";
+        // The staging database disappears during sealing. Keep the unfinished attempt visible
+        // until the single atomic operation that makes its sealed generation current.
+        WritePendingManifest(stagedManifestPath, new(ManifestVersion, generationId.ToString("D")));
+
         File.Move(stagingPath, dataPath);
         BundleSealing.Seal(dataPath, sealPath);
         cancellationToken.ThrowIfCancellationRequested();
+        File.Move(stagedManifestPath, manifestPath, overwrite: true);
+        return generation;
+    }
 
-        var manifestPath = ManifestPath(bundleDirectory, kind);
-        var stagedManifestPath = manifestPath + ".partial";
-        var manifest = JsonSerializer.Serialize(new Manifest(ManifestVersion, generationId.ToString("D")));
-
+    private static void WritePendingManifest(string path, Manifest manifest)
+    {
         using (var stream = new FileStream(
-            stagedManifestPath,
+            path,
             FileMode.Create,
             FileAccess.Write,
             FileShare.None,
@@ -105,14 +130,10 @@ public static class AnalysisStoreLifecycle
             FileOptions.WriteThrough))
         using (var writer = new StreamWriter(stream))
         {
-            writer.Write(manifest);
+            writer.Write(JsonSerializer.Serialize(manifest));
             writer.Flush();
             stream.Flush(flushToDisk: true);
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        File.Move(stagedManifestPath, manifestPath, overwrite: true);
-        return generation;
     }
 
     /// <summary>Resolves the complete generation selected by the current manifest.</summary>
@@ -134,7 +155,10 @@ public static class AnalysisStoreLifecycle
 
         try
         {
-            var manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(manifestPath));
+            // Publication replaces this name atomically. A short metadata read must not block
+            // that replacement; its handle still describes the complete old or new manifest.
+            using var stream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            var manifest = JsonSerializer.Deserialize<Manifest>(stream);
             if (manifest is null || manifest.Version != ManifestVersion
                 || !Guid.TryParse(manifest.GenerationId, out var generationId))
             {

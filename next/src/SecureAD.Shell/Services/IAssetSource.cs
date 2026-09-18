@@ -26,6 +26,12 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal interface IAssetSource
 {
+    /// <summary>Selects the run whose completed results subsequent requests may describe.</summary>
+    void SelectRun(string bundleDirectory) { }
+
+    /// <summary>Releases the selected run and cancels its outstanding reads.</summary>
+    void CloseRun() { }
+
     /// <summary>Reads one saved path and its coverage from the same validated generation, without new analysis.</summary>
     Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName);
 

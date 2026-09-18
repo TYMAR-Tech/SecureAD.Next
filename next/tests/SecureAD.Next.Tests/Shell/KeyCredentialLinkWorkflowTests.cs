@@ -192,12 +192,14 @@ public sealed class KeyCredentialLinkWorkflowTests
         using var source = new BundleAssetSource();
         var section = Open(source, directory, UserDn, false);
         Assert.NotNull(section.SelectedEdge);
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = mutation;
             Assert.Equal(1, command.ExecuteNonQuery());
         });
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);

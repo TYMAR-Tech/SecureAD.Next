@@ -333,6 +333,15 @@ checks, changing UI presentation, new measurement-harness code, migration, recap
 File-fingerprint verification still reads file bytes, so its opening cost must be distinguished from proof
 replay and measured rather than described as free or accepted at customer scale without evidence.
 
+**Owner-approved P-248 checkpoint 1:** “begin” authorizes the local implementation branch, explicit
+analysis-attempt publication state, a protected selected-run reading lifetime, and findings/filter/rule
+execution reads through that boundary, with isolated regression and rebuilt deliberate-defect verification.
+Stop at that checkpoint; it does not authorize the later control/path/LAPS/classification conversion,
+database-schema or UI changes, new measurement tooling, migration, recapture, activation, commit or push.
+The owner requires a clean replacement of the flawed design, not parallel production implementations,
+dead code or permanent transition scaffolding; preserved historical evidence is not a reason to retain
+obsolete production code. Preserve the existing instruction-file edit and all retained P-243–P-246 work.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.

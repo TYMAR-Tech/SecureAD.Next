@@ -244,6 +244,7 @@ public sealed record StoredDerivation(
 public sealed class DerivationReader : IDisposable
 {
     private readonly SqliteConnection _connection;
+    private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
 
     private DerivationReader(
@@ -307,9 +308,43 @@ public sealed class DerivationReader : IDisposable
                 Pooling = false,
             }.ToString());
 
+        var opened = OpenConnection(bundleDirectory, generation, connection);
+        if (opened.IsSuccess)
+        {
+            try { _ = opened.Value.Read(); }
+            catch (Exception error) when (error is SqliteException or FormatException or ArgumentException or InvalidOperationException)
+            {
+                opened.Value.Dispose();
+                return Failure("DerivationUnreadable",
+                    $"The seal on the derivation in '{bundleDirectory}' is intact and the store could "
+                    + $"not be read: {error.Message}. The bytes are the bytes that were sealed, so this "
+                    + "is a defect in this build rather than damage to the store.", path);
+            }
+        }
+        return opened;
+    }
+
+    /// <summary>Opens an independent stored-fact reader under an existing protected generation.</summary>
+    public static Result<DerivationReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        if (store.Generation is not { Kind: AnalysisStoreKind.Derivation } generation) throw new ArgumentException(nameof(store));
+        ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
-            connection.Open();
+            var opened = OpenConnection(store.BundleDirectory, generation, lease.Connection);
+            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            return opened;
+        }
+        finally { lease?.Dispose(); }
+    }
+
+    private static Result<DerivationReader> OpenConnection(string bundleDirectory, AnalysisStoreGeneration generation, SqliteConnection connection)
+    {
+        var path = BundleLayout.AnalysisGenerationDataPath(bundleDirectory, generation.Kind, generation.GenerationId);
+        try
+        {
+            if (connection.State != System.Data.ConnectionState.Open) connection.Open();
             var description = ReadDescription(connection);
 
             if (description is null)
@@ -355,9 +390,7 @@ public sealed class DerivationReader : IDisposable
                     path);
             }
 
-            var opened = new DerivationReader(bundleDirectory, connection, description);
-            _ = opened.Read();
-            return opened;
+            return new DerivationReader(bundleDirectory, connection, description);
         }
 
         catch (Exception error) when (
@@ -1121,6 +1154,7 @@ public sealed class DerivationReader : IDisposable
             return;
 
         _connection.Dispose();
+        _protection?.Dispose();
         _disposed = true;
     }
 

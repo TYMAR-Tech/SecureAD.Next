@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -90,6 +91,9 @@ public sealed record BundleSealContents(string Algorithm, string Hash);
 /// </remarks>
 public static class BundleSealing
 {
+    private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
+    private static readonly Counter<long> Verifications = ReadbackMeter.CreateCounter<long>("store.verifications");
+
     /// <summary>The algorithm named in every seal this product writes.</summary>
     public const string Algorithm = "SHA-256";
 
@@ -160,7 +164,10 @@ public static class BundleSealing
     /// "probably fine", and none that treats a failure to read as a failure to find.
     /// </remarks>
     /// <param name="bundleDirectory">The bundle's directory.</param>
-    public static SealVerdict Verify(string bundleDirectory)
+    public static SealVerdict Verify(string bundleDirectory) => Verify(bundleDirectory, CancellationToken.None);
+
+    /// <summary>Verifies evidence with cancellation between file reads.</summary>
+    public static SealVerdict Verify(string bundleDirectory, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
@@ -172,7 +179,7 @@ public static class BundleSealing
             + "a reader asks for, so a bundle with no seal was assembled by something other than a "
             + "capture.",
             "It does not prove the capture was complete, which is a claim the bundle makes in its "
-            + "own tables.");
+            + "own tables.", cancellationToken);
     }
 
     /// <summary>
@@ -228,6 +235,7 @@ public static class BundleSealing
     }
 
     /// <summary>Verifies one immutable analysis generation against its matching seal.</summary>
+    /// <param name="bundleDirectory">The directory containing the generation.</param>
     /// <param name="generation">The database and seal paths selected by a manifest.</param>
     /// <param name="artefact">The operator-facing name of the store.</param>
     /// <param name="intactCaveat">What an intact seal does not establish.</param>
@@ -235,7 +243,11 @@ public static class BundleSealing
         string bundleDirectory,
         AnalysisStoreGeneration generation,
         string artefact,
-        string intactCaveat)
+        string intactCaveat) => VerifyAnalysisGeneration(bundleDirectory, generation, artefact, intactCaveat, CancellationToken.None);
+
+    /// <summary>Verifies an analysis generation with cancellation between file reads.</summary>
+    public static SealVerdict VerifyAnalysisGeneration(string bundleDirectory, AnalysisStoreGeneration generation,
+        string artefact, string intactCaveat, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(generation);
@@ -249,7 +261,7 @@ public static class BundleSealing
                 bundleDirectory, generation.Kind, generation.GenerationId),
             artefact,
             "A manifest-selected generation must always have its matching seal.",
-            intactCaveat);
+            intactCaveat, cancellationToken);
     }
 
     /// <summary>
@@ -280,7 +292,8 @@ public static class BundleSealing
     }
 
     private static SealVerdict Verify(
-        string dataPath, string sealPath, string artefact, string absentCaveat, string intactCaveat)
+        string dataPath, string sealPath, string artefact, string absentCaveat, string intactCaveat,
+        CancellationToken cancellationToken = default)
     {
         if (!File.Exists(sealPath))
         {
@@ -330,7 +343,8 @@ public static class BundleSealing
         string actual;
         try
         {
-            actual = HashFile(dataPath);
+            Verifications.Add(1, new KeyValuePair<string, object?>("file", Path.GetFullPath(dataPath)));
+            actual = HashFile(dataPath, cancellationToken);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {

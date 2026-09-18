@@ -148,12 +148,15 @@ public sealed class OwnershipWorkflowTests
         using var source = new BundleAssetSource();
         var section = Open(source, directory, TargetDn, false);
         Assert.Single(section.Rows);
+        // Open results are protected; arrange corruption between reading lifetimes.
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = mutation;
             Assert.True(command.ExecuteNonQuery() > 0);
         });
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);

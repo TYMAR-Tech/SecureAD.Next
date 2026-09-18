@@ -230,6 +230,7 @@ public sealed class JudgementWriter : IDisposable
                 + "evidence it judged, so the bundle must exist before it can be judged.");
         }
 
+        AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
         var partialPath = BundleLayout.JudgementPartialPath(bundleDirectory);
         if (File.Exists(partialPath))
             File.Delete(partialPath);

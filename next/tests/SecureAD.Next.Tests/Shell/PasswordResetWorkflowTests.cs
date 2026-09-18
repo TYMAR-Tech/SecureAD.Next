@@ -89,12 +89,14 @@ public sealed class PasswordResetWorkflowTests
         Assert.NotNull(section.SelectedEdge);
         Assert.Single(section.Rows);
 
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = mutation;
             Assert.Equal(1, command.ExecuteNonQuery());
         });
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
 
         Assert.Empty(section.Rows);

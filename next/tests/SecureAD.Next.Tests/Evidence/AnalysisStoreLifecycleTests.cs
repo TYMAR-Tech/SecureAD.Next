@@ -1,4 +1,6 @@
+using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Judgement;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence;
@@ -6,6 +8,65 @@ namespace SecureAD.Next.Tests.Evidence;
 /// <summary>The generation manifest that atomically selects a disposable analysis store.</summary>
 public sealed class AnalysisStoreLifecycleTests
 {
+    [Theory]
+    [InlineData(AnalysisStoreKind.Derivation)]
+    [InlineData(AnalysisStoreKind.Judgement)]
+    public void BeginningAnAttemptIsVisibleBeforeItsDatabaseExists(AnalysisStoreKind kind)
+    {
+        var directory = NewBundle();
+
+        AnalysisStoreLifecycle.BeginAttempt(directory, kind);
+
+        Assert.True(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, kind));
+    }
+
+    [Theory]
+    [InlineData(AnalysisStoreKind.Derivation)]
+    [InlineData(AnalysisStoreKind.Judgement)]
+    public void SuccessfulPublicationClearsThePendingAttempt(AnalysisStoreKind kind)
+    {
+        var directory = NewBundle();
+        AnalysisStoreLifecycle.BeginAttempt(directory, kind);
+        File.WriteAllText(AnalysisStoreLifecycle.StagingPath(directory, kind), "result");
+
+        AnalysisStoreLifecycle.Publish(directory, kind, Guid.NewGuid());
+
+        Assert.False(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, kind));
+    }
+
+    [Fact]
+    public void DerivationWriterRecordsItsAttemptBeforeCompletion()
+    {
+        var directory = NewBundle();
+
+        using var writer = DerivationWriter.Create(directory, "evidence", DateTimeOffset.UnixEpoch);
+
+        Assert.True(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Derivation) + ".partial"));
+    }
+
+    [Fact]
+    public void JudgementWriterRecordsItsAttemptBeforeCompletion()
+    {
+        var directory = NewBundle();
+
+        using var writer = JudgementWriter.Create(directory, "evidence", null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
+
+        Assert.True(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement) + ".partial"));
+    }
+
+    [Fact]
+    public void FailedSealingKeepsTheUnpublishedAttemptVisible()
+    {
+        var directory = NewBundle();
+        var generation = Guid.NewGuid();
+        File.WriteAllText(AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement), "new result");
+        Directory.CreateDirectory(BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Judgement, generation));
+
+        Assert.Throws<UnauthorizedAccessException>(() => AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generation));
+
+        Assert.True(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, AnalysisStoreKind.Judgement));
+    }
+
     [Fact]
     public void PublishingSelectsACompleteImmutableGeneration()
     {

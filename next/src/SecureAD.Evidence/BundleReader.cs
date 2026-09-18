@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
@@ -59,7 +60,7 @@ public sealed record BundleDescription(
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>A bundle that does not verify is not opened.</b> <see cref="Open"/> verifies the seal first
+/// <b>A bundle that does not verify is not opened.</b> <see cref="Open(string)"/> verifies the seal first
 /// and returns a failure for every state but <see cref="SealState.Intact"/>, per
 /// <see cref="SealVerdict.MayBeOpened"/>. There is no lenient mode and no argument that suppresses
 /// the check: a reader that can be asked to skip verification is a reader that will be, on the one
@@ -103,7 +104,10 @@ public sealed record BundleDescription(
 /// </remarks>
 public sealed class BundleReader : IDisposable
 {
+    private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
+    private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");
     private readonly SqliteConnection _connection;
+    private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
     private (long ObjectId, string Dn)? _streamedIdentity;
     private bool? _streamedNamesAreUnambiguous;
@@ -168,9 +172,40 @@ public sealed class BundleReader : IDisposable
                 Pooling = false,
             }.ToString());
 
+        return OpenConnection(bundleDirectory, connection);
+    }
+
+    /// <summary>Opens an independently owned reader under an existing verified file lifetime.</summary>
+    public static Result<BundleReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        if (store.Generation is not null) throw new ArgumentException(nameof(store));
+        ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
-            connection.Open();
+            Result<BundleReader> opened;
+            lock (store.EvidenceDescriptionGate)
+            {
+                // Format validation includes a descriptor-version scan. Its verdict, like the
+                // seal's, is reusable only under this same protected file lifetime.
+                opened = store.EvidenceDescription is { } description
+                    ? new BundleReader(store.BundleDirectory, lease.Connection, description)
+                    : OpenConnection(store.BundleDirectory, lease.Connection);
+                if (opened.IsSuccess) store.EvidenceDescription = opened.Value.Description;
+            }
+            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            return opened;
+        }
+        finally { lease?.Dispose(); }
+    }
+
+    private static Result<BundleReader> OpenConnection(string bundleDirectory, SqliteConnection connection)
+    {
+        var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
+        FormatChecks.Add(1, new KeyValuePair<string, object?>("file", Path.GetFullPath(evidencePath)));
+        try
+        {
+            if (connection.State != System.Data.ConnectionState.Open) connection.Open();
 
             // THE VERSION IS READ ON ITS OWN, AND BEFORE ANYTHING ELSE. Every check below compares
             // a number that lives in a column some earlier build did not write, so reading the

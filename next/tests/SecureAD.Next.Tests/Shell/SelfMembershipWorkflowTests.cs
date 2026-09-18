@@ -122,12 +122,14 @@ public sealed class SelfMembershipWorkflowTests
         Assert.NotNull(section.SelectedRequesterAssessment);
         var counts = section.Counts;
 
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = "UPDATE self_membership_discovery SET coverage_json = 'null'";
             Assert.Equal(1, command.ExecuteNonQuery());
         });
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
 
         Assert.Empty(section.RequesterAssessments);

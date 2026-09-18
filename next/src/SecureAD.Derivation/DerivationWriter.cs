@@ -97,6 +97,7 @@ internal sealed class DerivationWriter : IDisposable
                 + "evidence they were derived from, so the bundle must exist first.");
         }
 
+        AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Derivation);
         var partialPath = BundleLayout.DerivationPartialPath(bundleDirectory);
         if (File.Exists(partialPath))
             File.Delete(partialPath);

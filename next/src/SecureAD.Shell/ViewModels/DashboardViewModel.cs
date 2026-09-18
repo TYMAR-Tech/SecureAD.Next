@@ -437,6 +437,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
+        _assets.SelectRun(bundleDirectory);
         BundlePath = bundleDirectory;
 
         var read = _assets.ReadInventory(bundleDirectory);

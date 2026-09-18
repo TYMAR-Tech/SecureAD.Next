@@ -461,6 +461,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
+        _assets.SelectRun(bundleDirectory);
         BundlePath = bundleDirectory;
         _captureIsRunning = aCaptureIsRunning;
         _vocabulary = null;
@@ -470,6 +471,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Forgets the run being shown, so nothing describes a run no longer chosen.</summary>
     public void Clear()
     {
+        _assets.CloseRun();
         BundlePath = null;
         Refusal = null;
         HasLooked = false;
@@ -1001,6 +1003,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (!read.IsSuccess)
         {
             FindingsRefusal = new Notice("There are no findings to show", read.Error.Description);
+            _findingsFrom = null;
+            _findingsBack.Clear();
             AnnounceFindings();
             return;
         }
