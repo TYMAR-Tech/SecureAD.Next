@@ -100,6 +100,7 @@ internal static class PathInputStorage
         using var bundle = opened.Value;
         var contexts = bundle.ReadNamingContexts();
         if (!contexts.IsSuccess) throw InvalidProof();
+        if (regions.Count != 0) bundle.PrepareBulkObjectLookup();
         foreach (var region in regions)
         {
             var subject = region.Source.TargetDn is { } dn ? bundle.ReadObjectAttributes(dn) : null;

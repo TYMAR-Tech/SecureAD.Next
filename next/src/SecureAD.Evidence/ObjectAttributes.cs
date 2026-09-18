@@ -191,8 +191,15 @@ internal static class ObjectAttributesReader
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        return ReadCore(connection, distinguishedName, null);
+    }
 
-        var stored = SingleValuedOf(connection, distinguishedName);
+    internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId) =>
+        ReadCore(connection, null, objectId);
+
+    private static ObjectAttributes? ReadCore(SqliteConnection connection, string? distinguishedName, long? rowId)
+    {
+        var stored = SingleValuedOf(connection, distinguishedName, rowId);
         if (stored is null)
             return null;
 
@@ -228,7 +235,7 @@ internal static class ObjectAttributesReader
     /// attribute columns so that adding a catalogued attribute does not move it.
     /// </remarks>
     private static (long ObjectId, string Dn, Guid? ObjectGuid, DateTimeOffset Captured, EvidenceCompleteness Completeness, string? DomainFqdn, List<ObjectAttribute> Attributes)? SingleValuedOf(
-        SqliteConnection connection, string distinguishedName)
+        SqliteConnection connection, string? distinguishedName, long? rowId)
     {
         var columns = BundleSchema.SingleValuedColumns;
 
@@ -240,8 +247,9 @@ internal static class ObjectAttributesReader
             + ", c.connection_security"
             + " FROM captured_object AS o"
             + " JOIN partition_coverage AS c ON c.coverage_id = o.coverage_id"
-            + " WHERE o.distinguished_name = $dn COLLATE NOCASE LIMIT 1";
-        command.Parameters.AddWithValue("$dn", distinguishedName);
+            + (rowId.HasValue ? " WHERE o.object_id = $object LIMIT 1" : " WHERE o.distinguished_name = $dn COLLATE NOCASE LIMIT 1");
+        if (rowId.HasValue) command.Parameters.AddWithValue("$object", rowId.Value);
+        else command.Parameters.AddWithValue("$dn", distinguishedName);
 
         using var reader = command.ExecuteReader();
         if (!reader.Read())

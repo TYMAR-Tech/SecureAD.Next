@@ -16,12 +16,16 @@ internal static class RequesterWorkload
     private const string MemberGuid = "bf9679c0-0de6-11d0-a285-00aa003049e2";
     private static readonly DateTimeOffset When = new(2026, 9, 17, 0, 0, 0, TimeSpan.Zero);
 
-    // --requester-generate NEW_OUTPUT OBJECTS PHYSICAL_ACES DOMAINS RELEVANT_GROUP_SETS MEMBERS_PER_HOLDER
+    // --requester-generate NEW_OUTPUT OBJECTS PHYSICAL_ACES DOMAINS RELEVANT_GROUP_SETS MEMBERS_PER_HOLDER [separate-combined-target]
     // Each set has one granting holder, a membership-tail group and a DACL-tail group.
     // This is a synthetic density experiment, never a reconstruction of customer memberships.
-    internal static int Run(string[] args)
+    internal static int Run(string[] args) => Run(args, Path.Combine(AppContext.BaseDirectory, "measurement-build.json"));
+
+    internal static int Run(string[] args, string build)
     {
-        if (args.Length != 6) throw new ArgumentException("NEW_OUTPUT OBJECTS PHYSICAL_ACES DOMAINS RELEVANT_GROUP_SETS MEMBERS_PER_HOLDER are required.");
+        if (args.Length is not (6 or 7) || args.Length == 7 && args[6] != "separate-combined-target")
+            throw new ArgumentException("NEW_OUTPUT OBJECTS PHYSICAL_ACES DOMAINS RELEVANT_GROUP_SETS MEMBERS_PER_HOLDER [separate-combined-target] are required.");
+        var separateCombinedTarget = args.Length == 7;
         var output = Path.GetFullPath(args[0]);
         if (Directory.Exists(output) || File.Exists(output)) throw new IOException("Retain the existing workload; choose a new output directory.");
         Directory.CreateDirectory(output);
@@ -32,23 +36,24 @@ internal static class RequesterWorkload
             var domains = int.Parse(args[3], CultureInfo.InvariantCulture);
             var groups = int.Parse(args[4], CultureInfo.InvariantCulture);
             var members = int.Parse(args[5], CultureInfo.InvariantCulture);
-            var minimum = checked(3L + 2L * domains + (long)groups * (3 + members));
-            if (domains < 1 || groups < domains || members < 1 || objects < minimum || aces < 4L * groups)
+            var fixedObjectsPerDomain = separateCombinedTarget ? 3L : 2L;
+            var requiredAces = (separateCombinedTarget ? 5L : 4L) * groups;
+            var minimum = checked(3L + fixedObjectsPerDomain * domains + (long)groups * (3 + members));
+            if (domains < 1 || groups < domains || members < 1 || objects < minimum || aces < requiredAces)
                 throw new ArgumentException("The shape cannot contain the required independent proof families.");
-            var build = Path.Combine(AppContext.BaseDirectory, "measurement-build.json");
             if (!File.Exists(build)) throw new IOException("Missing archived build/source provenance.");
             File.Copy(build, Path.Combine(output, "measurement-build.json"));
             File.WriteAllText(Path.Combine(output, "requested-shape.json"), JsonSerializer.Serialize(new
             {
                 Objects = objects, PhysicalAces = aces, Domains = domains, RelevantGroupSets = groups, MembersPerHolder = members,
-                MinimumObjects = minimum, SyntheticMemberships = true, CustomerReconstruction = false,
+                MinimumObjects = minimum, SeparateCombinedTarget = separateCombinedTarget, SyntheticMemberships = true, CustomerReconstruction = false,
                 Executable = Environment.ProcessPath, ExecutableSha256 = BundleSealing.HashFile(Environment.ProcessPath!),
                 Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
             }));
             var bundle = Path.Combine(output, "bundle");
             Directory.CreateDirectory(bundle);
             var written = 0;
-            var extraAces = aces - 4L * groups;
+            var extraAces = aces - requiredAces;
             var domainNames = Enumerable.Range(0, domains).Select(d => d == 0 ? "measure.lab" : $"d{d}.measure.lab").ToArray();
             using (var writer = BundleWriter.Create(bundle, When))
             {
@@ -74,11 +79,12 @@ internal static class RequesterWorkload
                     var domainGroups = groups / domains + (d < groups % domains ? 1 : 0);
                     var domainFillers = fillers / domains + (d < fillers % domains ? 1 : 0);
                     var coverage = new PartitionCoverage(domain, NamingContextKind.Domain, "dc01." + domainNames[d],
-                        ConnectionSecurityLevel.SignedAndSealed, 1, checked((int)(2 + domainGroups * (3L + members) + domainFillers)), 1, [], false);
+                        ConnectionSecurityLevel.SignedAndSealed, 1, checked((int)(fixedObjectsPerDomain + domainGroups * (3L + members) + domainFillers)), 1, [], false);
                     writer.WriteCoverage(coverage);
                     Write(coverage, domain, "domainDNS", sid, []);
                     var coreMembers = new List<string>();
                     var coreGrants = new List<string>();
+                    var combinedGrants = new List<string>();
                     for (var g = 0; g < domainGroups; g++)
                     {
                         var holder = Dn($"Holder{g:D5}");
@@ -100,9 +106,16 @@ internal static class RequesterWorkload
                         Write(coverage, dacl, "group", daclSid, [Text("groupType", "-2147483646"), Text("member")], grant);
                         coreMembers.Add(membership);
                         coreGrants.Add($"(A;;WD;;;{holderSid})(A;;WD;;;{daclSid})");
+                        if (separateCombinedTarget) combinedGrants.Add($"(A;;WD;;;{daclSid})");
                     }
                     Write(coverage, Dn("Domain Admins"), "group", sid + "-512",
                         [Text("groupType", "-2147483646"), Text("member", [.. coreMembers])], string.Concat(coreGrants));
+                    // RID 516 is already a fixed Tier-0 group in PrincipalClassificationRegistry.
+                    // Keep the original confounded target; the separate target has no earlier holder grant
+                    // to misattribute to the obtained membership. This is permission evidence, not takeover.
+                    if (separateCombinedTarget)
+                        Write(coverage, Dn("Domain Controllers"), "group", sid + "-516",
+                            [Text("groupType", "-2147483646"), Text("member")], string.Concat(combinedGrants));
                     for (long f = 0; f < domainFillers; f++)
                         Write(coverage, Dn($"Filler{f:D8}"), "user", $"{sid}-{1_000_000L + f}",
                             [Text("userAccountControl", "512"), Text("primaryGroupID", "513")]);

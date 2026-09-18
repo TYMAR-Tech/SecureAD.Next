@@ -107,6 +107,7 @@ public sealed class BundleReader : IDisposable
     private bool _disposed;
     private (long ObjectId, string Dn)? _streamedIdentity;
     private bool? _streamedNamesAreUnambiguous;
+    private Dictionary<string, long>? _bulkObjectIds;
 
     private BundleReader(
         string bundleDirectory, SqliteConnection connection, BundleDescription description)
@@ -682,6 +683,9 @@ public sealed class BundleReader : IDisposable
         var connection = Connection;
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
 
+        if (_bulkObjectIds is not null && _bulkObjectIds.TryGetValue(distinguishedName, out var objectId))
+            return ObjectPermissionsReader.ReadAt(connection, objectId, distinguishedName);
+
         if (_streamedIdentity is { } identity
             && string.Equals(identity.Dn, distinguishedName, StringComparison.Ordinal)
             && StreamedNamesAreUnambiguous())
@@ -716,8 +720,30 @@ public sealed class BundleReader : IDisposable
     /// this bundle captured no object by that name. Null is the answer to a different question from
     /// an object whose attributes are all empty, for the reason <see cref="ObjectAttribute"/> gives.
     /// </returns>
-    public ObjectAttributes? ReadObjectAttributes(string distinguishedName) =>
-        ObjectAttributesReader.Read(Connection, distinguishedName);
+    public ObjectAttributes? ReadObjectAttributes(string distinguishedName)
+    {
+        var connection = Connection;
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        return _bulkObjectIds is not null && _bulkObjectIds.TryGetValue(distinguishedName, out var objectId)
+            ? ObjectAttributesReader.ReadAt(connection, objectId)
+            : ObjectAttributesReader.Read(connection, distinguishedName);
+    }
+
+    /// <summary>
+    /// Prepares exact-name row lookup for a bulk read on this reader only. Ambiguous names and
+    /// differently spelled requests retain the original SQLite NOCASE lookup; no proof is cached.
+    /// </summary>
+    public void PrepareBulkObjectLookup()
+    {
+        var connection = Connection;
+        if (_bulkObjectIds is not null || !StreamedNamesAreUnambiguous()) return;
+        var identities = new Dictionary<string, long>(StringComparer.Ordinal);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT distinguished_name,object_id FROM captured_object";
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) identities.Add(reader.GetString(0), reader.GetInt64(1));
+        _bulkObjectIds = identities;
+    }
 
     /// <summary>
     /// Reads the schema-GUID catalogue this run captured, laid over the shipped one.
@@ -846,6 +872,7 @@ public sealed class BundleReader : IDisposable
 
         _connection.Close();
         _connection.Dispose();
+        _bulkObjectIds = null;
         _disposed = true;
     }
 

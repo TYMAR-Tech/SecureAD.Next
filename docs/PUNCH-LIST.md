@@ -58,20 +58,74 @@ P-227, P-240's qualified full-suite verification and P-241 stay open independent
 while P-143 and production requester discovery remain planning work with requester discovery inactive.
 Tier counts, remediation and screen changes remain outside this checkpoint.
 **Production requester coverage remains unfinished Stage 7 work.** Shared GUI/CLI integration and
-saved coverage are implemented and offline verified as P-242; representative measurements are paused,
-not accepted or permanently cancelled, and still precede any activation decision. The owner now wants
-ordinary Stage 7 development, without reopening P-242 integration or resuming measurements or the
-stopped-process investigation; the bounded next-session scope below is approved. Broader compositions,
+saved coverage are implemented and offline verified as P-242; the full-volume measurement series remains
+paused and unaccepted, while the owner has now authorized the reduced pilot below. This does not reopen
+P-242 integration, restart the full-volume series or investigate the stopped process; representative
+readiness evidence and separate approval still precede production activation. Broader compositions,
 P-143, SEC-071 findings and path presentation remain outstanding; activation, budgets, screens, live
 access, optimization, recapture, commit and push remain separately controlled, and the rule catalogue
 stays closed.
+**Owner-approved reduced offline requester pilot: 34,700 objects, 590,000
+physical permission entries and nine domains**, using the existing generator/runner and fresh outputs.
+Exercise meaningful cases across all three families and retain actual answer states, timing, memory,
+readback and cancellation evidence while preserving all original large inputs and historical artifacts.
+This pilot is not a production limit or full-forest acceptance, and authorizes no optimization, new
+measurement-harness code, activation, live access, deletion, commit or push; P-242 steps 1–8 remain
+complete, step 9 unfinished and step 10 pending.
+**First preflight blocked before launch — high-severity scenario limitation, subsequently addressed:**
+the original generator puts an existing holder grant before the obtained-group grant on the same
+Tier-0 target, preventing established combined answers at any configurable size or density.
+The selected synthetic density is 18 group sets/four members per holder from the retained workload
+design, but no reduced input or elapsed/memory/storage/readback/cancellation result was produced in that attempt;
+source-hash checks and the no-launch record are retained in
+`next/artifacts/p242-reduced-pilot/0869cdf29da34de7b5217a3091078319/preflight-blocked.json`.
+The owner has now explicitly approved the generator-only extension, focused offline verification and
+then execution of the reduced pilot, retaining unresolved scenarios and unchanged production proof
+checks; current authorization is retained under `next/artifacts/p242-reduced-pilot/35f8f6fe210b4689af59c03ced79b9ef/`,
+and all preservation/activation boundaries remain in force.
+**Reduced pilot and cancellation observation complete; production readiness remains unaccepted.**
+The same frozen Release build produced 72 established requester-permission answers, 72 established
+own-account membership answers and 72 established/72 Unknown combined answers, with a 24 min 22 sec
+main process, 9 min 7 sec requester-enabled judging, 8 min 30 sec validated reopening, 603 MiB peak
+process working set and a 96.5 MiB judgement; cancellation responded in 61.6 ms after 1.036 sec of
+combined-proof work, preserving the previous generation and original evidence.
+The final qualified record is
+`next/artifacts/p242-reduced-pilot/35f8f6fe210b4689af59c03ced79b9ef/handoff-d0cd092921394478a703aea153763ead/handoff.json`;
+20 focused checks pass with all eight new checks witnessed across four rebuilt deliberate defects,
+while the full-volume series stays paused, P-242 step 9 unfinished and step 10 pending, with no
+production activation, budget, optimization or full-forest acceptance implied by this synthetic/no-rules pilot.
+**P-242 read-only investigation complete — high-severity performance/readiness concern, not a false security answer.**
+The retained pilot has 34,700 unresolved-owner records checked during both preparation and validated
+readback, and source plus SQLite query plans show repeated attribute/permission name scans; existing
+whole-phase timings do not establish their exact contribution or a future speedup.
+The proposed lookup-only change, memory trade-off and proof-preserving verification plan are retained in
+`next/artifacts/p242-reduced-pilot/35f8f6fe210b4689af59c03ced79b9ef/read-only-review-b614d80e6eeb4bc7b6262f6acfef0aab/findings.json`,
+and the owner has now approved lookup-only optimization, offline verification and the unchanged reduced-pilot
+repeat; current authorization and preserved prior work are under
+`next/artifacts/p242-lookup-optimization/75b787807339426eb8a5023a4ad85154/`, with no evaluator, sealed-evidence,
+activation, budget or full-volume changes and P-242 steps 1–8 complete, step 9 unfinished and step 10 pending.
+**Lookup-only optimization and unchanged reduced repeat complete; readiness remains unaccepted.**
+All 541 focused checks pass with nine new checks witnessed across four rebuilt defects, unchanged
+saved proof/support/uncertainty semantics, and main elapsed 24 min 22 sec → 11 min 39 sec; preparation
+388.4 → 14.1 sec improved substantially, but validated reopening remains 7 min 39 sec, peak memory
+603 → 639 MiB increased, and observed cancellation response 61.6 → 980.3 ms worsened during overlapping
+read-only comparison work, without an established causal attribution or response guarantee.
+The qualified handoff is `next/artifacts/p242-lookup-optimization/75b787807339426eb8a5023a4ad85154/handoff.json`,
+with original evidence and failed records retained, no further optimization/measurement authorized by
+these results, production disabled, full-volume work paused and P-242 steps unchanged.
+**Stage 7 is not complete until it runs automatically within normal GUI/CLI audits**, with the full
+completion requirement recorded in [the product decisions](WHAT-THE-PRODUCT-IS.md#fix-and-feature-priority).
+Relevant account selection, remaining supported analysis, SEC-071 findings and saved routes/coverage
+must not depend on a manual requester list or a separate per-object analysis step.
+This is the completion goal, not permission to change AD, silently activate requesters or resume the
+paused measurements; the remaining compositions, P-143 and run-wide presentation/counts are still owed.
 **Saved per-object path presentation is implemented and offline verified**, with the approved scope and
 wording recorded in [the product decisions](WHAT-THE-PRODUCT-IS.md#fix-and-feature-priority).
 All 5,509 offline tests pass after an explicit Release rebuild, all 65 new checks pass under coverage
 collection and detect deliberate defects across ten rebuilt variants, and the final preservation review
 found only intended source changes and unchanged original artifact metadata.
 The earlier unfinished run and the later 5,507/5,509 failure remain retained; physical-display checks
-remain outstanding, P-242 measurements stay paused, and neither Stage 7 nor P-227, P-240 verification
+remain outstanding, full-volume P-242 measurements stay paused, and neither Stage 7 nor P-227, P-240 verification
 or P-241 is closed by this passing result.
 **Separate offline measurement scope is owner-approved for a later session**, including minimal
 preservation-safe runner code for the three supported requester families, sealed copies and retained
@@ -623,7 +677,7 @@ later, from reading the predecessor's dashboard against the collapsed rule.
 
 | ID | Item | Status | Blocked on |
 |---|---|---|---|
-| P-242 | **Shared GUI/CLI requester integration and the preservation-safe offline runner are implemented and offline verified, with production selection still disabled.** All 5,444 offline tests and 54 focused coverage cases pass, with rebuilt deliberate-defect witnesses for the 12 new runner cases as well as the earlier integration checks; the previous implementation handoff and source archives remain unchanged. The retained `next/artifacts/p242-measurement/d48f66126b064a9f8157fe1a1a79f6f0/measurement-handoff.json` predates the first volume measurement stopping without a completed result or a proven termination cause; the other two variants never started, measurements are now paused and unfinished, all partial evidence is retained, and P-227, P-240 verification and P-241 stay open. | open — integration and runner verified; measurements paused and unfinished | P-242 steps 1–8 complete, step 9 unfinished, step 10 pending; no production activation, numerical budgets, screen changes or customer-scale acceptance |
+| P-242 | **Requester integration, the preserved runner and approved lookup-only optimization are offline verified, with production still disabled.** All 541 focused checks pass with nine new checks witnessed across four rebuilt defects, and the identical reduced-input repeat preserves saved answers/supports while main elapsed improves 24 min 22 sec → 11 min 39 sec; reopening remains 7 min 39 sec, peak working set rises 603 → 639 MiB, and cancellation preserves the prior generation but responds in 980.3 rather than 61.6 ms during overlapping comparison work, with causal attribution unproven. The qualified before/after handoff is `next/artifacts/p242-lookup-optimization/75b787807339426eb8a5023a4ad85154/handoff.json`, with all original evidence/failures retained and P-227, P-240 verification and P-241 independently open. | open — lookup-only repeat complete; memory/cancellation observations and readback cost remain readiness concerns; full-volume work paused | P-242 steps 1–8 complete, step 9 unfinished, step 10 pending; no production activation, numerical budgets, screens, further optimization or customer-scale acceptance |
 | P-241 | **Existing `ControlEdgeSizingTests` cases timed out in both checkpoint 7 full offline runs — medium severity, cause unconfirmed.** Eight layout cases timed out in the first run and four in the corrected run, while all 46 layout cases passed in the separate focused run; these are distinct results, not an explanation or closure. Preserve `final-full-offline/`, `final-full-offline-v2/` and `post-contract-focused/` under `next/artifacts/stage7-requester-selection-validation/ffedb6f851754854a0f224d53cfdbfb7/`, and investigate without raising watchdogs, weakening assertions, accepting unperformed display checks or creating a separate monitor-check prerequisite for Stage 7. | open — repeated full-run timeouts; cause unconfirmed | Cause and failure impact not established; no screen changes authorized |
 | P-240 | **Stage 7 checkpoint 7 selects offline requester questions for the three existing supported path families, retaining captured selection sources and explicit coverage limitations.** Judgement format 37 and path-calculation version 6 reuse the existing permission and operation proofs, preserve independent holder counts and exact generations, and leave production requester discovery, budgets and screens unchanged. All 908 focused coverage cases pass and all 59 new behavior cases detect deliberate defects across 12 variants, but the corrected local full run passed 5,326 of 5,330 with four layout-test timeouts; subsequent CI run 35157219659 for published `9bb8423` succeeded with 5,330 tests, without explaining or closing P-241 or P-227 or rewriting the pre-publication handoff at `next/artifacts/stage7-requester-selection-validation/ffedb6f851754854a0f224d53cfdbfb7/final-summary.json`. | open — implementation complete; full-suite verification incomplete | P-241 records the unresolved local full-run failures despite the later CI pass; P-227 remains open separately; no production requester coverage, customer-scale or display acceptance claim |
 | P-234 | **Stage 7 checkpoint 6 saves one supported own-account membership outcome followed by concrete requester WRITE_DAC on a same-domain fixed Tier-0 target.** Judgement format 36 and path-calculation version 5 retain the separate pre-change permission and post-membership authorization context, applicable denies, Unknown membership/Add readiness, original supports, independent holder counts and exact generations without requester discovery or account-takeover inference. All 5,271 offline tests pass, all 849 focused cases pass under verified coverage, and all 71 new behavior cases detect deliberate defects across 11 accepted variants with explicit rebuilds and verified restoration; original evidence and failed records remain preserved in `next/artifacts/stage7-membership-dacl-validation/8c39670d898a4514b72c9d41437203fe/final-summary.json`. | closed — implemented and offline verified | P-227 remains open; no production requester coverage, customer-scale, live-operation or screen acceptance; further operation/path expansion requires approval |

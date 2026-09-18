@@ -78,6 +78,17 @@ Stage 7's own requester coverage, supported path compositions, SEC-071 findings 
 Stage 7 work, not postponed to that later rule pass. Existing safety stops and outstanding acceptance,
 including the published CI failure recorded under P-227, remain explicit rather than accepted by this order.
 
+**Owner requirement for Stage 7 completion: automatic normal audits, not separate manual path tools.**
+A normal GUI or CLI audit must select the relevant account questions from captured evidence, run the
+Stage 7 analysis, and save its findings, routes and coverage without an administrator-maintained
+requester list or a separate per-object analysis step. This completion requirement covers the remaining
+Stage 7 scope, not merely automatic execution of the three currently supported requester families;
+SEC-071 findings, broader approved compositions, P-143 declarations and run-wide presentation/counts
+remain owed. Screens read and validate saved results rather than starting new analysis, and missing
+evidence, unsupported analysis and failed or unfinished work remain explicit rather than becoming safe
+answers. Automatic analysis does not authorize changes to AD; the existing separate approval boundaries
+for production activation, budgets and paused measurements still apply.
+
 **Owner-selected next Stage 7 priority: production requester coverage**, before broader path
 compositions, P-143 declarations, SEC-071 findings and path presentation. Start from checkpoint 7's
 offline permission-led selector and checkpoint 8's shared targets, and prepare a bounded proposal
@@ -140,6 +151,110 @@ older launch records do not establish current liveness. P-242 plan steps 1–8 r
 step 9 unfinished and step 10 pending. Reconcile the remaining Stage 7 requirements and propose one
 small non-measurement feature for explicit scope and UI approval before implementation, without
 reopening the approved P-242 integration or treating Stage 7 as complete.
+
+**Owner-approved reduced offline pilot, authorized to start by "ok lets do it":** generate a separate
+synthetic input of 34,700 objects, 590,000 physical permission entries and nine domains using the
+existing configurable workload generator and preservation-safe runner. Retain meaningful membership
+density and route scenarios across all three requester families, checking actual work and distinguishing
+established from unresolved answers rather than accepting empty or uniformly unresolved work as proof
+of readiness. Record input/build provenance, elapsed work, memory, storage/readback and cancellation
+evidence in fresh output; keep original large inputs, partial databases, failures and historical
+source snapshots/mappings untouched. These figures define a pilot input, not a production budget;
+do not assume linear scaling or treat a pilot pass as full-forest acceptance. Only this reduced pilot
+resumes: the unfinished full-volume series and stopped-process investigation are not restarted,
+P-242 step 9 remains unfinished and step 10 pending, and production requester selection remains Disabled
+with the legacy discovery budget null. Optimization, new measurement-harness code, production activation,
+new budgets, live AD access, recapture, migration, deletion, commit and push require separate approval.
+
+**The reduced pilot's first preflight was blocked by the original synthetic scenarios, not by a renewed pause.**
+The selected density is 18 relevant group sets with four members per holder, taken from the retained
+workload design: two sets per domain exercise both Self-Membership and Write Members, with 90 stored
+membership values; this is a synthetic experiment, not reconstructed customer membership.
+The original generator placed each requester's existing holder permission before the obtained group's permission
+on the same Tier-0 target, so the combined proof cannot attribute that first grant to the group being
+joined and remains Unknown regardless of these size/density inputs.
+At that preflight the generator, runner and two relevant evaluators matched the archived source hashes; the retained smoke
+has four established direct-requester answers, four established own-account membership answers and zero
+established combined answers, and is not new scale evidence.
+The no-launch record is `next/artifacts/p242-reduced-pilot/0869cdf29da34de7b5217a3091078319/preflight-blocked.json`;
+no reduced input or timing, memory, storage/readback or cancellation measurement was produced in that attempt.
+A bounded generator-only extension to separate established combined-route scenarios while retaining
+unresolved scenarios is now explicitly approved: "Approve the generator-only scenario extension,
+verify it offline, then execute the reduced pilot"; production proof checks must remain unchanged.
+The extension adds an opt-in separate synthetic target using the existing fixed Tier-0 definition,
+retaining the original target and six-argument generator mode, followed by focused rebuilt
+deliberate-defect verification and execution of the already-approved reduced shape.
+The current durable authorization is `next/artifacts/p242-reduced-pilot/35f8f6fe210b4689af59c03ced79b9ef/authorization.json`.
+The reduced execution approval remains in force with this bounded generator change;
+P-242 steps 1–8 remain complete, step 9 unfinished and step 10 pending, with all other boundaries unchanged.
+
+The opt-in extension is implemented and the final Release build passes all 20 focused checks,
+including eight new checks witnessed by four rebuilt deliberate-defect variants; the historical full
+suite was not repeated and these checks are not scale evidence.
+**The reduced pilot and its separate cancellation observation have now completed successfully.**
+The independently verified input contains 34,700 objects, 590,000 physical ACEs, nine domains,
+90 member values and mean DN length 96.97683; both runs used the same archived Release executable
+and separate copies of the same sealed evidence, with original inputs unchanged.
+The main process took 24 min 21.551 sec including preparation and validation: requester-enabled
+judging took 9 min 7.249 sec, combined proofs 1 min 43.480 sec, and passive reopening/validation
+8 min 29.817 sec; peak process working set was 602.984 MiB and the saved judgement was 96.488 MiB.
+There are 72 established requester-permission answers, 72 established own-account membership answers,
+and 144 combined answers split into 72 Established and 72 Unknown; each membership-permission type
+has 36 established and 36 unresolved combined answers, not an all-Unknown substitute for readiness.
+All 576 saved/nested proof identity checks matched the evidence and generations, and all 90 counted
+group-held permission rows, including supports and uncertainty, match the requester-disabled judgement.
+Cancellation was requested 1,035.861 ms into combined-proof work after 81,687,496 managed bytes had
+been allocated, and responded in 61.576 ms; this single observation includes unwinding/runner overhead
+and is not a guaranteed response bound or processing budget.
+That process exited successfully after 19 min 17.927 sec, retaining and passively reopening its previous
+valid requester-disabled generation as NotRequested, not publishing an empty successful requester result.
+The final handoff and preservation qualifications are retained at
+`next/artifacts/p242-reduced-pilot/35f8f6fe210b4689af59c03ced79b9ef/handoff-d0cd092921394478a703aea153763ead/handoff.json`;
+earlier launch/progress, failures and incomplete summaries remain historical records, not current liveness.
+These timings isolate the shared JudgeAudit path with no scheduled rules, not total normal-audit/UI
+runtime; synthetic density is not reconstructed customer membership and no linear extrapolation or
+full-forest acceptance follows. Preparation and validated readback costs remain material measured
+readiness concerns, not authorization to optimize, weaken proof/readback checks, set budgets or activate
+production; P-242 steps 1–8 remain complete, step 9 unfinished and step 10 pending, with full-volume
+measurements and the stopped-process investigation still paused and independent open checks unchanged.
+
+**Owner-approved read-only follow-up:** "yes" authorized investigation of preparation and saved-result
+validation using retained pilot records and current source, with no new measurements or optimization.
+That investigation is complete; its source/data/query-plan findings and bounded proposal are retained in
+`next/artifacts/p242-reduced-pilot/35f8f6fe210b4689af59c03ced79b9ef/read-only-review-b614d80e6eeb4bc7b6262f6acfef0aab/findings.json`.
+The approved change is an opened-reader, bulk-validation identity lookup that avoids repeated
+name scans while retaining every uncertainty witness and proof check; it must preserve SQLite's
+name ambiguity/case rules, exact generations and passive readback without changing sealed evidence.
+This uses extra temporary memory; at approval, neither its speedup nor the exact share of phase time
+spent in name scans had been measured. The owner explicitly approved "the lookup-only optimization,
+offline verification, and unchanged reduced-pilot repeat": use the identical sealed input and unchanged
+main/cancellation runner modes in fresh outputs, with focused rebuilt deliberate-defect checks before measurement.
+Authorization and preserved pre-existing work are recorded under
+`next/artifacts/p242-lookup-optimization/75b787807339426eb8a5023a4ad85154/authorization.json`; no permission
+evaluator, evidence schema, production policy, budget, full-volume or live-access change is included.
+
+**Lookup-only optimization implemented and reduced repeat completed, with regressions retained.**
+All 541 focused reader/path/runner checks pass, and all nine new checks detect rebuilt deliberate
+defects across four variants; the case-comparison variant produced two valid failures rather than the
+one initially expected, and its failed validation record is retained without weakening either check.
+The unchanged runner used fresh copies of the exact original sealed 34,700-object input, not a
+regenerated workload: main elapsed fell from 1,461.551 to 698.654 seconds, selected judging from
+547.249 to 160.368 seconds, and selected path preparation from 388.429 to 14.105 seconds.
+Validated reopening fell only from 509.817 to 459.105 seconds and remains a material readiness concern;
+peak process working set increased from 602.984 to 638.754 MiB and reopening managed allocations
+increased slightly, so this is not an across-the-board resource improvement.
+The saved judgement remains 101,175,296 bytes, with identical normalized saved questions/proofs,
+original ACE supports, 90 independent permission rows, 34,700 uncertainty records, 34,701 path outcomes
+and 27 anchors; exact after-run generation binding and passive readback were verified separately.
+Cancellation preserved and reopened the previous valid NotRequested generation, but its observed
+response worsened from 61.576 to 980.318 ms and the nominal 1,000 ms request fired at 2,306.459 ms.
+Independent read-only comparison work overlapped that cancellation run, so attribution to the code
+change is unproven; the result remains visible rather than selectively rerun or accepted as a bound.
+The paired results, unchanged-input/build provenance, retained defects and preservation review are in
+`next/artifacts/p242-lookup-optimization/75b787807339426eb8a5023a4ad85154/handoff.json`.
+This is one reduced synthetic pair with no scheduled rules, not full normal-audit/UI timing, full-forest
+acceptance, a processing budget or production activation; further optimization or additional measurement
+requires approval, and P-242 steps 1–8 remain complete, step 9 unfinished and step 10 pending.
 
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
