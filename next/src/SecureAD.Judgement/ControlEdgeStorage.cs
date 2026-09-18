@@ -210,7 +210,6 @@ internal static class ControlEdgeStorage
         if (!derived) return new([], 0, 0, 0, 0, false, capture, false, afterId);
         var predicate = target is not null ? "target = $value COLLATE NOCASE"
             : holderSid is not null ? "holder_sid = $value COLLATE NOCASE AND COALESCE(holder_scope,'') = $scope COLLATE NOCASE" : "1=1";
-        FullControlStorage.ValidateSelection(connection, description, predicate, target, holderSid, holderScope);
         using var counts = connection.CreateCommand();
         counts.CommandText = $"""
             SELECT expectedness,COUNT(*) FROM (
@@ -256,7 +255,7 @@ internal static class ControlEdgeStorage
             while (read.Read()) items.Add((read.GetInt64(0), read.IsDBNull(1) ? null : read.GetInt64(1), read.IsDBNull(2) ? null : read.GetInt64(2)));
         var more = items.Count > 100;
         if (more) items.RemoveAt(100);
-        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadEdge(connection, description, item.Edge!.Value)).ToArray();
+        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadStoredEdge(connection, description, item.Edge!.Value)).ToArray();
         var assessments = items.Where(item => item.Assessment.HasValue).Select(item => FullControlStorage.Read(connection, description, item.Assessment!.Value)).ToArray();
         return new(rows, unexpected, unknown, expected, unanswered, true, capture, more, items.Count == 0 ? afterId : items[^1].Display)
         {
@@ -264,19 +263,6 @@ internal static class ControlEdgeStorage
             FullControlSupports = FullControlStorage.Supports(connection, rows),
             IsScopedToDiscovery = scoped,
         };
-    }
-
-    internal static IReadOnlyList<ControlEdge> ReadHolderEdges(SqliteConnection connection, JudgementDescription description,
-        string target, string holder, string? scope)
-    {
-        using var query = connection.CreateCommand();
-        query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND holder_sid=$holder COLLATE NOCASE AND COALESCE(holder_scope,'')=$scope COLLATE NOCASE ORDER BY id";
-        query.Parameters.AddWithValue("$target", target);
-        query.Parameters.AddWithValue("$holder", holder);
-        query.Parameters.AddWithValue("$scope", scope ?? "");
-        var ids = new List<long>();
-        using (var read = query.ExecuteReader()) while (read.Read()) ids.Add(read.GetInt64(0));
-        return ids.Select(id => ReadEdge(connection, description, id)).ToArray();
     }
 
     internal static ControlEdge ReadExact(SqliteConnection connection, JudgementDescription description, string target, long id)
@@ -288,11 +274,19 @@ internal static class ControlEdgeStorage
         query.Parameters.AddWithValue("$target", target);
         query.Parameters.AddWithValue("$version", EngineVersion);
         if (query.ExecuteScalar() is null) throw FullControlEvaluator.InvalidProof();
-        FullControlStorage.ValidateSelection(connection, description, "target = $value COLLATE NOCASE", target, null, null);
-        return ReadEdge(connection, description, id);
+        return ReadStoredEdge(connection, description, id);
     }
 
     internal static ControlEdge ReadEdge(SqliteConnection connection, JudgementDescription description, long id)
+    {
+        var edge = ReadStoredEdge(connection, description, id);
+        ReplicationControlDeriver.ValidateStored(edge);
+        OwnershipControlDeriver.ValidateStored(edge);
+        return edge;
+    }
+
+    // Browsing decodes the published answer; production and offline proof verification opt into replay above.
+    private static ControlEdge ReadStoredEdge(SqliteConnection connection, JudgementDescription description, long id)
     {
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object USING(target) WHERE id=$id";
@@ -321,8 +315,6 @@ internal static class ControlEdgeStorage
                 MembershipRoutes = SharedProofStorage.ReadControlRoutes(connection, edge) };
             if (rows[i].Evidence.Count != evidenceCounts[edge.Id].Aces || rows[i].Preconditions.Count != evidenceCounts[edge.Id].Conditions)
                 throw new InvalidOperationException("Control-edge supporting evidence is missing.");
-            ReplicationControlDeriver.ValidateStored(rows[i]);
-            OwnershipControlDeriver.ValidateStored(rows[i]);
         }
         if (rows.Count != 1) throw FullControlEvaluator.InvalidProof();
         return rows[0];

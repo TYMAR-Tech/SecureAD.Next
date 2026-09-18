@@ -154,7 +154,6 @@ public sealed class JudgementReader : IDisposable
     private readonly SqliteConnection _connection;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
-    private bool _ownershipValidated;
 
     private JudgementReader(
         string bundleDirectory, SqliteConnection connection, JudgementDescription description)
@@ -223,7 +222,6 @@ public sealed class JudgementReader : IDisposable
         if (target is not null && holderSid is not null)
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
-        ValidateOwnership();
         return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
             with { GenerationId = Description.GenerationId,
                 OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
@@ -238,19 +236,7 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
-        ValidateOwnership();
         return ControlEdgeStorage.ReadExact(_connection, Description, target, id);
-    }
-
-    private void ValidateOwnership()
-    {
-        // The reader holds one opened immutable generation; a new generation gets its own validation.
-        if (!_ownershipValidated)
-        {
-            RecordAnalyticalRead();
-            OwnershipAuditValidation.Validate(_connection, Description, BundleDirectory);
-            _ownershipValidated = true;
-        }
     }
 
     private void RecordAnalyticalRead() =>
@@ -276,7 +262,6 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(holderSid);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
-        FullControlStorage.ValidateSelection(_connection, Description, "target = $value COLLATE NOCASE", target, null, null);
         return MemberAttributionStorage.Read(_connection, Description, holderSid, holderScope, target)
             with { GenerationId = Description.GenerationId };
     }
@@ -287,13 +272,7 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(memberSid);
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
-        var page = MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
-        foreach (var permission in page.Permissions.DistinctBy(value => (value.Target, value.HolderSid, value.HolderScope)))
-        {
-            FullControlStorage.ValidateSelection(_connection, Description, "target = $value COLLATE NOCASE", permission.Target, null, null);
-            ControlEdgeStorage.ReadHolderEdges(_connection, Description, permission.Target, permission.HolderSid, permission.HolderScope);
-        }
-        return page;
+        return MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
     }
 
     /// <summary>

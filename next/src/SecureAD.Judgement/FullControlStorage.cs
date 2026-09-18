@@ -114,15 +114,21 @@ internal static class FullControlStorage
             supportCount = read.GetInt32(7);
         }
         catch (JsonException error) { throw new InvalidOperationException(FullControlEvaluator.InvalidProof().Message, error); }
-        var edges = ControlEdgeStorage.ReadHolderEdges(connection, description, result.Source.Target, result.Source.Holder.Sid, result.Source.HolderScope);
-        FullControlEvaluator.Validate(result, edges);
-        var expected = result.IsCounted ? edges.Where(edge => FullControlEvaluator.Supports(result.Source, edge)).Select(edge => edge.Id).Order().ToArray() : [];
         using var links = connection.CreateCommand();
-        links.CommandText = "SELECT edge_id FROM full_control_support WHERE assessment_id=$id ORDER BY edge_id";
+        links.CommandText = "SELECT e.id,e.target,e.holder_sid,e.holder_scope,e.generation,e.derivation_generation FROM full_control_support s "
+            + "LEFT JOIN control_edge e ON e.id=s.edge_id WHERE s.assessment_id=$id ORDER BY e.id";
         links.Parameters.AddWithValue("$id", id);
-        var actual = new List<long>();
-        using (var read = links.ExecuteReader()) while (read.Read()) actual.Add(read.GetInt64(0));
-        if (actual.Count != supportCount || !actual.SequenceEqual(expected)) throw FullControlEvaluator.InvalidProof();
+        var found = 0;
+        using (var read = links.ExecuteReader())
+            while (read.Read())
+            {
+                if (read.IsDBNull(0) || read.GetString(1) != result.Source.Target || read.GetString(2) != result.Source.Holder.Sid
+                    || Text(read, 3) != result.Source.HolderScope || Guid.Parse(read.GetString(4)) != description.GenerationId
+                    || Text(read, 5) != description.DerivationGenerationId?.ToString("D")) throw FullControlEvaluator.InvalidProof();
+                found++;
+            }
+        if (found != supportCount || !result.IsCounted && found != 0 || result.PrincipalCatalogueVersion is not (2 or 3))
+            throw FullControlEvaluator.InvalidProof();
         return result;
     }
 
@@ -140,27 +146,6 @@ internal static class FullControlStorage
             entries.Add(SharedPermissionStorage.Read(read, target, description.GenerationId));
         }
         return entries;
-    }
-
-    // Counts must not trust a corrupt summary outside the current page. Stream validation rather than retaining every proof.
-    internal static void ValidateSelection(SqliteConnection connection, JudgementDescription description, string predicate,
-        string? target, string? holderSid, string? holderScope)
-    {
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id FROM full_control_assessment WHERE " + predicate + " ORDER BY id";
-        ControlEdgeStorage.BindFilter(command, target, holderSid, holderScope);
-        using var read = command.ExecuteReader();
-        while (read.Read()) Read(connection, description, read.GetInt64(0));
-        using var orphan = connection.CreateCommand();
-        orphan.CommandText = """
-            SELECT
-                (SELECT COUNT(*) FROM full_control_support s
-                 LEFT JOIN full_control_assessment a ON a.id=s.assessment_id LEFT JOIN control_edge e ON e.id=s.edge_id
-                 WHERE a.id IS NULL OR e.id IS NULL)
-                + (SELECT COUNT(*) FROM control_object o LEFT JOIN full_control_manifest m USING(target)
-                   WHERE m.target IS NULL OR m.assessment_count <> (SELECT COUNT(*) FROM full_control_assessment a WHERE a.target=o.target))
-            """;
-        if ((long)orphan.ExecuteScalar()! != 0) throw FullControlEvaluator.InvalidProof();
     }
 
     internal static IReadOnlyDictionary<long, long> Supports(SqliteConnection connection, IEnumerable<ControlEdge> edges)

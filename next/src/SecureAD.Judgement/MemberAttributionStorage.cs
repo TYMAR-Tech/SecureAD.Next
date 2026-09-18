@@ -14,10 +14,11 @@ internal static class MemberAttributionStorage
     private const string SourceSql = """
         SELECT e.id*2 AS display_id,e.target,e.holder_sid,COALESCE(e.holder_scope,'') AS holder_scope,
             e.capability,e.expectedness,(e.counted=1 AND NOT EXISTS(SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id)) AS counted,
-            e.evaluation AS source_evaluation,EXISTS(SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id) AS included
+            e.evaluation AS source_evaluation,EXISTS(SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id) AS included,
+            e.generation,e.derivation_generation
         FROM control_edge e
         UNION ALL
-        SELECT id*2-1,target,holder_sid,COALESCE(holder_scope,''),'HasFullControl',expectedness,evaluation='Established',evaluation,0
+        SELECT id*2-1,target,holder_sid,COALESCE(holder_scope,''),'HasFullControl',expectedness,evaluation='Established',evaluation,0,generation,derivation_generation
         FROM full_control_assessment
         """;
 
@@ -104,9 +105,9 @@ internal static class MemberAttributionStorage
     internal static MemberAttributionDetail Read(SqliteConnection connection, JudgementDescription description,
         string sid, string? scope, string target)
     {
-        if (!ValidateManifest(connection)) return new(false, null, []);
+        if (!ReadManifest(connection)) return new(false, null, []);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT r.id,p.context FROM member_attribution_root r JOIN member_attribution_permission p ON p.root_id=r.id "
+        command.CommandText = "SELECT r.id,p.context,p.display_id FROM member_attribution_root r JOIN member_attribution_permission p ON p.root_id=r.id "
             + "WHERE r.holder_sid=$sid COLLATE NOCASE AND r.holder_scope=$scope COLLATE NOCASE AND p.target=$target COLLATE NOCASE LIMIT 1";
         command.Parameters.AddWithValue("$sid", sid);
         command.Parameters.AddWithValue("$scope", scope ?? "");
@@ -115,7 +116,9 @@ internal static class MemberAttributionStorage
         if (!reader.Read()) return new(true, null, []);
         var id = reader.GetInt32(0);
         var context = reader.GetString(1);
+        var permission = reader.GetInt64(2);
         reader.Close();
+        ValidateLink(connection, description, permission, sid, scope, target, context);
         var expansion = ReadRoot(connection, description, id);
         var applicability = ReadContext(connection, id, context, expansion);
         return new(true, expansion, applicability);
@@ -124,29 +127,27 @@ internal static class MemberAttributionStorage
     internal static MemberPermissionPage ReadReverse(SqliteConnection connection, JudgementDescription description,
         string memberSid, string? memberScope, bool includeExpected, long afterId)
     {
-        if (!ValidateManifest(connection)) return new(false, false, description.GenerationId, [], false, afterId);
+        if (!ReadManifest(connection)) return new(false, false, description.GenerationId, [], false, afterId);
         using var command = connection.CreateCommand();
         // Every incomplete source can hide an unvisited member; absence from its index is not non-membership.
-        command.CommandText = "SELECT id FROM member_attribution_root ORDER BY id";
-        var ids = new List<int>();
-        using (var reader = command.ExecuteReader()) while (reader.Read()) ids.Add(reader.GetInt32(0));
-        var roots = ids.ToDictionary(id => id, id => ReadRoot(connection, description, id));
-        var complete = roots.Values.All(root => root.IsComplete);
+        command.CommandText = "SELECT NOT EXISTS(SELECT 1 FROM member_attribution_root WHERE COALESCE(json_extract(proof,'$.IsComplete'),0)<>1)";
+        var complete = (long)command.ExecuteScalar()! == 1;
         command.Parameters.AddWithValue("$sid", memberSid);
         command.Parameters.AddWithValue("$scope", memberScope ?? "");
-        command.CommandText = "SELECT DISTINCT p.root_id,p.context,m.identity FROM member_attribution_permission p "
-            + "JOIN member_attribution_member m ON m.root_id=p.root_id WHERE m.sid=$sid COLLATE NOCASE AND m.scope=$scope COLLATE NOCASE";
-        var selectedContexts = new List<(int Root, string Context, string Member)>();
-        using (var reader = command.ExecuteReader())
-            while (reader.Read()) selectedContexts.Add((reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-        var contextProof = selectedContexts.Select(value => (value.Root, value.Context)).Distinct().ToDictionary(key => key,
-            key => ReadContext(connection, key.Root, key.Context, roots[key.Root]).ToDictionary(value => value.Member, StringComparer.OrdinalIgnoreCase));
-        complete &= selectedContexts.All(value => contextProof[(value.Root, value.Context)][value.Member].State != MemberAttributionState.Unknown);
+        command.CommandText = """
+            SELECT NOT EXISTS(
+                SELECT 1 FROM member_attribution_permission p JOIN member_attribution_member m ON m.root_id=p.root_id
+                LEFT JOIN member_attribution_context c ON c.root_id=p.root_id AND c.context=p.context
+                WHERE m.sid=$sid COLLATE NOCASE AND m.scope=$scope COLLATE NOCASE AND NOT EXISTS(
+                    SELECT 1 FROM json_each(c.proof) value WHERE json_extract(value.value,'$.Member')=m.identity COLLATE NOCASE
+                    AND json_extract(value.value,'$.State') IN ('Established','NotEstablished')))
+            """;
+        complete &= (long)command.ExecuteScalar()! == 1;
         command.CommandText = "SELECT COUNT(DISTINCT p.display_id) FROM member_attribution_permission p "
             + "JOIN member_attribution_member m ON m.root_id=p.root_id JOIN (" + SourceSql + ") s ON s.display_id=p.display_id "
             + "WHERE m.sid=$sid COLLATE NOCASE AND m.scope=$scope COLLATE NOCASE AND s.expectedness='Expected' AND s.counted=1";
         var expected = (long)command.ExecuteScalar()!;
-        command.CommandText = "SELECT p.display_id,p.root_id,p.context,p.target,s.holder_sid,s.holder_scope,s.capability,s.expectedness,s.counted,MIN(m.identity),s.source_evaluation,s.included "
+        command.CommandText = "SELECT p.display_id,p.root_id,p.context,p.target,s.holder_sid,s.holder_scope,s.capability,s.expectedness,s.counted,MIN(m.identity),s.source_evaluation,s.included,s.generation,s.derivation_generation "
             + "FROM member_attribution_permission p JOIN member_attribution_member m ON m.root_id=p.root_id "
             + "JOIN (" + SourceSql + ") s ON s.display_id=p.display_id "
             + "WHERE m.sid=$sid COLLATE NOCASE AND m.scope=$scope COLLATE NOCASE AND p.display_id>$after "
@@ -154,15 +155,25 @@ internal static class MemberAttributionStorage
         command.Parameters.AddWithValue("$after", afterId);
         var rows = new List<(long Id, int Root, string Context, string Target, string Sid, string Scope, string Capability, ControlExpectedness Expected, bool Counted, string Member, ControlEvaluationState State, bool Included)>();
         using (var reader = command.ExecuteReader())
-            while (reader.Read()) rows.Add((reader.GetInt64(0), reader.GetInt32(1), reader.GetString(2), reader.GetString(3),
-                reader.GetString(4), reader.GetString(5), reader.GetString(6), Enum.Parse<ControlExpectedness>(reader.GetString(7)), reader.GetBoolean(8), reader.GetString(9),
-                Enum.Parse<ControlEvaluationState>(reader.GetString(10)), reader.GetBoolean(11)));
+            while (reader.Read())
+            {
+                if (Guid.Parse(reader.GetString(12)) != description.GenerationId
+                    || (reader.IsDBNull(13) ? null : reader.GetString(13)) != description.DerivationGenerationId?.ToString("D")) throw Invalid();
+                rows.Add((reader.GetInt64(0), reader.GetInt32(1), reader.GetString(2), reader.GetString(3),
+                    reader.GetString(4), reader.GetString(5), reader.GetString(6), Enum.Parse<ControlExpectedness>(reader.GetString(7)), reader.GetBoolean(8), reader.GetString(9),
+                    Enum.Parse<ControlEvaluationState>(reader.GetString(10)), reader.GetBoolean(11)));
+            }
         var more = rows.Count > 100;
         if (more) rows.RemoveAt(100);
+        var roots = rows.Select(row => row.Root).Distinct().ToDictionary(id => id, id => ReadRoot(connection, description, id));
+        var contextProof = rows.Select(row => (row.Root, row.Context)).Distinct().ToDictionary(key => key,
+            key => ReadContext(connection, key.Root, key.Context, roots[key.Root]).ToDictionary(value => value.Member, StringComparer.OrdinalIgnoreCase));
         var result = new List<MemberPermissionReference>();
         foreach (var row in rows)
         {
             var root = roots[row.Root];
+            if (!Same(root.HolderSid, row.Sid) || !Same(root.HolderScope ?? "", row.Scope)) throw Invalid();
+            ValidateLink(connection, description, row.Id, row.Sid, row.Scope, row.Target, row.Context);
             var member = root.Members.Single(item => Same(item.Identity, row.Member));
             var resource = contextProof[(row.Root, row.Context)][row.Member];
             if (resource.State == MemberAttributionState.Unknown) complete = false;
@@ -172,7 +183,21 @@ internal static class MemberAttributionStorage
         return new(true, complete, description.GenerationId, result, more, rows.Count == 0 ? afterId : rows[^1].Id) { ExpectedCount = expected };
     }
 
-    private static bool ValidateManifest(SqliteConnection connection)
+    private static void ValidateLink(SqliteConnection connection, JudgementDescription description, long id,
+        string holder, string? scope, string target, string context)
+    {
+        var configuration = ReadConfiguration(connection);
+        if (context != MemberAttributionScope.ContextKey(target, configuration.Forest, configuration.NamingContexts)) throw Invalid();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT target,holder_sid,holder_scope,generation,derivation_generation FROM (" + SourceSql + ") WHERE display_id=$id";
+        command.Parameters.AddWithValue("$id", id);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read() || !Same(reader.GetString(0), target) || !Same(reader.GetString(1), holder)
+            || !Same(reader.GetString(2), scope ?? "") || Guid.Parse(reader.GetString(3)) != description.GenerationId
+            || (reader.IsDBNull(4) ? null : reader.GetString(4)) != description.DerivationGenerationId?.ToString("D")) throw Invalid();
+    }
+
+    private static bool ReadManifest(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT configuration,root_count,permission_count,(SELECT COUNT(*) FROM member_attribution_root),"
@@ -181,20 +206,6 @@ internal static class MemberAttributionStorage
         if (!reader.Read() || reader.GetInt64(1) != reader.GetInt64(3) || reader.GetInt64(2) != reader.GetInt64(4)) throw Invalid();
         var ran = !reader.IsDBNull(0);
         if (!ran && (reader.GetInt64(1) != 0 || reader.GetInt64(2) != 0)) throw Invalid();
-        reader.Close();
-        command.CommandText = "SELECT COUNT(*) FROM member_attribution_permission p LEFT JOIN member_attribution_root r ON r.id=p.root_id "
-            + "LEFT JOIN member_attribution_context c ON c.root_id=p.root_id AND c.context=p.context "
-            + "LEFT JOIN (" + SourceSql + ") s ON s.display_id=p.display_id "
-            + "WHERE r.id IS NULL OR c.root_id IS NULL OR s.display_id IS NULL OR s.holder_sid<>r.holder_sid COLLATE NOCASE OR s.holder_scope<>r.holder_scope COLLATE NOCASE OR s.target<>p.target COLLATE NOCASE";
-        if ((long)command.ExecuteScalar()! != 0) throw Invalid();
-        if (ran)
-        {
-            var configuration = ReadConfiguration(connection);
-            command.CommandText = "SELECT DISTINCT target,context FROM member_attribution_permission";
-            using var contexts = command.ExecuteReader();
-            while (contexts.Read())
-                if (contexts.GetString(1) != MemberAttributionScope.ContextKey(contexts.GetString(0), configuration.Forest, configuration.NamingContexts)) throw Invalid();
-        }
         return ran;
     }
 

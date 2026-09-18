@@ -122,7 +122,7 @@ public sealed class SharedPermissionStorageTests
     {
         var directory = FullControlStorageTests.Store([FullControlStorageTests.Evaluation(FullControlEvaluatorTests.Allow(0))], connection => Mutate(connection, mutation));
         using var reader = FullControlStorageTests.Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, null, null, true, long.MaxValue));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, null, null, true, long.MaxValue));
     }
 
     [Theory]
@@ -147,7 +147,7 @@ public sealed class SharedPermissionStorageTests
         var directory = FullControlStorageTests.Store([result], connection => Mutate(connection,
             "UPDATE full_control_source_entry SET position=-(position+1); UPDATE full_control_source_entry SET position=position+2"));
         using var reader = FullControlStorageTests.Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, null, null, true, long.MaxValue));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, null, null, true, long.MaxValue));
     }
 
     [Fact]

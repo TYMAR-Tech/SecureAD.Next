@@ -342,6 +342,17 @@ The owner requires a clean replacement of the flawed design, not parallel produc
 dead code or permanent transition scaffolding; preserved historical evidence is not a reason to retain
 obsolete production code. Preserve the existing instruction-file edit and all retained P-243–P-246 work.
 
+**Owner-approved P-248 checkpoint 2:** continue on `p248-stored-readback` with saved control-edge
+and permission evidence, the existing Full Control/ownership conclusions used by those lists,
+saved Self-Membership answers, and forward/reverse membership attribution. Replace browsing-time
+analysis with saved-result reads through checkpoint 1's protected selected-run lifetime, preserving
+exact evidence/derivation/judgement binding, supporting evidence, independent holder/member/route
+counts, resource scope and explicit incomplete results. Preserve pre-existing edits, including the
+work queue, and all historical artifacts; isolate TEMP/TMP before loading tests and explicitly rebuild
+both deliberate defects and restored code. This approval does not reopen checkpoint 1's completed
+mutation work or authorize UI/schema changes, later checkpoints, live AD, activation, new measurement
+tooling, commit or push; P-241 and unperformed physical-display checks remain open.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.

@@ -77,6 +77,7 @@ public sealed class SelfMembershipWorkflowTests
         var counts = section.Counts;
 
         Judge(directory, TestBudget);
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
 
         Assert.Equal(2, section.RequesterAssessments.Count);
@@ -99,6 +100,7 @@ public sealed class SelfMembershipWorkflowTests
         Assert.NotNull(section.SelectedRequesterAssessment);
 
         Judge(directory, null);
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
 
         Assert.NotEqual(originalGeneration, Summary(directory).GenerationId);

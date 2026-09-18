@@ -169,7 +169,7 @@ public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
         Judge(directory);
         SelfMembershipCoverageTests.Mutate(directory, connection => Execute(connection, mutation));
         using var reader = Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(CoreDn, null, null, true, 0));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, CoreDn, null, null, true, 0));
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
             update.ExecuteNonQuery();
         });
         using var reader = Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(CoreDn, null, null, true, 0));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, CoreDn, null, null, true, 0));
     }
 
     private static string JudgementPath(string directory) => BundleLayout.AnalysisGenerationDataPath(directory,

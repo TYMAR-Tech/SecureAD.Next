@@ -160,7 +160,7 @@ public sealed class SharedProofStorageTests
         entry = entry with { Trustee = entry.Trustee with { Meaning = "captured explanation" } };
         var directory = FullControlStorageTests.Store([FullControlStorageTests.Evaluation(entry)], connection => Mutate(connection, mutation));
         using var reader = FullControlStorageTests.Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, null, null, true, long.MaxValue));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, null, null, true, long.MaxValue));
     }
 
     [Theory]
@@ -182,7 +182,7 @@ public sealed class SharedProofStorageTests
         };
         var directory = FullControlStorageTests.Store([first, second], connection => Mutate(connection, mutation));
         using var reader = FullControlStorageTests.Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, null, null, true, long.MaxValue));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, null, null, true, long.MaxValue));
     }
 
     [Fact]

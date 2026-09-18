@@ -185,7 +185,7 @@ public sealed class FullControlStorageTests
     {
         var directory = Store([Evaluation(FullControlEvaluatorTests.Allow(0))], connection => Execute(connection, mutation));
         using var reader = Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, null, null, true, 0));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, null, null, true, 0));
     }
 
     [Fact]
@@ -195,7 +195,7 @@ public sealed class FullControlStorageTests
         var second = ControlEdgeDeriver.Derive(ControlEdgeDeriverTests.Subject with { DistinguishedName = "OU=Other,DC=contoso,DC=com" },
             ControlEdgeDeriverTests.Permissions(FullControlEvaluatorTests.Allow(0)), JudgingContext.At(DateTimeOffset.UnixEpoch), Guid.Empty, null, ControlEdgeDeriverTests.DomainSid);
         using var reader = Open(Store([first, second], connection => Execute(connection, "UPDATE full_control_assessment SET support_count=99 WHERE id=1")));
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(null, ControlEdgeDeriverTests.Holder, null, true, 3));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, ControlEdgeDeriverTests.Holder, null, true, 3));
     }
 
     [Fact]

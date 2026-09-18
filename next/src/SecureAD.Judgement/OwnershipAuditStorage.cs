@@ -240,8 +240,11 @@ internal static class OwnershipAuditStorage
 
     internal static OwnershipAuditCoverage? ReadCoverage(SqliteConnection connection, JudgementDescription description, string? target)
     {
-        var header = ValidateCounts(connection, description);
+        var header = ReadHeader(connection, requireComplete: true);
         if (header is null) return null;
+        if (header.Generation != description.GenerationId || header.EvidenceSeal != description.EvidenceSeal
+            || header.DerivationGeneration != description.DerivationGenerationId || header.EvaluationAsOf != description.EvaluationAsOf)
+            throw InvalidProof();
         // The holder view asks about no target, so neither number was ever produced. It used to
         // report two zeros, which a reader cannot tell from a target assessed and found clean.
         if (target is null) return new(header.Generation, null, header.Input is not null, null, null, header.Coverage,

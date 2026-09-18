@@ -158,6 +158,9 @@ public sealed class ReplicationWorkflowTests
             Assert.True(command.ExecuteNonQuery() > 0);
         });
         source.SelectRun(directory);
+        section.Configure(true, false,
+            (_, expected, after) => ControlProofVerification.ReadResult(directory, Root, expected, after),
+            _ => source.ReadSelfMembershipAssessments(directory, Root, null));
         section.FirstPageCommand.Execute(null);
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);

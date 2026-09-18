@@ -12,7 +12,7 @@ using Xunit;
 
 namespace SecureAD.Next.Tests.Shell;
 
-public sealed class OpenedRunResultsTests
+public sealed partial class OpenedRunResultsTests
 {
     private const string FirstDn = "CN=A,DC=ad,DC=lab";
     private const string SecondDn = "CN=B,DC=ad,DC=lab";

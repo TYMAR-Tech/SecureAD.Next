@@ -67,6 +67,7 @@ public sealed class PasswordResetWorkflowTests
         var counts = section.Counts;
 
         Judge(directory, TestBudget);
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
 
         Assert.Single(section.Rows);

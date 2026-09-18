@@ -157,6 +157,9 @@ public sealed class OwnershipWorkflowTests
             Assert.True(command.ExecuteNonQuery() > 0);
         });
         source.SelectRun(directory);
+        section.Configure(true, false,
+            (_, expected, after) => ControlProofVerification.ReadResult(directory, TargetDn, expected, after),
+            _ => source.ReadSelfMembershipAssessments(directory, TargetDn, null));
         section.FirstPageCommand.Execute(null);
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);

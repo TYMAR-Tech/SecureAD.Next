@@ -59,7 +59,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Mutate(directory, "DELETE FROM full_control_manifest");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdge(TargetDn, id));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadEdge(reader, TargetDn, id));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Mutate(directory, "UPDATE control_object SET principal_sid='S-1-5-21-1-2-3-1998'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdge(TargetDn, id));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadEdge(reader, TargetDn, id));
     }
 
     [Theory]
