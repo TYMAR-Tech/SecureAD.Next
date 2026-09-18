@@ -62,8 +62,10 @@ internal static class PathInputStorage
         transaction.Commit();
     }
 
-    internal static PathInputs Read(SqliteConnection connection, JudgementDescription description, string directory)
+    internal static PathInputs Read(SqliteConnection connection, JudgementDescription description, string directory,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var header = ReadHeader(connection);
         using var anchors = connection.CreateCommand();
         anchors.CommandText = "SELECT target FROM path_anchor ORDER BY target";
@@ -91,7 +93,7 @@ internal static class PathInputStorage
         if (!scoped || header.Input is null || !header.Input.IsSupported) throw InvalidProof();
         var ownership = OwnershipAuditStorage.ReadHeader(connection, requireComplete: true) ?? throw InvalidProof();
         if (ownership.Input != header.Input || ownership.Coverage != header.Coverage) throw InvalidProof();
-        var validated = OwnershipAuditValidation.Validate(connection, description, directory);
+        var validated = OwnershipAuditValidation.Validate(connection, description, directory, cancellationToken);
         var fixedTargets = FixedTargets(validated.Classifications).ToArray();
         if (!targetNames.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(fixedTargets.Select(item => item.DistinguishedName)))
             throw InvalidProof();
@@ -103,6 +105,7 @@ internal static class PathInputStorage
         if (regions.Count != 0) bundle.PrepareBulkObjectLookup();
         foreach (var region in regions)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var subject = region.Source.TargetDn is { } dn ? bundle.ReadObjectAttributes(dn) : null;
             var target = subject is null ? null : OwnershipAuditRun.Target(subject, contexts.Value);
             if (region != Region(region.Source, target) || !WitnessMatches(region.Source, target, bundle)) throw InvalidProof();
@@ -115,6 +118,7 @@ internal static class PathInputStorage
         using (var read = permissions.ExecuteReader())
             while (read.Read())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (Guid.Parse(read.GetString(1)) != description.GenerationId || read.IsDBNull(2)
                     || Guid.Parse(read.GetString(2)) != description.DerivationGenerationId) throw InvalidProof();
                 ids.Add(read.GetInt64(0));

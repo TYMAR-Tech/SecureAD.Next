@@ -73,6 +73,7 @@ public sealed class SchemaGuidCatalog
     private readonly FrozenDictionary<string, IReadOnlyList<SchemaGuidEntry>> _byGuid;
     private readonly FrozenDictionary<string, SchemaGuidEntry> _byLdapName;
     private readonly FrozenDictionary<string, IReadOnlyList<string>> _propertySetMembers;
+    private FrozenSet<string> AmbiguousNames { get; init; } = Array.Empty<string>().ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Builds a catalogue over the given entries.
@@ -170,7 +171,8 @@ public sealed class SchemaGuidCatalog
         var byName = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var combined = new List<SchemaGuidEntry>();
 
-        var ordered = captured.Concat(shipped.Entries).ToList();
+        var capturedEntries = captured.ToArray();
+        var ordered = capturedEntries.Concat(shipped.Entries).ToList();
 
         var classified = ordered
             .Where(e => e.Kind != SchemaGuidKind.Unclassified)
@@ -196,7 +198,13 @@ public sealed class SchemaGuidCatalog
 
         // Membership is only ever the forest's. There is no shipped answer to fall back to, and
         // inventing one would say a property set was harmless while the directory disagreed.
-        return new SchemaGuidCatalog(combined, propertySetMembers);
+        return new SchemaGuidCatalog(combined, propertySetMembers)
+        {
+            // Display precedence must not hide conflicting identities from authorization.
+            AmbiguousNames = capturedEntries.GroupBy(entry => entry.LdapName, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.DistinctBy(entry => (entry.Guid.ToUpperInvariant(), entry.Kind)).Skip(1).Any())
+                .Select(group => group.Key).ToFrozenSet(StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     /// <summary>
@@ -283,6 +291,16 @@ public sealed class SchemaGuidCatalog
     {
         ArgumentNullException.ThrowIfNull(ldapName);
         return _byLdapName.GetValueOrDefault(ldapName);
+    }
+
+    /// <summary>
+    /// Resolves a name without allowing display precedence to conceal conflicting captured GUIDs
+    /// or schema kinds. Callers must still validate the returned identity and kind for their operation.
+    /// </summary>
+    public SchemaGuidEntry? FindUnambiguousByLdapName(string ldapName)
+    {
+        ArgumentNullException.ThrowIfNull(ldapName);
+        return AmbiguousNames.Contains(ldapName) ? null : FindByLdapName(ldapName);
     }
 
     /// <summary>

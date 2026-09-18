@@ -207,6 +207,12 @@ internal static class ControlEdgeDeriver
         string name, string? targetClass, SchemaGuidCatalog catalogue)
     {
         if (!entry.HasObjectType) return (ControlEvaluationState.Established, "Unscoped entry reaches all operations of this access-mask kind.");
+        var memberWrite = right == 0x20 && Same(name, "member");
+        // The base member schema is also checked by the own-account operation. Authorization must
+        // name that same attribute, not a controlAccessRight that won display-name precedence.
+        if (memberWrite && (catalogue.FindUnambiguousByLdapName(name) is not { Kind: SchemaGuidKind.Attribute } attribute
+            || !Same(attribute.Guid, SchemaGuidCatalog.Embedded.GuidFor(name))))
+            return (ControlEvaluationState.Unknown, name);
         // MS-ADTS 3.1.1.5.3.1.1.1 fixes the validated-write identity. Renaming a captured
         // controlAccessRight cannot define a different Self-Membership operation on the server.
         var operationCatalogue = right == 0x08 && Same(name, "Self-Membership") ? SchemaGuidCatalog.Embedded : catalogue;
@@ -220,6 +226,9 @@ internal static class ControlEdgeDeriver
             if (meanings.Any(item => item.Kind == SchemaGuidKind.ObjectClass))
             {
                 if (targetClass is null || !Guid.TryParse(catalogue.GuidFor(targetClass), out _))
+                    return (ControlEvaluationState.Unknown, propertySet);
+                if (memberWrite && (catalogue.FindUnambiguousByLdapName(targetClass) is not { Kind: SchemaGuidKind.ObjectClass } definition
+                    || !Same(definition.Guid, SchemaGuidCatalog.Embedded.GuidFor(targetClass))))
                     return (ControlEvaluationState.Unknown, propertySet);
                 return (Same(propertySet, catalogue.GuidFor(targetClass)) ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished,
                     $"{targetClass}: {catalogue.GuidFor(targetClass)}; {catalogue.FindByLdapName(targetClass)!.Source} schema catalogue.");

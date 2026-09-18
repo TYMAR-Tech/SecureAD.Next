@@ -58,15 +58,16 @@ internal static class RequesterDaclProofs
     }
 
     internal static void Validate(SqliteConnection connection, JudgementDescription description, string directory,
-        PathInputs inputs, IReadOnlyList<SavedRequesterDaclProof> proofs)
+        PathInputs inputs, IReadOnlyList<SavedRequesterDaclProof> proofs, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (proofs.Any(proof => proof is null || proof.Assessment is null || proof.Assessment.Request is null
             || string.IsNullOrWhiteSpace(proof.Assessment.Request.RequesterDn) || string.IsNullOrWhiteSpace(proof.Assessment.Request.TargetDn))
             || proofs.Select(proof => Key(proof.Assessment.Request)).Distinct(StringComparer.Ordinal).Count() != proofs.Count)
             throw Tier0PathStorage.InvalidProof();
         // Replay only the saved questions as a proof check, never as discovery or replacement output.
         // This also rejects a changed verdict, membership witness or source reference with a refreshed hash.
-        var replay = Create(connection, description, directory, inputs, proofs.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, obtainedMembership: null);
+        var replay = Create(connection, description, directory, inputs, proofs.Select(proof => proof.Assessment.Request).ToArray(), cancellationToken, obtainedMembership: null);
         if (Tier0PathCalculation.Fingerprint(proofs) != Tier0PathCalculation.Fingerprint(replay)) throw Tier0PathStorage.InvalidProof();
     }
 

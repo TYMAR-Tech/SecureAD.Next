@@ -59,8 +59,8 @@ internal static class MemberWriteEvaluator
             if ((entry.AccessMask & (WriteProperty | GenericShorthand)) == 0
                 || EntryReachReader.FromPropagationFlags(entry.PropagationFlags) != EntryReach.ThisObject) continue;
             var (scope, source) = ControlEdgeDeriver.OperationScope(entry, WriteProperty, "member", "group", catalogue);
-            if (entry.HasObjectType && (catalogue.FindByLdapName("member")?.Source != SchemaGuidSource.Captured
-                || catalogue.FindByLdapName("group")?.Source != SchemaGuidSource.Captured)) scope = ControlEvaluationState.Unknown;
+            if (entry.HasObjectType && (catalogue.FindUnambiguousByLdapName("member")?.Source != SchemaGuidSource.Captured
+                || catalogue.FindUnambiguousByLdapName("group")?.Source != SchemaGuidSource.Captured)) scope = ControlEvaluationState.Unknown;
             var concreteWrite = (entry.AccessMask & WriteProperty) != 0;
             if (!concreteWrite) scope = ControlEvaluationState.Unknown;
             var trustee = RequesterTrusteeReading.Read(requester, target, entry.Trustee, holder(entry.Trustee), forest);

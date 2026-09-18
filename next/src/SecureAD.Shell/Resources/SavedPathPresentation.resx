@@ -15,6 +15,7 @@
   <data name="Absent" xml:space="preserve"><value>No saved path result</value></data>
   <data name="Unavailable" xml:space="preserve"><value>Saved result unavailable</value></data>
   <data name="NotRead" xml:space="preserve"><value>Saved results have not been read.</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading and validating saved results...</value></data>
   <data name="AbsentDetail" xml:space="preserve"><value>This run has no saved path result to display. This does not establish that no route exists.</value></data>
   <data name="UnknownDetail" xml:space="preserve"><value>The saved analysis does not establish a supported route for this object. This is not a finding that the object is safe.</value></data>
   <data name="Boundary" xml:space="preserve"><value>This displays saved membership and permission evidence, not account takeover or proof that a live operation succeeded. Permission to change a target's permissions does not establish the ability to act as that target.</value></data>

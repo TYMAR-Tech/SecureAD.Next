@@ -72,7 +72,7 @@ internal static class OwnershipAuditStorage
             ("$target", target.DistinguishedName), ("$identity", json), ("$hash", Hash(json)));
     }
 
-    internal static IReadOnlyList<TargetRow> Targets(SqliteConnection connection)
+    internal static IReadOnlyList<TargetRow> Targets(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT target,identity_json,fingerprint,selection,execution,candidate_count,transition_count FROM ownership_target ORDER BY target";
@@ -80,6 +80,7 @@ internal static class OwnershipAuditStorage
         var rows = new List<TargetRow>();
         while (read.Read())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var json = read.GetString(1);
             if (!Hash(json).AsSpan().SequenceEqual((byte[])read.GetValue(2))) throw InvalidProof();
             var identity = JsonSerializer.Deserialize<Tier0Target>(json, ProofSerialization.Options) ?? throw InvalidProof();

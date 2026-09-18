@@ -14,6 +14,9 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
     private static readonly JsonSerializerOptions EvidenceJson = new()
     { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
     private Func<Result<SavedTier0Path?>>? _read;
+    private Func<CancellationToken, Task<Result<SavedTier0Path?>>>? _readAsync;
+    private CancellationTokenSource? _pending;
+    private long _revision;
     private string? _subjectDn;
     [ObservableProperty] private string _result = SavedPathText.Get("NotRead");
     [ObservableProperty] private string _detail = "";
@@ -33,27 +36,85 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
     public string ChecksCaveat { get; } = SavedPathText.Get("ChecksCaveat");
     public string CoverageScope { get; } = SavedPathText.Get("CoverageScope");
     public string SavedQuestionsHeading { get; } = SavedPathText.Get("SavedQuestions");
+    public Task ReadCompletion { get; private set; } = Task.CompletedTask;
 
     /// <summary>Binds this object's original bundle callback without reading it.</summary>
     public void Configure(string subjectDn, Func<Result<SavedTier0Path?>> read)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
         ArgumentNullException.ThrowIfNull(read);
+        CancelRead();
         _subjectDn = subjectDn;
         _read = read;
+        _readAsync = null;
+    }
+
+    /// <summary>Binds a cancellable source without starting or retaining a result.</summary>
+    public void ConfigureAsync(string subjectDn, Func<CancellationToken, Task<Result<SavedTier0Path?>>> read)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
+        ArgumentNullException.ThrowIfNull(read);
+        CancelRead();
+        _subjectDn = subjectDn;
+        _read = null;
+        _readAsync = read;
     }
 
     /// <summary>Reads only on section selection, discarding any previously displayed result first.</summary>
     public void Read()
     {
+        CancelRead();
+        if (_readAsync is { } readAsync)
+        {
+            Result = SavedPathText.Get("Loading");
+            var pending = new CancellationTokenSource();
+            _pending = pending;
+            ReadCompletion = LoadAsync(readAsync, pending, _revision);
+        }
+        else if (_read is { } read)
+            Apply(read());
+    }
+
+    /// <summary>Leaving or rebinding cancels work and invalidates late completions, even if a source ignores cancellation.</summary>
+    public void CancelRead()
+    {
+        _revision++;
+        var pending = _pending;
+        _pending = null;
+        pending?.Cancel();
         Result = SavedPathText.Get("NotRead");
         Detail = Provenance = Distance = Destination = "";
         AutomaticChecks = SavedPathText.Get("NotRead");
-        SavedQuestions = SavedPathText.Get("NoneRecorded");
+        SavedQuestions = SavedPathText.Get("NotRead");
         Steps = [];
         Limitations = [];
-        if (_read is null) return;
-        var read = _read();
+    }
+
+    private async Task LoadAsync(Func<CancellationToken, Task<Result<SavedTier0Path?>>> read,
+        CancellationTokenSource pending, long revision)
+    {
+        try
+        {
+            var result = await read(pending.Token);
+            if (revision != _revision || pending.IsCancellationRequested) return;
+            Apply(result);
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            if (revision == _revision && !pending.IsCancellationRequested)
+                Refuse(SavedPathText.Get("InvalidEvidence") + " " + error.Message);
+        }
+        finally
+        {
+            if (ReferenceEquals(_pending, pending)) _pending = null;
+            pending.Dispose();
+        }
+    }
+
+    private void Apply(Result<SavedTier0Path?> read)
+    {
+        SavedQuestions = SavedPathText.Get("NoneRecorded");
         if (!read.IsSuccess) { Refuse(read.Error.Description); return; }
         if (read.Value is not { } saved)
         {

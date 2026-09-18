@@ -10,11 +10,12 @@ internal static class OwnershipAuditValidation
 {
     // Replay only stored seed witnesses and inclusion links. No new discovery, membership walk or assessment is performed.
     internal static (IReadOnlyList<Tier0Classification> Classifications, IReadOnlyList<Tier0RelevanceRelation> Relations)
-        Validate(SqliteConnection connection, JudgementDescription description, string directory)
+        Validate(SqliteConnection connection, JudgementDescription description, string directory, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var header = OwnershipAuditStorage.ValidateCounts(connection, description);
         if (header is null) return ([], []);
-        var rows = OwnershipAuditStorage.Targets(connection);
+        var rows = OwnershipAuditStorage.Targets(connection, cancellationToken);
         var targets = rows.ToDictionary(item => item.Identity.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         var seeds = OwnershipAuditStorage.Seeds(connection);
         var links = OwnershipAuditStorage.Relations(connection);
@@ -23,6 +24,7 @@ internal static class OwnershipAuditValidation
             || header.Coverage.AnalysisComplete || header.Coverage.IsComplete) throw OwnershipAuditStorage.InvalidProof();
         foreach (var row in rows)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (row.Selection == OwnershipScopeState.OutsideComputedScope
                 || row.Selection == OwnershipScopeState.Included && !row.Identity.IsValid
                 || row.Execution == OwnershipAssessmentExecution.Completed && row.Candidates != 0
@@ -35,6 +37,7 @@ internal static class OwnershipAuditValidation
             using var read = command.ExecuteReader();
             while (read.Read())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!targets.TryGetValue(read.GetString(0), out var target)
                     || target.Identity.Sid != (read.IsDBNull(1) ? null : read.GetString(1))
                     || target.Identity.SidScope != (read.IsDBNull(2) ? null : read.GetString(2))) throw OwnershipAuditStorage.InvalidProof();
@@ -64,6 +67,7 @@ internal static class OwnershipAuditValidation
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
         foreach (var row in rows.Where(item => item.Selection == OwnershipScopeState.Included))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!identities.TryGetValue(row.Identity.DistinguishedName, out var objects) || objects.Length != 1
                 || OwnershipAuditRun.Target(objects[0], contexts.Value) != row.Identity) throw OwnershipAuditStorage.InvalidProof();
         }
@@ -73,6 +77,7 @@ internal static class OwnershipAuditValidation
             target => seedByDn[target.DistinguishedName].Routes).Classifications;
         foreach (var classification in classifications)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var seed = seedByDn[classification.Target.DistinguishedName];
             if (classification.State != Tier0State.Established || targets[seed.Target].Selection != OwnershipScopeState.Included
                 || !OwnershipAuditStorage.Hash(JsonSerializer.Serialize(classification, ProofSerialization.Options)).AsSpan().SequenceEqual(seed.Fingerprint))
@@ -82,6 +87,7 @@ internal static class OwnershipAuditValidation
         var permissions = new Dictionary<string, IReadOnlyDictionary<int, string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var link in links)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!targets.TryGetValue(link.Controller, out var controller) || !targets.TryGetValue(link.Affected, out var affected)
                 || controller.Selection != OwnershipScopeState.Included || affected.Selection != OwnershipScopeState.Included)
                 throw OwnershipAuditStorage.InvalidProof();

@@ -193,6 +193,8 @@ internal sealed partial class ObjectViewModel : ObservableObject
     partial void OnSelectedChanged(
         ObjectSectionViewModel? oldValue, ObjectSectionViewModel? newValue)
     {
+        if (oldValue is SavedTier0PathSectionViewModel oldPath)
+            oldPath.CancelRead();
         if (oldValue is not null)
             oldValue.IsSelected = false;
 

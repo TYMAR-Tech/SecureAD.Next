@@ -61,6 +61,10 @@ public static class RequesterTrusteeReading
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.IdentityMissing, null);
         if (!IsDomainObject(holder, forest) || !Same(holder.DomainFqdn, requester.DomainFqdn))
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.ResourceContextUnknown, null);
+        // A holder's current type cannot exclude its SID when the requester carries that identity
+        // historically. This is uncertainty, not support for constructing a SID-history token.
+        if (requester.Find("sIDHistory")?.Values.Any(value => Same(SidValue(value), sid)) == true)
+            return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedIdentity, null);
         if (HasClass(holder, "group"))
         {
             if (groupType is null)
@@ -74,9 +78,6 @@ public static class RequesterTrusteeReading
                 ? Answer(RequesterTrusteeState.Matches, RequesterTrusteeReason.DirectGlobalMembership, requester.DistinguishedName)
                 : Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.MembershipNotEstablished, null);
         }
-        // A historical identity is not a direct current-identity route, even when it is captured.
-        if (requester.Find("sIDHistory")?.Values.Any(value => Same(SidValue(value), sid)) == true)
-            return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedIdentity, null);
         return HasClass(holder, "user")
             ? Answer(RequesterTrusteeState.DoesNotMatch, RequesterTrusteeReason.OtherCurrentUser, null)
             : Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedIdentity, null);

@@ -279,6 +279,19 @@ internal static class ControlEdgeStorage
         return ids.Select(id => ReadEdge(connection, description, id)).ToArray();
     }
 
+    internal static ControlEdge ReadExact(SqliteConnection connection, JudgementDescription description, string target, long id)
+    {
+        using var query = connection.CreateCommand();
+        query.CommandText = "SELECT e.id FROM control_edge e JOIN control_product p ON p.id=1 "
+            + "WHERE e.id=$id AND e.target=$target COLLATE NOCASE AND p.completed=1 AND p.engine_version=$version";
+        query.Parameters.AddWithValue("$id", id);
+        query.Parameters.AddWithValue("$target", target);
+        query.Parameters.AddWithValue("$version", EngineVersion);
+        if (query.ExecuteScalar() is null) throw FullControlEvaluator.InvalidProof();
+        FullControlStorage.ValidateSelection(connection, description, "target = $value COLLATE NOCASE", target, null, null);
+        return ReadEdge(connection, description, id);
+    }
+
     internal static ControlEdge ReadEdge(SqliteConnection connection, JudgementDescription description, long id)
     {
         using var query = connection.CreateCommand();

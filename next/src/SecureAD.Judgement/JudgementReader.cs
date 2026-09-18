@@ -188,6 +188,16 @@ public sealed class JudgementReader : IDisposable
         return Tier0PathStorage.Read(_connection, Description, BundleDirectory, subjectDn);
     }
 
+    /// <summary>Projects path and requester coverage from one complete proof replay of this opened generation; nothing is cached.</summary>
+    public (Tier0PathResult Path, PathRequesterCoverage Coverage) ReadTier0PathWithCoverage(
+        string subjectDn, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Tier0PathStorage.ReadWithCoverage(_connection, Description, BundleDirectory, subjectDn, cancellationToken);
+    }
+
     /// <summary>
     /// Reads coverage from the saved selection and reconciled proof batches in this exact generation.
     /// Replays only saved proof questions for validation; never selects new accounts or publishes analysis.
@@ -205,15 +215,33 @@ public sealed class JudgementReader : IDisposable
         if (target is not null && holderSid is not null)
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
+        ValidateOwnership();
+        return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
+            with { GenerationId = Description.GenerationId,
+                OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
+    }
+
+    /// <summary>
+    /// Reads one original permission by its stored ID and target, retaining the control product's
+    /// source and generation validation. The ID is not a display-page cursor.
+    /// </summary>
+    public ControlEdge ReadControlEdge(string target, long id)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(target);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
+        ValidateOwnership();
+        return ControlEdgeStorage.ReadExact(_connection, Description, target, id);
+    }
+
+    private void ValidateOwnership()
+    {
         // The reader holds one opened immutable generation; a new generation gets its own validation.
         if (!_ownershipValidated)
         {
             OwnershipAuditValidation.Validate(_connection, Description, BundleDirectory);
             _ownershipValidated = true;
         }
-        return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
-            with { GenerationId = Description.GenerationId,
-                OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
     }
 
     /// <summary>Reads explicit requester assessments object-first, requester-first, or together.</summary>

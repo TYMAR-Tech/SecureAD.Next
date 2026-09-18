@@ -58,6 +58,9 @@ tests/SecureAD.Infrastructure.Tests/Lab/
 [Tt]est[Rr]esults/
 coverage.cobertura.xml
 
+# Isolated verification TEMP/TMP roots contain retained test data, not source.
+/t-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+
 # DocFX leftovers. The site is no longer built or published; these entries stay so a
 # stale local build cannot be committed by accident.
 _site/

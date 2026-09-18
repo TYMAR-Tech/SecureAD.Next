@@ -22,10 +22,20 @@ internal sealed record SavedTier0Path(JudgementDescription Description, Tier0Pat
 internal sealed partial class BundleAssetSource
 {
     /// <inheritdoc/>
-    public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName)
+    public Task<Result<SavedTier0Path?>> ReadSavedTier0PathAsync(string bundleDirectory, string distinguishedName,
+        CancellationToken cancellationToken) =>
+        Task.Run(() => ReadSavedTier0Path(bundleDirectory, distinguishedName, cancellationToken), cancellationToken);
+
+    /// <inheritdoc/>
+    public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName) =>
+        ReadSavedTier0Path(bundleDirectory, distinguishedName, CancellationToken.None);
+
+    private static Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             if (HasUnpublishedAnalysis(bundleDirectory)) return PathFailure("Unfinished", bundleDirectory, null);
@@ -38,22 +48,20 @@ internal sealed partial class BundleAssetSource
             if (reader.Description.State is not (JudgementRunState.Completed or JudgementRunState.CompletedDegraded))
                 return PathFailure("Unfinished", bundleDirectory, null);
 
-            var path = reader.ReadTier0Path(distinguishedName);
-            var coverage = reader.ReadPathRequesterCoverage();
+            var (path, coverage) = reader.ReadTier0PathWithCoverage(distinguishedName, cancellationToken);
             var permissions = new List<ControlEdge>();
             foreach (var step in path.Steps.Where(step => step.PermissionId.HasValue)
                 .DistinctBy(step => step.PermissionId))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var id = step.PermissionId.GetValueOrDefault();
-                var page = reader.ReadControlEdges(step.To.DistinguishedName, null, null, true, id - 1);
-                var permission = page.Edges.SingleOrDefault(value => value.Id == id);
-                if (permission is null) return PathFailure("InvalidEvidence", bundleDirectory, null);
+                var permission = reader.ReadControlEdge(step.To.DistinguishedName, id);
                 permissions.Add(permission);
             }
             var saved = new SavedTier0Path(reader.Description, path, coverage, permissions);
             if (!saved.IsBound) return PathFailure("GenerationChanged", bundleDirectory, null);
 
-            // Publication can change while the two saved products are validated. Never label the
+            // Publication can change while the saved generation is validated. Never label the
             // earlier generation as the current attempt's result, even though its proof remains valid.
             if (HasUnpublishedAnalysis(bundleDirectory)) return PathFailure("Unfinished", bundleDirectory, null);
             var selected = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
@@ -66,6 +74,7 @@ internal sealed partial class BundleAssetSource
                 if (!derived.IsSuccess) return Result<SavedTier0Path?>.Failure(derived.Error);
                 if (derived.Value.GenerationId != derivationId) return PathFailure("GenerationChanged", bundleDirectory, null);
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return Result<SavedTier0Path?>.Success(saved);
         }
         catch (InvalidDataException error) { return PathFailure("InvalidEvidence", bundleDirectory, error.Message); }

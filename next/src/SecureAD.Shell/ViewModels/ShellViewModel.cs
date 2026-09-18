@@ -393,6 +393,7 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSectionChanged(ShellSection value)
     {
+        if (value != ShellSection.Assets) Assets.CancelSavedPathRead();
         RebuildViews(value);
 
         OnPropertyChanged(nameof(IsHome));
@@ -411,6 +412,7 @@ internal sealed partial class ShellViewModel : ObservableObject
         if (value == ShellSection.Assets)
         {
             ShowAssetsOfTheSelectedRun();
+            Assets.ResumeSavedPathRead();
             return;
         }
 

@@ -256,6 +256,83 @@ This is one reduced synthetic pair with no scheduled rules, not full normal-audi
 acceptance, a processing budget or production activation; further optimization or additional measurement
 requires approval, and P-242 steps 1–8 remain complete, step 9 unfinished and step 10 pending.
 
+**Owner-approved correctness pass — implemented and offline verified as P-243–P-245:**
+"begin correction of these defects" authorizes correcting
+member-schema name substitution, premature distribution-group exclusion of captured requester SID
+history, and saved-path permission-ID/display-cursor confusion, including affected shared consumers.
+Use synthetic offline regressions, rebuilt deliberate-defect checks, coverage and full-suite validation;
+preserve original evidence and failed records, exact generations, uncertainty and independent counts.
+This does not authorize efficiency changes, new measurements, UI wording/layout changes, requester
+activation, budgets, live access, migration, recapture, deletion, commit or push; P-242 steps stay unchanged.
+
+The restored solution build and all **5,552 offline tests** pass; all **26 new regression cases** pass
+under coverage collection and detect deliberate defects across **10 accepted rebuilt variants**.
+Original failures and the superseded display-test witness remain retained, with the final verification
+and preservation record at `next/artifacts/stage7-correctness-validation/7a145e4d584d44f8b9b27331c3f81ea9/handoff.json`.
+This does not complete Stage 7 or P-242 readiness, close P-227/P-240 verification/P-241, accept unperformed
+physical-display checks, or activate requester selection; the production policy remains Disabled and
+the legacy discovery budget remains null.
+
+**Owner-approved bounded saved-path-opening performance session (P-246):** "ok continue" authorizes
+a baseline on the current P-243–P-245-corrected build, path and coverage from one fully validated
+generation-bound result, background loading with cancellation and stale-selection protection,
+proof/uncertainty/counting verification, and a before/after comparison using the same workload.
+This is the first recommendation only, not batch proof-context optimization or collection indexing.
+The retained reduced pilot's 459.105-second validated reopening is neither GUI timing nor measured
+attribution to duplicate validation; it must not substitute for the current-build baseline.
+Reuse existing measurement tooling and isolated sealed-evidence copies with fresh outputs, identifying
+source, executable and evidence/analysis generations for every timing; new measurement-harness code
+requires separately approved concrete scope, as does any new loading/cancellation wording or layout.
+Preserve full proof replay, evidence validation, independent group-held counts, explicit uncertainty
+and generation binding without a global stale-result cache, together with all pre-existing work and
+the complete P-243–P-245 handoff, binaries, failures, stronger display assertion and archived snapshot mappings.
+Do not restore loose `.cs` files beneath artifacts, restart the full-volume series, investigate the
+stopped process, change production budgets, access live AD, recapture, migrate, delete originals,
+commit or push; requester policy stays Disabled and the legacy discovery budget stays null.
+P-242 steps 1–8 remain complete, step 9 unfinished and step 10 pending; physical-display checks,
+P-227, P-240 verification and P-241 remain independently open, with no readiness or activation acceptance.
+
+**The owner subsequently approved the opening-only measurement adapter and proposed loading wording.**
+One small, frozen adapter may use isolated copies of retained sealed results, exercise the real saved-section
+opening path, and record source/build/generation identity, elapsed time and cancellation response without
+regeneration, judging or an old-pilot repeat. Keep the shell's existing test-only access boundary intact.
+In the existing Saved result field, use **Loading and validating saved results...** while reading;
+both account checks and saved questions then say **Saved results have not been read.** rather than
+claiming that nothing was recorded. Navigating away cancels, returning starts a fresh read, and no new
+button or layout is approved; this grants no broader measurement or optimization scope.
+
+**The owner approved continuing with a shorter isolated measurement path and verifying opening before timing.**
+Use fresh short-path copies and process-start TEMP/TMP isolation, preserve both failed attempts, and require
+successful database and current-reader opening before the opening timer starts; do not weaken validation,
+rewrite saved generations, or broaden the approved adapter/optimization scope to make the measurement pass.
+
+**The owner approved continuing with the cancellation baseline and the already bounded saved-opening optimization.**
+Keep the now-frozen adapter and the two retained opening-baseline executions; cancellation evidence must
+distinguish a navigation request queued behind synchronous work from cancellation that actually interrupts
+an in-progress read, and any profiler-export failure must remain separate from completed workload results.
+
+**Latest owner requirement — normal readback must not replay expensive analysis (P-248).** Opening an
+already judged run or browsing its saved results must not re-execute permission analysis or replay a whole
+generation's proofs merely to establish that the results belong to the captured evidence; production-scale
+usability is a requirement, not acceptance of a minutes-long readback after a percentage improvement.
+The owner clarified that this applies across the completed run: findings are information already decided,
+and moving between screens, pages and objects must read saved information rather than repeat judging or
+whole-store verification. Fixing only the Saved Tier 0 path section would not satisfy this requirement.
+Retain simple, exact evidence/derivation/judgement binding, completion and supported-format checks, explicit
+uncertainty and independent holder counts, and refuse unavailable or mismatched results rather than showing safety.
+Integrity checking is separate from recomputing conclusions: accepted [0020](decisions/0020-the-seal-detects-corruption-not-tampering.md)
+requires corruption verification on opening/export, with the verdict retained only for the protected open-file
+lifetime, not repeated per screen or replaced by an on-disk size/timestamp cache; [0030](decisions/0030-the-product-produces-sealed-evidence-never-signed.md)
+makes no claim of signed provenance or resistance to deliberate alteration and resealing.
+This supersedes the earlier per-opening full-proof-replay requirement for the next readback design, not the
+need to establish proof correctly when producing results or to verify that behavior offline; the completed
+P-246 implementation and all frozen tests, evidence and measurements remain preserved as history.
+The concrete reader/publication boundary, integrity lifetime and compatibility/verification scope must be
+presented for approval before implementation; this requirement does not authorize simply deleting safety
+checks, changing UI presentation, new measurement-harness code, migration, recapture or production activation.
+File-fingerprint verification still reads file bytes, so its opening cost must be distinguished from proof
+replay and measured rather than described as free or accepted at customer scale without evidence.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.

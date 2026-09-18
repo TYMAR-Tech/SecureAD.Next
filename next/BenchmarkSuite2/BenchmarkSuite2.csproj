@@ -14,5 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\SecureAD.Judgement\SecureAD.Judgement.csproj" />
+    <ProjectReference Include="..\tests\SecureAD.Next.Tests\SecureAD.Next.Tests.csproj" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
   </ItemGroup>
 </Project>

@@ -725,7 +725,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         }
 
         if (Opened.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
-            path.Configure(distinguishedName, () => _assets.ReadSavedTier0Path(bundleDirectory, distinguishedName));
+            path.ConfigureAsync(distinguishedName, token => _assets.ReadSavedTier0PathAsync(bundleDirectory, distinguishedName, token));
 
         Opened.Show(section);
         Announce();
@@ -1114,6 +1114,26 @@ internal sealed partial class AssetsViewModel : ObservableObject
         PreviousFindingsCommand.NotifyCanExecuteChanged();
     }
 
+    /// <summary>Stops saved-result work when its object is no longer visible.</summary>
+    public void CancelSavedPathRead()
+    {
+        if (Opened?.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
+            path.CancelRead();
+    }
+
+    /// <summary>A return to the saved section starts a fresh read rather than showing a retained generation.</summary>
+    public void ResumeSavedPathRead()
+    {
+        if (Pane == AssetsPane.Objects && Opened?.Selected is SavedTier0PathSectionViewModel path
+            && path.Result == SavedPathText.Get("NotRead")) path.Read();
+    }
+
+    partial void OnOpenedChanging(ObjectViewModel? oldValue, ObjectViewModel? newValue)
+    {
+        if (oldValue?.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
+            path.CancelRead();
+    }
+
     /// <summary>Keeps the three views of the screen from both claiming to be showing.</summary>
     /// <remarks>
     /// The inventory is listed on arrival rather than with the objects, because a listing nobody is
@@ -1121,6 +1141,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </remarks>
     partial void OnPaneChanged(AssetsPane value)
     {
+        if (value != AssetsPane.Objects) CancelSavedPathRead();
+        else ResumeSavedPathRead();
         OnPropertyChanged(nameof(ShowsObjects));
         OnPropertyChanged(nameof(ShowsFindings));
         OnPropertyChanged(nameof(ShowsLaps));

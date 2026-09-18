@@ -76,8 +76,10 @@ internal static class OwnAccountMembershipProofs
     }
 
     internal static void Validate(SqliteConnection connection, JudgementDescription description, string directory,
-        PathInputs inputs, IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<SavedOwnAccountMembershipProof> proofs)
+        PathInputs inputs, IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<SavedOwnAccountMembershipProof> proofs,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (proofs.Any(proof => proof is null || proof.Assessment is null || proof.Assessment.Request is null
             || string.IsNullOrWhiteSpace(proof.Assessment.Request.RequesterDn) || string.IsNullOrWhiteSpace(proof.Assessment.Request.TargetDn)
             || !Enum.IsDefined(proof.Assessment.Request.PermissionKind))
@@ -86,7 +88,7 @@ internal static class OwnAccountMembershipProofs
         // Only saved questions are replayed. A changed outcome or witness is rejected even when
         // someone recomputes the JSON hash; reading never schedules new work or writes a replacement.
         var replay = Create(connection, description, directory, inputs, nodes,
-            proofs.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
+            proofs.Select(proof => proof.Assessment.Request).ToArray(), cancellationToken);
         if (Tier0PathCalculation.Fingerprint(proofs) != Tier0PathCalculation.Fingerprint(replay)) throw Tier0PathStorage.InvalidProof();
     }
 
