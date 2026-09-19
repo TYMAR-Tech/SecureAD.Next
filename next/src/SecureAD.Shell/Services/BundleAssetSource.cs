@@ -75,7 +75,7 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
 
-        return WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ListLapsComputers(containerDn, scope, pageNumber)));
+        return WithRun(bundleDirectory, run => run.ReadLapsComputers(containerDn, scope, pageNumber));
     }
 
     /// <inheritdoc/>

@@ -15,8 +15,8 @@ namespace SecureAD.Next.Tests.Evidence;
 /// <para>
 /// <b>The inventory exists because the findings store cannot answer the question.</b> <i>Which
 /// machines have modern, which have legacy, which have none</i> includes the healthy ones, and a
-/// findings store holds only what a rule reported. So this reads sealed evidence, and these tests
-/// build a bundle and read it back.
+/// findings store holds only what a rule reported. A separate saved inventory product includes all
+/// computers; these tests judge synthetic evidence and read that product back.
 /// </para>
 /// <para>
 /// <b>The test that matters most is <see cref="TheGridAndTheRuleAgreeAboutOneMachine"/>.</b> The
@@ -149,14 +149,13 @@ public sealed class LapsInventoryTests
             Started);
 
         // What the grid says.
-        using var reader = BundleReader.Open(directory).Value!;
+        SavedLapsTestRun.Judge(directory);
         var listed = Assert.Single(
-            reader.ListLapsComputers(Root, ListingScope.Subtree, 1).Computers);
+            SavedLapsTestRun.Read(directory, Root, ListingScope.Subtree).Computers);
 
         Assert.Equal(LapsManagement.LegacyLaps, listed.Management);
         Assert.Equal(LapsCapabilityKind.LegacyLapsOnly, listed.Capability.Kind);
         Assert.True(listed.IsJudged);
-        reader.Dispose();
 
         // What the rule says about the same machine, through a whole derive and judge.
         Assert.True(
@@ -196,8 +195,8 @@ public sealed class LapsInventoryTests
             ],
             Started);
 
-        using var reader = BundleReader.Open(directory).Value!;
-        var page = reader.ListLapsComputers(Root, ListingScope.Subtree, 1);
+        SavedLapsTestRun.Judge(directory);
+        var page = SavedLapsTestRun.Read(directory, Root, ListingScope.Subtree);
 
         Assert.Equal(4, page.Total);
         Assert.Equal(4, page.Computers.Count);
@@ -239,9 +238,9 @@ public sealed class LapsInventoryTests
             windowsLapsInSchema: true,
             Started);
 
-        using var reader = BundleReader.Open(directory).Value!;
+        SavedLapsTestRun.Judge(directory);
 
-        Assert.Empty(reader.ListLapsComputers(Root, ListingScope.Subtree, 1).Computers);
+        Assert.Empty(SavedLapsTestRun.Read(directory, Root, ListingScope.Subtree).Computers);
     }
 
     /// <summary>
@@ -257,30 +256,25 @@ public sealed class LapsInventoryTests
             ],
             Started);
 
-        using var reader = BundleReader.Open(directory).Value!;
-        var page = reader.ListLapsComputers("OU=Servers,DC=ad,DC=lab", ListingScope.Subtree, 1);
+        SavedLapsTestRun.Judge(directory);
+        var page = SavedLapsTestRun.Read(directory, "OU=Servers,DC=ad,DC=lab", ListingScope.Subtree);
 
         Assert.Equal("FS01", Assert.Single(page.Computers).Name);
         Assert.Equal(1, page.Total);
     }
 
-    /// <summary>One row, built without touching a database, for the classification cases.</summary>
+    /// <summary>Classifies through normal production and reads the resulting saved row.</summary>
     private static LapsComputer Row(
         string? modern = null,
         string? legacy = null,
         string os = ModernServer,
         string version = ModernServerBuild,
         uint uac = 0x1000,
-        int? primaryGroupId = null) =>
-        new(
-            "CN=FS01,OU=Servers,DC=ad,DC=lab",
-            "FS01",
-            Guid.NewGuid(),
-            "ad.lab",
-            modern,
-            legacy,
-            os,
-            version,
-            uac,
-            primaryGroupId);
+        int? primaryGroupId = null)
+    {
+        var directory = LapsBundle.Build("CN=FS01,OU=Servers,DC=ad,DC=lab", ["top", "computer"],
+            os, version, modern, legacy, uac, false, true, Started, primaryGroupId);
+        SavedLapsTestRun.Judge(directory);
+        return Assert.Single(SavedLapsTestRun.Read(directory, Root, ListingScope.Subtree).Computers);
+    }
 }

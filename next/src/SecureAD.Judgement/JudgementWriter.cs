@@ -46,6 +46,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly HashSet<string> _rulesWritten = new(StringComparer.Ordinal);
 
     private long _nextFindingId = 1;
+    private long _lapsComputers;
     private bool _finished;
     private bool _disposed;
 
@@ -64,6 +65,26 @@ public sealed class JudgementWriter : IDisposable
         ArgumentNullException.ThrowIfNull(scope);
         ThrowIfFinished();
         _evidenceIsComplete = scope.AllDeclaredDomainsAreComplete;
+    }
+
+    internal void StartLapsInventory()
+    {
+        ThrowIfFinished();
+        LapsInventoryStorage.Start(_connection, GenerationId);
+    }
+
+    internal void WriteLapsInventory(ObjectAttributes subject)
+    {
+        ThrowIfFinished();
+        if (!LapsAttributes.IsComputer(subject)) return;
+        LapsInventoryStorage.Write(_connection, LapsInventoryStorage.CreateComputerResult(subject));
+        _lapsComputers++;
+    }
+
+    internal void CompleteLapsInventory()
+    {
+        ThrowIfFinished();
+        LapsInventoryStorage.Complete(_connection, _lapsComputers);
     }
 
     internal void StartControlEdges(bool captureComplete, bool discoveryScoped = false)
@@ -352,6 +373,7 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
         cancellationToken.ThrowIfCancellationRequested();
+        LapsInventoryStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
@@ -688,9 +710,9 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_password_reader (finding_id, trustee_sid, "
                     + "trustee_name, broad_principal_sid, broad_principal_name, attribute, "
-                    + "rights, reach, inherited_from, expansion_was_complete) "
+                    + "rights, reach, inherited_from, expansion_was_complete, route_length) "
                     + "VALUES ($id, $trustee, $name, $broad, $broadName, $attribute, $rights, "
-                    + "$reach, $inherited, $complete)",
+                    + "$reach, $inherited, $complete, $length)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -707,6 +729,7 @@ public sealed class JudgementWriter : IDisposable
                             "$inherited", (object?)readers.InheritedFrom ?? DBNull.Value);
                         command.Parameters.AddWithValue(
                             "$complete", readers.ExpansionWasComplete ? 1L : 0L);
+                        command.Parameters.AddWithValue("$length", readers.MembershipPath.Count);
                     });
 
                 // The path, in order. Without it the finding names a broad principal and cannot say
@@ -804,9 +827,9 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_decryptor (finding_id, policy_display_name, "
                     + "configured_value, form, decryptor_sid, decryptor_name, "
-                    + "broad_principal_sid, broad_principal_name, expansion_was_complete) "
+                    + "broad_principal_sid, broad_principal_name, expansion_was_complete, route_length) "
                     + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $broad, $broadName, "
-                    + "$complete)",
+                    + "$complete, $length)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -824,6 +847,7 @@ public sealed class JudgementWriter : IDisposable
                             "$broadName", (object?)decryptor.BroadPrincipalName ?? DBNull.Value);
                         command.Parameters.AddWithValue(
                             "$complete", decryptor.ExpansionWasComplete ? 1L : 0L);
+                        command.Parameters.AddWithValue("$length", decryptor.MembershipPath.Count);
                     });
 
                 // The route, in order. Microsoft's supported way to authorize more than one

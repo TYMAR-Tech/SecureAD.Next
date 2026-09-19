@@ -837,15 +837,15 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// every container an operator clicks while looking at something else.
     /// </para>
     /// <para>
-    /// <b>It reads sealed evidence, so it says nothing about whether the run was judged.</b> The
-    /// findings grid has to explain an empty result - no rules run and a clean forest look the same
-    /// - and this one does not: an empty inventory means this container holds no computers.
+    /// <b>A missing saved product is a refusal, not an empty inventory.</b> Classification belongs
+    /// to judging; returning to this pane must not calculate an answer the run never recorded.
     /// </para>
     /// </remarks>
     private void ListLapsComputers()
     {
         LapsComputers.Clear();
         LapsShortfall = null;
+        LapsRefusal = null;
         LapsCounts.Clear();
 
         if (BundlePath is null || Selected is null)

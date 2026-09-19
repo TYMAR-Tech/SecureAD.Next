@@ -68,7 +68,7 @@ internal interface IAssetSource
     Result<ObjectPage> ListObjects(
         string bundleDirectory, string containerDn, ListingScope scope, int pageNumber);
 
-    /// <summary>Lists one page of the LAPS inventory for a container.</summary>
+    /// <summary>Lists one page of completed saved LAPS inventory for a container, without reclassification.</summary>
     /// <remarks>
     /// Separate from <see cref="ListObjects"/> because it answers a different question: it lists
     /// computers only, and carries what the directory says about each machine's password

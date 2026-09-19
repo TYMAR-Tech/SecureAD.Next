@@ -79,8 +79,9 @@ public static class JudgementSchema
     /// context and admits those fixed targets; permission and path-operation semantics are unchanged.</para>
     /// <para>39 saves complete Tier-0 classifications rather than only their fingerprints, so path
     /// readback does not reclassify captured objects. Older formats are refused, never replayed or migrated.</para>
+    /// <para>40 saves all-computer LAPS inventory answers and the expected lengths of LAPS finding routes.</para>
     /// </remarks>
-    public const int Version = 39;
+    public const int Version = 40;
 
     private static readonly string[] TableDdl =
     [
@@ -447,6 +448,7 @@ public static class JudgementSchema
             reach                               TEXT    NOT NULL,
             inherited_from                      TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
+            route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
             PRIMARY KEY (finding_id)
         )
         """,
@@ -580,6 +582,7 @@ public static class JudgementSchema
             broad_principal_sid                 TEXT        NULL,
             broad_principal_name                TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
+            route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
             PRIMARY KEY (finding_id)
         )
         """,
@@ -640,6 +643,7 @@ public static class JudgementSchema
         SelfMembershipStorage.CreateTables(connection);
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
+        LapsInventoryStorage.CreateTables(connection);
     }
 
     /// <summary>
@@ -650,6 +654,7 @@ public static class JudgementSchema
     {
         ArgumentNullException.ThrowIfNull(connection);
         Execute(connection, DeferredIndexDdl);
+        LapsInventoryStorage.CreateIndexes(connection);
     }
 
     private static void Execute(SqliteConnection connection, IEnumerable<string> statements)

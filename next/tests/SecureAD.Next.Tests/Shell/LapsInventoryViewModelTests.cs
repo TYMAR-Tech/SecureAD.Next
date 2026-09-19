@@ -1,4 +1,6 @@
 using SecureAD.Evidence;
+using SecureAD.Evidence.Findings;
+using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Shell.ViewModels;
 using Xunit;
@@ -254,6 +256,21 @@ public sealed class LapsInventoryViewModelTests
         Assert.Equal("OU=Servers," + DomainDn, assets.LapsListedContainer);
     }
 
+    [Fact]
+    public void P248SavedLapsClearsAnEarlierRefusal()
+    {
+        var assets = SourceOf(APage());
+        assets.LapsListingFails = AuditError.Create(ErrorCategory.Evidence, "Unavailable", ErrorSeverity.Failed,
+            "This run has no saved LAPS inventory.", null);
+        var screen = Showing(assets);
+        screen.Pane = AssetsPane.Laps;
+        assets.LapsListingFails = null;
+
+        screen.ShowsBase = true;
+
+        Assert.False(screen.HasLapsRefusal);
+    }
+
     private static AssetsViewModel Showing(FakeAssetSource assets)
     {
         var screen = new AssetsViewModel(assets);
@@ -277,10 +294,10 @@ public sealed class LapsInventoryViewModelTests
     {
         IReadOnlyList<LapsComputer> computers =
         [
-            Computer("FS01", modern: null, legacy: null, uac: 0x1000),
-            Computer("WS01", modern: Timestamp, legacy: Timestamp, uac: 0x1000),
-            Computer("OLD1", modern: Timestamp, legacy: null, uac: 4098),
-            Computer("DC01", modern: null, legacy: null, uac: 0x82000, primaryGroupId: 516),
+            Computer("FS01", LapsManagement.NotManaged, LapsAttributes.AccountState.Enabled),
+            Computer("WS01", LapsManagement.Migrated, LapsAttributes.AccountState.Enabled),
+            Computer("OLD1", LapsManagement.WindowsLaps, LapsAttributes.AccountState.Disabled),
+            Computer("DC01", LapsManagement.NotManaged, LapsAttributes.AccountState.Enabled, controller: true),
         ];
 
         var counts = computers.CountBy(computer => computer.Management).ToDictionary();
@@ -291,18 +308,24 @@ public sealed class LapsInventoryViewModelTests
     private const string Timestamp = "133700000000000000";
 
     private static LapsComputer Computer(
-        string name, string? modern, string? legacy, uint uac, int? primaryGroupId = null) =>
+        string name, LapsManagement management, LapsAttributes.AccountState account, bool controller = false) =>
         new(
             $"CN={name},{DomainDn}",
             name,
             Guid.NewGuid(),
             "contoso.com",
-            modern,
-            legacy,
+            TimestampFor(management is LapsManagement.WindowsLaps or LapsManagement.Migrated),
+            TimestampFor(management is LapsManagement.Migrated),
             "Windows Server 2022 Datacenter",
             "10.0 (20348)",
-            uac,
-            primaryGroupId);
+            controller ? "532480" : account is LapsAttributes.AccountState.Disabled ? "4098" : "4096",
+            controller ? "516" : null,
+            new(LapsCapabilityKind.WindowsLapsCapable, LapsCapabilityBasis.OperatingSystemVersion, "Windows Server 2022 Datacenter", "10.0 (20348)"),
+            new(controller, controller, false), account, management);
+
+    private static StoredLapsTimestamp TimestampFor(bool present) => present
+        ? new(Timestamp, LapsTimestampReading.Present, DateTimeOffset.FromFileTime(long.Parse(Timestamp)).ToUniversalTime())
+        : new(null, LapsTimestampReading.Absent, null);
 
     private static DirectoryTree TreeOfOneDomain() => new(
         [

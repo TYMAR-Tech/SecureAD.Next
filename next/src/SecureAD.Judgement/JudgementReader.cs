@@ -146,7 +146,7 @@ public sealed record StoredJudgement(
 /// about every one of them. Refusing here turns a silent wrong answer into a stated one.
 /// </para>
 /// </remarks>
-public sealed class JudgementReader : IDisposable
+public sealed partial class JudgementReader : IDisposable
 {
     private readonly SqliteConnection _connection;
     private ProtectedStoreFile.Lease? _protection;
@@ -744,6 +744,7 @@ public sealed class JudgementReader : IDisposable
         r.reach                             AS r_reach,
         r.inherited_from                    AS r_inherited_from,
         r.expansion_was_complete            AS r_expansion_was_complete,
+        r.route_length                      AS r_route_length,
         r.finding_id                        AS r_finding_id,
         e.policy_display_name               AS e_policy_display_name,
         e.configured_value                  AS e_configured_value,
@@ -753,6 +754,7 @@ public sealed class JudgementReader : IDisposable
         e.broad_principal_sid               AS e_broad_principal_sid,
         e.broad_principal_name              AS e_broad_principal_name,
         e.expansion_was_complete            AS e_expansion_was_complete,
+        e.route_length                      AS e_route_length,
         e.finding_id                        AS e_finding_id,
         t.trustee_sid                       AS t_trustee_sid,
         t.trustee_name                      AS t_trustee_name,
@@ -934,7 +936,7 @@ public sealed class JudgementReader : IDisposable
                 reader.IsDBNull(reader.GetOrdinal("r_broad_principal_name"))
                     ? null
                     : reader.GetString(reader.GetOrdinal("r_broad_principal_name")),
-                MembershipPaths.TryGetValue(findingId, out var path) ? path : [],
+                ReadLapsRoute("finding_laps_password_reader_path", findingId, reader.GetInt64(reader.GetOrdinal("r_route_length"))),
                 reader.GetString(reader.GetOrdinal("r_attribute")),
                 Enum.Parse<LapsReadRights>(reader.GetString(reader.GetOrdinal("r_rights"))),
                 Enum.Parse<LapsGrantReach>(reader.GetString(reader.GetOrdinal("r_reach"))),
@@ -988,7 +990,7 @@ public sealed class JudgementReader : IDisposable
                 reader.IsDBNull(decryptorName) ? null : reader.GetString(decryptorName),
                 reader.IsDBNull(broadSid) ? null : reader.GetString(broadSid),
                 reader.IsDBNull(broadName) ? null : reader.GetString(broadName),
-                DecryptorPaths.TryGetValue(findingId, out var route) ? route : [],
+                ReadLapsRoute("finding_laps_decryptor_path", findingId, reader.GetInt64(reader.GetOrdinal("e_route_length"))),
                 reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0);
         }
         else
@@ -1057,35 +1059,24 @@ public sealed class JudgementReader : IDisposable
 
     private Dictionary<string, MembershipRouteSummary>? _membershipRoutes;
 
-    /// <summary>
-    /// Every stored membership path, by the finding it belongs to, in path order.
-    /// </summary>
-    /// <remarks>
-    /// Read once for the store and sorted by ordinal, for the reason the other child tables are: a
-    /// join would multiply the finding by the length of its path, so a broad principal reached at
-    /// depth six would appear six times in the grid.
-    /// </remarks>
-    private Dictionary<long, List<PathStep>> MembershipPaths =>
-        _membershipPaths ??= ReadPathSteps(
-            "SELECT finding_id, sid, name FROM finding_laps_password_reader_path "
-            + "ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<PathStep>>? _membershipPaths;
-
-    /// <summary>
-    /// Every stored decryptor route, by the finding it belongs to, in path order.
-    /// </summary>
-    /// <remarks>
-    /// Kept apart from <see cref="MembershipPaths"/> rather than unioned with it. The two tables
-    /// answer different questions - who can read the attribute, and who can decrypt what it holds -
-    /// and a finding identifier is only unique within one of them.
-    /// </remarks>
-    private Dictionary<long, List<PathStep>> DecryptorPaths =>
-        _decryptorPaths ??= ReadPathSteps(
-            "SELECT finding_id, sid, name FROM finding_laps_decryptor_path "
-            + "ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<PathStep>>? _decryptorPaths;
+    private IReadOnlyList<PathStep> ReadLapsRoute(string table, long findingId, long expectedLength)
+    {
+        // Table names are fixed callers, never input. The primary key bounds this to one finding;
+        // other pages' routes must neither be decoded nor used to fill missing support here.
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT ordinal, sid, name FROM {table} WHERE finding_id=$id ORDER BY ordinal";
+        command.Parameters.AddWithValue("$id", findingId);
+        using var reader = command.ExecuteReader();
+        var route = new List<PathStep>();
+        while (reader.Read())
+        {
+            if (reader.GetInt64(0) != route.Count || route.Count >= expectedLength || string.IsNullOrWhiteSpace(reader.GetString(1)))
+                throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+            route.Add(new(reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
+        }
+        if (route.Count != expectedLength) throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+        return route;
+    }
 
     /// <summary>
     /// Every stored takeover route, by the finding it belongs to, in path order.

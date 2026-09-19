@@ -697,6 +697,7 @@ public static class JudgingRun
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete, gated);
         writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
         writer.StartPathInputs(ownershipDescription, tier0DiscoveryRequested);
+        writer.StartLapsInventory();
 
         var scanWatch = new System.Diagnostics.Stopwatch();
         var discoveryWatch = new System.Diagnostics.Stopwatch();
@@ -725,6 +726,7 @@ public static class JudgingRun
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
 
+            writer.WriteLapsInventory(subject);
             unobservedRoots.Remove(subject.DistinguishedName);
             var permissions = bundle.ReadPermissions(subject.DistinguishedName);
 
@@ -763,6 +765,8 @@ public static class JudgingRun
                     Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
                 });
         }
+
+        writer.CompleteLapsInventory();
 
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",

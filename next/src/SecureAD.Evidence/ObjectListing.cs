@@ -78,6 +78,9 @@ public sealed record ObjectPage(
     bool ObjectsAreComplete,
     string? Shortfall);
 
+/// <summary>Whether the capture covers a selected listing scope, independently of the product being listed.</summary>
+public sealed record ListingCoverage(bool IsComplete, string? Shortfall);
+
 /// <summary>
 /// Lists the objects a bundle captured beneath one container.
 /// </summary>

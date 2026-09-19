@@ -59,6 +59,22 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
     internal Result<T> ReadDerivation<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenDerivation, (reader, _) => read(reader), reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
 
+    internal Result<LapsPage> ReadLapsComputers(string containerDn, ListingScope scope, int pageNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var read = ReadJudgement((judgement, token) =>
+        {
+            var coverage = ReadEvidence(evidence => evidence.ReadListingCoverage(containerDn, scope), token);
+            return coverage.IsSuccess
+                ? Result<LapsPage>.Success(judgement.ListLapsComputers(containerDn, scope, pageNumber, coverage.Value, token))
+                : Result<LapsPage>.Failure(coverage.Error);
+        }, cancellationToken);
+        if (!read.IsSuccess && read.Error.Code == "Evidence.judgementManifestAbsent")
+            return Result<LapsPage>.Failure(AuditError.Create(ErrorCategory.Shell, "LapsInventoryUnavailable",
+                ErrorSeverity.Failed, LapsInventoryText.Get("Unavailable"), Directory));
+        return read.IsSuccess ? read.Value : Result<LapsPage>.Failure(read.Error);
+    }
+
     private Result<T> Read<TReader, T>(Func<CancellationToken, Result<TReader>> open, Func<TReader, CancellationToken, T> read,
         Func<TReader, AuditError?> current, CancellationToken cancellationToken) where TReader : IDisposable
     {
@@ -97,7 +113,7 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
         {
             return Result<T>.Failure(Unavailable("GenerationChanged"));
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException
+        catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException
             or SqliteException or System.Text.Json.JsonException or ArgumentException)
         {
             cancellationToken.ThrowIfCancellationRequested();

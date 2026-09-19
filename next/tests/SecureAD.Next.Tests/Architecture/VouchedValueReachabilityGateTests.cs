@@ -485,6 +485,10 @@ public sealed class VouchedValueReachabilityGateTests
     /// doing: the first draft derived it from whether a reason string was present, which made an
     /// empty reason a third state meaning neither thing, and left the member reachable as false
     /// only. Read true from a watch that ran to the end and false from one that stopped.
+    /// 68 adds <c>ListingCoverage.IsComplete</c> for saved LAPS readback: capture completeness
+    /// belongs to the requested scope, not to the existence of saved inventory. Its public
+    /// constructor accepts both values; direct <c>BundleReader.ReadListingCoverage</c> tests also
+    /// read true for Base and false for a Subtree containing an excluded child domain.
     /// </para>
     /// </summary>
     [Fact]
@@ -499,7 +503,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -528,6 +532,7 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "Tier0DiscoveryCoverage" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "OwnershipAuditCount" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "Tier0RelevanceRelation" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "ListingCoverage" && v.Name == "IsComplete");
     }
 
     /// <summary>

@@ -57,6 +57,7 @@ internal static class LapsBundle
     /// <param name="connectionSecurity">The computer partition's connection, independent of the schema read.</param>
     /// <param name="windowsLapsConfidential">Overrides the shared confidentiality choice for the modern timestamp.</param>
     /// <param name="legacyLapsConfidential">Overrides the shared confidentiality choice for the legacy timestamp.</param>
+    /// <param name="accountControlText">A raw malformed account value for uncertainty tests, overriding the numeric value.</param>
     public static string Build(
         string dn,
         IReadOnlyList<string> objectClasses,
@@ -71,7 +72,8 @@ internal static class LapsBundle
         int? primaryGroupId = null,
         ConnectionSecurityLevel connectionSecurity = ConnectionSecurityLevel.SignedAndSealed,
         bool? windowsLapsConfidential = null,
-        bool? legacyLapsConfidential = null)
+        bool? legacyLapsConfidential = null,
+        string? accountControlText = null)
     {
         var directory = TempDirectories.Create("laps-tests");
         var partition = Partition with { ConnectionSecurity = connectionSecurity };
@@ -96,7 +98,9 @@ internal static class LapsBundle
 
             // Null writes no attribute at all, which is the state P-158 is about: a computer whose
             // account control the capture never read. It must not be confused with a zero value.
-            if (userAccountControl is { } accountControl)
+            if (accountControlText is not null)
+                attributes.Add(Text("userAccountControl", accountControlText));
+            else if (userAccountControl is { } accountControl)
             {
                 attributes.Add(
                     Text("userAccountControl", accountControl.ToString(CultureInfo.InvariantCulture)));

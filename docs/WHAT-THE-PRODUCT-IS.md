@@ -378,6 +378,32 @@ The retained verification handoff is
 Later P-248 checkpoints, P-241, physical-display checks and customer-scale opening-cost acceptance
 remain open; this is neither complete P-248 nor complete Stage 7, and requester activation is unchanged.
 
+**Owner-approved P-248 checkpoint 4:** “approved and begin implementation” authorizes judgement
+format 40 with a complete all-computer LAPS inventory produced during judging, saved-result reads
+through the protected selected-run lifetime, and requested-finding-only SEC-090/093 route reads
+with recorded support lengths. Inventory includes healthy, disabled and domain-controller computers
+independently of findings; captured support, scoped capture shortfalls and incomplete results survive.
+Inventory now requires a completed saved product rather than calculation before judging: the existing
+refusal panel says **This run has no saved LAPS inventory.** Raw object attributes remain readable.
+Missing or unreadable account flags must remain Unknown rather than Disabled; the existing skip-reason
+column says **Account state unknown** or **Domain controller; account state unknown** as applicable.
+No layout or finding-text changes are authorized. Replace the old analytical inventory reader rather
+than retain a fallback, refuse older formats with zero backward compatibility, and do not regenerate
+original results. Verification is synthetic/offline with TEMP/TMP isolated before test-assembly loading
+and every new behavior check witnessed by rebuilt deliberate defects and restoration builds; do not
+restart checkpoint 1–3 verification campaigns. Preserve intervening work and all historical artifacts,
+including failures; P-157, P-174, P-241, later permission/navigation checkpoints, physical-display checks
+and customer-scale opening-cost acceptance remain open. No live AD, activation, production-budget
+changes, new measurement tooling, commit or push is authorized.
+
+**Checkpoint 4 is implemented and offline verified in judgement format 40.** All 5,705 offline tests
+pass, including all 5,665 historical cases and 40 new cases passing under coverage; every new case
+detected a relevant defect across seven explicitly rebuilt variants, with successful restoration builds.
+The qualified handoff, including retained failed attempts and preservation checks, is
+`next/artifacts/p248-c4-6596977645534ef5b49c3893ec5dcd55/handoff.json`.
+No original results were regenerated; this completes only the approved LAPS readback checkpoint,
+not P-248 or Stage 7, and the independent constraints listed above remain open.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.

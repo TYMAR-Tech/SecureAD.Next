@@ -514,7 +514,9 @@ internal sealed class LapsComputerViewModel
     /// precisely because there was nowhere else for them to appear.
     /// </remarks>
     public string NotJudgedBecause =>
-        IsDomainController && IsDisabled ? "Domain controller, disabled"
+        _computer.AccountState is LapsAttributes.AccountState.Unknown
+            ? LapsInventoryText.Get(IsDomainController ? "ControllerAccountUnknown" : "AccountUnknown")
+        : IsDomainController && IsDisabled ? "Domain controller, disabled"
         : IsDomainController ? "Domain controller"
         : IsDisabled ? "Disabled"
         : string.Empty;
@@ -529,7 +531,7 @@ internal sealed class LapsComputerViewModel
     /// <b>An unreadable value is not shown as an absent one.</b> A machine whose timestamp is
     /// present but undecodable is managed, and a blank cell would say the opposite.
     /// </remarks>
-    private static string Expiry(LapsTimestamp timestamp) => timestamp.Reading switch
+    private static string Expiry(StoredLapsTimestamp timestamp) => timestamp.Reading switch
     {
         LapsTimestampReading.Present =>
             timestamp.ExpiresUtc!.Value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

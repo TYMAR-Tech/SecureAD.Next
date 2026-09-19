@@ -72,6 +72,9 @@ public sealed class ControlEdgeLayoutTests
         // Schema 39 adds the saved classification payload to ownership_seed. Observed from the
         // approved new build, not an independent historical forest anchor; older hashes stay fixed.
         [39] = "A6B0B4ED6815AE2CCA67649C64698749291D7365AAB15C00A9DFFD23AD017B21",
+        // Schema 40 adds the completed LAPS inventory and expected LAPS finding-route lengths.
+        // Observed from this approved build; no historical layout value is replaced.
+        [40] = "3738DBBD6C6022DC2025F4C9E78D87217304F9322B8E8F4B0FB074CF461ADF52",
     };
 
     [Fact]
