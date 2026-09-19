@@ -431,6 +431,43 @@ This completes only checkpoint 5: hidden navigation, P-157, P-174, P-241, physic
 and customer-scale opening/browsing acceptance remain open, with no Stage 7 completion,
 activation, original-result regeneration, commit or push.
 
+**Owner-approved P-248 checkpoint 6:** “approved begin implementation” authorizes visible-only
+completed-run browsing without changing format 41. Load only the visible listing and selected object
+section; resolve the object's captured identity/class before selecting the requested section, without
+preparing other sections or their rows. Findings-filter choices load on first Findings display and
+belong only to that protected run lifetime. Keep section availability/order, result meanings, columns,
+grouping, colors and the existing geometry; replace eager production paths rather than retain a parallel
+implementation. An open object belongs to its originating Assets tab: another tab displays its listing
+and suspends object reads, while returning reloads the selected section if the run and shared selection
+remain valid. Back retains the originating page/position only after checking its protected lifetime,
+generation and query; superseding selections cancel reads and reject late success or failure. Tree,
+filter and applicable level changes invalidate affected pages but read only the visible destination;
+Rules remain whole-run. LAPS starts at its own first page rather than inheriting the Objects page,
+without new paging controls or closure of P-174. Leaving Assets cancels work; re-entry retains the
+current Objects/root landing behavior. Missing products, changed generations and unpublished attempts
+remain explicit refusals, never cached results, empty substitutes or hidden analysis replay.
+
+The approved additional content-area wording is **Loading captured information…**, **Loading saved
+results…**, and **This view could not be read.** followed by the underlying reason. Keep the existing
+Saved Tier 0 path wording **Loading and validating saved results...**. Loading/refused views do not
+present old rows, old finding guidance, zero counts or “nothing found” as current answers; genuine
+empty results retain their existing wording. Verification is synthetic/offline with TEMP/TMP isolated
+before any test-assembly loading, including discovery; every new behavior check requires a relevant
+rebuilt deliberate defect and exact restoration build. Preserve historical cases, frozen values,
+measurement tooling, artifacts, failed attempts and intervening work without restarting checkpoint 1–5
+campaigns. P-157, P-174, P-241 and independent verification/readiness, physical-display and customer-scale
+acceptance remain open; no live AD, activation, budgets, migration, original-result regeneration,
+new measurement tooling, commit or push is authorized. Approval is not implementation or verification.
+
+**Checkpoint 6 remains in progress:** its corrected protected-read prerequisite passes all 5,784
+offline cases, retaining all 5,768 historical cases. All 16 new checks pass under coverage and detect
+relevant defects across seven explicitly rebuilt variants with exact restoration; the qualified results
+and retained failed attempts are recorded at
+`next/artifacts/p248-c6-40e79c89c1e04f049c8ccac4b001e8bc/handoff.json`.
+Visible-only listing loads, selected-only object sections, tab behavior and loading presentation remain
+unimplemented; resume with the approved navigation work rather than restart this completed boundary
+verification, and keep all independent verification, readiness and acceptance constraints open.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.

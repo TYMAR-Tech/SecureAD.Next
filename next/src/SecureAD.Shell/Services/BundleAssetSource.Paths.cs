@@ -24,15 +24,19 @@ internal sealed partial class BundleAssetSource
     /// <inheritdoc/>
     public Task<Result<SavedTier0Path?>> ReadSavedTier0PathAsync(string bundleDirectory, string distinguishedName,
         CancellationToken cancellationToken) =>
-        Task.Run(() => ReadSavedTier0Path(bundleDirectory, distinguishedName, cancellationToken), cancellationToken);
+        ReadAsync(bundleDirectory, (source, _) => source.ReadSavedTier0Path(bundleDirectory, distinguishedName), cancellationToken);
 
     /// <inheritdoc/>
     public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName) =>
-        ReadSavedTier0Path(bundleDirectory, distinguishedName, CancellationToken.None);
+        WithRun(bundleDirectory, reader => reader.ReadSavedTier0Path(bundleDirectory, distinguishedName));
+}
 
-    private Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName,
-        CancellationToken cancellationToken)
+internal sealed partial class AssetReadRequest
+{
+    /// <inheritdoc/>
+    public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName)
     {
+        var cancellationToken = _readCancellation;
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();

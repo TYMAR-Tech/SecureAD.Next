@@ -24,19 +24,23 @@ namespace SecureAD.Shell.Services;
 /// the operator arrives at a run, and answer both from it.
 /// </para>
 /// </remarks>
-internal interface IAssetSource
+internal interface IAssetSource : IAssetReader
 {
+    /// <summary>Executes one navigation request against the run selected before work is scheduled.</summary>
+    Task<T> ReadAsync<T>(string bundleDirectory, Func<IAssetReader, CancellationToken, T> read,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var value = read(this, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(value);
+    }
+
     /// <summary>Selects the run whose completed results subsequent requests may describe.</summary>
     void SelectRun(string bundleDirectory) { }
 
     /// <summary>Releases the selected run and cancels its outstanding reads.</summary>
     void CloseRun() { }
-
-    /// <summary>Reads one object's completed saved permission classification without new analysis.</summary>
-    Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName);
-
-    /// <summary>Reads one saved path and its coverage from the same validated generation, without new analysis.</summary>
-    Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName);
 
     /// <summary>The bundle implementation performs cancellable validation on a worker; in-memory sources may complete immediately.</summary>
     Task<Result<SavedTier0Path?>> ReadSavedTier0PathAsync(string bundleDirectory, string distinguishedName,
@@ -45,6 +49,19 @@ internal interface IAssetSource
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(ReadSavedTier0Path(bundleDirectory, distinguishedName));
     }
+}
+
+/// <summary>Queries against a selected run, without the authority to select or close that run.</summary>
+internal interface IAssetReader
+{
+    /// <summary>Unverified sources cannot vouch for retained data; protected readers supply their own check.</summary>
+    Func<bool> CaptureReadValidity() => () => false;
+
+    /// <summary>Reads one object's completed saved permission classification without new analysis.</summary>
+    Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName);
+
+    /// <summary>Reads one saved path and its coverage from the same validated generation, without new analysis.</summary>
+    Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName);
 
     /// <summary>Reads a page of stored control statements, with coverage and hidden expected counts.</summary>
     Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,

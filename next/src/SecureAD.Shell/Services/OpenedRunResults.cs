@@ -42,10 +42,10 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
         }
     }
 
-    internal Result<SchemaGuidCatalog> ReadSchemaGuids() => ReadEvidence(reader =>
+    internal Result<SchemaGuidCatalog> ReadSchemaGuids(CancellationToken cancellationToken = default) => ReadEvidence(reader =>
     {
         lock (_schemaGate) return _schema ??= reader.ReadSchemaGuids();
-    });
+    }, cancellationToken);
 
     internal Result<T> ReadEvidence<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenEvidence, (reader, _) => read(reader), _ => null, cancellationToken);
