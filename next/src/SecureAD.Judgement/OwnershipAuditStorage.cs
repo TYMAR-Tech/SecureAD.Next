@@ -15,7 +15,8 @@ internal static class OwnershipAuditStorage
         int SelectorVersion, int EvaluatorVersion, int TargetCount, int SeedCount, int RelationCount);
     internal sealed record TargetRow(Tier0Target Identity, OwnershipScopeState Selection,
         OwnershipAssessmentExecution Execution, int Candidates, int Transitions);
-    internal sealed record SeedRow(string Target, MembershipRouteSummary Routes, byte[] Fingerprint);
+    internal sealed record SeedRow(string Target, MembershipRouteSummary Routes, byte[] Fingerprint,
+        Tier0Classification Classification);
     internal sealed record RelationRow(long? EdgeId, string Controller, string Affected,
         string? WitnessTarget, int? WitnessOrdinal, string? WitnessTrustee, bool WitnessIsOwner,
         ControlCapability? WitnessCapability);
@@ -28,7 +29,8 @@ internal static class OwnershipAuditStorage
             execution TEXT NOT NULL, candidate_count INTEGER NOT NULL CHECK(candidate_count>=0),
             transition_count INTEGER NOT NULL CHECK(transition_count>=0));
         CREATE TABLE ownership_seed (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
-            routes TEXT NOT NULL, classification_fingerprint BLOB NOT NULL CHECK(length(classification_fingerprint)=32));
+            routes TEXT NOT NULL, classification_fingerprint BLOB NOT NULL CHECK(length(classification_fingerprint)=32),
+            classification TEXT NOT NULL);
 
         -- A DISCOVERED ROUTE HAS NO CONTROL EDGE TO POINT AT, WHICH IS THE WHOLE POINT OF SCHEMA 28.
         -- Discovery now runs before detailed assessment, so at the moment a route is recorded the
@@ -117,9 +119,10 @@ internal static class OwnershipAuditStorage
             if (decision.Classification?.State == Tier0State.Established)
             {
                 var summary = routes(target.Identity) ?? MembershipRouteSummary.NotDerived;
-                Execute(connection, transaction, "INSERT INTO ownership_seed VALUES ($target,$routes,$hash)",
+                var classification = JsonSerializer.Serialize(decision.Classification, ProofSerialization.Options);
+                Execute(connection, transaction, "INSERT INTO ownership_seed VALUES ($target,$routes,$hash,$classification)",
                     ("$target", target.Identity.DistinguishedName), ("$routes", JsonSerializer.Serialize(summary, ProofSerialization.Options)),
-                    ("$hash", Hash(JsonSerializer.Serialize(decision.Classification, ProofSerialization.Options))));
+                    ("$hash", Hash(classification)), ("$classification", classification));
                 seeds++;
             }
             foreach (var relation in decision.Reasons)
@@ -275,15 +278,27 @@ internal static class OwnershipAuditStorage
             header.Coverage, OwnershipAuditCount.Of(read.GetInt32(3)), assessed);
     }
 
-    internal static IReadOnlyList<SeedRow> Seeds(SqliteConnection connection)
+    internal static IReadOnlyList<SeedRow> Seeds(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT target,routes,classification_fingerprint FROM ownership_seed ORDER BY target";
+        command.CommandText = "SELECT target,routes,classification_fingerprint,classification FROM ownership_seed ORDER BY target";
         using var read = command.ExecuteReader();
         var seeds = new List<SeedRow>();
-        while (read.Read()) seeds.Add(new(read.GetString(0),
-            JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1), ProofSerialization.Options) ?? throw InvalidProof(),
-            (byte[])read.GetValue(2)));
+        while (read.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var json = read.GetString(3);
+            var fingerprint = (byte[])read.GetValue(2);
+            if (!Hash(json).AsSpan().SequenceEqual(fingerprint)) throw InvalidProof();
+            var classification = JsonSerializer.Deserialize<Tier0Classification>(json, ProofSerialization.Options) ?? throw InvalidProof();
+            if (classification.Target is null || classification.Target.DistinguishedName != read.GetString(0)
+                || classification.Input is null || !classification.Input.IsSupported || classification.Coverage is null
+                || classification.Supports.IsDefaultOrEmpty || classification.Supports.Any(support => support is null
+                    || !Enum.IsDefined(support.Basis) || support.Root is null || support.Evidence.IsDefault)) throw InvalidProof();
+            seeds.Add(new(read.GetString(0),
+                JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1), ProofSerialization.Options) ?? throw InvalidProof(),
+                fingerprint, classification));
+        }
         return seeds;
     }
 

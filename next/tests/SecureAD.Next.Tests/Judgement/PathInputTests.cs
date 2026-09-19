@@ -91,7 +91,7 @@ public sealed class PathInputTests(ITestOutputHelper output)
         });
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadPathInputs());
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadInputs(reader));
     }
 
     private static void RefreshProofHashes(SqliteConnection connection, string table)

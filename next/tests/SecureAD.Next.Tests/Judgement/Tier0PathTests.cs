@@ -368,7 +368,7 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
         Mutate(directory, sql);
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
         Mutate(directory, "UPDATE tier0_path_node SET proof=json_set(proof,'$.PermissionFingerprint','different') WHERE target LIKE 'CN=Alice,%'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]

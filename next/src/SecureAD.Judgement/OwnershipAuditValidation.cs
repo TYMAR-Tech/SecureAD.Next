@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
@@ -8,11 +9,15 @@ namespace SecureAD.Judgement;
 
 internal static class OwnershipAuditValidation
 {
+    private static readonly Meter ReadbackMeter = new("SecureAD.Judgement.Readback");
+    private static readonly Counter<long> AnalyticalReads = ReadbackMeter.CreateCounter<long>("judgement.analytical_reads");
+
     // Replay only stored seed witnesses and inclusion links. No new discovery, membership walk or assessment is performed.
     internal static (IReadOnlyList<Tier0Classification> Classifications, IReadOnlyList<Tier0RelevanceRelation> Relations)
         Validate(SqliteConnection connection, JudgementDescription description, string directory, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        AnalyticalReads.Add(1, new KeyValuePair<string, object?>("bundle", Path.GetFullPath(directory)));
         var header = OwnershipAuditStorage.ValidateCounts(connection, description);
         if (header is null) return ([], []);
         var rows = OwnershipAuditStorage.Targets(connection, cancellationToken);

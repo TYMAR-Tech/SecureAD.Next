@@ -48,15 +48,18 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
     });
 
     internal Result<T> ReadEvidence<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenEvidence, read, _ => null, cancellationToken);
+        Read(OpenEvidence, (reader, _) => read(reader), _ => null, cancellationToken);
 
     internal Result<T> ReadJudgement<T>(Func<JudgementReader, T> read, CancellationToken cancellationToken = default) =>
+        ReadJudgement((reader, _) => read(reader), cancellationToken);
+
+    internal Result<T> ReadJudgement<T>(Func<JudgementReader, CancellationToken, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenJudgement, read, reader => Current(reader.Description), cancellationToken);
 
     internal Result<T> ReadDerivation<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenDerivation, read, reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
+        Read(OpenDerivation, (reader, _) => read(reader), reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
 
-    private Result<T> Read<TReader, T>(Func<CancellationToken, Result<TReader>> open, Func<TReader, T> read,
+    private Result<T> Read<TReader, T>(Func<CancellationToken, Result<TReader>> open, Func<TReader, CancellationToken, T> read,
         Func<TReader, AuditError?> current, CancellationToken cancellationToken) where TReader : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -79,7 +82,7 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
             }
             using var reader = opened.Value;
             token.ThrowIfCancellationRequested();
-            var value = read(reader);
+            var value = read(reader, token);
             token.ThrowIfCancellationRequested();
             _gate.Wait(token);
             try

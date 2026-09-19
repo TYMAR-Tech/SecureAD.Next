@@ -56,7 +56,7 @@ public sealed partial class OpenedRunResultsTests
         var browsing = counts.AnalyticalReads;
 
         using var verifier = JudgementReader.Open(directory).Value;
-        verifier.ReadPathInputs();
+        PathProofVerification.ReadInputs(verifier);
 
         Assert.Equal((0L, 1L), (browsing, counts.AnalyticalReads));
     }

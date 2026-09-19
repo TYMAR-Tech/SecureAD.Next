@@ -352,7 +352,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]

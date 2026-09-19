@@ -1,4 +1,3 @@
-using System.Diagnostics.Metrics;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
@@ -149,8 +148,6 @@ public sealed record StoredJudgement(
 /// </remarks>
 public sealed class JudgementReader : IDisposable
 {
-    private static readonly Meter ReadbackMeter = new("SecureAD.Judgement.Readback");
-    private static readonly Counter<long> AnalyticalReads = ReadbackMeter.CreateCounter<long>("judgement.analytical_reads");
     private readonly SqliteConnection _connection;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
@@ -170,49 +167,58 @@ public sealed class JudgementReader : IDisposable
     public JudgementDescription Description { get; }
 
     /// <summary>
-    /// Validates and reads saved path inputs. Replays only stored source witnesses; never discovers
-    /// requesters, evaluates permissions, writes analysis or returns a reachability verdict.
+    /// Reads saved path inputs and their exact source binding, without reclassifying objects,
+    /// replaying source proofs or returning a reachability verdict.
     /// </summary>
     public PathInputs ReadPathInputs()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        RecordAnalyticalRead();
-        return PathInputStorage.Read(_connection, Description, BundleDirectory);
+        RequireCurrentPathGeneration();
+        return PathInputStorage.Read(_connection, Description);
     }
 
     /// <summary>
-    /// Validates and reads one saved Tier-0 path result, replaying only saved requester questions
-    /// to verify their source proof. Never discovers new questions, searches paths or publishes results.
+    /// Reads one saved Tier-0 path and its supporting answers without replaying permissions,
+    /// source qualification, requester selection or path calculation.
     /// An uncaptured subject remains Unknown, not NotReachable.
     /// </summary>
     public Tier0PathResult ReadTier0Path(string subjectDn)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
-        RecordAnalyticalRead();
-        return Tier0PathStorage.Read(_connection, Description, BundleDirectory, subjectDn);
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.Read(_connection, Description, subjectDn);
     }
 
-    /// <summary>Projects path and requester coverage from one complete proof replay of this opened generation; nothing is cached.</summary>
+    /// <summary>Reads path and requester coverage from the same saved inputs and generation, without proof replay.</summary>
     public (Tier0PathResult Path, PathRequesterCoverage Coverage) ReadTier0PathWithCoverage(
         string subjectDn, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
         cancellationToken.ThrowIfCancellationRequested();
-        RecordAnalyticalRead();
-        return Tier0PathStorage.ReadWithCoverage(_connection, Description, BundleDirectory, subjectDn, cancellationToken);
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.ReadWithCoverage(_connection, Description, subjectDn, cancellationToken);
     }
 
     /// <summary>
     /// Reads coverage from the saved selection and reconciled proof batches in this exact generation.
-    /// Replays only saved proof questions for validation; never selects new accounts or publishes analysis.
+    /// Never re-evaluates proof questions, selects accounts or publishes analysis.
     /// </summary>
     public PathRequesterCoverage ReadPathRequesterCoverage()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        RecordAnalyticalRead();
-        return Tier0PathStorage.ReadCoverage(_connection, Description, BundleDirectory);
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.ReadCoverage(_connection, Description);
+    }
+
+    private void RequireCurrentPathGeneration()
+    {
+        var judgement = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Judgement);
+        if (!judgement.IsSuccess || judgement.Value.GenerationId != Description.GenerationId) throw OwnershipAuditStorage.InvalidProof();
+        if (Description.DerivationGenerationId is not { } generation) return;
+        var derivation = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Derivation);
+        if (!derivation.IsSuccess || derivation.Value.GenerationId != generation) throw OwnershipAuditStorage.InvalidProof();
     }
 
     /// <summary>Reads the stored control product, object-first or named-trustee-first, with coverage and hidden counts.</summary>
@@ -238,9 +244,6 @@ public sealed class JudgementReader : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
         return ControlEdgeStorage.ReadExact(_connection, Description, target, id);
     }
-
-    private void RecordAnalyticalRead() =>
-        AnalyticalReads.Add(1, new KeyValuePair<string, object?>("bundle", Path.GetFullPath(BundleDirectory)));
 
     /// <summary>Reads explicit requester assessments object-first, requester-first, or together.</summary>
     public SelfMembershipAssessmentSet ReadSelfMembershipAssessments(string? target, string? requester)

@@ -77,8 +77,10 @@ public static class JudgementSchema
     /// within the path certificate; production scheduling and physical tables are unchanged.</para>
     /// <para>38 binds enterprise CA registration/host classification to the captured configuration
     /// context and admits those fixed targets; permission and path-operation semantics are unchanged.</para>
+    /// <para>39 saves complete Tier-0 classifications rather than only their fingerprints, so path
+    /// readback does not reclassify captured objects. Older formats are refused, never replayed or migrated.</para>
     /// </remarks>
-    public const int Version = 38;
+    public const int Version = 39;
 
     private static readonly string[] TableDdl =
     [

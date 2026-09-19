@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using SecureAD.Evidence;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
@@ -151,6 +152,7 @@ public sealed record Tier0Evidence(Tier0Target Object, string Attribute, int Ord
 /// <summary>An independently qualified classification support, not a flattened privileged flag.</summary>
 public sealed record Tier0Support
 {
+    [JsonConstructor]
     internal Tier0Support(Tier0Basis basis, Tier0Target root, ImmutableArray<Tier0Evidence> evidence)
     {
         Basis = basis;
@@ -188,6 +190,7 @@ public sealed record Tier0ClassificationBatch(ImmutableArray<Tier0Classification
 /// <summary>A shared evidence-backed answer; only the classifier creates qualified supports.</summary>
 public sealed record Tier0Classification
 {
+    [JsonConstructor]
     internal Tier0Classification(Tier0InputBinding input, Tier0Target target,
         ImmutableArray<Tier0Support> supports, Tier0Coverage coverage)
     {

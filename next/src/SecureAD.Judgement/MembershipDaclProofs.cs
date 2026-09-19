@@ -55,22 +55,6 @@ internal static class MembershipDaclProofs
         return result;
     }
 
-    internal static void Validate(SqliteConnection connection, JudgementDescription description, string directory,
-        PathInputs inputs, IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<SavedMembershipDaclProof> proofs,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (proofs.Any(proof => proof is null || proof.Assessment is null || !Valid(proof.Assessment.Request))
-            || proofs.Select(proof => Key(proof.Assessment.Request)).Distinct(StringComparer.Ordinal).Count() != proofs.Count)
-            throw Tier0PathStorage.InvalidProof();
-        // Recreate only these saved questions. A refreshed JSON hash cannot vouch a changed
-        // membership assumption, deny decision, generation, permission reference or route.
-        var replay = Create(connection, description, directory, inputs, nodes,
-            proofs.Select(proof => proof.Assessment.Request).ToArray(), cancellationToken);
-        if (Tier0PathCalculation.Fingerprint(proofs) != Tier0PathCalculation.Fingerprint(replay))
-            throw Tier0PathStorage.InvalidProof();
-    }
-
     internal static MembershipDaclRequest? Best(Tier0PathNode node, IReadOnlyList<SavedMembershipDaclProof> proofs,
         IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts)
     {

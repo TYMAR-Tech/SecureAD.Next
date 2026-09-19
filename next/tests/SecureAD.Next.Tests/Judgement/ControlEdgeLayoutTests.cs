@@ -69,6 +69,9 @@ public sealed class ControlEdgeLayoutTests
         [37] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
         // Schema 38 adds CA target/source semantics, with the same observed physical tables.
         [38] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
+        // Schema 39 adds the saved classification payload to ownership_seed. Observed from the
+        // approved new build, not an independent historical forest anchor; older hashes stay fixed.
+        [39] = "A6B0B4ED6815AE2CCA67649C64698749291D7365AAB15C00A9DFFD23AD017B21",
     };
 
     [Fact]

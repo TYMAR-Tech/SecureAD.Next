@@ -488,7 +488,7 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
         Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]
@@ -498,7 +498,7 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
         Mutate(directory, "UPDATE tier0_path_node SET proof=json_set(proof,'$.OwnAccountRoute',NULL),outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]

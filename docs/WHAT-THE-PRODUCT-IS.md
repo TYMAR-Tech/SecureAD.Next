@@ -353,6 +353,31 @@ both deliberate defects and restored code. This approval does not reopen checkpo
 mutation work or authorize UI/schema changes, later checkpoints, live AD, activation, new measurement
 tooling, commit or push; P-241 and unperformed physical-display checks remain open.
 
+**Owner-approved P-248 checkpoint 3:** “approve begin implementation” authorizes the proposed saved
+Tier 0 path, path-input and requester-coverage readback replacement through the protected selected-run
+lifetime, preserving result-production checks, exact generations, supporting evidence, uncertainty,
+independent counts and existing presentation. Verification is synthetic/offline with rebuilt deliberate
+defects; checkpoint 1 and 2 verification campaigns are not restarted, and P-241 remains open.
+UI/schema changes, live AD, activation, new measurement tooling, commit and push remain unauthorized.
+
+**Owner-approved checkpoint 3 storage correction — zero backward compatibility.**
+Before this correction, `ownership_seed` stored routes and a classification fingerprint, not the full
+`Tier0Classification`; `PathInputs.Classifications` had to be reconstructed by the classifier.
+The owner approved storing the complete classifications and advancing the judgement format, explicitly
+requiring **zero backward compatibility because this product has never shipped**. This supersedes
+checkpoint 3's no-schema-change and existing-format compatibility limits only: refuse older formats,
+with no migration, legacy reader, empty-evidence substitute or hidden replay fallback. Preserve original
+evidence/results and historical verification separately; regenerating old results remains outside this
+approval, as do UI changes, live AD, activation, new measurement tooling, commit and push.
+
+**Checkpoint 3 is implemented and offline verified in judgement format 39.** All 5,665 offline tests
+and all 21 new focused coverage cases pass; every new case detected a relevant defect across four
+explicitly rebuilt variants, with successful restoration builds and unchanged original artifact metadata.
+The retained verification handoff is
+`next/artifacts/p248-c3-6cec41d134044638b2d3d70df7528756/handoff.json`.
+Later P-248 checkpoints, P-241, physical-display checks and customer-scale opening-cost acceptance
+remain open; this is neither complete P-248 nor complete Stage 7, and requester activation is unchanged.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.
