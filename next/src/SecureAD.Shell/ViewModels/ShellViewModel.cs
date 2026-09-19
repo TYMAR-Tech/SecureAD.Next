@@ -62,6 +62,7 @@ internal sealed partial class ShellViewModel : ObservableObject
         Assets = assets;
         Dashboard = dashboard;
         Settings = settings;
+        Assets.Suspend();
     }
 
     /// <summary>Where the run library is chosen, and where a run is started from.</summary>
@@ -393,7 +394,8 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSectionChanged(ShellSection value)
     {
-        if (value != ShellSection.Assets) Assets.CancelSavedPathRead();
+        // Rebuilding tabs must not start a read against the previous Assets selection.
+        Assets.Suspend();
         RebuildViews(value);
 
         OnPropertyChanged(nameof(IsHome));
@@ -412,7 +414,6 @@ internal sealed partial class ShellViewModel : ObservableObject
         if (value == ShellSection.Assets)
         {
             ShowAssetsOfTheSelectedRun();
-            Assets.ResumeSavedPathRead();
             return;
         }
 

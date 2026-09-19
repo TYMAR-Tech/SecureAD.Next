@@ -76,25 +76,25 @@ public sealed partial class SavedTier0PathSectionTests
     [Fact]
     public async Task P246SectionNavigationCancelsAndReselectionReadsFresh()
     {
-        var screen = OpenScreen(Source());
-        var section = (SavedTier0PathSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.SavedTier0Path)!;
-        var first = PendingPath();
-        var second = PendingPath();
-        var calls = 0;
-        CancellationToken original = default;
-        section.ConfigureAsync(UserDn, token => { if (++calls == 1) { original = token; return first.Task; } return second.Task; });
-        screen.Opened.Show(ObjectSectionCatalog.SavedTier0Path);
-        var originalCompletion = section.ReadCompletion;
+        var source = Source();
+        var screen = OpenScreen(source);
+        var first = new PendingNavigationRead();
+        var second = new PendingNavigationRead();
+        source.CompleteRead = first.Hold;
+        screen.Opened!.Show(ObjectSectionCatalog.SavedTier0Path);
+        var originalCompletion = screen.Opened.ReadCompletion;
+        source.CompleteRead = null;
         screen.Opened.Show(ObjectSectionCatalog.Overview);
-        Assert.True(original.IsCancellationRequested);
+        Assert.True(first.Token.IsCancellationRequested);
+        source.CompleteRead = second.Hold;
         screen.Opened.Show(ObjectSectionCatalog.SavedTier0Path);
-        Assert.Equal(2, calls);
-        var replacement = Saved();
-        second.SetResult(Result<SavedTier0Path?>.Success(replacement));
-        await section.ReadCompletion;
-        first.SetResult(Result<SavedTier0Path?>.Success(Saved()));
+        Assert.Equal(2, source.PathQueries.Count);
+        second.Release();
+        await screen.Opened.ReadCompletion;
+        first.Release();
         await originalCompletion;
-        Assert.Equal(Read(replacement).Provenance, section.Provenance);
+        var section = Assert.IsType<SavedTier0PathSectionViewModel>(screen.Opened.Selected);
+        Assert.Equal(Read(source.SavedPath.Value).Provenance, section.Provenance);
     }
 
     [Theory]
@@ -102,17 +102,18 @@ public sealed partial class SavedTier0PathSectionTests
     [InlineData(true)]
     public async Task P246ChangingObjectOrRunCancelsThePreviousRead(bool changeRun)
     {
-        var screen = OpenScreen(Source());
-        var section = (SavedTier0PathSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.SavedTier0Path)!;
-        var pending = PendingPath();
-        CancellationToken original = default;
-        section.ConfigureAsync(UserDn, token => { original = token; return pending.Task; });
-        screen.Opened.Show(ObjectSectionCatalog.SavedTier0Path);
-        var completion = section.ReadCompletion;
+        var source = Source();
+        var screen = OpenScreen(source);
+        var pending = new PendingNavigationRead();
+        source.CompleteRead = pending.Hold;
+        screen.Opened!.Show(ObjectSectionCatalog.SavedTier0Path);
+        var section = Assert.IsType<SavedTier0PathSectionViewModel>(screen.Opened.Selected);
+        var completion = screen.Opened.ReadCompletion;
+        source.CompleteRead = null;
         if (changeRun) screen.Show(@"C:\synthetic-runs\other", false);
         else screen.OpenObject(new(new(UserDn, "User", Guid.NewGuid(), "user", "DC=contoso,DC=com")));
-        Assert.True(original.IsCancellationRequested);
-        pending.SetResult(Result<SavedTier0Path?>.Success(Saved()));
+        Assert.True(pending.Token.IsCancellationRequested);
+        pending.Release();
         await completion;
         Assert.Equal("Saved results have not been read.", section.Result);
     }
@@ -120,22 +121,36 @@ public sealed partial class SavedTier0PathSectionTests
     [Fact]
     public async Task P246LeavingTheAssetsPaneCancelsAndReturningReadsFresh()
     {
-        var screen = OpenScreen(Source());
-        var section = (SavedTier0PathSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.SavedTier0Path)!;
-        var pending = PendingPath();
-        var calls = 0;
-        CancellationToken original = default;
-        section.ConfigureAsync(UserDn, token => { calls++; original = token; return pending.Task; });
-        screen.Opened.Show(ObjectSectionCatalog.SavedTier0Path);
-        var completion = section.ReadCompletion;
+        var source = Source();
+        var screen = OpenScreen(source);
+        var pending = new PendingNavigationRead();
+        source.CompleteRead = pending.Hold;
+        screen.Opened!.Show(ObjectSectionCatalog.SavedTier0Path);
+        var completion = screen.Opened.ReadCompletion;
+        source.CompleteRead = null;
         screen.Pane = AssetsPane.Findings;
-        Assert.True(original.IsCancellationRequested);
-        pending.SetResult(Result<SavedTier0Path?>.Success(Saved()));
+        Assert.True(pending.Token.IsCancellationRequested);
+        pending.Release();
         await completion;
         screen.Pane = AssetsPane.Objects;
-        await section.ReadCompletion;
-        Assert.Equal(2, calls);
+        await screen.ReadCompletion;
+        var section = Assert.IsType<SavedTier0PathSectionViewModel>(screen.Opened.Selected);
+        Assert.Equal(2, source.PathQueries.Count);
         Assert.Equal("Supported route recorded", section.Result);
+    }
+
+    private sealed class PendingNavigationRead
+    {
+        private readonly TaskCompletionSource<object> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private object? _value;
+        internal CancellationToken Token { get; private set; }
+        internal Task<object> Hold(object value, CancellationToken token)
+        {
+            _value = value;
+            Token = token;
+            return _completion.Task;
+        }
+        internal void Release() => _completion.SetResult(_value ?? throw new InvalidOperationException("No read is pending."));
     }
 
     [Fact]

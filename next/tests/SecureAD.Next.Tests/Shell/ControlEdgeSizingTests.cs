@@ -364,7 +364,8 @@ public sealed partial class ControlEdgeSizingTests
             new XElement(Wpf + "DockPanel", new XAttribute("Margin", assetsDock.Attribute("Margin")!.Value),
                 new XElement(Wpf + "Grid", new XElement(columns), objectView)));
         var pane = (FrameworkElement)XamlReader.Parse(root.ToString());
-        pane.DataContext = new { Opened = new { DistinguishedName = "CN=Target,DC=example,DC=invalid", Selected = vm } };
+        pane.DataContext = new { Opened = new { DistinguishedName = "CN=Target,DC=example,DC=invalid", Selected = vm,
+            Content = vm, IsLoading = false, HasRefusal = false } };
         return pane;
     }
 

@@ -90,7 +90,7 @@ public sealed class ObjectViewModelTests
         screen.OpenObjectCommand.Execute(screen.Objects[0]);
 
         Assert.False(screen.HasOpenObject);
-        Assert.True(screen.HasRefusal);
+        Assert.True(screen.HasViewRefusal);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -462,6 +462,7 @@ public sealed class ObjectViewModelTests
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.OpenObjectCommand.Execute(screen.Objects[0]);
 
+        screen.Opened!.Show(ObjectSectionCatalog.Findings);
         Assert.Equal(AliceDn, assets.FindingsAsked!.Object);
         Assert.Null(assets.FindingsAsked.Container);
     }
@@ -514,9 +515,10 @@ public sealed class ObjectViewModelTests
         screen.OpenObjectCommand.Execute(screen.Objects[0]);
 
         Assert.True(screen.HasOpenObject);
+        screen.Opened!.Show(ObjectSectionCatalog.Findings);
         Assert.Equal(
             "The judgement changed after it was sealed.",
-            screen.Findings().Verdict);
+            screen.Opened.Refusal!.Detail);
     }
 
     /// <summary>
@@ -546,6 +548,7 @@ public sealed class ObjectViewModelTests
     {
         var screen = OpenedWith(new FindingsPage([AFinding()], null, RulesRan: 2));
         screen.CloseObject();
+        screen.Pane = AssetsPane.Findings;
 
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
 
@@ -569,6 +572,7 @@ public sealed class ObjectViewModelTests
         assets.Attributes = AttributesOfAUser();
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
 
@@ -587,16 +591,17 @@ public sealed class ObjectViewModelTests
     public void AFindingNamingAnObjectTheEvidenceDoesNotHoldSaysSo()
     {
         var assets = SourceWith(new FindingsPage([AFinding()], null, RulesRan: 2));
-        assets.Permissions = null;
+        assets.Attributes = null;
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
 
         Assert.False(screen.HasOpenObject);
-        Assert.True(screen.HasRefusal);
+        Assert.True(screen.HasViewRefusal);
         Assert.Contains(
-            "not in this run's evidence", screen.Refusal!.Title, StringComparison.Ordinal);
+            "not in this run's evidence", screen.ViewRefusal!.Detail, StringComparison.Ordinal);
     }
 
     private static ObjectAttributes AttributesOfAUser() =>
@@ -634,6 +639,7 @@ public sealed class ObjectViewModelTests
             true,
             null),
         Permissions = Permissions(),
+        Attributes = AttributesOfAUser(),
         FindingsPage = findings,
     };
 
@@ -671,6 +677,7 @@ public sealed class ObjectViewModelTests
                 true,
                 null),
             Permissions = permissions,
+            Attributes = permissions is null ? null : AttributesOfAUser(),
         };
         if (classification is { } saved)
             assets.PermissionClassification = Result<SavedPermissionClassification>.Success(new(
@@ -745,16 +752,25 @@ internal static class OpenedObjectSections
 {
     /// <summary>The permissions section of the object this screen has open.</summary>
     /// <param name="screen">The assets screen, with an object open.</param>
-    public static PermissionsSectionViewModel Permissions(this AssetsViewModel screen) =>
-        (PermissionsSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.Permissions)!;
+    public static PermissionsSectionViewModel Permissions(this AssetsViewModel screen)
+    {
+        screen.Opened!.Show(ObjectSectionCatalog.Permissions);
+        return (PermissionsSectionViewModel)screen.Opened.Selected!;
+    }
 
     /// <summary>The overview section of the object this screen has open.</summary>
     /// <param name="screen">The assets screen, with an object open.</param>
-    public static OverviewSectionViewModel Overview(this AssetsViewModel screen) =>
-        (OverviewSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.Overview)!;
+    public static OverviewSectionViewModel Overview(this AssetsViewModel screen)
+    {
+        screen.Opened!.Show(ObjectSectionCatalog.Overview);
+        return (OverviewSectionViewModel)screen.Opened.Selected!;
+    }
 
     /// <summary>The findings section of the object this screen has open.</summary>
     /// <param name="screen">The assets screen, with an object open.</param>
-    public static FindingsSectionViewModel Findings(this AssetsViewModel screen) =>
-        (FindingsSectionViewModel)screen.Opened!.Section(ObjectSectionCatalog.Findings)!;
+    public static FindingsSectionViewModel Findings(this AssetsViewModel screen)
+    {
+        screen.Opened!.Show(ObjectSectionCatalog.Findings);
+        return (FindingsSectionViewModel)screen.Opened.Selected!;
+    }
 }

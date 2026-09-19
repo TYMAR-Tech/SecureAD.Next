@@ -459,14 +459,21 @@ campaigns. P-157, P-174, P-241 and independent verification/readiness, physical-
 acceptance remain open; no live AD, activation, budgets, migration, original-result regeneration,
 new measurement tooling, commit or push is authorized. Approval is not implementation or verification.
 
-**Checkpoint 6 remains in progress:** its corrected protected-read prerequisite passes all 5,784
+**Checkpoint 6 is implemented and offline verified in judgement format 41:** its corrected protected-read prerequisite passes all 5,784
 offline cases, retaining all 5,768 historical cases. All 16 new checks pass under coverage and detect
 relevant defects across seven explicitly rebuilt variants with exact restoration; the qualified results
 and retained failed attempts are recorded at
 `next/artifacts/p248-c6-40e79c89c1e04f049c8ccac4b001e8bc/handoff.json`.
-Visible-only listing loads, selected-only object sections, tab behavior and loading presentation remain
-unimplemented; resume with the approved navigation work rather than restart this completed boundary
-verification, and keep all independent verification, readiness and acceptance constraints open.
+The approved navigation implementation passes all 5,826 offline cases, retaining all 5,784 prior
+cases by stable identity; all 42 new cases pass under coverage and detect relevant assertion failures
+across five explicitly rebuilt variants, each followed by exact restoration and a passing rebuild.
+The qualified navigation handoff and retained failed attempts are
+`next/artifacts/p248-c6-navigation-f8a15ebd7cd5463ab874c71f06d2389c/handoff.json`.
+This completes checkpoint 6 implementation, not P-248 or Stage 7: P-157/P-174/P-241, independent
+verification/readiness, physical-display and customer-scale opening/browsing acceptance remain open.
+The owner subsequently authorized committing and publishing this checkpoint; no migration,
+regeneration, activation, live access or new measurement tooling was authorized, and completed
+prerequisite campaigns were not restarted.
 
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for

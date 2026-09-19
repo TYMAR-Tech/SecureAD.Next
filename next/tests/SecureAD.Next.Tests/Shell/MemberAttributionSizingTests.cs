@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Data;
 using SecureAD.Shell.Services;
+using SecureAD.Shell.ViewModels;
 using Xunit;
 using Xunit.Sdk;
 using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
@@ -13,18 +14,23 @@ public sealed partial class ControlEdgeSizingTests
     [InlineData(900, 430)]
     [InlineData(1300, 650)]
     [InlineData(1600, 900)]
-    public void MemberRowsRoutesAndPartialWarningRemainReachable(int width, int height) =>
-        OnSta(() => VerifyMemberAttribution(width, height, false));
+    public Task MemberRowsRoutesAndPartialWarningRemainReachable(int width, int height) =>
+        VerifyMemberAttributionAsync(width, height, false);
 
     [Fact]
-    public void MemberSizingCheckRejectsAnUnboundMemberCell() =>
-        OnSta(() => Assert.ThrowsAny<XunitException>(() => VerifyMemberAttribution(900, 430, true)));
+    public async Task MemberSizingCheckRejectsAnUnboundMemberCell() =>
+        await Assert.ThrowsAnyAsync<XunitException>(() => VerifyMemberAttributionAsync(900, 430, true));
 
-    private static void VerifyMemberAttribution(int width, int height, bool unbind)
+    private static async Task VerifyMemberAttributionAsync(int width, int height, bool unbind)
     {
         using var reader = Judgement.MemberAttributionTests.Prepare(Bundle(userDescriptor: $"O:SYG:SYD:(A;;WD;;;{TargetSid})"));
         using var source = new BundleAssetSource();
-        var vm = MemberAttributionPresentationTests.Open(source, reader.BundleDirectory, UserDn, false);
+        var vm = await MemberAttributionPresentationTests.OpenAsync(source, reader.BundleDirectory, UserDn, false);
+        OnSta(() => VerifyMemberLayout(vm, width, height, unbind));
+    }
+
+    private static void VerifyMemberLayout(ControlEdgesSectionViewModel vm, int width, int height, bool unbind)
+    {
         var pane = Pane(vm);
         Layout(pane, width, height);
         var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "MemberEvidence"));

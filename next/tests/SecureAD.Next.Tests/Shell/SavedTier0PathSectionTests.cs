@@ -297,7 +297,7 @@ public sealed partial class SavedTier0PathSectionTests
         screen.Show(@"C:\synthetic-runs\another", false);
         old.Show(ObjectSectionCatalog.SavedTier0Path);
 
-        Assert.Equal((Bundle, UserDn), Assert.Single(source.PathQueries));
+        Assert.Empty(source.PathQueries);
     }
 
     [Theory]
@@ -315,6 +315,7 @@ public sealed partial class SavedTier0PathSectionTests
 
     private static FakeAssetSource Source() => new()
     {
+        Attributes = FakeAssetSource.CapturedObject(UserDn, "user"),
         Permissions = new(UserDn, SecureAD.Evidence.DescriptorAvailability.Read, null, null,
             SecureAD.Kernel.Security.DaclState.Present, SecureAD.Kernel.Security.DaclCompleteness.Complete, true, false, [], []),
         SavedPath = Result<SavedTier0Path?>.Success(Saved()),

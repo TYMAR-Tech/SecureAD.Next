@@ -213,7 +213,7 @@ public sealed class ShellViewModelTests
 
         shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
 
-        Assert.True(shell.Assets.ShowsFindingsListing);
+        Assert.True(shell.Assets.ShowsFindings);
         Assert.False(shell.Assets.ShowsObjectListing);
     }
 
@@ -229,7 +229,7 @@ public sealed class ShellViewModelTests
         shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
         shell.Views.Single(v => v.Name == "Objects").IsSelected = true;
 
-        Assert.True(shell.Assets.ShowsObjectListing);
+        Assert.True(shell.Assets.ShowsObjects);
         Assert.False(shell.Assets.ShowsFindingsListing);
     }
 

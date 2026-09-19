@@ -20,12 +20,12 @@ public sealed class KeyCredentialLinkWorkflowTests
     [Theory]
     [InlineData(UserDn, false)]
     [InlineData(TargetDn, true)]
-    public void PermissionAndOriginalProofReachBothScreenDirections(string dn, bool byHolder)
+    public async Task PermissionAndOriginalProofReachBothScreenDirections(string dn, bool byHolder)
     {
         var directory = Prepared($"O:SYG:SYD:(OA;;WP;{AttributeGuid};;{TargetSid})");
         using var source = new BundleAssetSource();
 
-        var section = Open(source, directory, dn, byHolder);
+        var section = await OpenAsync(source, directory, dn, byHolder);
         var row = Assert.Single(section.Rows);
 
         Assert.Equal(("Key-credential write permission", "Established", row), (row.Capability, row.Evaluation, section.SelectedEdge));
@@ -186,11 +186,11 @@ public sealed class KeyCredentialLinkWorkflowTests
     [InlineData("UPDATE control_product SET engine_version=3", "not derived")]
     [InlineData("UPDATE control_edge SET edge_class='DirectoryControl' WHERE capability='CanWriteKeyCredentialLink'", "could not be read")]
     [InlineData("DELETE FROM control_ace WHERE edge_id IN (SELECT id FROM control_edge WHERE capability='CanWriteKeyCredentialLink')", "could not be read")]
-    public void UnsupportedOrDamagedProductsClearOldScreenProof(string mutation, string notice)
+    public async Task UnsupportedOrDamagedProductsClearOldScreenProof(string mutation, string notice)
     {
         var directory = Prepared($"O:SYG:SYD:(OA;;WP;{AttributeGuid};;{TargetSid})");
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, UserDn, false);
+        var section = await OpenAsync(source, directory, UserDn, false);
         Assert.NotNull(section.SelectedEdge);
         source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
@@ -201,8 +201,10 @@ public sealed class KeyCredentialLinkWorkflowTests
         });
         source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
+        await section.ReadCompletion;
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);
+        section = await OpenAsync(source, directory, UserDn, false);
         Assert.Contains(notice, section.Coverage);
     }
 
@@ -263,17 +265,21 @@ public sealed class KeyCredentialLinkWorkflowTests
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
 
-    private static ControlEdgesSectionViewModel Open(BundleAssetSource source, string directory, string dn, bool byHolder)
+    private static async Task<ControlEdgesSectionViewModel> OpenAsync(BundleAssetSource source, string directory, string dn, bool byHolder)
     {
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
+        await screen.ReadCompletion;
         var attributes = Assert.IsType<ObjectAttributes>(source.ReadObjectAttributes(directory, dn).Value);
         var objectClass = Assert.IsType<string>(attributes.Find("objectClass")?.Values.Last().Text);
         screen.OpenObject(new(new(dn, dn, attributes.ObjectGuid, objectClass, "DC=contoso,DC=com")));
+        await screen.ReadCompletion;
         var opened = Assert.IsType<ObjectViewModel>(screen.Opened);
         opened.Show(ObjectSectionCatalog.ControlEdges);
+        await opened.ReadCompletion;
         var section = Assert.IsType<ControlEdgesSectionViewModel>(opened.Selected);
         section.ByHolder = byHolder;
+        await section.ReadCompletion;
         return section;
     }
 }

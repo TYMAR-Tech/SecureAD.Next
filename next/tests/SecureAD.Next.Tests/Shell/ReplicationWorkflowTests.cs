@@ -22,11 +22,11 @@ public sealed class ReplicationWorkflowTests
     [Theory]
     [InlineData(Root, false)]
     [InlineData(TargetDn, true)]
-    public void StoredPermissionAndOriginalProofReachBothScreenDirections(string dn, bool byHolder)
+    public async Task StoredPermissionAndOriginalProofReachBothScreenDirections(string dn, bool byHolder)
     {
         var directory = Prepared(Grants(TargetSid));
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, dn, byHolder);
+        var section = await OpenAsync(source, directory, dn, byHolder);
         Assert.Collection(section.Rows,
             row => Assert.Equal("Secret-data replication permission", row.Capability),
             row => Assert.Equal("Filtered-attribute replication permission", row.Capability));
@@ -119,14 +119,14 @@ public sealed class ReplicationWorkflowTests
     [InlineData(null, "516", false)]
     [InlineData("8192", null, false)]
     [InlineData("invalid", "516", false)]
-    public void DomainControllerEvidenceDoesNotSuppressReplicationOrHideOtherCapabilities(string? uac, string? primary, bool established)
+    public async Task DomainControllerEvidenceDoesNotSuppressReplicationOrHideOtherCapabilities(string? uac, string? primary, bool established)
     {
         var directory = Prepared(Grants(DcSid) + $"(A;;WD;;;{DcSid})", (writer, coverage) =>
             writer.WriteObject(new(coverage, DcDn, Guid.NewGuid(),
                 [Text("objectClass", "top", "user", "computer"), Bytes("objectSid", Sid.ToBytes(DcSid)!),
                     Text("userAccountControl", uac is null ? [] : [uac]), Text("primaryGroupID", primary is null ? [] : [primary])], Started)));
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, Root, false);
+        var section = await OpenAsync(source, directory, Root, false);
         Assert.Equal(3, section.Rows.Count);
         Assert.Equal(2, section.Rows.Select(row => row.Group).Distinct().Count());
         var row = section.Rows.Single(item => item.Capability == "Secret-data replication permission");
@@ -144,11 +144,11 @@ public sealed class ReplicationWorkflowTests
     [InlineData("UPDATE control_precondition SET state='NotEstablished' WHERE name='DS-Replication-Get-Changes'", "could not be read")]
     [InlineData("UPDATE control_precondition SET evidence='DomainSecrets' WHERE name='NamingContextKind'", "could not be read")]
     [InlineData("UPDATE control_edge SET generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'", "could not be read")]
-    public void DamagedOrOlderProductsClearScreenRowsAndSelectedProof(string mutation, string notice)
+    public async Task DamagedOrOlderProductsClearScreenRowsAndSelectedProof(string mutation, string notice)
     {
         var directory = Prepared(Grants(TargetSid));
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, Root, false);
+        var section = await OpenAsync(source, directory, Root, false);
         Assert.Equal(2, section.Rows.Count);
         source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
@@ -191,7 +191,7 @@ public sealed class ReplicationWorkflowTests
     }
 
     [Fact]
-    public void PagingKeepsEveryReplicationEdgeAndIdentifiesAPartialGroup()
+    public async Task PagingKeepsEveryReplicationEdgeAndIdentifiesAPartialGroup()
     {
         var sids = Enumerable.Range(1600, 51).Select(rid => $"S-1-5-21-1-2-3-{rid}").ToArray();
         var descriptor = $"O:SYG:SYD:(A;;WD;;;{TargetSid})" + string.Concat(sids.Select(sid =>
@@ -208,10 +208,11 @@ public sealed class ReplicationWorkflowTests
         Assert.Equal((100, 3, true, false, 103), (first.Edges.Count, last.Edges.Count, first.HasMore, last.HasMore,
             first.Edges.Concat(last.Edges).Select(edge => edge.Id).Distinct().Count()));
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, Root, false);
+        var section = await OpenAsync(source, directory, Root, false);
         var partialGroup = section.Rows[^1].Group;
         section.SelectedEdge = section.Rows[^1];
         section.NextPageCommand.Execute(null);
+        await section.ReadCompletion;
         Assert.Equal(partialGroup, section.Rows[0].Group);
         Assert.Same(section.Rows[0], section.SelectedEdge);
         Assert.Contains("groups cover this page only", section.SupportedScope);
@@ -220,7 +221,7 @@ public sealed class ReplicationWorkflowTests
     [Theory]
     [InlineData(NamingContextKind.Configuration, "CN=Configuration,DC=contoso,DC=com", "configuration")]
     [InlineData(NamingContextKind.Schema, "CN=Schema,CN=Configuration,DC=contoso,DC=com", "dMD")]
-    public void RealReaderPreservesNonDomainScopeWithoutClaimingDomainSecrets(NamingContextKind kind, string dn, string objectClass)
+    public async Task RealReaderPreservesNonDomainScopeWithoutClaimingDomainSecrets(NamingContextKind kind, string dn, string objectClass)
     {
         var directory = Prepared("O:SYG:SYD:", (writer, coverage) =>
         {
@@ -249,7 +250,7 @@ public sealed class ReplicationWorkflowTests
             writer.WriteSecurityDescriptor(ownedId, ownedBytes, AceNormalizer.Normalize(owned, SecurityDescriptorParser.Parse(ownedBytes)));
         });
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, dn, false);
+        var section = await OpenAsync(source, directory, dn, false);
         Assert.Collection(section.Rows, row => Assert.Equal("Unknown", row.Evaluation), row => Assert.Equal("Unknown", row.Evaluation));
         Assert.Contains($"Naming context: {dn} ({kind}).", section.Rows[0].Evidence);
         Assert.Equal("Secret-data replication permission", section.Rows[0].Capability);
@@ -291,16 +292,20 @@ public sealed class ReplicationWorkflowTests
     private static EvidenceAttribute Text(string name, params string[] values) =>
         new(name, StoredAttributeCompleteness.Complete, values.Select(EvidenceValue.OfText).ToArray());
     private static EvidenceAttribute Bytes(string name, byte[] value) => new(name, StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(value)]);
-    private static ControlEdgesSectionViewModel Open(BundleAssetSource source, string directory, string dn, bool byHolder)
+    private static async Task<ControlEdgesSectionViewModel> OpenAsync(BundleAssetSource source, string directory, string dn, bool byHolder)
     {
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
+        await screen.ReadCompletion;
         var attributes = Assert.IsType<ObjectAttributes>(source.ReadObjectAttributes(directory, dn).Value);
         screen.OpenObject(new(new(dn, dn, attributes.ObjectGuid, attributes.Find("objectClass")?.Values[^1].Text, Root)));
+        await screen.ReadCompletion;
         var opened = Assert.IsType<ObjectViewModel>(screen.Opened);
         opened.Show(ObjectSectionCatalog.ControlEdges);
+        await opened.ReadCompletion;
         var section = Assert.IsType<ControlEdgesSectionViewModel>(opened.Selected);
         section.ByHolder = byHolder;
+        await section.ReadCompletion;
         return section;
     }
 }

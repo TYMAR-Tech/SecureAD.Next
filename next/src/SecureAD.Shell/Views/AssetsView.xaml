@@ -59,12 +59,28 @@
                      Foreground="{StaticResource FaultBrush}" />
         </StackPanel>
 
+        <TextBlock DockPanel.Dock="Top" Text="{Binding LoadingText}"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Visibility="{Binding IsOpeningTree, Converter={StaticResource Shown}}" />
+
         <Grid Visibility="{Binding HasTree, Converter={StaticResource Shown}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="300" />
                 <ColumnDefinition Width="16" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="2" Text="{Binding LoadingText}"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Visibility="{Binding IsLoading, Converter={StaticResource Shown}}" />
+
+            <StackPanel Grid.Column="2"
+                        Visibility="{Binding HasViewRefusal, Converter={StaticResource Shown}}">
+                <TextBlock Text="{Binding ViewRefusal.Title}" Style="{StaticResource RowTitle}" />
+                <TextBox Text="{Binding ViewRefusal.Detail, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource FaultBrush}" />
+            </StackPanel>
 
             <!-- THE LEFT COLUMN HOLDS THE TREE WHILE LISTING AND THE OBJECT'S SECTIONS WHILE
                  READING ONE. Same geometry either way, so nothing reflows and the content half

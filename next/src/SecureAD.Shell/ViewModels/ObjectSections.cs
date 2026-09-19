@@ -45,6 +45,9 @@ internal abstract partial class ObjectSectionViewModel : ObservableObject
     public string Title { get; }
 }
 
+/// <summary>Navigation metadata only: hidden sections must not prepare rows or read saved products.</summary>
+internal sealed class UnloadedObjectSectionViewModel(ObjectSectionDefinition definition) : ObjectSectionViewModel(definition);
+
 /// <summary>
 /// One attribute on screen: what it is called, what it says, and what the bundle actually stored.
 /// </summary>

@@ -5,6 +5,7 @@ using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Schema;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
@@ -138,13 +139,41 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    private int _lifetime;
+    private bool _selected;
+    public bool IsCurrent { get; set; } = true;
+    public Func<object, CancellationToken, Task<object>>? CompleteRead { get; set; }
+    public List<string> Reads { get; } = [];
+    internal static ObjectAttributes CapturedObject(string distinguishedName, string objectClass) => new(
+        distinguishedName, Guid.NewGuid(), DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete,
+        [new ObjectAttribute("objectClass", AttributeCardinality.MultiValued, [new AttributeValue(0, objectClass, null)])],
+        DomainFqdn: "contoso.com");
+    public Func<bool> CaptureReadValidity()
+    {
+        var lifetime = _lifetime;
+        return () => _selected && IsCurrent && lifetime == _lifetime;
+    }
+    public void SelectRun(string bundleDirectory) { _lifetime++; _selected = true; }
+    public void CloseRun() { _lifetime++; _selected = false; }
+    public async Task<T> ReadAsync<T>(string bundleDirectory, Func<IAssetReader, CancellationToken, T> read,
+        CancellationToken cancellationToken)
+    {
+        var value = read(this, cancellationToken);
+        return CompleteRead is { } complete
+            ? (T)await complete(value!, cancellationToken)
+            : value;
+    }
+
     public Result<SavedPermissionClassification> PermissionClassification { get; set; } =
         Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell,
             "PermissionClassificationUnavailable", ErrorSeverity.Failed,
             "This run has no saved permission classification.", "test"));
 
-    public Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName) =>
-        PermissionClassification;
+    public Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName)
+    {
+        Reads.Add("Classification");
+        return PermissionClassification;
+    }
 
     public Result<SavedTier0Path?> SavedPath { get; set; } = Result<SavedTier0Path?>.Success(null);
     public List<(string Bundle, string Subject)> PathQueries { get; } = [];
@@ -190,6 +219,8 @@ internal sealed class FakeAssetSource : IAssetSource
     public ListingScope ListedScope { get; private set; }
 
     public int ListedPage { get; private set; }
+    public int ObjectListings { get; private set; }
+    public int LapsListedPage { get; private set; }
 
     public ObjectPermissions? Permissions { get; set; }
 
@@ -212,6 +243,7 @@ internal sealed class FakeAssetSource : IAssetSource
         ListedContainer = containerDn;
         ListedScope = scope;
         ListedPage = pageNumber;
+        ObjectListings++;
 
         return ListingFails is { } error
             ? Result<ObjectPage>.Failure(error)
@@ -273,6 +305,7 @@ internal sealed class FakeAssetSource : IAssetSource
         string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
     {
         LapsListedContainer = containerDn;
+        LapsListedPage = pageNumber;
         LapsListedScope = scope;
         LapsListings++;
 
@@ -284,6 +317,7 @@ internal sealed class FakeAssetSource : IAssetSource
     public Result<ObjectPermissions?> ReadPermissions(
         string bundleDirectory, string distinguishedName)
     {
+        Reads.Add("Permissions");
         OpenedObject = distinguishedName;
 
         return PermissionsFail is { } error
@@ -296,10 +330,13 @@ internal sealed class FakeAssetSource : IAssetSource
     public AuditError? AttributesFail { get; set; }
 
     public Result<ObjectAttributes?> ReadObjectAttributes(
-        string bundleDirectory, string distinguishedName) =>
-        AttributesFail is { } error
+        string bundleDirectory, string distinguishedName)
+    {
+        Reads.Add("Attributes");
+        return AttributesFail is { } error
             ? Result<ObjectAttributes?>.Failure(error)
             : Result<ObjectAttributes?>.Success(Attributes);
+    }
 
     /// <summary>
     /// The schema this run is pretending to have captured. The shipped table by default, so a test

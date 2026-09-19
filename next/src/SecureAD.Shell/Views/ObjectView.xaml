@@ -34,6 +34,17 @@
              apart on a 2,048-pixel screen and an operator had to track across the gap for every
              one. The permissions table is exempt: it is a table, it has columns, and it uses
              every pixel it is given. -->
-        <ContentControl Content="{Binding Opened.Selected}" />
+        <Grid>
+            <TextBlock Text="{Binding Opened.LoadingText}"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Visibility="{Binding Opened.IsLoading, Converter={StaticResource Shown}}" />
+            <StackPanel Visibility="{Binding Opened.HasRefusal, Converter={StaticResource Shown}}">
+                <TextBlock Text="{Binding Opened.Refusal.Title}" Style="{StaticResource RowTitle}" />
+                <TextBox Text="{Binding Opened.Refusal.Detail, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource FaultBrush}" />
+            </StackPanel>
+            <ContentControl Content="{Binding Opened.Content}" />
+        </Grid>
     </DockPanel>
 </UserControl>
