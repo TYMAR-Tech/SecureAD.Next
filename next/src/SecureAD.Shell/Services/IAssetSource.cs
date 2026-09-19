@@ -32,6 +32,9 @@ internal interface IAssetSource
     /// <summary>Releases the selected run and cancels its outstanding reads.</summary>
     void CloseRun() { }
 
+    /// <summary>Reads one object's completed saved permission classification without new analysis.</summary>
+    Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName);
+
     /// <summary>Reads one saved path and its coverage from the same validated generation, without new analysis.</summary>
     Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName);
 

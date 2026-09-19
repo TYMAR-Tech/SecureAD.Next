@@ -15,6 +15,10 @@ namespace SecureAD.Shell.Services;
 internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 {
     /// <inheritdoc/>
+    public Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName) =>
+        WithRun(bundleDirectory, run => run.ReadPermissionClassification(distinguishedName));
+
+    /// <inheritdoc/>
     public Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
         string? holderScope, bool includeExpected, long afterId) =>
         ReadProduct(bundleDirectory, reader => reader.ReadControlEdges(target, holderSid, holderScope, includeExpected, afterId),

@@ -40,6 +40,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
                 has_object_type INTEGER NOT NULL CHECK(has_object_type IN (0,1)),
                 has_inherited_object_type INTEGER NOT NULL CHECK(has_inherited_object_type IN (0,1)), application_data BLOB NOT NULL,
                 meaning_binding BLOB NOT NULL CHECK(length(meaning_binding)=32));
+            CREATE INDEX ix_permission_entry_target_generation ON permission_entry(target COLLATE BINARY,generation,id);
             """;
         command.ExecuteNonQuery();
     }

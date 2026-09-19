@@ -698,6 +698,10 @@ public static class JudgingRun
         writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
         writer.StartPathInputs(ownershipDescription, tier0DiscoveryRequested);
         writer.StartLapsInventory();
+        var classificationSchema = controlContext.SchemaGuids
+            ?? throw new InvalidOperationException(nameof(controlContext.SchemaGuids));
+        var permissionClassifier = new PermissionClassificationProducer(classificationSchema);
+        writer.StartPermissionClassifications(classificationSchema.HasCapturedEntries);
 
         var scanWatch = new System.Diagnostics.Stopwatch();
         var discoveryWatch = new System.Diagnostics.Stopwatch();
@@ -749,6 +753,9 @@ public static class JudgingRun
                 tier0Discovery.Observe(subject, permissions);
                 discoveryWatch.Stop();
             }
+            writer.WritePermissionClassification(permissionClassifier.CreateObjectResult(
+                permissions ?? throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid")),
+                cancellationToken), cancellationToken);
             scanWatch.Start();
             discovery?.Observe(subject, permissions);
             scanWatch.Stop();
@@ -767,6 +774,7 @@ public static class JudgingRun
         }
 
         writer.CompleteLapsInventory();
+        writer.CompletePermissionClassifications(objectsRead);
 
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",

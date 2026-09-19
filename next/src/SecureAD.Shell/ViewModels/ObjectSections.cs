@@ -417,7 +417,13 @@ internal sealed class AccountSectionViewModel : ObjectSectionViewModel
 internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewModel
 {
     private readonly ObjectPermissions _permissions;
-    private readonly PermissionVocabulary _vocabulary;
+    private readonly string? _classificationRefusal;
+
+    /// <summary>Whether a completed saved product supplies the classifications.</summary>
+    public bool HasClassification { get; }
+
+    /// <summary>Explains what highlighting does, without asserting effective access.</summary>
+    public string HighlightHelp => PermissionClassificationText.Get("HighlightHelp");
 
     /// <summary>
     /// The principal whose entries are showing.
@@ -452,29 +458,36 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
     /// </remarks>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Counters))]
+    [NotifyPropertyChangedFor(nameof(Statements))]
+    [NotifyPropertyChangedFor(nameof(HasStatements))]
     private bool _highlightRiskyPermissions;
 
     /// <summary>Creates the permissions section.</summary>
     /// <param name="definition">What the catalogue says this section is.</param>
     /// <param name="permissions">What the bundle holds about the object.</param>
     /// <param name="vocabulary">
-    /// The words and verdicts to read the entries with, built over the schema this run captured.
+    /// Raw-only wording when saved classification is unavailable; null for completed results.
     /// </param>
+    /// <param name="classification">The completed saved product, without new interpretation.</param>
+    /// <param name="classificationRefusal">The explicit reason classification could not be read.</param>
     public PermissionsSectionViewModel(
         ObjectSectionDefinition definition,
         ObjectPermissions permissions,
-        PermissionVocabulary vocabulary)
+        PermissionVocabulary? vocabulary,
+        PermissionClassification? classification,
+        string? classificationRefusal)
         : base(definition)
     {
         ArgumentNullException.ThrowIfNull(permissions);
-        ArgumentNullException.ThrowIfNull(vocabulary);
+        if (classification is null) ArgumentNullException.ThrowIfNull(vocabulary);
+        _permissions = classification?.Permissions ?? permissions;
+        HasClassification = classification is not null;
+        _classificationRefusal = HasClassification ? null : classificationRefusal ?? PermissionClassificationText.Get("Unavailable");
+        var saved = classification?.Entries.ToDictionary(value => value.Entry.Ordinal);
 
-        _permissions = permissions;
-        _vocabulary = vocabulary;
-
-        foreach (var group in permissions.Entries
+        foreach (var group in _permissions.Entries
                      .GroupBy(e => e.Trustee.Sid, StringComparer.Ordinal)
-                     .Select(g => new PrincipalGroupViewModel(g.First().Trustee, [.. g], vocabulary)))
+                      .Select(g => new PrincipalGroupViewModel(g.First().Trustee, [.. g], vocabulary, saved)))
         {
             Principals.Add(group);
         }
@@ -547,47 +560,30 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
                 "How many access control entries this run read on the object."),
         };
 
-        if (HighlightRiskyPermissions)
+        if (HighlightRiskyPermissions && HasClassification)
         {
             counters.Add(PermissionCounter.Computed(
                 "Dangerous",
                 Principals.Sum(p => p.DangerousCount),
-                "Entries that hand somebody control of this object, or of the account, policy or "
-                + "credential the right they name controls."));
+                PermissionClassificationText.Get("Dangerous")));
 
             counters.Add(PermissionCounter.Computed(
                 "In combination",
                 Principals.Sum(p => p.DangerousInCombinationCount),
-                "Entries that are not a takeover on their own and become one in the presence of "
-                + "something this object cannot show: either other rights the same principal "
-                + "holds, or which container the entry is written on. Creating objects of one "
-                + "class is an ordinary delegation on a departmental container and domain "
-                + "controller injection on the Domain Controllers OU. Both questions are asked "
-                + "of a principal or a container rather than of an entry, and nothing in this "
-                + "build asks them yet."));
+                PermissionClassificationText.Get("Combination")));
         }
         else
         {
-            counters.Add(PermissionCounter.NotComputed(
-                "Dangerous",
-                "Nothing has classified these permissions. Turn on Highlight risky permissions to "
-                + "ask."));
-
-            counters.Add(PermissionCounter.NotComputed(
-                "In combination",
-                "Nothing has classified these permissions. Turn on Highlight risky permissions to "
-                + "ask."));
+            var explanation = HasClassification ? PermissionClassificationText.Get("Hidden") : _classificationRefusal!;
+            var status = PermissionClassificationText.Get(HasClassification ? "NotShown" : "NotComputed");
+            counters.Add(new PermissionCounter("Dangerous", null, explanation) { Status = status });
+            counters.Add(new PermissionCounter("In combination", null, explanation) { Status = status });
         }
 
-        counters.Add(PermissionCounter.NotComputed(
-            "Control",
-            "A control edge is a route from one principal to another, derived across the whole "
-            + "forest rather than read off this object. Nothing in this build derives them."));
-
-        counters.Add(PermissionCounter.NotComputed(
-            "Findings",
-            "A finding is a rule's verdict. No rule has been run against this bundle, so this is "
-            + "not zero findings - it is no answer."));
+        counters.Add(new PermissionCounter("Control", null, PermissionClassificationText.Get("Control"))
+            { Status = PermissionClassificationText.Get("NotCounted") });
+        counters.Add(new PermissionCounter("Findings", null, PermissionClassificationText.Get("Findings"))
+            { Status = PermissionClassificationText.Get("NotCounted") });
 
         return counters;
     }
@@ -632,7 +628,7 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
 
                 DaclState.Empty => new Notice(
                     "This object's permission list is empty",
-                    "An empty list grants nobody anything. Only the object's owner can reach it."),
+                    PermissionClassificationText.Get("Empty")),
 
                 DaclState.Unreadable => new Notice(
                     "This object's permission list could not be read",
@@ -649,6 +645,13 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
     private List<Notice> Stated()
     {
         var statements = new List<Notice>();
+        if (_classificationRefusal is { } refusal)
+            statements.Add(new Notice(refusal, PermissionClassificationText.Get("RawAvailable")));
+        var unknown = Principals.SelectMany(value => value.Entries).SelectMany(value => value.Rights)
+            .Count(value => value.Verdict == PermissionVerdict.CannotClassify);
+        if (HasClassification && HighlightRiskyPermissions && unknown > 0)
+            statements.Add(new Notice(string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                PermissionClassificationText.Get("Unknown"), unknown), PermissionClassificationText.Get("UnknownDetail")));
 
         if (_permissions.IsDaclProtected)
         {
@@ -658,21 +661,18 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
                 + "this list may be shorter than the ones around it."));
         }
 
-        if (!_permissions.DaclWasCanonical)
+        if (_permissions.Availability == DescriptorAvailability.Read && !_permissions.DaclWasCanonical)
         {
             statements.Add(new Notice(
                 "The directory holds these entries in a different order",
-                "The directory works through the whole list and will not deny a right it has "
-                + "already granted earlier in the list. These are shown in the standard order, so "
-                + "a denial listed here may be one the directory never applies."));
+                PermissionClassificationText.Get("Order")));
         }
 
-        if (_permissions.DaclCompleteness != DaclCompleteness.Complete)
+        if (_permissions.Availability == DescriptorAvailability.Read && _permissions.DaclCompleteness != DaclCompleteness.Complete)
         {
             statements.Add(new Notice(
                 "This list is not everything",
-                "The permission list declared more entries than could be read, so this object "
-                + "grants at least what is shown here and possibly more."));
+                PermissionClassificationText.Get("Incomplete")));
         }
 
         return statements;
@@ -1017,19 +1017,21 @@ internal sealed class PrincipalGroupViewModel
 
     /// <summary>Creates a screen's view of one principal's permissions.</summary>
     /// <param name="trustee">The principal.</param>
-    /// <param name="entries">Their entries, in the list's canonical order.</param>
-    /// <param name="vocabulary">The words and verdicts to read the entries with.</param>
+    /// <param name="entries">Their entries, in captured order.</param>
+    /// <param name="vocabulary">Raw-only wording when saved classification is unavailable.</param>
+    /// <param name="classifications">Saved interpretations keyed by original ordinal.</param>
     public PrincipalGroupViewModel(
         PermissionTrustee trustee,
         IReadOnlyList<PermissionEntry> entries,
-        PermissionVocabulary vocabulary)
+        PermissionVocabulary? vocabulary,
+        IReadOnlyDictionary<int, ClassifiedPermissionEntry>? classifications)
     {
         ArgumentNullException.ThrowIfNull(trustee);
         ArgumentNullException.ThrowIfNull(entries);
-        ArgumentNullException.ThrowIfNull(vocabulary);
 
         _trustee = trustee;
-        Entries = [.. entries.Select(e => new PermissionEntryViewModel(e, vocabulary))];
+        Entries = [.. entries.Select(e => new PermissionEntryViewModel(e, vocabulary,
+            classifications is null ? null : classifications[e.Ordinal]))];
     }
 
     /// <summary>
@@ -1156,6 +1158,9 @@ internal sealed class PrincipalGroupViewModel
 /// <param name="Explanation">What the figure means, or why there is not one.</param>
 internal sealed record PermissionCounter(string Label, int? Value, string Explanation)
 {
+    /// <summary>Distinguishes a hidden saved answer from an unavailable or uncounted one.</summary>
+    public string Status { get; init; } = PermissionClassificationText.Get("NotComputed");
+
     /// <summary>A figure something actually computed.</summary>
     /// <param name="label">What is being counted.</param>
     /// <param name="value">The figure.</param>
@@ -1193,18 +1198,18 @@ internal sealed record PermissionCounter(string Label, int? Value, string Explan
 }
 
 /// <summary>
-/// The words and verdicts a permission list is read with, built once from one schema catalogue.
+/// Names and scope for raw evidence when classification is unavailable; never a risk assessment.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>It exists because the catalogue stopped being a constant.</b> The three readers used to hold
+/// <b>It exists because the catalogue stopped being a constant.</b> The wording readers used to hold
 /// <see cref="SchemaGuidCatalog.Embedded"/> in static fields, which made the shipped table a
 /// compile-time fact three layers below anything that knew which bundle was open - and that is
 /// exactly why a forest's own schema never reached the screen.
 /// </para>
 /// <para>
 /// <b>Built once per bundle, not once per entry.</b> A large object has hundreds of access control
-/// entries and each of the three readers indexes the whole catalogue on construction. Rebuilding
+/// entries and each reader indexes the catalogue on construction. Rebuilding
 /// them per row would index a forest's entire schema hundreds of times to render one screen.
 /// </para>
 /// </remarks>
@@ -1219,7 +1224,6 @@ internal sealed class PermissionVocabulary
         Catalog = catalog;
         Words = new PermissionWordingWriter(catalog);
         Scopes = new PermissionScopeWriter(catalog);
-        Risks = new DangerousPermissionClassifier(catalog);
     }
 
     /// <summary>
@@ -1239,9 +1243,6 @@ internal sealed class PermissionVocabulary
 
     /// <summary>How far an entry reaches, in words.</summary>
     public PermissionScopeWriter Scopes { get; }
-
-    /// <summary>Whether an entry hands somebody control.</summary>
-    public DangerousPermissionClassifier Risks { get; }
 }
 
 /// <summary>
@@ -1318,7 +1319,7 @@ internal enum PermissionRisk
 /// </remarks>
 internal sealed partial class PermissionRightViewModel : ObservableObject
 {
-    private readonly PermissionAssessment _assessment;
+    private readonly PermissionAssessment? _assessment;
 
     /// <summary>
     /// Whether the operator has asked for the classifier's opinion.
@@ -1331,16 +1332,16 @@ internal sealed partial class PermissionRightViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(Mark))]
     [NotifyPropertyChangedFor(nameof(IsMarked))]
     [NotifyPropertyChangedFor(nameof(RiskReason))]
+    [NotifyPropertyChangedFor(nameof(ClassificationReason))]
     private bool _isClassified;
 
     /// <summary>Creates a screen's view of one right.</summary>
     /// <param name="name">What the right is called, in Microsoft's words.</param>
     /// <param name="isNamed">Whether this build has a word for what the right grants.</param>
     /// <param name="assessment">What the classifier says about this right on its own.</param>
-    public PermissionRightViewModel(string name, bool isNamed, PermissionAssessment assessment)
+    public PermissionRightViewModel(string name, bool isNamed, PermissionAssessment? assessment)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentNullException.ThrowIfNull(assessment);
 
         Name = name;
         IsNamed = isNamed;
@@ -1376,7 +1377,10 @@ internal sealed partial class PermissionRightViewModel : ObservableObject
     /// <summary>
     /// What the classifier says about this right, whether or not anybody asked.
     /// </summary>
-    public PermissionRisk Risk => _assessment.Verdict switch
+    /// <summary>The saved verdict; null means classification is unavailable, not safe.</summary>
+    public PermissionVerdict? Verdict => _assessment?.Verdict;
+
+    public PermissionRisk Risk => Verdict switch
     {
         PermissionVerdict.Dangerous => PermissionRisk.Dangerous,
         PermissionVerdict.DangerousInCombination => PermissionRisk.DangerousInCombination,
@@ -1393,7 +1397,10 @@ internal sealed partial class PermissionRightViewModel : ObservableObject
     public bool IsMarked => Mark != PermissionRisk.None;
 
     /// <summary>Why the classifier reached its verdict, or null when this right is not marked.</summary>
-    public string? RiskReason => IsMarked ? _assessment.Reason : null;
+    public string? RiskReason => IsMarked ? _assessment?.Reason : null;
+
+    /// <summary>Retains the explanation of an unclassifiable right without giving it a danger mark.</summary>
+    public string? ClassificationReason => IsClassified ? _assessment?.Reason : null;
 }
 
 /// <summary>
@@ -1418,25 +1425,25 @@ internal sealed partial class PermissionEntryViewModel : ObservableObject
 
     /// <summary>Creates a screen's view of one entry.</summary>
     /// <param name="entry">The entry as the evidence holds it.</param>
-    /// <param name="vocabulary">The words and verdicts to read the entry with.</param>
-    public PermissionEntryViewModel(PermissionEntry entry, PermissionVocabulary vocabulary)
+    /// <param name="vocabulary">Raw-only wording, never an assessment fallback.</param>
+    /// <param name="classification">The saved interpretation, or null for an unassessed raw row.</param>
+    public PermissionEntryViewModel(PermissionEntry entry, PermissionVocabulary? vocabulary, ClassifiedPermissionEntry? classification)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        ArgumentNullException.ThrowIfNull(vocabulary);
 
         _entry = entry;
+        if (classification is not null)
+        {
+            _wording = new(classification.Summary, [.. classification.Rights.Select(value => value.Right)], classification.RightsAreComplete);
+            _scope = classification.Scope;
+            Rights = [.. classification.Rights.Select(value => new PermissionRightViewModel(
+                value.Right.Name, value.Right.IsNamed, value.Assessment))];
+            return;
+        }
+        ArgumentNullException.ThrowIfNull(vocabulary);
 
-        // NOT EXPANDED HERE, DELIBERATELY. This used to translate Windows' shorthand bits into the
-        // specific rights they stand for before wording them, as a safety net. That net reported a
-        // permission the domain controller may not honour as though it were an ordinary one:
-        // Microsoft states the access check does not translate a shorthand bit found in an entry
-        // already attached to an object.
-        //
-        // The fear that removing it would cost a warning does not hold. It would, if the shorthand
-        // fell through to 'other rights', because an unnamed right is refused classification. The
-        // wording now names those bits instead, so the classifier is still asked about them and
-        // still expands them itself when judging severity. Naming the doubt is not the same as
-        // ignoring the danger. See docs/next/S-56 R2.
+        // Raw evidence remains readable without judging, but cannot supply a replacement verdict.
+        // Preserve shorthand qualifiers rather than assert that the directory expands stored bits.
         var mask = entry.AccessMask;
 
         _wording = vocabulary.Words.Describe(mask, entry.ObjectTypeGuid);
@@ -1446,7 +1453,7 @@ internal sealed partial class PermissionEntryViewModel : ObservableObject
             entry.IsInherited,
             entry.InheritedObjectTypeGuid);
         Rights = [.. _wording.Rights.Select(r => new PermissionRightViewModel(
-            r.Name, r.IsNamed, Assess(entry, r, vocabulary.Risks)))];
+            r.Name, r.IsNamed, assessment: null))];
     }
 
     /// <summary>
@@ -1461,54 +1468,6 @@ internal sealed partial class PermissionEntryViewModel : ObservableObject
     {
         foreach (var right in Rights)
             right.IsClassified = value;
-    }
-
-    /// <summary>
-    /// Runs the classifier against one right of the entry, once, when the entry is read.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>The stored ACE type is a string and the classifier takes an enum.</b> A type this build
-    /// does not know cannot be handed over as an undefined enum value and cannot be folded into an
-    /// allow - either would have the classifier judge an entry whose meaning is unknown. It is
-    /// refused here instead, with the same wording the classifier uses for the case it does catch.
-    /// </para>
-    /// <para>
-    /// <b>A right this build has no word for is refused rather than asked about.</b> The mask can
-    /// carry bits nothing here names, and the classifier's unscoped arm would answer
-    /// <see cref="PermissionVerdict.NotDangerous"/> to them - reporting access nobody examined as
-    /// safe. It is not assessed, and it is not reported as safe either.
-    /// </para>
-    /// <para>
-    /// <b>The entry's reach is passed, not just its mask.</b> An <c>INHERIT_ONLY_ACE</c> does not
-    /// control access to the object it is attached to, so a reason claiming it hands somebody
-    /// control of <i>this</i> object is false. The flags were already being read two lines above
-    /// for the Scope column and were not reaching the classifier, which is how a row came to show
-    /// <i>All descendant objects</i> beside a mark asserting a grant here. See <c>S-56</c> R13.
-    /// </para>
-    /// </remarks>
-    private static PermissionAssessment Assess(
-        PermissionEntry entry, PermissionRight right, DangerousPermissionClassifier classifier)
-    {
-        if (!right.IsNamed)
-        {
-            return PermissionAssessment.CannotClassify(
-                "The access mask carries bits this build has no word for, so what they grant has "
-                + "not been assessed. They are not being reported as safe.");
-        }
-
-        if (!Enum.TryParse<AceType>(entry.AceType, ignoreCase: false, out var aceType))
-        {
-            return PermissionAssessment.CannotClassify(
-                "The entry carries an ACE type this product does not model, so what it grants is "
-                + "unknown.");
-        }
-
-        return classifier.Classify(
-            aceType,
-            right.Bits,
-            entry.ObjectTypeGuid,
-            EntryReachReader.FromPropagationFlags(entry.PropagationFlags));
     }
 
     /// <summary>What the entry grants or denies, in one line.</summary>

@@ -117,7 +117,7 @@ public sealed class ObjectViewModelTests
         var opened = Opened(Permissions(daclState: DaclState.Empty)).Permissions();
 
         Assert.Contains(
-            "grants nobody anything", opened.Emptiness!.Detail, StringComparison.Ordinal);
+            "contains no entries. This alone does not establish effective access", opened.Emptiness!.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -224,7 +224,9 @@ public sealed class ObjectViewModelTests
     [Fact]
     public void AnOrdinaryListCarriesNoStatements()
     {
-        var opened = Opened(Permissions(Allowing(AdminsSid, 0x00000010))).Permissions();
+        var permissions = Permissions(Allowing(AdminsSid, 0x00000010));
+        var saved = new PermissionClassificationProducer(SecureAD.Kernel.Schema.SchemaGuidCatalog.Embedded).CreateObjectResult(permissions);
+        var opened = Opened(permissions, saved).Permissions();
 
         Assert.False(opened.HasStatements);
     }
@@ -652,13 +654,13 @@ public sealed class ObjectViewModelTests
 
     // ---------------------------------------------------------------------------------------
 
-    private static AssetsViewModel Opened(ObjectPermissions permissions)
+    private static AssetsViewModel Opened(ObjectPermissions permissions, PermissionClassification? classification = null)
     {
-        var screen = Listing(permissions);
+        var screen = Listing(permissions, classification);
         screen.OpenObjectCommand.Execute(screen.Objects[0]);
         return screen;
     }
-    private static AssetsViewModel Listing(ObjectPermissions? permissions = null)
+    private static AssetsViewModel Listing(ObjectPermissions? permissions = null, PermissionClassification? classification = null)
     {
         var assets = new FakeAssetSource
         {
@@ -670,6 +672,10 @@ public sealed class ObjectViewModelTests
                 null),
             Permissions = permissions,
         };
+        if (classification is { } saved)
+            assets.PermissionClassification = Result<SavedPermissionClassification>.Success(new(
+                new("test evidence", Guid.NewGuid(), null, JudgementRunState.Completed,
+                    DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch), saved));
 
         var screen = new AssetsViewModel(assets);
         screen.Show(BundlePath, aCaptureIsRunning: false);

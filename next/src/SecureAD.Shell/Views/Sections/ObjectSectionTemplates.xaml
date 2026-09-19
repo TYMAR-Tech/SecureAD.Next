@@ -566,7 +566,7 @@
                               Margin="16,0,0,0"
                               Content="Highlight risky permissions"
                               Foreground="{StaticResource PrimaryTextBrush}"
-                              ToolTip="Marks entries this build classifies as handing somebody control of this object. It marks and never hides: every entry stays on the list."
+                              ToolTip="{Binding HighlightHelp}"
                               IsChecked="{Binding HighlightRiskyPermissions, Mode=TwoWay}" />
 
                     <ItemsControl ItemsSource="{Binding Counters}">
@@ -586,7 +586,7 @@
 
                                     <!-- The dash alone is a thing to guess at, so the absence is
                                          also stated in words. -->
-                                    <TextBlock Text="not computed"
+                                    <TextBlock Text="{Binding Status}"
                                                FontSize="{StaticResource CaptionFontSize}"
                                                Foreground="{StaticResource NotEstablishedBrush}"
                                                Visibility="{Binding IsNotComputed, Converter={StaticResource Shown}}" />
@@ -852,6 +852,7 @@
 
                                                         <TextBlock Grid.Column="1"
                                                                    Text="{Binding Name}"
+                                                                    ToolTip="{Binding ClassificationReason}"
                                                                    TextWrapping="Wrap">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">

@@ -138,6 +138,14 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    public Result<SavedPermissionClassification> PermissionClassification { get; set; } =
+        Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell,
+            "PermissionClassificationUnavailable", ErrorSeverity.Failed,
+            "This run has no saved permission classification.", "test"));
+
+    public Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName) =>
+        PermissionClassification;
+
     public Result<SavedTier0Path?> SavedPath { get; set; } = Result<SavedTier0Path?>.Success(null);
     public List<(string Bundle, string Subject)> PathQueries { get; } = [];
     public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName)

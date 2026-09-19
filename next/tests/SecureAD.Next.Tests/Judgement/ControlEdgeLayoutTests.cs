@@ -75,6 +75,9 @@ public sealed class ControlEdgeLayoutTests
         // Schema 40 adds the completed LAPS inventory and expected LAPS finding-route lengths.
         // Observed from this approved build; no historical layout value is replaced.
         [40] = "3738DBBD6C6022DC2025F4C9E78D87217304F9322B8E8F4B0FB074CF461ADF52",
+        // Format 41 saves per-right classification and indexes shared entry lookup during production.
+        // Observed from this approved build, not an independent historical forest anchor.
+        [41] = "B5032FCEDCD701BA82CE5F8468154453FDE4A798974446E8C0C3BA4BA8C78C9B",
     };
 
     [Fact]

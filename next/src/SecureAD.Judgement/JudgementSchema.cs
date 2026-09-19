@@ -80,8 +80,9 @@ public static class JudgementSchema
     /// <para>39 saves complete Tier-0 classifications rather than only their fingerprints, so path
     /// readback does not reclassify captured objects. Older formats are refused, never replayed or migrated.</para>
     /// <para>40 saves all-computer LAPS inventory answers and the expected lengths of LAPS finding routes.</para>
+    /// <para>41 saves all-object per-right permission classifications and their schema support.</para>
     /// </remarks>
-    public const int Version = 40;
+    public const int Version = 41;
 
     private static readonly string[] TableDdl =
     [
@@ -644,6 +645,7 @@ public static class JudgementSchema
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
+        PermissionClassificationStorage.CreateTables(connection);
     }
 
     /// <summary>

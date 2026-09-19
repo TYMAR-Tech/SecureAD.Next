@@ -135,6 +135,8 @@ internal static class ControlEdgeStorage
     {
         using var transaction = connection.BeginTransaction();
         var entries = new SharedPermissionStorage(connection, transaction);
+        if (result.Edges.FirstOrDefault() is { } first)
+            entries.Load(result.Target, first.GenerationId);
         Execute(connection, transaction, """
             UPDATE control_object SET principal_sid=$sid, principal_scope=$scope, descriptor_outcome=$outcome,
                 uncertainty=$uncertainty, is_complete=$complete WHERE target=$target COLLATE NOCASE

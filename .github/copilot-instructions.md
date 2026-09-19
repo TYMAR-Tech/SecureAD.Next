@@ -87,3 +87,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## SecureAD.Next Regression Work
 
 - For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.
+
+## SecureAD.Next Completed-Run Readback
+
+- For SecureAD.Next completed-run readback, preserve per-right permission classifications, reasons, inheritance/applicability and captured-schema support as saved generation-bound results. Do not substitute control-edge proofs or infer requester authorization, takeover or Tier 0 paths. Use zero backward compatibility, and isolate TEMP/TMP before test-assembly loading, including discovery; preserve prior verification artifacts and failed attempts.

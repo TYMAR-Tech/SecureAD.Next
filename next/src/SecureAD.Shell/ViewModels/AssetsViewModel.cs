@@ -700,15 +700,18 @@ internal sealed partial class AssetsViewModel : ObservableObject
             bundleDirectory, FindingsQuery.About(distinguishedName));
 
         var objectClass = knownClass ?? ClassOf(values);
+        var classification = _assets.ReadPermissionClassification(bundleDirectory, distinguishedName);
 
         Opened = new ObjectViewModel(
             read.Value,
             values,
             objectClass ?? "not recorded",
             objectClass,
-            Vocabulary(),
+            classification.IsSuccess ? null : Vocabulary(),
             findings.IsSuccess ? findings.Value : null,
-            findings.IsSuccess ? null : findings.Error.Description);
+            findings.IsSuccess ? null : findings.Error.Description,
+            classification.IsSuccess ? classification.Value.Classification : null,
+            classification.IsSuccess ? null : classification.Error.Description);
 
         var sidValue = values?.Find("objectSid")?.OnlyValue;
         var principalSid = sidValue?.Bytes is { } sidBytes ? SecureAD.Kernel.Security.Sid.ToText(sidBytes) : sidValue?.Text;

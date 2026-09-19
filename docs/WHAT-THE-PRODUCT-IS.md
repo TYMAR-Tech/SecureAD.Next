@@ -404,6 +404,33 @@ The qualified handoff, including retained failed attempts and preservation check
 No original results were regenerated; this completes only the approved LAPS readback checkpoint,
 not P-248 or Stage 7, and the independent constraints listed above remain open.
 
+**Owner-approved P-248 checkpoint 5:** “approved and begin implementation” authorizes format 41
+saved per-right permission classification, produced during the existing all-object judging stream
+and read through the protected selected-run lifetime. Preserve each right's bits, wording, verdict,
+reason, original ACE identity/order, inheritance/applicability, captured-schema context and explicit
+unclassifiable outcomes; this is not requester authorization, takeover proof or a completed Tier 0 path.
+Missing/invalid saved products refuse classification while raw evidence remains readable, with zero
+backward compatibility and no migration, regeneration or replay fallback. Keep the grouping, columns,
+colors and default-off highlighting, with the approved unavailable/unclassifiable notices, saved-result
+counter explanations, per-right reason tooltips and corrected incomplete/order/empty-list statements.
+Use isolated offline verification, with TEMP/TMP isolated before test-assembly loading and every new
+behavior check witnessed by rebuilt defects and restoration builds; preserve all historical cases,
+hashes, artifacts and failures without restarting checkpoint 1–4 campaigns. Hidden navigation, P-157,
+P-174, P-241, physical-display checks and customer-scale opening/browsing acceptance remain open;
+no live AD, activation, budget changes, new measurement tooling, original-result regeneration,
+commit or push is authorized. Approval is not a claim that this checkpoint has been implemented or verified.
+
+**Checkpoint 5 is implemented and offline verified in judgement format 41.** All 5,768 offline
+cases pass with no skips, retaining all 5,705 historical cases by test identity; all 63 new cases
+pass under coverage and detect relevant defects across ten explicitly rebuilt variants, followed
+by exact source restoration and successful restoration builds. The qualified handoff, including
+earlier failures, is `next/artifacts/p248-c5-51372c69f37e4fefbaab3133567312c6/handoff.json`.
+Saved permission classification retains its evidence and uncertainty without browsing-time risk
+replay; unread descriptors are not described as observed noncanonical or incomplete lists.
+This completes only checkpoint 5: hidden navigation, P-157, P-174, P-241, physical-display checks
+and customer-scale opening/browsing acceptance remain open, with no Stage 7 completion,
+activation, original-result regeneration, commit or push.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.

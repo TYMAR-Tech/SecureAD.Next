@@ -489,6 +489,10 @@ public sealed class VouchedValueReachabilityGateTests
     /// belongs to the requested scope, not to the existence of saved inventory. Its public
     /// constructor accepts both values; direct <c>BundleReader.ReadListingCoverage</c> tests also
     /// read true for Base and false for a Subtree containing an excluded child domain.
+    /// 69 adds <c>ClassifiedPermissionEntry.RightsAreComplete</c>: the saved wording voucher,
+    /// not a statement of effective access. Storage checks it against the saved named-bit flags;
+    /// the screen retains it in its wording. Direct saved-product tests read true for a named mask
+    /// and false for a mask containing an unnamed bit, without replaying the wording on readback.
     /// </para>
     /// </summary>
     [Fact]
@@ -503,7 +507,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -533,6 +537,7 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "OwnershipAuditCount" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "Tier0RelevanceRelation" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ListingCoverage" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "ClassifiedPermissionEntry" && v.Name == "RightsAreComplete");
     }
 
     /// <summary>

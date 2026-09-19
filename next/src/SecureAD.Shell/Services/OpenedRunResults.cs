@@ -59,6 +59,16 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
     internal Result<T> ReadDerivation<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenDerivation, (reader, _) => read(reader), reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
 
+    internal Result<SavedPermissionClassification> ReadPermissionClassification(string distinguishedName,
+        CancellationToken cancellationToken = default)
+    {
+        var read = ReadJudgement((reader, token) => reader.ReadPermissionClassification(distinguishedName, token), cancellationToken);
+        if (!read.IsSuccess && read.Error.Code == "Evidence.judgementManifestAbsent")
+            return Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell, "PermissionClassificationUnavailable",
+                ErrorSeverity.Failed, PermissionClassificationText.Get("Unavailable"), Directory));
+        return read;
+    }
+
     internal Result<LapsPage> ReadLapsComputers(string containerDn, ListingScope scope, int pageNumber,
         CancellationToken cancellationToken = default)
     {

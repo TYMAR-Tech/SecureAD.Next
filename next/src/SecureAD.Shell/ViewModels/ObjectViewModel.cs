@@ -53,7 +53,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// arrive, which is not a reason to show nothing.
     /// </param>
     /// <param name="vocabulary">
-    /// The words and verdicts to read permissions with, built over the schema this run captured.
+    /// Raw-only wording, used when no saved classification is available; null for completed results.
     /// Stated rather than defaulted: which catalogue named a right is part of what the screen is
     /// claiming, and a default would let a caller show a forest's permissions under the shipped
     /// table's names without anyone deciding to.
@@ -64,18 +64,22 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// <param name="findingsRefusal">
     /// Why the judgement could not be read, or null when it was.
     /// </param>
+    /// <param name="classification">The saved per-right product, or null when unavailable.</param>
+    /// <param name="classificationRefusal">Why saved classification is unavailable.</param>
     public ObjectViewModel(
         ObjectPermissions permissions,
         ObjectAttributes? attributes,
         string objectType,
         string? objectClass,
-        PermissionVocabulary vocabulary,
+        PermissionVocabulary? vocabulary,
         FindingsPage? findings,
-        string? findingsRefusal)
+        string? findingsRefusal,
+        PermissionClassification? classification,
+        string? classificationRefusal)
     {
         ArgumentNullException.ThrowIfNull(permissions);
         ArgumentException.ThrowIfNullOrWhiteSpace(objectType);
-        ArgumentNullException.ThrowIfNull(vocabulary);
+        if (classification is null) ArgumentNullException.ThrowIfNull(vocabulary);
 
         _permissions = permissions;
         ObjectType = objectType;
@@ -83,7 +87,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
         foreach (var definition in ObjectSectionCatalog.For(objectClass))
         {
             Sections.Add(Build(
-                definition, permissions, attributes, objectType, vocabulary, findings, findingsRefusal));
+                definition, permissions, attributes, objectType, vocabulary, findings, findingsRefusal, classification, classificationRefusal));
         }
 
         Selected = Sections.FirstOrDefault();
@@ -153,9 +157,11 @@ internal sealed partial class ObjectViewModel : ObservableObject
         ObjectPermissions permissions,
         ObjectAttributes? attributes,
         string objectType,
-        PermissionVocabulary vocabulary,
+        PermissionVocabulary? vocabulary,
         FindingsPage? findings,
-        string? findingsRefusal) =>
+        string? findingsRefusal,
+        PermissionClassification? classification,
+        string? classificationRefusal) =>
         definition.Key switch
         {
             ObjectSectionCatalog.Overview =>
@@ -172,7 +178,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
                 or ObjectSectionCatalog.Policy =>
                 new AttributeSectionViewModel(definition, attributes),
             ObjectSectionCatalog.Permissions =>
-                new PermissionsSectionViewModel(definition, permissions, vocabulary),
+                new PermissionsSectionViewModel(definition, permissions, vocabulary, classification, classificationRefusal),
             ObjectSectionCatalog.Evidence =>
                 new EvidenceSectionViewModel(definition, permissions),
             ObjectSectionCatalog.Findings =>

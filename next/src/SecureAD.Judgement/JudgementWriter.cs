@@ -93,6 +93,24 @@ public sealed class JudgementWriter : IDisposable
         ControlEdgeStorage.Start(_connection, captureComplete, discoveryScoped);
     }
 
+    internal void StartPermissionClassifications(bool hasCapturedSchema)
+    {
+        ThrowIfFinished();
+        PermissionClassificationStorage.Start(_connection, GenerationId, hasCapturedSchema);
+    }
+
+    internal void WritePermissionClassification(PermissionClassification result, CancellationToken cancellationToken)
+    {
+        ThrowIfFinished();
+        PermissionClassificationStorage.Write(_connection, GenerationId, result, cancellationToken);
+    }
+
+    internal void CompletePermissionClassifications(long objectsRead)
+    {
+        ThrowIfFinished();
+        PermissionClassificationStorage.Complete(_connection, objectsRead);
+    }
+
     internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
     {
         ThrowIfFinished();
@@ -374,6 +392,7 @@ public sealed class JudgementWriter : IDisposable
         ThrowIfFinished();
         cancellationToken.ThrowIfCancellationRequested();
         LapsInventoryStorage.RequirePublishable(_connection);
+        PermissionClassificationStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
