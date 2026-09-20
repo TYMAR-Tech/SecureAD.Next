@@ -92,6 +92,33 @@ public sealed class GreenfieldGateTests
     }
 
     /// <summary>
+    /// The orphan check still reads real source. The scan skips preserved measurement evidence under
+    /// <c>next/artifacts</c>, which is the other way this gate could pass while measuring nothing:
+    /// an exclusion that quietly swallowed the tree would leave it comparing an empty set against
+    /// the projects and reporting no orphans.
+    ///
+    /// <para>
+    /// So the exclusion is pinned as narrow. The scan must still reach the ordinary source it exists
+    /// to police, including this very file, and must reach nothing inside the evidence directory.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheOrphanCheckStillReadsRealSource()
+    {
+        var scanned = RebuildTree.AllFiles().ToList();
+
+        Assert.True(
+            scanned.Count > 400,
+            $"The scan reached only {scanned.Count} files. An exclusion that swallows the rebuild "
+            + "would leave this gate reporting no orphans because it found no source.");
+
+        Assert.Contains(scanned, f => f.EndsWith("GreenfieldGateTests.cs", StringComparison.Ordinal));
+
+        var evidence = RebuildTree.EvidenceRoot() + Path.DirectorySeparatorChar;
+        Assert.DoesNotContain(scanned, f => f.StartsWith(evidence, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// Directories holding a project that <c>SecureAD.Next.sln</c> lists.
     /// </summary>
     private static List<string> ProjectDirectoriesInSolution(string root)

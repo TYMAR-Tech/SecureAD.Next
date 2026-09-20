@@ -49,10 +49,30 @@ internal static class RebuildTree
     /// <summary>Every <c>.cs</c> file under the rebuild root, tests included.</summary>
     public static IEnumerable<string> AllFiles() => CsFiles(Root());
 
-    private static IEnumerable<string> CsFiles(string root) =>
-        Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+    /// <summary>
+    /// Preserved measurement evidence. Sealed copies of a benchmark driver live here, so the tree
+    /// holds <c>.cs</c> files that no project compiles and none ever should: they are the record of
+    /// a run that already happened, and moving or renaming them would falsify its provenance.
+    ///
+    /// <para>
+    /// Excluded by absolute prefix rather than by the name <c>artifacts</c> appearing anywhere in a
+    /// path, so a folder of that name under <c>src/</c> or <c>tests/</c> would still be scanned.
+    /// Narrowing a file guard is how one stops seeing anything, so
+    /// <c>GreenfieldGateTests.TheOrphanCheckStillReadsRealSource</c> asserts that this exclusion
+    /// removed two files and not the tree.
+    /// </para>
+    /// </summary>
+    public static string EvidenceRoot() => Path.Combine(Root(), "artifacts");
+
+    private static IEnumerable<string> CsFiles(string root)
+    {
+        var evidence = EvidenceRoot() + Path.DirectorySeparatorChar;
+
+        return Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                     && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+                     && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                     && !f.StartsWith(evidence, StringComparison.OrdinalIgnoreCase));
+    }
 
     /// <summary>
     /// Finds executable lines matching any of <paramref name="terms"/> on a word boundary.
