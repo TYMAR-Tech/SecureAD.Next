@@ -3,7 +3,7 @@
 # characters. This script writes documents, so running it under 5.1 would corrupt them silently.
 
 $ErrorActionPreference = 'Stop'
-$docs = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\docs'
+$docs = 'C:\Users\jistrand\source\repos\SecureAD.Next\docs'
 
 function Edit-Line {
     param([string]$Path, [string]$Find, [string]$Replace)

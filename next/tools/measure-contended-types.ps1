@@ -1,4 +1,4 @@
-$root = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next'
+$root = 'C:\Users\jistrand\source\repos\SecureAD.Next'
 
 $contended = @{
     'SecurityDescriptorParser'            = @('kernel/permission-classification.md','kernel/permission-requirements.md','kernel/security-descriptors.md')

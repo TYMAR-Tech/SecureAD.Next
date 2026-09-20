@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$root = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next'
+$root = 'C:\Users\jistrand\source\repos\SecureAD.Next'
 
 $owners = Get-ChildItem -Path (Join-Path $root 'docs\layers') -Recurse -Filter '*.md' |
     Where-Object { (Get-Content $_.FullName -Raw) -match 'TYPES:BEGIN' }

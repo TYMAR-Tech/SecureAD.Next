@@ -2,8 +2,8 @@
 # Windows PowerShell 5.1 reads UTF-8 files as Windows-1252, turning every em dash into three
 # characters. This script writes documents, so running it under 5.1 would corrupt them silently.
 
-$doc = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\docs\layers\evidence\what-an-object-holds.md'
-$next = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\next'
+$doc = 'C:\Users\jistrand\source\repos\SecureAD.Next\docs\layers\evidence\what-an-object-holds.md'
+$next = 'C:\Users\jistrand\source\repos\SecureAD.Next\next'
 $original = [System.IO.File]::ReadAllText($doc)
 
 $mutations = @(
