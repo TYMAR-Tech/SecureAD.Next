@@ -899,10 +899,26 @@ public sealed class BundleReader : IDisposable
         if (_disposed)
             return;
 
-        _connection.Close();
-        _connection.Dispose();
-        _bulkObjectIds = null;
         _disposed = true;
+        _bulkObjectIds = null;
+
+        // The lease owns this connection when the reader was opened over a protected file, and its
+        // own disposal closes the connection before releasing the file protection. Release it in a
+        // finally: protection is meant to last while a reader is active, not after it finishes, and
+        // a reader that failed to close its connection must not leave the evidence and its seal
+        // locked until a garbage collection that may never come. Both are idempotent, so the
+        // explicit close above remains correct for a reader that owns its own connection instead.
+        try
+        {
+            _connection.Close();
+            _connection.Dispose();
+        }
+        finally
+        {
+            var protection = _protection;
+            _protection = null;
+            protection?.Dispose();
+        }
     }
 
     /// <summary>
