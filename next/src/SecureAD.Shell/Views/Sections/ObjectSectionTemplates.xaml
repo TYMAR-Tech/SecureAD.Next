@@ -252,8 +252,22 @@
          refused it (docs/decisions/0022). -->
     <DataTemplate DataType="{x:Type vm:AttributeValueViewModel}">
         <StackPanel Margin="0,0,24,14">
-            <TextBlock Text="{Binding Label}" TextWrapping="Wrap"
-                       Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
+            <!-- The label and the attribute it came from, on one line. The attribute name was
+                 beneath the value until 2026-09-20, which cost a line on every field on the screen
+                 whether or not anyone was checking that field against ldp.exe. Beside the label it
+                 still names the source of the value, and it no longer competes with the value for
+                 the reader's attention. -->
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Label}" TextWrapping="Wrap"
+                           Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
+
+                <TextBlock Text="{Binding Attribute}"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           FontFamily="{StaticResource IdentifierFontFamily}"
+                           FontSize="{StaticResource CaptionFontSize}"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
 
             <TextBox Text="{Binding Worded, Mode=OneWay}"
                      Style="{StaticResource SelectableMessage}"
@@ -273,24 +287,32 @@
 
             <!-- What a reader must know before drawing a conclusion. lastLogonTimestamp is
                  designed to be days out of date, and a dormant-account judgement made without
-                 knowing that is wrong by up to a fortnight. Said on the row, not in a manual. -->
-            <TextBlock Text="{Binding Caveat}" TextWrapping="Wrap" Margin="0,4,0,0"
-                       FontSize="{StaticResource CaptionFontSize}"
-                       Foreground="{StaticResource NotEstablishedBrush}"
-                       Visibility="{Binding HasCaveat, Converter={StaticResource Shown}}" />
+                 knowing that is wrong by up to a fortnight. Said on the row, not in a manual.
 
-            <TextBlock Text="{Binding Attribute}" TextWrapping="Wrap"
-                       Margin="0,1,0,0"
-                       FontSize="{StaticResource CaptionFontSize}"
-                       Foreground="{StaticResource SecondaryTextBrush}" />
+                 Ruled down its left edge so it reads as an aside about the value above rather than
+                 as more of the value. It is the longest thing in any field and was the reason the
+                 old panel inflated every other one. -->
+            <Border Margin="0,5,0,0" Padding="8,0,0,0"
+                    BorderThickness="2,0,0,0"
+                    BorderBrush="{StaticResource NotEstablishedSubtleBrush}"
+                    Visibility="{Binding HasCaveat, Converter={StaticResource Shown}}">
+                <TextBlock Text="{Binding Caveat}" TextWrapping="Wrap"
+                           FontSize="{StaticResource CaptionFontSize}"
+                           Foreground="{StaticResource NotEstablishedBrush}" />
+            </Border>
         </StackPanel>
     </DataTemplate>
 
     <!-- Fields laid out two to a row. A single column down the left of a wide window puts every
          value in the same narrow strip and leaves two thirds of the screen empty, which was the
-         state on 2026-08-20. -->
+         state on 2026-08-20.
+
+         A UniformGrid did this until 2026-09-20 and gave every cell the height of the tallest cell
+         in the whole panel. The caveat on lastLogonTimestamp runs to three lines, so every field on
+         the Account screen was inflated to match it and eight facts filled a window. FieldGrid
+         keeps the rows aligned and sizes each one to its own content. -->
     <ItemsPanelTemplate x:Key="FieldColumns">
-        <UniformGrid Columns="2" />
+        <views:FieldGrid Columns="2" />
     </ItemsPanelTemplate>
 
     <!-- A LINE OF TEXT HAS A READABLE LENGTH AND A WIDE MONITOR DOES NOT CHANGE IT.
