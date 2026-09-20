@@ -475,6 +475,73 @@ The owner subsequently authorized committing and publishing this checkpoint; no 
 regeneration, activation, live access or new measurement tooling was authorized, and completed
 prerequisite campaigns were not restarted.
 
+**Owner-approved bounded offline judging diagnosis (P-249):** “Approve bounded offline judging
+profiling after identifying the lab build and obtaining an isolated sealed-run copy” authorizes
+measurement only after both prerequisites are met. Identify the executable/build for every timing;
+the reported previous approximately 40 seconds remains an estimate until comparable baseline
+evidence is available, and the current checkout is not proof of the lab executable. Use isolated
+sealed-evidence copies offline, with TEMP/TMP isolated before any test-assembly loading or discovery,
+and distinguish saved-result production, evidence reads, scope assessment and path preparation.
+Preserve original evidence/results, the supplied log, historical measurements, failed attempts and
+intervening work; do not restart completed checkpoint or mutation campaigns. This approval does not
+authorize optimization, new measurement tooling, live forest access, recapture, original-result
+regeneration/deletion, production requester activation/budget changes, UI changes, commits or pushes.
+The reported successful lab screen navigation is functional feedback, not physical-display or
+customer-scale acceptance.
+
+**P-249 input handoff:** the owner supplied
+`C:\Users\jistrand\Downloads\ad.lab-20260919-223420` and confirmed that everything there is a copy,
+with the application inside its `secure` folder. Preserve that supplied copy as the intake and use
+separate fingerprint-verified working copies for the approved offline investigation. The supplied
+application identifies the binaries to investigate; its embedded commit stamp alone does not prove
+a clean source revision. This handoff does not authorize new measurement tooling or optimization.
+
+**Owner-approved P-249 profiling driver:** “Approve the dedicated offline profiling driver and bounded
+judging profile” now authorizes a separate measurement program for this supplied capture and application
+package, superseding the no-new-measurement-tooling boundary only for this driver. Run the normal
+17-rule `JudgeAudit` configuration using the fingerprinted supplied libraries, with requester selection
+disabled and isolated temporary storage before execution or discovery; do not load the test assembly
+or repoint historical benchmarks. Retain provenance, phase timing, result/count checks and all attempts
+on fresh working copies without changing production code, security conclusions, budgets or screens.
+This approval does not authorize optimization, live access, recapture, original-result changes,
+restarting completed verification campaigns, commits or pushes.
+
+**P-249 follow-up scope after the two unsuccessful profiler attempts:** the owner requested
+inspection of the second failure and preservation verification **without rerunning judging**, then
+authorized retrying the canceled inspection. This follow-up is inspection only, not a further
+profiling attempt, driver repair, build, test run or optimization; retain both failed attempts and
+any unsuccessful verification records alongside the corrected verification result.
+
+**Owner-approved P-249 build-only repair:** “Fix the profiling driver and validate its build without
+rerunning judging” authorizes correcting only the dedicated driver's build/reference wiring and
+compiling a separate copy of the failed generated runner. Preserve the supplied binaries, original
+generated files, failed attempts and previous verification records; do not invoke benchmark setup,
+judging, readback, test discovery or profiling during this repair. A passing build is not a timing
+measurement, execution validation or approval of any optimization.
+
+**Owner clarification for P-249:** the supplied run is already a copy; stop creating additional
+evidence snapshots and repeating broad preservation reports during driver repair. Keep only the
+input/build identification needed for valid measurements, leave existing historical artifacts alone,
+and focus on the fix with brief updates. This does not request deletion or a further judging run.
+
+**Owner resumed P-249 profiling after the build repair:** “ok do the profiling” authorizes the
+bounded offline profile with the repaired driver and supplied libraries. This supersedes the
+build-only pause, not the restrictions on production changes, optimization, live access or budgets.
+
+**Owner-approved bounded P-249 optimization:** implement command/parameter reuse and transaction-local
+deduplication of identical schema support in `PermissionClassificationStorage.Write`, keeping one
+transaction per object, exact conflict checks, cancellation/rollback, all permission rows and proof
+binding unchanged. Approval includes a separate matched before/after configuration against newly built
+libraries, focused regression checks with rebuilt deliberate defects, and offline remeasurement; the
+supplied-binary benchmark remains frozen. No shared-proof redesign, cross-object batching, format/UI
+change, live access, activation, new production budgets, commit or push is authorized.
+
+**Owner-selected order for the P-248 review follow-up:** address P-250 (evidence-reader lease
+disposal), then P-251 (exact saved-interpretation sharing), then P-252 (subject-specific path reads).
+Use separate bounded sessions; the order does not authorize later format/UI changes, optimization
+or new measurements in the lease-repair session. Keep updates brief and do not restart broad
+preservation inventories for the supplied copied run.
+
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
 the following bounded display scope and wording; this preparation session does not authorize code changes.
