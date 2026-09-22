@@ -82,7 +82,7 @@ public static class JudgementSchema
     /// <para>40 saves all-computer LAPS inventory answers and the expected lengths of LAPS finding routes.</para>
     /// <para>41 saves all-object per-right permission classifications and their schema support.</para>
     /// </remarks>
-    public const int Version = 41;
+    public const int Version = 42;
 
     private static readonly string[] TableDdl =
     [

@@ -114,11 +114,14 @@ public sealed class PermissionClassificationWriteReuseTests
         public SqliteConnection Connection { get; } = new("Data Source=:memory:;Foreign Keys=True");
         private readonly Guid generation = Guid.NewGuid();
         private readonly HashSet<string> observed = new(StringComparer.Ordinal);
+        private PreparedStatements statements = null!;
+        private readonly PermissionWriteSession session = new();
         private int written;
 
         public Store()
         {
             Connection.Open();
+            statements = new PreparedStatements(Connection);
             JudgementSchema.CreateTables(Connection);
             ControlEdgeStorage.Start(Connection, true);
             PermissionClassificationStorage.Start(Connection, generation, true);
@@ -127,13 +130,28 @@ public sealed class PermissionClassificationWriteReuseTests
         public void Observe(PermissionClassification value)
         {
             if (observed.Add(value.Permissions.DistinguishedName))
-                ControlEdgeStorage.Write(Connection, new(value.Permissions.DistinguishedName, null, null, "Computed", ControlUncertainty.None, []), null);
+                StorageWrites.ControlEdges(Connection, new(value.Permissions.DistinguishedName, null, null, "Computed", ControlUncertainty.None, []), null);
         }
 
         public void Write(PermissionClassification value, CancellationToken token = default)
         {
             Observe(value);
-            PermissionClassificationStorage.Write(Connection, generation, value, token);
+            try
+            {
+                using (var transaction = Connection.BeginTransaction())
+                {
+                    PermissionClassificationStorage.Write(Connection, transaction, generation, value,
+                        new PermissionWriteWork(), statements, session, token);
+                    transaction.Commit();
+                }
+            }
+            catch
+            {
+                session.Discard();
+                throw;
+            }
+
+            session.Promote();
             written++;
         }
 
@@ -162,6 +180,10 @@ public sealed class PermissionClassificationWriteReuseTests
             command.ExecuteNonQuery();
         }
 
-        public void Dispose() => Connection.Dispose();
+        public void Dispose()
+        {
+            statements.Dispose();
+            Connection.Dispose();
+        }
     }
 }

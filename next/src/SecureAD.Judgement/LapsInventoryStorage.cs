@@ -67,10 +67,11 @@ internal static class LapsInventoryStorage
             capability, DomainControllerSignals.Of(subject), LapsAttributes.StateOf(subject), management);
     }
 
-    internal static void Write(SqliteConnection connection, LapsComputer computer)
+    internal static void Write(SqliteConnection connection, SqliteTransaction transaction, LapsComputer computer)
     {
         Validate(computer);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO laps_inventory VALUES ($dn, $name, $parent, $reversed, $management, $result)
             """;

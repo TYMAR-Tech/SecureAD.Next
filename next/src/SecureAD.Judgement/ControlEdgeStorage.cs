@@ -64,10 +64,9 @@ internal static class ControlEdgeStorage
         return result;
     }
 
-    public static void Write(SqliteConnection connection, ControlObjectEvaluation result, Tier0Target? ownershipTarget)
+    public static void Write(SqliteConnection connection, SqliteTransaction transaction, PreparedStatements statements, ControlObjectEvaluation result, Tier0Target? ownershipTarget)
     {
-        using var transaction = connection.BeginTransaction();
-        var entries = new SharedPermissionStorage(connection, transaction);
+        var entries = new SharedPermissionStorage(connection, transaction, statements);
         Execute(connection, transaction, "INSERT INTO control_object VALUES ($target,$sid,$scope,$outcome,$uncertainty,$complete)",
             ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
             ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
@@ -78,7 +77,6 @@ internal static class ControlEdgeStorage
         }
         var storedEdges = WriteEdges(connection, transaction, result.Edges, entries);
         FullControlStorage.Write(connection, transaction, result, storedEdges, entries);
-        transaction.Commit();
     }
 
     private static IReadOnlyList<ControlEdge> WriteEdges(SqliteConnection connection, SqliteTransaction transaction,
@@ -134,7 +132,8 @@ internal static class ControlEdgeStorage
     internal static void Assess(SqliteConnection connection, ControlObjectEvaluation result)
     {
         using var transaction = connection.BeginTransaction();
-        var entries = new SharedPermissionStorage(connection, transaction);
+        using var statements = new PreparedStatements(connection);
+        var entries = new SharedPermissionStorage(connection, transaction, statements);
         if (result.Edges.FirstOrDefault() is { } first)
             entries.Load(result.Target, first.GenerationId);
         Execute(connection, transaction, """
@@ -154,7 +153,8 @@ internal static class ControlEdgeStorage
             || edge.DerivationGenerationId != description.DerivationGenerationId
             || edge.Capability != ControlCapability.CanBecomeOwnerAndRewriteDacl)) throw OwnershipAuditStorage.InvalidProof();
         using var transaction = connection.BeginTransaction();
-        var entries = new SharedPermissionStorage(connection, transaction);
+        using var statements = new PreparedStatements(connection);
+        var entries = new SharedPermissionStorage(connection, transaction, statements);
         entries.Load(target, description.GenerationId);
         WriteEdges(connection, transaction, transitions, entries);
         OwnershipAuditStorage.Assessed(connection, transaction, target, transitions.Count);

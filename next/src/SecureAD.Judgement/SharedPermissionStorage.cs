@@ -8,10 +8,11 @@ using SecureAD.Kernel.Security;
 namespace SecureAD.Judgement;
 
 // One instance per object transaction: failed writes cannot leave reusable identities behind.
-internal sealed class SharedPermissionStorage(SqliteConnection connection, SqliteTransaction transaction)
+internal sealed class SharedPermissionStorage(SqliteConnection connection, SqliteTransaction transaction,
+    PreparedStatements statements)
 {
     private readonly Dictionary<string, (long Id, byte[] Fingerprint)> entries = new(StringComparer.Ordinal);
-    internal SharedProofStorage Proofs { get; } = new(connection, transaction);
+    internal SharedProofStorage Proofs { get; } = new(connection, transaction, statements);
 
     internal const int ProjectionColumns = 30;
     internal const string Projection = """
@@ -52,9 +53,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         var key = Key(target, generation, entry);
         if (entries.TryGetValue(key, out var existing)) return existing;
         var meaning = Proofs.WriteMeaning(target, generation, entry.Ordinal, entry.Trustee.Meaning);
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
+        const string insert = """
             INSERT INTO permission_entry(target,generation,ordinal,ace_type,sid,name,dn,domain,unresolved_reason,role,meaning,
                 mask,object_type,inherited_object_type,inherited,inheritance_flags,propagation_flags,has_object_type,has_inherited_object_type,application_data,meaning_binding)
             VALUES ($target,$generation,$ordinal,$type,$sid,$name,$dn,$domain,$unresolved,$role,$meaning,
@@ -72,8 +71,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
             ("$hasobject", entry.HasObjectType), ("$hasinheritedobject", entry.HasInheritedObjectType), ("$data", entry.ApplicationData),
             ("$meaningbinding", meaning.Fingerprint),
         ];
-        foreach (var (name, value) in values) command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-        var id = Convert.ToInt64(command.ExecuteScalar());
+        var id = Convert.ToInt64(statements.Bind(insert, transaction, values).ExecuteScalar());
         var reference = (id, SHA256.HashData(Encoding.UTF8.GetBytes(key)));
         entries.Add(key, reference);
         return reference;

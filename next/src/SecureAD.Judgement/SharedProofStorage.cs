@@ -10,14 +10,15 @@ namespace SecureAD.Judgement;
 
 // Reuse lasts only for the owning object transaction; rolled-back IDs never escape it.
 internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
-    Func<string, byte[]> lookupHash)
+    Func<string, byte[]> lookupHash, PreparedStatements statements)
 {
     internal const int FormatVersion = 1;
     private readonly Dictionary<string, long> written = new(StringComparer.Ordinal);
     private readonly Func<string, byte[]> lookup = lookupHash ?? throw new ArgumentNullException(nameof(lookupHash));
 
-    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction)
-        : this(connection, transaction, Hash)
+    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
+        PreparedStatements statements)
+        : this(connection, transaction, Hash, statements)
     {
     }
 
@@ -96,11 +97,14 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
             return cached;
         }
         var bucket = lookup(key);
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "SELECT id,kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE lookup_hash=$lookup ORDER BY id";
-        command.Parameters.AddWithValue("$lookup", bucket);
-        using (var read = command.ExecuteReader())
+        const string select = "SELECT id,kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE lookup_hash=$lookup ORDER BY id";
+        const string insert = """
+            INSERT INTO shared_proof_value(kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint,lookup_hash)
+            VALUES ($kind,$version,$generation,$derived,$catalogue,$payload,$hash,$lookup);
+            SELECT last_insert_rowid();
+            """;
+        var find = statements.Bind(select, transaction, ("$lookup", bucket));
+        using (var read = find.ExecuteReader())
         {
             while (read.Read())
             {
@@ -116,22 +120,15 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
                 }
             }
         }
-        command.Parameters.Clear();
-        command.CommandText = """
-            INSERT INTO shared_proof_value(kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint,lookup_hash)
-            VALUES ($kind,$version,$generation,$derived,$catalogue,$payload,$hash,$lookup);
-            SELECT last_insert_rowid();
-            """;
-        command.Parameters.AddWithValue("$kind", kind);
-        command.Parameters.AddWithValue("$version", FormatVersion);
-        command.Parameters.AddWithValue("$generation", generation.ToString("D"));
-        command.Parameters.AddWithValue("$derived", derived is { } source ? source.ToString("D") : DBNull.Value);
-        command.Parameters.AddWithValue("$catalogue", catalogue);
-        command.Parameters.AddWithValue("$payload", payload);
-        command.Parameters.AddWithValue("$hash", Hash(key));
-        command.Parameters.AddWithValue("$lookup", bucket);
+
+        (string Name, object? Value)[] values =
+        [
+            ("$kind", kind), ("$version", FormatVersion), ("$generation", generation.ToString("D")),
+            ("$derived", derived is { } source ? source.ToString("D") : null), ("$catalogue", catalogue),
+            ("$payload", payload), ("$hash", Hash(key)), ("$lookup", bucket),
+        ];
         created = true;
-        return (long)command.ExecuteScalar()!;
+        return (long)statements.Bind(insert, transaction, values).ExecuteScalar()!;
     }
 
     internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge)

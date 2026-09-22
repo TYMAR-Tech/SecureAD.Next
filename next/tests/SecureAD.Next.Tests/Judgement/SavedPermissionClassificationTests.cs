@@ -163,15 +163,16 @@ public sealed class SavedPermissionClassificationTests
     [InlineData("UPDATE permission_entry SET generation='99999999-9999-9999-9999-999999999999'")]
     [InlineData("UPDATE permission_entry SET target='CN=Elsewhere'")]
     [InlineData("UPDATE permission_classification_entry SET right_count=2")]
-    [InlineData("UPDATE permission_classification_entry SET reading=json_set(reading,'$.Rights[0].Assessment.Verdict',999)")]
-    [InlineData("UPDATE permission_classification_entry SET reading=json_set(reading,'$.Rights[0].Assessment.Reason','')")]
-    [InlineData("UPDATE permission_classification_entry SET reading=json_set(reading,'$.Rights[0].Right.Bits',0)")]
-    [InlineData("UPDATE permission_classification_entry SET reading=json_set(reading,'$.RightsAreComplete',json('false'))")]
+    [InlineData("UPDATE permission_classification_reading SET payload=json_set(payload,'$.Rights[0].Assessment.Verdict',999)")]
+    [InlineData("UPDATE permission_classification_reading SET payload=json_set(payload,'$.Rights[0].Assessment.Reason','')")]
+    [InlineData("UPDATE permission_classification_reading SET payload=json_set(payload,'$.Rights[0].Right.Bits',0)")]
+    [InlineData("UPDATE permission_classification_reading SET payload=json_set(payload,'$.RightsAreComplete',json('false'))")]
     public void P248ClassificationRefusesIncompleteOrMisboundRecords(string sql)
     {
         var result = Produce(Permissions(Ace(0, Holder, 0x40000)));
         var directory = Store(result);
         Mutate(directory, sql);
+        Refingerprint(directory);
         using var reader = JudgementReader.Open(directory).Value;
 
         Assert.Throws<InvalidDataException>(() => reader.ReadPermissionClassification(result.Permissions.DistinguishedName));
@@ -206,7 +207,10 @@ public sealed class SavedPermissionClassificationTests
         var first = Produce(Permissions(Ace(0, Holder, 0x40000)));
         var second = Produce(Permissions(Ace(0, Holder, 0x40000)) with { DistinguishedName = "CN=Other,DC=contoso,DC=com" });
         var directory = Store(first, second);
-        Mutate(directory, "UPDATE permission_classification_entry SET reading='invalid' WHERE target='CN=Other,DC=contoso,DC=com'");
+        // FORMAT 42 SHARES READINGS, and these two objects carry identical entries, so the reading
+        // row belongs to both. Damaging it would be damaging the requested object as well; what this
+        // case is about is that the reader does not go looking at rows belonging only to the other.
+        Mutate(directory, "UPDATE permission_classification_entry SET fingerprint=zeroblob(32) WHERE target='CN=Other,DC=contoso,DC=com'");
         using var reader = JudgementReader.Open(directory).Value;
 
         Assert.Equal(first.Permissions.DistinguishedName,
@@ -243,6 +247,36 @@ public sealed class SavedPermissionClassificationTests
         // Fabricate corrupt saved data rather than testing SQLite's write-time FK enforcement.
         command.CommandText = "PRAGMA foreign_keys=OFF; " + sql;
         command.ExecuteNonQuery();
+    });
+
+    /// <summary>
+    /// Recomputes every shared reading's fingerprint after a deliberate change to its payload.
+    /// </summary>
+    /// <remarks>
+    /// Format 42 stores each distinct reading once and covers it with a digest, so tampering is
+    /// refused before anything reads what the reading says. These cases are about the semantic
+    /// checks underneath - a verdict of 999, an emptied reason, zeroed bits, a flipped completeness
+    /// flag - so the digest is repaired first and the reader is made to reach them.
+    /// </remarks>
+    private static void Refingerprint(string directory) => SelfMembershipCoverageTests.Mutate(directory, connection =>
+    {
+        var payloads = new Dictionary<long, string>();
+        using (var read = connection.CreateCommand())
+        {
+            read.CommandText = "SELECT id,payload FROM permission_classification_reading";
+            using var rows = read.ExecuteReader();
+            while (rows.Read()) payloads[rows.GetInt64(0)] = rows.GetString(1);
+        }
+
+        foreach (var (id, payload) in payloads)
+        {
+            using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE permission_classification_reading SET fingerprint=$fingerprint WHERE id=$id";
+            update.Parameters.AddWithValue("$fingerprint", System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(payload)));
+            update.Parameters.AddWithValue("$id", id);
+            update.ExecuteNonQuery();
+        }
     });
 
     [Theory]

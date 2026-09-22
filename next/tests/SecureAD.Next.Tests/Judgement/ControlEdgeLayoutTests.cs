@@ -78,6 +78,11 @@ public sealed class ControlEdgeLayoutTests
         // Format 41 saves per-right classification and indexes shared entry lookup during production.
         // Observed from this approved build, not an independent historical forest anchor.
         [41] = "B5032FCEDCD701BA82CE5F8468154453FDE4A798974446E8C0C3BA4BA8C78C9B",
+        // Format 42 stores each distinct reading once in permission_classification_reading and has
+        // permission_classification_entry reference it, because the P-251 comparison found 240
+        // distinct readings behind 209,032 entries and half the result file was the duplication.
+        // Observed from this approved build, not an independent historical forest anchor.
+        [42] = "297BED254604EC343AFD4F44FCF47788B3C3CF348692F7D42D776F7344F50B32",
     };
 
     [Fact]

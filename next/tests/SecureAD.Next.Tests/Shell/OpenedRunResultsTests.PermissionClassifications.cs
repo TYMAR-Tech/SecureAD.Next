@@ -26,7 +26,11 @@ public sealed partial class OpenedRunResultsTests
     public void P248ClassificationReadsRecordedWordsAndReasonsWithoutReplay()
     {
         var directory = CreateControlRun();
-        MutateControlRun(directory, $"UPDATE permission_classification_entry SET reading=json_set(reading,'$.Summary','Recorded wording','$.Scope.AppliesTo','Recorded scope','$.Rights[0].Assessment.Reason','Recorded explanation') WHERE target='{UserDn}'");
+        // FORMAT 42 KEEPS ONE COPY OF EACH READING and covers it with a digest, so the recorded
+        // words go into the shared row and the digest is restored afterwards. Without that repair
+        // the reader would refuse the record and this case would prove nothing about replay.
+        MutateControlRun(directory, $"UPDATE permission_classification_reading SET payload=json_set(payload,'$.Summary','Recorded wording','$.Scope.AppliesTo','Recorded scope','$.Rights[0].Assessment.Reason','Recorded explanation') WHERE id IN (SELECT reading_id FROM permission_classification_entry WHERE target='{UserDn}')");
+        RepairReadingFingerprints(directory);
         using var source = new BundleAssetSource();
 
         var entry = source.ReadPermissionClassification(directory, UserDn).Value.Classification.Entries.Single();

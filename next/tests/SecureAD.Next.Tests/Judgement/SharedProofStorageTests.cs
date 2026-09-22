@@ -38,7 +38,8 @@ public sealed class SharedProofStorageTests
     {
         using var connection = Memory();
         using var transaction = connection.BeginTransaction();
-        var store = new SharedProofStorage(connection, transaction, _ => new byte[32]);
+        using var statements = new PreparedStatements(connection);
+        var store = new SharedProofStorage(connection, transaction, _ => new byte[32], statements);
         var generation = Guid.NewGuid();
         var a = store.WriteMeaning("A", generation, 0, "Case");
         var same = store.WriteMeaning("B", generation, 1, "Case");
@@ -60,14 +61,16 @@ public sealed class SharedProofStorageTests
     {
         using var connection = Memory();
         using var transaction = connection.BeginTransaction();
-        var store = new SharedProofStorage(connection, transaction);
+        using var statements = new PreparedStatements(connection);
+        var store = new SharedProofStorage(connection, transaction, statements);
         var generation = Guid.NewGuid();
         Assert.NotNull(store.WriteMeaning("A", generation, 0, "value").Id);
         transaction.Rollback();
         Assert.Equal(0, Count(connection, "SELECT COUNT(*) FROM shared_proof_value"));
         Assert.ThrowsAny<InvalidOperationException>(() => store.WriteMeaning("A", generation, 0, "value"));
         using var next = connection.BeginTransaction();
-        Assert.NotNull(new SharedProofStorage(connection, next).WriteMeaning("A", generation, 0, "value").Id);
+        using var nextStatements = new PreparedStatements(connection);
+        Assert.NotNull(new SharedProofStorage(connection, next, nextStatements).WriteMeaning("A", generation, 0, "value").Id);
         next.Commit();
         Assert.Equal(1, Count(connection, "SELECT COUNT(*) FROM shared_proof_value"));
     }
@@ -221,7 +224,7 @@ public sealed class SharedProofStorageTests
     public void FailedObjectRollsBackSharedRowsAndReferencesWhilePreservingEarlierObjects()
     {
         using var connection = Memory();
-        ControlEdgeStorage.Write(connection, ControlOnly("OU=Saved,DC=contoso,DC=com", Routes(), "saved"), ownershipTarget: null);
+        StorageWrites.ControlEdges(connection, ControlOnly("OU=Saved,DC=contoso,DC=com", Routes(), "saved"), ownershipTarget: null);
         var tables = new[] { "control_object", "control_edge", "permission_entry", "control_ace", "control_precondition", "shared_proof_value",
             "control_membership_route", "membership_route_summary", "membership_route", "membership_route_step", "full_control_manifest", "full_control_source", "full_control_source_entry", "full_control_assessment", "full_control_support" };
         var before = tables.Select(table => Count(connection, "SELECT COUNT(*) FROM " + table)).ToArray();
@@ -229,9 +232,9 @@ public sealed class SharedProofStorageTests
         entry = entry with { Trustee = entry.Trustee with { Meaning = "only the failed object" } };
         var result = FullControlStorageTests.Evaluation(entry);
         var invalid = result with { FullControlAssessments = [result.FullControlAssessments[0] with { SupportingCapabilities = [] }] };
-        Assert.Throws<InvalidOperationException>(() => ControlEdgeStorage.Write(connection, invalid, ownershipTarget: null));
+        Assert.Throws<InvalidOperationException>(() => StorageWrites.ControlEdges(connection, invalid, ownershipTarget: null));
         Assert.Equal(before, tables.Select(table => Count(connection, "SELECT COUNT(*) FROM " + table)).ToArray());
-        ControlEdgeStorage.Write(connection, result, ownershipTarget: null);
+        StorageWrites.ControlEdges(connection, result, ownershipTarget: null);
         Assert.Equal(2, Count(connection, "SELECT COUNT(*) FROM control_object"));
         Assert.Equal(0, Count(connection, "SELECT COUNT(*) FROM pragma_foreign_key_check"));
     }

@@ -17,6 +17,7 @@ internal static class PermissionClassificationStorage
     private sealed record Reading(string Summary, bool RightsAreComplete, PermissionScope Scope,
         IReadOnlyList<ClassifiedPermissionRight> Rights);
 
+
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE permission_classification_product (
             singleton INTEGER PRIMARY KEY CHECK(singleton=1), generation TEXT NOT NULL,
@@ -28,11 +29,16 @@ internal static class PermissionClassificationStorage
         CREATE TABLE permission_classification_object (
             target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
             descriptor TEXT NOT NULL, entry_count INTEGER NOT NULL CHECK(entry_count>=0));
+        CREATE TABLE permission_classification_reading (
+            id INTEGER PRIMARY KEY,
+            fingerprint BLOB NOT NULL UNIQUE CHECK(length(fingerprint)=32),
+            payload TEXT NOT NULL);
         CREATE TABLE permission_classification_entry (
             target TEXT NOT NULL REFERENCES permission_classification_object(target),
             position INTEGER NOT NULL CHECK(position>=0), ordinal INTEGER NOT NULL CHECK(ordinal>=0),
             entry_id INTEGER NOT NULL REFERENCES permission_entry(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
-            right_count INTEGER NOT NULL CHECK(right_count>=0), reading TEXT NOT NULL,
+            right_count INTEGER NOT NULL CHECK(right_count>=0),
+            reading_id INTEGER NOT NULL REFERENCES permission_classification_reading(id),
             object_schema TEXT NULL REFERENCES permission_classification_schema(guid),
             inherited_schema TEXT NULL REFERENCES permission_classification_schema(guid),
             PRIMARY KEY(target,position), UNIQUE(target,ordinal));
@@ -43,45 +49,104 @@ internal static class PermissionClassificationStorage
             ("$generation", generation.ToString("D")), ("$producer", PermissionClassificationProducer.Version),
             ("$schema", SchemaGuidCatalog.Version), ("$captured", hasCapturedSchema));
 
-    internal static void Write(SqliteConnection connection, Guid generation, PermissionClassification result, CancellationToken token)
+    internal static void Write(SqliteConnection connection, SqliteTransaction transaction, Guid generation,
+        PermissionClassification result, PermissionWriteWork work, PreparedStatements statements,
+        PermissionWriteSession session, CancellationToken token)
     {
+        work.Total.Start();
+        PermissionSchemaSupport? lastSupport = null;
+        string? lastPayload = null;
         token.ThrowIfCancellationRequested();
+        work.Validate.Start();
         Validate(result, token);
-        using var transaction = connection.BeginTransaction();
+        work.Validate.Stop();
         var target = result.Permissions.DistinguishedName;
-        var shared = new SharedPermissionStorage(connection, transaction);
+        var shared = new SharedPermissionStorage(connection, transaction, statements);
+        work.SharedLoad.Start();
         shared.Load(target, generation);
-        Execute(connection, transaction, "INSERT INTO permission_classification_object VALUES ($target,$descriptor,$count)",
+        work.SharedLoad.Stop();
+        work.ObjectRow.Start();
+        statements.Bind("INSERT INTO permission_classification_object VALUES ($target,$descriptor,$count)", transaction,
             ("$target", target), ("$descriptor", JsonSerializer.Serialize(result.Permissions with { Entries = [] })),
-            ("$count", result.Entries.Count));
+            ("$count", result.Entries.Count)).ExecuteNonQuery();
+        work.ObjectRow.Stop();
         for (var position = 0; position < result.Entries.Count; position++)
         {
             token.ThrowIfCancellationRequested();
             var entry = result.Entries[position];
+            work.SharedEntry.Start();
             var reference = shared.Write(target, generation, entry.Entry);
+            work.SharedEntry.Stop();
+            work.SchemaSupport.Start();
             WriteSupport(entry.ObjectType);
             WriteSupport(entry.InheritedObjectType);
-            Execute(connection, transaction, """
+            work.SchemaSupport.Stop();
+            work.EntryRow.Start();
+            statements.Bind("""
                 INSERT INTO permission_classification_entry VALUES
                 ($target,$position,$ordinal,$entry,$hash,$count,$reading,$object,$inherited)
-                """, ("$target", target), ("$position", position), ("$ordinal", entry.Entry.Ordinal),
+                """, transaction, ("$target", target), ("$position", position), ("$ordinal", entry.Entry.Ordinal),
                 ("$entry", reference.Id), ("$hash", reference.Fingerprint), ("$count", entry.Rights.Count),
-                ("$reading", JsonSerializer.Serialize(new Reading(entry.Summary, entry.RightsAreComplete, entry.Scope, entry.Rights))),
-                ("$object", entry.ObjectType?.Guid), ("$inherited", entry.InheritedObjectType?.Guid));
+                ("$reading", ReadingId(entry)),
+                ("$object", entry.ObjectType?.Guid), ("$inherited", entry.InheritedObjectType?.Guid)).ExecuteNonQuery();
+            work.EntryRow.Stop();
+            work.Entries++;
         }
-        transaction.Commit();
+        work.Objects++;
+        work.Total.Stop();
+
+        // ONE ROW PER DISTINCT READING, NOT ONE PER ENTRY. The P-251 comparison found 240 distinct
+        // readings behind 209,032 entries; writing each one 871 times was half the result file, and
+        // on the laboratory's standard SSD those bytes are what the commits are moving.
+        long ReadingId(ClassifiedPermissionEntry entry)
+        {
+            var payload = JsonSerializer.Serialize(
+                new Reading(entry.Summary, entry.RightsAreComplete, entry.Scope, entry.Rights));
+            var (fingerprint, key) = PermissionWriteSession.Fingerprint(payload);
+            if (session.TryGetReading(key, out var known)) return known;
+
+            statements.Bind("INSERT OR IGNORE INTO permission_classification_reading(fingerprint,payload) VALUES ($fingerprint,$payload)",
+                transaction, ("$fingerprint", fingerprint), ("$payload", payload)).ExecuteNonQuery();
+            var found = statements.Bind("SELECT id,payload FROM permission_classification_reading WHERE fingerprint=$fingerprint",
+                transaction, ("$fingerprint", fingerprint));
+            using var read = found.ExecuteReader();
+            // THE STORED PAYLOAD IS COMPARED, NOT ASSUMED. Sharing by digest means a collision would
+            // quietly give two different readings one row, and every entry pointing at it would then
+            // report a verdict nothing produced.
+            if (!read.Read() || read.GetString(1) != payload) throw Invalid();
+            var id = read.GetInt64(0);
+            session.AddReading(key, id);
+            return id;
+        }
 
         void WriteSupport(PermissionSchemaSupport? support)
         {
             if (support is null) return;
-            var payload = JsonSerializer.Serialize(support);
-            Execute(connection, transaction, "INSERT OR IGNORE INTO permission_classification_schema VALUES ($guid,$payload)",
-                ("$guid", support.Guid), ("$payload", payload));
-            using var check = connection.CreateCommand();
-            check.Transaction = transaction;
-            check.CommandText = "SELECT payload FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY";
-            check.Parameters.AddWithValue("$guid", support.Guid);
+            // ONE VERIFICATION PER DISTINCT PAYLOAD PER RUN, NOT TWO PER ENTRY. The check exists to
+            // catch a second, conflicting definition arriving under a GUID already stored, and it
+            // still does: an identical payload is the case already proved, and anything else falls
+            // through to the original write and read-back.
+            if (session.TryGetSchema(support.Guid, out var known)
+                && string.Equals(known, Payload(support), StringComparison.Ordinal))
+                return;
+
+            var payload = Payload(support);
+            statements.Bind("INSERT OR IGNORE INTO permission_classification_schema VALUES ($guid,$payload)", transaction,
+                ("$guid", support.Guid), ("$payload", payload)).ExecuteNonQuery();
+            var check = statements.Bind("SELECT payload FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY",
+                transaction, ("$guid", support.Guid));
             if (check.ExecuteScalar() as string != payload) throw Invalid();
+            session.AddSchema(support.Guid, payload);
+        }
+
+        // Serialising a support record is not free either, so the last one is remembered by
+        // reference: the producer hands out the same instance for the same schema GUID.
+        string Payload(PermissionSchemaSupport support)
+        {
+            if (ReferenceEquals(support, lastSupport)) return lastPayload!;
+            lastSupport = support;
+            lastPayload = JsonSerializer.Serialize(support);
+            return lastPayload;
         }
     }
 
@@ -147,8 +212,9 @@ internal static class PermissionClassificationStorage
         var supports = new Dictionary<string, PermissionSchemaSupport>(StringComparer.Ordinal);
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",e.ordinal,e.fingerprint,e.position,e.right_count,e.reading,e.object_schema,e.inherited_schema"
+            command.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",e.ordinal,e.fingerprint,e.position,e.right_count,r.payload,e.object_schema,e.inherited_schema,r.fingerprint"
                 + " FROM permission_classification_entry e LEFT JOIN permission_entry p ON p.id=e.entry_id"
+                + " LEFT JOIN permission_classification_reading r ON r.id=e.reading_id"
                 + SharedPermissionStorage.MeaningJoin + " WHERE e.target=$target COLLATE BINARY ORDER BY e.position";
             command.Parameters.AddWithValue("$target", target);
             using var read = command.ExecuteReader();
@@ -160,7 +226,12 @@ internal static class PermissionClassificationStorage
                 catch (InvalidOperationException error) { throw new InvalidDataException(Message("Invalid"), error); }
                 const int offset = SharedPermissionStorage.ProjectionColumns + 2;
                 if (read.GetInt32(offset) != entries.Count) throw Invalid();
-                var reading = JsonSerializer.Deserialize<Reading>(read.GetString(offset + 2)) ?? throw Invalid();
+                var payload = read.GetString(offset + 2);
+                // A SHARED ROW IS READ BY EVERY ENTRY POINTING AT IT, so a single damaged payload
+                // would misreport hundreds of entries rather than one.
+                if (!PermissionWriteSession.Fingerprint(payload).Bytes.AsSpan()
+                        .SequenceEqual((byte[])read.GetValue(offset + 5))) throw Invalid();
+                var reading = JsonSerializer.Deserialize<Reading>(payload) ?? throw Invalid();
                 if (reading.Rights is null || reading.Rights.Count != read.GetInt32(offset + 1)) throw Invalid();
                 entries.Add(new(entry, reading.Summary, reading.RightsAreComplete, reading.Scope, reading.Rights,
                     ReadSupport(read.IsDBNull(offset + 3) ? null : read.GetString(offset + 3)),

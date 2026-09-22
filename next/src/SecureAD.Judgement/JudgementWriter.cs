@@ -41,6 +41,10 @@ public sealed class JudgementWriter : IDisposable
     private readonly string _bundleDirectory;
     private readonly string _partialPath;
     private readonly SqliteConnection _connection;
+    private readonly PreparedStatements _statements;
+    private readonly PermissionWriteSession _session = new();
+    private SqliteTransaction? _batch;
+    private int _batchObjects;
     private readonly List<RuleExecutionOutcome> _outcomes = [];
     private bool _evidenceIsComplete = true;
     private readonly HashSet<string> _rulesWritten = new(StringComparer.Ordinal);
@@ -58,6 +62,7 @@ public sealed class JudgementWriter : IDisposable
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
+        _statements = new PreparedStatements(connection);
     }
 
     internal void RecordEvidenceScope(RunScope scope)
@@ -73,11 +78,66 @@ public sealed class JudgementWriter : IDisposable
         LapsInventoryStorage.Start(_connection, GenerationId);
     }
 
+    /// <summary>
+    /// The transaction this object's writes belong to, opened on demand and spanning several objects.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>One transaction, not three.</b> Before 2026-09-22 an object's LAPS row ran in autocommit,
+    /// its control edges opened and committed their own transaction, and its permission
+    /// classification opened and committed another - about 25,000 commits on a capture of 8,407
+    /// objects, and an object whose permissions rolled back could still leave its LAPS row behind.
+    /// Sharing one transaction is both stronger and cheaper.
+    /// </para>
+    /// <para>
+    /// <b>DO NOT MAKE JUDGING RECOVER FROM A FAILED OBJECT AND CARRY ON.</b> This batch is what
+    /// makes the commits affordable, and it is only safe because a failure aborts the run: the
+    /// generation is then never marked complete, so it can never be published or read back. Code
+    /// that caught a per-object failure and continued would silently discard every other object in
+    /// the same batch and leave a judgement that looked whole. If that behaviour is ever wanted,
+    /// the batch has to go back to one object first.
+    /// </para>
+    /// <para>
+    /// Whatever is open is rolled back on disposal. An unpublished generation is the correct
+    /// outcome of an abandoned run; a half-written one is not.
+    /// </para>
+    /// </remarks>
+    private SqliteTransaction Batch() => _batch ??= _connection.BeginTransaction();
+
+    /// <summary>How many objects share one transaction.</summary>
+    /// <remarks>
+    /// Chosen to make the commit count negligible without holding an unbounded amount uncommitted:
+    /// 500 objects is roughly 12,500 permission entries on the laboratory capture. Not tuned against
+    /// the production forest, which has never been measured.
+    /// </remarks>
+    private const int BatchObjects = 500;
+
+    /// <summary>Records that an object's writes are finished, committing the batch when it is full.</summary>
+    internal void CompleteObject()
+    {
+        ThrowIfFinishedWithinObject();
+        if (_batch is null || ++_batchObjects < BatchObjects) return;
+        FlushObjects();
+    }
+
+    /// <summary>Commits whatever object writes are outstanding.</summary>
+    internal void FlushObjects()
+    {
+        if (_batch is null) return;
+        _batch.Commit();
+        _batch.Dispose();
+        _batch = null;
+        _batchObjects = 0;
+        // PROMOTED ONLY NOW, because until this commit those rows did not exist and a record
+        // claiming otherwise would let a later object reference an identifier that was rolled back.
+        _session.Promote();
+    }
+
     internal void WriteLapsInventory(ObjectAttributes subject)
     {
-        ThrowIfFinished();
+        ThrowIfFinishedWithinObject();
         if (!LapsAttributes.IsComputer(subject)) return;
-        LapsInventoryStorage.Write(_connection, LapsInventoryStorage.CreateComputerResult(subject));
+        LapsInventoryStorage.Write(_connection, Batch(), LapsInventoryStorage.CreateComputerResult(subject));
         _lapsComputers++;
     }
 
@@ -101,9 +161,33 @@ public sealed class JudgementWriter : IDisposable
 
     internal void WritePermissionClassification(PermissionClassification result, CancellationToken cancellationToken)
     {
-        ThrowIfFinished();
-        PermissionClassificationStorage.Write(_connection, GenerationId, result, cancellationToken);
+        ThrowIfFinishedWithinObject();
+        try
+        {
+            PermissionClassificationStorage.Write(_connection, Batch(), GenerationId, result, PermissionWrites, _statements, _session, cancellationToken);
+        }
+        catch
+        {
+            // THE BATCH GOES WITH IT. Rows written since the last commit no longer exist, so keeping
+            // the identifiers this session remembered for them would let a retry point an entry at a
+            // reading that was rolled back - which is what CancellationRollsBackAndRetryDoesNotReuse
+            // UncommittedSupport exists to catch.
+            AbandonBatch();
+            throw;
+        }
     }
+
+    /// <summary>Rolls back the open batch and forgets everything it wrote.</summary>
+    private void AbandonBatch()
+    {
+        _batch?.Dispose();
+        _batch = null;
+        _batchObjects = 0;
+        _session.Discard();
+    }
+
+    /// <summary>Where storing the saved permission classifications spent its time.</summary>
+    internal PermissionWriteWork PermissionWrites { get; } = new();
 
     internal void CompletePermissionClassifications(long objectsRead)
     {
@@ -113,8 +197,8 @@ public sealed class JudgementWriter : IDisposable
 
     internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
     {
-        ThrowIfFinished();
-        ControlEdgeStorage.Write(_connection, evaluation, ownershipTarget);
+        ThrowIfFinishedWithinObject();
+        ControlEdgeStorage.Write(_connection, Batch(), _statements, evaluation, ownershipTarget);
     }
 
     internal void CompleteControlEdges()
@@ -450,6 +534,10 @@ public sealed class JudgementWriter : IDisposable
             return;
 
         RollBackSelfMembershipBatch();
+        AbandonBatch();
+        // BEFORE THE CONNECTION, because a compiled statement outliving its connection is exactly
+        // the kind of stranded handle P-250 was raised for.
+        _statements.Dispose();
         _connection.Dispose();
         _disposed = true;
     }
@@ -977,7 +1065,26 @@ public sealed class JudgementWriter : IDisposable
         }
     }
 
+    /// <summary>
+    /// The guard for everything except the three writes that make up one object.
+    /// </summary>
+    /// <remarks>
+    /// <b>It commits the open object batch, and that is the point.</b> Only
+    /// <see cref="WriteLapsInventory"/>, <see cref="WriteControlEdges"/> and
+    /// <see cref="WritePermissionClassification"/> may run inside the batch; every other statement on
+    /// this connection must set a transaction it cannot see, so it has to find one already committed.
+    /// Putting the flush here rather than in each of twenty methods is deliberate: the first version
+    /// of this change relied on callers remembering, and 398 tests failed inside
+    /// <c>ControlEdgeStorage.Complete</c> because one of them did not.
+    /// </remarks>
     private void ThrowIfFinished()
+    {
+        ThrowIfFinishedWithinObject();
+        FlushObjects();
+    }
+
+    /// <summary>The same guard, for the per-object writes that legitimately run inside the batch.</summary>
+    private void ThrowIfFinishedWithinObject()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 

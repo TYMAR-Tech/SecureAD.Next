@@ -703,8 +703,7 @@ public static class JudgingRun
         var permissionClassifier = new PermissionClassificationProducer(classificationSchema);
         writer.StartPermissionClassifications(classificationSchema.HasCapturedEntries);
 
-        var scanWatch = new System.Diagnostics.Stopwatch();
-        var discoveryWatch = new System.Diagnostics.Stopwatch();
+        var work = new ObjectWork();
         var unobservedRoots = controlContext.NamingContexts.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var discovery = automaticDiscovery ? new SelfMembershipScheduler(discoveryBudget,
             scope.Value!.AllDeclaredDomainsAreComplete, attributes,
@@ -723,6 +722,7 @@ public static class JudgingRun
             : null;
 
         progress.Report(new JudgingProgress(0));
+        work.Pass.Start();
         foreach (var subject in bundle.StreamObjects().Objects)
         {
             // Checked per object rather than per batch. A rule catalogue that has grown expensive
@@ -730,38 +730,64 @@ public static class JudgingRun
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
 
+            work.Laps.Start();
             writer.WriteLapsInventory(subject);
+            work.Laps.Stop();
             unobservedRoots.Remove(subject.DistinguishedName);
+            work.Read.Start();
             var permissions = bundle.ReadPermissions(subject.DistinguishedName);
+            work.Read.Stop();
 
             // THE DESCRIPTOR RECORD IS WRITTEN FOR EVERY OBJECT; THE EDGES ARE NOT. Whether the
             // descriptor could be read is cheap and is the difference between "captured but not
             // assessed", "captured and unreadable" and "not captured at all" - three answers a
             // reader must be able to tell apart. Deriving the edges is the expensive part, and it
             // now waits until discovery has said whether this object is in scope.
-            if (tier0Discovery is null)
-                writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
-                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids),
-                    OwnershipAuditRun.Target(subject, namingContexts.Value));
-            else
-            {
-                writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
+            //
+            // DERIVING AND STORING ARE CLOCKED SEPARATELY because they are the two halves any
+            // optimisation must choose between, and one combined figure cannot say which.
+            work.ControlDerive.Start();
+            var edges = tier0Discovery is null
+                ? ControlEdgeDeriver.Derive(subject,
+                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids)
+                : ControlEdgeDeriver.Derive(subject,
                     permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids)
-                    with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) },
-                    OwnershipAuditRun.Target(subject, namingContexts.Value));
-                discoveryWatch.Start();
+                    with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) };
+            work.ControlDerive.Stop();
+            work.ControlWrite.Start();
+            writer.WriteControlEdges(edges, OwnershipAuditRun.Target(subject, namingContexts.Value));
+            work.ControlWrite.Stop();
+            if (tier0Discovery is not null)
+            {
+                work.Tier0Scan.Start();
                 tier0Discovery.Observe(subject, permissions);
-                discoveryWatch.Stop();
+                work.Tier0Scan.Stop();
             }
-            writer.WritePermissionClassification(permissionClassifier.CreateObjectResult(
-                permissions ?? throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid")),
-                cancellationToken), cancellationToken);
-            scanWatch.Start();
-            discovery?.Observe(subject, permissions);
-            scanWatch.Stop();
 
+            // REACHING A VERDICT AND STORING IT ARE CLOCKED SEPARATELY, and this is the split
+            // P-249 has twice tried to optimise without ever measuring: two storage redesigns were
+            // built and rejected while nothing here could say whether the cost was the verdicts or
+            // the writing of them.
+            work.Verdicts.Start();
+            var classified = permissionClassifier.CreateObjectResult(
+                permissions ?? throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid")),
+                cancellationToken);
+            work.Verdicts.Stop();
+            work.StorePermissions.Start();
+            writer.WritePermissionClassification(classified, cancellationToken);
+            work.StorePermissions.Stop();
+            work.MembershipScan.Start();
+            discovery?.Observe(subject, permissions);
+            work.MembershipScan.Stop();
+
+            work.Rules.Start();
             foreach (var tally in tallies)
                 tally.Offer(subject, context);
+            work.Rules.Stop();
+
+            work.Commit.Start();
+            writer.CompleteObject();
+            work.Commit.Stop();
 
             objectsRead++;
 
@@ -769,17 +795,31 @@ public static class JudgingRun
                 progress.Report(new JudgingProgress(objectsRead)
                 {
                     Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
-                    Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
+                    Tier0DiscoveryElapsed = work.Tier0Scan.Elapsed,
                 });
         }
 
-        writer.CompleteLapsInventory();
-        writer.CompletePermissionClassifications(objectsRead);
+        work.Commit.Start();
+        writer.FlushObjects();
+        work.Commit.Stop();
 
+        work.LapsComplete.Start();
+        writer.CompleteLapsInventory();
+        work.LapsComplete.Stop();
+        work.ClosePermissions.Start();
+        writer.CompletePermissionClassifications(objectsRead);
+        work.ClosePermissions.Stop();
+
+        work.UnobservedRoots.Start();
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",
                 ControlUncertainty.ReplicationRootNotEstablished | ControlUncertainty.DescriptorUnreadable, []),
                 new Tier0Target(null, root, root, null, null, null));
+        writer.FlushObjects();
+        work.UnobservedRoots.Stop();
+        work.Pass.Stop();
+        work.Note(log, JudgePhase, objectsRead);
+        writer.PermissionWrites.Note(log, JudgePhase);
 
         // The last report is unconditional, so a run that ends between two reports does not leave
         // the operator looking at a count short of what was actually read. The discovery figures
@@ -788,7 +828,7 @@ public static class JudgingRun
         progress.Report(new JudgingProgress(objectsRead)
         {
             Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
-            Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
+            Tier0DiscoveryElapsed = work.Tier0Scan.Elapsed,
         });
         if (tier0Discovery is not null)
         {
@@ -797,7 +837,7 @@ public static class JudgingRun
                 tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken);
             log.Note(JudgePhase, "tier0-discovery",
             [
-                new RunLogDetail("scan-ms", ((long)discoveryWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("scan-ms", ((long)work.Tier0Scan.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("candidates", tier0Discovery.Coverage().CandidatesDiscovered.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("admitted", admitted.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("objects", objectsRead.ToString(CultureInfo.InvariantCulture)),
@@ -898,7 +938,7 @@ public static class JudgingRun
             log.Note(JudgePhase, "self-membership",
             [
                 new RunLogDetail("answers", assessed.ToString(CultureInfo.InvariantCulture)),
-                new RunLogDetail("scan-ms", ((long)scanWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("scan-ms", ((long)work.MembershipScan.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("read-ms", ((long)readWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("assess-ms", ((long)assessWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("write-ms", ((long)writeWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
@@ -1099,6 +1139,129 @@ public static class JudgingRun
         ? ControlUncertainty.DescriptorUnreadable
         : permissions.DaclCompleteness != DaclCompleteness.Complete ? ControlUncertainty.DescriptorIncomplete
         : ControlUncertainty.None;
+
+    /// <summary>
+    /// Where the object pass spent its time, in buckets that do not contain one another.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The rules were already clocked, and they were not the answer.</b> The offline
+    /// reproduction of the reported 108-second audit spent 115.12 s in object processing, of which
+    /// the per-rule clocks accounted for 7.03 s. The remaining interval was measured by nothing at
+    /// all, and two saved-permission storage redesigns were built and rejected while aimed into it.
+    /// </para>
+    /// <para>
+    /// <b>Flat, never nested.</b> An earlier diagnostic ledger attributed 16.26 s of a 27.69 s run
+    /// to permission storage "including nested work", which cannot be added to anything else and so
+    /// settled nothing. Each watch here brackets one call, no bucket contains another, and the
+    /// figures are therefore meant to be summed.
+    /// </para>
+    /// <para>
+    /// <b>Whatever is left over is printed as its own line.</b> An unexplained interval is the
+    /// finding; absorbing it into the nearest bucket is how it stayed unexplained for eight
+    /// sessions. <see cref="Pass"/> brackets the entire pass, so the remainder is exact.
+    /// </para>
+    /// <para>
+    /// <b>Cost.</b> Two counter reads per bucket per object, on the same argument the per-rule
+    /// clocks already make: a few million reads across a forest of 347,000 objects, against a phase
+    /// measured in minutes.
+    /// </para>
+    /// </remarks>
+    private sealed class ObjectWork
+    {
+        /// <summary>The whole pass, against which every other bucket is accounted.</summary>
+        public System.Diagnostics.Stopwatch Pass { get; } = new();
+
+        /// <summary>Reading one object's permissions out of the sealed bundle.</summary>
+        public System.Diagnostics.Stopwatch Read { get; } = new();
+
+        /// <summary>Reaching the per-right verdicts for one object.</summary>
+        public System.Diagnostics.Stopwatch Verdicts { get; } = new();
+
+        /// <summary>Storing those verdicts. The half P-249 exists to make cheaper.</summary>
+        public System.Diagnostics.Stopwatch StorePermissions { get; } = new();
+
+        /// <summary>Deriving one object's control edges.</summary>
+        public System.Diagnostics.Stopwatch ControlDerive { get; } = new();
+
+        /// <summary>Storing those control edges.</summary>
+        public System.Diagnostics.Stopwatch ControlWrite { get; } = new();
+
+        /// <summary>Collecting Tier 0 candidates, previously the only clocked part of this loop.</summary>
+        public System.Diagnostics.Stopwatch Tier0Scan { get; } = new();
+
+        /// <summary>Collecting self-membership candidates.</summary>
+        public System.Diagnostics.Stopwatch MembershipScan { get; } = new();
+
+        /// <summary>Offering the object to every rule. The per-rule lines break this down further.</summary>
+        public System.Diagnostics.Stopwatch Rules { get; } = new();
+
+        /// <summary>Writing the LAPS inventory row for one object.</summary>
+        public System.Diagnostics.Stopwatch Laps { get; } = new();
+
+        /// <summary>Closing the LAPS inventory once every object has been offered.</summary>
+        public System.Diagnostics.Stopwatch LapsComplete { get; } = new();
+
+        /// <summary>Closing the saved permission classifications.</summary>
+        public System.Diagnostics.Stopwatch ClosePermissions { get; } = new();
+
+        /// <summary>Recording naming contexts no streamed object accounted for.</summary>
+        public System.Diagnostics.Stopwatch UnobservedRoots { get; } = new();
+
+        /// <summary>Committing the batched transaction the object writes share.</summary>
+        public System.Diagnostics.Stopwatch Commit { get; } = new();
+
+        /// <summary>Writes one line per bucket, slowest first, then the accounting line.</summary>
+        /// <param name="log">The run log this judging is writing to.</param>
+        /// <param name="phase">The phase name the judging coordinator logs under.</param>
+        /// <param name="objects">How many objects the pass read, so a bucket can be read per object.</param>
+        public void Note(IRunLog log, string phase, long objects)
+        {
+            (string Part, TimeSpan Elapsed)[] buckets =
+            [
+                ("read-permissions", Read.Elapsed),
+                ("classify-permissions", Verdicts.Elapsed),
+                ("store-permissions", StorePermissions.Elapsed),
+                ("derive-control-edges", ControlDerive.Elapsed),
+                ("store-control-edges", ControlWrite.Elapsed),
+                ("tier0-scan", Tier0Scan.Elapsed),
+                ("membership-scan", MembershipScan.Elapsed),
+                ("rules", Rules.Elapsed),
+                ("commit", Commit.Elapsed),
+                ("store-laps", Laps.Elapsed),
+                ("complete-laps", LapsComplete.Elapsed),
+                ("complete-permissions", ClosePermissions.Elapsed),
+                ("unobserved-roots", UnobservedRoots.Elapsed),
+            ];
+
+            foreach (var bucket in buckets.OrderByDescending(b => b.Elapsed))
+            {
+                log.Note(
+                    phase,
+                    "object work",
+                    [
+                        new RunLogDetail("part", bucket.Part),
+                        new RunLogDetail("ms", Milliseconds(bucket.Elapsed)),
+                    ]);
+            }
+
+            // THE SUM AND THE WHOLE, SIDE BY SIDE. A breakdown that does not say what it failed to
+            // account for invites the reader to assume it accounted for everything.
+            var measured = buckets.Aggregate(TimeSpan.Zero, (total, bucket) => total + bucket.Elapsed);
+            log.Note(
+                phase,
+                "object work accounted",
+                [
+                    new RunLogDetail("passMs", Milliseconds(Pass.Elapsed)),
+                    new RunLogDetail("measuredMs", Milliseconds(measured)),
+                    new RunLogDetail("unaccountedMs", Milliseconds(Pass.Elapsed - measured)),
+                    new RunLogDetail("objects", objects.ToString(CultureInfo.InvariantCulture)),
+                ]);
+        }
+
+        private static string Milliseconds(TimeSpan value) =>
+            ((long)value.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+    }
 
     /// <summary>
     /// What one rule has made of the objects offered to it so far.

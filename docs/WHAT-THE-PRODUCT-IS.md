@@ -68,6 +68,22 @@ bounded enterprise CA classification is implemented and offline verified.
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
+**What the product is for, and what it is not for — the owner, 2026-09-22.** The focus is **control
+edges, the rules, and pathing to Tier 0**. Reading an individual object's permissions is not where
+users spend their time; most of the time nobody will open that screen. Performance work therefore
+belongs on **judging**, and specifically on the object interval where 98.6% of the added elapsed
+cost sits — not on making saved results pleasanter to browse.
+
+**The consequence, applied the same day.** The bounded paging reader and the Permissions-screen
+paging were cut from P-249 rather than built, and the work retained at
+`next/artifacts/p249-final-b/continuation-06/reverted/`. The trial's own evidence agreed with the
+owner before he was asked: `run-1-a/reader-3.json` measured the largest object in the laboratory
+capture at 79 entries, materialised whole in 4.25 ms using 1.1 MB, with the other sampled extremes
+at 2.23–3.43 ms; and the production forest averages about 17 access control entries per object
+against the laboratory's 25, so production objects are **smaller** on average, not larger. A screen
+change costing an owner approval and a session of work, to save four milliseconds on a screen nobody
+opens, is the wrong target however well it is built.
+
 **Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
 specifications and implement the remaining rule coverage.** The review and its retained source set are
 recorded as P-235–P-239 in [the work queue](PUNCH-LIST.md#rule-specification-review--after-stage-7).
@@ -541,6 +557,343 @@ disposal), then P-251 (exact saved-interpretation sharing), then P-252 (subject-
 Use separate bounded sessions; the order does not authorize later format/UI changes, optimization
 or new measurements in the lease-repair session. Keep updates brief and do not restart broad
 preservation inventories for the supplied copied run.
+
+**Owner-approved bounded P-251 implementation and offline verification:** “Approve the bounded P-251
+storage change, separate comparison adapter and offline verification” authorizes generation-local
+sharing of exact saved permission interpretations, judgement format 42 and its selected-object reader,
+without changing interpretation calculations, individual permission identities/order/duplicates/counts,
+schema support, uncertainty or security conclusions. Retain exact-content checks after indexed lookup,
+entry/generation binding, one transaction per object, cancellation/rollback and explicit refusals;
+replace the old repeated representation with no compatibility reader, migration, analysis replay,
+forest-wide memory cache or UI change. The separate P-251 comparison adapter must preserve the frozen
+P-249 tooling, establish an identified original-writer baseline before production edits, then use the
+same sealed input and procedure for three matched pairs with alternating run order and fresh processes;
+retain every timing, build/input identity and failure. Approval includes focused offline correctness
+checks with rebuilt deliberate defects and restoration builds, with TEMP/TMP isolated before test
+assembly loading or discovery; a smaller store alone is not an accepted judging-speed fix. Preserve
+historical evidence, hashes, verification artifacts and pre-existing work; no live access, recapture,
+requester activation, production budgets, computation sharing, commits or pushes are authorized.
+
+**Owner-approved bounded permission-entry command reuse:** “Approve the bounded permission-entry
+command-reuse change and offline verification” authorizes a lazily prepared insert/read-ID command
+and 21 reusable parameters in `SharedPermissionStorage`, with disposal at the four transaction-owning
+sites in `ControlEdgeStorage` and `PermissionClassificationStorage`. Keep judgement format 41, the
+SQL and stored values, exact keys, fingerprints, entry identities/order/duplicates/counts, shared-proof
+behavior and security conclusions unchanged; no interpretation/computation sharing, reader/UI change,
+cross-object batching, run-wide cache, discovery or budget change is included. Use the frozen P-251
+comparison adapter unchanged, an original control before production edits and three matched pairs
+with alternating order and identified fresh-process builds; retain supplementary invocations and
+failed attempts separately, and verify the other affected writer paths with focused offline scenarios.
+Approval includes new reuse/lifetime/value/rollback checks and relevant existing storage checks, with
+TEMP/TMP isolated before test loading/discovery and rebuilt deliberate defects/restoration for every
+new behavior check. Accept only repeatable whole-judging improvement with identical security outputs
+and no material allocation, memory or readback regression; otherwise restore the original and retain
+the trial without broadening it. Preserve pre-existing work and historical evidence/artifacts; no new
+measurement program, live access, recapture, commits or pushes are authorized.
+
+**Owner-approved current-object permission-reuse trial:** “OK TEST IT” authorizes testing the
+reviewed first scope: reuse the current object's already-read captured permissions when offering that
+object to rules, including repeated ownership lookups, while preserving independent mutable inputs
+for each lookup and expiring reuse at the end of that object's processing. Preserve exact-name and
+ambiguous-name behavior, other-target lookups, missing/unreadable/empty distinctions, resource scope,
+reader lifetime and evidence/generation binding; a missing permission provider stays missing. Keep
+format 41, all security decisions, path-validation reads, discovery, budgets and UI unchanged. Use the
+frozen offline comparison and focused regression checks with rebuilt deliberate defects/restoration,
+isolating TEMP/TMP before test loading/discovery and retaining pre-existing work, original evidence,
+all measurements and failed attempts; no new measurement program, live access, recapture, commit or
+push is authorized. This is permission-reading reuse, not interpretation sharing or removal of checks.
+
+**Owner-approved bounded diagnostic-only timing and verification:** “Approve the bounded
+diagnostic-only timing and verification scope” authorizes an unchanged offline reproduction check
+using the supplied build/evidence, then a separate source-matched diagnostic build and diagnostic
+copy of the existing runner to account for elapsed judging time, not another optimization. Identify
+actual binaries, source relationship, runtime, machine and host context; a fast developer-machine
+run must not be presented as an explanation of the lab's 108 seconds, and a lab execution, if needed,
+must be an explicit offline command/package using copied evidence rather than another capture.
+Keep frozen benchmarks and normal production untouched; aggregate exclusive phase timings and work
+counts, label nested detail and the unattributed remainder, include enumeration advancement, and
+separate permission reading/interpretation/storage, other writes/rules, scope/ownership, path-source
+validation/calculation and publication from completion-screen loading. Verify result equivalence,
+timing attribution and instrumentation overhead with an uninstrumented/diagnostic/uninstrumented
+comparison and rebuilt deliberate defects/restoration; stop and state the limitation if source
+equivalence, reproduction or overhead cannot be established. Isolate TEMP/TMP before test loading
+or discovery and preserve all prior work, original evidence, measurements and failed attempts; no
+rule/result/format/UI change, discovery/budget change, live access, recapture, deletion of originals,
+commit or push is authorized.
+
+**Owner-approved pre-P-248/current offline judging comparison:** “lets do it” authorizes isolated
+rebuilds of pre-P-248 `efb6fb076ee586cb6fe5dfee8ade8457a630a82e` and current
+`2c2b3e3b305347c1cc85ce6beb84d3a3470ead27`, plus a separate small comparison runner that handles
+their different saved-judgement formats without changing the frozen runners. Use the same existing
+copied evidence and derivation, evaluation date, rules, runtime and disabled requester policy; run
+old/current then current/old in four fresh processes without added diagnostic instrumentation, compare
+common results, and report P-248's additional saved products separately. This is a contemporary
+source-rebuild comparison, not reconstruction of an old lab executable or timing; preserve current
+uncommitted work and all original evidence, measurements and failures, isolate TEMP/TMP before loading
+any test assembly, and do not recapture, access live AD, optimize, change production behavior, commit
+or push. No older audit or application needs to be supplied by the owner for this comparison.
+
+**Owner-approved P-249 per-object permission storage correction:** “Create the branch and implement
+the bounded per-object permission storage correction” authorizes work on
+`p249-object-permission-storage`, created from `p248-stored-readback` at `2c2b3e3`, with existing
+uncommitted work preserved. Replace the per-entry classification persistence with one complete,
+ordered saved permission-result payload per object and separately shared schema support; classification
+alone must no longer populate the shared control-proof permission tables, while their actual control
+proof uses remain intact. Keep permission calculations and public results unchanged, including every
+entry, original ordinal, duplicate, raw value, per-right verdict/reason, applicability, inheritance,
+captured-schema support, resource scope and missing/empty/unreadable/incomplete distinctions. Preserve
+exact evidence/derivation/judgement/object binding, independent counts, publication checks, one
+transaction per object and cancellation/rollback; the matching selected-object reader reads saved
+answers without analytical replay. This authorizes a distinct new judgement storage format and its
+reader, not reuse of the rejected format-42 interpretation-sharing trial, compatibility readers,
+migration, UI changes, cross-object batching or a forest-wide cache. Remove superseded production
+write/read paths and unused helpers as part of the same correction, not as later cleanup; retain
+historical source/tests/fixtures, frozen benchmarks, measurements and failed attempts separately.
+
+Use the retained offline comparison procedure with a separate adapter copy extended to verify every
+saved permission interpretation as well as the common results; do not modify frozen runners or
+restart completed profiling/mutation campaigns. Run a current control before editing production,
+then candidate/candidate/current to complete four fresh-process runs on identical copied inputs,
+evaluation date, rules, runtime and disabled requester policy, without added diagnostic timers.
+Approval includes focused correctness and damaged-data/binding/order/schema-conflict/cancellation
+checks with rebuilt deliberate defects and restored builds, and measurement of judging, output size,
+allocations, memory and selected-object reading; isolate TEMP/TMP before any test loading/discovery.
+Adoption requires a repeatable whole-judging benefit with identical answers and no material readback,
+memory or cancellation regression, not merely fewer writes; otherwise stop and retain the trial
+without leaving parallel production implementations. The earlier pre-P-248 comparison is complete
+and must not be repeated; laboratory results do not establish nine-domain production performance.
+No live AD, recapture, original-result deletion/regeneration, discovery activation, production budgets,
+rule/security-result changes, commit or push is authorized, and implementation needs no further
+approval within these boundaries.
+
+**P-249 trial disposition, 2026-09-21:** the approved four-run comparison is complete, with every
+saved permission answer and all common results matching, but the format-43 candidate is **not adopted**:
+repeatable faster judging did not satisfy the no-material-regression gate because peak memory,
+full-heap collection frequency and maximum selected-object read latency increased. Original format-41
+production and matching tests are restored; the candidate and its verification remain separately at
+`next/artifacts/p249-object-storage/comparison-result.json`. P-254/P-255 keep the full-suite failures
+explicit, and neither this trial nor its lab speed gain establishes nine-domain production acceptance.
+
+**Owner-approved P-200 SQLite-cache comparison:** following preparation, “Run the bounded 64 MiB
+writer-cache comparison” authorizes the four-run comparison, its separate adapter changes and
+isolated candidate build described below, but not adoption or a production default change.
+The earlier P-200 reader-cache experiments remain recorded as historical results for their builds,
+inputs and combined settings, not evidence that reader-cache tuning cannot benefit today's code.
+Do not rerun those historical builds as this comparison's baseline: use fresh current-build controls.
+A separately bounded current-build reader-cache experiment would be new evidence, not an unnecessary
+repeat; the proposed writer-only first contrast does not rule it out or authorize it automatically.
+The proposed first contrast keeps the restored format-41 implementation and changes only the single
+judgement writer connection's `main.cache_size`: its observed default versus `-65536` (64 MiB).
+That is an experimental allowance, not a hard process-memory cap, a proposed production default or
+a budget for the nine-domain forest; evidence/derivation/selected-object readers, memory mapping,
+temporary storage, page size, journaling, durability and transaction boundaries remain unchanged.
+
+Use a separate copy of the retained full-answer comparison adapter and isolated builds,
+leaving active production and frozen runners untouched; reuse the existing sealed 2026-09-19 copied
+input, derivation, evaluation date, 17 rules, runtime and disabled requester policy without new captures
+or extra preservation snapshots. First verify the current default through its real writer in a
+separate untimed preflight process; stop if it is already at least 64 MiB rather than claiming an
+increased-cache comparison that changed nothing. Run a fresh current control before introducing
+the isolated candidate change, then verify the candidate's effective setting in an untimed preflight,
+with a rebuilt negative control that omits the change and an explicitly rebuilt restoration.
+Only then run candidate/candidate/current, completing four fresh uninstrumented judging processes;
+keep settings checks, semantic comparisons and tests outside the measured interval.
+
+Compare every saved permission answer and the existing common results with exact input/generation
+binding, plus whole judging, CPU time, result size, allocations, memory, GC and selected-object reads;
+retain forced cancellation/rollback checks instead of relying on a timer that fires after a read ends.
+Use short isolated TEMP/TMP before any test loading or discovery, rebuild new deliberate defects and
+restorations, and preserve failed attempts and the unresolved P-254/P-255 qualifications.
+More cache memory is an intended trade-off, not an automatic failure: report its absolute cost,
+observed growth and read/cancellation effects alongside both timing pairs without inventing an
+acceptance threshold from the lab. This comparison alone authorizes no adoption, additional cache
+sizes, tuning of other connections, UI changes, live access, recapture, discovery activation,
+production-budget changes, commits or pushes; execution within this bounded scope is approved.
+
+**P-200 writer-cache comparison completed, 2026-09-21:** effective writer settings were verified at
+2,000 KiB for the current build and 65,536 KiB for the isolated candidate; the only candidate source
+change was the cache pragma, with SQLite's derived spill threshold following that allowance.
+The four current/candidate/candidate/current runs took 51.675/46.675/229.851/48.325 s and every saved
+permission answer and all 28 comparison categories matched, but the long second candidate means
+no repeatable speed benefit is established; it is retained rather than discarded or rerun.
+Its existing object-processing interval grew from 37.786 to 214.474 s between candidate runs,
+without establishing why; mean peak process memory rose from 289.153 to 367.147 MB and result size
+was unchanged. Forced cancellation/rollback/retry checks passed on both builds after rebuilt negative
+controls and restoration; active production, tests and frozen historical runners were never changed,
+and no setting is adopted. `next/artifacts/p200-writer-cache/comparison-result.json` retains build
+identities, settings, complete results and limitations; P-254/P-255 remain unresolved, and neither
+current reader-cache tuning nor nine-domain production performance is settled by this writer-only trial.
+
+**Bounded saved-permission blocks — design-only handoff:** following the external review and its
+corrections, the next deliverable is a concrete storage-and-read contract and bounded comparison plan
+for owner review, not implementation, new measurement code or execution approval. Keep evidence →
+derivation → judgement and completed-run saved answers; the candidate under discussion changes only
+permission-classification persistence and retrieval inside SQLite. Preserve the analysis stages,
+genuine control-proof products, one transaction per object, cancellation/rollback and generation
+publication; exclude cross-object batching, parallel workers, cross-generation reuse, incremental
+findings and external payload files from this first candidate. Reviewer recommendations are proposals,
+not newly accepted product decisions, and any visible browsing behavior or wording needs approval.
+
+The predecessor was subsequently inspected at
+`C:\Users\jistrand\source\repos\razamus\SecureAD\src` (the alternative lab profile is
+`C:\Users\ba.admin\source\repos\razamus\SecureAD\src`). Its
+`SecureAD.Infrastructure/Storage/MaterializedAclPayload.cs` demonstrates binary records with a local
+string dictionary, but `DirectAceWriter.cs` feeds it normalized entries from
+`SecureAD.Core/Security/AceNormalizer.cs`: generic rights are expanded, entries sorted and duplicates
+removed. That payload lacks Next's original ordinals, callback application data and richer saved
+answers; its nullable-string encoding merges null and empty and its reader materializes the whole
+object. The predecessor also retains per-entry rows and computes permission aggregation during
+object-detail loading in `SecureAD.UI/ViewModels/ObjectDetailPanelViewModel.cs`; inherit the technique,
+not its evidence semantics, workload or timing baseline. Its `SecureAD.Infrastructure/Findings/FindingsService.cs`
+uses separate readers for parallel evaluators, not a shared connection that would justify parallelizing
+Next's existing loop.
+
+The draft contract must make the following concrete before any implementation:
+- Ordered SQLite payload blocks and their searchable object/page metadata, bounded encoding and
+  decoding buffers, dictionary scope/lifetime and explicit overflow/continuation for an oversized
+  entry, string, schema-support record or application-data value; no truncation or arbitrary security
+  processing limit disguised as a storage bound.
+- Lossless original order, ordinal, occurrence position, duplicates, raw masks/types/flags, GUID
+  presence flags, application data, owner/descriptor states, errors, per-right verdicts/reasons,
+  applicability/inheritance, schema support, resource scope and missing/empty/unreadable/incomplete
+  distinctions; saved interpretations remain distinct from authorization, takeover and Tier-0 paths.
+- Exact evidence/derivation/judgement/object binding and reference integrity, independently reconciled
+  object/entry/right counts, ordered manifests, block sequence/length/offset/integrity checks,
+  complete-object publication and explicit refusals for missing, duplicated, damaged or unsupported
+  data; a truncated payload and a correspondingly truncated manifest must not validate each other.
+- A genuinely bounded read contract and identified consumers: first page, continuation, total counts,
+  ordering/grouping/filtering and cancellation; never silently return a partial object from a
+  whole-object API or infer totals/risk from loaded rows. Partial loading is not incomplete captured
+  evidence, and a complete-object result must not be rebuilt eagerly behind the paging API.
+- Stage-aware interactions: in the scoped flow the first pass records descriptor coverage and
+  candidates; detailed control assessment arrives after admission. Coordinate within producing stages,
+  not by retaining every object until all later products exist. Schema interpretation is already
+  memoized by `PermissionClassificationProducer`; writer-side reuse must still detect conflicting
+  values for the same identifier and cannot cache rolled-back database identities as committed.
+
+Keep the two experimental questions separate: first bounded chunking/readback using the same encoding
+as the retained format-43 design where practical, then compact binary encoding of that bounded
+representation. Format 41 remains the production reference; format 43 changed several mechanisms and
+its historical timings are not a fresh control. Define first-use/first-page, subsequent-page and full
+object measurements separately, compare every answer across all blocks, and include whole judging,
+CPU, output size, allocations, peak memory, actual GC pause time and cancellation. Do not call reading
+one page a whole-object speedup, or choose production limits from the small lab; extra 35 MB or a
+46 ms read is not by itself proof of an unacceptable trade-off. Any later experiment needs its own
+approved bounds, current measured control before optimization, unchanged-input/build/runtime provenance,
+and retained outliers; do not silently restart completed campaigns or modify frozen runners.
+
+**Remaining diagnostic questions and evidence anchors for this review:** the returned BAWK1 offline
+reproduction took 133.74 s, including 115.12 s of object processing and about 7.03 s of nested rule
+clocks, leaving about 108.09 s outside those clocks in that interval; this is not the original reported
+108-second audit reconstructed. The supplied libraries and input also ran in about 26.86 s on
+S2DMEASOFT; BAWK1 used .NET 10.0.10/eight logical processors and S2DMEASOFT .NET 10.0.12/twenty,
+without proving which host/runtime/work effects explain the gap. Returned lab records remain under
+`C:\Users\jistrand\Downloads\judging-reproduction-results-20260921-010007-4ef019f0d6d24b3d88e0ee5a750dba7c`.
+The latest local diagnostic ledger attributed about 16.26 s of a 27.69 s run to permission storage
+including nested work, but controls of 34.18/31.11 s did not establish its timing overhead; do not
+double-count children or claim that ledger explains the slow lab or 229.85 s cache-trial execution.
+Use `next/artifacts/judging-walltime-diagnostic/timing-continuation/completed-comparison.json`, not
+the earlier paused handoff, for that qualification. Pre-P-248/current rebuilt Next comparisons show
+9.677→26.956 s mean judging, 23.245→352.264 MB output and 98.6% of the added elapsed cost in the object
+interval, but the current build additionally produces required saved products: this is not identical
+workload or a comparison against the predecessor application.
+
+All trial outcomes, identities and failures remain in `next/artifacts/`:
+`p249-pre248-comparison/comparison-result.json`, `p249-storage-comparison/result.json`,
+`permission-entry-command-reuse/comparison-result.json`, `current-object-permission-reuse/comparison-result.json`,
+`p251-storage-comparison/comparison-result.json`, `p249-object-storage/comparison-result.json` and
+`p200-writer-cache/comparison-result.json`. Active production is restored format 41, with no trial
+optimization adopted; P-254/P-255 remain open. The design session should extend an appropriate
+specification under `docs/specs/` (or create a clearly marked draft specification if none fits), not
+a new session-history document or tests comparing prose to code. Read the existing judgement specs
+first, preserve uncommitted work and all original/frozen artifacts, and stop at a concrete proposal
+for owner approval; no new builds/tests/profiling are required to draft it, and no live access,
+recapture, discovery activation, production-budget change, UI change, commit or push is authorized.
+
+The concrete proposal is now [P-249: bounded saved-permission blocks — draft](specs/P249-SAVED-PERMISSION-BLOCKS-DRAFT.md).
+It specifies the lossless storage/read contract, actual caller changes and separately bounded chunking
+and encoding comparisons; the subsequent bounded trial approval below supersedes its original design-only
+restriction for candidate B only, while format 41 stays active. The historical outcomes and unresolved
+qualifications above are unchanged; candidate C and production adoption remain unapproved.
+
+**Owner-approved final bounded P-249 trial:** after clarifying that paging already exists for object
+listings and control/membership results, but not for the complete permission list inside one object's
+Permissions section, the owner selected **“Approve the complete final trial”** in response to the
+explicit scope question covering implementation, offline verification, the Permissions-screen change
+and four comparison runs. Implement the draft's **B / chunked JSON** storage and genuinely bounded
+readback in an isolated candidate, including its proposed principal/entry paging and explicit large-value
+continuation presentation using the existing app pattern; do not change existing object-list or
+control/membership pagers. This includes the separate comparison-adapter work and contrast I:
+four fresh format-41/candidate/candidate/format-41 judging processes, with the first current control
+before candidate optimization, the draft's bounded reader workloads and complete saved-answer comparison.
+Preserve the input/build/runtime identities, every original occurrence and interpretation, genuine proof
+products, one transaction per object, rollback and generation publication; isolate TEMP/TMP before test
+loading/discovery and rebuild new deliberate defects and restorations. Active production remains format
+41; trial UI changes belong to the isolated candidate, and adoption requires a subsequent owner decision.
+
+The owner is being asked by a customer to provide a usable product: **this is one final bounded attempt,
+not an open-ended storage optimization campaign**. If it does not demonstrate a worthwhile benefit,
+retain its results and return to **finishing Stage 7, then the remaining rule coverage**, rather than
+starting another storage experiment; report practical speed/read/memory/cancellation trade-offs without
+inventing a lab-derived acceptance threshold. No binary-encoding candidate C, cache tuning, fifth judging
+run or extra run to chase a better timing is authorized. Preserve all pre-existing work, historical
+campaigns/outliers and the unresolved P-254/P-255 qualifications; the 133.74-second and 229.85-second runs
+remain unexplained. No live AD, recapture, original-result regeneration/deletion, discovery activation,
+production-budget/security-rule changes, migration/legacy readers, commit or push is authorized.
+
+**Final-trial execution checkpoint — unfinished, not a candidate verdict:** the first fresh format-41
+control and its bounded selected-object whole-reading workload are retained under
+`next/artifacts/p249-final-b/`, with the execution plan, exact source/build/input identities and all failed
+attempts. The owner explicitly resumed from that checkpoint without repeating run 1. The preservation
+check had found a changed timestamp on the retained original judgement's
+SQLite shared-memory companion file during selection preparation; the sealed database hashes still match,
+but the prior companion-file bytes were not hashed, so full artifact preservation cannot be claimed
+(`P-256`). Protected immutable access and write-denying input protection are now verified with a rebuilt
+deliberate defect and restoration; the historical uncertainty remains. B's isolated storage now holds block
+framing, exact value fragments, independent producer/source expectations, the publication ledger, exact
+large-value continuation, schema reuse with conflict refusal, and the whole per-object answer: descriptor,
+trustee, entry and right records, the `pc_group` and `pc_occurrence` directories a principal selection needs,
+the object and group projections computed with the screen's existing risk, denial and rights-summary rules,
+an independent stored readback that decodes every record again and compares typed values rather than only
+digests, and one transaction per object wired through the ledger with rollback and cancellation. Entry
+application data required exact byte values, so the value stream was extended to carry bytes as well as
+UTF-16 through the fragment layer's existing byte path. 154 focused offline checks pass, with ten rebuilt
+deliberate defects this session; one of them found a real fault in the new code, where two places decided
+one question about whether a value is stored by reference, and one check was split because it carried two
+independent claims. **The candidate still writes format 41 and is not qualified**: generation publication in
+the candidate writer, bounded readback, the Permissions screen and the remaining B/B/A runs are all still
+owed. Those must land as **one change**, because a candidate that writes blocks before its reader exists
+would produce a judgement it cannot itself open, and format 44 is selected only when that switchover is
+complete; the binding adapter carrying captured object, coverage and descriptor identities also needs a new
+public read path in `SecureAD.Evidence`. `next/artifacts/p249-final-b/continuation-04/result.json` records
+the bounded checkpoint and verification limits. Format 41 remains active, slot 1 is consumed and must not be
+silently repeated, and neither a completed comparison nor a benefit/failure of B has been established.
+
+**Owner priority reaffirmed:** continue the approved storage trial now, before finishing Stage 7 and
+the remaining rules, so a worthwhile storage improvement can be in place for later rule work. This
+continues the existing B-only implementation and remaining B/B/A comparison, not a new experiment,
+permission to repeat run 1 or approval to adopt an unverified candidate; improvements to saved-permission
+storage do not promise that every future rule's own calculation will become faster.
+
+**Owner decision, 2026-09-22: small fixed memory differences are not an acceptance criterion.**
+His words: *"memory is less of a concern to me. most modern systems have 16 GB of memory, if I run this
+on a server it would have a lot more than that, I don't want to quibble over 40 MB of memory."*
+A peak working set measured in tens or low hundreds of megabytes is therefore **not** a reason to
+reject a candidate or to complicate a design, and no session should trade clarity, fidelity or speed
+for a saving of that size. This supersedes the memory half of the P-249 adoption gate recorded above:
+judging speed, answer equality, browsing responsiveness and cancellation still decide adoption, and a
+memory figure is reported as information rather than weighed against them. It does **not** retire the
+*other* two regressions that stopped format 43 — maximum selected-object read latency and full-heap
+collection frequency — because those are felt as a screen that stalls, which is a responsiveness
+question and not a memory one.
+
+**What this decision does not yet settle:** whether memory that grows with the size of the forest is
+equally unimportant. Tens of megabytes on a laboratory of 8,383 objects is a different thing from a
+design that holds whole objects, whole principal lists or whole result sets at 347,000 objects and
+5.9 million access control entries, where the same shape reaches many gigabytes. Bounded reading is
+still required for **time to first screen** and for cancellation, not only for memory. Do not read this
+decision as permission for unbounded growth, and do not read it as a prohibition either; ask the owner
+when a specific design actually raises it.
 
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
@@ -1716,6 +2069,31 @@ monitor-check session or a prerequisite to continuing R2, R7 and R8.
 Those checks have not occurred here; preview approval is not real-product or forest acceptance.
 No directory operation or retained-Evidence access is authorized by this presentation decision.
 
+**Where judging time actually goes, measured 2026-09-22 — and it is not the storage format.** The
+object pass had one clock on it, covering the rules, and the rules were 7.03 s of a 115.12 s interval
+in the reproduction of the reported 108-second audit. The rest was measured by nothing, and three
+saved-permission storage redesigns were aimed into it. The first breakdown, on the sealed laboratory
+capture of 8,407 objects, put **15,544 ms of a 21,341 ms object pass into storing the saved
+permission classifications, against 297 ms to reach the verdicts being stored** — writing cost about
+fifty times more than deciding, and accounts for roughly 90% of the 17.3 s that P-248's saved
+products added. Deriving the control edges, which is the analysis this product exists for, was
+**19 ms**.
+
+**Splitting that write twice over says the cost is SQL statements.** Shared entries 35.8%,
+transaction commits 30.5% at 587 µs across 8,407 commits, entry rows 16.5%, schema support 10.2%;
+and inside shared entries, 68.2% the insert and 19.4% a nested trustee-meaning proof write, with the
+JSON comparison key only 6.1%. About **1.25 million statements** are issued per run, each on a newly
+created command with its SQL re-prepared, plus a verification `SELECT` after every schema write,
+twice per entry, against a table holding a few hundred rows.
+
+**This is why the storage trials failed, and it was knowable at any point.** P-251 halved the result
+file, 352,264,192 to 187,617,280 bytes, with no repeatable judging gain; P-249's first candidate
+allocated 8.65% less and ran slower. **Fewer bytes is not fewer statements**, and no format redesign
+changes the command, transaction, nested-write or verification counts. The format-44 candidate would
+have done the same thing, and its three remaining judging runs were not spent finding that out.
+Artifacts are under `next/artifacts/judging-object-breakdown/`; the instrumentation is permanent and
+travels to the laboratory and to production, which has still never been measured.
+
 ## The forest this is built for
 
 **The owner's production forest is the scale that matters, and the laboratory is not it.** Recorded
@@ -1732,11 +2110,21 @@ will reach a confident wrong answer.
 | Delegations | ~1.3 million |
 | Findings | ~34,000 |
 | Directory depth | deep, average distinguished name about 97 characters |
+| Predecessor's stored output after a production run | ~17 GB |
 
 **Where these come from, exactly.** They were first found in the predecessor's
 `tests/SecureAD.Infrastructure.Tests/Performance/ObjectDetailProfiler.cs`, which states them as the
 production environment it profiles against. **The owner confirmed them as still correct on
 2026-09-07.** They are the shape to design and measure against.
+
+**The 17 GB is the owner's own figure for the predecessor's production output, supplied 2026-09-22,**
+and it is the only production *size* measurement this project has. Treat it as the order of magnitude
+to plan against, not as a budget the rebuild must beat: the predecessor stored a deduplicated,
+canonically ordered, generic-expanded ACL projection and **no raw descriptor bytes at all**, while
+this product keeps the sealed original bytes and every distinction that projection dropped. The two
+are not measuring the same thing, and the rebuild also splits its output into a sealed evidence file
+and a separate judgement file. No production size has been measured for this product, and the
+approved P-249 comparison runs are laboratory runs, so they will not establish one.
 
 **The laboratory is `ad.lab`, about 8,383 objects, and the owner's words for it are that it "falls
 far short" of production in both scale and complexity.** It is genuinely useful for testing

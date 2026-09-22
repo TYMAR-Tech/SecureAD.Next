@@ -206,7 +206,7 @@ public sealed class FullControlStorageTests
         JudgementSchema.CreateTables(connection);
         var result = Evaluation(FullControlEvaluatorTests.Allow(0));
         var invalid = result with { FullControlAssessments = [result.FullControlAssessments[0] with { SupportingCapabilities = [] }] };
-        Assert.Throws<InvalidOperationException>(() => ControlEdgeStorage.Write(connection, invalid, ownershipTarget: null));
+        Assert.Throws<InvalidOperationException>(() => StorageWrites.ControlEdges(connection, invalid, ownershipTarget: null));
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM control_object";
         Assert.Equal(0L, command.ExecuteScalar());

@@ -246,4 +246,33 @@ public sealed partial class OpenedRunResultsTests
         command.CommandText = sql;
         command.ExecuteNonQuery();
     });
+
+    /// <summary>
+    /// Restores every shared reading's digest after a deliberate change to its payload.
+    /// </summary>
+    /// <remarks>
+    /// Format 42 stores each distinct reading once under a digest, so a test that plants recorded
+    /// wording has to restore the digest or the reader refuses the record and the case proves
+    /// nothing about whether the words were read rather than recomputed.
+    /// </remarks>
+    private static void RepairReadingFingerprints(string directory) => SelfMembershipCoverageTests.Mutate(directory, connection =>
+    {
+        var payloads = new Dictionary<long, string>();
+        using (var read = connection.CreateCommand())
+        {
+            read.CommandText = "SELECT id,payload FROM permission_classification_reading";
+            using var rows = read.ExecuteReader();
+            while (rows.Read()) payloads[rows.GetInt64(0)] = rows.GetString(1);
+        }
+
+        foreach (var (id, payload) in payloads)
+        {
+            using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE permission_classification_reading SET fingerprint=$fingerprint WHERE id=$id";
+            update.Parameters.AddWithValue("$fingerprint", System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(payload)));
+            update.Parameters.AddWithValue("$id", id);
+            update.ExecuteNonQuery();
+        }
+    });
 }
