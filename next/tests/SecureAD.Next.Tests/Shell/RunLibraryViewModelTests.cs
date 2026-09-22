@@ -221,7 +221,8 @@ public sealed class RunLibraryViewModelTests
             "The drive filled up.",
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             RunAnnotation.None,
-            Scope: null);
+            Scope: null,
+            new RunProducts(HasDerivedFacts: false, HasJudgement: false));
 
     /// <summary>Marking a run as the baseline records it against that run.</summary>
     [Fact]
@@ -292,7 +293,8 @@ public sealed class RunLibraryViewModelTests
             null,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             new RunAnnotation(null, null, isBaseline),
-            RunScope.Of(identity, [DomainCoverage.Read("contoso.com")]));
+            RunScope.Of(identity, [DomainCoverage.Read("contoso.com")]),
+            new RunProducts(HasDerivedFacts: true, HasJudgement: true));
 
     /// <summary>
     /// A sealed run as the library would list it. The moment is recorded, because a sealed run
@@ -307,7 +309,8 @@ public sealed class RunLibraryViewModelTests
             null,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             RunAnnotation.None,
-            Scope: null);
+            Scope: null,
+            new RunProducts(HasDerivedFacts: true, HasJudgement: true));
 
     /// <summary>
     /// What the operator typed reaches the run he had selected, and not some other run.

@@ -276,7 +276,13 @@ public sealed class RunLibrary
                 observation.Value.Detail,
                 MomentOf(directory, observation.Value.RecordedUtc),
                 RunAnnotations.Read(directory),
-                ScopeOf(directory, observation.Value.State)));
+                ScopeOf(directory, observation.Value.State),
+                // Asked only of a sealed run. A failed, interrupted or damaged bundle publishes
+                // nothing, and reporting "no judgement" for one would answer a question about
+                // analysis when what the operator needs to know is what became of the capture.
+                observation.Value.State == RunState.Sealed
+                    ? RunProductsReader.Observe(directory)
+                    : new RunProducts(HasDerivedFacts: false, HasJudgement: false)));
         }
 
         return Result<IReadOnlyList<RunListing>>.Success(

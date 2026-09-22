@@ -90,8 +90,76 @@ public sealed class RunSummaryViewModelTests
     public void ARunWithADetailReportsIt() =>
         Assert.True(Summary(RunState.Failed, "The drive filled up.").HasDetail);
 
+    [Fact]
+    public void ACaptureOnlyRunSaysNothingWasAssessed()
+    {
+        var row = Summary(RunState.Sealed, products: new RunProducts(false, false));
+
+        Assert.Equal("Evidence sealed — not assessed", row.Analysis);
+        Assert.True(row.NothingAssessed);
+        Assert.False(row.HasResults);
+    }
+
+    [Fact]
+    public void ACaptureOnlyRunIsOfferedDerivingAndNotJudging()
+    {
+        var row = Summary(RunState.Sealed, products: new RunProducts(false, false));
+
+        Assert.True(row.MayDerive);
+        // Judging rests on derived facts. Offering it here would offer an analysis that would rest
+        // on nothing, and the operator would have no way to know that from the button.
+        Assert.False(row.MayJudge);
+    }
+
+    [Fact]
+    public void ADerivedRunIsOfferedJudgingAndNotDerivingAgain()
+    {
+        var row = Summary(RunState.Sealed, products: new RunProducts(HasDerivedFacts: true, HasJudgement: false));
+
+        Assert.Equal("Facts derived — not judged", row.Analysis);
+        Assert.True(row.MayJudge);
+        Assert.False(row.MayDerive);
+        Assert.False(row.HasResults);
+    }
+
+    [Fact]
+    public void AJudgedRunIsOfferedNeitherAndHasResults()
+    {
+        var row = Summary(RunState.Sealed, products: new RunProducts(true, true));
+
+        Assert.Equal("Judged", row.Analysis);
+        Assert.False(row.MayDerive);
+        Assert.False(row.MayJudge);
+        Assert.True(row.HasResults);
+    }
+
+    /// <summary>
+    /// A run that did not finish is asked what became of the capture, not what was made from it.
+    /// </summary>
+    /// <remarks>
+    /// Saying "not assessed" about a failed run would answer a question about analysis while the
+    /// operator needs to know the drive filled up. The products axis is silent here on purpose.
+    /// </remarks>
+    [Theory]
+    [InlineData(RunState.Failed)]
+    [InlineData(RunState.Cancelled)]
+    [InlineData(RunState.Interrupted)]
+    [InlineData(RunState.Damaged)]
+    [InlineData(RunState.InProgress)]
+    public void ARunThatDidNotFinishSaysNothingAboutAnalysis(RunState state)
+    {
+        var row = Summary(state, products: new RunProducts(false, false));
+
+        Assert.Null(row.Analysis);
+        Assert.False(row.HasAnalysis);
+        Assert.False(row.NothingAssessed);
+        Assert.False(row.MayDerive);
+        Assert.False(row.MayJudge);
+    }
+
     private static RunSummaryViewModel Summary(
-        RunState state, string? detail = null, RunAnnotation? annotation = null) =>
+        RunState state, string? detail = null, RunAnnotation? annotation = null,
+        RunProducts? products = null) =>
         new(new RunListing(
             "forest-20260101-000000",
             @"D:\audits\forest",
@@ -99,5 +167,6 @@ public sealed class RunSummaryViewModelTests
             detail,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             annotation ?? RunAnnotation.None,
-            Scope: null));
+            Scope: null,
+            products ?? new RunProducts(HasDerivedFacts: true, HasJudgement: true)));
 }

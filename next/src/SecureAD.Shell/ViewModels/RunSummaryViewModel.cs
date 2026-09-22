@@ -153,6 +153,54 @@ internal sealed class RunSummaryViewModel
     /// <summary>Why, where the state does not speak for itself. Null for a run that finished.</summary>
     public string? Detail => _listing.Detail;
 
+    /// <summary>Whether this run's evidence was sealed and nothing has been made from it.</summary>
+    /// <remarks>
+    /// <b>A sealed run and an analysed run are the same lifecycle state</b>, which is why this is
+    /// asked of the products axis and not of <see cref="RunState"/>. Capturing without analysing is
+    /// an ordinary thing to do - it is what the command line's <c>--capture</c> has always offered -
+    /// and a run in that condition is complete evidence, not a failure.
+    /// </remarks>
+    public bool NothingAssessed => FinishedCleanly && _listing.Products.NothingAssessed;
+
+    /// <summary>Whether facts have been derived but nothing has judged them.</summary>
+    public bool AwaitingJudgement =>
+        FinishedCleanly && _listing.Products.HasDerivedFacts && !_listing.Products.HasJudgement;
+
+    /// <summary>Whether this run holds results to open.</summary>
+    public bool HasResults => FinishedCleanly && _listing.Products.HasJudgement;
+
+    /// <summary>
+    /// What has been made from this run's evidence, or that nothing has. Null when the run did not
+    /// finish, because what became of the capture is the answer that matters then.
+    /// </summary>
+    /// <remarks>
+    /// <b>No counters accompany this, deliberately.</b> A run nobody judged has no findings, no
+    /// dangerous permissions and no control edges - and showing those as zero is the failure
+    /// <c>docs/decisions/0002-absent-view-means-degraded-run.md</c> exists to prevent: a clean
+    /// number is the more reassuring of the two readings, and an operator will take it. The absence
+    /// is stated in words instead.
+    /// </remarks>
+    public string? Analysis => _listing.State != RunState.Sealed ? null
+        : _listing.Products switch
+        {
+            { HasJudgement: true } => "Judged",
+            { HasDerivedFacts: true } => "Facts derived — not judged",
+            _ => "Evidence sealed — not assessed",
+        };
+
+    /// <summary>Whether there is anything to say about what was made from the evidence.</summary>
+    public bool HasAnalysis => Analysis is not null;
+
+    /// <summary>Whether deriving facts is the next thing this run could be offered.</summary>
+    public bool MayDerive => NothingAssessed;
+
+    /// <summary>Whether judging is the next thing this run could be offered.</summary>
+    /// <remarks>
+    /// Judging rests on derived facts, so a run holding none is offered deriving first rather than
+    /// a judging that would rest on nothing.
+    /// </remarks>
+    public bool MayJudge => AwaitingJudgement;
+
     /// <summary>Whether there is a detail worth a line of its own.</summary>
     public bool HasDetail => !string.IsNullOrWhiteSpace(_listing.Detail);
 
