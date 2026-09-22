@@ -113,6 +113,11 @@ internal static class PermissionClassificationStorage
             // THE STORED PAYLOAD IS COMPARED, NOT ASSUMED. Sharing by digest means a collision would
             // quietly give two different readings one row, and every entry pointing at it would then
             // report a verdict nothing produced.
+            // THE STORED PAYLOAD IS COMPARED, NOT ASSUMED. Sharing by digest means a collision would
+            // quietly give two different readings one row, and every entry pointing at it would then
+            // report a verdict nothing produced. Mutation-tested 2026-09-22: dropping the comparison
+            // let the second object adopt another reading's words and
+            // P249SharedReadingIsNotAdoptedWhenTheStoredWordsDiffer failed with no exception thrown.
             if (!read.Read() || read.GetString(1) != payload) throw Invalid();
             var id = read.GetInt64(0);
             session.AddReading(key, id);
@@ -228,7 +233,9 @@ internal static class PermissionClassificationStorage
                 if (read.GetInt32(offset) != entries.Count) throw Invalid();
                 var payload = read.GetString(offset + 2);
                 // A SHARED ROW IS READ BY EVERY ENTRY POINTING AT IT, so a single damaged payload
-                // would misreport hundreds of entries rather than one.
+                // would misreport hundreds of entries rather than one. Mutation-tested 2026-09-22:
+                // disabling this check let a tampered summary through and
+                // P249SharedReadingRefusesATamperedPayload failed with no exception thrown.
                 if (!PermissionWriteSession.Fingerprint(payload).Bytes.AsSpan()
                         .SequenceEqual((byte[])read.GetValue(offset + 5))) throw Invalid();
                 var reading = JsonSerializer.Deserialize<Reading>(payload) ?? throw Invalid();

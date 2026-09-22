@@ -191,6 +191,22 @@ public sealed class SavedPermissionClassificationTests
     }
 
     [Fact]
+    public void P249SharedReadingRefusesATamperedPayload()
+    {
+        var result = Produce(Permissions(Ace(0, Holder, 0x40000)));
+        var directory = Store(result);
+        // DELIBERATELY NOT REFINGERPRINTED. Changing only the summary leaves every semantic check
+        // satisfied, so the digest covering the shared row is the one thing standing between a
+        // tampered reading and an administrator being shown words nothing produced. Format 42 made
+        // that row shared, so this is also the difference between misreporting one entry and
+        // misreporting every entry that references it.
+        Mutate(directory, "UPDATE permission_classification_reading SET payload=json_set(payload,'$.Summary','tampered')");
+        using var reader = JudgementReader.Open(directory).Value;
+
+        Assert.Throws<InvalidDataException>(() => reader.ReadPermissionClassification(result.Permissions.DistinguishedName));
+    }
+
+    [Fact]
     public void P248ClassificationRefusesMissingSchemaSupport()
     {
         var result = Produce(Permissions(Ace(0, Holder, 0x20) with { ObjectTypeGuid = "unknown-guid", HasObjectType = true }));

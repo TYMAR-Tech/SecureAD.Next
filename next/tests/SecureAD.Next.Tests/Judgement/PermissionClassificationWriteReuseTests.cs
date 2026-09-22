@@ -50,6 +50,21 @@ public sealed class PermissionClassificationWriteReuseTests
     }
 
     [Fact]
+    public void P249SharedReadingIsNotAdoptedWhenTheStoredWordsDiffer()
+    {
+        using var store = new Store();
+        var first = Produce(Entry(2, FirstGuid, null));
+        store.Write(first);
+        store.StageCollidingReading();
+        store.ForgetSharedRows();
+        var next = Produce(Entry(2, FirstGuid, null));
+        next = next with { Permissions = next.Permissions with { DistinguishedName = "OU=Other,DC=contoso,DC=com" } };
+        store.Observe(next);
+
+        Assert.Throws<InvalidDataException>(() => store.Write(next));
+    }
+
+    [Fact]
     public void ConflictingCommittedSupportIsNotHiddenByAnotherObject()
     {
         using var store = new Store();
@@ -115,7 +130,7 @@ public sealed class PermissionClassificationWriteReuseTests
         private readonly Guid generation = Guid.NewGuid();
         private readonly HashSet<string> observed = new(StringComparer.Ordinal);
         private PreparedStatements statements = null!;
-        private readonly PermissionWriteSession session = new();
+        private PermissionWriteSession session = new();
         private int written;
 
         public Store()
@@ -131,6 +146,23 @@ public sealed class PermissionClassificationWriteReuseTests
         {
             if (observed.Add(value.Permissions.DistinguishedName))
                 StorageWrites.ControlEdges(Connection, new(value.Permissions.DistinguishedName, null, null, "Computed", ControlUncertainty.None, []), null);
+        }
+
+        /// <summary>Forgets the rows this run has shared, as a later run would not know them.</summary>
+        public void ForgetSharedRows() => session = new PermissionWriteSession();
+
+        /// <summary>Replaces a stored reading's words while leaving the digest that covers it.</summary>
+        /// <remarks>
+        /// A genuine SHA-256 collision cannot be produced here, so the condition it would create is
+        /// staged instead: a stored row whose fingerprint matches what the writer is about to
+        /// compute, holding a different reading. Without the comparison in the writer, the next
+        /// object would silently adopt those words as its own.
+        /// </remarks>
+        public void StageCollidingReading()
+        {
+            using var command = Connection.CreateCommand();
+            command.CommandText = "UPDATE permission_classification_reading SET payload=json_set(payload,'$.Summary','someone else''s words')";
+            command.ExecuteNonQuery();
         }
 
         public void Write(PermissionClassification value, CancellationToken token = default)
