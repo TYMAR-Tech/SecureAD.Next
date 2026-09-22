@@ -152,6 +152,28 @@ public sealed record DomainPreflight(
     public bool ControllerWasNamedByOperator { get; init; }
 
     /// <summary>
+    /// Whether this domain is being read from a controller in the capture machine's own site, or
+    /// null where the machine matched no site and there was nothing to compare against.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Three states, and the third is why this is not <c>DomainSelection.IsInOperatorSite</c>
+    /// carried across unchanged.</b> That flag is false both for a domain with no candidate in the
+    /// operator's site and for a run whose machine has no site at all, because a boolean has nowhere
+    /// to put the difference. The first is a fact about the customer's forest; the second is a fact
+    /// about where the audit was run from, and reporting it as <i>no</i> asserts something nobody
+    /// established.
+    /// </para>
+    /// <para>
+    /// <b>It is a relationship and never a place.</b> No site name and no host, because the only
+    /// question it exists to answer - was this domain read beside the machine or across a link,
+    /// which is the whole of <c>P-258</c> - needs neither. That is also what lets it travel in the
+    /// portable run summary, which may carry no name out of a customer's forest but a domain's.
+    /// </para>
+    /// </remarks>
+    public bool? ControllerIsInOperatorSite { get; init; }
+
+    /// <summary>
     /// Whether any rung of the ladder answered. The first of the four questions.
     /// </summary>
     public bool Answered => RungReached is not null;

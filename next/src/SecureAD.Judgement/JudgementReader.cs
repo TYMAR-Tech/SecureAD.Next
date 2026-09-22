@@ -634,6 +634,56 @@ public sealed partial class JudgementReader : IDisposable
         return new StoredRuleExecutions(ReadExecutions(), Description.State);
     }
 
+    /// <summary>
+    /// How many findings this judging wrote, by severity, counted in the database.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Counted rather than derived from a list of findings</b>, for the reason
+    /// <see cref="ReadFindingCountsByRule"/> gives: the caller that wants this wants it
+    /// <i>instead of</i> the findings, and a real forest's judgement holds far too many rows to
+    /// read in order to arrive at four numbers.
+    /// </para>
+    /// <para>
+    /// <b>A severity with no findings has no row, and that is not a zero.</b> The dictionary says
+    /// what was found, not what could have been - a caller wanting to know whether anyone looked
+    /// asks <see cref="ReadRuleExecutions"/>, which is the only thing that can answer it.
+    /// </para>
+    /// <para>
+    /// <b>Internal, because the caller that wants it is in this assembly and gate 4 is right about
+    /// the rest.</b> A dictionary of counts handed outside cannot say whether anyone looked, and
+    /// the thing that can - <see cref="ReadRuleExecutions"/> - is a separate call a distant caller
+    /// could forget to make. <c>JudgingRun</c> makes both, together, when it writes the run's
+    /// portable summary.
+    /// </para>
+    /// </remarks>
+    /// <returns>Each severity some finding has, and how many have it.</returns>
+    internal IReadOnlyDictionary<Severity, int> ReadFindingCountsBySeverity()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var counts = new Dictionary<Severity, int>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT severity, COUNT(*) FROM finding GROUP BY severity";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            // A severity this build does not recognise is left out rather than folded into the
+            // nearest one. Counting it as something else would misreport how bad a forest is,
+            // which is the one thing a summary leaving the customer's environment must not do.
+            if (Enum.TryParse<Severity>(reader.GetString(0), out var severity)
+                && Enum.IsDefined(severity))
+            {
+                counts[severity] = reader.GetInt32(1);
+            }
+        }
+
+        return counts;
+    }
+
     private IReadOnlyList<StoredRuleExecution> ReadExecutions()
     {
         var missing = ReadMissingInputs();

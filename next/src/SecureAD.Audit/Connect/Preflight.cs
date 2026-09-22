@@ -290,6 +290,16 @@ public static class Preflight
             SelectionWasInformed = chosen?.IsComplete ?? false,
             Alternatives = chosen?.Failover ?? [],
             ControllerWasNamedByOperator = chosen?.WasOverridden ?? false,
+
+            // NULL WHERE THERE WAS NOTHING TO COMPARE AGAINST, and that is the only reason this is
+            // not the selection's own flag passed straight through. DomainSelection.IsInOperatorSite
+            // is false for a domain with no candidate in the operator's site and equally false for a
+            // run whose machine matched no subnet the forest declares - so reading it alone turns
+            // "we never had a site" into "the controller was elsewhere". The operator's site is the
+            // thing that says which of the two this is, and it is known here.
+            ControllerIsInOperatorSite = selection.OperatorSite is null || chosen is null
+                ? null
+                : chosen.IsInOperatorSite,
         };
     }
 }

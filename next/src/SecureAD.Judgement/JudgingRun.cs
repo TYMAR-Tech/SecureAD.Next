@@ -2,6 +2,7 @@ using System.Globalization;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
@@ -330,6 +331,23 @@ public static class JudgingRun
         }
     }
 
+    /// <summary>
+    /// Judges one bundle, and appends what it did to the run's portable summary.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A wrapper, because the summary is read back out of the judgement store</b> and
+    /// <see cref="JudgeIntoStore"/> holds that store open until it returns. Reading it from inside
+    /// the body would be reading a file something still has open, which is the shape P-255 records
+    /// an unexplained SQLite failure against.
+    /// </para>
+    /// <para>
+    /// <b>Nothing is appended for a judging that refused to start.</b> A missing seal or an
+    /// unopenable bundle leaves no store to read and no judging to describe; the run log says what
+    /// happened, and an absent section claims nothing where a section of noughts would claim a
+    /// forest nobody found anything in.
+    /// </para>
+    /// </remarks>
     private static Result<JudgementRunState> JudgeCore(
         string bundleDirectory,
         IReadOnlyList<IRule> rules,
@@ -348,6 +366,118 @@ public static class JudgingRun
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
         IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
         bool offlineSelection = false)
+    {
+        var account = new JudgingAccount();
+        var began = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        var judged = JudgeIntoStore(
+            bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
+            discoveryBudget, memberBudget, startedUtc, evaluationAsOf, progress, log, cancellationToken,
+            tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
+            offlineSelection, account);
+
+        if (judged.IsSuccess)
+        {
+            AppendPortableSummary(
+                bundleDirectory, System.Diagnostics.Stopwatch.GetElapsedTime(began), account);
+        }
+
+        return judged;
+    }
+
+    /// <summary>
+    /// What a judging did, gathered as it goes because the objects are streamed and gone.
+    /// </summary>
+    /// <remarks>
+    /// Durations only, and the counts that travel with them. What was found is read back out of
+    /// the store, per the owner's decision of 2026-09-22: a summary that counted its own findings
+    /// would be a second answer to a question the judgement has already answered.
+    /// </remarks>
+    private sealed class JudgingAccount
+    {
+        /// <summary>Where the object pass spent its time, which is what P-257 turns on.</summary>
+        public IReadOnlyList<StageTiming> Phases { get; set; } = [];
+
+        /// <summary>One row per scheduled rule, and what became of it.</summary>
+        public IReadOnlyList<RuleTiming> Rules { get; set; } = [];
+
+        /// <summary>How many captured objects were streamed through the pass.</summary>
+        public long ObjectsJudged { get; set; }
+    }
+
+    /// <summary>
+    /// Appends what this judging did to the run's portable summary.
+    /// </summary>
+    /// <remarks>
+    /// <b>Findings are counted by severity in the database and never listed.</b> A finding names
+    /// the object it is about, so the findings themselves stay in the bundle; how many there were
+    /// of each kind is the part that may travel.
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's directory.</param>
+    /// <param name="elapsed">How long judging took.</param>
+    /// <param name="account">What the run measured while it was happening.</param>
+    private static void AppendPortableSummary(
+        string bundleDirectory, TimeSpan elapsed, JudgingAccount account)
+    {
+        var opened = JudgementReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return;
+
+        using var reader = opened.Value!;
+        var executions = reader.ReadRuleExecutions();
+
+        PortableSummaryFile.AppendJudging(
+            bundleDirectory,
+            PortableSummaryReading.OfJudging(
+                executions.State.ToString(),
+                (long)elapsed.TotalMilliseconds,
+                account.ObjectsJudged,
+                account.Phases,
+                account.Rules,
+                reader.ReadFindingCountsBySeverity(),
+                Problems(executions)));
+    }
+
+    /// <summary>
+    /// Turns the rules that did not reach every verdict into the shape the summary may carry.
+    /// </summary>
+    /// <remarks>
+    /// <b>Counted by outcome rather than named.</b> Which rule stopped is in the run log and on the
+    /// rules table of the summary itself; this is the tally beside it, and the stored error text is
+    /// deliberately not read because a rule that threw quotes what it was looking at.
+    /// </remarks>
+    /// <param name="executions">Every scheduled rule, read back.</param>
+    /// <returns>One error per rule that did not succeed.</returns>
+    private static IEnumerable<AuditError> Problems(StoredRuleExecutions executions) =>
+        executions.Executions
+            .Where(execution => execution.Outcome != RuleExecutionOutcome.Succeeded)
+            .Select(execution => AuditError.Create(
+                ErrorCategory.Evidence,
+                "Rule" + execution.Outcome,
+                ErrorSeverity.Degraded,
+                $"A rule ended as {execution.Outcome} rather than reaching every verdict.",
+                context: null));
+
+    private static Result<JudgementRunState> JudgeIntoStore(
+        string bundleDirectory,
+        IReadOnlyList<IRule> rules,
+        IReadOnlyList<SelfMembershipRequest> selfMembershipRequests,
+        SelfMembershipBudget selfMembershipBudget,
+        bool automaticDiscovery,
+        SelfMembershipDiscoveryBudget? discoveryBudget,
+        MemberAttributionBudget? memberBudget,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress,
+        IRunLog log,
+        CancellationToken cancellationToken,
+        bool tier0DiscoveryRequested,
+        IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
+        IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
+        bool offlineSelection,
+        JudgingAccount account)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -1044,6 +1174,23 @@ public static class JudgingRun
                         CultureInfo.InvariantCulture)),
             ]);
 
+        // HANDED OUT BECAUSE NOTHING PERSISTS IT. The judgement records what each rule concluded;
+        // how long each took, and where the object pass spent its time, are known here and nowhere
+        // afterwards - and the per-phase breakdown is the thing P-257 was found with.
+        account.ObjectsJudged = objectsRead;
+        account.Phases = work.Timings();
+        account.Rules =
+        [
+            .. tallies
+                .OrderByDescending(tally => tally.Elapsed)
+                .Select(tally => new RuleTiming(
+                    tally.RuleId,
+                    tally.Outcome.ToString(),
+                    tally.Judged,
+                    tally.NotApplicable,
+                    (long)tally.Elapsed.TotalMilliseconds)),
+        ];
+
         return state;
     }
 
@@ -1217,22 +1364,7 @@ public static class JudgingRun
         /// <param name="objects">How many objects the pass read, so a bucket can be read per object.</param>
         public void Note(IRunLog log, string phase, long objects)
         {
-            (string Part, TimeSpan Elapsed)[] buckets =
-            [
-                ("read-permissions", Read.Elapsed),
-                ("classify-permissions", Verdicts.Elapsed),
-                ("store-permissions", StorePermissions.Elapsed),
-                ("derive-control-edges", ControlDerive.Elapsed),
-                ("store-control-edges", ControlWrite.Elapsed),
-                ("tier0-scan", Tier0Scan.Elapsed),
-                ("membership-scan", MembershipScan.Elapsed),
-                ("rules", Rules.Elapsed),
-                ("commit", Commit.Elapsed),
-                ("store-laps", Laps.Elapsed),
-                ("complete-laps", LapsComplete.Elapsed),
-                ("complete-permissions", ClosePermissions.Elapsed),
-                ("unobserved-roots", UnobservedRoots.Elapsed),
-            ];
+            var buckets = Buckets();
 
             foreach (var bucket in buckets.OrderByDescending(b => b.Elapsed))
             {
@@ -1261,6 +1393,53 @@ public static class JudgingRun
 
         private static string Milliseconds(TimeSpan value) =>
             ((long)value.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Where the object pass spent its time, slowest first, beside what it failed to account
+        /// for.
+        /// </summary>
+        /// <remarks>
+        /// <b>The same buckets the log gets, from the same list.</b> The portable summary and the
+        /// run log are two readers of one breakdown; building a second list for the summary would
+        /// be two accounts of where a judging's time went, and the first sign of them disagreeing
+        /// would be a customer holding figures the log cannot reproduce.
+        /// </remarks>
+        /// <returns>One timing per bucket, then the interval nothing measured.</returns>
+        public IReadOnlyList<StageTiming> Timings()
+        {
+            var buckets = Buckets();
+            var measured = buckets.Aggregate(TimeSpan.Zero, (total, bucket) => total + bucket.Elapsed);
+
+            return
+            [
+                .. buckets
+                    .OrderByDescending(bucket => bucket.Elapsed)
+                    .Select(bucket => new StageTiming(bucket.Part, (long)bucket.Elapsed.TotalMilliseconds)),
+
+                // AN UNEXPLAINED INTERVAL IS THE FINDING, and absorbing it into the nearest bucket
+                // is how it stayed unexplained for eight sessions. It travels with the breakdown
+                // rather than being left for a reader to subtract.
+                new StageTiming("unaccounted", (long)(Pass.Elapsed - measured).TotalMilliseconds),
+            ];
+        }
+
+        /// <summary>The flat, never-nested buckets the pass measured, in a fixed order.</summary>
+        private (string Part, TimeSpan Elapsed)[] Buckets() =>
+        [
+            ("read-permissions", Read.Elapsed),
+            ("classify-permissions", Verdicts.Elapsed),
+            ("store-permissions", StorePermissions.Elapsed),
+            ("derive-control-edges", ControlDerive.Elapsed),
+            ("store-control-edges", ControlWrite.Elapsed),
+            ("tier0-scan", Tier0Scan.Elapsed),
+            ("membership-scan", MembershipScan.Elapsed),
+            ("rules", Rules.Elapsed),
+            ("commit", Commit.Elapsed),
+            ("store-laps", Laps.Elapsed),
+            ("complete-laps", LapsComplete.Elapsed),
+            ("complete-permissions", ClosePermissions.Elapsed),
+            ("unobserved-roots", UnobservedRoots.Elapsed),
+        ];
     }
 
     /// <summary>

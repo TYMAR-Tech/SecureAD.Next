@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Globalization;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 
 namespace SecureAD.Derivation;
@@ -68,6 +70,124 @@ public static class Stage2aRun
         IRunLog log,
         CancellationToken cancellationToken)
     {
+        var clock = new PhaseClock();
+        var began = Stopwatch.GetTimestamp();
+
+        var derived = DeriveIntoStore(
+            bundleDirectory, budget, startedUtc, progress, log, clock, cancellationToken);
+
+        // ONLY ONCE THE STORE IS CLOSED. The section is read back out of the derivation, and the
+        // writer inside DeriveIntoStore holds it open until that method returns - which is the
+        // whole reason this wrapper exists rather than a few lines at the end of the body.
+        if (derived.IsSuccess)
+            AppendPortableSummary(bundleDirectory, Stopwatch.GetElapsedTime(began), clock.Phases);
+
+        return derived;
+    }
+
+    /// <summary>
+    /// Appends what this derivation did to the run's portable summary.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Counts and states are read back; only the durations come from the run.</b> That is the
+    /// owner's decision of 2026-09-22, and here it also means the summary reports what a later
+    /// reader of this store will see rather than what the pass believed it had written.
+    /// </para>
+    /// <para>
+    /// <b>Appended, because a capture-only run is derived later and possibly elsewhere.</b> A
+    /// bundle derived twice gets two derivation sections, which is what the run log does and is the
+    /// honest record.
+    /// </para>
+    /// <para>
+    /// <b>A summary that cannot be written never stops anything</b>, which is why nothing here
+    /// examines a result. Losing the account of a derivation is not a reason to lose it.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's directory.</param>
+    /// <param name="elapsed">How long deriving took.</param>
+    /// <param name="phases">Where that time went.</param>
+    private static void AppendPortableSummary(
+        string bundleDirectory, TimeSpan elapsed, IReadOnlyList<StageTiming> phases)
+    {
+        var opened = DerivationReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return;
+
+        using var reader = opened.Value!;
+        var stored = reader.Read();
+
+        PortableSummaryFile.AppendDerivation(
+            bundleDirectory,
+            PortableSummaryReading.OfDerivation(
+                stored.Description.State.ToString(),
+                (long)elapsed.TotalMilliseconds,
+                stored.Size.Principals,
+                stored.Size.NestingEdges,
+                phases,
+                Problems(stored)));
+    }
+
+    /// <summary>
+    /// Turns the phases that did not simply succeed into the shape the summary may carry them in.
+    /// </summary>
+    /// <remarks>
+    /// <b>The stored error text is deliberately not read.</b> A phase records the message it threw,
+    /// which quotes whatever it was working on; the phase's own name and the outcome are what a
+    /// reader outside that environment can act on, and <see cref="AuditError.Create"/> builds the
+    /// code from them so it cannot be a freeform string.
+    /// </remarks>
+    /// <param name="stored">The derivation, read back.</param>
+    /// <returns>One error per phase that failed or was degraded.</returns>
+    private static IEnumerable<AuditError> Problems(StoredDerivation stored) =>
+        stored.Phases
+            .Where(phase => phase.Outcome
+                is DerivationPhaseOutcome.Failed or DerivationPhaseOutcome.Degraded)
+            .Select(phase => AuditError.Create(
+                ErrorCategory.Evidence,
+                phase.Outcome == DerivationPhaseOutcome.Failed
+                    ? "DerivationPhaseFailed"
+                    : "DerivationPhaseDegraded",
+                phase.Outcome == DerivationPhaseOutcome.Failed
+                    ? ErrorSeverity.Failed
+                    : ErrorSeverity.Degraded,
+                $"The {phase.Phase} phase did not complete cleanly.",
+                phase.Phase));
+
+    /// <summary>
+    /// Where a derivation's time went, gathered as each phase finishes.
+    /// </summary>
+    /// <remarks>
+    /// <b>Accumulated rather than read back, because nothing records it.</b> The store says what
+    /// each phase produced and what became of it; how long each took is known only while it is
+    /// running, and a derivation of a large forest is where an operator most wants to know which
+    /// phase the time belonged to.
+    /// </remarks>
+    private sealed class PhaseClock
+    {
+        private readonly List<StageTiming> _phases = [];
+
+        /// <summary>Each phase and how long it took, in the order they ran.</summary>
+        public IReadOnlyList<StageTiming> Phases => _phases;
+
+        /// <summary>Records a phase that has just finished, however it finished.</summary>
+        /// <param name="phase">The phase, as it names itself.</param>
+        /// <param name="startedTimestamp">What <see cref="Stopwatch.GetTimestamp"/> read when it started.</param>
+        public void Record(string phase, long startedTimestamp) =>
+            _phases.Add(new StageTiming(
+                phase, (long)Stopwatch.GetElapsedTime(startedTimestamp).TotalMilliseconds));
+    }
+
+    private static Result<DerivationRunState> DeriveIntoStore(
+        string bundleDirectory,
+        ExpansionBudget budget,
+        DateTimeOffset startedUtc,
+        IProgress<DerivationProgress> progress,
+        IRunLog log,
+        PhaseClock clock,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(budget);
         ArgumentNullException.ThrowIfNull(progress);
@@ -105,9 +225,9 @@ public static class Stage2aRun
         // the seal and needs no graph, no closure and no budget, so a nesting pass that produces
         // nothing must not take it down with it - a rule asking whether an attribute is withheld
         // has the same question whatever became of the membership.
-        RunAttributeVisibility(bundle, writer, progress, log);
+        RunAttributeVisibility(bundle, writer, progress, log, clock);
 
-        var facts = ReadNesting(bundle, writer, progress, log, cancellationToken);
+        var facts = ReadNesting(bundle, writer, progress, log, clock, cancellationToken);
 
         if (facts is null)
         {
@@ -183,6 +303,7 @@ public static class Stage2aRun
             AuthorizationMembershipExpander.PhaseName,
             progress,
             log,
+            clock,
             () => AuthorizationMembershipExpander.ClosureOf(graph, budget, cancellationToken),
             result => result.IsComplete
                 ? DerivationPhaseOutcome.Succeeded
@@ -191,8 +312,8 @@ public static class Stage2aRun
         var completeness = closure is null
             ? DerivationCompleteness.WithoutExpansion(facts, scope.Value!, writer.GenerationId)
             : DerivationCompleteness.Of(facts, closure, scope.Value!, writer.GenerationId);
-        RunProtection(writer, graph, facts, closure, !completeness.IsComplete, scope.Value!, progress, log, cancellationToken);
-        RunLatent(writer, graph, closure, progress, log, cancellationToken);
+        RunProtection(writer, graph, facts, closure, !completeness.IsComplete, scope.Value!, progress, log, clock, cancellationToken);
+        RunLatent(writer, graph, closure, progress, log, clock, cancellationToken);
 
         // Written from the same closure the products were derived from, so a cycle recorded here is
         // one that actually shaped those answers rather than one found by a second walk that might
@@ -237,8 +358,11 @@ public static class Stage2aRun
         DerivationWriter writer,
         IProgress<DerivationProgress> progress,
         IRunLog log,
+        PhaseClock clock,
         CancellationToken cancellationToken)
     {
+        var started = Stopwatch.GetTimestamp();
+
         try
         {
             long objectsRead = 0;
@@ -293,19 +417,28 @@ public static class Stage2aRun
 
             return null;
         }
+        finally
+        {
+            // Recorded on both endings. A pass that ran for twenty minutes and then threw is the
+            // one whose cost a reader most wants to see, and dropping the time on failure would
+            // leave it inside the summary's unexplained remainder.
+            clock.Record(MembershipNestingPass.PhaseName, started);
+        }
     }
 
     private static void RunAttributeVisibility(
         BundleReader bundle,
         DerivationWriter writer,
         IProgress<DerivationProgress> progress,
-        IRunLog log)
+        IRunLog log,
+        PhaseClock clock)
     {
         var product = Run(
             writer,
             AttributeVisibilityDeriver.PhaseName,
             progress,
             log,
+            clock,
             () => AttributeVisibilityDeriver.Derive(bundle.ReadSchemaAttributes()),
 
             // Degraded rather than Succeeded when nothing came back, because no forest has zero
@@ -329,6 +462,7 @@ public static class Stage2aRun
         SecureAD.Evidence.Run.RunScope scope,
         IProgress<DerivationProgress> progress,
         IRunLog log,
+        PhaseClock clock,
         CancellationToken cancellationToken)
     {
         // It needs the graph and nothing else, so a failed expansion does not stop it. What a failed
@@ -373,6 +507,7 @@ public static class Stage2aRun
             ProtectedPrincipalDeriver.PhaseName,
             progress,
             log,
+            clock,
             () =>
             {
                 var derived = ProtectedPrincipalDeriver.Derive(
@@ -398,6 +533,7 @@ public static class Stage2aRun
         MembershipClosure? closure,
         IProgress<DerivationProgress> progress,
         IRunLog log,
+        PhaseClock clock,
         CancellationToken cancellationToken)
     {
         if (closure is null)
@@ -421,6 +557,7 @@ public static class Stage2aRun
             LatentPrivilegeDeriver.PhaseName,
             progress,
             log,
+            clock,
             () => LatentPrivilegeDeriver.Derive(graph, closure, cancellationToken),
             _ => closure.IsComplete
                 ? DerivationPhaseOutcome.Succeeded
@@ -440,12 +577,15 @@ public static class Stage2aRun
         string phase,
         IProgress<DerivationProgress> progress,
         IRunLog log,
+        PhaseClock clock,
         Func<T> work,
         Func<T, DerivationPhaseOutcome> outcomeOf)
         where T : class
     {
         progress.Report(new DerivationProgress(phase, 0));
         log.Note(phase, "started", []);
+
+        var started = Stopwatch.GetTimestamp();
 
         try
         {
@@ -474,6 +614,12 @@ public static class Stage2aRun
                 [new RunLogDetail("exception", error.GetType().Name)]);
 
             return null;
+        }
+        finally
+        {
+            // Both endings, and a cancellation too - which this deliberately does not catch. A
+            // phase that ran for a while before something stopped it still cost the run that time.
+            clock.Record(phase, started);
         }
     }
 

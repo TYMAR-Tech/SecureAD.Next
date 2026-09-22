@@ -343,6 +343,89 @@ public sealed class DiscoveryWiringTests
         Assert.Contains("(same site)", PlanPreview.Describe(plan.Value!), StringComparison.Ordinal);
     }
 
+    // ---------------------------------------------------------------------------------------
+    // The site relationship, carried down to preflight so the run summary can report it.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A domain read from a controller beside the capture machine is reported as such.
+    /// </summary>
+    /// <remarks>
+    /// The value <c>P-258</c> turns on and the one the portable run summary carries. It is a
+    /// relationship rather than a place - no site name and no host - so it may leave the customer's
+    /// environment where neither of those could.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainReadFromTheOperatorsOwnSiteSaysSo()
+    {
+        var model = AModelOf(pdcEmulator: null, "dc01");
+        model.AddObject(
+            $"CN=10.0.0.0/24,CN=Subnets,{Sites}",
+            ("siteObject", [$"CN={Site},{Sites}"]));
+
+        var plan = await PlanAsync(model);
+        Assert.True(plan.IsSuccess, plan.Error?.Description);
+
+        var report = await Preflight.RunAsync(AForestOf("dc01"), plan.Value!, default);
+
+        Assert.True(Assert.Single(report.Domains).ControllerIsInOperatorSite);
+    }
+
+    /// <summary>
+    /// A domain whose only controller is in another site is reported as being elsewhere.
+    /// </summary>
+    /// <remarks>
+    /// The normal case for every domain but one in a nine-domain forest, and the half of the
+    /// answer that explains a long capture.
+    /// </remarks>
+    [Fact]
+    public async Task ADomainReadFromAnotherSiteIsReportedAsBeingElsewhere()
+    {
+        var model = new ControllerModel();
+        model.AddObject(Schema);
+        model.AddObject("CN=Partitions," + Configuration);
+        model.AddObject(
+            $"CN=10.0.0.0/24,CN=Subnets,{Sites}",
+            ("siteObject", [$"CN={Site},{Sites}"]));
+
+        // The one controller of the domain, in a site the capture machine is not in.
+        model.AddObject(
+            $"CN=dc01,CN=Servers,CN=Manchester,{Sites}",
+            ("dNSHostName", ["dc01.example.com"]));
+        model.AddObject(
+            $"CN=NTDS Settings,CN=dc01,CN=Servers,CN=Manchester,{Sites}",
+            ("msDS-hasMasterNCs", [Root]));
+
+        var plan = await PlanAsync(model);
+        Assert.True(plan.IsSuccess, plan.Error?.Description);
+
+        var report = await Preflight.RunAsync(AForestOf("dc01"), plan.Value!, default);
+
+        Assert.False(Assert.Single(report.Domains).ControllerIsInOperatorSite);
+    }
+
+    /// <summary>
+    /// A capture machine with no site of its own is not reported as having been elsewhere.
+    /// </summary>
+    /// <remarks>
+    /// <b>The case the third state exists for, and the negative control for the two above.</b>
+    /// <c>DomainSelection.IsInOperatorSite</c> is false both for a controller in another site and
+    /// for a run whose machine matched no subnet the forest declares, because a boolean has nowhere
+    /// to put the difference. The first is a fact about the customer's forest; the second is a fact
+    /// about where the audit was run from, and reporting it as <i>no</i> asserts something nobody
+    /// established. Carry the selection's flag straight through and this fails.
+    /// </remarks>
+    [Fact]
+    public async Task AMachineWithNoSiteOfItsOwnIsNotReportedAsBeingElsewhere()
+    {
+        // No subnets are declared, so nothing establishes which site this machine is in.
+        var plan = await APlanWithPdcEmulator(pdcEmulator: null, "dc01");
+
+        var report = await Preflight.RunAsync(AForestOf("dc01"), plan, default);
+
+        Assert.Null(Assert.Single(report.Domains).ControllerIsInOperatorSite);
+    }
+
     /// <summary>
     /// A domain the forest names one controller for says so, rather than implying others exist.
     /// </summary>

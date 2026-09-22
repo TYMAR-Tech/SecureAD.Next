@@ -21,4 +21,13 @@
     <ProjectReference Include="..\SecureAD.Evidence\SecureAD.Evidence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The capture session already keeps its offline connection substitution inside the
+         assembly so that callers use the one production connection policy. The run's per-domain
+         timings are internal for gate 4's reason - a bare list cannot say whether it was
+         measured - and the check that the run measures them at all has to be able to read them.
+         Same narrow grant the derivation, judgement, shell and command line already make. -->
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
+  </ItemGroup>
+
 </Project>

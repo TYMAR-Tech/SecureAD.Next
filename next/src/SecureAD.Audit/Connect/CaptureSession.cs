@@ -314,8 +314,15 @@ public sealed class CaptureSession
         ArgumentNullException.ThrowIfNull(exclusions);
         ArgumentNullException.ThrowIfNull(objectScope);
 
+        // MEASURED HERE BECAUSE NOTHING PERSISTS IT. The bundle records what was read; how long
+        // preflight and the reading each took is known only while the run is happening, and the
+        // portable summary is the one account of it that may leave the customer's environment.
+        var runStartedUtc = _time.GetUtcNow();
+
         var preflight = await ValidateAsync(typedName, overrides, cancellationToken)
             .ConfigureAwait(false);
+
+        var preflightElapsed = _time.GetUtcNow() - runStartedUtc;
 
         if (!preflight.IsSuccess)
         {
@@ -423,6 +430,8 @@ public sealed class CaptureSession
                 cancellationToken)
             .ConfigureAwait(false);
 
+        var captureElapsed = _time.GetUtcNow() - runStartedUtc - preflightElapsed;
+
         // A capture that ended badly carries its own error rather than returning a failure, so the
         // log reads it off the result. Both endings are written: a run that sealed nothing is the
         // case an operator most needs an account of.
@@ -447,7 +456,79 @@ public sealed class CaptureSession
                     .. spent.Details(),
                 ]);
 
+        WritePortableSummary(
+            directory.Value!,
+            report,
+            captured,
+            _time.GetUtcNow() - runStartedUtc,
+            preflightElapsed,
+            captureElapsed);
+
         return captured;
+    }
+
+    /// <summary>
+    /// Writes the one file of a run that may leave the environment the run happened in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Here rather than on either surface, which is what makes both produce it.</b> The window
+    /// and the command line are callers of this session per <c>0039</c>; a summary written by each
+    /// of them would be two implementations of one file, and the first sign of them disagreeing
+    /// would be a customer comparing a summary from the screen against one from a script.
+    /// </para>
+    /// <para>
+    /// <b>Written for a capture-only run too.</b> A capture taken and walked away from is exactly
+    /// the run whose account has to travel before anyone decides what to do next, and the
+    /// derivation and judging sections are appended by those stages whenever they happen - which
+    /// may be days later and from a different screen.
+    /// </para>
+    /// <para>
+    /// <b>The result is deliberately dropped.</b> Losing the account of a capture is not a reason
+    /// to lose the capture, which is the rule the run log already keeps.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's directory.</param>
+    /// <param name="report">What preflight established, which is where the site relationship is.</param>
+    /// <param name="captured">What the run produced, which is where the per-domain timings are.</param>
+    /// <param name="elapsed">How long the whole capture took.</param>
+    /// <param name="preflight">How long preflight took.</param>
+    /// <param name="reading">How long the reading took.</param>
+    private static void WritePortableSummary(
+        string bundleDirectory,
+        PreflightReport report,
+        CaptureRunResult captured,
+        TimeSpan elapsed,
+        TimeSpan preflight,
+        TimeSpan reading)
+    {
+        var timings = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var timing in captured.DomainTimings)
+            timings[timing.NamingContext] = timing.ElapsedMilliseconds;
+
+        // WALKED FROM PREFLIGHT RATHER THAN FROM THE TIMINGS, because the site relationship is
+        // established before any object is read and a domain the run never reached still has one.
+        // Walking the timings instead would silently drop every domain a failed run did not get to.
+        IReadOnlyList<DomainRunTiming> domains =
+        [
+            .. report.Domains.Select(domain => new DomainRunTiming(
+                domain.NamingContext,
+                timings.TryGetValue(domain.NamingContext, out var spent) ? spent : 0,
+                domain.ControllerIsInOperatorSite)),
+        ];
+
+        PortableSummaryFile.WriteCapture(
+            bundleDirectory,
+            PortableSummaryReading.OfCapture(
+                bundleDirectory,
+                (long)elapsed.TotalMilliseconds,
+                [
+                    new StageTiming("preflight", (long)preflight.TotalMilliseconds),
+                    new StageTiming("capture", (long)reading.TotalMilliseconds),
+                ],
+                domains,
+                captured.Error));
     }
 
     /// <summary>The name the capture coordinator logs under.</summary>
