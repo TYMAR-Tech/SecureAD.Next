@@ -2094,6 +2094,22 @@ have done the same thing, and its three remaining judging runs were not spent fi
 Artifacts are under `next/artifacts/judging-object-breakdown/`; the instrumentation is permanent and
 travels to the laboratory and to production, which has still never been measured.
 
+**What was done about it, the same day.** Four changes, none of which alters a decision, a rule or an
+answer: statements compiled once and rebound instead of a command created and parsed per row; schema
+support verified once per distinct payload per run rather than twice per entry; the three per-object
+writes sharing **one** transaction batched across 500 objects, which is stronger atomicity than the
+three separate commits it replaced as well as cheaper; and **format 42**, storing each distinct
+reading once under a SHA-256 fingerprint. On the laboratory capture the object pass fell
+**21,211 → 12,766 ms (−39.8%)**, the permission write **15,410 → 7,157 ms (−53.6%)** and the
+judgement file **352,264,192 → 180,301,824 bytes (−48.8%)**, with identical output throughout.
+
+**Two limits on that, stated because they are easy to forget.** Every figure above is the sealed
+laboratory capture judged on the development laptop. The 2026-09-22 laboratory run on standard SSD
+put **18,463 ms** of a 49,919 ms object pass into commits against 1,979 ms for the same work on the
+laptop, so the storage-dependent part of this is untested after the fixes — halving the bytes is
+expected to help most exactly where it has not yet been measured. And the batch size of 500 is a
+chosen number, not a tuned one; the laboratory showed its cost depends on the disk underneath it.
+
 ## The forest this is built for
 
 **The owner's production forest is the scale that matters, and the laboratory is not it.** Recorded
