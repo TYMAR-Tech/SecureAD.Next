@@ -744,6 +744,17 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
     /// </remarks>
     public IList<string> Order { get; set; } = [];
 
+    /// <summary>
+    /// Runs while the judging is still in flight, so a test can change the screen underneath it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same reason <see cref="FakeRunOpener.WhenOpening"/> exists.</b> A judging of a real
+    /// forest takes long enough that the operator goes on clicking through the library while it
+    /// runs, and what a screen does with a selection that moved mid-judging cannot be observed by
+    /// checking afterwards that both things happened.
+    /// </remarks>
+    public Action? WhileRunning { get; set; }
+
     public async Task<Result<JudgingOutcome>> RunAsync(
         string bundleDirectory,
         IProgress<JudgingRun.JudgingProgress> progress,
@@ -755,6 +766,12 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
 
         foreach (var read in Reports)
             progress.Report(new JudgingRun.JudgingProgress(read));
+
+        WhileRunning?.Invoke();
+
+        // Observed rather than ignored, so a screen's Stop is proved to reach the launcher and not
+        // merely to have set a flag on itself. A real judging does the same.
+        cancellationToken.ThrowIfCancellationRequested();
 
         await Task.Yield();
 
@@ -809,6 +826,11 @@ internal sealed class FakeDerivationLauncher : IDerivationLauncher
     /// <summary>Where each phase writes its name as it runs. See <see cref="FakeJudgingLauncher.Order"/>.</summary>
     public IList<string> Order { get; set; } = [];
 
+    /// <summary>
+    /// Runs while the derivation is still in flight. See <see cref="FakeJudgingLauncher.WhileRunning"/>.
+    /// </summary>
+    public Action? WhileRunning { get; set; }
+
     public Task<Result<DerivingOutcome>> RunAsync(
         string bundleDirectory,
         IProgress<DerivationProgress> progress,
@@ -820,6 +842,11 @@ internal sealed class FakeDerivationLauncher : IDerivationLauncher
 
         foreach (var read in Reports)
             progress.Report(new DerivationProgress("Fake", read));
+
+        WhileRunning?.Invoke();
+
+        // Observed rather than ignored. See <see cref="FakeJudgingLauncher"/>.
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (Cancels)
             throw new OperationCanceledException();

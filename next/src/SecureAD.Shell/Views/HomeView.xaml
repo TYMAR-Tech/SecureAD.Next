@@ -211,6 +211,25 @@
                            TextWrapping="Wrap"
                            Foreground="{StaticResource SecondaryTextBrush}" />
 
+                <!-- What has been made from this run's evidence, or that nothing has. A SEPARATE
+                     AXIS from the outcome above: a run that sealed its evidence and was never
+                     analysed is "Finished" exactly like one that was, because what became of the
+                     capture and what has since been made from it are different questions.
+
+                     NO COUNTERS ACCOMPANY IT, DELIBERATELY. A run nobody judged has no findings,
+                     no dangerous permissions and no control edges, and showing those as zero is
+                     the failure 0002 exists to prevent - a clean number is the more reassuring of
+                     the two readings and an operator will take it. The absence is said in words
+                     instead: "Evidence sealed - not assessed". -->
+                <TextBlock Text="Analysis"
+                           Style="{StaticResource FieldLabel}"
+                           Margin="0,14,0,2"
+                           Visibility="{Binding Library.Selected.HasAnalysis, Converter={StaticResource Shown}}" />
+                <TextBlock Text="{Binding Library.Selected.Analysis}"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Visibility="{Binding Library.Selected.HasAnalysis, Converter={StaticResource Shown}}" />
+
                 <TextBlock Text="What it recorded"
                            Style="{StaticResource FieldLabel}"
                            Margin="0,14,0,2"
@@ -242,6 +261,46 @@
                          TextWrapping="Wrap"
                          MinHeight="56" />
 
+                <!-- ANALYSIS, ON A ROW OF ITS OWN. The owner's call, 2026-09-22. These start work
+                     measured in hours; Save is pressed casually and often, and the two should not
+                     be neighbours. Delete already sits apart below for the same reason.
+
+                     EACH APPEARS ONLY WHERE IT APPLIES. Derive is offered to a run holding
+                     nothing; Judge only once facts exist, because rules that read more than one
+                     object rest on them and a judging that ran first would rest on nothing. A run
+                     already judged is offered neither, which is what stops a second judging
+                     overwriting the first. The view model refuses in words as well, for anything
+                     that reaches the command another way. -->
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Content="Derive facts"
+                            Command="{Binding Library.DeriveFactsCommand}"
+                            Visibility="{Binding Library.CanDerive, Converter={StaticResource Shown}}" />
+
+                    <Button Content="Judge"
+                            Command="{Binding Library.JudgeCommand}"
+                            Visibility="{Binding Library.CanJudge, Converter={StaticResource Shown}}" />
+
+                    <!-- The only way out of an analysis started here. This screen has none of the
+                         audit window's progress machinery and does not borrow it: that window's
+                         Stop belongs to a capture it is running, and one control over two
+                         unrelated pieces of work is how the wrong one gets cancelled. -->
+                    <Button Content="Stop"
+                            Command="{Binding Library.StopAnalysisCommand}"
+                            Style="{StaticResource DangerButton}"
+                            Visibility="{Binding Library.IsAnalysing, Converter={StaticResource Shown}}" />
+                </StackPanel>
+
+                <!-- What the analysis is doing or has said. Selectable, because the one thing an
+                     operator needs from a failure is to copy it.
+
+                     EVERY SENTENCE HERE NAMES ITS RUN. The library is a list he goes on clicking
+                     through while an hour-long judging runs, so the selection when one returns is
+                     frequently not the run that was read - and an outcome shown under whatever
+                     happens to be selected would attribute one run's results to another. -->
+                <TextBox Text="{Binding Library.AnalysisStatus, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Margin="0,8,0,0" />
+
                 <!-- Two rows rather than three buttons abreast. At 320 wide the third was clipped
                      against the card's edge, and the clipped one was Delete run - a destructive
                      button half off the screen, which is worse than an ugly card. Seen on Home
@@ -267,6 +326,16 @@
                         Style="{StaticResource DangerButton}"
                         HorizontalAlignment="Left"
                         Margin="0,16,0,0" />
+
+                <!-- WHY THIS IS HERE AT ALL. The library sets this when Open, Set as baseline,
+                     Delete or an analysis refuses, and until 2026-09-22 this screen bound only
+                     Location.Problem - so every one of those refusals was written to a property
+                     nothing displayed. A screen that refuses silently teaches an operator that
+                     the button is broken. -->
+                <TextBox Text="{Binding Library.Problem, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource FaultBrush}"
+                         Margin="0,12,0,0" />
             </StackPanel>
         </Border>
     </Grid>

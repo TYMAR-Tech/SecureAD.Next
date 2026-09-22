@@ -349,6 +349,137 @@ public sealed class NewAuditViewModelTests
         Assert.False(_deriving.WasRun);
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Capture and analyse, or capture only. The owner's shape, 2026-09-22: a capture of a real
+    // forest takes hours, and until this was offered a defect in deriving or judging arrived at
+    // the end of them, against a directory that had already moved on. It is what the command
+    // line's --capture has always offered; this is the same thing in the window.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An operator who chooses nothing gets a finished audit. The run that stops early is the one
+    /// he has to ask for, not the other way round.
+    /// </summary>
+    [Fact]
+    public async Task ARunCapturesAndAnalysesUnlessAskedOtherwise()
+    {
+        var screen = await Opened();
+
+        Assert.True(screen.CaptureAndAnalyse);
+        Assert.False(screen.CaptureOnly);
+    }
+
+    /// <summary>
+    /// The two answers are one choice, so taking one gives up the other.
+    /// </summary>
+    [Fact]
+    public async Task TakingOneAnswerGivesUpTheOther()
+    {
+        var screen = await Opened();
+
+        screen.CaptureOnly = true;
+
+        Assert.False(screen.CaptureAndAnalyse);
+    }
+
+    /// <summary>
+    /// A capture-only run still seals its evidence. That is the whole point of it: the evidence is
+    /// the thing that took hours and cannot be got back, and it is complete.
+    /// </summary>
+    [Fact]
+    public async Task ACaptureOnlyRunStillSealsItsEvidence()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.Equal(@"D:\audits\run", screen.BundleDirectory);
+    }
+
+    [Fact]
+    public async Task ACaptureOnlyRunDerivesNothing()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.False(_deriving.WasRun);
+    }
+
+    [Fact]
+    public async Task ACaptureOnlyRunJudgesNothing()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.False(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// <b>Absence, never zero.</b> A run nobody judged has no findings, no derived principals and
+    /// no objects judged - and showing those as counters reading nothing is the failure
+    /// <c>docs/decisions/0002-absent-view-means-degraded-run.md</c> exists to prevent: a clean
+    /// number is the more reassuring of the two readings, and an operator will take it.
+    /// </summary>
+    /// <remarks>
+    /// This asserts the two flags the view gates those blocks on, so a capture-only completion
+    /// screen has nowhere to put a zero rather than being trusted to leave one blank.
+    /// </remarks>
+    [Fact]
+    public async Task ACaptureOnlyRunShowsNoAnalysisCountersAtAll()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.False(screen.HasDerivationReport);
+        Assert.False(screen.HasJudgingReport);
+        Assert.Empty(screen.Findings);
+    }
+
+    /// <summary>
+    /// Changing his mind back leaves the run doing what it would have done anyway.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the four cases above: without it they would all still pass if the
+    /// choice had disabled analysis permanently rather than for the run he asked it of.
+    /// </remarks>
+    [Fact]
+    public async Task ChoosingToAnalyseAfterAllLeavesTheRunDerivingAndJudging()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        screen.CaptureAndAnalyse = true;
+        await screen.StartAsync();
+
+        Assert.True(_deriving.WasRun);
+        Assert.True(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// What the screen says this run will do must go on describing the run that happened.
+    /// </summary>
+    /// <remarks>
+    /// A choice still editable after the fact would let a finished capture-only run read as one
+    /// that analysed, with no analysis behind it.
+    /// </remarks>
+    [Fact]
+    public async Task TheChoiceCannotBeChangedOnceTheRunHasFinished()
+    {
+        var screen = await Opened();
+        await screen.StartAsync();
+
+        screen.CaptureOnly = true;
+
+        Assert.True(screen.CaptureAndAnalyse);
+    }
+
     /// <summary>
     /// Deriving happens before judging.
     /// </summary>

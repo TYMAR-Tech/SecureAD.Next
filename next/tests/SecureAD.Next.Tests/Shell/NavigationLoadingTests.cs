@@ -308,7 +308,8 @@ public sealed class NavigationLoadingTests
         var source = Source();
         var settings = new FakeSettingsStore();
         var location = new RunLibraryLocation(settings);
-        var library = new RunLibraryViewModel(location, new FakeRunCatalog(), new FakeConfirmation(), new FakeRunOpener());
+        var library = new RunLibraryViewModel(location, new FakeRunCatalog(), new FakeConfirmation(), new FakeRunOpener(),
+            new FakeDerivationLauncher(), new FakeJudgingLauncher());
         var screen = new AssetsViewModel(source);
         var shell = new ShellViewModel(new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
             screen, new DashboardViewModel(source), new SettingsViewModel(new DomainConcurrency(settings)));

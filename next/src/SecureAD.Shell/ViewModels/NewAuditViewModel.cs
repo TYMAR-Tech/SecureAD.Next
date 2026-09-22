@@ -825,6 +825,64 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <summary>A running or finished audit cannot have its displayed scope changed.</summary>
     public bool MayChangeObjectScope => !IsBusy && !IsCapturing && !HasFinished;
 
+    private bool _captureOnly;
+
+    /// <summary>
+    /// Whether this run stops once the evidence is sealed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why the choice exists at all.</b> A capture of a real forest takes hours, and until this
+    /// was offered a failure in deriving or judging happened at the end of them, on a directory
+    /// that had already moved on. Separating the two acts means a production capture can be taken
+    /// and walked away from, and analysed afterwards from the sealed bundle as many times as it
+    /// takes. It is what the command line's <c>--capture</c> has always offered; this is the same
+    /// thing in the window.
+    /// </para>
+    /// <para>
+    /// <b>Analysing is the default, deliberately.</b> An operator who wants a finished audit should
+    /// get one without choosing anything, and the run that stops early is the one he has to ask
+    /// for. Reversing that would make the ordinary case the exception.
+    /// </para>
+    /// <para>
+    /// <b>A capture-only run is not a degraded one.</b> Its evidence is complete and sealed, and
+    /// the library says so in words - <i>Evidence sealed - not assessed</i> - rather than showing
+    /// findings, permissions and control edges as zero. See
+    /// <c>docs/decisions/0002-absent-view-means-degraded-run.md</c>: a clean number is the more
+    /// reassuring of the two readings and an operator will take it.
+    /// </para>
+    /// </remarks>
+    public bool CaptureOnly
+    {
+        get => _captureOnly;
+        set
+        {
+            // Frozen once the run is under way, for the reason MayChangeObjectScope is: what the
+            // screen says this run will do must go on describing the run that is happening.
+            if (value && MayChangeObjectScope && SetProperty(ref _captureOnly, true))
+                OnPropertyChanged(nameof(CaptureAndAnalyse));
+        }
+    }
+
+    /// <summary>
+    /// Whether this run derives and judges once the evidence is sealed. The default.
+    /// </summary>
+    /// <remarks>
+    /// The pair are offered as two plain answers rather than as one value a view has to convert,
+    /// following <c>AssetsViewModel.ShowsBase</c>. A converter turning a flag into a tick is a place
+    /// presentation logic accumulates, outside the one layer that has tests. The words themselves
+    /// sit in the view beside the other <c>ChoiceRadio</c> in this product, for the same reason.
+    /// </remarks>
+    public bool CaptureAndAnalyse
+    {
+        get => !_captureOnly;
+        set
+        {
+            if (value && MayChangeObjectScope && SetProperty(ref _captureOnly, false, nameof(CaptureOnly)))
+                OnPropertyChanged(nameof(CaptureAndAnalyse));
+        }
+    }
+
     /// <summary>The exact classes that the current choice leaves unassessed.</summary>
     public IReadOnlyList<string> ExcludedObjectClasses => CaptureObjectScope.For(IncludeEnatelSso).ExcludedClasses;
 
@@ -1708,14 +1766,21 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 : null;
 
             // Deriving and judging both follow a capture without being asked for - the owner's
-            // shape, 2026-08-26. The decision to audit was the decision to do both, so there is no
-            // second prompt and no control to press. Only sealed evidence is read: a run that
-            // sealed nothing has nothing for a closure or a rule to read.
+            // shape, 2026-08-26 - unless the operator asked for a capture on its own. The decision
+            // to audit was the decision to do both, so there is no second prompt and no control to
+            // press once the run is under way; the one place it is decided is the review page,
+            // before Start. Only sealed evidence is read: a run that sealed nothing has nothing for
+            // a closure or a rule to read.
+            //
+            // A CAPTURE-ONLY RUN STOPS HERE, AND THAT IS NOT A FAILURE. The evidence is complete
+            // and sealed, and the library will say so - "Evidence sealed - not assessed" - with no
+            // counters at all rather than counters reading zero. It can be derived from and judged
+            // later, from the run library, as many times as it takes.
             //
             // Deriving goes first. What it produces are facts about more than one object, which is
             // what a rule reading a group's membership will rest on - so a judging that ran before
             // it would rest on nothing.
-            if (BundleDirectory is { } sealedEvidence)
+            if (BundleDirectory is { } sealedEvidence && !CaptureOnly)
             {
                 // Each is asked to absorb its own defects. Deriving that threw its way out of here
                 // would skip the judging entirely and land in the catch below, which speaks for a

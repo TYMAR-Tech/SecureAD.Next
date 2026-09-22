@@ -409,9 +409,49 @@
                           Visibility="{Binding IsOnReview, Converter={StaticResource Shown}}">
               <StackPanel Margin="0,0,0,10">
 
+                  <!-- CAPTURE AND ANALYSE, OR CAPTURE ONLY. The owner's shape, 2026-09-22, and it
+                       sits at the top because it decides what the run is rather than qualifying a
+                       detail of it - next to Start it would read as an afterthought.
+
+                       WHY IT EXISTS. A capture of a real forest takes hours, and until this was
+                       offered a defect in deriving or judging arrived at the end of them, against
+                       a directory that had already moved on. Separating the two acts means a
+                       production capture can be taken and walked away from. It is what the command
+                       line's capture-only switch has always offered; this is the same thing in
+                       the window.
+
+                       ANALYSING IS THE DEFAULT. An operator who chooses nothing should get a
+                       finished audit; the run that stops early is the one he has to ask for.
+
+                       STACKED, NOT IN A ROW, matching the only other ChoiceRadio in the product:
+                       one per line reads as "pick exactly one" without having to be hovered. -->
+                  <TextBlock Text="What this run will do"
+                             Style="{StaticResource SectionTitle}" />
+                  <RadioButton Style="{StaticResource ChoiceRadio}"
+                               Content="Capture and analyse"
+                               GroupName="Intent"
+                               IsChecked="{Binding CaptureAndAnalyse, Mode=TwoWay}"
+                               IsEnabled="{Binding MayChangeObjectScope}"
+                               Margin="0,6,0,0" />
+                  <RadioButton Style="{StaticResource ChoiceRadio}"
+                               Content="Capture only"
+                               GroupName="Intent"
+                               IsChecked="{Binding CaptureOnly, Mode=TwoWay}"
+                               IsEnabled="{Binding MayChangeObjectScope}" />
+
+                  <!-- Said because "Capture only" otherwise reads as giving something up. The
+                       evidence it produces is complete and sealed; what it has not done yet is
+                       waiting on the run's own card, and nothing has to be captured twice. -->
+                  <TextBlock Text="A capture-only run seals complete evidence and stops. Derive facts and Judge are offered on its card in Home whenever you are ready."
+                             Style="{StaticResource Caption}"
+                             Foreground="{StaticResource SecondaryTextBrush}"
+                             TextWrapping="Wrap"
+                             Margin="0,4,0,0" />
+
                   <!-- What will be read, and from where. -->
                   <TextBlock Text="{Binding Review.ReadHeading}"
-                             Style="{StaticResource SectionTitle}" />
+                             Style="{StaticResource SectionTitle}"
+                             Margin="0,16,0,0" />
 
                   <ItemsControl ItemsSource="{Binding Review.WillBeRead}" Margin="0,6,0,0">
                       <ItemsControl.ItemTemplate>
