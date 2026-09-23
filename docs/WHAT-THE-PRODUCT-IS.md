@@ -2139,6 +2139,8 @@ will reach a confident wrong answer.
 |---|---|
 | Objects captured | 939,700 |
 | Access control entries | 141,706,338 |
+| Distinct access control entries among them | 481,967 |
+| Times each distinct entry is stored | 294 |
 | Distinct security descriptors | 271,845 |
 | Entries per descriptor, average | 521 |
 | Trustees | 189,192 |
