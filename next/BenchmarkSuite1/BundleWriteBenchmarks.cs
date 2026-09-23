@@ -138,7 +138,7 @@ public class BundleWriteBenchmarks
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = BundleLayout.EvidencePath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*), COUNT(DISTINCT domain_fqdn), (SELECT COUNT(*) FROM ace), (SELECT COUNT(*) FROM security_descriptor), (SELECT COUNT(*) FROM object_security_descriptor), (SELECT COUNT(*) FROM member_value), (SELECT COUNT(*) FROM objectclass_value), (SELECT COUNT(*) FROM serviceprincipalname_value), (SELECT COUNT(*) FROM sidhistory_value) FROM captured_object";
+            command.CommandText = "SELECT COUNT(*), COUNT(DISTINCT domain_fqdn), (SELECT COUNT(*) FROM descriptor_entry), (SELECT COUNT(*) FROM security_descriptor), (SELECT COUNT(*) FROM object_security_descriptor), (SELECT COUNT(*) FROM member_value), (SELECT COUNT(*) FROM objectclass_value), (SELECT COUNT(*) FROM serviceprincipalname_value), (SELECT COUNT(*) FROM sidhistory_value) FROM captured_object";
             using var read = command.ExecuteReader();
             if (!read.Read())
                 throw new InvalidOperationException("No stored counts returned.");

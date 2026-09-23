@@ -149,18 +149,32 @@ public sealed class AceNormalizerTests
     }
 
     /// <summary>
-    /// The hash covers the object the ACE was found on, so the same grant on two objects is two
-    /// facts rather than one.
+    /// The same grant found on two objects is one fact, and the hash says so. This is the property
+    /// the whole of <c>P-272</c> rests on: until canonicalization version 4 the hash covered the
+    /// object the entry was found on, so an entry inherited by a hundred thousand descendants was a
+    /// hundred thousand different values and had to be stored a hundred thousand times. The
+    /// production capture of 2026-09-23 measured 294 copies of each distinct entry in a 51.08 GB
+    /// file.
     /// </summary>
+    /// <remarks>
+    /// The assertion here used to be <c>NotEqual</c>, under the name
+    /// <c>WhenTheObjectDiffers_ThenTheHashDiffers</c>. It was not failing and it was not wrong; it
+    /// pinned a decision that was later measured and reversed, which is what a test is supposed to
+    /// do. The object a descriptor belongs to is still carried - on the descriptor, where
+    /// <see cref="AceNormalizationResult.ObjectGuid"/> holds it and the writer refuses a descriptor
+    /// attributed to the wrong object.
+    /// </remarks>
     [Fact]
-    public void WhenTheObjectDiffers_ThenTheHashDiffers()
+    public void WhenTheObjectDiffers_ThenTheHashIsTheSame()
     {
         var sd = Aces.Sd(Aces.Allow("S-1-5-32-544", 0x000F01FF));
 
         var first = AceNormalizer.Normalize(Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001"), sd);
         var second = AceNormalizer.Normalize(Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002"), sd);
 
-        Assert.NotEqual(first.Aces[0].AceHash, second.Aces[0].AceHash);
+        Assert.Equal(first.Aces[0].AceHash, second.Aces[0].AceHash);
+        Assert.Equal(Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001"), first.ObjectGuid);
+        Assert.Equal(Guid.Parse("bbbbbbbb-0000-0000-0000-000000000002"), second.ObjectGuid);
     }
 
     // --- Deduplication ---

@@ -28,11 +28,23 @@ namespace SecureAD.Kernel.Security;
 /// conditional entry and an otherwise identical unconditional one collided the same way. Recorded
 /// as F-S58-11, in the fix brief that carried it, since deleted.
 /// </para>
+/// <para>
+/// <b>Version 4</b> removed the object's own GUID, and it is the only change so far made for a
+/// reason of cost rather than of correctness. Versions 1 to 3 hashed the object the entry was found
+/// on, so one entry inherited by a hundred thousand descendants had a hundred thousand hashes and
+/// no two objects could ever be seen to hold the same entry. The first production capture measured
+/// what that costs: 141,706,338 stored entries holding 481,967 distinct ones, each written 294
+/// times, in an evidence file of 51.08 GB that is 96% permissions and does not fit on a customer's
+/// laptop. An entry is defined by trustee, rights, type and inheritance - <c>[MS-DTYP] 2.4.4</c>
+/// names no object in it - so the GUID was never part of what an entry is, and taking it out is
+/// what lets one be stored once. Which objects carry it is a link, and is now stored as one. See
+/// <c>P-272</c>.
+/// </para>
 /// </remarks>
 public static class AceCanonicalization
 {
     /// <summary>The version of the normalization pipeline stamped onto each canonical ACE.</summary>
-    public const int Version = 3;
+    public const int Version = 4;
 
     /// <summary>
     /// The canonical ordering category of an entry: 0 explicit deny, 1 explicit allow,

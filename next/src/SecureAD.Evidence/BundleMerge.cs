@@ -14,13 +14,26 @@ namespace SecureAD.Evidence;
 /// <param name="DescriptorsAlreadyPresent">
 /// Descriptors this shard read that were byte-for-byte ones the bundle already held.
 /// </param>
-/// <param name="AccessControlEntries">Entries copied in, which is entries of new descriptors only.</param>
+/// <param name="AccessControlEntries">
+/// Positions copied in - one per entry of a descriptor this shard contributed, which is entries of
+/// new descriptors only.
+/// </param>
+/// <param name="DistinctEntries">
+/// Distinct entries this shard added. Far smaller than <paramref name="AccessControlEntries"/> on
+/// any real forest, because a domain's entries repeat across its objects and across its neighbours.
+/// </param>
+/// <param name="DistinctEntriesAlreadyPresent">
+/// Entries this shard read that another domain had already contributed, and which were therefore
+/// linked to the existing row rather than stored a second time.
+/// </param>
 public sealed record BundleMergeResult(
     int Trustees,
     int TrusteesAlreadyPresent,
     int Descriptors,
     int DescriptorsAlreadyPresent,
-    int AccessControlEntries);
+    int AccessControlEntries,
+    int DistinctEntries,
+    int DistinctEntriesAlreadyPresent);
 
 /// <summary>
 /// Folds a domain's own evidence database into the bundle, without letting two domains' numbering
@@ -39,22 +52,30 @@ public sealed record BundleMergeResult(
 /// that looks perfectly healthy.
 /// </para>
 /// <para>
-/// <b>Only two things are genuinely shared between domains, and both already carry a natural
-/// key.</b> A trustee appears in several domains under one SID, and an identical security
-/// descriptor hashes to one <c>sha256</c> wherever it is found. Those two are remapped. Everything
-/// else - objects, coverage, entries, the per-attribute value tables - is private to its shard and
-/// only has to not collide, which <see cref="BundleShard"/> arranges by giving each shard its own
-/// range. That matters because the value tables are generated from the captured schema and are not
-/// a list anything could hand-maintain.
+/// <b>Only three things are genuinely shared between domains, and all three already carry a natural
+/// key.</b> A trustee appears in several domains under one SID, an identical security descriptor
+/// hashes to one <c>sha256</c> wherever it is found, and an identical access control entry hashes to
+/// one <c>ace_hash</c> wherever it is found. Those three are remapped. Everything
+/// else - objects, coverage, the links between them, the per-attribute value tables - is private to
+/// its shard and only has to not collide, which <see cref="BundleShard"/> arranges by giving each
+/// shard its own range. That matters because the value tables are generated from the captured schema
+/// and are not a list anything could hand-maintain.
 /// </para>
 /// <para>
-/// <b>A descriptor the bundle already holds brings no entries with it, and that is not an
-/// optimisation.</b> <c>ace</c> is constrained <c>UNIQUE(descriptor_id, ordinal)</c> and
-/// <c>security_descriptor_error</c> is keyed the same way, so copying a shared descriptor's entries
+/// <b>An entry is remapped and not copied, which is what makes the merge share what capture
+/// shares.</b> Two domains hold the same default permissions on their own objects, so without this
+/// a nine-domain bundle would store each of those entries nine times - undoing across domains the
+/// sharing <c>P-272</c> just won within one. It is exactly the treatment <c>trustee</c> has had
+/// since the merge was written, for exactly the same reason.
+/// </para>
+/// <para>
+/// <b>A descriptor the bundle already holds brings no links with it, and that is not an
+/// optimisation.</b> <c>descriptor_entry</c> is keyed <c>(descriptor_id, ordinal)</c> and
+/// <c>security_descriptor_error</c> is keyed the same way, so copying a shared descriptor's rows
 /// would fail outright - and a merge that worked around that by ignoring the conflict would be
 /// choosing arbitrarily between two rows. It is safe to drop them because the descriptor is
 /// identified by the SHA-256 of its own bytes: equal hashes mean equal bytes mean the same entries
-/// in the same order. The entries already in the bundle are the same entries.
+/// in the same order. The links already in the bundle are the same links.
 /// </para>
 /// <para>
 /// <b>Run-level rows are refused rather than merged.</b> What a shard database ought to contain -
@@ -154,9 +175,17 @@ public static class BundleMerge
                 key: "descriptor_id",
                 naturalKey: "sha256");
 
+            BuildMap(
+                destination,
+                map: "entry_map",
+                table: "access_entry",
+                key: "entry_id",
+                naturalKey: "ace_hash");
+
             var trustees = CopyNewRows(destination, "trustee", "trustee_id", "trustee_map");
             var descriptors =
                 CopyNewRows(destination, "security_descriptor", "descriptor_id", "descriptor_map");
+            var distinctEntries = CopyNewEntries(destination);
 
             foreach (var table in CopiedVerbatim)
             {
@@ -181,12 +210,15 @@ public static class BundleMerge
                 Count(destination, "SELECT COUNT(*) FROM trustee_map WHERE is_new = 0"),
                 descriptors,
                 Count(destination, "SELECT COUNT(*) FROM descriptor_map WHERE is_new = 0"),
-                entries);
+                entries,
+                distinctEntries,
+                Count(destination, "SELECT COUNT(*) FROM entry_map WHERE is_new = 0"));
         }
         finally
         {
             Execute(destination, "DROP TABLE IF EXISTS temp.trustee_map");
             Execute(destination, "DROP TABLE IF EXISTS temp.descriptor_map");
+            Execute(destination, "DROP TABLE IF EXISTS temp.entry_map");
             Execute(destination, "DETACH DATABASE shard");
         }
     }
@@ -230,7 +262,7 @@ public static class BundleMerge
             ("captured_object", "object_id"),
             ("security_descriptor", "descriptor_id"),
             ("trustee", "trustee_id"),
-            ("ace", "ace_id"),
+            ("access_entry", "entry_id"),
         })
         {
             using var command = destination.CreateCommand();
@@ -308,27 +340,50 @@ public static class BundleMerge
     }
 
     /// <summary>
-    /// Copies the entries of descriptors this shard contributed, pointing each at whichever trustee
-    /// row the merged bundle holds for its SID.
+    /// Copies the distinct entries this shard found that the bundle had not already seen, pointing
+    /// each at whichever trustee row the merged bundle holds for its SID.
     /// </summary>
     /// <remarks>
-    /// Entries of a descriptor the bundle already had are deliberately absent; see the remarks on
-    /// <see cref="BundleMerge"/> for why they are the same entries.
+    /// <b>Not <see cref="CopyNewRows"/>, because of the trustee.</b> That helper copies a row's
+    /// columns as they stand, and <c>trustee_id</c> is this shard's numbering - so a copied entry
+    /// would name whichever principal the merged bundle happens to hold under that number. That is
+    /// a permission reported against the wrong account, in a bundle that looks perfectly healthy,
+    /// which is the failure this whole type exists to prevent.
+    /// </remarks>
+    private static int CopyNewEntries(SqliteConnection destination) =>
+        Execute(
+            destination,
+            """
+            INSERT INTO main.access_entry (
+                entry_id, ace_type, trustee_id, access_mask, object_type_guid,
+                inherited_object_type_guid, is_inherited, inheritance_flags, propagation_flags,
+                application_data, ace_hash)
+            SELECT a.entry_id, a.ace_type, t.new_id, a.access_mask, a.object_type_guid,
+                   a.inherited_object_type_guid, a.is_inherited, a.inheritance_flags,
+                   a.propagation_flags, a.application_data, a.ace_hash
+            FROM shard.access_entry a
+            JOIN entry_map e ON e.old_id = a.entry_id AND e.is_new = 1
+            JOIN trustee_map t ON t.old_id = a.trustee_id
+            """);
+
+    /// <summary>
+    /// Copies the entry positions of descriptors this shard contributed, pointing each at whichever
+    /// entry row the merged bundle holds for that hash.
+    /// </summary>
+    /// <remarks>
+    /// Links of a descriptor the bundle already had are deliberately absent; see the remarks on
+    /// <see cref="BundleMerge"/> for why they are the same links. The ordinal comes across
+    /// untouched, because it is this descriptor's evaluation order and no other descriptor's.
     /// </remarks>
     private static int CopyAccessControlEntries(SqliteConnection destination) =>
         Execute(
             destination,
             """
-            INSERT INTO main.ace (
-                ace_id, descriptor_id, ordinal, ace_type, trustee_id, access_mask,
-                object_type_guid, inherited_object_type_guid, is_inherited,
-                inheritance_flags, propagation_flags, ace_hash)
-            SELECT a.ace_id, a.descriptor_id, a.ordinal, a.ace_type, t.new_id, a.access_mask,
-                   a.object_type_guid, a.inherited_object_type_guid, a.is_inherited,
-                   a.inheritance_flags, a.propagation_flags, a.ace_hash
-            FROM shard.ace a
-            JOIN descriptor_map d ON d.old_id = a.descriptor_id AND d.is_new = 1
-            JOIN trustee_map t ON t.old_id = a.trustee_id
+            INSERT INTO main.descriptor_entry (descriptor_id, ordinal, entry_id)
+            SELECT l.descriptor_id, l.ordinal, e.new_id
+            FROM shard.descriptor_entry l
+            JOIN descriptor_map d ON d.old_id = l.descriptor_id AND d.is_new = 1
+            JOIN entry_map e ON e.old_id = l.entry_id
             """);
 
     /// <summary>Copies parse failures of descriptors this shard contributed.</summary>
@@ -379,7 +434,8 @@ public static class BundleMerge
     [
         "trustee",
         "security_descriptor",
-        "ace",
+        "access_entry",
+        "descriptor_entry",
         "security_descriptor_error",
         "object_security_descriptor",
         "sysvol_path_security_descriptor",

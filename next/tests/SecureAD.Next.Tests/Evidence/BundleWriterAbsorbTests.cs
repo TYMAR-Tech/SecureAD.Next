@@ -252,7 +252,6 @@ public sealed class BundleWriterAbsorbTests : IDisposable
             false,
             [
                 new CanonicalAce(
-                    Guid.Empty,
                     AceType.AccessAllowed,
                     sid,
                     mask,
@@ -261,6 +260,7 @@ public sealed class BundleWriterAbsorbTests : IDisposable
                     false,
                     0,
                     0,
+                    default,
                     $"hash-{sid}-{mask}",
                     AceCanonicalization.Version),
             ],

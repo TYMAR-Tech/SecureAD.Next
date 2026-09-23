@@ -55,7 +55,15 @@ public sealed record BundleContents
     /// <summary>Objects captured from the directory.</summary>
     public long Objects { get; private init; }
 
-    /// <summary>Access control entries across every descriptor.</summary>
+    /// <summary>
+    /// Access control entries across every descriptor, counting each position in each descriptor's
+    /// list rather than each row stored.
+    /// </summary>
+    /// <remarks>
+    /// This and <see cref="DistinctEntries"/> were the same number until <c>P-272</c>, because an
+    /// entry was stored once per position. They are now a link count and a row count, and the
+    /// distance between them is what the storage redesign bought.
+    /// </remarks>
     public long AccessControlEntries { get; private init; }
 
     /// <summary>Group Policy objects the directory declared.</summary>
@@ -81,18 +89,27 @@ public sealed record BundleContents
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>The question the first production capture raised.</b> That bundle held 141,706,338
-    /// entries across 271,845 descriptors - 521 apiece, where a typical directory object carries
-    /// twenty to fifty - and permissions were 96% of a 51 GB file. Two explanations fit, and they
-    /// call for opposite responses: either the forest genuinely carries access control lists that
-    /// large, or an inherited entry is being stored once per descendant rather than once.
+    /// <b>The question the first production capture raised, and the reason the schema changed.</b>
+    /// That bundle held 141,706,338 entries across 271,845 descriptors - 521 apiece, where a typical
+    /// directory object carries twenty to fifty - and permissions were 96% of a 51 GB file. Two
+    /// explanations fit, and they called for opposite responses: either the forest genuinely carried
+    /// access control lists that large, or an inherited entry was being stored once per descendant
+    /// rather than once. It was the second, 294 times over, and <c>P-272</c> is the fix.
     /// </para>
     /// <para>
-    /// This settles it, and it does not use <c>ace_hash</c>. That hash mixes in the object's own
-    /// GUID, so the same inherited entry on two objects hashes differently and counting distinct
-    /// hashes would return roughly the row count however the evidence was stored - a figure that
-    /// looks like a measurement and is not one. What is counted instead is the entry itself:
-    /// trustee, rights, type and inheritance, which is what Windows defines an entry by.
+    /// <b>It is now a row count, because a distinct entry is now a row.</b> <c>access_entry</c> is
+    /// unique on <c>ace_hash</c>, so the storage and the answer are the same fact and cannot
+    /// disagree - which is the point of the change rather than a shortcut in this reader.
+    /// <see cref="AccessControlEntries"/> beside it comes from a different table entirely, so the
+    /// two can still be compared: two numbers read off one table could never have disagreed, and a
+    /// check that cannot fail is the worst kind there is.
+    /// </para>
+    /// <para>
+    /// <b>It was once written as <c>COUNT(DISTINCT ace_hash)</c> over every stored row, and that
+    /// measured nothing.</b> Until version 4 the hash mixed in the object's own GUID, so the same
+    /// inherited entry on two objects hashed differently and the count returned roughly the row
+    /// count however the evidence was stored - a figure that looked like a measurement and was not.
+    /// Recorded because the shape of that mistake outlives the line that made it.
     /// </para>
     /// </remarks>
     public long DistinctEntries { get; private init; }
@@ -100,6 +117,11 @@ public sealed record BundleContents
     /// <summary>
     /// How many entries are held for each distinct one, or null when none were stored.
     /// </summary>
+    /// <remarks>
+    /// The deduplication answer for entries, as <see cref="ReuseFactor"/> is for descriptors. A
+    /// figure near 1.0 means each entry really is its own fact; the production capture of
+    /// 2026-09-23 measured 294, which is what this storage was redesigned for.
+    /// </remarks>
     public double? EntryRepetition => DistinctEntries > 0
         ? (double)AccessControlEntries / DistinctEntries
         : null;
@@ -251,7 +273,10 @@ public sealed record BundleContents
         var description = new BundleContents
         {
             Objects = Count(connection, "captured_object"),
-            AccessControlEntries = Count(connection, "ace"),
+
+            // Positions, not stored rows. One per entry of every descriptor, which is what a reader
+            // of the evidence sees and what the production figure of 141,706,338 counted.
+            AccessControlEntries = Count(connection, "descriptor_entry"),
             PoliciesDeclared = Count(connection, "sysvol_gpo_coverage"),
             PoliciesRead = Scalar(connection,
                 "SELECT COUNT(*) FROM sysvol_gpo_coverage WHERE outcome = 'Read'"),
@@ -260,19 +285,9 @@ public sealed record BundleContents
             DescriptorsStored = Count(connection, "security_descriptor"),
             DescriptorUses = Count(connection, "object_security_descriptor"),
 
-            // NOT COUNT(DISTINCT ace_hash), which would look like this answer and not be it.
-            // AceNormalizer.ComputeAceHash mixes the object's own GUID into the hash by design, so
-            // one inherited entry present on a hundred thousand descendants has a hundred thousand
-            // distinct hashes; counting them would return roughly the row count whatever the truth
-            // was. Grouping on what an entry actually is - who, what rights, what type, how it
-            // inherits - is the question, and is what Windows itself defines an entry by.
-            DistinctEntries = Scalar(connection,
-                """
-                SELECT COUNT(*) FROM (
-                    SELECT DISTINCT trustee_id, access_mask, ace_type, object_type_guid,
-                                    inherited_object_type_guid, inheritance_flags, propagation_flags
-                    FROM ace)
-                """),
+            // And the rows actually stored to say all of that. A different table from the line
+            // above, which is what makes comparing the two a measurement rather than a tautology.
+            DistinctEntries = Count(connection, "access_entry"),
             DescriptorsUnparsed = Count(connection, "security_descriptor_error"),
             PermissionsUnreadable = Count(connection, "unreadable_security_descriptor"),
             SysvolPathsUnreadable = Count(connection, "unreadable_sysvol_descriptor"),

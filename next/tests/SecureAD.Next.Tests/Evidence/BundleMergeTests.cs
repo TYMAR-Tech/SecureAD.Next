@@ -262,8 +262,8 @@ public sealed class BundleMergeTests : IDisposable
             ScalarLong(
                 bundle,
                 """
-                SELECT COUNT(*) FROM ace
-                JOIN trustee ON trustee.trustee_id = ace.trustee_id
+                SELECT COUNT(*) FROM access_entry
+                JOIN trustee ON trustee.trustee_id = access_entry.trustee_id
                 WHERE trustee.sid = 'S-1-5-32-544'
                 """));
     }
@@ -282,7 +282,7 @@ public sealed class BundleMergeTests : IDisposable
         Absorb(bundle, 1);
         Absorb(bundle, 2);
 
-        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(DISTINCT trustee_id) FROM ace"));
+        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(DISTINCT trustee_id) FROM access_entry"));
     }
 
     /// <summary>
@@ -305,8 +305,33 @@ public sealed class BundleMergeTests : IDisposable
             ScalarLong(
                 bundle,
                 """
-                SELECT COUNT(*) FROM ace
+                SELECT COUNT(*) FROM access_entry
                 WHERE trustee_id NOT IN (SELECT trustee_id FROM trustee)
+                """));
+    }
+
+    /// <summary>
+    /// No link points at an entry that is not there, which is the same question one level down and
+    /// is new with <c>P-272</c>: an entry used to belong to exactly one descriptor, so there was no
+    /// identifier between the two to get wrong.
+    /// </summary>
+    [Fact]
+    public void EveryLinkPointsAtAnEntryThatExists()
+    {
+        WriteShardGranting(1, "DC=contoso,DC=com", GuidNumbered(1), "S-1-5-32-544");
+        WriteShardGranting(2, "DC=fabrikam,DC=com", GuidNumbered(2), "S-1-5-21-2-2");
+
+        using var bundle = OpenBundle();
+        Absorb(bundle, 1);
+        Absorb(bundle, 2);
+
+        Assert.Equal(
+            0,
+            ScalarLong(
+                bundle,
+                """
+                SELECT COUNT(*) FROM descriptor_entry
+                WHERE entry_id NOT IN (SELECT entry_id FROM access_entry)
                 """));
     }
 
@@ -345,14 +370,14 @@ public sealed class BundleMergeTests : IDisposable
     }
 
     /// <summary>
-    /// A descriptor already in the bundle brings no entries with it, and must not.
+    /// A descriptor already in the bundle brings no links with it, and must not.
     /// </summary>
     /// <remarks>
-    /// <c>ace</c> is unique on (descriptor, ordinal), so copying the second shard's entries for a
-    /// descriptor that is already present would violate that constraint - and equal hashes mean
-    /// equal bytes mean the same entries, so there is nothing to add. This asserts the count rather
-    /// than merely that the merge did not throw, because a merge that skipped the entries for the
-    /// wrong reason would pass a does-not-throw test.
+    /// <c>descriptor_entry</c> is keyed on (descriptor, ordinal), so copying the second shard's
+    /// links for a descriptor that is already present would violate that key - and equal hashes mean
+    /// equal bytes mean the same entries in the same order, so there is nothing to add. This asserts
+    /// the count rather than merely that the merge did not throw, because a merge that skipped the
+    /// links for the wrong reason would pass a does-not-throw test.
     /// </remarks>
     [Fact]
     public void ASharedDescriptorKeepsExactlyOneSetOfEntries()
@@ -364,7 +389,37 @@ public sealed class BundleMergeTests : IDisposable
         Absorb(bundle, 1);
         Absorb(bundle, 2);
 
-        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(*) FROM ace"));
+        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(*) FROM descriptor_entry"));
+        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(*) FROM access_entry"));
+    }
+
+    /// <summary>
+    /// Two domains holding the same permission on descriptors that are <i>not</i> identical store
+    /// that permission once.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the case the merge could not express before <c>P-272</c>, and the one that
+    /// matters at nine domains.</b> The descriptors differ, so descriptor deduplication does
+    /// nothing; without entries being remapped on their own hash, each domain would contribute its
+    /// own copy and a nine-domain bundle would undo across domains the sharing capture had just won
+    /// within one. The entry count is checked against the position count, which comes from a
+    /// different table, so the assertion cannot be satisfied by collapsing everything.
+    /// </remarks>
+    [Fact]
+    public void TheSameEntryInTwoDomainsIsStoredOnceEvenWhenTheDescriptorsDiffer()
+    {
+        WriteShardGranting(1, "DC=contoso,DC=com", GuidNumbered(1), "S-1-5-32-544");
+        WriteShardGranting(2, "DC=fabrikam,DC=com", GuidNumbered(2), "S-1-5-32-544", differing: true);
+
+        using var bundle = OpenBundle();
+        Absorb(bundle, 1);
+        var second = Absorb(bundle, 2);
+
+        Assert.Equal(2, ScalarLong(bundle, "SELECT COUNT(*) FROM security_descriptor"));
+        Assert.Equal(2, ScalarLong(bundle, "SELECT COUNT(*) FROM descriptor_entry"));
+        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(0, second.DistinctEntries);
+        Assert.Equal(1, second.DistinctEntriesAlreadyPresent);
     }
 
     /// <summary>
@@ -505,12 +560,21 @@ public sealed class BundleMergeTests : IDisposable
     /// A shard holding one object whose descriptor grants <paramref name="sid"/> something.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The descriptor's bytes are derived from what it parsed to, so two shards granting the same
     /// SID the same access produce byte-identical descriptors, and granting different access does
     /// not - which is the distinction the deduplication and remap tests here rest on.
+    /// </para>
+    /// <para>
+    /// <paramref name="differing"/> changes the descriptor's owner and nothing else, which makes
+    /// the descriptor a different one while leaving its single entry identical. That is the shape a
+    /// real forest is full of and the one entry sharing exists for: two domains holding the same
+    /// permission on objects owned by different principals.
+    /// </para>
     /// </remarks>
     private void WriteShardGranting(
-        int index, string namingContext, Guid objectGuid, string sid, int mask = 0x20000) =>
+        int index, string namingContext, Guid objectGuid, string sid, int mask = 0x20000,
+        bool differing = false) =>
         WriteShard(index, w =>
         {
             var coverage = w.WriteCoverage(SomeCoverage(namingContext));
@@ -518,11 +582,11 @@ public sealed class BundleMergeTests : IDisposable
 
             var descriptor = new AceNormalizationResult(
                 objectGuid,
-                "S-1-5-21-1",
+                differing ? "S-1-5-21-9" : "S-1-5-21-1",
                 "S-1-5-21-2",
                 DaclState.Present,
                 false,
-                [Ace(objectGuid, sid, mask)],
+                [Ace(sid, mask)],
                 [],
                 DaclCompleteness.Complete,
                 true);
@@ -530,9 +594,8 @@ public sealed class BundleMergeTests : IDisposable
             w.WriteSecurityDescriptor(objectId, DescriptorBytes(descriptor), descriptor);
         });
 
-    private static CanonicalAce Ace(Guid objectGuid, string trustee, int mask) => new(
-        objectGuid,
-        AceType.AccessAllowed, trustee, mask, null, null, false, 0, 0,
+    private static CanonicalAce Ace(string trustee, int mask) => new(
+        AceType.AccessAllowed, trustee, mask, null, null, false, 0, 0, default,
         $"hash-{trustee}-{mask}", AceCanonicalization.Version);
 
     /// <summary>
@@ -574,7 +637,7 @@ public sealed class BundleMergeTests : IDisposable
         return OpenForWriting(path);
     }
 
-    private void Absorb(SqliteConnection bundle, int index) =>
+    private BundleMergeResult Absorb(SqliteConnection bundle, int index) =>
         BundleMerge.Absorb(
             bundle,
             BundleLayout.ShardPath(_directory, BundleShard.Number(index)),

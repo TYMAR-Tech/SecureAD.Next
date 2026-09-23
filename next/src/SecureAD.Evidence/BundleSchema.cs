@@ -75,7 +75,20 @@ public static class BundleSchema
     /// </para>
     // 11 records 0040's failed-controller history separately from successful partition coverage.
     // 12 records the classes deliberately excluded from this capture (P-224).
-    public const int Version = 12;
+    //
+    // 13 REPLACED `ace` WITH `access_entry` AND `descriptor_entry` (P-272), and this number had to
+    // move with them. A version 12 bundle has a table this build does not query and lacks two it
+    // does, so a build reading one without refusing it would fail on a missing table somewhere
+    // downstream of having already said the bundle was readable.
+    //
+    // It was missed on the first pass, and the way it was nearly not caught is the point: the
+    // canonicalisation gate would have refused those bundles anyway, because their entries carry
+    // version 3 and this build canonicalises to 4. That is refusal by luck. The schema gate runs
+    // first, it is the one that exists to say "this build cannot read these tables", and leaving it
+    // at 12 meant it returned a pass on exactly the bundles it is there to stop - a check that goes
+    // green while measuring nothing. The two numbers answer different questions and neither may
+    // stand in for the other; F-S1-1 records the coupling that was removed to keep them apart.
+    public const int Version = 13;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -124,7 +137,8 @@ public static class BundleSchema
         "unreadable_security_descriptor",
         "unresolved_reference",
         "trustee",
-        "ace",
+        "access_entry",
+        "descriptor_entry",
         "sysvol_gpo_coverage",
         "gpo_registry_setting",
         "gpo_security_setting",
@@ -557,7 +571,7 @@ public static class BundleSchema
         //
         // dacl_state is stored as its own value because a null DACL and an empty DACL mean opposite
         // things - one grants everyone everything, the other grants nobody anything - and both
-        // produce zero rows in `ace`. 'Unreadable' is the third way to produce zero rows and was
+        // produce zero rows in `descriptor_entry`. 'Unreadable' is the third way to produce zero rows and was
         // added by docs/decisions/0037: without it, a DACL nobody could read was recorded as one
         // that denies everybody, so an object the run failed to read looked like the safest object
         // in the forest.
@@ -626,7 +640,7 @@ public static class BundleSchema
         // reason the entries are.
         //
         // Without this table a descriptor that failed to parse and an object that grants nothing
-        // are the same thing: no rows in `ace`. One of those is a fact about the forest and the
+        // are the same thing: no rows in `descriptor_entry`. One of those is a fact about the forest and the
         // other is the absence of one, and reporting the second as the first would tell a customer
         // an object is safe when nobody knows whether it is.
         """
@@ -709,12 +723,30 @@ public static class BundleSchema
         )
         """,
 
-        // One row per access control entry, already canonicalised, hanging off the descriptor
-        // rather than off an object.
+        // One row per DISTINCT access control entry in the whole bundle, hanging off nothing.
         //
         // This is the other half of deduplication and the larger half: the entries are what there
-        // are millions of. Two objects sharing a descriptor share its entries, so an entry set is
-        // parsed once, hashed once and inserted once however many objects carry it.
+        // are millions of. An entry is a trustee, a mask, a type, its inheritance and - for a
+        // callback entry - its condition bytes; ace_hash is that identity as one value, and it is
+        // what the row is unique on.
+        //
+        // THE REASON THIS IS ITS OWN TABLE WAS MEASURED, not anticipated. Entries used to hang off
+        // the descriptor, which is deduplicated by the SHA-256 of its whole binary form - so two
+        // objects shared storage only if their permission lists were byte-identical end to end.
+        // Under deep inheritance no two ever are: each container adds entries that everything below
+        // it carries, so every descendant's list differs from its neighbour's by a little and is
+        // stored again in full. The first production capture (2026-09-23) held 141,706,338 entry
+        // rows saying 481,967 distinct things - each written 294 times - in an evidence file of
+        // 51.08 GB that is 96% permissions and does not fit on a customer's laptop. The owner
+        // raised this risk while the schema was being designed and was told the design was sound.
+        // It was not, at production scale. See P-269 through P-272.
+        //
+        // application_data is stored because ace_hash covers it. It went into the hash in
+        // canonicalization version 3 so that two entries granting the same rights under different
+        // conditions could not collide, but nothing stored it - which was harmless while a row
+        // belonged to one object and is not once the hash is the key. Without it two genuinely
+        // different conditional entries are identical to read, and no reader could reproduce the
+        // key the row is stored under.
         //
         // Inherited entries are stored. Skipping them was a defensible size saving - the
         // predecessor's 0093b571 measured 80-90% - and it is reversed because it makes the graph
@@ -724,10 +756,8 @@ public static class BundleSchema
         // (F-S20-14). That owes D7 the suppression of expected grants, or the graph drowns in edges
         // from `Domain Admins` and `SYSTEM` (F-S20-15).
         """
-        CREATE TABLE ace (
-            ace_id                      INTEGER PRIMARY KEY,
-            descriptor_id               INTEGER NOT NULL REFERENCES security_descriptor(descriptor_id),
-            ordinal                     INTEGER NOT NULL,
+        CREATE TABLE access_entry (
+            entry_id                    INTEGER PRIMARY KEY,
             ace_type                    TEXT    NOT NULL,
             trustee_id                  INTEGER NOT NULL REFERENCES trustee(trustee_id),
             access_mask                 INTEGER NOT NULL,
@@ -736,8 +766,29 @@ public static class BundleSchema
             is_inherited                INTEGER NOT NULL CHECK (is_inherited IN (0, 1)),
             inheritance_flags           INTEGER NOT NULL,
             propagation_flags           INTEGER NOT NULL,
-            ace_hash                    TEXT    NOT NULL,
-            UNIQUE (descriptor_id, ordinal)
+            application_data            BLOB    NOT NULL,
+            ace_hash                    TEXT    NOT NULL UNIQUE
+        )
+        """,
+
+        // Which entries a descriptor holds, and in what order.
+        //
+        // THE ORDINAL IS ON THE LINK AND NOT ON THE ENTRY, and that is load-bearing rather than
+        // tidy. The same entry sits at different positions in different lists - a deny that comes
+        // first on one object is fourth on another - and Windows evaluates a DACL by accumulating
+        // granted and denied masks in stored order, adding a deny only for rights not already
+        // granted ([MS-ADTS] 5.1.3.3.2). An order stored on the shared entry would therefore be one
+        // object's order imposed on every other object carrying it, which changes what the
+        // permissions mean.
+        //
+        // A descriptor's list is exactly its rows here in ordinal order, so reconstructing it needs
+        // no knowledge of how the entries came to be shared.
+        """
+        CREATE TABLE descriptor_entry (
+            descriptor_id            INTEGER NOT NULL REFERENCES security_descriptor(descriptor_id),
+            ordinal                  INTEGER NOT NULL,
+            entry_id                 INTEGER NOT NULL REFERENCES access_entry(entry_id),
+            PRIMARY KEY (descriptor_id, ordinal)
         )
         """,
 
@@ -901,7 +952,7 @@ public static class BundleSchema
 
         // A path inside a policy whose permissions could not be read at all, which is the file-share
         // counterpart of unreadable_security_descriptor and exists for the same reason: no rows in
-        // ace means "this path grants nothing" and must not also mean "nobody could look".
+        // descriptor_entry means "this path grants nothing" and must not also mean "nobody could look".
         """
         CREATE TABLE unreadable_sysvol_descriptor (
             gpo_guid                 TEXT    NOT NULL,
@@ -956,9 +1007,20 @@ public static class BundleSchema
         // Built after writing with the others, so the cost is one sort at the end rather than
         // maintenance on every insert during capture.
         "CREATE INDEX ix_captured_object_sid ON captured_object(objectsid)",
-        "CREATE INDEX ix_ace_descriptor ON ace(descriptor_id)",
-        "CREATE INDEX ix_ace_trustee ON ace(trustee_id)",
-        "CREATE INDEX ix_ace_hash ON ace(ace_hash)",
+
+        // No index on descriptor_entry(descriptor_id): the primary key leads with it, so "this
+        // descriptor's entries, in order" is already a range scan on the table itself.
+        //
+        // This one is the other direction - which descriptors hold a given entry - and it is the
+        // question the old shape could not be asked at all, because an entry belonged to exactly
+        // one descriptor.
+        "CREATE INDEX ix_descriptor_entry_entry ON descriptor_entry(entry_id)",
+        "CREATE INDEX ix_access_entry_trustee ON access_entry(trustee_id)",
+
+        // NOTHING INDEXES ace_hash, and that is not an omission. It is UNIQUE on access_entry, so
+        // SQLite already keeps an index for it; a second would be the same 64 hexadecimal
+        // characters stored twice. The old shape had one over every entry row rather than over
+        // every distinct entry, which on the production capture was 141,706,338 of them.
         "CREATE INDEX ix_object_security_descriptor ON object_security_descriptor(descriptor_id)",
         "CREATE INDEX ix_sysvol_path_descriptor ON sysvol_path_security_descriptor(descriptor_id)",
         "CREATE INDEX ix_security_descriptor_set_hash ON security_descriptor(ace_set_hash)",

@@ -24,7 +24,7 @@ public sealed class RequesterWorkloadTests(RequesterWorkloadTests.Workloads work
         }.ToString());
         connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),(SELECT COUNT(*) FROM ace),(SELECT COUNT(*) FROM member_value) FROM captured_object";
+        command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),(SELECT COUNT(*) FROM descriptor_entry),(SELECT COUNT(*) FROM member_value) FROM captured_object";
         using var rows = command.ExecuteReader();
         Assert.True(rows.Read());
         Assert.Equal(200L, rows.GetInt64(0));

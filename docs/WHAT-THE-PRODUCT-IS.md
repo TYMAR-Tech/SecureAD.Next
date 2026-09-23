@@ -2148,6 +2148,33 @@ will reach a confident wrong answer.
 | Objects whose permissions could not be read | 280,782 (30%) |
 | Sealed evidence file | 51.08 GB |
 
+**The 294 is the shape of a defect, and it was fixed on 2026-09-23 under `P-272`.** Each distinct
+entry is now stored once and pointed at, so the row above describes how many times an entry is
+*referenced* rather than how many times it is written. It is kept because it is the measurement the
+redesign rests on, and because a figure taken from a bundle sealed before that date still means what
+it says.
+
+**What the fix is worth, measured rather than projected.** A synthetic bundle at this shape was
+written by the real capture writer twice, at 5% scale, once on each side of the change. Both hold
+identical evidence - 46,985 objects, 13,592 descriptors, 7,081,432 entry positions, 24,098 distinct
+entries - and the only difference is how many rows were needed to say it.
+
+| | Before | After |
+|---|---|---|
+| Rows stored to hold the entries | 7,081,432 | 24,098 |
+| Entry tables, content | 676.4 MB | 78.5 MB |
+| All tables, content | 946.2 MB | 348.3 MB |
+| Sealed evidence file | 1,853,292,544 bytes | 620,806,144 bytes |
+| Time to write it | 180.4 s | 89.7 s |
+
+**Two-thirds of the file went, and it is 66.5% on a measurement rather than an estimate.** The part
+that is arithmetic rather than measurement is what this means at full production scale: by content
+per row the entry tables go from 23.10 GB to roughly 1.6 GB, which leaves `raw_bytes` - the sealed
+original descriptor bytes, 7.73 GB - as the largest single thing in the file and the subject of
+`P-269`. **The synthetic model's own before figure is 37 GB at full scale against the real capture's
+51.08 GB**, because its trustees and descriptors are smaller than a real forest's; the ratio is what
+the two runs measure, not the absolute size of a customer bundle.
+
 
 **Where these come from, exactly.** They were first found in the predecessor's
 `tests/SecureAD.Infrastructure.Tests/Performance/ObjectDetailProfiler.cs`, which states them as the

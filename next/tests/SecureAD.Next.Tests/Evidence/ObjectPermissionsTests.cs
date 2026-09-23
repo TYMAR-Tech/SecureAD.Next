@@ -868,7 +868,6 @@ public sealed class ObjectPermissionsTests : IDisposable
         Ace(AceType.AccessDenied, sid, mask);
 
     private static CanonicalAce Ace(AceType type, string sid, int mask) => new(
-        Guid.Empty,
         type,
         sid,
         mask,
@@ -877,6 +876,7 @@ public sealed class ObjectPermissionsTests : IDisposable
         IsInherited: false,
         InheritanceFlags: 0,
         PropagationFlags: 0,
+        ApplicationData: default,
         AceHash: $"{type}-{sid}-{mask:X8}",
         // The version this build actually produces, not a literal. It said 1 until 2026-09, while
         // AceCanonicalization.Version was 3, and nothing noticed because BundleWriter overwrote the

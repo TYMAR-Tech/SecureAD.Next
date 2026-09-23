@@ -61,6 +61,10 @@ internal static class Program
             return RequesterWorkload.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--requester")
             return RequesterMeasurement.Run(args[1..]);
+        if (args.Length > 0 && args[0] == "--permission-storage")
+            return PermissionStorageWorkload.Run(args[1..]);
+        if (args.Length > 0 && args[0] == "--descriptor-redundancy")
+            return DescriptorRedundancyMeasurement.Run(args[1..]);
 
         var repeats = args.Length > 0 && int.TryParse(args[0], NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var value) && value > 0 ? value : 3;
@@ -348,7 +352,7 @@ internal static class Program
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*), COUNT(DISTINCT domain_fqdn), AVG(LENGTH(distinguished_name)), "
-            + "(SELECT COUNT(*) FROM ace) FROM captured_object";
+            + "(SELECT COUNT(*) FROM descriptor_entry) FROM captured_object";
         using (var reader = command.ExecuteReader())
         {
             if (!reader.Read() || reader.GetInt64(0) != shape.Objects

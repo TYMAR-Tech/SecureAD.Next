@@ -358,16 +358,18 @@ internal static class Program
 
         Console.WriteLine();
         Console.WriteLine("Access control entries");
-        Line("Entries stored", contents.AccessControlEntries);
-        Line("Distinct entries among them", contents.DistinctEntries);
+        Line("Entries across all descriptors", contents.AccessControlEntries);
+        Line("Distinct entries stored", contents.DistinctEntries);
         if (contents.EntryRepetition is { } repetition)
         {
-            // Says which of the two explanations for a very large permissions store is true: a
-            // forest whose access control lists really are that big, or the same inherited entry
-            // written out once for every object beneath the one it was set on.
+            // WORDED FOR WHAT THE BUNDLE NOW DOES. Until P-272 an entry was written out once for
+            // every object beneath the container it was set on, and this line said "stored 294
+            // times" because that is what had happened. It is stored once and pointed at, so saying
+            // "stored" would now describe work the product no longer does - and a size figure a
+            // customer would act on has to match the file in front of him.
             Console.WriteLine(string.Format(
                 CultureInfo.CurrentCulture,
-                "  Each distinct entry is stored {0:N1} times",
+                "  Stored once, referenced {0:N1} times on average",
                 repetition));
         }
 
