@@ -17,4 +17,6 @@
   <data name="LogFailed" xml:space="preserve"><value>The SYSVOL operation log could not be written; this is a logging failure, not missing directory evidence.</value></data>
   <data name="PolicyStarted" xml:space="preserve"><value>reading a SYSVOL policy</value></data>
   <data name="PolicyFinished" xml:space="preserve"><value>SYSVOL policy accounted for</value></data>
+  <data name="Rollup" xml:space="preserve"><value>SYSVOL acquisition progress so far</value></data>
+  <data name="SlowOperation" xml:space="preserve"><value>SYSVOL operation was slow</value></data>
 </root>

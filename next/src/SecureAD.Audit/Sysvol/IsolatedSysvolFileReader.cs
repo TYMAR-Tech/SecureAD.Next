@@ -12,6 +12,60 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
     /// <summary>The owner's provisional per-operation inactivity limit, recorded under P-221.</summary>
     public static TimeSpan InactivityLimit => TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// How long an operation must take before it is worth a line of its own.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Written because the log stopped being readable.</b> The first production capture reached
+    /// 200 MB of <c>run.log</c> with several domains still to go: every operation wrote at least
+    /// three lines - one before the request and one per worker progress event - each carrying ten
+    /// details including the full UNC path. Against a forest of roughly 4,000 policies, where a
+    /// single policy costs twenty to sixty operations, that is on the order of half a million lines
+    /// saying that something ordinary happened quickly.
+    /// </para>
+    /// <para>
+    /// <b>A second, quieter cost.</b> Those writes are synchronous and go to the same disk the
+    /// capture is reading onto, so the account of the work was competing with the work.
+    /// </para>
+    /// <para>
+    /// One second, because a descriptor read on a healthy share is a few milliseconds and anything
+    /// near a second is worth a look. Nothing below it is silently lost: the rollup below counts
+    /// every operation, and a failure is recorded whatever it cost.
+    /// </para>
+    /// </remarks>
+    public static TimeSpan WorthALine => TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How many operations pass between rollup lines.
+    /// </summary>
+    /// <remarks>
+    /// Liveness without volume. A capture that writes nothing for an hour is indistinguishable
+    /// from one that has stopped, which is the reason the per-event lines existed at all; a line
+    /// every thousand operations keeps that signal at about four hundred lines for the whole
+    /// forest rather than half a million.
+    /// </remarks>
+    private const long RollupEvery = 1_000;
+
+    /// <summary>
+    /// Raised for every worker progress event, whether or not it is written to the log.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A seam, because the log stopped being one.</b> Progress events used to reach observers
+    /// only by being written down, so anything that needed to know an operation had begun - the
+    /// test harness waiting to identify the worker process, most of all - had to watch the log.
+    /// That made log volume load-bearing, and quietening the log would have hung those waits
+    /// rather than failed them, which is the least useful way for something to break.
+    /// </para>
+    /// <para>
+    /// This carries every event regardless of the reduction, so what is observed no longer depends
+    /// on what is recorded. It is deliberately not an <c>event</c>: there is exactly one supervisor
+    /// per reader and the ordering matters.
+    /// </para>
+    /// </remarks>
+    internal Action<SysvolIoEvent, int?>? Watching { get; set; }
+
     private readonly SysvolWorkerConnection _worker;
     private readonly TimeSpan _inactivityLimit;
     private readonly IRunLog _log;
@@ -22,6 +76,9 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
     private bool _disposed;
     private long _nextId;
     private long _completedOperations;
+    private long _rolledUpAt;
+    private long _slowOperations;
+    private long _totalBytes;
     private int? _diagnosticPid;
 
     /// <summary>Creates a supervisor; worker startup and shutdown have separate bounded waits.</summary>
@@ -95,12 +152,8 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
                 Record(unavailable, Details(target, latest, started, id));
                 return unavailable;
             }
-            Note("Started", Details(target, latest, started, id));
             if (!_ready)
             {
-                limit = TimeSpan.FromSeconds(30);
-                latest = latest with { Operation = "StartWorker" };
-                Note("Started", Details(target, latest, started, id));
                 using var startup = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
                 startup.CancelAfter(TimeSpan.FromSeconds(30));
                 await _worker.StartAsync(startup.Token).ConfigureAwait(false);
@@ -109,10 +162,16 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
                 if (hello.RequestId != 0 || hello.Progress?.Operation != "WorkerReady" || hello.Finished)
                     throw new InvalidDataException(SysvolText.Get("ProtocolInvalid"));
                 _ready = true;
+
+                // Once per worker, not once per operation. Starting one is a real event and rare;
+                // announcing every request was half of what made the log unreadable.
+                Note("Started", Details(target, latest with { Operation = "StartWorker" }, started, id));
             }
 
             limit = _inactivityLimit;
             latest = latest with { Operation = kind.ToString() };
+            var lastLineAt = _time.GetTimestamp();
+            var first = true;
             using var inactivity = new CancellationTokenSource(_inactivityLimit, _time);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, inactivity.Token);
             await SysvolWire.SendAsync(_worker.Pipe, new SysvolRequest(id, kind, target, path), deadline.Token).ConfigureAwait(false);
@@ -134,6 +193,27 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
                     inactivity.CancelAfter(_inactivityLimit);
                     if (progress.State == "Completed")
                         _completedOperations++;
+                    Watching?.Invoke(progress with { Path = latest.Path }, _diagnosticPid);
+
+                    // One line as an operation begins, then silence unless it drags.
+                    //
+                    // The opening line is kept deliberately: it is flushed before the worker
+                    // returns, so a capture that looks frozen can be diagnosed by reading the log
+                    // and seeing which policy and path are in flight. A hung operation produces no
+                    // further events, so a purely time-based rule would never write that line.
+                    //
+                    // After that, the clock decides. Note that "Started" is NOT once per operation:
+                    // a file read reports it once per 64 KB chunk, so keeping every one of them
+                    // would have left a large file writing a line per chunk - the same unbounded
+                    // volume, moved rather than removed. What goes is everything ordinary and
+                    // quick: the repeated chunk reports and the "Completed" line that says only
+                    // that a normal thing finished, which the rollup counts instead.
+                    if (progress.State == "Completed")
+                        continue;
+                    if (!first && _time.GetElapsedTime(lastLineAt) < WorthALine)
+                        continue;
+                    first = false;
+                    lastLineAt = _time.GetTimestamp();
                     Note(progress.State, Details(target, progress, operationStarted, id));
                     continue;
                 }
@@ -146,7 +226,7 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
                 }
                 if (kind is SysvolRequestKind.EnumerateFiles or SysvolRequestKind.EnumerateDirectories && response.Paths is null)
                     throw new InvalidDataException(SysvolText.Get("ProtocolInvalid"));
-                Note("Completed", Details(target, latest with { Operation = kind.ToString(), State = "Completed" }, started, id));
+                NoteCompletion(target, latest with { Operation = kind.ToString(), State = "Completed" }, started, id);
                 return response;
             }
         }
@@ -188,6 +268,47 @@ public sealed class IsolatedSysvolFileReader : ISysvolFileReader, IAsyncDisposab
         new("bytes", progress.Bytes.ToString(CultureInfo.InvariantCulture)),
         new("completedOperations", _completedOperations.ToString(CultureInfo.InvariantCulture)),
     ];
+
+    /// <summary>
+    /// Accounts for a completed operation, writing a line only if it earned one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Three things have to survive the reduction, and each is handled here. <b>Nothing may be
+    /// silently lost</b> - every operation is counted whether or not it is written, so the rollup
+    /// total is the true total and a reader can subtract to see what went unremarked. <b>Anything
+    /// unusual must still be visible</b> - a slow operation gets its own line with its full
+    /// detail, because the reason to read this log at all is usually that something was slow.
+    /// <b>A running capture must not look like a stopped one</b> - hence the periodic rollup.
+    /// </para>
+    /// <para>
+    /// Failures are not routed through here at all; they go to <see cref="Record"/> unchanged.
+    /// Reducing the log must never reduce the account of what went wrong.
+    /// </para>
+    /// </remarks>
+    private void NoteCompletion(GpoTarget target, SysvolIoEvent completed, long started, long id)
+    {
+        _totalBytes += completed.Bytes;
+        var elapsed = _time.GetElapsedTime(started);
+        if (elapsed >= WorthALine)
+        {
+            _slowOperations++;
+            Note("SlowOperation", Details(target, completed, started, id));
+        }
+
+        if (_completedOperations - _rolledUpAt < RollupEvery)
+            return;
+
+        _rolledUpAt = _completedOperations;
+        Note("Rollup",
+        [
+            new("completedOperations", _completedOperations.ToString(CultureInfo.InvariantCulture)),
+            new("slowOperations", _slowOperations.ToString(CultureInfo.InvariantCulture)),
+            new("bytes", _totalBytes.ToString(CultureInfo.InvariantCulture)),
+            new("policy", target.DisplayName),
+            new("workerPid", _diagnosticPid?.ToString(CultureInfo.InvariantCulture) ?? "none"),
+        ]);
+    }
 
     private void Note(string key, IReadOnlyList<RunLogDetail> details) =>
         WriteLog(() => _log.Note("Capture", SysvolText.Get(key), details));
