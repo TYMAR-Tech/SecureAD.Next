@@ -2122,11 +2122,30 @@ will reach a confident wrong answer.
 | Domains | 9 |
 | Objects | ~347,000 |
 | Access control entries | ~5.9 million |
+| Group Policy objects | ~3,500-4,000 |
 | Control edges the predecessor produced | ~9 million |
 | Delegations | ~1.3 million |
 | Findings | ~34,000 |
 | Directory depth | deep, average distinguished name about 97 characters |
 | Predecessor's stored output after a production run | ~17 GB |
+
+**The Group Policy count is the owner's estimate of 2026-09-22, not a measurement.** It was recorded because it changes the arithmetic of the SYSVOL pass by an order of magnitude and nothing else in this document carried it; the exact figure comes out of any capture, one row per declared policy in `gpo_coverage`, and should replace the estimate once a run seals.
+
+**Every figure in this table came from the predecessor, and the rebuild captures more than it did.** Recorded 2026-09-22 after the owner corrected a comparison built on it: the object, ACE and control-edge counts describe what the OLD application gathered, so they are a FLOOR for this product and not its scale. Treating them as equivalent makes the rebuilt store look bloated when it may simply hold more. Until a sealed run reports its own counts, no size, budget or storage conclusion may rest on comparing a SecureAD.Next figure with the ~17 GB predecessor output or with any row above.
+
+**Measured, 2026-09-23, from the first sealed nine-domain production capture.** These supersede the predecessor figures above for every purpose: the rebuild captures 2.7 times the objects and 24 times the access control entries the old application did, so any argument resting on the older numbers is wrong by that much. Taken with `securead-cli --describe`.
+
+| | |
+|---|---|
+| Objects captured | 939,700 |
+| Access control entries | 141,706,338 |
+| Distinct security descriptors | 271,845 |
+| Entries per descriptor, average | 521 |
+| Trustees | 189,192 |
+| Group Policy objects | 3,453 |
+| Objects whose permissions could not be read | 280,782 (30%) |
+| Sealed evidence file | 51.08 GB |
+
 
 **Where these come from, exactly.** They were first found in the predecessor's
 `tests/SecureAD.Infrastructure.Tests/Performance/ObjectDetailProfiler.cs`, which states them as the

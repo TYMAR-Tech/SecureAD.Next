@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using SecureAD.Audit.Capture;
 using SecureAD.Audit.Connect;
 using SecureAD.Audit.Sysvol;
@@ -126,6 +127,9 @@ internal static class Program
 
         if (options.JudgeOnly is not null)
             return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget, requesterPolicy);
+
+        if (options.DescribeOnly is not null)
+            return Describe(options.DescribeOnly, options.Sizes, cancellationToken);
 
         Console.WriteLine(options.ClassScopeDescription);
 
@@ -276,6 +280,168 @@ internal static class Program
     /// stopped run from a finished one.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Reports what a sealed bundle holds, without opening it for analysis and without writing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Written because nothing could answer it.</b> Every size and budget argument about this
+    /// product had been made against the predecessor's figures, because no sealed run had ever
+    /// reported its own shape. The first production capture then produced a bundle several times
+    /// the expected size, on a customer laptop with no room for a second copy of it, and the only
+    /// way to ask what was inside was to attach a database tool to the original.
+    /// </para>
+    /// <para>
+    /// <b>It says what it could not read, and separately from what is simply absent.</b> An object
+    /// whose permissions were refused is not an object with no permissions, and a policy nobody
+    /// could open is not a policy that grants nothing. The whole reason for a denominator is that
+    /// incompleteness has knowable edges.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The run folder to describe.</param>
+    /// <param name="sizes">Whether to measure where the bytes went, at the cost of a full read.</param>
+    /// <param name="cancellationToken">Cancellation, checked between tables.</param>
+    private static int Describe(
+        string bundleDirectory, bool sizes, CancellationToken cancellationToken)
+    {
+        // Named by an operator rather than produced by a capture, so it is worth checking before
+        // anything opens it, exactly as Derive does above.
+        if (!Directory.Exists(bundleDirectory))
+        {
+            Console.Error.WriteLine("There is no bundle at " + bundleDirectory + ".");
+            return Failed;
+        }
+
+        Result<BundleContents> read;
+        try
+        {
+            read = BundleContents.Read(bundleDirectory, sizes, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("Stopped. Nothing was written.");
+            return Cancelled;
+        }
+
+        if (!read.IsSuccess)
+        {
+            Console.Error.WriteLine(read.Error!.Description);
+            return Failed;
+        }
+
+        var contents = read.Value!;
+
+        // Said before the numbers, and deliberately: this is run against a customer's only copy of
+        // a bundle, on a machine with no room for another, and an operator should not have to
+        // infer from the absence of a warning that nothing was touched.
+        Console.WriteLine();
+        Console.WriteLine("Read from " + bundleDirectory + " - nothing was written.");
+        Console.WriteLine();
+
+        Console.WriteLine("What this bundle holds");
+        Line("Objects captured", contents.Objects);
+        Line("Access control entries", contents.AccessControlEntries);
+        Line("Group Policy objects", contents.PoliciesDeclared);
+        Line("Trustees", contents.Trustees);
+        Line("Domains covered", contents.Domains);
+
+        Console.WriteLine();
+        Console.WriteLine("Security descriptors");
+        Line("Distinct descriptors stored", contents.DescriptorsStored);
+        Line("Objects referencing one", contents.DescriptorUses);
+        Console.WriteLine(contents.ReuseFactor is { } reuse
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                "  Stored once, used {0:N1} times on average",
+                reuse)
+            : "  Nothing stored, so nothing to share.");
+
+        Console.WriteLine();
+        Console.WriteLine("Access control entries");
+        Line("Entries stored", contents.AccessControlEntries);
+        Line("Distinct entries among them", contents.DistinctEntries);
+        if (contents.EntryRepetition is { } repetition)
+        {
+            // Says which of the two explanations for a very large permissions store is true: a
+            // forest whose access control lists really are that big, or the same inherited entry
+            // written out once for every object beneath the one it was set on.
+            Console.WriteLine(string.Format(
+                CultureInfo.CurrentCulture,
+                "  Each distinct entry is stored {0:N1} times",
+                repetition));
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("What could not be read");
+        Line("Descriptors that failed to parse", contents.DescriptorsUnparsed);
+        Line("Objects with unreadable permissions", contents.PermissionsUnreadable);
+        Line("SYSVOL paths unreadable", contents.SysvolPathsUnreadable);
+        Line("Group Policy files that errored", contents.PolicyFileErrors);
+        Line("Domains that failed", contents.DomainsFailed);
+
+        if (contents.PoliciesNotReadInFull > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine(string.Format(
+                CultureInfo.CurrentCulture,
+                "  {0:N0} of {1:N0} Group Policy objects were not read in full:",
+                contents.PoliciesNotReadInFull,
+                contents.PoliciesDeclared));
+
+            foreach (var (reason, policies) in contents.WhyPoliciesWentUnread)
+            {
+                Console.WriteLine(string.Format(
+                    CultureInfo.CurrentCulture, "    {0,6:N0}  {1}", policies, reason));
+            }
+        }
+
+        if (contents.SpaceByTable is { Count: > 0 } space)
+        {
+            Console.WriteLine();
+            Console.WriteLine(string.Format(
+                CultureInfo.CurrentCulture, "{0,-38} {1,14} {2,14}", "Where the space went", "ROWS", "CONTENT"));
+
+            foreach (var weight in space.Take(15))
+            {
+                Console.WriteLine(string.Format(
+                    CultureInfo.CurrentCulture,
+                    "  {0,-36} {1,14:N0} {2,14}",
+                    weight.Table,
+                    weight.Rows,
+                    Bytes(weight.ContentBytes)));
+            }
+
+            Console.WriteLine();
+            Line("Content measured above", space.Sum(w => w.ContentBytes), asBytes: true);
+            Line("File on disk", contents.FileBytes, asBytes: true);
+            Console.WriteLine("  The difference is indexes and page overhead.");
+        }
+        else
+        {
+            Console.WriteLine();
+            Line("evidence.db", contents.FileBytes, asBytes: true);
+        }
+
+        Console.WriteLine();
+        return Success;
+
+        static void Line(string label, long value, bool asBytes = false) =>
+            Console.WriteLine(string.Format(
+                CultureInfo.CurrentCulture,
+                "  {0,-42} {1,14}",
+                label,
+                asBytes ? Bytes(value) : value.ToString("N0", CultureInfo.CurrentCulture)));
+    }
+
+    /// <summary>A byte count at a scale a person reads, rather than a bare number.</summary>
+    private static string Bytes(long bytes) => bytes switch
+    {
+        >= 1024L * 1024 * 1024 => string.Format(CultureInfo.CurrentCulture, "{0:N2} GB", bytes / (1024d * 1024 * 1024)),
+        >= 1024 * 1024 => string.Format(CultureInfo.CurrentCulture, "{0:N1} MB", bytes / (1024d * 1024)),
+        >= 1024 => string.Format(CultureInfo.CurrentCulture, "{0:N1} KB", bytes / 1024d),
+        _ => string.Format(CultureInfo.CurrentCulture, "{0:N0} B", bytes),
+    };
+
     private static int Derive(
         string bundleDirectory, bool afterCapture, CancellationToken cancellationToken)
     {
