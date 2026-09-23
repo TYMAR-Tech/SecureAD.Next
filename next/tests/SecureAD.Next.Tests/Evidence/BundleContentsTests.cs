@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Security.AccessControl;
+using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
@@ -182,6 +184,73 @@ public sealed class BundleContentsTests
 
         Assert.False(contents.IsSuccess);
         Assert.Equal("Evidence.BundleUnsealed", contents.Error!.Code);
+    }
+
+    /// <summary>
+    /// A bundle from another schema version is refused by name, rather than crashing part way
+    /// through counting tables it does not have.
+    /// </summary>
+    /// <remarks>
+    /// <b>Found by walking into it.</b> This path does not go through <c>BundleReader.Open</c>, so
+    /// it had no schema gate at all - it simply counted named tables. That was invisible while one
+    /// schema existed; <c>P-272</c> renamed the permission tables, and the first thing anybody
+    /// would do with an older bundle is ask what is in it. An operator got a stack trace where the
+    /// product knows the answer and can say it.
+    /// </remarks>
+    [Fact]
+    public void ABundleFromAnotherSchemaVersionIsRefusedByName()
+    {
+        var directory = Write(objects: 1, descriptors: 1);
+        SetSchemaVersion(directory, BundleSchema.Version - 1);
+
+        var contents = BundleContents.Read(directory, includeWeights: false, CancellationToken.None);
+
+        Assert.False(contents.IsSuccess);
+        Assert.Equal("Evidence.SchemaVersionUnsupported", contents.Error!.Code);
+
+        // The version it was written against and the version this build reads both appear, because
+        // "wrong version" without either number tells an operator nothing he can act on.
+        Assert.Contains(
+            (BundleSchema.Version - 1).ToString(CultureInfo.InvariantCulture),
+            contents.Error.Description,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            BundleSchema.Version.ToString(CultureInfo.InvariantCulture),
+            contents.Error.Description,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A bundle whose own account of itself cannot be read says that, which is a different answer
+    /// from a version this build does not support.
+    /// </summary>
+    [Fact]
+    public void ABundleThatCannotStateItsSchemaIsRefusedAsUnreadable()
+    {
+        var directory = Write(objects: 1, descriptors: 1);
+        Execute(directory, "DROP TABLE bundle");
+
+        var contents = BundleContents.Read(directory, includeWeights: false, CancellationToken.None);
+
+        Assert.False(contents.IsSuccess);
+        Assert.Equal("Evidence.EvidenceUnreadable", contents.Error!.Code);
+    }
+
+    private static void SetSchemaVersion(string directory, int version) =>
+        Execute(directory, $"UPDATE bundle SET schema_version = {version}");
+
+    private static void Execute(string directory, string sql)
+    {
+        using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = BundleLayout.EvidencePath(directory),
+                Pooling = false,
+            }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
     }
 
     private const string Refusal = "Access to the path was denied.";

@@ -270,6 +270,42 @@ public sealed record BundleContents
             }.ToString());
         connection.Open();
 
+        // THE SCHEMA GATE, BECAUSE THIS PATH DOES NOT GO THROUGH BundleReader.Open. Everything
+        // below counts named tables, so a bundle written against a different schema produced an
+        // unhandled "no such table" and a stack trace where the product is supposed to say which
+        // version wrote the file and that this build cannot read it.
+        //
+        // FOUND BY WALKING INTO IT, 2026-09-23. P-272 renamed the permission tables, so for the
+        // first time two schema versions existed in the field at once - and the first thing anybody
+        // would do with the older bundle is describe it. A crash is not a wrong answer, which is why
+        // this is a repair rather than a refusal to ship, but it is the product failing to say the
+        // one thing it knows.
+        if (SchemaVersionOf(connection) is not { } schemaVersion)
+        {
+            return AuditError.Create(
+                ErrorCategory.Evidence,
+                "EvidenceUnreadable",
+                ErrorSeverity.Failed,
+                "This file is sealed and its own account of itself could not be read, so nothing "
+                + "here can be described. The bytes are the bytes that were sealed, so this is a "
+                + "defect in this build rather than damage to the bundle.",
+                bundleDirectory);
+        }
+
+        if (schemaVersion != BundleSchema.Version)
+        {
+            return AuditError.Create(
+                ErrorCategory.Evidence,
+                "SchemaVersionUnsupported",
+                ErrorSeverity.Failed,
+                $"This bundle was written against schema version {schemaVersion} and this build "
+                + $"reads version {BundleSchema.Version}. It holds tables this build does not know "
+                + "and lacks tables it would read, so describing it would either fail part way or "
+                + "report a shape that is not what is stored. The evidence is undamaged; this "
+                + "product does not migrate a bundle, so read it with the build that wrote it.",
+                bundleDirectory);
+        }
+
         var description = new BundleContents
         {
             Objects = Count(connection, "captured_object"),
@@ -304,6 +340,34 @@ public sealed record BundleContents
 
     private static long Count(SqliteConnection connection, string table) =>
         Scalar(connection, "SELECT COUNT(*) FROM \"" + table + "\"");
+
+    /// <summary>
+    /// The schema version the bundle records, or null when it cannot be read at all.
+    /// </summary>
+    /// <remarks>
+    /// Null rather than an exception, and null rather than a guess. A file whose own account of
+    /// itself is unreadable is a different answer from one written by another version, and the
+    /// caller says so differently; returning some default here would make an unreadable bundle
+    /// indistinguishable from a version mismatch.
+    /// </remarks>
+    private static long? SchemaVersionOf(SqliteConnection connection)
+    {
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT schema_version FROM bundle";
+            var value = command.ExecuteScalar();
+            return value is null or DBNull
+                ? null
+                : Convert.ToInt64(value, CultureInfo.InvariantCulture);
+        }
+        catch (SqliteException)
+        {
+            // The table is absent or unreadable. Every schema this product has shipped has had it,
+            // so this is not a version that can be named - it is a file that cannot answer.
+            return null;
+        }
+    }
 
     private static long Scalar(SqliteConnection connection, string sql)
     {
