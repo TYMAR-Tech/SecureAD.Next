@@ -987,23 +987,30 @@ public sealed class NewAuditViewModelTests
     }
 
     /// <summary>
-    /// A refused name does fall back to the ranked choice - and the operator is told, by name,
-    /// before it does.
+    /// A refused name is not quietly replaced by the ranked choice: the operator is told, by name,
+    /// and what he asked for stays in front of him.
     /// </summary>
     /// <remarks>
     /// <para>
     /// The predecessor fell back silently, so an operator who mistyped a host name got a successful
-    /// run against a controller he did not name, with nothing recording the substitution. What is
-    /// forbidden is the silence, not the fallback: holding him in a refusal whose only exit is
-    /// closing the window would trade one bad outcome for another.
+    /// run against a controller he did not name, with nothing recording the substitution.
     /// </para>
     /// <para>
-    /// So three things are asserted together, and the first is the one that matters: he was told,
-    /// and told which host. Remove the notice and this fails even though the box still clears.
+    /// <b>This used to assert that the box was cleared, on the reasoning that holding him in a
+    /// refusal whose only exit is closing the window trades one bad outcome for another. The owner
+    /// reversed it on 2026-09-22 (P-265), and the reasoning was wrong in two ways.</b> Clearing put
+    /// the domain back on the ranked controller and then displayed that controller in the column
+    /// beside the refusal, so the screen appeared to hand back the very host it had just refused -
+    /// which is what the owner hit in production. And it was the silent fallback itself, moved up
+    /// into the window from the layer where <c>ControllerSelection</c> forbids it.
+    /// </para>
+    /// <para>
+    /// There is an exit, and it is not closing the window: editing the box withdraws the refusal,
+    /// which the test below holds.
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task AnIneligibleControllerIsNotQuietlyReplacedByTheRankedChoice()
+    public async Task ARefusedNameIsNotQuietlyReplacedByTheRankedChoice()
     {
         var screen = await Opened();
         var row = Assert.Single(screen.Domains);
@@ -1015,8 +1022,109 @@ public sealed class NewAuditViewModelTests
         Assert.NotNull(screen.Notice);
 
         Assert.Contains("dc99.ad.lab", screen.Notice!.Title, StringComparison.Ordinal);
-        Assert.Equal(string.Empty, row.NamedController);
+        Assert.Equal("dc99.ad.lab", row.NamedController);
         Assert.False(_capture.WasRun);
+    }
+
+    /// <summary>
+    /// A check that passed says so, rather than saying nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>The defect the owner reported from production.</b> A good check cleared the refusal and
+    /// returned, so pressing Validate on a working controller looked exactly like pressing nothing
+    /// - and the only way to see the button do anything was to make it fail.
+    /// </remarks>
+    [Fact]
+    public async Task AControllerThatPassedIsSaidToHavePassed()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc02.ad.lab";
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Established.Yes, row.ControllerCheck);
+        Assert.NotEqual(string.Empty, row.ControllerCheckText);
+    }
+
+    /// <summary>
+    /// A refused check is left standing on the row, not only in a dialog that can be dismissed.
+    /// </summary>
+    [Fact]
+    public async Task ARefusedControllerIsSaidToHaveBeenRefused()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Established.No, row.ControllerCheck);
+        Assert.NotEqual(string.Empty, row.ControllerCheckText);
+    }
+
+    /// <summary>
+    /// An empty box establishes nothing, and says nothing.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the two above: blank is reserved for the unasked question, so a
+    /// cell that spoke here would make the other two states meaningless.
+    /// </remarks>
+    [Fact]
+    public async Task AnEmptyBoxEstablishesNothingAndSaysNothing()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Established.NotEstablished, row.ControllerCheck);
+        Assert.Equal(string.Empty, row.ControllerCheckText);
+    }
+
+    /// <summary>
+    /// Editing the name withdraws what was established about the old one.
+    /// </summary>
+    /// <remarks>
+    /// <b>A check vouches for the host that was asked about and for no other.</b> A state left
+    /// standing over an edited name would have this screen reporting a controller as proved when a
+    /// different one had been, which is the stale-answer failure one field along.
+    /// </remarks>
+    [Fact]
+    public async Task EditingTheNameWithdrawsWhatWasEstablishedAboutTheOldOne()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc02.ad.lab";
+        await screen.ValidateOverrideAsync(row);
+        Assert.Equal(Established.Yes, row.ControllerCheck);
+
+        row.NamedController = "dc03.ad.lab";
+
+        Assert.Equal(Established.NotEstablished, row.ControllerCheck);
+    }
+
+    /// <summary>
+    /// Editing the name withdraws a refusal too, which is the exit from one.
+    /// </summary>
+    /// <remarks>
+    /// Without this an operator who mistyped a host would be held by a refusal about a name no
+    /// longer in the box, and the run could never start.
+    /// </remarks>
+    [Fact]
+    public async Task EditingTheNameWithdrawsARefusal()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+        await screen.ValidateOverrideAsync(row);
+        Assert.Equal(Refusal, row.Problem);
+
+        row.NamedController = "dc02.ad.lab";
+
+        Assert.Null(row.Problem);
     }
 
     // The PDC emulator prompt, narrowed.

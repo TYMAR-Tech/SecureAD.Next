@@ -391,6 +391,16 @@
                                             Command="{Binding ValidateCommand}"
                                             Padding="{StaticResource DenseCellPadding}"
                                             Margin="6,0,0,0" />
+
+                                    <!-- WHAT THE BUTTON ANSWERED, because it used to answer by
+                                         saying nothing. A good check cleared the refusal and
+                                         returned, so not-checked, checked-and-good and an empty
+                                         box were one cell, and the only way to see the button work
+                                         was to make it fail. Blank is kept for the unasked
+                                         question and for that alone. -->
+                                    <TextBlock Text="{Binding ControllerCheckText, Mode=OneWay}"
+                                               VerticalAlignment="Center"
+                                               Margin="8,0,0,0" />
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

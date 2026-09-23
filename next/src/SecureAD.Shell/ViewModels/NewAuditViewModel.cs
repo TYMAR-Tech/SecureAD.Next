@@ -72,6 +72,28 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     [ObservableProperty]
     private string? _problem;
 
+    /// <summary>
+    /// What became of checking the named controller, in the same three states every other answer
+    /// on this screen uses.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Silence used to mean three different things here, which is the defect this exists to
+    /// end.</b> A good check cleared the refusal and returned, so <i>not checked yet</i>,
+    /// <i>checked and usable</i> and <i>the box is empty</i> all drew the same cell - and the only
+    /// way to learn the button had done anything was to provoke a failure. That is the unasked
+    /// question rendered as an answer that <c>docs/decisions/0056</c> exists to forbid, one column
+    /// further along than the columns it was written for.
+    /// </para>
+    /// <para>
+    /// <b>It is reset the moment the name is edited.</b> A check vouches for the host that was
+    /// asked about and for no other, so a state left standing over an edited name would be this
+    /// screen saying a controller had been proved when a different one had.
+    /// </para>
+    /// </remarks>
+    [ObservableProperty]
+    private Established _controllerCheck = Established.NotEstablished;
+
     /// <summary>Creates the row over what the run established about this domain.</summary>
     /// <param name="plan">The domain as discovery, and possibly preflight, described it.</param>
     /// <param name="validate">Checks the named controller against the forest.</param>
@@ -567,6 +589,43 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     }
 
     private const string NotAskedYet = "Not asked yet.";
+
+    /// <summary>
+    /// What the override cell says beside the box, or nothing where nothing has been established.
+    /// </summary>
+    /// <remarks>
+    /// <b>Blank is the honest rendering of an unasked question</b>, and the only one of the three
+    /// that may be silent. The other two are said out loud, because an operator who pressed a
+    /// button is entitled to know whether it answered - and because a refusal that showed only in
+    /// a dialog he has since closed leaves the row looking exactly like one that passed.
+    /// </remarks>
+    public string ControllerCheckText => ControllerCheck switch
+    {
+        Established.Yes => "Checked - serves this domain",
+        Established.No => "Refused - see Details",
+        _ => string.Empty,
+    };
+
+    /// <summary>The sentence moves with the state it describes.</summary>
+    /// <param name="value">What became of the check.</param>
+    partial void OnControllerCheckChanged(Established value) =>
+        OnPropertyChanged(nameof(ControllerCheckText));
+
+    /// <summary>
+    /// Editing the name withdraws whatever was established about the old one.
+    /// </summary>
+    /// <remarks>
+    /// Both the state and the refusal go, because both are about the host that was asked. Leaving
+    /// either would put a verdict on this row that belongs to a name no longer in the box - the
+    /// stale-answer failure, one field over. Whether the run may start is not restored here:
+    /// <c>RunMayProceed</c> stays false until preflight has been put again with the new name.
+    /// </remarks>
+    /// <param name="value">The name as it now stands.</param>
+    partial void OnNamedControllerChanged(string value)
+    {
+        ControllerCheck = Established.NotEstablished;
+        Problem = null;
+    }
 
     /// <summary>
     /// A refusal appearing or clearing changes whether this domain has anything to say beneath the
@@ -1172,10 +1231,11 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         var named = row.NamedController?.Trim();
 
         // An empty box is not a named controller and there is nothing to refuse. The row is
-        // already on the ranked choice.
+        // already on the ranked choice, and nothing has been established about anything.
         if (string.IsNullOrWhiteSpace(named))
         {
             row.Problem = null;
+            row.ControllerCheck = Established.NotEstablished;
             return;
         }
 
@@ -1187,11 +1247,16 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             if (answer.IsUsable)
             {
+                // SAID OUT LOUD, because it used to be said by saying nothing. An operator who
+                // pressed Validate and saw no change could not tell a controller this run had
+                // proved from one it had never asked about.
                 row.Problem = null;
+                row.ControllerCheck = Established.Yes;
                 return;
             }
 
             row.Problem = answer.Refusal;
+            row.ControllerCheck = Established.No;
 
             RunMayProceed = false;
             OnPropertyChanged(nameof(CanStart));
@@ -1200,10 +1265,20 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             Notice = new Notice($"{named} was refused", answer.Refusal!);
 
-            // The box goes back to empty so the domain is read from the ranked choice, and the
-            // refusal stays on the row as the account of why. This used to wait for a message box
-            // to be dismissed first; nothing depended on the waiting.
-            row.NamedController = string.Empty;
+            // THE NAME STAYS IN THE BOX. It used to be cleared here, which silently put the domain
+            // back on the ranked controller and then displayed that controller in the column beside
+            // the refusal - so the screen appeared to hand back the very host it had just refused,
+            // and an operator who dismissed the dialog was left with no sign that his choice had
+            // been dropped at all.
+            //
+            // It is also the rule ControllerSelection already keeps one layer down: an override is
+            // obeyed or the run stops, and never quietly replaced. The predecessor fell back
+            // silently and gave an operator who mistyped a host a successful run against a
+            // controller he did not name. Clearing the box here was that same fallback, moved up
+            // into the window.
+            //
+            // The refusal stays on the row as the account of why, and editing the box withdraws
+            // both. A run may not start while any row carries one.
         }).ConfigureAwait(true);
     }
 
