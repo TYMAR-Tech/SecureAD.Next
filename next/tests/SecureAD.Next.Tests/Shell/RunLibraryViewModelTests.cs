@@ -64,6 +64,47 @@ public sealed class RunLibraryViewModelTests
         Assert.Null(_catalog.AskedFor);
     }
 
+    /// <summary>
+    /// <b>An operator who picks a run, looks at something else and comes back finds it still
+    /// picked.</b> Arriving at Home reads the library again - that is how a run started elsewhere
+    /// appears - and until 2026-09-24 that threw the selection away, so the details card and the
+    /// analysis buttons emptied every time he navigated back.
+    /// </summary>
+    [Fact]
+    public void RefreshingKeepsTheSelectedRunSelected()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        _catalog.Runs.Add(Listed("b-20260102-000000", @"D:\audits\b"));
+        var screen = Screen(@"D:\audits");
+
+        screen.Refresh();
+        screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
+
+        screen.Refresh();
+
+        Assert.Equal(@"D:\audits\b", screen.Selected?.Path);
+    }
+
+    /// <summary>
+    /// The other half: a run that is no longer there leaves nothing selected, rather than the
+    /// screen choosing a different run on the operator's behalf.
+    /// </summary>
+    [Fact]
+    public void ARunThatHasGoneLeavesNothingSelected()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        _catalog.Runs.Add(Listed("b-20260102-000000", @"D:\audits\b"));
+        var screen = Screen(@"D:\audits");
+
+        screen.Refresh();
+        screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
+
+        _catalog.Runs.RemoveAll(run => run.Path == @"D:\audits\b");
+        screen.Refresh();
+
+        Assert.Null(screen.Selected);
+    }
+
     [Fact]
     public void AReadableLibraryHoldingNothingIsReportedAsEmpty()
     {
@@ -148,11 +189,17 @@ public sealed class RunLibraryViewModelTests
     }
 
     /// <summary>
-    /// A selection is a pointer into the list a refresh discards. Left alone, the details card
-    /// would go on describing a run this library may no longer hold.
+    /// A selection must point at a row that is really there. The list is rebuilt from scratch, so
+    /// the run is found again by path rather than the old instance being kept.
     /// </summary>
+    /// <remarks>
+    /// This asserted that a refresh dropped the selection until 2026-09-24. That was right while
+    /// refreshing was something an operator asked for, and wrong once arriving at Home did it for
+    /// him: the concern was a card describing a run the library no longer holds, which
+    /// <see cref="ARunThatHasGoneLeavesNothingSelected"/> now covers directly.
+    /// </remarks>
     [Fact]
-    public void ARefreshDropsTheSelection()
+    public void ARefreshedSelectionPointsAtARowInTheNewList()
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
@@ -161,7 +208,7 @@ public sealed class RunLibraryViewModelTests
 
         screen.Refresh();
 
-        Assert.Null(screen.Selected);
+        Assert.Contains(screen.Selected, screen.Runs);
     }
 
     [Fact]

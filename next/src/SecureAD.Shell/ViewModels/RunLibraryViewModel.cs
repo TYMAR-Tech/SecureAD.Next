@@ -173,15 +173,27 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// </summary>
     public bool IsEmpty => HasLooked && Problem is null && Runs.Count == 0;
 
-    /// <summary>Reads the library again.</summary>
+    /// <summary>Reads the library again, keeping the selected run selected if it is still there.</summary>
+    /// <remarks>
+    /// <b>The selection survives because this is called on every arrival at Home.</b> An operator
+    /// who picks a run, goes to look at its assets and comes back finds it still picked - the
+    /// details card and the analysis buttons are where he left them. Clearing it was correct when
+    /// the only way back here was an explicit refresh; it became wrong once navigation re-read the
+    /// library, which is nine occasions including returning from another screen.
+    /// </remarks>
     [RelayCommand]
     public void Refresh()
     {
+        // Held by path rather than by object. Every row is built fresh below, so the old instance
+        // is gone whatever happens; the path is what says which run the operator had chosen.
+        var chosen = Selected?.Path;
+
         Runs.Clear();
         HasLooked = false;
 
-        // A selection is a pointer into the list that was just discarded. Keeping it would leave a
-        // details card describing a run that this library may no longer hold.
+        // Cleared while the list is empty, then restored below if the run is still there. A
+        // selection pointing into a list that no longer exists would leave a details card
+        // describing a run this library may no longer hold.
         Selected = null;
 
         if (!_location.IsChosen)
@@ -207,6 +219,14 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         HasLooked = true;
         OnPropertyChanged(nameof(IsEmpty));
+
+        // A run that has been deleted, or that a newly chosen library does not hold, leaves nothing
+        // selected rather than selecting something else on the operator's behalf.
+        if (chosen is not null)
+        {
+            Selected = Runs.FirstOrDefault(
+                run => string.Equals(run.Path, chosen, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     partial void OnSelectedChanged(RunSummaryViewModel? value)
@@ -283,10 +303,9 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
             return;
         }
 
+        // Refresh keeps the selection, so the renamed run stays selected and its new name appears
+        // in the details card without the operator having to find it again.
         Refresh();
-
-        Selected = Runs.FirstOrDefault(
-            run => string.Equals(run.Path, path, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -416,10 +435,8 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
             return;
         }
 
+        // Refresh keeps the selection, so the run the operator just marked stays selected.
         Refresh();
-
-        Selected = Runs.FirstOrDefault(
-            run => string.Equals(run.Path, chosen, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
