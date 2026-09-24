@@ -1297,7 +1297,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// window from being one click away from committing a machine to a capture measured in hours.
     /// </para>
     /// </remarks>
-    [RelayCommand(CanExecute = nameof(CanStart))]
+    [RelayCommand(CanExecute = nameof(CanReview))]
     public async Task ReviewAsync()
     {
         if (!Location.IsChosen)
@@ -1786,6 +1786,31 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         && !IsBusy
         && !IsCapturing
         && Location.IsChosen;
+
+    /// <summary>
+    /// Whether the preflight questions may be put again. Asking is always allowed; it is starting
+    /// that has conditions.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This exists because gating it on <see cref="CanStart"/> was a deadlock, found in the
+    /// field on 2026-09-23 while an operator was trying to capture a production forest.</b> A
+    /// named controller that is refused sets <see cref="RunMayProceed"/> false, and by design
+    /// nothing restores it but a fresh preflight - <see cref="ValidateOverrideAsync"/> deliberately
+    /// does not, because a per-row check establishes nothing about the other domains. But the fresh
+    /// preflight is this command. So the one action that could clear the refusal sat behind the
+    /// refusal, and the screen could not be recovered by any button on it: the operator had named a
+    /// good controller, been told it serves the domain, and still could not go on.
+    /// </para>
+    /// <para>
+    /// <b>Nothing is loosened by this.</b> <see cref="ReviewAsync"/> already re-asks every domain
+    /// and then consults <see cref="CanStart"/> before it moves to the review screen, so the
+    /// conditions that guard a capture are enforced exactly where they were - on the answers, once
+    /// they exist. What changes is that an operator may now ask for those answers while things are
+    /// wrong, which is precisely when he needs to.
+    /// </para>
+    /// </remarks>
+    public bool CanReview => !IsBusy && !IsCapturing && Location.IsChosen;
 
     private bool EveryBlockingDomainIsAttested()
     {

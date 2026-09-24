@@ -987,6 +987,32 @@ public sealed class NewAuditViewModelTests
     }
 
     /// <summary>
+    /// A refusal does not take the preflight away with it. Asking the questions again is how an
+    /// operator recovers, so it stays available exactly when everything else is refused.
+    /// </summary>
+    /// <remarks>
+    /// <b>Found in the field on 2026-09-23, mid-capture against a production forest.</b> Review was
+    /// gated on <c>CanStart</c>, and a refused controller sets <c>RunMayProceed</c> false - which by
+    /// design only a fresh preflight restores, and the fresh preflight is Review. So the one action
+    /// that could clear the refusal sat behind it. The operator named a good controller, was told it
+    /// served the domain, and still could not go on; no button on the screen could recover it.
+    /// </remarks>
+    [Fact]
+    public async Task ARefusedControllerStillLetsThePreflightBePutAgain()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.False(screen.CanStart);
+        Assert.True(screen.CanReview);
+        Assert.True(screen.ReviewCommand.CanExecute(null));
+    }
+
+    /// <summary>
     /// A refused name is not quietly replaced by the ranked choice: the operator is told, by name,
     /// and what he asked for stays in front of him.
     /// </summary>
