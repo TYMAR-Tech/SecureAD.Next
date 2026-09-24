@@ -515,7 +515,7 @@ public static class JudgingRun
         if (selfMembershipRequests.Count > selfMembershipBudget.Requests)
             throw new ArgumentException($"The request batch contains {selfMembershipRequests.Count} requests; its explicit budget is {selfMembershipBudget.Requests}.", nameof(selfMembershipRequests));
 
-        progress.Report(new JudgingProgress(0) { Phase = JudgingPhase.PreparingInputs });
+        Entering(progress, log, JudgingPhase.PreparingInputs, 0);
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
         if (seal is null || string.IsNullOrWhiteSpace(seal.Hash))
@@ -851,7 +851,7 @@ public static class JudgingRun
                 subject => OwnershipAuditRun.Target(subject, namingContexts.Value), cancellationToken)
             : null;
 
-        progress.Report(new JudgingProgress(0));
+        Entering(progress, log, JudgingPhase.EvaluatingObjects, 0);
         work.Pass.Start();
         foreach (var subject in bundle.StreamObjects().Objects)
         {
@@ -927,6 +927,23 @@ public static class JudgingRun
                     Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
                     Tier0DiscoveryElapsed = work.Tier0Scan.Elapsed,
                 });
+
+            // WHERE THE TIME IS GOING, WHILE IT IS STILL GOING. The same breakdown is written when
+            // the pass ends, which is no use to an operator deciding at hour eight whether to wait
+            // or abandon - and no use at all to a run that is abandoned, because the accounting
+            // never reaches the log. docs/decisions and JudgingRun's own remark on the verdicts and
+            // storage split record that P-249 twice built and rejected a storage redesign with
+            // nothing able to say whether the cost was reaching verdicts or writing them; this is
+            // what answers that from a real forest rather than from a laboratory.
+            //
+            // Far rarer than progress. A line every hundred thousand objects is nine or ten over
+            // the owner's forest, against a report every thousand - the log must stay readable by
+            // the person it is for.
+            if (objectsRead % AccountingEvery == 0)
+            {
+                work.Note(log, JudgePhase, objectsRead);
+                writer.PermissionWrites.Note(log, JudgePhase);
+            }
         }
 
         work.Commit.Start();
@@ -962,7 +979,7 @@ public static class JudgingRun
         });
         if (tier0Discovery is not null)
         {
-            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+            Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
             var admitted = writer.AdmitDiscoveredScope(bundle, ownershipDescription, memberInput, ownershipBinding!,
                 tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken);
             log.Note(JudgePhase, "tier0-discovery",
@@ -974,12 +991,12 @@ public static class JudgingRun
             ]);
         }
         writer.AssessAutomaticOwnership(bundle, ownershipDescription, memberInput, ownershipBinding, controlContext,
-            domainSids, objectsRead, progress, cancellationToken, scopeAlreadyPlanned: tier0Discovery is not null);
+            domainSids, objectsRead, progress, log, cancellationToken, scopeAlreadyPlanned: tier0Discovery is not null);
         writer.CompleteControlEdges();
 
         if (memberInput is not null && memberBudget is not null)
         {
-            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.AttributingMembers });
+            Entering(progress, log, JudgingPhase.AttributingMembers, objectsRead);
             var memberWatch = System.Diagnostics.Stopwatch.StartNew();
             writer.WriteMemberAttributions(memberInput, memberBudget, bundle.Description.ForestFqdn, namingContexts.Value, cancellationToken);
             log.Note("MemberAttribution", "finished", [new RunLogDetail("elapsedMs",
@@ -997,7 +1014,7 @@ public static class JudgingRun
         // to 8.5 ms as the work grew - the same target's evidence was being re-read once per
         // question. The answers were never affected: this changes the order rows are written in,
         // not what any of them says.
-        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.EvaluatingRequesters });
+        Entering(progress, log, JudgingPhase.EvaluatingRequesters, objectsRead);
         string? loadedTarget = null;
         ObjectPermissions? loadedPermissions = null;
         var loadedEdges = new Dictionary<string, IReadOnlyList<long>>(StringComparer.Ordinal);
@@ -1075,7 +1092,7 @@ public static class JudgingRun
             ]);
         }
 
-        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.WritingFindings });
+        Entering(progress, log, JudgingPhase.WritingFindings, objectsRead);
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
@@ -1116,7 +1133,7 @@ public static class JudgingRun
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });
+        Entering(progress, log, JudgingPhase.PublishingJudgement, objectsRead);
         writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
@@ -1217,6 +1234,37 @@ public static class JudgingRun
     }
 
     /// <summary>
+    /// Reports a phase to the operator watching and to the run log, in one act.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Both, or neither.</b> Every phase already reached <see cref="IProgress{T}"/> and none
+    /// reached the log, which on 2026-09-24 left an eight-hour production judging with a single
+    /// line - <i>Started, rules=17</i> - and an operator with no way to tell work from a hang.
+    /// Reporting through one call is what stops the two drifting apart again: a phase added later
+    /// cannot reach a screen and miss the artefact that outlives it.
+    /// </para>
+    /// <para>
+    /// <b>The log is not a second screen.</b> It is what survives a cancelled run, a closed window
+    /// and a machine walked away from, and it is the only account of a judging that did not finish.
+    /// A line per phase is nine lines in a run measured in hours, so nothing here is written per
+    /// object.
+    /// </para>
+    /// <para>
+    /// <b>A phase name says where judging has got to, never what it concluded.</b>
+    /// <c>WritingFindings</c> means the writing is under way; whether a judgement was published is
+    /// <see cref="JudgementWriter.Complete"/>'s to say, as the remark on
+    /// <see cref="JudgingProgress.Phase"/> records.
+    /// </para>
+    /// </remarks>
+    internal static void Entering(
+        IProgress<JudgingProgress> progress, IRunLog log, JudgingPhase phase, long objectsRead)
+    {
+        progress.Report(new JudgingProgress(objectsRead) { Phase = phase });
+        log.Note(JudgePhase, "phase", [new RunLogDetail("name", phase.ToString())]);
+    }
+
+    /// <summary>
     /// How many objects pass between progress reports.
     /// </summary>
     /// <remarks>
@@ -1225,6 +1273,19 @@ public static class JudgingRun
     /// forest, because no measurement of one exists yet.
     /// </remarks>
     private const int ProgressEvery = 1_000;
+
+    /// <summary>
+    /// How many objects pass between timing breakdowns written to the run log.
+    /// </summary>
+    /// <remarks>
+    /// <b>A hundred times rarer than <see cref="ProgressEvery"/>, and deliberately.</b> A progress
+    /// report is a number on a screen; an accounting is a dozen lines naming every bucket, and one
+    /// of those per thousand objects would bury the run log in the one artefact an operator reads
+    /// when something has gone wrong. Over the owner's production forest this is nine or ten
+    /// accountings across a run measured in hours, which is enough to see a trend and few enough to
+    /// read.
+    /// </remarks>
+    private const int AccountingEvery = 100_000;
 
     /// <summary>
     /// Wraps a lookup so it is asked once per distinct argument for the life of a judging.

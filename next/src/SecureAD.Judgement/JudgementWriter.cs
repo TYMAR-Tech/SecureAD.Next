@@ -232,12 +232,12 @@ public sealed class JudgementWriter : IDisposable
     internal void AssessAutomaticOwnership(BundleReader bundle, JudgementDescription description,
         SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding? binding,
         JudgingContext context, Func<string, string?> domainSid, long objectsRead,
-        IProgress<JudgingRun.JudgingProgress> progress, CancellationToken cancellationToken,
+        IProgress<JudgingRun.JudgingProgress> progress, SecureAD.Kernel.IRunLog log, CancellationToken cancellationToken,
         bool scopeAlreadyPlanned = false)
     {
         ThrowIfFinished();
         OwnershipAuditRun.Assess(_connection, bundle, description, input, binding, context, domainSid,
-            objectsRead, progress, cancellationToken, scopeAlreadyPlanned);
+            objectsRead, progress, log, cancellationToken, scopeAlreadyPlanned);
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using SecureAD.Derivation;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Next.Tests.Capture;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.ViewModels;
 using Xunit;
@@ -50,6 +51,44 @@ public sealed class AuditPhaseReportingTests
         Assert.True(result.IsSuccess, result.Error?.Description);
         Assert.Equal(new[] { "WritingMembershipEvidence", "PublishingDerivation", "ReadingDerivedResults" },
             reports.Values.Select(value => value.Phase).Where(phase => phase is "WritingMembershipEvidence" or "PublishingDerivation" or "ReadingDerivedResults"));
+    }
+
+    /// <summary>
+    /// <b>The run log must say which phase judging is in, while it is in it.</b> The owner ran a
+    /// production judging for eight hours on 2026-09-24 and the log held one line - <i>Started,
+    /// rules=17</i> - so there was no way to tell work from a hang, and no way to decide whether to
+    /// abandon it. Every phase reaching <see cref="IProgress{T}"/> already, and none reaching the
+    /// log, is what made the screen the only witness to a run that outlives any screen.
+    /// </summary>
+    /// <remarks>
+    /// Asserted against the log rather than the progress reports on purpose: the log is the
+    /// artefact that survives a cancelled run, a closed window and a machine the operator walked
+    /// away from. <see cref="JudgingReportsPreparationWorkAndPublicationInOrder"/> covers the
+    /// progress side, and passed throughout the eight hours that taught us this.
+    /// </remarks>
+    [Fact]
+    public void JudgingNotesEachPhaseToTheRunLogAsItEntersIt()
+    {
+        var directory = Bundle();
+        Derive(directory);
+        var log = new RecordingRunLog();
+
+        var result = JudgingRun.Judge(
+            directory, [], Started, Started, JudgingRun.NobodyIsWatching, log, CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        Assert.Equal(
+            new[]
+            {
+                nameof(JudgingPhase.PreparingInputs),
+                nameof(JudgingPhase.EvaluatingObjects),
+                nameof(JudgingPhase.SelectingOwnershipScope),
+                nameof(JudgingPhase.AssessingOwnership),
+                nameof(JudgingPhase.EvaluatingRequesters),
+                nameof(JudgingPhase.WritingFindings),
+                nameof(JudgingPhase.PublishingJudgement),
+            },
+            log.Saying("phase").Select(detail => RecordingRunLog.Value(detail, "name")));
     }
 
     private sealed class Collected<T> : IProgress<T>

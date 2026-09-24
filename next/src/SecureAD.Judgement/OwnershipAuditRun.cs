@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Kernel;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 
@@ -40,10 +41,10 @@ internal static class OwnershipAuditRun
 
     internal static void Assess(SqliteConnection connection, BundleReader bundle, JudgementDescription description,
         CapturedMembershipInput? input, Tier0InputBinding? binding, JudgingContext context, Func<string, string?> domainSid,
-        long objectsRead, IProgress<JudgingRun.JudgingProgress> progress, CancellationToken cancellationToken,
+        long objectsRead, IProgress<JudgingRun.JudgingProgress> progress, IRunLog log, CancellationToken cancellationToken,
         bool scopeAlreadyPlanned = false)
     {
-        progress.Report(new(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+        JudgingRun.Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
         cancellationToken.ThrowIfCancellationRequested();
         var targets = OwnershipAuditStorage.Targets(connection);
         MembershipRouteSummary? Routes(Tier0Target target) => target.Sid is { } sid
@@ -71,7 +72,7 @@ internal static class OwnershipAuditRun
             else if (input is not null || binding is not null) throw OwnershipAuditStorage.InvalidProof();
             OwnershipAuditStorage.Plan(connection, selection, Routes, cancellationToken);
         }
-        progress.Report(new(objectsRead) { Phase = JudgingPhase.AssessingOwnership });
+        JudgingRun.Entering(progress, log, JudgingPhase.AssessingOwnership, objectsRead);
         foreach (var target in OwnershipAuditStorage.Targets(connection).Where(item => item.Selection == OwnershipScopeState.Included))
         {
             cancellationToken.ThrowIfCancellationRequested();
