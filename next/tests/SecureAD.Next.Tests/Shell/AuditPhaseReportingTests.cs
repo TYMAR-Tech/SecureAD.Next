@@ -1,4 +1,5 @@
 using SecureAD.Derivation;
+using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Next.Tests.Capture;
@@ -89,6 +90,28 @@ public sealed class AuditPhaseReportingTests
                 nameof(JudgingPhase.PublishingJudgement),
             },
             log.Saying("phase").Select(detail => RecordingRunLog.Value(detail, "name")));
+    }
+
+    /// <summary>
+    /// <b>The phases must reach the file on disk, through the launcher the shell actually uses.</b>
+    /// <see cref="JudgingNotesEachPhaseToTheRunLogAsItEntersIt"/> proves judging writes them to an
+    /// <see cref="IRunLog"/>; this proves the shell hands it a real one rather than
+    /// <c>RunLog.Discarded</c>, which is the difference between an operator having an account of an
+    /// abandoned run and having nothing. The command line opens the same file for the same reason.
+    /// </summary>
+    [Fact]
+    public async Task ShellJudgingWritesThePhasesToTheRunLogFile()
+    {
+        var directory = Bundle();
+        Derive(directory);
+
+        var result = await new JudgingLauncher(null).RunAsync(
+            directory, new Collected<JudgingRun.JudgingProgress>(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        var written = await File.ReadAllTextAsync(BundleLayout.RunLogPath(directory));
+        Assert.Contains(nameof(JudgingPhase.EvaluatingObjects), written, StringComparison.Ordinal);
+        Assert.Contains(nameof(JudgingPhase.PublishingJudgement), written, StringComparison.Ordinal);
     }
 
     private sealed class Collected<T> : IProgress<T>
