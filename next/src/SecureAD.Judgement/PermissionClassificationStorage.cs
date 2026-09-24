@@ -61,10 +61,7 @@ internal static class PermissionClassificationStorage
         Validate(result, token);
         work.Validate.Stop();
         var target = result.Permissions.DistinguishedName;
-        var shared = new SharedPermissionStorage(connection, transaction, statements);
-        work.SharedLoad.Start();
-        shared.Load(target, generation);
-        work.SharedLoad.Stop();
+        var shared = new SharedPermissionStorage(connection, transaction, statements, session);
         work.ObjectRow.Start();
         statements.Bind("INSERT INTO permission_classification_object VALUES ($target,$descriptor,$count)", transaction,
             ("$target", target), ("$descriptor", JsonSerializer.Serialize(result.Permissions with { Entries = [] })),

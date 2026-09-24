@@ -16,15 +16,21 @@ public sealed class SharedPermissionStorageTests
         using var reader = FullControlStorageTests.Open(directory);
         using var connection = OpenDatabase(directory, reader);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT (SELECT COUNT(*) FROM permission_entry),(SELECT COUNT(*) FROM control_ace),(SELECT COUNT(*) FROM full_control_source_entry),(SELECT COUNT(DISTINCT entry_id) FROM (SELECT entry_id FROM control_ace UNION ALL SELECT entry_id FROM full_control_source_entry))";
+        command.CommandText = "SELECT (SELECT COUNT(*) FROM permission_entry),(SELECT COUNT(*) FROM control_ace),(SELECT COUNT(*) FROM full_control_source_entry),(SELECT COUNT(DISTINCT entry_id) FROM (SELECT entry_id FROM control_ace UNION ALL SELECT entry_id FROM full_control_source_entry)),(SELECT COUNT(DISTINCT ordinal) FROM (SELECT ordinal FROM control_ace UNION ALL SELECT ordinal FROM full_control_source_entry))";
         using var row = command.ExecuteReader();
         Assert.True(row.Read());
-        Assert.Equal((2L, result.Edges.Sum(edge => (long)edge.Evidence.Count), 2L, 2L),
-            (row.GetInt64(0), row.GetInt64(1), row.GetInt64(2), row.GetInt64(3)));
+        // One stored entry behind every position, because these two differ only in ordinal and P-279
+        // moved the ordinal onto the link - and still two ordinals, which is what not collapsing them
+        // means. ExactExplanationIsSharedAndReconstructed is where they are read back apart.
+        Assert.Equal((1L, result.Edges.Sum(edge => (long)edge.Evidence.Count), 2L, 1L, 2L),
+            (row.GetInt64(0), row.GetInt64(1), row.GetInt64(2), row.GetInt64(3), row.GetInt64(4)));
     }
 
+    // Ordinal is absent on purpose: since P-279 it is a fact about a position rather than about the
+    // entry, so two positions of one entry share a row. The statement that they are still told apart
+    // is made by RepeatedAssociationsAndFullControlSourcesShareValuesWithoutCollapsingOrdinals and
+    // read back by SharedProofStorageTests.ExactExplanationIsSharedAndReconstructed.
     [Theory]
-    [InlineData("Ordinal")]
     [InlineData("AceType")]
     [InlineData("Sid")]
     [InlineData("Name")]
@@ -100,9 +106,8 @@ public sealed class SharedPermissionStorageTests
     }
 
     [Theory]
-    [InlineData("UPDATE permission_entry SET target='OU=Wrong,DC=contoso,DC=com'")]
     [InlineData("UPDATE permission_entry SET generation='11111111-1111-1111-1111-111111111111'")]
-    [InlineData("UPDATE permission_entry SET ordinal=ordinal+10")]
+    [InlineData("UPDATE permission_entry SET entry_hash='0000000000000000000000000000000000000000000000000000000000000000'")]
     [InlineData("UPDATE permission_entry SET ace_type='AccessDenied'")]
     [InlineData("UPDATE permission_entry SET ace_type=lower(ace_type)")]
     [InlineData("UPDATE permission_entry SET name=COALESCE(name,'') || 'changed'")]
@@ -125,6 +130,10 @@ public sealed class SharedPermissionStorageTests
         Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, null, null, null, true, long.MaxValue));
     }
 
+    // THE SECOND OBJECT'S ENTRY MUST DIFFER, or this measures nothing. Since P-279 two objects
+    // carrying an identical entry share its row, so repointing a link at MAX(id) would select the row
+    // it already pointed at and the mutation would be a no-op that still passed. Only the trustee's
+    // display name differs, which leaves the rights and so the derived edges alone.
     [Theory]
     [InlineData("control_ace")]
     [InlineData("full_control_source_entry")]
@@ -132,7 +141,7 @@ public sealed class SharedPermissionStorageTests
     {
         var first = FullControlStorageTests.Evaluation(FullControlEvaluatorTests.Allow(0));
         var subject = ControlEdgeDeriverTests.Subject with { DistinguishedName = "OU=Other,DC=contoso,DC=com" };
-        var second = ControlEdgeDeriver.Derive(subject, ControlEdgeDeriverTests.Permissions(FullControlEvaluatorTests.Allow(0)),
+        var second = ControlEdgeDeriver.Derive(subject, ControlEdgeDeriverTests.Permissions(Change(FullControlEvaluatorTests.Allow(0), "Name")),
             JudgingContext.At(DateTimeOffset.UnixEpoch), Guid.Empty, null, ControlEdgeDeriverTests.DomainSid);
         var directory = FullControlStorageTests.Store([first, second], connection =>
             Mutate(connection, $"UPDATE {table} SET entry_id=(SELECT MAX(id) FROM permission_entry)"));
@@ -174,7 +183,6 @@ public sealed class SharedPermissionStorageTests
 
     private static PermissionEntry Change(PermissionEntry entry, string field) => field switch
     {
-        "Ordinal" => entry with { Ordinal = 1 },
         "AceType" => entry with { AceType = "AccessDenied" },
         "Sid" => entry with { Trustee = entry.Trustee with { Sid = "S-1-5-10" } },
         "Name" => entry with { Trustee = entry.Trustee with { Name = "" } },

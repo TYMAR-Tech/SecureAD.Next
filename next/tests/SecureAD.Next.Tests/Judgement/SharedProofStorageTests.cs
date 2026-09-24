@@ -29,7 +29,11 @@ public sealed class SharedProofStorageTests
         Assert.Equal(JsonSerializer.Serialize(new[] { first, second }), JsonSerializer.Serialize(proof.Source.Entries));
         using var connection = OpenDatabase(directory, reader);
         Assert.Equal(meaning is null ? 0 : 1, Count(connection, "SELECT COUNT(*) FROM shared_proof_value WHERE kind='Meaning'"));
-        Assert.Equal(2, Count(connection, "SELECT COUNT(*) FROM permission_entry"));
+        // One row for the entry, two links to it: the two positions differ only in ordinal, which
+        // P-279 moved onto the link. The exact reconstruction asserted above is what proves the
+        // sharing did not cost them their positions.
+        Assert.Equal((1, 2), (Count(connection, "SELECT COUNT(*) FROM permission_entry"),
+            Count(connection, "SELECT COUNT(*) FROM full_control_source_entry")));
         Assert.All(page.Edges.SelectMany(edge => edge.Evidence), entry => Assert.Null(entry.Trustee.Meaning));
     }
 
@@ -41,13 +45,13 @@ public sealed class SharedProofStorageTests
         using var statements = new PreparedStatements(connection);
         var store = new SharedProofStorage(connection, transaction, _ => new byte[32], statements);
         var generation = Guid.NewGuid();
-        var a = store.WriteMeaning("A", generation, 0, "Case");
-        var same = store.WriteMeaning("B", generation, 1, "Case");
-        var differentCase = store.WriteMeaning("A", generation, 0, "case");
-        var differentSpace = store.WriteMeaning("A", generation, 0, " Case ");
-        var otherGeneration = store.WriteMeaning("A", Guid.NewGuid(), 0, "Case");
-        var empty = store.WriteMeaning("A", generation, 0, "");
-        var absent = store.WriteMeaning("A", generation, 0, null);
+        var a = store.WriteMeaning(generation, "entry-A", "Case");
+        var same = store.WriteMeaning(generation, "entry-B", "Case");
+        var differentCase = store.WriteMeaning(generation, "entry-A", "case");
+        var differentSpace = store.WriteMeaning(generation, "entry-A", " Case ");
+        var otherGeneration = store.WriteMeaning(Guid.NewGuid(), "entry-A", "Case");
+        var empty = store.WriteMeaning(generation, "entry-A", "");
+        var absent = store.WriteMeaning(generation, "entry-A", null);
         Assert.Equal(a.Id, same.Id);
         Assert.False(a.Fingerprint.AsSpan().SequenceEqual(same.Fingerprint));
         Assert.Equal(5, new[] { a.Id, differentCase.Id, differentSpace.Id, otherGeneration.Id, empty.Id }.Distinct().Count());
@@ -64,13 +68,13 @@ public sealed class SharedProofStorageTests
         using var statements = new PreparedStatements(connection);
         var store = new SharedProofStorage(connection, transaction, statements);
         var generation = Guid.NewGuid();
-        Assert.NotNull(store.WriteMeaning("A", generation, 0, "value").Id);
+        Assert.NotNull(store.WriteMeaning(generation, "entry-A", "value").Id);
         transaction.Rollback();
         Assert.Equal(0, Count(connection, "SELECT COUNT(*) FROM shared_proof_value"));
-        Assert.ThrowsAny<InvalidOperationException>(() => store.WriteMeaning("A", generation, 0, "value"));
+        Assert.ThrowsAny<InvalidOperationException>(() => store.WriteMeaning(generation, "entry-A", "value"));
         using var next = connection.BeginTransaction();
         using var nextStatements = new PreparedStatements(connection);
-        Assert.NotNull(new SharedProofStorage(connection, next, nextStatements).WriteMeaning("A", generation, 0, "value").Id);
+        Assert.NotNull(new SharedProofStorage(connection, next, nextStatements).WriteMeaning(generation, "entry-A", "value").Id);
         next.Commit();
         Assert.Equal(1, Count(connection, "SELECT COUNT(*) FROM shared_proof_value"));
     }

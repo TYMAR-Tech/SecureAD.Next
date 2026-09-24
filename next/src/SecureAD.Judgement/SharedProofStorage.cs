@@ -39,7 +39,11 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         command.ExecuteNonQuery();
     }
 
-    internal (long? Id, byte[] Fingerprint) WriteMeaning(string target, Guid generation, int ordinal, string? meaning)
+    /// <summary>Stores a permission meaning and binds it to the entry that carries it.</summary>
+    /// <param name="generation">The generation being judged.</param>
+    /// <param name="entryKey">The content key of the entry, which is what the binding names.</param>
+    /// <param name="meaning">The meaning text, or null when the entry has none.</param>
+    internal (long? Id, byte[] Fingerprint) WriteMeaning(Guid generation, string entryKey, string? meaning)
     {
         Active();
         long? id = null;
@@ -49,7 +53,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
             id = Put("Meaning", generation, null, 0, meaning, out _);
             written[key] = id.Value;
         }
-        return (id, MeaningBinding(target, generation, ordinal, meaning));
+        return (id, MeaningBinding(generation, entryKey, meaning));
     }
 
     internal void WriteControlRoutes(ControlEdge edge)
@@ -180,8 +184,13 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         return routes;
     }
 
-    internal static byte[] MeaningBinding(string target, Guid generation, int ordinal, string? value) =>
-        Binding("PermissionMeaning", generation, null, 0, JsonSerializer.Serialize(new object[] { target, ordinal }), value);
+    // THE CONSUMER IS THE ENTRY, NOT THE POSITION IT WAS FOUND AT. It named (target, ordinal) while
+    // permission_entry held one row per object; since P-279 one row is shared by every position that
+    // carries that entry, so a binding naming one of them would refuse all the rest. Nothing weakens:
+    // each link row still carries a fingerprint over target, generation and the complete entry
+    // including its meaning text, so the meaning remains provably the one that object held there.
+    internal static byte[] MeaningBinding(Guid generation, string entryKey, string? value) =>
+        Binding("PermissionMeaning", generation, null, 0, entryKey, value);
 
     private static byte[] ControlBinding(ControlEdge edge, string payload) =>
         Binding("ControlRoutes", edge.GenerationId, edge.DerivationGenerationId, edge.PrincipalCatalogueVersion,

@@ -198,7 +198,18 @@ public sealed class JudgementWriter : IDisposable
     internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
     {
         ThrowIfFinishedWithinObject();
-        ControlEdgeStorage.Write(_connection, Batch(), _statements, evaluation, ownershipTarget);
+        try
+        {
+            ControlEdgeStorage.Write(_connection, Batch(), _statements, evaluation, ownershipTarget, _session);
+        }
+        catch
+        {
+            // THE BATCH GOES WITH IT, for the reason the permission classification above gives. This
+            // guard was not needed while the shared entries were cached per transaction and became
+            // needed when P-279 made that cache last the run.
+            AbandonBatch();
+            throw;
+        }
     }
 
     internal void CompleteControlEdges()

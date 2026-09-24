@@ -25,7 +25,9 @@ internal static class StorageWrites
     {
         using var statements = new PreparedStatements(connection);
         using var transaction = connection.BeginTransaction();
-        ControlEdgeStorage.Write(connection, transaction, statements, result, ownershipTarget);
+        // A session per call, because a call is a transaction: nothing it writes may be trusted by
+        // the next one until it commits, and after that permission_entry.entry_hash finds it.
+        ControlEdgeStorage.Write(connection, transaction, statements, result, ownershipTarget, new PermissionWriteSession());
         transaction.Commit();
     }
 }

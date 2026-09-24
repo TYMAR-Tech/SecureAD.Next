@@ -81,8 +81,11 @@ public static class JudgementSchema
     /// readback does not reclassify captured objects. Older formats are refused, never replayed or migrated.</para>
     /// <para>40 saves all-computer LAPS inventory answers and the expected lengths of LAPS finding routes.</para>
     /// <para>41 saves all-object per-right permission classifications and their schema support.</para>
+    /// <para>42 stores each distinct reading once in permission_classification_reading and links to it.</para>
+    /// <para>43 stores each distinct access control entry once in permission_entry and links to it, so
+    /// the row no longer names the object it was found on and the ordinal lives on the link (P-279).</para>
     /// </remarks>
-    public const int Version = 42;
+    public const int Version = 43;
 
     private static readonly string[] TableDdl =
     [

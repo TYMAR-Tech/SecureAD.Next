@@ -17,6 +17,11 @@ namespace SecureAD.Judgement;
 /// went to commits on standard SSD, against 1,979 ms for the same work on the laptop.
 /// </para>
 /// <para>
+/// <b>Access control entries repeat far harder still.</b> P-279 measured 24,098 distinct entries
+/// behind 17,164,866 stored positions - 712 copies of each - because the shared table deduplicated
+/// only within one object. They are shared here for the same reason and under the same rules.
+/// </para>
+/// <para>
 /// <b>Nothing is trusted until its transaction commits.</b> Rows written inside an open batch do not
 /// exist yet, so they stay in the pending maps; a record claiming otherwise would let a later object
 /// reference an identifier that was rolled back. <see cref="Promote"/> runs after the commit and
@@ -29,6 +34,8 @@ internal sealed class PermissionWriteSession
     private readonly Dictionary<string, string> _pendingSchema = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _readings = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _pendingReadings = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _entries = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _pendingEntries = new(StringComparer.Ordinal);
 
     /// <summary>The payload already stored for a schema GUID, when there is one.</summary>
     /// <param name="guid">The schema GUID.</param>
@@ -54,11 +61,28 @@ internal sealed class PermissionWriteSession
     /// <param name="id">The row holding it.</param>
     internal void AddReading(string key, long id) => _pendingReadings[key] = id;
 
+    /// <summary>The row already holding this access control entry, when there is one.</summary>
+    /// <param name="hash">The entry's content hash, as text.</param>
+    /// <param name="id">The row holding it.</param>
+    /// <returns>Whether this run has already stored that entry.</returns>
+    /// <remarks>
+    /// A miss is not an answer, only an absence of one: the caller still asks the table, because an
+    /// on-demand assessment writes in a transaction no session ever saw.
+    /// </remarks>
+    internal bool TryGetEntry(string hash, out long id) =>
+        _entries.TryGetValue(hash, out id) || _pendingEntries.TryGetValue(hash, out id);
+
+    /// <summary>Records an access control entry written in the open transaction.</summary>
+    /// <param name="hash">The entry's content hash, as text.</param>
+    /// <param name="id">The row holding it.</param>
+    internal void AddEntry(string hash, long id) => _pendingEntries[hash] = id;
+
     /// <summary>Trusts everything written in the transaction that has just committed.</summary>
     internal void Promote()
     {
         foreach (var (guid, payload) in _pendingSchema) _schema[guid] = payload;
         foreach (var (key, id) in _pendingReadings) _readings[key] = id;
+        foreach (var (hash, id) in _pendingEntries) _entries[hash] = id;
         Discard();
     }
 
@@ -67,6 +91,7 @@ internal sealed class PermissionWriteSession
     {
         _pendingSchema.Clear();
         _pendingReadings.Clear();
+        _pendingEntries.Clear();
     }
 
     /// <summary>The fingerprint that identifies a reading, as a dictionary key.</summary>
@@ -81,4 +106,12 @@ internal sealed class PermissionWriteSession
     /// <summary>How many distinct readings this run has stored, for the run log.</summary>
     internal string SharedReadings =>
         (_readings.Count + _pendingReadings.Count).ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>How many distinct access control entries this run has stored, for the run log.</summary>
+    /// <remarks>
+    /// Read against the number of entries written, this is the ratio P-279 was opened for: the
+    /// before-measurement put it at 24,098 distinct entries behind 17,164,866 stored positions.
+    /// </remarks>
+    internal string SharedEntries =>
+        (_entries.Count + _pendingEntries.Count).ToString(CultureInfo.InvariantCulture);
 }

@@ -20,13 +20,14 @@ public sealed class SavedPermissionClassificationTests
         connection.Open();
         JudgementSchema.CreateTables(connection);
         using var command = connection.CreateCommand();
-        command.CommandText = "EXPLAIN QUERY PLAN SELECT p.id FROM permission_entry p WHERE p.target=$target COLLATE BINARY AND p.generation=$generation ORDER BY p.id";
-        command.Parameters.AddWithValue("$target", Subject.DistinguishedName);
-        command.Parameters.AddWithValue("$generation", Guid.Empty.ToString("D"));
+        // The lookup P-279 put in the write path. It runs once per entry per object - 17 million times
+        // on the measured bundle - so a scan here would cost more than the duplicate rows it replaced.
+        command.CommandText = "EXPLAIN QUERY PLAN SELECT id FROM permission_entry WHERE entry_hash=$hash";
+        command.Parameters.AddWithValue("$hash", new string('0', 64));
 
         using var read = command.ExecuteReader();
         read.Read();
-        Assert.Contains("SEARCH p USING COVERING INDEX ix_permission_entry_target_generation", read.GetString(3), StringComparison.Ordinal);
+        Assert.Contains("SEARCH permission_entry USING COVERING INDEX sqlite_autoindex_permission_entry_1", read.GetString(3), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -161,7 +162,8 @@ public sealed class SavedPermissionClassificationTests
     [InlineData("UPDATE permission_classification_entry SET entry_id=99999")]
     [InlineData("UPDATE permission_classification_entry SET fingerprint=zeroblob(32)")]
     [InlineData("UPDATE permission_entry SET generation='99999999-9999-9999-9999-999999999999'")]
-    [InlineData("UPDATE permission_entry SET target='CN=Elsewhere'")]
+    [InlineData("UPDATE permission_entry SET entry_hash='0000000000000000000000000000000000000000000000000000000000000000'")]
+    [InlineData("UPDATE permission_entry SET sid='S-1-5-32-544'")]
     [InlineData("UPDATE permission_classification_entry SET right_count=2")]
     [InlineData("UPDATE permission_classification_reading SET payload=json_set(payload,'$.Rights[0].Assessment.Verdict',999)")]
     [InlineData("UPDATE permission_classification_reading SET payload=json_set(payload,'$.Rights[0].Assessment.Reason','')")]

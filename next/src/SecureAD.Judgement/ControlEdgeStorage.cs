@@ -64,9 +64,9 @@ internal static class ControlEdgeStorage
         return result;
     }
 
-    public static void Write(SqliteConnection connection, SqliteTransaction transaction, PreparedStatements statements, ControlObjectEvaluation result, Tier0Target? ownershipTarget)
+    public static void Write(SqliteConnection connection, SqliteTransaction transaction, PreparedStatements statements, ControlObjectEvaluation result, Tier0Target? ownershipTarget, PermissionWriteSession session)
     {
-        var entries = new SharedPermissionStorage(connection, transaction, statements);
+        var entries = new SharedPermissionStorage(connection, transaction, statements, session);
         Execute(connection, transaction, "INSERT INTO control_object VALUES ($target,$sid,$scope,$outcome,$uncertainty,$complete)",
             ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
             ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
@@ -133,9 +133,10 @@ internal static class ControlEdgeStorage
     {
         using var transaction = connection.BeginTransaction();
         using var statements = new PreparedStatements(connection);
-        var entries = new SharedPermissionStorage(connection, transaction, statements);
-        if (result.Edges.FirstOrDefault() is { } first)
-            entries.Load(result.Target, first.GenerationId);
+        // Its own session, because it is its own transaction: nothing written here may be promoted
+        // into a run that is not writing it. Entries the object pass already stored are found through
+        // permission_entry.entry_hash, which is why no reading back of this target's rows is needed.
+        var entries = new SharedPermissionStorage(connection, transaction, statements, new PermissionWriteSession());
         Execute(connection, transaction, """
             UPDATE control_object SET principal_sid=$sid, principal_scope=$scope, descriptor_outcome=$outcome,
                 uncertainty=$uncertainty, is_complete=$complete WHERE target=$target COLLATE NOCASE
@@ -154,8 +155,7 @@ internal static class ControlEdgeStorage
             || edge.Capability != ControlCapability.CanBecomeOwnerAndRewriteDacl)) throw OwnershipAuditStorage.InvalidProof();
         using var transaction = connection.BeginTransaction();
         using var statements = new PreparedStatements(connection);
-        var entries = new SharedPermissionStorage(connection, transaction, statements);
-        entries.Load(target, description.GenerationId);
+        var entries = new SharedPermissionStorage(connection, transaction, statements, new PermissionWriteSession());
         WriteEdges(connection, transaction, transitions, entries);
         OwnershipAuditStorage.Assessed(connection, transaction, target, transitions.Count);
         transaction.Commit();

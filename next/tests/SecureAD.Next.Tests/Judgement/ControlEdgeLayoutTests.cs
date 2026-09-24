@@ -83,6 +83,11 @@ public sealed class ControlEdgeLayoutTests
         // distinct readings behind 209,032 entries and half the result file was the duplication.
         // Observed from this approved build, not an independent historical forest anchor.
         [42] = "297BED254604EC343AFD4F44FCF47788B3C3CF348692F7D42D776F7344F50B32",
+        // Schema 43 stores each distinct access control entry once in permission_entry and links to
+        // it, so the row loses target and ordinal, gains the entry_hash identity, and drops
+        // ix_permission_entry_target_generation with the column it led on (P-279). Observed from this
+        // approved build, not an independent historical forest anchor.
+        [43] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
     };
 
     [Fact]

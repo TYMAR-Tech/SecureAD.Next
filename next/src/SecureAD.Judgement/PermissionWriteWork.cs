@@ -28,9 +28,6 @@ internal sealed class PermissionWriteWork
     /// <summary>Checking the classification before any of it is stored.</summary>
     public System.Diagnostics.Stopwatch Validate { get; } = new();
 
-    /// <summary>Reading back the entries an earlier generation already shares.</summary>
-    public System.Diagnostics.Stopwatch SharedLoad { get; } = new();
-
     /// <summary>Writing the object's own row, including serialising its descriptor.</summary>
     public System.Diagnostics.Stopwatch ObjectRow { get; } = new();
 
@@ -57,7 +54,6 @@ internal sealed class PermissionWriteWork
         (string Part, TimeSpan Elapsed)[] buckets =
         [
             ("validate", Validate.Elapsed),
-            ("shared-load", SharedLoad.Elapsed),
             ("object-row", ObjectRow.Elapsed),
             ("shared-entry", SharedEntry.Elapsed),
             ("schema-support", SchemaSupport.Elapsed),
