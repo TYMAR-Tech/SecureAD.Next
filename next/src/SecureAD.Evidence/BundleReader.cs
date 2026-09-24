@@ -175,6 +175,46 @@ public sealed class BundleReader : IDisposable
         return OpenConnection(bundleDirectory, connection);
     }
 
+    /// <summary>
+    /// Opens the evidence for reading <b>without verifying the seal</b>, for the run library.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>For drawing a list, never for reading evidence anybody acts on.</b> Verifying hashes the
+    /// whole file, and the library asks this of every run each time the Home screen is drawn - nine
+    /// occasions including every navigation back to it. Measured on a 1.73 GB bundle: 2,400 ms to
+    /// verify, 69 ms to read the scope without verifying.
+    /// </para>
+    /// <para>
+    /// <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts the one
+    /// verification at the moment a bundle is opened and requires that it not be repeated per
+    /// screen. <see cref="Open(string, CancellationToken)"/> is that moment. What this produces is a
+    /// label on a list; a run is still refused there if its evidence has gone bad, before a single
+    /// finding is read off it.
+    /// </para>
+    /// <para>
+    /// The format checks in <see cref="OpenConnection"/> still run, so a bundle from another build
+    /// is refused by name here as everywhere else. Only the seal is skipped.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    /// <returns>The open reader, or why the evidence could not be read.</returns>
+    internal static Result<BundleReader> OpenUnverified(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
+        var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = ImmutableDataSource(evidencePath),
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString());
+
+        return OpenConnection(bundleDirectory, connection);
+    }
+
     /// <summary>Opens an independently owned reader under an existing verified file lifetime.</summary>
     public static Result<BundleReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
     {

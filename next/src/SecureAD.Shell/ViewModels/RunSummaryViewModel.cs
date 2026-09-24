@@ -138,14 +138,14 @@ internal sealed class RunSummaryViewModel
     public string Meaning => _listing.State switch
     {
         RunState.InProgress => "Something is still writing to this run.",
-        RunState.Sealed => "This run finished and its evidence is sealed.",
+        RunState.Sealed => "This run finished. Its evidence is checked when you open it.",
         RunState.Failed => "This run ended in an error and recorded what it was.",
         RunState.Cancelled => "Somebody stopped this run.",
         RunState.Interrupted =>
             "This run stopped without recording why. Something outside the product ended it, so "
             + "the reason is on the machine rather than in the bundle.",
         RunState.Damaged =>
-            "This run's evidence will not open, or its seal does not match. It cannot be trusted. "
+            "This run's evidence cannot be checked, so nothing will be read from it. "
             + "Restore it or discard it - running again will not repair it.",
         _ => "This run's state was not recognised.",
     };

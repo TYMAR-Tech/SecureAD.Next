@@ -30,9 +30,18 @@ public enum RunState
     InProgress,
 
     /// <summary>
-    /// The run finished, and its evidence is present with an intact seal. The only state that may
-    /// serve as a comparison baseline, and only then if every domain was read.
+    /// The run finished and left sealed evidence behind it. The only state that may serve as a
+    /// comparison baseline, and only then if every domain was read.
     /// </summary>
+    /// <remarks>
+    /// <b>This says the evidence and its seal are both there, not that the two still match.</b>
+    /// Establishing that hashes the whole file, and this state is decided once per run every time
+    /// the run library is listed - so checking here made drawing a list cost proportional to the
+    /// evidence in it. <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts
+    /// the one verification at the moment a bundle is opened and requires that it not be repeated
+    /// per screen; a run whose evidence has gone bad is refused there, before anything is read off
+    /// it.
+    /// </remarks>
     Sealed,
 
     /// <summary>The run ended in an error, and recorded what it was.</summary>
@@ -49,9 +58,15 @@ public enum RunState
     Interrupted,
 
     /// <summary>
-    /// The bundle is there and cannot be trusted: its evidence will not open, or its seal is
-    /// absent, unreadable or does not match. Distinct from <see cref="Interrupted"/> because the
-    /// remedy differs - restore or discard, rather than run again.
+    /// The bundle is there and cannot be checked: its seal is absent or unreadable. Distinct from
+    /// <see cref="Interrupted"/> because the remedy differs - restore or discard, rather than run
+    /// again.
     /// </summary>
+    /// <remarks>
+    /// <b>Evidence that no longer matches its seal is <see cref="Sealed"/> here, not this.</b>
+    /// Telling the two apart means hashing the file, which the reasons on <see cref="Sealed"/>
+    /// keep out of a listing. What this catches are the faults that need no evidence read at all,
+    /// and they are the ones that make a run unopenable rather than merely suspect.
+    /// </remarks>
     Damaged,
 }

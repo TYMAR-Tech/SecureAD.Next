@@ -44,6 +44,15 @@ public sealed record RunStateObservation(
 /// and a directory that was never a run both reported <i>required run metadata is missing</i> -
 /// which is a claim about a run that does not exist.
 /// </para>
+/// <para>
+/// <b>Nothing here hashes evidence.</b> This is asked of every run each time the Home list is
+/// drawn, so a check that reads whole files makes the library cost proportional to the evidence in
+/// it - which with one production bundle present was minutes, on every navigation back to Home.
+/// <see cref="RunState.Sealed"/> therefore means the run finished and left evidence and a seal, not
+/// that the seal was checked; <see cref="BundleReader.Open(string, CancellationToken)"/> checks it
+/// when the run is opened, per <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c>,
+/// which requires exactly one verification held for the lifetime of the opened file.
+/// </para>
 /// </remarks>
 public static class RunStateReader
 {
@@ -65,16 +74,42 @@ public static class RunStateReader
 
         if (File.Exists(BundleLayout.EvidencePath(bundleDirectory)))
         {
-            var seal = BundleSealing.Verify(bundleDirectory);
+            // The seal is READ but not CHECKED, and the difference is the whole of this change.
+            // Reading it parses a few hundred bytes and catches the two faults that need no
+            // evidence at all: no seal, or a seal this build cannot understand. Checking it means
+            // hashing the whole evidence file - 1,266 ms per 1.73 GB, measured - and this runs once
+            // per run every time the Home list is drawn, which is nine occasions including every
+            // navigation back to Home. docs/decisions/0020 already requires the verdict to be held
+            // for the lifetime of the opened file and not repeated per screen, so hashing here was
+            // a defect against that decision rather than a stricter reading of it. Whether the
+            // bytes still match their seal is answered in BundleReader.Open, which is where the
+            // evidence is about to be believed.
+            var sealPath = BundleLayout.SealPath(bundleDirectory);
 
-            // The completion time is read only once the seal is intact, and only here. A bundle
-            // whose seal does not match is not asked what it says about itself.
-            return seal.MayBeOpened
-                ? Observed(
-                    RunState.Sealed,
-                    detail: null,
-                    RunCompletionReader.CompletedUtc(bundleDirectory))
-                : Observed(RunState.Damaged, seal.Detail, recordedUtc: null);
+            if (!File.Exists(sealPath))
+            {
+                return Observed(
+                    RunState.Damaged,
+                    "This run's evidence has no seal beside it, so it cannot be checked when it "
+                    + "is opened. Restore it or discard it - running again will not repair it.",
+                    recordedUtc: null);
+            }
+
+            // A malformed seal must not degrade to "nobody sealed this", per 0019. The two have
+            // different causes and the detail has to say which.
+            if (BundleSealing.ReadSeal(sealPath) is null)
+            {
+                return Observed(
+                    RunState.Damaged,
+                    "This run's seal cannot be read, so its evidence cannot be checked when it is "
+                    + "opened. Restore it or discard it - running again will not repair it.",
+                    recordedUtc: null);
+            }
+
+            return Observed(
+                RunState.Sealed,
+                detail: null,
+                RunCompletionReader.CompletedUtc(bundleDirectory));
         }
 
         var outcome = RunOutcomeFile.Read(bundleDirectory);

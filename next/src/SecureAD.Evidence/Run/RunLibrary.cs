@@ -301,6 +301,16 @@ public sealed class RunLibrary
     /// would turn every damaged run in the library into a failed open on the way past.
     /// </para>
     /// <para>
+    /// <b>The seal is not verified here.</b> This is asked of every run each time the Home list is
+    /// drawn, and verifying hashes the whole evidence file: measured at 2,400 ms per 1.73 GB, on
+    /// nine occasions including every navigation back to Home. What comes out is a heading on a
+    /// list - which domains a run covered, and which group of comparable runs it belongs to.
+    /// <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts the one
+    /// verification at the moment a bundle is opened and requires that it not be repeated per
+    /// screen, so a run whose evidence has gone bad is refused there, before anything is read off
+    /// it.
+    /// </para>
+    /// <para>
     /// <b>A failure here is null, not an error for the whole listing.</b> One unopenable bundle
     /// must not cost the operator the rest of his library - which is the same judgement the loop
     /// above already makes for a directory that is not a run. The null is visible: the screen shows
@@ -312,7 +322,7 @@ public sealed class RunLibrary
         if (state != RunState.Sealed)
             return null;
 
-        using var opened = BundleReader.Open(directory) is { IsSuccess: true } opening
+        using var opened = BundleReader.OpenUnverified(directory) is { IsSuccess: true } opening
             ? opening.Value
             : null;
 

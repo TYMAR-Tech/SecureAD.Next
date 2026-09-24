@@ -349,6 +349,24 @@ checks, changing UI presentation, new measurement-harness code, migration, recap
 File-fingerprint verification still reads file bytes, so its opening cost must be distinguished from proof
 replay and measured rather than described as free or accepted at customer scale without evidence.
 
+**Owner decision, 2026-09-24 — the seal is verified when a bundle is opened, and nowhere else.**
+Drawing the Home run list must not hash evidence: it reads state, coverage and completion time directly,
+and paying a hash to draw a label made the product unusable once a real bundle was in the library
+(measured: 3.7 s per 1.73 GB run, on nine triggers including every navigation to Home, because
+`RunStateReader.Observe` and `ScopeOf` each verified the same file). A bundle that has gone bad therefore
+reads as finished in the list until it is opened, which is accepted: opening is where the evidence is
+about to be believed, so opening is where it is checked. **Export will not verify either.** The owner's
+reasoning is decisive and closes the question rather than deferring it: an export is CSV, and a hash of
+the source database says nothing about a text file that anyone can edit afterwards — so verifying on
+export would cost real time and protect nothing. This is not a weakening of [0020](decisions/0020-the-seal-detects-corruption-not-tampering.md);
+that decision already requires the verdict to be held for the open-file lifetime and **not repeated per
+screen**, and already refuses a size/timestamp cache as a substitute. Per-navigation hashing was a defect
+against it, not a trade-off within it. The product defends against corruption — a truncated file, a bad
+sector, a half-finished copy — and makes no claim against deliberate alteration, per
+[0030](decisions/0030-the-product-produces-sealed-evidence-never-signed.md). It is offered free to
+administrators who want to understand their own risk; misuse by the person running it is not a threat
+it is built to answer.
+
 **Owner-approved P-248 checkpoint 1:** “begin” authorizes the local implementation branch, explicit
 analysis-attempt publication state, a protected selected-run reading lifetime, and findings/filter/rule
 execution reads through that boundary, with isolated regression and rebuilt deliberate-defect verification.
