@@ -79,10 +79,24 @@ paging were cut from P-249 rather than built, and the work retained at
 `next/artifacts/p249-final-b/continuation-06/reverted/`. The trial's own evidence agreed with the
 owner before he was asked: `run-1-a/reader-3.json` measured the largest object in the laboratory
 capture at 79 entries, materialised whole in 4.25 ms using 1.1 MB, with the other sampled extremes
-at 2.23–3.43 ms; and the production forest averages about 17 access control entries per object
-against the laboratory's 25, so production objects are **smaller** on average, not larger. A screen
-change costing an owner approval and a session of work, to save four milliseconds on a screen nobody
-opens, is the wrong target however well it is built.
+at 2.23–3.43 ms. A screen change costing an owner approval and a session of work, to save four
+milliseconds on a screen nobody opens, is the wrong target however well it is built.
+
+**One premise of that paragraph was wrong by thirty times, corrected 2026-09-24.** It said the
+production forest averages about 17 access control entries per object against the laboratory's 25,
+and concluded production objects are *smaller* on average. **They are not.**
+`--judgement-forecast` measured `ad.ssa.gov-20260924-020431` directly: **330,856,576 permission
+occurrences across 659,196 objects carrying readable permissions is 502 entries per object**, and
+the descriptors themselves average 521. The owner confirmed the 17 was wrong and believes it was a
+laboratory figure that got attached to the wrong forest.
+
+**The decision to cut paging still stands, on its other ground.** Performance work belongs on
+judging because that is where the cost is, and `P-280` has since measured exactly how much — a
+production judgement would be 136.5 GiB, of which 72% is one name copied three times. That argument
+never needed the 17. But the *reason* given for it — that production objects are small — is deleted
+rather than repaired, and **nothing may be designed on the belief that an object carries a couple
+of dozen entries.** If paging is ever reconsidered, it must be against 502.
+
 
 **Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
 specifications and implement the remaining rule coverage.** The review and its retained source set are
