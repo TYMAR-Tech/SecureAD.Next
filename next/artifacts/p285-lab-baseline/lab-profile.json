@@ -1,0 +1,887 @@
+{
+  "Capture": "f73ecc01308c04b5",
+  "ObjectsCaptured": 8418,
+  "ObjectsWithADescriptorStored": 8418,
+  "ObjectsWithNoDescriptorStored": 0,
+  "ObjectsWithReadablePermissions": 8418,
+  "ObjectsWithAnUnreadableDescriptor": 0,
+  "ObjectsWithAPartiallyParsedDescriptor": 0,
+  "ObjectsWhoseDescriptorReportedErrors": 0,
+  "DescriptorsStored": 403,
+  "DescriptorsUsedByObjects": 378,
+  "Occurrences": 209252,
+  "NameBytesPerObject": {
+    "Count": 8418,
+    "Minimum": 12,
+    "P50": 67,
+    "P90": 87,
+    "P99": 100,
+    "Maximum": 154,
+    "Mean": 64.26,
+    "Total": 540928
+  },
+  "NameDepthPerObject": {
+    "Count": 8418,
+    "Minimum": 2,
+    "P50": 5,
+    "P90": 6,
+    "P99": 7,
+    "Maximum": 9,
+    "Mean": 5.48,
+    "Total": 46136
+  },
+  "EntriesPerDescriptor": {
+    "Count": 378,
+    "Minimum": 3,
+    "P50": 44,
+    "P90": 46,
+    "P99": 76,
+    "Maximum": 79,
+    "Mean": 34.27,
+    "Total": 12955
+  },
+  "ObjectsPerDescriptor": {
+    "Count": 378,
+    "Minimum": 1,
+    "P50": 1,
+    "P90": 4,
+    "P99": 1344,
+    "Maximum": 2010,
+    "Mean": 22.27,
+    "Total": 8418
+  },
+  "EntriesAgainstReuse": {
+    "Rows": "entries per descriptor",
+    "Columns": "objects per descriptor",
+    "RowEdges": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024,
+      4096,
+      16384,
+      65536,
+      262144,
+      1048576
+    ],
+    "ColumnEdges": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024,
+      4096,
+      16384,
+      65536,
+      262144,
+      1048576
+    ],
+    "Counts": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        38,
+        6,
+        2,
+        0,
+        1,
+        3,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        4,
+        8,
+        5,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        34,
+        12,
+        6,
+        1,
+        3,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        205,
+        12,
+        7,
+        3,
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "Domains": 3,
+  "ObjectsPerDomain": [
+    4500,
+    3634,
+    284
+  ],
+  "EveryNameIsAscii": true,
+  "Aces": {
+    "Allow": 209174,
+    "Deny": 78,
+    "Inherited": 132788,
+    "NotInherited": 76464,
+    "CarryingAnObjectType": 140259,
+    "CarryingAnInheritedObjectType": 90169,
+    "InheritOnly": 0,
+    "ContainerInherit": 133402,
+    "ObjectInherit": 4893,
+    "NoPropagateInherit": 0,
+    "CarryingApplicationData": 0,
+    "CarryingPrincipalSelf": 36464,
+    "CarryingAWellKnownTrustee": 169496,
+    "CarryingATrusteeThatIsNotWellKnown": 39756,
+    "ObjectTypesOutsideTheShippedCatalogue": 29145,
+    "InheritedObjectTypesOutsideTheShippedCatalogue": 29627,
+    "DistinctObjectTypesOutsideTheShippedCatalogue": 23,
+    "DistinctInheritedObjectTypesOutsideTheShippedCatalogue": 3
+  },
+  "ObjectTypes": [
+    {
+      "Value": "4c164200-20c0-11d0-a768-00aa006e0529",
+      "Name": "User-Account-Restrictions",
+      "Occurrences": 11943
+    },
+    {
+      "Value": "5f202010-79a5-11d0-9020-00c04fc2d4cf",
+      "Name": "User-Logon",
+      "Occurrences": 11943
+    },
+    {
+      "Value": "59ba2f42-79a2-11d0-9020-00c04fc2d3cf",
+      "Name": "General-Information",
+      "Occurrences": 11939
+    },
+    {
+      "Value": "bc0ac240-79a9-11d0-9020-00c04fc2d4cf",
+      "Name": "Membership",
+      "Occurrences": 11927
+    },
+    {
+      "Value": "9b026da6-0d3c-465c-8bee-5199d7165cba",
+      "Name": "DS-Validated-Write-Computer",
+      "Occurrences": 9783
+    },
+    {
+      "Value": "5b47d60f-6090-40b2-9f37-2a4de88f3063",
+      "Name": "msDS-KeyCredentialLink",
+      "Occurrences": 9770
+    },
+    {
+      "Value": "037088f8-0ae1-11d2-b422-00a0c968f939",
+      "Name": "RAS-Information",
+      "Occurrences": 7530
+    },
+    {
+      "Value": "91e647de-d96f-4b70-9557-d63ff4f3ccd8",
+      "Name": "Private-Information",
+      "Occurrences": 4935
+    },
+    {
+      "Value": "3f78c3e5-f79a-46bd-a0b8-9d18116ddc79",
+      "Name": "msDS-AllowedToActOnBehalfOfOtherIdentity",
+      "Occurrences": 4889
+    },
+    {
+      "Value": "ab721a53-1e2f-11d0-9819-00aa0040529b",
+      "Name": "User-Change-Password",
+      "Occurrences": 4263
+    },
+    {
+      "Value": "77b5b886-944a-11d1-aebd-0000f80367c1",
+      "Name": "Personal-Information",
+      "Occurrences": 4172
+    },
+    {
+      "Value": "e45795b3-9455-11d1-aebd-0000f80367c1",
+      "Name": "Web-Information",
+      "Occurrences": 4154
+    },
+    {
+      "Value": "ab721a55-1e2f-11d0-9819-00aa0040529b",
+      "Name": "Send-To",
+      "Occurrences": 2140
+    },
+    {
+      "Value": "5805bc62-bdc9-4428-a5e2-856a0f4c185e",
+      "Name": "Terminal-Server-License-Server",
+      "Occurrences": 2112
+    },
+    {
+      "Value": "ab721a56-1e2f-11d0-9819-00aa0040529b",
+      "Name": "Receive-As",
+      "Occurrences": 2080
+    },
+    {
+      "Value": "e48d0154-bcf8-11d1-8702-00c04fb96050",
+      "Name": "Public-Information",
+      "Occurrences": 2078
+    },
+    {
+      "Value": "ab721a54-1e2f-11d0-9819-00aa0040529b",
+      "Name": "Send-As",
+      "Occurrences": 2077
+    },
+    {
+      "Value": "e45795b2-9455-11d1-aebd-0000f80367c1",
+      "Name": "Email-Information",
+      "Occurrences": 2077
+    },
+    {
+      "Value": "bf967a9c-0de6-11d0-a285-00aa003049e2",
+      "Name": "group",
+      "Occurrences": 231
+    },
+    {
+      "Value": "bf967aba-0de6-11d0-a285-00aa003049e2",
+      "Name": "user",
+      "Occurrences": 219
+    },
+    {
+      "Value": "bf967aa8-0de6-11d0-a285-00aa003049e2",
+      "Name": "printQueue",
+      "Occurrences": 196
+    },
+    {
+      "Value": "bf967a86-0de6-11d0-a285-00aa003049e2",
+      "Name": "computer",
+      "Occurrences": 178
+    },
+    {
+      "Value": "bf9679c0-0de6-11d0-a285-00aa003049e2",
+      "Name": "Self-Membership",
+      "Occurrences": 82
+    },
+    {
+      "Value": "edacfd8f-ffb3-11d1-b41d-00a0c968f939",
+      "Name": "Apply-Group-Policy",
+      "Occurrences": 51
+    },
+    {
+      "Value": "72e39547-7b18-11d1-adef-00c04fd8d5cd",
+      "Name": "Validated-DNS-Host-Name",
+      "Occurrences": 34
+    },
+    {
+      "Value": "f3a64788-5306-11d1-a9c5-0000f80367c1",
+      "Name": "Validated-SPN",
+      "Occurrences": 34
+    },
+    {
+      "Value": "00299570-246d-11d0-a768-00aa006e0529",
+      "Name": "User-Force-Change-Password",
+      "Occurrences": 29
+    },
+    {
+      "Value": "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2",
+      "Name": "DS-Replication-Get-Changes",
+      "Occurrences": 25
+    },
+    {
+      "Value": "bf967a0a-0de6-11d0-a285-00aa003049e2",
+      "Name": "pwdLastSet",
+      "Occurrences": 25
+    },
+    {
+      "Value": "d31a8757-2447-4545-8081-3bb610cacbf2",
+      "Name": "Validated-MS-DS-Behavior-Version",
+      "Occurrences": 23
+    },
+    {
+      "Value": "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2",
+      "Name": "DS-Replication-Get-Changes-All",
+      "Occurrences": 17
+    },
+    {
+      "Value": "89e95b76-444d-4c62-991a-0facbeda640c",
+      "Name": "DS-Replication-Get-Changes-In-Filtered-Set",
+      "Occurrences": 17
+    },
+    {
+      "Value": "1131f6ab-9c07-11d1-f79f-00c04fc2dcd2",
+      "Name": "DS-Replication-Synchronize",
+      "Occurrences": 16
+    },
+    {
+      "Value": "1131f6ac-9c07-11d1-f79f-00c04fc2dcd2",
+      "Name": "DS-Replication-Manage-Topology",
+      "Occurrences": 16
+    },
+    {
+      "Value": "bf967950-0de6-11d0-a285-00aa003049e2",
+      "Name": "description",
+      "Occurrences": 16
+    },
+    {
+      "Value": "bf967953-0de6-11d0-a285-00aa003049e2",
+      "Name": "displayName",
+      "Occurrences": 16
+    },
+    {
+      "Value": "3e0abfd0-126a-11d0-a060-00aa006c33ed",
+      "Name": "sAMAccountName",
+      "Occurrences": 16
+    },
+    {
+      "Value": "b8119fd0-04f6-4762-ab7a-4986c76b3f9a",
+      "Name": "Domain-Other-Parameters",
+      "Occurrences": 12
+    },
+    {
+      "Value": "e2a36dc9-ae17-47c3-b58b-be34c55ba633",
+      "Name": "Create-Inbound-Forest-Trust",
+      "Occurrences": 6
+    },
+    {
+      "Value": "c7407360-20bf-11d0-a768-00aa006e0529",
+      "Name": "Domain-Password",
+      "Occurrences": 6
+    },
+    {
+      "Value": "05c74c5e-4deb-43b4-bd9f-86664c2a7fd5",
+      "Name": "Enable-Per-User-Reversibly-Encrypted-Password",
+      "Occurrences": 6
+    },
+    {
+      "Value": "ccc2dc7d-a6ad-4a7a-8846-c04e3cc53501",
+      "Name": "Unexpire-Password",
+      "Occurrences": 6
+    },
+    {
+      "Value": "280f369c-67c7-438e-ae98-1d46f3c6f541",
+      "Name": "Update-Password-Not-Required-Bit",
+      "Occurrences": 6
+    },
+    {
+      "Value": "91d67418-0135-4acc-8d79-c08e857cfbec",
+      "Name": "SAM-Enumerate-Entire-Domain",
+      "Occurrences": 6
+    },
+    {
+      "Value": "4ecc03fe-ffc0-4947-b630-eb672a8a9dbc",
+      "Name": "DS-Query-Self-Quota",
+      "Occurrences": 4
+    },
+    {
+      "Value": "3e0f7e18-2c7a-4c10-ba82-4d926db99a3e",
+      "Name": "DS-Clone-Domain-Controller",
+      "Occurrences": 3
+    },
+    {
+      "Value": "ce206244-5827-4a86-ba1c-1c0c386c1b64",
+      "Name": "msDS-ManagedServiceAccount",
+      "Occurrences": 3
+    },
+    {
+      "Value": "f30e3bbe-9ff0-11d1-b603-0000f80367c1",
+      "Name": "gPLink",
+      "Occurrences": 3
+    }
+  ],
+  "InheritedObjectTypes": [
+    {
+      "Value": "bf967aba-0de6-11d0-a285-00aa003049e2",
+      "Name": "user",
+      "Occurrences": 30166
+    },
+    {
+      "Value": "bf967a86-0de6-11d0-a285-00aa003049e2",
+      "Name": "computer",
+      "Occurrences": 20453
+    },
+    {
+      "Value": "bf967a9c-0de6-11d0-a285-00aa003049e2",
+      "Name": "group",
+      "Occurrences": 9901
+    },
+    {
+      "Value": "f0f8ffab-1191-11d0-a060-00aa006c33ed",
+      "Name": "nTDSDSA",
+      "Occurrences": 22
+    }
+  ],
+  "Trustees": [
+    {
+      "Value": "S-1-5-32-554",
+      "Name": "BUILTIN\\Pre-Windows 2000 Compatible Access",
+      "Occurrences": 64586
+    },
+    {
+      "Value": "S-1-5-10",
+      "Name": "Principal Self",
+      "Occurrences": 36464
+    },
+    {
+      "Value": "S-1-5-11",
+      "Name": "Authenticated Users",
+      "Occurrences": 18764
+    },
+    {
+      "Value": "S-1-5-9",
+      "Name": "Enterprise Domain Controllers",
+      "Occurrences": 14960
+    },
+    {
+      "Value": "S-1-5-18",
+      "Name": "Local System",
+      "Occurrences": 8671
+    },
+    {
+      "Value": "S-1-5-32-544",
+      "Name": "BUILTIN\\Administrators",
+      "Occurrences": 5005
+    },
+    {
+      "Value": "S-1-5-32-548",
+      "Name": "BUILTIN\\Account Operators",
+      "Occurrences": 4962
+    },
+    {
+      "Value": "S-1-3-0",
+      "Name": "Creator Owner",
+      "Occurrences": 4955
+    },
+    {
+      "Value": "S-1-5-32-560",
+      "Name": "BUILTIN\\Windows Authorization Access Group",
+      "Occurrences": 4270
+    },
+    {
+      "Value": "S-1-5-32-561",
+      "Name": "BUILTIN\\Terminal Server License Servers",
+      "Occurrences": 4224
+    },
+    {
+      "Value": "S-1-1-0",
+      "Name": "Everyone",
+      "Occurrences": 2362
+    },
+    {
+      "Value": "S-1-5-32-550",
+      "Name": "BUILTIN\\Print Operators",
+      "Occurrences": 196
+    },
+    {
+      "Value": "S-1-5-20",
+      "Name": "Network Service",
+      "Occurrences": 69
+    },
+    {
+      "Value": "S-1-5-32-557",
+      "Name": "BUILTIN\\Incoming Forest Trust Builders",
+      "Occurrences": 6
+    },
+    {
+      "Value": "S-1-3-4",
+      "Name": "Owner Rights",
+      "Occurrences": 2
+    }
+  ],
+  "AccessMasks": [
+    {
+      "Mask": "0x00000010",
+      "Occurrences": 80617
+    },
+    {
+      "Mask": "0x00000030",
+      "Occurrences": 27431
+    },
+    {
+      "Mask": "0x00020094",
+      "Occurrences": 26276
+    },
+    {
+      "Mask": "0x000F01FF",
+      "Occurrences": 23877
+    },
+    {
+      "Mask": "0x00000100",
+      "Occurrences": 10781
+    },
+    {
+      "Mask": "0x00000008",
+      "Occurrences": 9877
+    },
+    {
+      "Mask": "0x000F01BD",
+      "Occurrences": 6487
+    },
+    {
+      "Mask": "0x00000020",
+      "Occurrences": 5522
+    },
+    {
+      "Mask": "0x00000130",
+      "Occurrences": 4947
+    },
+    {
+      "Mask": "0x00000004",
+      "Occurrences": 4888
+    },
+    {
+      "Mask": "0x00020000",
+      "Occurrences": 2077
+    },
+    {
+      "Mask": "0x000E01BD",
+      "Occurrences": 2031
+    },
+    {
+      "Mask": "0x000E01BF",
+      "Occurrences": 1854
+    },
+    {
+      "Mask": "0x00000003",
+      "Occurrences": 1046
+    },
+    {
+      "Mask": "0x00000110",
+      "Occurrences": 569
+    },
+    {
+      "Mask": "0x00020028",
+      "Occurrences": 520
+    },
+    {
+      "Mask": "0x000F00FF",
+      "Occurrences": 215
+    },
+    {
+      "Mask": "0x00010040",
+      "Occurrences": 66
+    },
+    {
+      "Mask": "0x000F01BF",
+      "Occurrences": 50
+    },
+    {
+      "Mask": "0x000E00BD",
+      "Occurrences": 18
+    },
+    {
+      "Mask": "0x000301D4",
+      "Occurrences": 15
+    },
+    {
+      "Mask": "0x00000001",
+      "Occurrences": 14
+    },
+    {
+      "Mask": "0x000200BD",
+      "Occurrences": 12
+    },
+    {
+      "Mask": "0x000F017F",
+      "Occurrences": 10
+    },
+    {
+      "Mask": "0xFFFFFFFF",
+      "Occurrences": 9
+    },
+    {
+      "Mask": "0x00020010",
+      "Occurrences": 6
+    },
+    {
+      "Mask": "0x00010042",
+      "Occurrences": 5
+    },
+    {
+      "Mask": "0x000F01FD",
+      "Occurrences": 4
+    },
+    {
+      "Mask": "0x00000002",
+      "Occurrences": 4
+    },
+    {
+      "Mask": "0x00010000",
+      "Occurrences": 4
+    },
+    {
+      "Mask": "0x00040000",
+      "Occurrences": 4
+    },
+    {
+      "Mask": "0x00020134",
+      "Occurrences": 4
+    }
+  ],
+  "BuildSha256": "5b1e92757501a17612f5dc82cb4018773bfaf9e94b3da271a0a53f87ae2088b7",
+  "BuildSha256Covers": "The single-file executable, which carries the code.",
+  "AssemblyVersion": "3.0.0\u002B3b3e6c02e5e2ee350e64bff6b501a2537bb1375b",
+  "Runtime": ".NET 10.0.12",
+  "OpenedReadOnly": true,
+  "Contains": "Counts, distributions, and the GUIDs and SIDs that mean the same thing in every Active Directory. No distinguished name, no domain SID, no trustee that is not well-known, no GUID outside the catalogue shipped with the product, no descriptor bytes, no file path, and not the name of the capture - a capture is named after the directory it was taken from, so Capture is a fingerprint of that name and not the name."
+}
