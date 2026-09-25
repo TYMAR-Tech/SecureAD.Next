@@ -43,12 +43,15 @@ through `Trustee.Name`. The proposal was built on that stated contract rather th
 the code, which is how a design that would misattribute a permission got as far as
 review. **The comment was corrected 2026-09-25**; the code was already right.
 
-**The same cause has a live cost.** Because the name is in the identity, a SELF entry
-**never deduplicates**: every object carrying one gets its own `permission_entry` row.
-`S-1-5-10` appears in the default access control list of essentially every user and
-computer object, so on a 940,067-object forest this silently inflates the very table
-`P-279` was built to shrink, by an amount nobody has measured. Measure it before
-choosing the new sharing unit.
+**The same cause has a live cost, and it is now measured: 20,454,613.** Because the name
+is in the identity, a SELF entry **never deduplicates**: every object carrying one gets its
+own `permission_entry` row. `S-1-5-10` appears in the default access control list of
+essentially every user and computer object, and `--shape-profile` counted 20,454,613
+occurrences of it on the production capture - 6.2% of all 330,856,576. `P-279` took that
+table from 17,164,866 rows to 24,098 on the bench; on a real forest `SELF` alone would put
+up to twenty million straight back into it. **That is the figure the new sharing unit has
+to be chosen against**, and it means `P-285` is not a tidy-up but the question of whether
+`P-279` worked at all outside the laboratory.
 
 **The correction is to separate the raw ACE from trustee presentation.** `SELF` stays
 `SELF` in the shared value; the displayed object name is resolved from the verified
@@ -175,31 +178,47 @@ Settled with the owner 2026-09-24, after the review. Each is a bounded session.
 
 ### What the bench actually looks like, measured 2026-09-25
 
-The first profile was of `next/artifacts/p279-after`, and it is the argument for the
-mode rather than merely a test of it:
+The first profile was of `next/artifacts/p279-after`, and the second was of the production
+capture the same day. The pair is the argument for the mode rather than merely a test of
+it. **The production profile and its full reading are at
+[`next/artifacts/p280-shape-profile/`](../../next/artifacts/p280-shape-profile/README.md).**
 
-| | Bench | Production |
+| | Bench | Production, measured |
 |---|---|---|
-| Entries per descriptor, p50 / p99 / max | **521 / 521 / 521** | to be measured |
-| Name bytes, p50 / p99 / max | **97 / 97 / 97** | mean 106.1, max 250 |
-| Objects per descriptor, max | **3** | 659,196 over 267,550 |
+| Entries per descriptor, p50 / p99 / max | **521 / 521 / 521** | 533 / 681 / **1,278** |
+| Name bytes, p50 / p99 / max | **97 / 97 / 97** | 105 / 158 / 250 |
+| Objects per descriptor, p50 / p99 / max | **1 / 3 / 3** | **1** / 25 / **4,568** |
 | Domains | **1** | 9 |
 | Occurrences carrying an object type | **0** | 238,118,809 (72%) |
-| Occurrences carrying `S-1-5-10` | **0** | to be measured (`P-285`) |
-| Occurrences with a well-known trustee | **0** | to be measured |
-| Descriptors unreadable or partly parsed | **0** | to be measured (`P-284`) |
+| Occurrences carrying `S-1-5-10` | **0** | **20,454,613** |
+| Occurrences with a well-known trustee | **0** | 73,028,129 (22%) |
+| Descriptors unreadable or partly parsed | **0** | **0** |
+| Occurrences inherited rather than set directly | - | 322,433,893 (**97.5%**) |
 
 **Every descriptor is the same length and every name is the same length.** A forest
 where the p50, the p99 and the maximum agree to the unit is not a forest; it is a
 constant. The two figures `P-280`'s largest claim rests on - that 72% of occurrences
 carry an object-type GUID and that moving five entry-derived columns off the occurrence
 row saves three times what per-descriptor keying alone saves - have never been checked
-against anything, because the bench has none of them. Neither has the reuse skew that
-made the 344-million estimate 3.8% too high.
+against anything, because the bench has none of them.
 
-**So the profile's own first output is the finding.** Nothing that follows should be
-believed on the bench's authority until a production profile has been taken and the
-generator taught to match it.
+**Three things the production profile settled.**
+
+- **The occurrence count is confirmed by two independent routes.** 330,856,576, identical
+  to `--judgement-forecast`'s figure of 2026-09-24, from a separately written pass. This
+  is a real confirmation, unlike the withdrawn "two routes agreeing within 1.3%" claim
+  above, which was cancellation.
+- **Reuse is far more skewed than the mean of 2.46 suggests.** The median descriptor is
+  carried by **one** object and the largest by **4,568**. Shape C still cuts 330 million
+  rows to 141 million, but the saving comes from a small number of enormously shared
+  descriptors rather than from a broad average. Anything designed around *"descriptors are
+  shared about twice"* will be wrong about half the table.
+- **`P-285` costs 20,454,613 occurrences**, which is what the sharing unit has to be chosen
+  against. See below.
+
+**So the profile's own first outputs are the finding.** Nothing that follows should be
+believed on the bench's authority until the generator has been taught to match the
+production shape, which is step 2b.
 
    normalising on top of a binding that lets a `reading_id` be repointed would make one
    wrong association affect every occurrence of that entry.
@@ -332,9 +351,12 @@ Four things the measurement settled that guesswork had got wrong:
 - **The name-length correlation is real but negligible**: 106.9 bytes per occurrence
   against 106.1 per object, so objects with longer names carry 0.7% more entries. The
   worry was worth measuring and is not worth designing around.
-- **Every name is ASCII** — 106.1 bytes and 106.1 characters. The UTF-8 distinction
-  still has to be kept in the code, because one accented name would break a figure built
-  on characters, but it costs nothing today.
+- ~~**Every name is ASCII**~~ — **withdrawn 2026-09-25, and it was never measured.** The
+  claim was concluded from the byte mean and the character mean both reading 106.1, and
+  they agree because a handful of accented names cannot move a mean across 659,196
+  objects. `--shape-profile` compares the two lengths **per object** and answers
+  `EveryNameIsAscii: false`. Nothing rests on it, because the code already pays in bytes —
+  but a figure that looked checked was not, which is the shape this page keeps recording.
 
 **What it does not settle is whether 43 GB is acceptable**, and that remains the
 owner's call. It is still 2.3 times the 18.67 GB of evidence, and still larger than the
