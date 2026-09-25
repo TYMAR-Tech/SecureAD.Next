@@ -71,8 +71,12 @@ internal static class PermissionClassificationStorage
         {
             token.ThrowIfCancellationRequested();
             var entry = result.Entries[position];
+            // THE READING IS WRITTEN FIRST, BECAUSE THE OCCURRENCE IS BOUND TO IT (P-283). Its
+            // fingerprint goes into the occurrence's own fingerprint, so repointing reading_id at
+            // another valid reading no longer leaves every check passing.
+            var reading = ReadingId(entry);
             work.SharedEntry.Start();
-            var reference = shared.Write(target, generation, entry.Entry);
+            var reference = shared.Write(target, generation, entry.Entry, reading.Fingerprint);
             work.SharedEntry.Stop();
             work.SchemaSupport.Start();
             WriteSupport(entry.ObjectType);
@@ -84,7 +88,7 @@ internal static class PermissionClassificationStorage
                 ($target,$position,$ordinal,$entry,$hash,$count,$reading,$object,$inherited)
                 """, transaction, ("$target", target), ("$position", position), ("$ordinal", entry.Entry.Ordinal),
                 ("$entry", reference.Id), ("$hash", reference.Fingerprint), ("$count", entry.Rights.Count),
-                ("$reading", ReadingId(entry)),
+                ("$reading", reading.Id),
                 ("$object", entry.ObjectType?.Guid), ("$inherited", entry.InheritedObjectType?.Guid)).ExecuteNonQuery();
             work.EntryRow.Stop();
             work.Entries++;
@@ -95,12 +99,12 @@ internal static class PermissionClassificationStorage
         // ONE ROW PER DISTINCT READING, NOT ONE PER ENTRY. The P-251 comparison found 240 distinct
         // readings behind 209,032 entries; writing each one 871 times was half the result file, and
         // on the laboratory's standard SSD those bytes are what the commits are moving.
-        long ReadingId(ClassifiedPermissionEntry entry)
+        (long Id, byte[] Fingerprint) ReadingId(ClassifiedPermissionEntry entry)
         {
             var payload = JsonSerializer.Serialize(
                 new Reading(entry.Summary, entry.RightsAreComplete, entry.Scope, entry.Rights));
             var (fingerprint, key) = PermissionWriteSession.Fingerprint(payload);
-            if (session.TryGetReading(key, out var known)) return known;
+            if (session.TryGetReading(key, out var known)) return (known, fingerprint);
 
             statements.Bind("INSERT OR IGNORE INTO permission_classification_reading(fingerprint,payload) VALUES ($fingerprint,$payload)",
                 transaction, ("$fingerprint", fingerprint), ("$payload", payload)).ExecuteNonQuery();
@@ -118,7 +122,7 @@ internal static class PermissionClassificationStorage
             if (!read.Read() || read.GetString(1) != payload) throw Invalid();
             var id = read.GetInt64(0);
             session.AddReading(key, id);
-            return id;
+            return (id, fingerprint);
         }
 
         void WriteSupport(PermissionSchemaSupport? support)
@@ -223,18 +227,25 @@ internal static class PermissionClassificationStorage
             while (read.Read())
             {
                 token.ThrowIfCancellationRequested();
-                PermissionEntry entry;
-                try { entry = SharedPermissionStorage.Read(read, target, description.GenerationId); }
-                catch (InvalidOperationException error) { throw new InvalidDataException(Message("Invalid"), error); }
                 const int offset = SharedPermissionStorage.ProjectionColumns + 2;
-                if (read.GetInt32(offset) != entries.Count) throw Invalid();
                 var payload = read.GetString(offset + 2);
+                // THE READING IS VERIFIED BEFORE IT IS USED TO VERIFY ANYTHING ELSE. Its own digest
+                // is checked here, and only then is it handed to SharedPermissionStorage.Read as the
+                // material the occurrence is bound to (P-283) - a value that has not been proved
+                // cannot be evidence that something else is sound.
+                //
                 // A SHARED ROW IS READ BY EVERY ENTRY POINTING AT IT, so a single damaged payload
                 // would misreport hundreds of entries rather than one. Mutation-tested 2026-09-22:
                 // disabling this check let a tampered summary through and
                 // P249SharedReadingRefusesATamperedPayload failed with no exception thrown.
+                var readingFingerprint = (byte[])read.GetValue(offset + 5);
                 if (!PermissionWriteSession.Fingerprint(payload).Bytes.AsSpan()
-                        .SequenceEqual((byte[])read.GetValue(offset + 5))) throw Invalid();
+                        .SequenceEqual(readingFingerprint)) throw Invalid();
+
+                PermissionEntry entry;
+                try { entry = SharedPermissionStorage.Read(read, target, description.GenerationId, readingFingerprint); }
+                catch (InvalidOperationException error) { throw new InvalidDataException(Message("Invalid"), error); }
+                if (read.GetInt32(offset) != entries.Count) throw Invalid();
                 var reading = JsonSerializer.Deserialize<Reading>(payload) ?? throw Invalid();
                 if (reading.Rights is null || reading.Rights.Count != read.GetInt32(offset + 1)) throw Invalid();
                 entries.Add(new(entry, reading.Summary, reading.RightsAreComplete, reading.Scope, reading.Rights,

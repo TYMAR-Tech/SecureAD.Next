@@ -95,6 +95,11 @@ public sealed class ControlEdgeLayoutTests
         // every occurrence fingerprint is now taken over the shared form and a version 43 store's
         // would not verify: refused on version rather than reported as tampered proofs.
         [44] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
+        // Schema 45 folds the reading's digest into the occurrence fingerprint so reading_id cannot
+        // be repointed (P-283). Deliberately no new column - a separate binding would have cost 32
+        // bytes on each of the production capture's 330,856,576 occurrences - so the observed DDL is
+        // again unchanged and this repeats 43's value.
+        [45] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
     };
 
     [Fact]

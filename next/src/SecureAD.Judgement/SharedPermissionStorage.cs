@@ -80,8 +80,13 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     /// <param name="target">The object this occurrence was found on.</param>
     /// <param name="generation">The generation being judged.</param>
     /// <param name="entry">The entry, at the ordinal the directory stored it at.</param>
+    /// <param name="boundTo">
+    /// Anything else this occurrence must be inseparable from, or empty when there is nothing.
+    /// See <see cref="Key"/>: <c>P-283</c> is what it exists for.
+    /// </param>
     /// <returns>The shared row to link to, and the fingerprint binding this occurrence to it.</returns>
-    internal (long Id, byte[] Fingerprint) Write(string target, Guid generation, PermissionEntry entry)
+    internal (long Id, byte[] Fingerprint) Write(
+        string target, Guid generation, PermissionEntry entry, ReadOnlySpan<byte> boundTo = default)
     {
         // WHAT IS STORED AND HASHED IS THE SHARED FORM (P-285). PermissionTrustee.Shared strips the
         // one thing in an entry that depends on the object it was found on: S-1-5-10 arrives here
@@ -95,7 +100,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         var shared = Shared(entry);
 
         // JSON is only an exact, transient comparison key, never the stored proof representation.
-        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, shared)));
+        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, shared, boundTo)));
         return (EntryId(generation, shared), fingerprint);
     }
 
@@ -154,14 +159,37 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     // share one row without either being shown the other's name - but it has to happen AFTER the
     // fingerprint has established that this target really carried this entry. Resolved before, the
     // name would be taken from a target nothing had yet proved.
-    internal static PermissionEntry Read(SqliteDataReader read, string target, Guid generation)
+    internal static PermissionEntry Read(
+        SqliteDataReader read, string target, Guid generation, ReadOnlySpan<byte> boundTo = default)
     {
         if (read.IsDBNull(0) || read.GetString(1) != generation.ToString("D")) throw FullControlEvaluator.InvalidProof();
         var entry = ReadValue(read, generation, read.GetInt32(ProjectionColumns));
-        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, entry)));
+        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, entry, boundTo)));
         if (!fingerprint.AsSpan().SequenceEqual((byte[])read.GetValue(ProjectionColumns + 1))) throw FullControlEvaluator.InvalidProof();
         return entry with { Trustee = entry.Trustee.DisplayedAgainst(target) };
     }
+
+    /// <summary>
+    /// The fingerprint a link row must carry for the occurrence this reader is positioned on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Exists for one caller: a test that deliberately rewrites a stored reading and then has to
+    /// make the store internally consistent again, so the reader reaches the words rather than
+    /// refusing the record. Before <c>P-283</c> repairing the reading's own digest was enough;
+    /// now the occurrences bound to it have to be rebound, and doing that <b>through the product's
+    /// own key</b> rather than through a second copy of it is what keeps the repair from becoming a
+    /// reimplementation that could agree with itself while disagreeing with the writer.
+    /// </para>
+    /// <para>
+    /// It proves nothing on its own and is not a verification. <see cref="Read"/> is where a
+    /// fingerprint is checked.
+    /// </para>
+    /// </remarks>
+    internal static byte[] FingerprintOf(
+        SqliteDataReader read, string target, Guid generation, ReadOnlySpan<byte> boundTo) =>
+        SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation,
+            ReadValue(read, generation, read.GetInt32(ProjectionColumns)), boundTo)));
 
     private static PermissionEntry ReadValue(SqliteDataReader read, Guid generation, int ordinal)
     {
@@ -198,8 +226,30 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     internal static string ValueKey(PermissionEntry entry) => JsonSerializer.Serialize(entry);
 
     // The occurrence: what this object carried at this position. Link rows are fingerprinted with it.
-    private static string Key(string target, Guid generation, PermissionEntry entry) =>
-        JsonSerializer.Serialize(new { Target = target, Generation = generation, Entry = entry });
+    //
+    // AND WHATEVER ELSE THE OCCURRENCE MUST BE INSEPARABLE FROM (P-283). A classification link also
+    // names the reading that explains the entry, and until this that pointer was bound by nothing:
+    // repointing reading_id at another valid reading left every fingerprint matching, so an allow
+    // WRITE_DAC could be made to read as "A deny entry grants no access" and classify NotDangerous.
+    // Structural validation accepts it, because the verdict is defined, the reason is non-empty, the
+    // wording is complete and the rights still sum to the entry's own mask - a deny reading of the
+    // same rights satisfies all four. The whole-judgement seal catches an edit made after
+    // publication; it does not catch a wrong association written before sealing.
+    //
+    // Folded into the existing fingerprint rather than given a column of its own, which would have
+    // cost 32 bytes on every occurrence - 10.6 GB across the production capture's 330,856,576, in a
+    // store P-280 exists to shrink. The 32 bytes already there now do the job they should have done.
+    //
+    // Empty for control_ace and full_control_source_entry, which name no interpretation.
+    private static string Key(
+        string target, Guid generation, PermissionEntry entry, ReadOnlySpan<byte> boundTo) =>
+        JsonSerializer.Serialize(new
+        {
+            Target = target,
+            Generation = generation,
+            Entry = entry,
+            BoundTo = boundTo.IsEmpty ? null : Convert.ToHexString(boundTo),
+        });
 
     // The value: the same entry wherever it was found, at whatever position. The ordinal is
     // normalised away, and normalising rather than omitting keeps the key derived from the whole

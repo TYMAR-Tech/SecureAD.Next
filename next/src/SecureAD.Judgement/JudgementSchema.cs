@@ -89,8 +89,14 @@ public static class JudgementSchema
     /// target on read (P-285). Every occurrence fingerprint is taken over that shared form, so a
     /// version 43 store's fingerprints do not verify against this build - refused on version rather
     /// than reported as tampered proofs, which is what the number is for.</para>
+    /// <para>45 binds each occurrence to the reading that explains it, by folding that reading's
+    /// digest into the occurrence's own fingerprint (P-283). Until then <c>reading_id</c> was
+    /// covered by nothing, so an allow <c>WRITE_DAC</c> could be repointed at a deny entry's
+    /// reading and classify <c>NotDangerous</c> with every check still passing. No column was
+    /// added: a separate binding would have cost 32 bytes on each of the production capture's
+    /// 330,856,576 occurrences.</para>
     /// </remarks>
-    public const int Version = 44;
+    public const int Version = 45;
 
     private static readonly string[] TableDdl =
     [

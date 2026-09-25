@@ -274,5 +274,62 @@ public sealed partial class OpenedRunResultsTests
             update.Parameters.AddWithValue("$id", id);
             update.ExecuteNonQuery();
         }
+
+        RebindOccurrences(connection);
     });
+
+    /// <summary>
+    /// Rebinds every occurrence to the reading it points at, after that reading has been rewritten.
+    /// </summary>
+    /// <remarks>
+    /// <b>Needed since <c>P-283</c>.</b> An occurrence's fingerprint now covers the digest of the
+    /// reading that explains it, so that a <c>reading_id</c> cannot be repointed at another valid
+    /// reading - which is how an allow <c>WRITE_DAC</c> could be made to read as <i>"A deny entry
+    /// grants no access"</i>. The consequence here is that restoring the reading's own digest is no
+    /// longer enough to make a deliberately rewritten store readable: the rows bound to it move too.
+    /// <para>
+    /// The new value comes from <c>SharedPermissionStorage.FingerprintOf</c>, which is the writer's
+    /// own key. A repair that computed it here instead could agree with itself and disagree with
+    /// the product, and the test above would then be proving nothing.
+    /// </para>
+    /// </remarks>
+    private static void RebindOccurrences(SqliteConnection connection)
+    {
+        var generation = Guid.Empty;
+        using (var read = connection.CreateCommand())
+        {
+            read.CommandText = "SELECT generation FROM permission_classification_product";
+            generation = Guid.Parse((string)read.ExecuteScalar()!);
+        }
+
+        var repaired = new List<(string Target, int Position, byte[] Fingerprint)>();
+        using (var command = connection.CreateCommand())
+        {
+            // The reader's own projection, so the ordinal and the entry sit where FingerprintOf
+            // expects them, with position, the reading's digest and the target appended after it.
+            command.CommandText = "SELECT " + SharedPermissionStorage.Projection
+                + ",e.ordinal,e.fingerprint,e.position,r.fingerprint AS reading,e.target"
+                + " FROM permission_classification_entry e LEFT JOIN permission_entry p ON p.id=e.entry_id"
+                + " LEFT JOIN permission_classification_reading r ON r.id=e.reading_id"
+                + SharedPermissionStorage.MeaningJoin + " ORDER BY e.target,e.position";
+            const int position = SharedPermissionStorage.ProjectionColumns + 2;
+            using var rows = command.ExecuteReader();
+            while (rows.Read())
+            {
+                var target = rows.GetString(position + 2);
+                repaired.Add((target, rows.GetInt32(position), SharedPermissionStorage.FingerprintOf(
+                    rows, target, generation, (byte[])rows.GetValue(position + 1))));
+            }
+        }
+
+        foreach (var (target, position, fingerprint) in repaired)
+        {
+            using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE permission_classification_entry SET fingerprint=$fingerprint WHERE target=$target AND position=$position";
+            update.Parameters.AddWithValue("$fingerprint", fingerprint);
+            update.Parameters.AddWithValue("$target", target);
+            update.Parameters.AddWithValue("$position", position);
+            update.ExecuteNonQuery();
+        }
+    }
 }

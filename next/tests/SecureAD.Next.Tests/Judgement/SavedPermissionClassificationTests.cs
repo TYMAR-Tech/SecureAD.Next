@@ -192,6 +192,81 @@ public sealed class SavedPermissionClassificationTests
             Assert.Throws<InvalidOperationException>(() => reader.ReadPermissionClassification(result.Permissions.DistinguishedName)).Message);
     }
 
+    // -------------------------------------------------------------------------------------------
+    // An occurrence is bound to the reading that explains it (P-283)
+    // -------------------------------------------------------------------------------------------
+    //
+    // Until this, reading_id was covered by nothing. Every fingerprint kept matching when it was
+    // repointed at another valid reading, and the structural checks underneath all pass for the
+    // swap that matters: the verdict is defined, the reason is non-empty, the wording is complete,
+    // and the rights still sum to the entry's own mask - because a deny reading of the same rights
+    // has the same bits. The whole-judgement seal catches an edit made after publication; it does
+    // not catch a wrong association written before sealing, and P-280 would have turned one such
+    // association into every occurrence of that entry.
+
+    /// <summary>
+    /// An allow entry cannot be made to read as the deny entry beside it.
+    /// </summary>
+    /// <remarks>
+    /// The two entries carry the same right on the same object and differ only in ACE type, so
+    /// their readings differ in what they say and agree on the mask. That is precisely the swap the
+    /// mask check cannot see: before <c>P-283</c> the allow entry read back as
+    /// <i>"A deny entry grants no access"</i> - dangerous reported as harmless.
+    /// </remarks>
+    [Fact]
+    public void P283AnOccurrenceCannotBeRepointedAtAnotherValidReading()
+    {
+        var result = Produce(AllowBesideDeny());
+        var directory = Store(result);
+        Mutate(directory,
+            """
+            UPDATE permission_classification_entry
+            SET reading_id=(SELECT reading_id FROM permission_classification_entry WHERE position=1)
+            WHERE position=0
+            """);
+        using var reader = JudgementReader.Open(directory).Value;
+
+        Assert.Throws<InvalidDataException>(
+            () => reader.ReadPermissionClassification(result.Permissions.DistinguishedName));
+    }
+
+    /// <summary>
+    /// Unrepointed, the same object reads back and its two entries carry different readings.
+    /// </summary>
+    /// <remarks>
+    /// <b>The negative control, and it carries two claims.</b> That binding the occurrence to its
+    /// reading did not simply break reading back, and that the fixture really does hold two
+    /// <i>distinct</i> readings - without which the repoint above would be a no-op that passed
+    /// while measuring nothing.
+    /// <para>
+    /// It asserts on the assessment rather than on the summary, because both entries summarise as
+    /// <c>Modify permissions</c>: they carry the same right, and only what that right is judged to
+    /// mean differs. Written against the summary first, this test failed - which is the whole use
+    /// of it.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void P283TheTwoEntriesAreReadWithTheirOwnDistinctReadings()
+    {
+        var result = Produce(AllowBesideDeny());
+        using var reader = JudgementReader.Open(Store(result)).Value;
+
+        var entries = reader.ReadPermissionClassification(result.Permissions.DistinguishedName)
+            .Classification.Entries;
+
+        Assert.Equal(2, entries.Count);
+        Assert.NotEqual(
+            entries[0].Rights.Single().Assessment.Reason,
+            entries[1].Rights.Single().Assessment.Reason);
+    }
+
+    /// <summary>
+    /// One allow and one deny of the same right on one object: same mask, different reading.
+    /// </summary>
+    private static ObjectPermissions AllowBesideDeny() => Permissions(
+        Ace(0, Holder, 0x40000),
+        Ace(1, Holder, 0x40000, "AccessDenied"));
+
     [Fact]
     public void P249SharedReadingRefusesATamperedPayload()
     {

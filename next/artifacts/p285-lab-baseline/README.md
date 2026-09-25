@@ -116,3 +116,24 @@ was 95% one SID.
 
 On the production capture the same defect accounts for **20,454,613 occurrences**, measured
 in `next/artifacts/p280-shape-profile/`.
+
+## Measured after `P-283`, 2026-09-25
+
+The check written above before the change was *"the binding change should alter no count
+here at all. A count that moves is the finding."*
+
+| | After `P-285` | After `P-283` |
+|---|---|---|
+| `permission_entry` | 1,929 | **1,929** |
+| `permission_classification_entry` | 209,252 | **209,252** |
+| `permission_classification_reading` | 240 | **240** |
+| `finding` | 27 | **27** |
+| Rules ran | 17 | 17 |
+| Judgement on disk | 95,526,912 | 95,535,104 |
+| Judging wall clock | 23.2 s | 23.0 s |
+
+**Nothing moved.** The store grew by 8,192 bytes - one page - because no column was
+added: the reading's digest was folded into the occurrence fingerprint that was already
+there. A separate binding column would have cost 32 bytes on every occurrence, which is
+10.6 GB across the production capture's 330,856,576 and the opposite of what `P-280` is
+for.

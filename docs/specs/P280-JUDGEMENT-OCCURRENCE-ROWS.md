@@ -176,6 +176,29 @@ Settled with the owner 2026-09-24, after the review. Each is a bounded session.
 
    **2b outstanding: teach the generator to match a profile.**
 
+3. ~~**Bind an occurrence to its interpretation** (`P-283`).~~ **Done 2026-09-25.** The
+   reading's digest is folded into the occurrence's existing fingerprint, so repointing
+   `reading_id` now fails and no column was added - a separate binding would have cost 32
+   bytes on each of 330,856,576 occurrences. The reading is verified against its own digest
+   before that digest is used to verify anything else. `JudgementSchema.Version` is 45.
+   Measured on the lab: **no count moved**, which was the criterion recorded before the
+   change. **Normalisation is now safe to build on** - one wrong association can no longer
+   be written, so it cannot spread to every occurrence of an entry.
+4. ~~**Separate the raw ACE from trustee presentation** (`P-285`).~~ **Done 2026-09-25.**
+   `SELF` now stays `SELF` in the shared value and the displayed name is resolved from the
+   object being read, after that object's fingerprint has been verified. Measured on the
+   lab: `permission_entry` fell from 36,484 rows to 1,929 - `S-1-5-10` from 34,593 to the
+   38 distinct raw shapes the forest holds - with `permission_classification_entry`
+   unchanged at 209,252, so no occurrence was lost. `JudgementSchema.Version` is 44.
+   **The sharing unit can now be chosen against a table that is not 95% one SID.**
+5. **`P-280` proper.** Per-descriptor keying, the entry-derived columns onto distinct
+   entries, all three bindings explicit, object-to-descriptor taken from verified
+   evidence, `WITHOUT ROWID`, `position` dropped. Bump `JudgementSchema.Version` and add
+   the `ControlEdgeLayoutTests` checkpoint.
+
+Then re-judge the production capture and measure what control edges actually cost, which
+is the figure every number on this page is a floor because of.
+
 ### What the bench actually looks like, measured 2026-09-25
 
 The first profile was of `next/artifacts/p279-after`, and the second was of the production
@@ -220,22 +243,6 @@ against anything, because the bench has none of them.
 believed on the bench's authority until the generator has been taught to match the
 production shape, which is step 2b.
 
-   normalising on top of a binding that lets a `reading_id` be repointed would make one
-   wrong association affect every occurrence of that entry.
-4. ~~**Separate the raw ACE from trustee presentation** (`P-285`).~~ **Done 2026-09-25.**
-   `SELF` now stays `SELF` in the shared value and the displayed name is resolved from the
-   object being read, after that object's fingerprint has been verified. Measured on the
-   lab: `permission_entry` fell from 36,484 rows to 1,929 - `S-1-5-10` from 34,593 to the
-   38 distinct raw shapes the forest holds - with `permission_classification_entry`
-   unchanged at 209,252, so no occurrence was lost. `JudgementSchema.Version` is 44.
-   **The sharing unit can now be chosen against a table that is not 95% one SID.**
-5. **`P-280` proper.** Per-descriptor keying, the entry-derived columns onto distinct
-   entries, all three bindings explicit, object-to-descriptor taken from verified
-   evidence, `WITHOUT ROWID`, `position` dropped. Bump `JudgementSchema.Version` and add
-   the `ControlEdgeLayoutTests` checkpoint.
-
-Then re-judge the production capture and measure what control edges actually cost, which
-is the figure every number on this page is a floor because of.
 
 ## What is wrong, and what is not
 
