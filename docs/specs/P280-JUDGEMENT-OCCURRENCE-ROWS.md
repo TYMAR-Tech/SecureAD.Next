@@ -222,10 +222,13 @@ production shape, which is step 2b.
 
    normalising on top of a binding that lets a `reading_id` be repointed would make one
    wrong association affect every occurrence of that entry.
-4. **Separate the raw ACE from trustee presentation** (`P-285`). `SELF` stays `SELF` in
-   the shared value and the displayed name is resolved from the object being read. Also
-   a correctness prerequisite, and it sizes the new sharing unit by revealing how much
-   the current identity was suppressing.
+4. ~~**Separate the raw ACE from trustee presentation** (`P-285`).~~ **Done 2026-09-25.**
+   `SELF` now stays `SELF` in the shared value and the displayed name is resolved from the
+   object being read, after that object's fingerprint has been verified. Measured on the
+   lab: `permission_entry` fell from 36,484 rows to 1,929 - `S-1-5-10` from 34,593 to the
+   38 distinct raw shapes the forest holds - with `permission_classification_entry`
+   unchanged at 209,252, so no occurrence was lost. `JudgementSchema.Version` is 44.
+   **The sharing unit can now be chosen against a table that is not 95% one SID.**
 5. **`P-280` proper.** Per-descriptor keying, the entry-derived columns onto distinct
    entries, all three bindings explicit, object-to-descriptor taken from verified
    evidence, `WITHOUT ROWID`, `position` dropped. Bump `JudgementSchema.Version` and add

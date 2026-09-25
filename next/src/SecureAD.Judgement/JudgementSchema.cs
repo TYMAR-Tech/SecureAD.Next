@@ -84,8 +84,13 @@ public static class JudgementSchema
     /// <para>42 stores each distinct reading once in permission_classification_reading and links to it.</para>
     /// <para>43 stores each distinct access control entry once in permission_entry and links to it, so
     /// the row no longer names the object it was found on and the ordinal lives on the link (P-279).</para>
+    /// <para>44 stores the shared form of an entry's trustee, so <c>S-1-5-10</c> is held as the
+    /// catalogue's own name rather than as <c>This object (Alice)</c> and is resolved against the
+    /// target on read (P-285). Every occurrence fingerprint is taken over that shared form, so a
+    /// version 43 store's fingerprints do not verify against this build - refused on version rather
+    /// than reported as tampered proofs, which is what the number is for.</para>
     /// </remarks>
-    public const int Version = 43;
+    public const int Version = 44;
 
     private static readonly string[] TableDdl =
     [

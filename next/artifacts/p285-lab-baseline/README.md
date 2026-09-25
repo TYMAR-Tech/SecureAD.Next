@@ -78,3 +78,41 @@ production capture the same defect accounts for **20,454,613 occurrences**.
   per-descriptor figure. **The lab cannot price the saving**: its descriptors are reused
   22.3 times on average against production's 2.46, so keying per descriptor looks nine
   times better here than it will on the owner's forest. Correctness here, size elsewhere.
+
+## Measured after `P-285`, 2026-09-25
+
+Same evidence, same seal, a fresh copy judged by the build that keeps `SELF` as `SELF`.
+
+| | Before | After | |
+|---|---|---|---|
+| `permission_entry`, `S-1-5-10` | 34,593 | **38** | −99.9% |
+| `permission_entry`, every other trustee | 1,891 | 1,891 | unchanged |
+| **`permission_entry`, total** | **36,484** | **1,929** | **−94.7%** |
+| **`permission_classification_entry`** | **209,252** | **209,252** | **unchanged** |
+| Judgement on disk | 107,888,640 | **95,526,912** | −11.5% |
+| Judgement against its evidence | 9.3x | **8.2x** | |
+| Rules ran / findings | 17 / 27 | 17 / 27 | identical |
+| Judging wall clock | 22.8 s | 23.2 s | no regression |
+
+**34,593 rows became 38**, which is the number of distinct raw `SELF` access control
+entries this forest actually holds. The prediction written above before the change was
+*"roughly 1,900"*; the measurement is 1,929.
+
+**The occurrence count did not move, and that is the check that mattered.**
+`permission_classification_entry` holds 209,252 rows before and after. Nothing here
+deletes a permission: each of those rows is the distinct fact *this object, at this
+position, carries that entry*, and an audit tool that lost one would be reporting a
+permission the directory holds and the product does not mention. What changed is how many
+times the entry behind them is written down.
+
+**Rules and findings are identical**, so no verdict moved as a side effect of changing how
+a trustee is stored.
+
+**The store fell 11.5% and not 94.7%**, because `permission_entry` was never the large
+table - `permission_classification_entry` is, at 209,252 rows, and shrinking that is
+`P-280`. What `P-285` removed is the reason `P-279`'s saving did not survive contact with a
+real forest, and it removes it before `P-280` chooses a sharing unit against a table that
+was 95% one SID.
+
+On the production capture the same defect accounts for **20,454,613 occurrences**, measured
+in `next/artifacts/p280-shape-profile/`.

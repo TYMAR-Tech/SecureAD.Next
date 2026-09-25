@@ -83,10 +83,25 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     /// <returns>The shared row to link to, and the fingerprint binding this occurrence to it.</returns>
     internal (long Id, byte[] Fingerprint) Write(string target, Guid generation, PermissionEntry entry)
     {
+        // WHAT IS STORED AND HASHED IS THE SHARED FORM (P-285). PermissionTrustee.Shared strips the
+        // one thing in an entry that depends on the object it was found on: S-1-5-10 arrives here
+        // rendered as "This object (Alice)" and is put back to the catalogue's own name. Read
+        // resolves it forward again from the target it has just verified.
+        //
+        // The fingerprint therefore covers the target, the generation and the RAW entry rather than
+        // the raw entry and a rendering of the target. That is the same binding it always was -
+        // (target, generation, ordinal, entry) - with presentation taken out of it, and an entry
+        // moved to another position, another object or another generation still fails on read.
+        var shared = Shared(entry);
+
         // JSON is only an exact, transient comparison key, never the stored proof representation.
-        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, entry)));
-        return (EntryId(generation, entry), fingerprint);
+        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, shared)));
+        return (EntryId(generation, shared), fingerprint);
     }
+
+    /// <summary>The entry as it is shared between objects, with nothing object-dependent in it.</summary>
+    private static PermissionEntry Shared(PermissionEntry entry) =>
+        entry with { Trustee = entry.Trustee.Shared() };
 
     // Two lookups, and both are needed. The session answers for the whole run but only for rows that
     // are committed or in flight in this very transaction. The table answers for a transaction the
@@ -132,13 +147,20 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     // it covers the target, the generation and the complete entry including that ordinal, so an entry
     // moved to another position, another object or another generation fails here rather than reading
     // back as something the directory never held.
+    //
+    // THE DISPLAYED NAME IS RESOLVED LAST, AND THAT ORDER IS LOAD-BEARING (P-285). The row holds the
+    // shared entry, so S-1-5-10 comes out of it as the catalogue's own name and is rendered against
+    // this target on the way out. Doing it here rather than in the row is what lets Alice and Bob
+    // share one row without either being shown the other's name - but it has to happen AFTER the
+    // fingerprint has established that this target really carried this entry. Resolved before, the
+    // name would be taken from a target nothing had yet proved.
     internal static PermissionEntry Read(SqliteDataReader read, string target, Guid generation)
     {
         if (read.IsDBNull(0) || read.GetString(1) != generation.ToString("D")) throw FullControlEvaluator.InvalidProof();
         var entry = ReadValue(read, generation, read.GetInt32(ProjectionColumns));
         var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, entry)));
         if (!fingerprint.AsSpan().SequenceEqual((byte[])read.GetValue(ProjectionColumns + 1))) throw FullControlEvaluator.InvalidProof();
-        return entry;
+        return entry with { Trustee = entry.Trustee.DisplayedAgainst(target) };
     }
 
     private static PermissionEntry ReadValue(SqliteDataReader read, Guid generation, int ordinal)
@@ -183,22 +205,18 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     // normalised away, and normalising rather than omitting keeps the key derived from the whole
     // record, so a field added to PermissionEntry cannot silently fall out of the identity.
     //
-    // THE TARGET DOES ENTER THIS KEY, through Trustee.Name. ObjectPermissions.ReadAt resolves
-    // trustees against the object being read, and WellKnownTrustee renders S-1-5-10 - PRINCIPAL
-    // SELF - as "This object (Alice)" on Alice and "This object (Bob)" on Bob. So two objects share
-    // a row when the whole serialised entry agrees, resolved trustee name included; not merely when
-    // the raw ACE does. This comment said the opposite until 2026-09-24, and a P-280 design that
-    // would have displayed one object's name against another object's permission was built on the
-    // stated contract rather than on the code.
+    // WHAT REACHES THIS IS ALREADY THE SHARED FORM. Write and Read both pass an entry whose trustee
+    // has been through PermissionTrustee.Shared, so the one object-dependent thing an entry carries
+    // - S-1-5-10 rendered as "This object (Alice)" - is not in the key and two objects carrying the
+    // same raw SELF entry now share one row.
     //
-    // That is also what keeps P-279 correct. Alice's SELF entry and Bob's hash differently, so
-    // sharing never attributes one object's resolved name to another - and the price is that a
-    // SELF entry NEVER DEDUPLICATES: every object carrying one gets its own permission_entry row.
-    // S-1-5-10 sits in the default access control list of essentially every user and computer, so
-    // the table P-279 built to shrink is inflated by one row per such object, by an amount nobody
-    // has measured. P-285 holds the fix: keep SELF as SELF in the shared value and resolve the
-    // displayed name from the verified object being read, which is presentation rather than a
-    // replayed judgement. Measure the inflation before P-280 chooses a new sharing unit.
+    // UNTIL P-285 THEY DID NOT, and the comment here said the target never entered the key at all.
+    // It did, through Trustee.Name, and that mistake had two costs. The smaller one was measured:
+    // on a real forest 34,593 of 36,484 rows in this table were S-1-5-10 written once per object,
+    // so the deduplication P-279 built barely deduplicated. The larger one was that a P-280 design
+    // built on the stated contract rather than on the code reached review, and it would have shown
+    // one object's name against another object's permission. Nothing shipped ever did, because the
+    // name being in the key is precisely what stopped the sharing.
     private static string ContentKey(Guid generation, PermissionEntry entry) =>
         JsonSerializer.Serialize(new { Generation = generation, Entry = entry with { Ordinal = 0 } });
 

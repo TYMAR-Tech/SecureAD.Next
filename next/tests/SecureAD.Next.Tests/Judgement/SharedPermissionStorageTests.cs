@@ -96,13 +96,120 @@ public sealed class SharedPermissionStorageTests
             IsInherited = true, InheritanceFlags = 3, PropagationFlags = 8,
             HasObjectType = true, HasInheritedObjectType = true, ApplicationData = [0, 255, 128, 1],
         };
-        entry = entry with { Trustee = new("S-1-5-10", "", "CN=MixedCase", null, (UnresolvedReferenceReason)0, null, "") };
+        // AN ORDINARY SID, WHERE THIS USED TO NAME S-1-5-10. Since P-285 the trustee's name is not a
+        // round-tripped source field for PRINCIPAL SELF: it is stored as the catalogue's own name and
+        // resolved against the target on the way out, which is what lets two objects share the row.
+        // Swapping the SID keeps this test saying what its name says - every field survives - and the
+        // SELF behaviour is checked directly by the three tests below rather than as a side effect
+        // here.
+        entry = entry with { Trustee = new("S-1-5-21-1-2-3-4400", "", "CN=MixedCase", null, (UnresolvedReferenceReason)0, null, "") };
         var result = FullControlStorageTests.Evaluation(FullControlEvaluatorTests.Allow(0), entry);
         using var reader = FullControlStorageTests.Open(FullControlStorageTests.Store([result]));
         var page = reader.ReadControlEdges(null, null, null, true, 0);
         Assert.All(page.FullControlAssessments, assessment => Assert.Equal(JsonSerializer.Serialize(result.FullControlAssessments[0].Source.Entries),
             JsonSerializer.Serialize(assessment.Source.Entries)));
         Assert.NotEmpty(page.FullControlAssessments);
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // PRINCIPAL SELF is shared, and still reads back as the object it was found on (P-285)
+    // -------------------------------------------------------------------------------------------
+    //
+    // S-1-5-10 grants the object itself, and ObjectPermissions renders it as "This object (Alice)"
+    // against whatever is being read. That rendering used to be inside the sharing identity, so a
+    // SELF entry never deduplicated - measured on a real forest, 34,593 of 36,484 rows in
+    // permission_entry were this one SID. The entry is now stored in its shared form and the name is
+    // resolved after the occurrence's fingerprint has been verified.
+    //
+    // The two halves have to be asserted together. Sharing alone is what the broken P-280 proposal
+    // would have done, and it would have shown one object's name against another object's
+    // permission; separate names alone is what the code did before, at one row per object.
+
+    /// <summary>Two objects carrying the identical SELF entry share one stored row.</summary>
+    [Fact]
+    public void TwoObjectsCarryingTheSameSelfEntryShareOneRow()
+    {
+        using var connection = OpenDatabase(SelfOnTwoObjects(out var reader), reader);
+        reader.Dispose();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM permission_entry WHERE sid='S-1-5-10'";
+
+        Assert.Equal(1L, command.ExecuteScalar());
+    }
+
+    /// <summary>And each still reads back naming itself, not the other.</summary>
+    /// <remarks>
+    /// <b>The failure an audit tool cannot have</b>, and the one the review caught in the proposal:
+    /// sharing the row must not make the second object display the first object's name. The stored
+    /// row names neither.
+    /// </remarks>
+    [Fact]
+    public void EachObjectStillReadsItsOwnNameForTheSharedSelfEntry()
+    {
+        var directory = SelfOnTwoObjects(out var reader);
+        using (reader)
+        {
+            Assert.Equal(
+                new List<string?> { "This object (Test)", "This object (Other)" },
+                new[] { "OU=Test,DC=contoso,DC=com", "OU=Other,DC=contoso,DC=com" }
+                    .Select(target => reader.ReadControlEdges(target, null, null, true, 0)
+                        .Edges.SelectMany(edge => edge.Evidence)
+                        .First(entry => entry.Trustee.Sid == "S-1-5-10").Trustee.Name)
+                    .ToList());
+        }
+
+        Assert.True(Directory.Exists(directory));
+    }
+
+    /// <summary>The stored row names neither object, which is why it can be shared.</summary>
+    /// <remarks>
+    /// The negative control for the two above. Without it a build that stored one object's rendering
+    /// and re-derived nothing would satisfy the sharing test, and the name test would pass for
+    /// whichever object happened to be written first.
+    /// </remarks>
+    [Fact]
+    public void TheStoredSelfRowCarriesTheCatalogueNameRatherThanEitherObjects()
+    {
+        using var connection = OpenDatabase(SelfOnTwoObjects(out var reader), reader);
+        reader.Dispose();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM permission_entry WHERE sid='S-1-5-10'";
+
+        Assert.Equal("Principal Self", command.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// Two objects, at different distinguished names, each carrying the same <c>SELF</c> entry.
+    /// </summary>
+    private static string SelfOnTwoObjects(out JudgementReader reader)
+    {
+        var self = ControlEdgeDeriverTests.Ace(0, "S-1-5-10", FullControlEvaluatorTests.FullMask) with
+        {
+            // As capture renders it: the RDN's value, not the whole relative name. Written out
+            // rather than derived, so this fixture states what it expects instead of computing the
+            // answer the same way the code under test does.
+            Trustee = new("S-1-5-10", "This object (Test)", null, null, null, SecureAD.Kernel.Security.WellKnownSidRole.Placeholder, null),
+        };
+
+        var first = ControlEdgeDeriver.Derive(ControlEdgeDeriverTests.Subject,
+            ControlEdgeDeriverTests.Permissions(self),
+            JudgingContext.At(DateTimeOffset.UnixEpoch), Guid.Empty, null, ControlEdgeDeriverTests.DomainSid);
+
+        var other = ControlEdgeDeriverTests.Subject with { DistinguishedName = "OU=Other,DC=contoso,DC=com" };
+        var second = ControlEdgeDeriver.Derive(other,
+            ControlEdgeDeriverTests.Permissions(self with
+            {
+                // As capture would have resolved it against the second object. The two entries differ
+                // in exactly the way that used to stop them sharing a row and in no other.
+                Trustee = self.Trustee with { Name = "This object (Other)" },
+            }) with { DistinguishedName = other.DistinguishedName },
+            JudgingContext.At(DateTimeOffset.UnixEpoch), Guid.Empty, null, ControlEdgeDeriverTests.DomainSid);
+
+        var directory = FullControlStorageTests.Store([first, second]);
+        reader = FullControlStorageTests.Open(directory);
+        return directory;
     }
 
     [Theory]

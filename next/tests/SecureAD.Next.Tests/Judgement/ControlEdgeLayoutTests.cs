@@ -88,6 +88,13 @@ public sealed class ControlEdgeLayoutTests
         // ix_permission_entry_target_generation with the column it led on (P-279). Observed from this
         // approved build, not an independent historical forest anchor.
         [43] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
+        // Schema 44 stores the shared form of a trustee, so S-1-5-10 is held as the catalogue's
+        // name and resolved against the target on read (P-285). The observed DDL is unchanged -
+        // permission_entry.name already existed and only its content differs - so this repeats 43's
+        // value, the same way 33 through 38 repeated theirs. The version still had to move, because
+        // every occurrence fingerprint is now taken over the shared form and a version 43 store's
+        // would not verify: refused on version rather than reported as tampered proofs.
+        [44] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
     };
 
     [Fact]
