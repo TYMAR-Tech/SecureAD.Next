@@ -53,6 +53,8 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     // a SHA-256 over the generation and the complete entry with the ordinal normalised away. A
     // collision here would not corrupt a row - it would quietly give one trustee another trustee's
     // rights - which is why it is cryptographic, the same reasoning access_entry.ace_hash carries.
+    // "The complete entry" includes the resolved trustee name, so the object being read reaches the
+    // identity after all; see ContentKey, which is the only place that is decided.
     internal static void CreateTables(SqliteConnection connection)
     {
         SharedProofStorage.CreateTables(connection);
@@ -177,10 +179,26 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     private static string Key(string target, Guid generation, PermissionEntry entry) =>
         JsonSerializer.Serialize(new { Target = target, Generation = generation, Entry = entry });
 
-    // The value: the same entry wherever it was found. The target never enters it and the ordinal is
-    // normalised away, so two objects share a row exactly when this agrees. Normalising rather than
-    // omitting keeps the key derived from the whole record, so a field added to PermissionEntry
-    // cannot silently fall out of the identity.
+    // The value: the same entry wherever it was found, at whatever position. The ordinal is
+    // normalised away, and normalising rather than omitting keeps the key derived from the whole
+    // record, so a field added to PermissionEntry cannot silently fall out of the identity.
+    //
+    // THE TARGET DOES ENTER THIS KEY, through Trustee.Name. ObjectPermissions.ReadAt resolves
+    // trustees against the object being read, and WellKnownTrustee renders S-1-5-10 - PRINCIPAL
+    // SELF - as "This object (Alice)" on Alice and "This object (Bob)" on Bob. So two objects share
+    // a row when the whole serialised entry agrees, resolved trustee name included; not merely when
+    // the raw ACE does. This comment said the opposite until 2026-09-24, and a P-280 design that
+    // would have displayed one object's name against another object's permission was built on the
+    // stated contract rather than on the code.
+    //
+    // That is also what keeps P-279 correct. Alice's SELF entry and Bob's hash differently, so
+    // sharing never attributes one object's resolved name to another - and the price is that a
+    // SELF entry NEVER DEDUPLICATES: every object carrying one gets its own permission_entry row.
+    // S-1-5-10 sits in the default access control list of essentially every user and computer, so
+    // the table P-279 built to shrink is inflated by one row per such object, by an amount nobody
+    // has measured. P-285 holds the fix: keep SELF as SELF in the shared value and resolve the
+    // displayed name from the verified object being read, which is presentation rather than a
+    // replayed judgement. Measure the inflation before P-280 chooses a new sharing unit.
     private static string ContentKey(Guid generation, PermissionEntry entry) =>
         JsonSerializer.Serialize(new { Generation = generation, Entry = entry with { Ordinal = 0 } });
 

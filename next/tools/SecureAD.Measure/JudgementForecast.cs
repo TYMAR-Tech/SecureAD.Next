@@ -38,6 +38,15 @@ namespace SecureAD.Measure;
 /// it. The uses are counted separately and multiplied in.
 /// </para>
 /// <para>
+/// <b>A descriptor that is stored is not therefore readable, and the two are reported apart.</b>
+/// <c>object_security_descriptor</c> says only that bytes were kept. Whether those bytes yield a
+/// DACL is <see cref="SecurityDescriptorParser"/>'s answer, and it has three parts - the state, the
+/// completeness and the errors. Counting a row in that table as an object with readable permissions
+/// was <c>P-284</c>: a stored but unparseable descriptor arrived as <i>one object with readable
+/// permissions and zero occurrences</i>, which is <i>could not compute</i> reported as <i>found
+/// nothing</i> - the distinction the descriptor half of the schema exists to keep.
+/// </para>
+/// <para>
 /// <b>The three copies of the name are arithmetic on two measured numbers, not an estimate.</b>
 /// The cost of one copy is the sum over objects of their own descriptor's entry count times their
 /// own name length, so nothing here assumes that entry count and descriptor reuse are unrelated.
@@ -126,8 +135,14 @@ internal static class JudgementForecast
     /// <summary>Forecasts the judgement of the bundle in <paramref name="bundle"/>.</summary>
     /// <exception cref="InvalidDataException">
     /// The directory holds no sealed evidence, was written by a build this tool does not read, or
-    /// holds no object with a readable descriptor. Each is said by name rather than by stack trace,
-    /// which is the <c>P-274</c> repair applied here from the start.
+    /// holds no object with a stored descriptor at all. Each is said by name rather than by stack
+    /// trace, which is the <c>P-274</c> repair applied here from the start.
+    /// <para>
+    /// A bundle whose descriptors are all stored and all unparseable is <b>not</b> refused: it is
+    /// forecast, at zero occurrences, with every one of its objects counted as unreadable. Refusing
+    /// it would be the same substitution <c>P-284</c> removed, one layer up - silence where the
+    /// answer is that the product could not read anything.
+    /// </para>
     /// </exception>
     internal static Forecast Of(string bundle)
     {
@@ -168,10 +183,41 @@ internal static class JudgementForecast
     }
 
     /// <summary>What one bundle's judgement was forecast to cost.</summary>
+    /// <param name="ObjectsWithADescriptorStored">
+    /// Objects the bundle kept descriptor bytes for. This is presence and nothing more: it makes no
+    /// claim that those bytes parse.
+    /// </param>
+    /// <param name="ObjectsWithReadablePermissions">
+    /// Of those, the ones whose DACL could actually be read. An object whose descriptor is stored
+    /// but unparseable is <b>not</b> one of these, and until <c>P-284</c> it was - so an object the
+    /// product could not read was reported as one it had read and found nothing on.
+    /// </param>
+    /// <param name="ObjectsWithAnUnreadableDescriptor">
+    /// Objects whose stored DACL declared entries and yielded none. What they grant is unknown, and
+    /// the zero beside them is the absence of an answer rather than an answer of none.
+    /// </param>
+    /// <param name="ObjectsWithAPartiallyParsedDescriptor">
+    /// Objects whose stored DACL yielded fewer entries than its header declared. Their contribution
+    /// to <paramref name="Occurrences"/> is a floor, because a missing allow entry is a permission
+    /// the product will not report.
+    /// </param>
+    /// <param name="ObjectsWhoseDescriptorReportedErrors">
+    /// Objects whose descriptor parsed with something recorded against it. A descriptor can carry an
+    /// error and still have yielded every entry it declared, so this overlaps the two above rather
+    /// than replacing them.
+    /// </param>
     /// <param name="Occurrences">
     /// The exact number of rows <c>permission_classification_entry</c> will hold: the sum over
     /// objects of their own descriptor's stored entry count. This replaces the specification's
     /// approximate 344 million, which was entries times reuse off the deduplicated projection.
+    /// <b>Counted from what parses, never from what a header declared</b>, because judging writes
+    /// one row per entry it could read.
+    /// </param>
+    /// <param name="MeanNameBytesPerObject">
+    /// Averaged over <paramref name="ObjectsWithADescriptorStored"/>, which includes any object
+    /// whose descriptor did not parse. Where <paramref name="ObjectsWithAnUnreadableDescriptor"/> is
+    /// not zero, those objects are in this mean and contribute no occurrences, so the comparison
+    /// below is that much weaker.
     /// </param>
     /// <param name="DistinguishedNameBytesAcrossOccurrences">
     /// One copy of the name across every occurrence row, weighted per object rather than averaged.
@@ -184,9 +230,16 @@ internal static class JudgementForecast
     internal sealed record Forecast(
         string Bundle,
         long ObjectsCaptured,
+        long ObjectsWithADescriptorStored,
         long ObjectsWithReadablePermissions,
+        long ObjectsWithAnUnreadableDescriptor,
+        long ObjectsWithAPartiallyParsedDescriptor,
+        long ObjectsWhoseDescriptorReportedErrors,
         long DescriptorsStored,
         long DescriptorsUsedByObjects,
+        long DescriptorsUnreadable,
+        long DescriptorsPartiallyParsed,
+        long DescriptorsReportingErrors,
         long Occurrences,
         long NameBytesAcrossObjects,
         double MeanNameBytesPerObject,
@@ -255,13 +308,19 @@ internal static class JudgementForecast
         var objectsCaptured = Scalar(connection, "SELECT COUNT(*) FROM captured_object");
         var descriptorsStored = Scalar(connection, "SELECT COUNT(*) FROM security_descriptor");
 
-        // PASS ONE: every object that has a descriptor, with its own name length. Both lengths are
-        // taken in SQL rather than by marshalling 659,196 strings into this process. LENGTH of a
-        // BLOB is bytes; LENGTH of TEXT is characters, and the store holds UTF-8, so the byte
-        // figure is the one the three copies are actually paid in.
+        // PASS ONE: every object that has a descriptor stored, with its own name length. THIS IS
+        // PRESENCE AND NOT READABILITY. A row here says the bundle kept bytes for this object; it
+        // says nothing about whether those bytes parse, which pass two decides. Calling this count
+        // "objects with readable permissions" was P-284: a stored but unparseable descriptor was
+        // reported as one object with readable permissions and zero occurrences, which is could not
+        // compute dressed as found nothing.
+        //
+        // Both lengths are taken in SQL rather than by marshalling 659,196 strings into this
+        // process. LENGTH of a BLOB is bytes; LENGTH of TEXT is characters, and the store holds
+        // UTF-8, so the byte figure is the one the three copies are actually paid in.
         var uses = new Dictionary<long, long>();
         var nameBytesPerDescriptor = new Dictionary<long, long>();
-        long objectsWithPermissions = 0, nameBytesAcrossObjects = 0, nameCharactersAcrossObjects = 0, longestName = 0;
+        long objectsWithADescriptor = 0, nameBytesAcrossObjects = 0, nameCharactersAcrossObjects = 0, longestName = 0;
 
         using (var command = connection.CreateCommand())
         {
@@ -280,7 +339,7 @@ internal static class JudgementForecast
                 var descriptorId = reader.GetInt64(0);
                 var nameBytes = reader.GetInt64(1);
 
-                objectsWithPermissions++;
+                objectsWithADescriptor++;
                 nameBytesAcrossObjects += nameBytes;
                 nameCharactersAcrossObjects += reader.GetInt64(2);
                 longestName = Math.Max(longestName, nameBytes);
@@ -290,10 +349,10 @@ internal static class JudgementForecast
             }
         }
 
-        if (objectsWithPermissions == 0)
+        if (objectsWithADescriptor == 0)
         {
             throw new InvalidDataException(
-                "No object in this bundle has a readable security descriptor, so a judgement of it "
+                "No object in this bundle has a stored security descriptor, so a judgement of it "
                 + "would hold no permission occurrences and there is nothing to forecast.");
         }
 
@@ -306,10 +365,33 @@ internal static class JudgementForecast
         // already keys `descriptor_entry` - once per descriptor, joined to objects through
         // `object_security_descriptor`. The two GUID counts price the columns that are functions of
         // the entry and are copied onto every occurrence of it.
+        //
+        // The parse state comes out of it too, and that is the P-284 repair. SecurityDescriptorParser
+        // answers three different questions and this tool was throwing all three away in favour of
+        // `.DaclAces.Count`:
+        //
+        //   DaclState.Unreadable        the header declared entries and none parsed. What the object
+        //                               grants is UNKNOWN. Zero entries here is not zero permissions.
+        //   DaclCompleteness.Incomplete some entries parsed and an unknown number did not. The count
+        //                               below is a floor, and a missing allow is a permission the
+        //                               product will never report.
+        //   Errors                      something was wrong with the bytes even where every declared
+        //                               entry arrived - a bad owner offset, say.
+        //
+        // Each is counted at both levels deliberately. One unreadable descriptor shared by fifty
+        // thousand objects and fifty thousand unreadable descriptors are the same object count and
+        // very different problems.
+        //
+        // WHAT IS NOT DONE HERE: the declared count is never substituted for the parsed one. The
+        // occurrence total must stay a prediction of the rows judging will write, and judging writes
+        // what parses (ObjectPermissions.EntriesOf). Topping it up with entries nobody could read
+        // would forecast rows that will not exist and hide the shortfall in the same number.
         long occurrences = 0, nameBytesAcrossOccurrences = 0, parsed = 0;
         long entryRowsPerDescriptor = 0;
         long occurrencesWithObjectType = 0, occurrencesWithInheritedObjectType = 0;
         long descriptorRowsWithObjectType = 0, descriptorRowsWithInheritedObjectType = 0;
+        long descriptorsUnreadable = 0, descriptorsPartlyParsed = 0, descriptorsReportingErrors = 0;
+        long objectsUnreadable = 0, objectsPartlyParsed = 0, objectsReportingErrors = 0;
         using (var command = connection.CreateCommand())
         {
             command.CommandText = "SELECT descriptor_id, raw_bytes FROM security_descriptor";
@@ -321,8 +403,27 @@ internal static class JudgementForecast
                 if (!uses.TryGetValue(descriptorId, out var timesUsed))
                     continue;
 
-                var aces = SecurityDescriptorParser.Parse((byte[])reader.GetValue(1)).DaclAces;
+                var descriptor = SecurityDescriptorParser.Parse((byte[])reader.GetValue(1));
+                var aces = descriptor.DaclAces;
                 var entries = aces.Count;
+
+                if (descriptor.DaclState == DaclState.Unreadable)
+                {
+                    descriptorsUnreadable++;
+                    objectsUnreadable += timesUsed;
+                }
+
+                if (descriptor.DaclCompleteness == DaclCompleteness.Incomplete)
+                {
+                    descriptorsPartlyParsed++;
+                    objectsPartlyParsed += timesUsed;
+                }
+
+                if (descriptor.Errors.Count > 0)
+                {
+                    descriptorsReportingErrors++;
+                    objectsReportingErrors += timesUsed;
+                }
 
                 // `object_schema` and `inherited_schema` are written as
                 // `entry.ObjectType?.Guid`, and PermissionClassification.Support returns null only
@@ -393,13 +494,24 @@ internal static class JudgementForecast
         return new Forecast(
             Bundle: evidence,
             ObjectsCaptured: objectsCaptured,
-            ObjectsWithReadablePermissions: objectsWithPermissions,
+            ObjectsWithADescriptorStored: objectsWithADescriptor,
+            // Subtraction, not a second count, so the two can never disagree: an object has
+            // readable permissions exactly when its descriptor is stored and its DACL was not
+            // refused. A partially parsed DACL stays readable, which is true - the shortfall is
+            // reported beside it rather than by striking the object off.
+            ObjectsWithReadablePermissions: objectsWithADescriptor - objectsUnreadable,
+            ObjectsWithAnUnreadableDescriptor: objectsUnreadable,
+            ObjectsWithAPartiallyParsedDescriptor: objectsPartlyParsed,
+            ObjectsWhoseDescriptorReportedErrors: objectsReportingErrors,
             DescriptorsStored: descriptorsStored,
             DescriptorsUsedByObjects: uses.Count,
+            DescriptorsUnreadable: descriptorsUnreadable,
+            DescriptorsPartiallyParsed: descriptorsPartlyParsed,
+            DescriptorsReportingErrors: descriptorsReportingErrors,
             Occurrences: occurrences,
             NameBytesAcrossObjects: nameBytesAcrossObjects,
-            MeanNameBytesPerObject: Math.Round((double)nameBytesAcrossObjects / objectsWithPermissions, 1),
-            MeanNameCharactersPerObject: Math.Round((double)nameCharactersAcrossObjects / objectsWithPermissions, 1),
+            MeanNameBytesPerObject: Math.Round((double)nameBytesAcrossObjects / objectsWithADescriptor, 1),
+            MeanNameCharactersPerObject: Math.Round((double)nameCharactersAcrossObjects / objectsWithADescriptor, 1),
             LongestNameBytes: longestName,
             DistinguishedNameBytesAcrossOccurrences: nameBytesAcrossOccurrences,
             MeanNameBytesPerOccurrence: occurrences == 0
@@ -665,6 +777,46 @@ internal static class JudgementForecast
         return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
     }
 
+    /// <summary>
+    /// What the bundle kept bytes for but could not be read, said before the totals rather than
+    /// after them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Silent when there is nothing to say</b>, so three lines of zeroes do not teach an operator
+    /// to skip the place the warning will appear. Loud when there is: a forecast is used to decide
+    /// whether a run will fit, and a shortfall that came from entries nobody could read is a
+    /// different fact from a forest that holds fewer permissions.
+    /// </para>
+    /// <para>
+    /// The three overlap and are not summed. A descriptor can be partially parsed and report errors;
+    /// an unreadable one reports errors too. Adding them would count the same descriptor twice.
+    /// </para>
+    /// </remarks>
+    private static void ReportWhatCouldNotBeRead(Forecast f)
+    {
+        if (f.ObjectsWithAnUnreadableDescriptor == 0
+            && f.ObjectsWithAPartiallyParsedDescriptor == 0
+            && f.ObjectsWhoseDescriptorReportedErrors == 0)
+        {
+            return;
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("  WHAT COULD NOT BE READ");
+        Console.WriteLine($"  Objects whose DACL yielded no entry       {f.ObjectsWithAnUnreadableDescriptor,18:N0}   {f.DescriptorsUnreadable,15:N0} descriptors");
+        Console.WriteLine($"  Objects whose DACL yielded only some      {f.ObjectsWithAPartiallyParsedDescriptor,18:N0}   {f.DescriptorsPartiallyParsed,15:N0} descriptors");
+        Console.WriteLine($"  Objects whose descriptor reported errors  {f.ObjectsWhoseDescriptorReportedErrors,18:N0}   {f.DescriptorsReportingErrors,15:N0} descriptors");
+        Console.WriteLine();
+        Console.WriteLine("  These overlap and do not add up. The first group contributes no");
+        Console.WriteLine("  occurrences, and that zero is what the product could not read rather");
+        Console.WriteLine("  than permissions it read and found none of. The second contributes its");
+        Console.WriteLine("  survivors, so the occurrence total below is a floor for them by an");
+        Console.WriteLine("  amount nothing here can know. The declared counts are NOT added in:");
+        Console.WriteLine("  judging writes what parses, and a forecast topped up with entries that");
+        Console.WriteLine("  will never be written would hide this in the number it corrupted.");
+    }
+
     private static void Report(Forecast f)
     {
         Console.WriteLine();
@@ -674,9 +826,11 @@ internal static class JudgementForecast
         Console.WriteLine("and is outside the seal.");
         Console.WriteLine();
         Console.WriteLine($"  Objects captured                          {f.ObjectsCaptured,18:N0}");
-        Console.WriteLine($"  Of those, with readable permissions       {f.ObjectsWithReadablePermissions,18:N0}");
+        Console.WriteLine($"  Of those, with a descriptor stored        {f.ObjectsWithADescriptorStored,18:N0}");
+        Console.WriteLine($"  Of those, with permissions we could read  {f.ObjectsWithReadablePermissions,18:N0}");
         Console.WriteLine($"  Descriptors stored                        {f.DescriptorsStored,18:N0}");
         Console.WriteLine($"  Descriptors an object actually uses       {f.DescriptorsUsedByObjects,18:N0}");
+        ReportWhatCouldNotBeRead(f);
         Console.WriteLine();
         Console.WriteLine($"  PERMISSION OCCURRENCES, EXACT             {f.Occurrences,18:N0}");
         Console.WriteLine("  One judgement row each. None may be dropped: each is the distinct fact");

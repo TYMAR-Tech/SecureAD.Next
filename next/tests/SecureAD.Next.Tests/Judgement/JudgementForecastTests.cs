@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
@@ -204,6 +205,167 @@ public sealed class JudgementForecastTests
     }
 
     // -------------------------------------------------------------------------------------------
+    // What could not be read
+    // -------------------------------------------------------------------------------------------
+    //
+    // P-284. The bundle keeping bytes for an object and those bytes yielding a DACL are two
+    // different facts, and the forecast was answering the first while labelling it the second. A
+    // stored but unparseable descriptor arrived as one object with readable permissions and zero
+    // occurrences - could not compute reported as found nothing, which is the one thing an audit
+    // tool may not do. Each count below is held separately, because an operator deciding whether a
+    // run will fit needs to know whether a small total is a small forest or a forest nobody read.
+
+    /// <summary>
+    /// An object whose stored descriptor cannot be parsed is not an object with readable
+    /// permissions.
+    /// </summary>
+    /// <remarks>
+    /// The defect itself. Bob's bytes are there and yield nothing, and before this he was counted
+    /// beside Alice as though the product had read him and found he carried no permissions.
+    /// </remarks>
+    [Fact]
+    public void AnObjectWhoseStoredDescriptorCannotBeParsedHasNoReadablePermissions()
+    {
+        WriteAliceReadableAndBobUnreadable();
+
+        Assert.Equal(1, JudgementForecast.Of(_directory).ObjectsWithReadablePermissions);
+    }
+
+    /// <summary>
+    /// He still has a descriptor stored, which is the fact the old count was actually measuring.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the test above. Without it, a forecast that simply dropped
+    /// unparseable objects from every count would pass - and that is the opposite error, losing the
+    /// evidence that the product could not read something.
+    /// </remarks>
+    [Fact]
+    public void AnObjectWhoseStoredDescriptorCannotBeParsedStillHasOneStored()
+    {
+        WriteAliceReadableAndBobUnreadable();
+
+        Assert.Equal(2, JudgementForecast.Of(_directory).ObjectsWithADescriptorStored);
+    }
+
+    /// <summary>He is counted as unreadable, so the gap is a number rather than a subtraction.</summary>
+    [Fact]
+    public void AnObjectWhoseStoredDescriptorCannotBeParsedIsCountedAsUnreadable()
+    {
+        WriteAliceReadableAndBobUnreadable();
+
+        var forecast = JudgementForecast.Of(_directory);
+
+        Assert.Equal(1, forecast.ObjectsWithAnUnreadableDescriptor);
+        Assert.Equal(1, forecast.DescriptorsUnreadable);
+    }
+
+    /// <summary>And he contributes no occurrences, because judging will write none for him.</summary>
+    [Fact]
+    public void AnUnreadableDescriptorAddsNoOccurrences()
+    {
+        WriteAliceReadableAndBobUnreadable();
+
+        Assert.Equal(2, JudgementForecast.Of(_directory).Occurrences);
+    }
+
+    /// <summary>
+    /// One unreadable descriptor carried by two objects is one descriptor and two objects.
+    /// </summary>
+    /// <remarks>
+    /// The two levels are reported apart because they are different problems at the same object
+    /// count: one malformed descriptor inherited by fifty thousand objects is one thing to look at,
+    /// and fifty thousand distinct malformed descriptors is a broken directory.
+    /// </remarks>
+    [Fact]
+    public void AnUnreadableDescriptorSharedByTwoObjectsIsOneDescriptorAndTwoObjects()
+    {
+        var unreadable = UnparseableDacl();
+
+        WriteBundle(writer =>
+        {
+            WriteObject(writer, AliceDn, unreadable, NothingCouldBeParsed());
+            WriteObject(writer, BobDn, unreadable, NothingCouldBeParsed());
+        });
+
+        var forecast = JudgementForecast.Of(_directory);
+
+        Assert.Equal(2, forecast.ObjectsWithAnUnreadableDescriptor);
+        Assert.Equal(1, forecast.DescriptorsUnreadable);
+    }
+
+    /// <summary>
+    /// A DACL that yielded only some of the entries it declared says so, rather than passing its
+    /// survivors off as the whole list.
+    /// </summary>
+    [Fact]
+    public void ADaclThatYieldedOnlySomeOfItsEntriesIsCountedAsPartlyParsed()
+    {
+        WriteBundle(writer => WriteObject(writer, AliceDn, PartlyParsedDacl(), SomeWentMissing()));
+
+        var forecast = JudgementForecast.Of(_directory);
+
+        Assert.Equal(1, forecast.ObjectsWithAPartiallyParsedDescriptor);
+        Assert.Equal(1, forecast.DescriptorsPartiallyParsed);
+    }
+
+    /// <summary>
+    /// It contributes the entries that parsed, never the number its header declared.
+    /// </summary>
+    /// <remarks>
+    /// The fixture declares five and yields two. Judging writes one row per entry it could read, so
+    /// two is the correct forecast and five would be three rows that never exist - a shortfall
+    /// hidden inside the very number it corrupted. This is why the count above is held beside the
+    /// occurrence total instead of being folded into it.
+    /// </remarks>
+    [Fact]
+    public void APartlyParsedDaclContributesItsSurvivorsAndNotWhatItDeclared()
+    {
+        WriteBundle(writer => WriteObject(writer, AliceDn, PartlyParsedDacl(), SomeWentMissing()));
+
+        Assert.Equal(2, JudgementForecast.Of(_directory).Occurrences);
+    }
+
+    /// <summary>
+    /// Partly parsed is still readable. Some of the DACL was read, and what it said is true.
+    /// </summary>
+    /// <remarks>
+    /// Kept apart from the unreadable case deliberately: <see cref="DaclState.Unreadable"/> is set
+    /// only when a DACL declared entries and yielded none, and a DACL that yielded some stays
+    /// <see cref="DaclState.Present"/>. Counting this object as unreadable would discard permissions
+    /// the product did read and must report.
+    /// </remarks>
+    [Fact]
+    public void APartlyParsedDaclIsStillCountedAsReadablePermissions()
+    {
+        WriteBundle(writer => WriteObject(writer, AliceDn, PartlyParsedDacl(), SomeWentMissing()));
+
+        var forecast = JudgementForecast.Of(_directory);
+
+        Assert.Equal(1, forecast.ObjectsWithReadablePermissions);
+        Assert.Equal(0, forecast.ObjectsWithAnUnreadableDescriptor);
+    }
+
+    /// <summary>
+    /// A bundle whose every descriptor is unreadable is forecast at zero, not refused.
+    /// </summary>
+    /// <remarks>
+    /// Refusing it would be the same substitution one layer up - silence where the answer is that
+    /// the product could not read anything. The refusal is kept for a bundle with no descriptor
+    /// stored at all, which is a different fact and has its own test above.
+    /// </remarks>
+    [Fact]
+    public void ABundleWhoseDescriptorsAllFailToParseIsForecastRatherThanRefused()
+    {
+        WriteBundle(writer => WriteObject(writer, AliceDn, UnparseableDacl(), NothingCouldBeParsed()));
+
+        var forecast = JudgementForecast.Of(_directory);
+
+        Assert.Equal(0, forecast.Occurrences);
+        Assert.Equal(0, forecast.ObjectsWithReadablePermissions);
+        Assert.Equal(1, forecast.ObjectsWithAnUnreadableDescriptor);
+    }
+
+    // -------------------------------------------------------------------------------------------
     // Nothing is written
     // -------------------------------------------------------------------------------------------
 
@@ -404,6 +566,83 @@ public sealed class JudgementForecastTests
     /// </remarks>
     private static byte[] Twice() =>
         SdBytes.SelfRelativeSd(ownerSid: null, daclAces: [Allow(0x10), Allow(0x10)]);
+
+    /// <summary>
+    /// Alice, whose two entries parse, beside Bob, whose descriptor is stored and yields nothing.
+    /// </summary>
+    private void WriteAliceReadableAndBobUnreadable() =>
+        WriteBundle(writer =>
+        {
+            WriteObject(writer, AliceDn, Twice(), OneCanonicalEntry());
+            WriteObject(writer, BobDn, UnparseableDacl(), NothingCouldBeParsed());
+        });
+
+    /// <summary>
+    /// A DACL whose header declares two entries and is followed by bytes that are not an entry.
+    /// </summary>
+    /// <remarks>
+    /// The four bytes are an ACE header claiming a four-byte ACE, which cannot hold an access mask
+    /// and a trustee, so nothing parses. The parser answers <see cref="DaclState.Unreadable"/>
+    /// rather than <see cref="DaclState.Empty"/>, which is the distinction
+    /// <c>docs/decisions/0037-an-unreadable-dacl-says-so.md</c> exists for: what this object grants
+    /// is unknown, and it is not the most locked-down object it is possible to be.
+    /// </remarks>
+    private static byte[] UnparseableDacl()
+    {
+        var sd = SdBytes.SelfRelativeSd(ownerSid: null, daclAces: []);
+        var daclOffset = (int)BinaryPrimitives.ReadUInt32LittleEndian(sd.AsSpan(16));
+
+        byte[] notAnAce = [0x00, 0x00, 0x04, 0x00];
+        var built = new byte[daclOffset + 8 + notAnAce.Length];
+        sd.AsSpan(0, daclOffset + 8).CopyTo(built);
+        notAnAce.CopyTo(built.AsSpan(daclOffset + 8));
+
+        var dacl = built.AsSpan(daclOffset);
+        BinaryPrimitives.WriteUInt16LittleEndian(dacl[2..], (ushort)(8 + notAnAce.Length));
+        BinaryPrimitives.WriteUInt16LittleEndian(dacl[4..], 2);
+
+        return built;
+    }
+
+    /// <summary>
+    /// A DACL that declares five entries and yields the two it actually carries.
+    /// </summary>
+    /// <remarks>
+    /// The shortfall is what makes this worth a fixture: the survivors are real permissions and
+    /// must be forecast, and the three that did not arrive must not be.
+    /// </remarks>
+    private static byte[] PartlyParsedDacl()
+    {
+        var sd = SdBytes.SelfRelativeSd(ownerSid: null, daclAces: [Allow(0x10), Allow(0x20)]);
+        var daclOffset = (int)BinaryPrimitives.ReadUInt32LittleEndian(sd.AsSpan(16));
+        BinaryPrimitives.WriteUInt16LittleEndian(sd.AsSpan(daclOffset + 4), 5);
+
+        return sd;
+    }
+
+    /// <summary>What the capturing run recorded for <see cref="UnparseableDacl"/>.</summary>
+    private static AceNormalizationResult NothingCouldBeParsed() => new(
+        Guid.Empty,
+        OwnerSid: null,
+        GroupSid: null,
+        DaclState.Unreadable,
+        IsDaclProtected: false,
+        [],
+        Errors: ["The DACL declared 2 entries and none of them parsed."],
+        DaclCompleteness.Unknown,
+        DaclWasCanonical: false);
+
+    /// <summary>What the capturing run recorded for <see cref="PartlyParsedDacl"/>.</summary>
+    private static AceNormalizationResult SomeWentMissing() => new(
+        Guid.Empty,
+        OwnerSid: null,
+        GroupSid: null,
+        DaclState.Present,
+        IsDaclProtected: false,
+        [Entry(0x10), Entry(0x20)],
+        Errors: [],
+        DaclCompleteness.Incomplete,
+        DaclWasCanonical: true);
 
     /// <summary>
     /// What <see cref="AceNormalizer"/> yields for <see cref="Twice"/>: the pair collapsed to one.
