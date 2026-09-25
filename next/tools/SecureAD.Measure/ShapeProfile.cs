@@ -711,14 +711,36 @@ internal static class ShapeProfile
     /// The <c>DC=</c> suffix of a distinguished name, used as a grouping key and discarded.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Returned rather than counted in place only because a dictionary needs a key. The value never
     /// reaches a <see cref="Profile"/>: <see cref="Profile.ObjectsPerDomain"/> takes the tally's
     /// values, sorted, and leaves its keys behind.
+    /// </para>
+    /// <para>
+    /// <b>Matched at a relative-name boundary, not anywhere in the string.</b> The first version
+    /// searched for <c>DC=</c> outright, which also matches inside a relative name -
+    /// <c>CN=SQLDC=primary,OU=…</c> would have been read as its own domain and inflated the domain
+    /// count of a forest nobody could check it against. A comma inside a relative name must be
+    /// escaped in a distinguished name ([MS-ADTS] 3.1.1.1.4 and RFC 4514), so an unescaped
+    /// <c>,DC=</c> is always a boundary.
+    /// </para>
     /// </remarks>
     private static string DomainOf(string distinguishedName)
     {
-        var first = distinguishedName.IndexOf("DC=", StringComparison.OrdinalIgnoreCase);
-        return first < 0 ? string.Empty : distinguishedName[first..];
+        if (distinguishedName.StartsWith("DC=", StringComparison.OrdinalIgnoreCase))
+            return distinguishedName;
+
+        for (var at = distinguishedName.IndexOf(",DC=", StringComparison.OrdinalIgnoreCase);
+             at >= 0;
+             at = distinguishedName.IndexOf(",DC=", at + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            if (at == 0 || distinguishedName[at - 1] != '\\')
+                return distinguishedName[(at + 1)..];
+        }
+
+        // No domain component at all. Grouped together rather than guessed at, and the group is
+        // reported as a count like any other.
+        return string.Empty;
     }
 
     /// <summary><c>S-1-5-10</c>, the one well-known SID whose meaning depends on the object.</summary>

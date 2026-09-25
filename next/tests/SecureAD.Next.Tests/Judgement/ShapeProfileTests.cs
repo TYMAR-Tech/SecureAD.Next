@@ -336,6 +336,49 @@ public sealed class ShapeProfileTests
         Assert.Equal([2], profile.ObjectsPerDomain);
     }
 
+    /// <summary>
+    /// A relative name containing <c>DC=</c> does not become a domain of its own.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Found by reading the code before the tool was carried anywhere. The first version searched
+    /// for <c>DC=</c> anywhere in the name, so <c>CN=SQLDC=primary</c> was read as a domain and
+    /// would have inflated the count of a nine-domain forest to something nobody could check it
+    /// against - a wrong number in the one place there is no second opinion.
+    /// </para>
+    /// <para>
+    /// The three objects here sit in two real domains, and one of them carries the trap.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ARelativeNameContainingDcDoesNotBecomeADomain()
+    {
+        const string Other = "DC=zqxjvbsecond,DC=example";
+        var raw = SdBytes.SelfRelativeSd(
+            ownerSid: null, daclAces: [SdBytes.AllowAce(SdBytes.Administrators, 0x10)]);
+
+        using (var writer = BundleWriter.Create(_directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            foreach (var dn in new[]
+                     {
+                         "CN=Zqxjvb-Plain," + SecretDomain,
+                         "CN=SQLDC=primary," + SecretDomain,
+                         "CN=Zqxjvb-Elsewhere," + Other,
+                     })
+            {
+                writer.WriteSecurityDescriptor(writer.WriteObject(ObjectAt(dn)), raw, Parsed(raw));
+            }
+
+            writer.Complete(OneDomainRead(), Finished);
+        }
+
+        var profile = ShapeProfile.Of(_directory);
+
+        Assert.Equal(2, profile.Domains);
+        Assert.Equal([2, 1], profile.ObjectsPerDomain);
+    }
+
     /// <summary>A directory that is not a bundle is named as such, not met with a stack trace.</summary>
     [Fact]
     public void ADirectoryThatIsNotABundleIsRefusedByName()
