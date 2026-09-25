@@ -94,6 +94,13 @@ internal static class Program
         to.WriteLine("  --descriptor-redundancy BUNDLE_DIRECTORY [SAMPLE]");
         to.WriteLine("      How much of its stored descriptor bytes could be compressed away.");
         to.WriteLine();
+        to.WriteLine("  --shape-profile BUNDLE_DIRECTORY [OUTPUT_FILE]");
+        to.WriteLine("      The shape of that capture as counts and distributions, so a synthetic");
+        to.WriteLine("      bench can be built to match a real forest instead of to match our own");
+        to.WriteLine("      assumptions. Carries no distinguished name, no domain SID, no trustee");
+        to.WriteLine("      that is not well-known and no schema GUID outside the shipped");
+        to.WriteLine("      catalogue, so the result can leave the environment it was taken in.");
+        to.WriteLine();
         to.WriteLine("BUILDS ITS OWN SYNTHETIC FORESTS AND JUDGES THEM - SLOW, AND TOUCHES NO CAPTURE");
         to.WriteLine("  <repeats> [objects groups members [domains [aces]]]");
         to.WriteLine("      What automatic Self-Membership discovery costs. Tens of minutes.");
@@ -115,6 +122,8 @@ internal static class Program
             return DescriptorRedundancyMeasurement.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--judgement-forecast")
             return JudgementForecast.Run(args[1..]);
+        if (args.Length > 0 && args[0] == "--shape-profile")
+            return ShapeProfile.Run(args[1..]);
 
         // NOTHING FALLS THROUGH TO THE SWEEP BY ACCIDENT. Every mode above is asked for by name,
         // and the Self-Membership sweep below used to be what ran when nothing matched - so a

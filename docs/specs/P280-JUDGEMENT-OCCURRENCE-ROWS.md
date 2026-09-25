@@ -159,7 +159,48 @@ Settled with the owner 2026-09-24, after the review. Each is a bounded session.
    reporting distributions and counts only, with no names and no SIDs, so it can leave
    the production environment; teach the generator to match one. **Everything after this
    needs an anchor that is the owner's forest rather than our own beliefs** (`F-S44-2`).
-3. **Bind an occurrence to its interpretation** (`P-283`). A correctness prerequisite:
+
+   **2a done 2026-09-25: `--shape-profile` exists.** Read-only, 6,599 bytes of output on
+   the bench, and it carries no distinguished name, no domain SID, no trustee that is not
+   well-known in every Active Directory, no schema GUID outside the catalogue shipped with
+   the product, and no file path. What may be named is decided in one place,
+   `ShapeProfile.Publishable`, and asked of `SchemaGuidCatalog.Embedded` rather than of the
+   bundle's own captured schema - the captured layer re-reads the base schema too, so
+   asking it would let a forest's own extension out on the grounds that the forest had
+   heard of it. A GUID or SID that cannot be named is **counted**, because refusing to
+   name a thing and refusing to count it are different acts and only the first is
+   required. The owner approved the contents on 2026-09-25.
+
+   **2b outstanding: teach the generator to match a profile.**
+
+### What the bench actually looks like, measured 2026-09-25
+
+The first profile was of `next/artifacts/p279-after`, and it is the argument for the
+mode rather than merely a test of it:
+
+| | Bench | Production |
+|---|---|---|
+| Entries per descriptor, p50 / p99 / max | **521 / 521 / 521** | to be measured |
+| Name bytes, p50 / p99 / max | **97 / 97 / 97** | mean 106.1, max 250 |
+| Objects per descriptor, max | **3** | 659,196 over 267,550 |
+| Domains | **1** | 9 |
+| Occurrences carrying an object type | **0** | 238,118,809 (72%) |
+| Occurrences carrying `S-1-5-10` | **0** | to be measured (`P-285`) |
+| Occurrences with a well-known trustee | **0** | to be measured |
+| Descriptors unreadable or partly parsed | **0** | to be measured (`P-284`) |
+
+**Every descriptor is the same length and every name is the same length.** A forest
+where the p50, the p99 and the maximum agree to the unit is not a forest; it is a
+constant. The two figures `P-280`'s largest claim rests on - that 72% of occurrences
+carry an object-type GUID and that moving five entry-derived columns off the occurrence
+row saves three times what per-descriptor keying alone saves - have never been checked
+against anything, because the bench has none of them. Neither has the reuse skew that
+made the 344-million estimate 3.8% too high.
+
+**So the profile's own first output is the finding.** Nothing that follows should be
+believed on the bench's authority until a production profile has been taken and the
+generator taught to match it.
+
    normalising on top of a binding that lets a `reading_id` be repointed would make one
    wrong association affect every occurrence of that entry.
 4. **Separate the raw ACE from trustee presentation** (`P-285`). `SELF` stays `SELF` in
