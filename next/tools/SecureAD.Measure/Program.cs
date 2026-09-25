@@ -55,6 +55,54 @@ internal static class Program
         bool Completed);
 
 
+    /// <summary>
+    /// Whether these arguments ask for the Self-Membership sweep, whose only spelling is a leading
+    /// repeat count.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately a positive test rather than a list of things to reject. The sweep used to be
+    /// what happened when no other mode matched, so anything unrecognised started it; asking
+    /// whether it was requested, instead of whether anything else was, is what makes that
+    /// impossible rather than merely unlikely.
+    /// </remarks>
+    internal static bool AsksForTheSweep(string[] args) =>
+        args.Length > 0
+        && int.TryParse(args[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var repeats)
+        && repeats > 0;
+
+    /// <summary>Says what this executable can be asked to do, and what each answer costs.</summary>
+    /// <param name="unrecognised">What was typed instead of a mode, or null if nothing was.</param>
+    /// <remarks>
+    /// The run times are here because the difference between them is the whole reason this exists:
+    /// two of these read a bundle and finish, and one builds synthetic forests and judges them
+    /// twice each. An operator who starts the wrong one finds out twenty minutes later.
+    /// </remarks>
+    private static void Usage(string? unrecognised)
+    {
+        var to = Console.Error;
+        if (unrecognised is not null)
+            to.WriteLine($"'{unrecognised}' is not a mode this tool has.");
+        else
+            to.WriteLine("This tool does nothing until it is told which measurement to take.");
+
+        to.WriteLine();
+        to.WriteLine("READS A BUNDLE, WRITES NOTHING TO IT");
+        to.WriteLine("  --judgement-forecast BUNDLE_DIRECTORY");
+        to.WriteLine("      How large a judgement of that bundle would be, and how much of it is");
+        to.WriteLine("      the object's name stored three times. Minutes on a large capture.");
+        to.WriteLine();
+        to.WriteLine("  --descriptor-redundancy BUNDLE_DIRECTORY [SAMPLE]");
+        to.WriteLine("      How much of its stored descriptor bytes could be compressed away.");
+        to.WriteLine();
+        to.WriteLine("BUILDS ITS OWN SYNTHETIC FORESTS AND JUDGES THEM - SLOW, AND TOUCHES NO CAPTURE");
+        to.WriteLine("  <repeats> [objects groups members [domains [aces]]]");
+        to.WriteLine("      What automatic Self-Membership discovery costs. Tens of minutes.");
+        to.WriteLine("      Everything it writes is beneath the temporary directory.");
+        to.WriteLine();
+        to.WriteLine("  --requester-generate | --requester | --permission-storage");
+        to.WriteLine("      Older measurement workloads, each with its own arguments.");
+    }
+
     private static int Main(string[] args)
     {
         if (args.Length > 0 && args[0] == "--requester-generate")
@@ -65,6 +113,22 @@ internal static class Program
             return PermissionStorageWorkload.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--descriptor-redundancy")
             return DescriptorRedundancyMeasurement.Run(args[1..]);
+        if (args.Length > 0 && args[0] == "--judgement-forecast")
+            return JudgementForecast.Run(args[1..]);
+
+        // NOTHING FALLS THROUGH TO THE SWEEP BY ACCIDENT. Every mode above is asked for by name,
+        // and the Self-Membership sweep below used to be what ran when nothing matched - so a
+        // missing flag, a typo, or a double-click started a twenty-minute synthetic benchmark that
+        // looks exactly like work being done. It happened in the field on 2026-09-24: an operator
+        // meaning to forecast a production capture watched it build 1,000-object synthetics for
+        // several minutes before the output gave it away. No harm was done, because the sweep
+        // writes only beneath the temporary directory, but the time was gone and no measurement
+        // was taken. A tool may not decide for itself what it was asked to do.
+        if (!AsksForTheSweep(args))
+        {
+            Usage(args.Length == 0 ? null : args[0]);
+            return 1;
+        }
 
         var repeats = args.Length > 0 && int.TryParse(args[0], NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var value) && value > 0 ? value : 3;
