@@ -34,19 +34,35 @@ namespace SecureAD.Next.Tests.Judgement;
 public sealed class ShapeProfileTests
 {
     /// <summary>
-    /// The bundle sits inside a directory whose name is itself a marker.
+    /// The bundle sits inside a directory whose name is itself a marker, and is itself named after
+    /// one.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// <b>Because the first version of the path check could not fail.</b> It asserted that
     /// <c>C:\Users\…</c> was absent from the document, and JSON escapes a backslash as <c>\\</c>,
     /// so the raw path never appeared literally however much of it was emitted - the check passed
     /// with the whole path in the output. A marker with no separator in it is comparable against
     /// the escaped document, which is the only form the assertion ever sees.
+    /// </para>
+    /// <para>
+    /// <b>And because the run folder was called <c>run</c>.</b> A real capture folder is named
+    /// after the directory it was taken from - <c>ad.contoso.com-20260924-020431</c> - so the
+    /// folder name <i>is</i> the forest's name. The first production profile carried it on its
+    /// second line, and no test here could have seen it: the marker was in the parent, and a
+    /// second test asserted that reporting the folder name was correct. Both folders carry a
+    /// marker now.
+    /// </para>
     /// </remarks>
     private const string SecretParent = "zqxjvbparent";
 
+    /// <summary>Stands in for the forest name a real capture folder is named after.</summary>
+    private const string SecretCapture = "zqxjvbcapture";
+
     private readonly string _directory = Path.Combine(
-        Path.GetTempPath(), "securead-" + SecretParent + "-" + Guid.NewGuid().ToString("N"), "run");
+        Path.GetTempPath(),
+        "securead-" + SecretParent + "-" + Guid.NewGuid().ToString("N"),
+        SecretCapture + "-20260924-020431");
 
     private static readonly DateTimeOffset Started = new(2026, 9, 25, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = new(2026, 9, 25, 11, 30, 0, TimeSpan.Zero);
@@ -89,6 +105,7 @@ public sealed class ShapeProfileTests
     [InlineData(SecretDomainSid)]
     [InlineData(SecretSchemaGuid)]
     [InlineData("deadbeef")]
+    [InlineData(SecretCapture)]
     public void NothingThatIdentifiesTheForestReachesTheProfile(string secret)
     {
         WriteBundleFullOfSecrets();
@@ -119,18 +136,52 @@ public sealed class ShapeProfileTests
         Assert.DoesNotContain(SecretParent, Json(), StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>The run's own folder name is reported, so the document is not anonymous.</summary>
+    /// <summary>
+    /// The capture is identified by a fingerprint of its folder name, not by the name.
+    /// </summary>
     /// <remarks>
-    /// The negative control for the test above: without it, a profile that reported no bundle name
-    /// at all would satisfy it, and an operator comparing two profiles could not tell which capture
-    /// each came from.
+    /// <para>
+    /// <b>This test replaces one that asserted the opposite.</b> <c>TheRunsOwnFolderNameIsReported</c>
+    /// held that emitting the folder name was correct, and it passed, because the fixture's folder
+    /// was called <c>run</c>. A real one is called <c>ad.contoso.com-20260924-020431</c>.
+    /// </para>
+    /// <para>
+    /// A fingerprint rather than nothing, because two profiles of the same capture must be
+    /// recognisable as such. It is checkable by anyone who already knows the capture's name and
+    /// tells anyone who does not nothing at all.
+    /// </para>
     /// </remarks>
     [Fact]
-    public void TheRunsOwnFolderNameIsReported()
+    public void TheCaptureIsIdentifiedByAFingerprintRatherThanByItsName()
     {
         WriteBundleFullOfSecrets();
 
-        Assert.Equal("run", ShapeProfile.Of(_directory).Bundle);
+        var capture = ShapeProfile.Of(_directory).Capture;
+
+        Assert.Equal(16, capture.Length);
+        Assert.DoesNotContain(SecretCapture, capture, StringComparison.OrdinalIgnoreCase);
+        Assert.Matches("^[0-9a-f]{16}$", capture);
+    }
+
+    /// <summary>
+    /// Two profiles of the same capture carry the same fingerprint, and of different captures do
+    /// not.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the test above: a field that returned a constant, or a fresh random
+    /// value each run, would satisfy every assertion there and be useless for the one job it has.
+    /// </remarks>
+    [Fact]
+    public void TheFingerprintTellsTwoCapturesApartAndRecognisesTheSameOneTwice()
+    {
+        WriteBundleFullOfSecrets();
+
+        var once = ShapeProfile.Of(_directory).Capture;
+        var again = ShapeProfile.Of(_directory).Capture;
+        var elsewhere = ShapeProfile.Of(CopyOfTheBundleCalled("zqxjvbother-20260101-000000"));
+
+        Assert.Equal(once, again);
+        Assert.NotEqual(once, elsewhere.Capture);
     }
 
     /// <summary>
@@ -443,6 +494,17 @@ public sealed class ShapeProfileTests
     private string Json() =>
         JsonSerializer.Serialize(
             ShapeProfile.Of(_directory), new JsonSerializerOptions { WriteIndented = true });
+
+    /// <summary>The same bundle under a different capture folder name.</summary>
+    private string CopyOfTheBundleCalled(string name)
+    {
+        var copy = Path.Combine(Path.GetDirectoryName(_directory)!, name);
+        Directory.CreateDirectory(copy);
+        foreach (var file in Directory.GetFiles(_directory))
+            File.Copy(file, Path.Combine(copy, Path.GetFileName(file)), overwrite: true);
+
+        return copy;
+    }
 
     /// <summary>
     /// What the capturing run recorded, taken from the same bytes the profile will re-read.

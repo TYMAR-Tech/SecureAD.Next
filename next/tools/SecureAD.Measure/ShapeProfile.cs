@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
@@ -234,6 +236,9 @@ internal static class ShapeProfile
     }
 
     /// <summary>The shape of one capture, and nothing that says whose it is.</summary>
+    /// <param name="Capture">
+    /// Which capture this is, as a fingerprint of its folder name rather than the name.
+    /// </param>
     /// <param name="ObjectsWithNoDescriptorStored">
     /// Captured, but the bundle kept no descriptor bytes. <b>Not the same as holding no
     /// permissions</b> - 280,871 of the production capture's 940,067 objects are in this state, and
@@ -254,7 +259,7 @@ internal static class ShapeProfile
     /// high in one domain is reused; which domain is which decides nothing.
     /// </param>
     internal sealed record Profile(
-        string Bundle,
+        string Capture,
         long ObjectsCaptured,
         long ObjectsWithADescriptorStored,
         long ObjectsWithNoDescriptorStored,
@@ -302,8 +307,10 @@ internal static class ShapeProfile
         public string Contains =>
             "Counts, distributions, and the GUIDs and SIDs that mean the same thing in every "
             + "Active Directory. No distinguished name, no domain SID, no trustee that is not "
-            + "well-known, no GUID outside the catalogue shipped with the product, and no "
-            + "descriptor bytes.";
+            + "well-known, no GUID outside the catalogue shipped with the product, no descriptor "
+            + "bytes, no file path, and not the name of the capture - a capture is named after the "
+            + "directory it was taken from, so Capture is a fingerprint of that name and not the "
+            + "name.";
     }
 
     /// <summary>
@@ -432,6 +439,8 @@ internal static class ShapeProfile
         to.WriteLine("  No distinguished name, and no part of one. No domain SID. No trustee that");
         to.WriteLine("  is not well-known in every Active Directory. No schema GUID outside the");
         to.WriteLine("  catalogue shipped with this product. No descriptor bytes. No file path.");
+        to.WriteLine("  Not the capture's name either - a capture is named after the directory it");
+        to.WriteLine($"  was taken from, so it is recorded as the fingerprint {p.Capture}.");
         to.WriteLine();
         to.WriteLine($"  Schema GUIDs named                        {p.ObjectTypes.Count + p.InheritedObjectTypes.Count,18:N0}");
         to.WriteLine($"  Schema GUIDs counted but not named        {p.Aces.DistinctObjectTypesOutsideTheShippedCatalogue + p.Aces.DistinctInheritedObjectTypesOutsideTheShippedCatalogue,18:N0}");
@@ -629,10 +638,7 @@ internal static class ShapeProfile
             typeof(ShapeProfile).Assembly.Location, Environment.ProcessPath);
 
         return new Profile(
-            // The bundle is named by its file name alone. A full path carries the operator's
-            // account name and often the customer's, and a profile that leaves the environment may
-            // not carry either.
-            Bundle: Path.GetFileName(Path.TrimEndingDirectorySeparator(bundle)),
+            Capture: Fingerprint(bundle),
             ObjectsCaptured: objectsCaptured,
             ObjectsWithADescriptorStored: nameBytes.Count,
             ObjectsWithNoDescriptorStored: objectsCaptured - nameBytes.Count,
@@ -708,8 +714,40 @@ internal static class ShapeProfile
             .Select(c => new Named(c.Key, Publishable.SchemaName(c.Key)!, c.Value))];
 
     /// <summary>
-    /// The <c>DC=</c> suffix of a distinguished name, used as a grouping key and discarded.
+    /// Which capture this is, without saying whose it is.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Because the folder name is the forest's own name.</b> The first version reported
+    /// <c>Path.GetFileName(bundle)</c>, reasoning that the full path carries the operator's account
+    /// name and the folder name alone does not. It carries something worse: a capture folder is
+    /// named after the directory it was taken from, so the first production profile came out
+    /// carrying <c>ad.ssa.gov-…</c> on its second line - the organisation, named outright, in a
+    /// document whose whole contract is that it may leave the environment.
+    /// </para>
+    /// <para>
+    /// <b>The gate could not have caught it, which is the part worth remembering.</b> The leak
+    /// test's fixture ran in a folder called <c>run</c>, the secret marker was in its <i>parent</i>,
+    /// and a second test asserted that reporting the folder name was correct. The check agreed with
+    /// the design; the design was wrong. See <c>docs/next/README.md</c> on scanners that pass while
+    /// measuring nothing.
+    /// </para>
+    /// <para>
+    /// <b>A fingerprint rather than nothing at all.</b> Two profiles of the same capture must be
+    /// recognisable as such, and two of different captures must not be confused - that is the whole
+    /// use of the field. SHA-256 of the folder name, truncated to sixteen hexadecimal characters,
+    /// answers both without being reversible. It is not a secret and does not need to be: a reader
+    /// who already knows the capture's name can confirm a profile is of it, and one who does not
+    /// learns nothing.
+    /// </para>
+    /// </remarks>
+    private static string Fingerprint(string bundle)
+    {
+        var folder = Path.GetFileName(Path.TrimEndingDirectorySeparator(bundle));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(folder));
+        return Convert.ToHexString(hash)[..16].ToLowerInvariant();
+    }
+
     /// <remarks>
     /// <para>
     /// Returned rather than counted in place only because a dictionary needs a key. The value never
