@@ -137,3 +137,40 @@ added: the reading's digest was folded into the occurrence fingerprint that was 
 there. A separate binding column would have cost 32 bytes on every occurrence, which is
 10.6 GB across the production capture's 330,856,576 and the opposite of what `P-280` is
 for.
+
+## The criteria for `P-280`, written down 2026-09-25 before the change
+
+| | Now | Must become |
+|---|---|---|
+| `permission_classification_entry` | **209,252** | **12,955** |
+| `permission_entry` | 1,929 | **1,929**, unchanged |
+| `permission_classification_reading` | 240 | 240, unchanged |
+| `finding` | 27 | **27**, unchanged |
+| Rules ran | 17 | **17**, unchanged |
+| Judgement on disk | 95,535,104 | smaller |
+
+**12,955 is taken from the profile, not from `descriptor_entry`.** That table holds the
+canonical projection, sorted and deduplicated by `ace_hash`, and reports 12,952 for the
+same 378 descriptors. Judging writes what the parser reads back out of the stored bytes,
+where nothing is dropped and nothing is reordered, so the three-entry difference is three
+real permissions a projection-derived figure would have lost. The specification records the
+identical three-entry gap on `ad.lab-20260819-232425`: 12,603 stored against 12,600
+projected.
+
+**The row count falling is the goal. A permission disappearing is the failure.** Every
+object must still read back every entry it carried, and a check that only counts rows
+cannot tell the two apart - which is why the object-level readback is asserted separately.
+
+### What this lab cannot say
+
+| | Lab | Production |
+|---|---|---|
+| Occurrences | 209,252 | 330,856,576 |
+| Per-descriptor rows | 12,955 | 141,693,937 |
+| **Reduction** | **16.2x** | **2.34x** |
+
+The lab's descriptors are reused 22.3 times on average against the production forest's
+2.46, so per-descriptor keying looks **seven times better here than it will on the owner's
+forest**. Correctness is measured here; the saving is measured from
+`next/artifacts/p280-shape-profile/` and nowhere else. **No lab figure may be quoted as a
+saving.**

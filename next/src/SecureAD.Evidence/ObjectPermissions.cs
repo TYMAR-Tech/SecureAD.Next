@@ -283,6 +283,31 @@ public sealed record ObjectPermissions(
     IReadOnlyList<string> Errors)
 {
     /// <summary>
+    /// Which stored descriptor this object carries, or <c>null</c> when the bundle kept none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the first of the three bindings <c>P-280</c> needs, and the only one that cannot
+    /// live in the judgement.</b> Once the classification is keyed per descriptor, an object
+    /// reaches its permissions through this identity - so if the judgement were allowed to record
+    /// which descriptor an object carries, a store saying <i>X uses D2</i> where the evidence says
+    /// <i>X uses D1</i> would validate every fingerprint it holds and attribute D2's permissions to
+    /// X. A fingerprint cannot stop that, because whoever edited the judgement recomputes it.
+    /// </para>
+    /// <para>
+    /// So it is read here, out of <c>object_security_descriptor</c>, under the evidence seal, and
+    /// the judgement is never asked. It is not part of the descriptor's content and nothing is
+    /// judged from it: it is the join, stated by the only party entitled to state it.
+    /// </para>
+    /// <para>
+    /// <c>null</c> for an object with no stored descriptor - 280,871 of the production capture's
+    /// 940,067 - which is not the same as an object that grants nothing, and is why
+    /// <see cref="Availability"/> exists beside it.
+    /// </para>
+    /// </remarks>
+    public long? DescriptorId { get; init; }
+
+    /// <summary>
     /// Whether an <c>OWNER RIGHTS</c> entry restricts what owning this object grants.
     /// </summary>
     /// <remarks>
@@ -387,7 +412,10 @@ internal static class ObjectPermissionsReader
             descriptor.DaclWasCanonical,
             descriptor.IsDaclProtected,
             [.. entries.Select(e => e.WithTrustee(trustees[e.TrusteeSid]))],
-            ErrorsOf(connection, descriptor.DescriptorId, stored));
+            ErrorsOf(connection, descriptor.DescriptorId, stored))
+        {
+            DescriptorId = descriptor.DescriptorId,
+        };
     }
 
     /// <summary>The stored descriptor, before its SIDs have been given names.</summary>
