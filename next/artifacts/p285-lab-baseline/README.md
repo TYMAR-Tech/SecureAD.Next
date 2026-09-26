@@ -174,3 +174,38 @@ The lab's descriptors are reused 22.3 times on average against the production fo
 forest**. Correctness is measured here; the saving is measured from
 `next/artifacts/p280-shape-profile/` and nowhere else. **No lab figure may be quoted as a
 saving.**
+
+## `P-280` measured, 2026-09-26, on the same capture
+
+Judged on schema 46 from a fresh copy of `ad.lab-20260923-231917`, against the criteria
+written down above before the change.
+
+| | Criterion | Measured | |
+|---|---|---|---|
+| `permission_classification_entry` | 12,955 | **12,955** | met exactly |
+| `permission_entry` | 1,929 unchanged | 1,929 | unchanged |
+| `permission_classification_reading` | 240 unchanged | 240 | unchanged |
+| `finding` | 27 unchanged | 27 | unchanged |
+| Rules ran | 17 unchanged | 17 | unchanged |
+| Judgement on disk | smaller | 26,296,320 from 95,535,104 | 72.5% smaller |
+
+The predicted 12,955 was taken from the shape profile before any of this was built, and
+the judgement produced 12,955. `descriptor_entry` would have said 12,952: the three
+permissions a projection-derived figure loses are present.
+
+**Nothing was lost, and this is the measurement that says so rather than a row count.**
+Summing `entry_count` across every object through the descriptor it carries gives
+**209,252** — the original occurrence total, recovered in full from 12,955 stored rows.
+Every object still reaches every entry it carried; the entries simply stopped being
+written 16 times over. 378 descriptors serve 8,418 objects, reused between 1 and 2,010
+times, mean 22.3 — the figure the criteria predicted.
+
+**Writing the permissions took 6,560 ms before and 2,112 ms after**, both lines in the
+same `run.log` on the same machine and the same capture. The per-phase breakdown puts
+`validate` first at 975 ms, which is now the largest single part of the write and is
+unrelated to storage. Judging as a whole: 21.1 s against 23.0 s.
+
+**None of that is a production figure.** The reduction here is 16.2x where the owner's
+forest will see 2.34x, for the reason stated above. What this run establishes is that the
+change is correct and complete on a real capture; what it costs and saves on nine domains
+is `next/artifacts/p280-shape-profile/` and a production re-judge.

@@ -211,7 +211,18 @@ public sealed record PermissionEntry(
     byte PropagationFlags,
     bool HasObjectType,
     bool HasInheritedObjectType,
-    byte[] ApplicationData);
+    byte[] ApplicationData)
+{
+    /// <summary>The same entry, with its trustee rendered against the object carrying it.</summary>
+    /// <param name="objectDistinguishedName">The object this entry was found on.</param>
+    /// <remarks>
+    /// Lifts <see cref="PermissionTrustee.DisplayedAgainst"/> to the entry, for callers that hold a
+    /// stored entry rather than a trustee. Only <c>S-1-5-10</c> changes; every other trustee means
+    /// the same thing wherever it is found and is returned untouched.
+    /// </remarks>
+    public PermissionEntry DisplayedAgainst(string objectDistinguishedName) =>
+        this with { Trustee = Trustee.DisplayedAgainst(objectDistinguishedName) };
+}
 
 /// <summary>
 /// Everything a bundle holds about one object's permissions.

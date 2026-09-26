@@ -95,8 +95,17 @@ public static class JudgementSchema
     /// reading and classify <c>NotDangerous</c> with every check still passing. No column was
     /// added: a separate binding would have cost 32 bytes on each of the production capture's
     /// 330,856,576 occurrences.</para>
+    /// <para>46 keys the saved permission classification per <b>descriptor</b> rather than per
+    /// object (P-280), because the interpretation of an entry is a function of the entry and the
+    /// run's catalogue and of nothing about the object carrying it. On the production capture
+    /// 940,067 objects carry 267,550 distinct descriptors, so the occurrences fall from 330,856,576
+    /// to 141,693,937; <c>position</c> is dropped as recoverable rank-by-ordinal, the entry-derived
+    /// columns move onto one row per distinct entry, and the occurrence becomes
+    /// <c>WITHOUT ROWID</c> on <c>(descriptor_id, ordinal)</c>. The per-occurrence fingerprint is
+    /// replaced by one per descriptor over its whole ordered list, which is both far cheaper and
+    /// stronger, and an object's descriptor is supplied by the <b>evidence</b> on every read.</para>
     /// </remarks>
-    public const int Version = 45;
+    public const int Version = 46;
 
     private static readonly string[] TableDdl =
     [

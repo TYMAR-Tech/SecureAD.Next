@@ -58,7 +58,7 @@ public sealed class EnterpriseCaPathTests(ITestOutputHelper output)
         using var reader = Open(Judged());
         var binding = reader.ReadPathInputs().Input;
 
-        Assert.Equal((8, 15, 45, (int?)2, (int?)2, ConfigurationDn),
+        Assert.Equal((8, 15, 46, (int?)2, (int?)2, ConfigurationDn),
             (CapturedAttributeCatalog.Version, DerivationSchema.Version, JudgementSchema.Version,
              binding?.PolicyVersion, binding?.ContractVersion, binding?.ConfigurationNamingContext));
     }

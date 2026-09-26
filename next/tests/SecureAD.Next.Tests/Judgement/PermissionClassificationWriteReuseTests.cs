@@ -58,11 +58,55 @@ public sealed class PermissionClassificationWriteReuseTests
         store.StageCollidingReading();
         store.ForgetSharedRows();
         var next = Produce(Entry(2, FirstGuid, null));
-        next = next with { Permissions = next.Permissions with { DistinguishedName = "OU=Other,DC=contoso,DC=com" } };
+        next = next with { Permissions = Elsewhere(next.Permissions) };
         store.Observe(next);
 
         Assert.Throws<InvalidDataException>(() => store.Write(next));
     }
+
+    /// <summary>
+    /// Two objects claiming one descriptor while carrying different entries is refused.
+    /// </summary>
+    /// <remarks>
+    /// <b>The writer's half of <c>P-280</c>'s binding 2.</b> The reader refuses a descriptor whose
+    /// stored list does not hash to its recorded fingerprint, but by then the damage is already on
+    /// disk — and it would be silent damage, because the second object writes nothing and simply
+    /// adopts whatever the first one stored. On a real forest a descriptor is shared by up to 4,568
+    /// objects, so accepting this would give thousands of objects one object's permissions.
+    /// <para>
+    /// This cannot arise from honest evidence: the identity comes from
+    /// <c>object_security_descriptor</c>, and a bundle that numbered two different descriptors the
+    /// same would be corrupt. It is refused anyway, because "the evidence cannot do that" is an
+    /// argument about the writer's input rather than a check on it, and the cost of being wrong is
+    /// reporting permissions the directory never held.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void P280ADescriptorCannotBeClaimedTwiceWithDifferentEntries()
+    {
+        using var store = new Store();
+        var first = Produce(Entry(2, FirstGuid, null));
+        store.Write(first);
+        var next = Produce(Entry(2, FirstGuid, null), Entry(7, SecondGuid, null));
+        next = next with
+        {
+            Permissions = next.Permissions with { DistinguishedName = "OU=Other,DC=contoso,DC=com" },
+        };
+        store.Observe(next);
+
+        Assert.Throws<InvalidDataException>(() => store.Write(next));
+    }
+
+    /// <summary>The same permissions on a different object, carrying a descriptor of its own.</summary>
+    /// <remarks>
+    /// <b>The descriptor has to differ, not just the name</b> (<c>P-280</c>). The classification is
+    /// stored once per descriptor, so a second object carrying the <i>same</i> descriptor correctly
+    /// writes nothing at all — and a test about what the writer does on its second write would
+    /// then be testing a path it never enters. These cases are about two objects that genuinely
+    /// hold their own descriptors and happen to agree about what is in them.
+    /// </remarks>
+    private static ObjectPermissions Elsewhere(ObjectPermissions permissions) =>
+        permissions with { DistinguishedName = "OU=Other,DC=contoso,DC=com", DescriptorId = permissions.DescriptorId + 1 };
 
     [Fact]
     public void ConflictingCommittedSupportIsNotHiddenByAnotherObject()
@@ -73,7 +117,7 @@ public sealed class PermissionClassificationWriteReuseTests
         var next = Produce(Entry(7, FirstGuid, null));
         next = next with
         {
-            Permissions = next.Permissions with { DistinguishedName = "OU=Other,DC=contoso,DC=com" },
+            Permissions = Elsewhere(next.Permissions),
             Entries = [next.Entries[0] with { ObjectType = Changed(next.Entries[0].ObjectType!) }]
         };
         store.Observe(next);
@@ -192,7 +236,8 @@ public sealed class PermissionClassificationWriteReuseTests
             PermissionClassificationStorage.Complete(Connection, written);
             var description = new JudgementDescription(new string('a', 64), generation, null,
                 JudgementRunState.Completed, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
-            return PermissionClassificationStorage.Read(Connection, description, value.Permissions.DistinguishedName, CancellationToken.None).Classification;
+            return PermissionClassificationStorage.Read(Connection, description, value.Permissions.DistinguishedName,
+                value.Permissions.DescriptorId, CancellationToken.None).Classification;
         }
 
         public long Count(string table)

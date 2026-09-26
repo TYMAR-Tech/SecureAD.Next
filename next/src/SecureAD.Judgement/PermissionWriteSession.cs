@@ -36,6 +36,10 @@ internal sealed class PermissionWriteSession
     private readonly Dictionary<string, long> _pendingReadings = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _entries = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _pendingEntries = new(StringComparer.Ordinal);
+    private readonly Dictionary<long, byte[]> _descriptors = [];
+    private readonly Dictionary<long, byte[]> _pendingDescriptors = [];
+    private readonly HashSet<long> _values = [];
+    private readonly HashSet<long> _pendingValues = [];
 
     /// <summary>The payload already stored for a schema GUID, when there is one.</summary>
     /// <param name="guid">The schema GUID.</param>
@@ -77,12 +81,50 @@ internal sealed class PermissionWriteSession
     /// <param name="id">The row holding it.</param>
     internal void AddEntry(string hash, long id) => _pendingEntries[hash] = id;
 
+    /// <summary>The fingerprint already stored for this descriptor, when there is one.</summary>
+    /// <param name="descriptorId">The descriptor, as the evidence numbers it.</param>
+    /// <param name="fingerprint">The fingerprint stored over its ordered entry list.</param>
+    /// <returns>Whether this run has already stored that descriptor's classification.</returns>
+    /// <remarks>
+    /// <b>This is where <c>P-280</c>'s saving is actually taken.</b> On the production capture
+    /// 940,067 objects carry 267,550 distinct descriptors, so 71.5% of objects find their
+    /// descriptor already written and store no occurrences at all. The fingerprint is handed back
+    /// rather than a bare yes, because the caller recomputes it from what this object read and
+    /// refuses a disagreement — a descriptor identity that has been seen before is not on its own a
+    /// promise that the entries behind it are the same ones.
+    /// </remarks>
+    internal bool TryGetDescriptor(long descriptorId, out byte[] fingerprint) =>
+        _descriptors.TryGetValue(descriptorId, out fingerprint!)
+        || _pendingDescriptors.TryGetValue(descriptorId, out fingerprint!);
+
+    /// <summary>Records a descriptor classification written in the open transaction.</summary>
+    /// <param name="descriptorId">The descriptor, as the evidence numbers it.</param>
+    /// <param name="fingerprint">The fingerprint stored over its ordered entry list.</param>
+    internal void AddDescriptor(long descriptorId, byte[] fingerprint) =>
+        _pendingDescriptors[descriptorId] = fingerprint;
+
+    /// <summary>Whether the interpretation of this entry has already been stored.</summary>
+    /// <param name="entryId">The shared entry row.</param>
+    /// <remarks>
+    /// One row per distinct entry rather than one per occurrence, so the same entry appearing on a
+    /// second descriptor writes nothing. The identity is the shared row, which was reached through
+    /// <see cref="TryGetEntry"/> over the entry's own content hash.
+    /// </remarks>
+    internal bool HasValue(long entryId) =>
+        _values.Contains(entryId) || _pendingValues.Contains(entryId);
+
+    /// <summary>Records an entry interpretation written in the open transaction.</summary>
+    /// <param name="entryId">The shared entry row it was written for.</param>
+    internal void AddValue(long entryId) => _pendingValues.Add(entryId);
+
     /// <summary>Trusts everything written in the transaction that has just committed.</summary>
     internal void Promote()
     {
         foreach (var (guid, payload) in _pendingSchema) _schema[guid] = payload;
         foreach (var (key, id) in _pendingReadings) _readings[key] = id;
         foreach (var (hash, id) in _pendingEntries) _entries[hash] = id;
+        foreach (var (id, fingerprint) in _pendingDescriptors) _descriptors[id] = fingerprint;
+        foreach (var id in _pendingValues) _values.Add(id);
         Discard();
     }
 
@@ -92,6 +134,8 @@ internal sealed class PermissionWriteSession
         _pendingSchema.Clear();
         _pendingReadings.Clear();
         _pendingEntries.Clear();
+        _pendingDescriptors.Clear();
+        _pendingValues.Clear();
     }
 
     /// <summary>The fingerprint that identifies a reading, as a dictionary key.</summary>

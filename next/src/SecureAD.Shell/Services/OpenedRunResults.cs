@@ -59,10 +59,23 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
     internal Result<T> ReadDerivation<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenDerivation, (reader, _) => read(reader), reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
 
+    /// <summary>Reads one object's saved permission interpretations, against the evidence's own descriptor.</summary>
+    /// <param name="distinguishedName">The object to read.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <remarks>
+    /// <b>This is the join <c>P-280</c> needs, and this is the only place it can be made.</b> The
+    /// saved interpretations are keyed per descriptor, so an object reaches its permissions through
+    /// a descriptor identity — and only the sealed evidence is entitled to say which descriptor an
+    /// object carries. <see cref="JudgementReader"/> holds the judgement connection alone and
+    /// cannot reach it. So the evidence is asked first, its answer is carried across, and the
+    /// judgement refuses to read anything against a descriptor the evidence did not name.
+    /// </remarks>
     internal Result<SavedPermissionClassification> ReadPermissionClassification(string distinguishedName,
         CancellationToken cancellationToken = default)
     {
-        var read = ReadJudgement((reader, token) => reader.ReadPermissionClassification(distinguishedName, token), cancellationToken);
+        var carried = ReadEvidence(evidence => evidence.ReadPermissions(distinguishedName)?.DescriptorId, cancellationToken);
+        if (!carried.IsSuccess) return Result<SavedPermissionClassification>.Failure(carried.Error);
+        var read = ReadJudgement((reader, token) => reader.ReadPermissionClassification(distinguishedName, carried.Value, token), cancellationToken);
         if (!read.IsSuccess && read.Error.Code == "Evidence.judgementManifestAbsent")
             return Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell, "PermissionClassificationUnavailable",
                 ErrorSeverity.Failed, PermissionClassificationText.Get("Unavailable"), Directory));

@@ -169,28 +169,6 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         return entry with { Trustee = entry.Trustee.DisplayedAgainst(target) };
     }
 
-    /// <summary>
-    /// The fingerprint a link row must carry for the occurrence this reader is positioned on.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Exists for one caller: a test that deliberately rewrites a stored reading and then has to
-    /// make the store internally consistent again, so the reader reaches the words rather than
-    /// refusing the record. Before <c>P-283</c> repairing the reading's own digest was enough;
-    /// now the occurrences bound to it have to be rebound, and doing that <b>through the product's
-    /// own key</b> rather than through a second copy of it is what keeps the repair from becoming a
-    /// reimplementation that could agree with itself while disagreeing with the writer.
-    /// </para>
-    /// <para>
-    /// It proves nothing on its own and is not a verification. <see cref="Read"/> is where a
-    /// fingerprint is checked.
-    /// </para>
-    /// </remarks>
-    internal static byte[] FingerprintOf(
-        SqliteDataReader read, string target, Guid generation, ReadOnlySpan<byte> boundTo) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation,
-            ReadValue(read, generation, read.GetInt32(ProjectionColumns)), boundTo)));
-
     private static PermissionEntry ReadValue(SqliteDataReader read, Guid generation, int ordinal)
     {
         var meaning = Text(read, 10);
@@ -223,7 +201,107 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         return entry;
     }
 
+    /// <summary>Reads a shared entry that no single target owns, verifying the row against itself.</summary>
+    /// <param name="read">A reader positioned on a row carrying <see cref="Projection"/> then the ordinal.</param>
+    /// <param name="generation">The generation being judged.</param>
+    /// <returns>The entry in its shared form, with no trustee name resolved against any object.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>For a row shared between objects, where <see cref="Read"/> cannot apply</b> (<c>P-280</c>).
+    /// That overload proves <i>this target carried this entry</i> from a fingerprint over the
+    /// target's name; a per-descriptor occurrence has no name on it, because 4,568 objects may
+    /// carry the same descriptor. The equivalent proof is
+    /// <see cref="DescriptorFingerprint"/>, taken over the whole list once, and the caller checks
+    /// it after reading every row.
+    /// </para>
+    /// <para>
+    /// What is still checked here is everything the row can prove about itself: the entry's own
+    /// identity hash, and the binding to its resolved meaning. <b>The trustee is left in its shared
+    /// form</b> — <c>S-1-5-10</c> comes out as the catalogue's own name — because rendering it
+    /// against an object is the caller's to do, and only after the list fingerprint has established
+    /// that the object's descriptor really holds these entries.
+    /// </para>
+    /// </remarks>
+    internal static PermissionEntry ReadShared(SqliteDataReader read, Guid generation)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        if (read.IsDBNull(0) || read.GetString(1) != generation.ToString("D")) throw FullControlEvaluator.InvalidProof();
+        return ReadValue(read, generation, read.GetInt32(ProjectionColumns));
+    }
+
     internal static string ValueKey(PermissionEntry entry) => JsonSerializer.Serialize(entry);
+
+    /// <summary>
+    /// Binds a descriptor to the complete ordered list of entries it carries.
+    /// </summary>
+    /// <param name="generation">The generation being judged.</param>
+    /// <param name="entries">Every entry the descriptor carries, at the ordinals it carries them.</param>
+    /// <returns>The fingerprint the descriptor's own row must hold.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>The second of <c>P-280</c>'s three bindings</b> — <i>descriptor at ordinal carries entry</i>
+    /// — and the replacement for the per-occurrence fingerprint a target-keyed row used to hold.
+    /// Once a row is shared between every object carrying that descriptor it has no single name on
+    /// it, so the old <c>(target, generation, entry)</c> triple cannot be computed from the row.
+    /// </para>
+    /// <para>
+    /// <b>Taken over the whole list at once, not per row, and the reason is the size of the thing
+    /// being fixed.</b> A fingerprint on every occurrence would be 32 bytes across the production
+    /// capture's 141,693,937 of them — 4.5 GB, in a change whose entire worth is 6.9 GB. Over the
+    /// list it is 267,550 × 32 = 8.5 MB, and it is <i>stronger</i>: it binds the ordinals to each
+    /// other, so removing an entry, reordering two or truncating the tail all fail, where a
+    /// per-row fingerprint would still verify every row that remained.
+    /// </para>
+    /// <para>
+    /// The ordinal is inside the key because the same entry sits at different positions in
+    /// different lists and Windows evaluates a DACL in stored order, adding a deny only for rights
+    /// not already granted ([MS-ADTS] 5.1.3.3.2). The entries reach this in their shared form, as
+    /// everywhere else in this type.
+    /// </para>
+    /// </remarks>
+    internal static byte[] DescriptorFingerprint(
+        Guid generation, IReadOnlyList<PermissionEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        return SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        {
+            Generation = generation,
+            Entries = entries.Select(Shared),
+        })));
+    }
+
+    /// <summary>
+    /// Binds one distinct entry to the interpretation saved for it.
+    /// </summary>
+    /// <param name="generation">The generation being judged.</param>
+    /// <param name="entry">The entry that was interpreted.</param>
+    /// <param name="readingFingerprint">The digest of the reading that explains it.</param>
+    /// <param name="rightCount">How many rights the reading names.</param>
+    /// <param name="objectSchema">The schema GUID supporting the entry's object type, if any.</param>
+    /// <param name="inheritedSchema">The schema GUID supporting its inherited object type, if any.</param>
+    /// <returns>The fingerprint the entry's classification row must hold.</returns>
+    /// <remarks>
+    /// <b>The third of <c>P-280</c>'s three bindings</b>, and the one that was missing outright
+    /// until <c>P-283</c>: <c>reading_id</c> could be repointed at another valid reading with every
+    /// check still passing, so an allow <c>WRITE_DAC</c> could be made to read as <i>"a deny entry
+    /// grants no access"</i> — dangerous reported as harmless, and structural validation accepts it
+    /// because the verdict is defined, the reason is non-empty and the rights still sum to the
+    /// entry's own mask. <c>P-283</c> folded it into the occurrence fingerprint. Normalisation
+    /// moves it here, onto the one row per distinct entry, because that is now where a single wrong
+    /// association would reach every occurrence of that entry at once. The ordinal is normalised
+    /// away for the same reason it is in <see cref="ContentKey"/>: the interpretation is a fact
+    /// about the entry, not about where it sat.
+    /// </remarks>
+    internal static byte[] ValueFingerprint(Guid generation, PermissionEntry entry,
+        ReadOnlySpan<byte> readingFingerprint, int rightCount, string? objectSchema, string? inheritedSchema) =>
+        SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        {
+            Content = ContentKey(generation, Shared(entry)),
+            Reading = Convert.ToHexString(readingFingerprint),
+            RightCount = rightCount,
+            ObjectSchema = objectSchema,
+            InheritedSchema = inheritedSchema,
+        })));
 
     // The occurrence: what this object carried at this position. Link rows are fingerprinted with it.
     //

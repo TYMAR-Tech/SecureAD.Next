@@ -275,60 +275,70 @@ public sealed partial class OpenedRunResultsTests
             update.ExecuteNonQuery();
         }
 
-        RebindOccurrences(connection);
+        RebindValues(connection);
     });
 
     /// <summary>
-    /// Rebinds every occurrence to the reading it points at, after that reading has been rewritten.
+    /// Rebinds every entry's interpretation to the reading it points at, after that reading has
+    /// been rewritten.
     /// </summary>
     /// <remarks>
-    /// <b>Needed since <c>P-283</c>.</b> An occurrence's fingerprint now covers the digest of the
-    /// reading that explains it, so that a <c>reading_id</c> cannot be repointed at another valid
-    /// reading - which is how an allow <c>WRITE_DAC</c> could be made to read as <i>"A deny entry
-    /// grants no access"</i>. The consequence here is that restoring the reading's own digest is no
-    /// longer enough to make a deliberately rewritten store readable: the rows bound to it move too.
+    /// <b>Needed since <c>P-283</c>, and moved by <c>P-280</c>.</b> The digest of the reading is
+    /// folded into the binding that covers a <c>reading_id</c>, so that pointer cannot be repointed
+    /// at another valid reading — which is how an allow <c>WRITE_DAC</c> could be made to read as
+    /// <i>"A deny entry grants no access"</i>. The consequence here is that restoring the reading's
+    /// own digest is not enough to make a deliberately rewritten store readable: the rows bound to
+    /// it move too.
     /// <para>
-    /// The new value comes from <c>SharedPermissionStorage.FingerprintOf</c>, which is the writer's
-    /// own key. A repair that computed it here instead could agree with itself and disagree with
-    /// the product, and the test above would then be proving nothing.
+    /// That binding used to sit on each occurrence and now sits on the one row per distinct entry,
+    /// because that is where a single wrong association would otherwise reach every occurrence of
+    /// the entry at once. So this repairs <c>permission_classification_value</c>, and the
+    /// occurrence rows need no repair at all — they carry no fingerprint, and the list fingerprint
+    /// over a descriptor covers the entries rather than their interpretations.
+    /// </para>
+    /// <para>
+    /// The new value comes from <c>SharedPermissionStorage.ValueFingerprint</c>, which is the
+    /// writer's own key. A repair that computed it here instead could agree with itself and
+    /// disagree with the product, and the test above would then be proving nothing.
     /// </para>
     /// </remarks>
-    private static void RebindOccurrences(SqliteConnection connection)
+    private static void RebindValues(SqliteConnection connection)
     {
-        var generation = Guid.Empty;
+        Guid generation;
         using (var read = connection.CreateCommand())
         {
             read.CommandText = "SELECT generation FROM permission_classification_product";
             generation = Guid.Parse((string)read.ExecuteScalar()!);
         }
 
-        var repaired = new List<(string Target, int Position, byte[] Fingerprint)>();
+        var repaired = new List<(long EntryId, byte[] Fingerprint)>();
         using (var command = connection.CreateCommand())
         {
-            // The reader's own projection, so the ordinal and the entry sit where FingerprintOf
-            // expects them, with position, the reading's digest and the target appended after it.
+            // The reader's own projection, so the ordinal sits where ReadShared expects it, with
+            // the interpretation's own columns appended after it.
             command.CommandText = "SELECT " + SharedPermissionStorage.Projection
-                + ",e.ordinal,e.fingerprint,e.position,r.fingerprint AS reading,e.target"
-                + " FROM permission_classification_entry e LEFT JOIN permission_entry p ON p.id=e.entry_id"
-                + " LEFT JOIN permission_classification_reading r ON r.id=e.reading_id"
-                + SharedPermissionStorage.MeaningJoin + " ORDER BY e.target,e.position";
-            const int position = SharedPermissionStorage.ProjectionColumns + 2;
+                + ",0 AS ordinal,c.entry_id,c.right_count,c.object_schema,c.inherited_schema,r.fingerprint"
+                + " FROM permission_classification_value c LEFT JOIN permission_entry p ON p.id=c.entry_id"
+                + " LEFT JOIN permission_classification_reading r ON r.id=c.reading_id"
+                + SharedPermissionStorage.MeaningJoin;
+            const int offset = SharedPermissionStorage.ProjectionColumns + 1;
             using var rows = command.ExecuteReader();
             while (rows.Read())
             {
-                var target = rows.GetString(position + 2);
-                repaired.Add((target, rows.GetInt32(position), SharedPermissionStorage.FingerprintOf(
-                    rows, target, generation, (byte[])rows.GetValue(position + 1))));
+                var entry = SharedPermissionStorage.ReadShared(rows, generation);
+                repaired.Add((rows.GetInt64(offset), SharedPermissionStorage.ValueFingerprint(
+                    generation, entry, (byte[])rows.GetValue(offset + 4), rows.GetInt32(offset + 1),
+                    rows.IsDBNull(offset + 2) ? null : rows.GetString(offset + 2),
+                    rows.IsDBNull(offset + 3) ? null : rows.GetString(offset + 3))));
             }
         }
 
-        foreach (var (target, position, fingerprint) in repaired)
+        foreach (var (entryId, fingerprint) in repaired)
         {
             using var update = connection.CreateCommand();
-            update.CommandText = "UPDATE permission_classification_entry SET fingerprint=$fingerprint WHERE target=$target AND position=$position";
+            update.CommandText = "UPDATE permission_classification_value SET fingerprint=$fingerprint WHERE entry_id=$entry";
             update.Parameters.AddWithValue("$fingerprint", fingerprint);
-            update.Parameters.AddWithValue("$target", target);
-            update.Parameters.AddWithValue("$position", position);
+            update.Parameters.AddWithValue("$entry", entryId);
             update.ExecuteNonQuery();
         }
     }

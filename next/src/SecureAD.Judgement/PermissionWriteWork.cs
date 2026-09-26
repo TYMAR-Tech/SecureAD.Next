@@ -28,8 +28,11 @@ internal sealed class PermissionWriteWork
     /// <summary>Checking the classification before any of it is stored.</summary>
     public System.Diagnostics.Stopwatch Validate { get; } = new();
 
-    /// <summary>Writing the object's own row, including serialising its descriptor.</summary>
+    /// <summary>Writing the object's own row, which now names only its descriptor and its read.</summary>
     public System.Diagnostics.Stopwatch ObjectRow { get; } = new();
+
+    /// <summary>Writing a descriptor's own row, including serialising it and fingerprinting its list.</summary>
+    public System.Diagnostics.Stopwatch DescriptorRow { get; } = new();
 
     /// <summary>Storing each access control entry in the shared table.</summary>
     public System.Diagnostics.Stopwatch SharedEntry { get; } = new();
@@ -37,14 +40,26 @@ internal sealed class PermissionWriteWork
     /// <summary>Storing and verifying the schema support each entry refers to.</summary>
     public System.Diagnostics.Stopwatch SchemaSupport { get; } = new();
 
-    /// <summary>Writing each classified entry row, including serialising its reading.</summary>
+    /// <summary>Writing each occurrence row: this descriptor, at this ordinal, carries that entry.</summary>
     public System.Diagnostics.Stopwatch EntryRow { get; } = new();
+
+    /// <summary>Writing the interpretation of a distinct entry, including serialising its reading.</summary>
+    public System.Diagnostics.Stopwatch ValueRow { get; } = new();
 
     /// <summary>How many entries were stored, so a bucket can be read per entry.</summary>
     public long Entries { get; set; }
 
     /// <summary>How many objects were stored.</summary>
     public long Objects { get; set; }
+
+    /// <summary>How many distinct descriptors were stored.</summary>
+    /// <remarks>
+    /// Read against <see cref="Objects"/> this is the ratio <c>P-280</c> was opened for, and the
+    /// one figure that says whether it worked on a given forest: the production capture's 940,067
+    /// objects carry 267,550 descriptors, the laboratory's reuse is far higher, and neither
+    /// number may be quoted as the other's saving.
+    /// </remarks>
+    public long Descriptors { get; set; }
 
     /// <summary>Writes one line per bucket, slowest first, then the accounting line.</summary>
     /// <param name="log">The run log this judging is writing to.</param>
@@ -55,9 +70,11 @@ internal sealed class PermissionWriteWork
         [
             ("validate", Validate.Elapsed),
             ("object-row", ObjectRow.Elapsed),
+            ("descriptor-row", DescriptorRow.Elapsed),
             ("shared-entry", SharedEntry.Elapsed),
             ("schema-support", SchemaSupport.Elapsed),
             ("entry-row", EntryRow.Elapsed),
+            ("value-row", ValueRow.Elapsed),
         ];
 
         foreach (var bucket in buckets.OrderByDescending(b => b.Elapsed))
@@ -80,6 +97,7 @@ internal sealed class PermissionWriteWork
                 new RunLogDetail("measuredMs", Milliseconds(measured)),
                 new RunLogDetail("unaccountedMs", Milliseconds(Total.Elapsed - measured)),
                 new RunLogDetail("objects", Objects.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("descriptors", Descriptors.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("entries", Entries.ToString(CultureInfo.InvariantCulture)),
             ]);
     }

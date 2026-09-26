@@ -100,6 +100,14 @@ public sealed class ControlEdgeLayoutTests
         // bytes on each of the production capture's 330,856,576 occurrences - so the observed DDL is
         // again unchanged and this repeats 43's value.
         [45] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
+        // Schema 46 keys the saved permission classification per descriptor rather than per object
+        // (P-280). Unlike 44 and 45 this one really does move the DDL: permission_classification_object
+        // loses its descriptor JSON and entry_count and gains descriptor_id, availability and the
+        // unreadable reason; permission_classification_descriptor and _value are new; and
+        // permission_classification_entry loses target, position, fingerprint, right_count,
+        // reading_id and both schema columns to become (descriptor_id, ordinal, entry_id)
+        // WITHOUT ROWID. Observed from this approved build, not an independent historical anchor.
+        [46] = "06F6363EC8C1E35C0A4255B2C0FE4382A09EB9BAE46588A084663CEB2F02F07C",
     };
 
     [Fact]

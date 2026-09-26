@@ -191,10 +191,24 @@ Settled with the owner 2026-09-24, after the review. Each is a bounded session.
    38 distinct raw shapes the forest holds - with `permission_classification_entry`
    unchanged at 209,252, so no occurrence was lost. `JudgementSchema.Version` is 44.
    **The sharing unit can now be chosen against a table that is not 95% one SID.**
-5. **`P-280` proper.** Per-descriptor keying, the entry-derived columns onto distinct
-   entries, all three bindings explicit, object-to-descriptor taken from verified
-   evidence, `WITHOUT ROWID`, `position` dropped. Bump `JudgementSchema.Version` and add
-   the `ControlEdgeLayoutTests` checkpoint.
+5. ~~**`P-280` proper.**~~ **Done 2026-09-26.** Per-descriptor keying, the entry-derived
+   columns onto distinct entries, all three bindings explicit, object-to-descriptor taken
+   from verified evidence, `WITHOUT ROWID`, `position` dropped. Schema 46, checkpoint
+   `06F6363E`. Measured on `ad.lab-20260923-231917`: 209,252 occurrences became **12,955**,
+   the figure forecast before the change, with `permission_entry`, readings, findings and
+   rules all unchanged and the store 95,535,104 → 26,296,320 bytes. Summing what every
+   object can reach returns exactly 209,252, so nothing was lost. Full result in
+   `next/artifacts/p285-lab-baseline/README.md`.
+
+   **Two things were found while mutation-testing, and both are worth keeping.** The
+   write-side descriptor agreement check measured nothing — all sixty classification tests
+   passed with it disabled, because no case had two objects claim one descriptor while
+   carrying different entries, which under per-descriptor keying is how thousands of
+   objects would silently take one object's permissions;
+   `P280ADescriptorCannotBeClaimedTwiceWithDifferentEntries` now covers it. And the
+   schema-support verification had been narrowed to run only for entries whose
+   interpretation was new, which would have stopped catching a run catalogue that
+   disagreed with itself about one GUID.
 
 Then re-judge the production capture and measure what control edges actually cost, which
 is the figure every number on this page is a floor because of.

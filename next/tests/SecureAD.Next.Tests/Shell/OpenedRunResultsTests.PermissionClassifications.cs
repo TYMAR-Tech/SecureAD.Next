@@ -26,10 +26,22 @@ public sealed partial class OpenedRunResultsTests
     public void P248ClassificationReadsRecordedWordsAndReasonsWithoutReplay()
     {
         var directory = CreateControlRun();
-        // FORMAT 42 KEEPS ONE COPY OF EACH READING and covers it with a digest, so the recorded
-        // words go into the shared row and the digest is restored afterwards. Without that repair
-        // the reader would refuse the record and this case would prove nothing about replay.
-        MutateControlRun(directory, $"UPDATE permission_classification_reading SET payload=json_set(payload,'$.Summary','Recorded wording','$.Scope.AppliesTo','Recorded scope','$.Rights[0].Assessment.Reason','Recorded explanation') WHERE id IN (SELECT reading_id FROM permission_classification_entry WHERE target='{UserDn}')");
+        // ONE COPY OF EACH READING, COVERED BY A DIGEST, so the recorded words go into the shared
+        // row and the digest is restored afterwards. Without that repair the reader would refuse
+        // the record and this case would prove nothing about replay.
+        //
+        // The reading now hangs off the distinct entry rather than the occurrence, and the
+        // occurrence is keyed by descriptor rather than by name (P-280), so reaching this object's
+        // readings is a join through the descriptor the object carries.
+        MutateControlRun(directory, $"""
+            UPDATE permission_classification_reading
+            SET payload=json_set(payload,'$.Summary','Recorded wording','$.Scope.AppliesTo','Recorded scope','$.Rights[0].Assessment.Reason','Recorded explanation')
+            WHERE id IN (
+                SELECT v.reading_id FROM permission_classification_value v
+                JOIN permission_classification_entry e ON e.entry_id=v.entry_id
+                JOIN permission_classification_object o ON o.descriptor_id=e.descriptor_id
+                WHERE o.target='{UserDn}')
+            """);
         RepairReadingFingerprints(directory);
         using var source = new BundleAssetSource();
 
