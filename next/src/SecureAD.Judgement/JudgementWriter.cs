@@ -258,11 +258,11 @@ public sealed class JudgementWriter : IDisposable
     internal int AdmitDiscoveredScope(BundleReader bundle, JudgementDescription description,
         SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding binding,
         Tier0DiscoveryScheduler discovery, JudgingContext context, Func<string, string?> domainSid,
-        Guid? derivationGeneration, CancellationToken cancellationToken)
+        Guid? derivationGeneration, CancellationToken cancellationToken, JudgingStatus? status = null)
     {
         ThrowIfFinished();
         return Tier0AdmissionRun.Admit(_connection, bundle, description, input, binding, discovery, context,
-            domainSid, GenerationId, derivationGeneration, cancellationToken);
+            domainSid, GenerationId, derivationGeneration, cancellationToken, status);
     }
 
     internal void WriteMemberAttributions(SecureAD.Derivation.CapturedMembershipInput input,

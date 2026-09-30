@@ -99,6 +99,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite2", "Benchmar
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Sysvol.TestWorker", "tests\SecureAD.Sysvol.TestWorker\SecureAD.Sysvol.TestWorker.csproj", "{B0A5016A-A307-4039-BC1F-0E7D72E2BABB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite6", "BenchmarkSuite6\BenchmarkSuite6.csproj", "{32F56372-1CCB-A9D3-534B-A832DF38C443}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -265,6 +267,18 @@ Global
 		{B0A5016A-A307-4039-BC1F-0E7D72E2BABB}.Release|x64.Build.0 = Release|Any CPU
 		{B0A5016A-A307-4039-BC1F-0E7D72E2BABB}.Release|x86.ActiveCfg = Release|Any CPU
 		{B0A5016A-A307-4039-BC1F-0E7D72E2BABB}.Release|x86.Build.0 = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|x64.Build.0 = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|x86.Build.0 = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|x64.ActiveCfg = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|x64.Build.0 = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|x86.ActiveCfg = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -93,14 +93,53 @@ public sealed record StoredProtectedPrincipalDerivation(
     IReadOnlyList<StoredProtectedPrincipalFact> Principals,
     ProtectionUnknownReason StatedLimits)
 {
+    private IndexedPrincipals _principals = new(Principals);
+
+    /// <summary>The stored facts, owned as a read-only snapshot with their lookup index.</summary>
+    public IReadOnlyList<StoredProtectedPrincipalFact> Principals
+    {
+        get => _principals;
+        init => _principals = new(value);
+    }
+
     public bool IsComplete => StatedLimits == ProtectionUnknownReason.None;
 
+    /// <summary>Finds the first stored fact for this SID and scope without scanning all principals.</summary>
     public StoredProtectedPrincipalFact? Lookup(string sid, string? scope)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sid);
-        return Principals.FirstOrDefault(fact =>
-            string.Equals(fact.Sid, sid, StringComparison.Ordinal)
-            && string.Equals(fact.Scope, scope, StringComparison.OrdinalIgnoreCase));
+        return _principals.Lookup(sid, scope);
+    }
+
+    // Keeping the index with an owned snapshot avoids stale lookups after a caller changes its
+    // original list or a record copy replaces Principals. A metadata-only copy can share it safely.
+    private sealed class IndexedPrincipals : System.Collections.ObjectModel.ReadOnlyCollection<StoredProtectedPrincipalFact>
+    {
+        private readonly Dictionary<(string Sid, string? Scope), StoredProtectedPrincipalFact> _byIdentity =
+            new(IdentityComparer.Instance);
+
+        internal IndexedPrincipals(IReadOnlyList<StoredProtectedPrincipalFact> principals)
+            : base(principals.ToArray())
+        {
+            foreach (var fact in this)
+                _byIdentity.TryAdd((fact.Sid, fact.Scope), fact);
+        }
+
+        internal StoredProtectedPrincipalFact? Lookup(string sid, string? scope) =>
+            _byIdentity.GetValueOrDefault((sid, scope));
+    }
+
+    private sealed class IdentityComparer : IEqualityComparer<(string Sid, string? Scope)>
+    {
+        internal static readonly IdentityComparer Instance = new();
+
+        public bool Equals((string Sid, string? Scope) left, (string Sid, string? Scope) right) =>
+            string.Equals(left.Sid, right.Sid, StringComparison.Ordinal)
+            && string.Equals(left.Scope, right.Scope, StringComparison.OrdinalIgnoreCase);
+
+        public int GetHashCode((string Sid, string? Scope) value) => HashCode.Combine(
+            StringComparer.Ordinal.GetHashCode(value.Sid),
+            value.Scope is null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(value.Scope));
     }
 }
 
@@ -246,6 +285,15 @@ public sealed class DerivationReader : IDisposable
     private readonly SqliteConnection _connection;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
+    private ExpansionInputs? _expansionInputs;
+
+    // Owned by this verified reader, not shared between derivation generations. The walks below
+    // never mutate these inputs; their queues, visited sets, paths and budgets remain per request.
+    private sealed record ExpansionInputs(
+        Dictionary<int, List<int>> Edges,
+        Dictionary<int, (string Sid, string Scope)> Identities,
+        Dictionary<int, bool?> Groups,
+        HashSet<int> UnresolvedMembers);
 
     private DerivationReader(
         string bundleDirectory, SqliteConnection connection, DerivationDescription description)
@@ -558,13 +606,15 @@ public sealed class DerivationReader : IDisposable
         // granting access to an empty group, which is the silence a customer cannot see. P-165.
         var walkFrom = PrincipalCarrying(rootId.Value);
 
-        var edges = ReadNestingEdges();
-
-        var identities = ReadSidIdentities();
-
-        var groups = ReadSecurityEnabledByPrincipal();
-
-        var unresolvedMembers = ReadGroupsWithUnresolvedMembers();
+        // A new root needs a new walk, not another read of every relationship in the forest.
+        // Publish only after all four reads succeed, so a failed load cannot leave partial inputs.
+        var inputs = _expansionInputs ??= new ExpansionInputs(
+            ReadNestingEdges(), ReadSidIdentities(), ReadSecurityEnabledByPrincipal(),
+            ReadGroupsWithUnresolvedMembers());
+        var edges = inputs.Edges;
+        var identities = inputs.Identities;
+        var groups = inputs.Groups;
+        var unresolvedMembers = inputs.UnresolvedMembers;
 
         // The path to each principal, kept as the parent that first reached it. Storing one parent
         // rather than a whole path per member keeps this linear in the number of principals; the
@@ -1155,6 +1205,7 @@ public sealed class DerivationReader : IDisposable
 
         _connection.Dispose();
         _protection?.Dispose();
+        _expansionInputs = null;
         _disposed = true;
     }
 

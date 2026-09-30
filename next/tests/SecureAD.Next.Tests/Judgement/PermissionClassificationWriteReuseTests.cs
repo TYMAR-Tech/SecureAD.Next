@@ -14,6 +14,124 @@ public sealed class PermissionClassificationWriteReuseTests
     private const string SecondGuid = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff";
 
     [Fact]
+    public void SeparateEquivalentEntryInstancesStillRoundTrip()
+    {
+        using var store = new Store();
+        var result = Produce(Ace(0, Holder, 0x20) with { ApplicationData = [1, 2] });
+        result = result with { Entries = [result.Entries[0] with
+        {
+            Entry = result.Entries[0].Entry with { ApplicationData = [1, 2] },
+        }] };
+
+        store.Write(result);
+
+        Assert.Equal(JsonSerializer.Serialize(result), JsonSerializer.Serialize(store.Read(result)));
+    }
+
+    [Theory]
+    [InlineData("bytes")]
+    [InlineData("trustee")]
+    public void SeparateMismatchedEntriesAreStillRefused(string field)
+    {
+        using var store = new Store();
+        var result = Produce(Ace(0, Holder, 0x20) with { ApplicationData = [1, 2] });
+        var entry = result.Entries[0].Entry;
+        entry = field == "bytes" ? entry with { ApplicationData = [1, 3] }
+            : entry with { Trustee = entry.Trustee with { Name = "different" } };
+        result = result with { Entries = [result.Entries[0] with { Entry = entry }] };
+
+        Assert.Throws<InvalidDataException>(() => store.Write(result));
+    }
+
+    [Fact]
+    public void SameEntryReferenceDoesNotBypassRightValidation()
+    {
+        using var store = new Store();
+        var result = Produce(Ace(0, Holder, 0x20));
+        result = result with { Entries = [result.Entries[0] with { Rights = [] }] };
+
+        Assert.Throws<InvalidDataException>(() => store.Write(result));
+    }
+
+    [Fact]
+    public void MutatingAPreviouslySerializedSchemaIsStillRefused()
+    {
+        using var store = new Store();
+        var names = new[] { "first" };
+        var first = Produce(Entry(0, FirstGuid, null));
+        first = first with { Entries = [first.Entries[0] with
+        {
+            ObjectType = first.Entries[0].ObjectType! with { AmbiguousNames = names },
+        }] };
+        store.Write(first);
+        names[0] = "changed";
+        var next = first with { Permissions = Elsewhere(first.Permissions) };
+
+        Assert.Throws<InvalidDataException>(() => store.Write(next));
+    }
+
+    [Fact]
+    public void CompletionAcceptsSharedDescriptorsAndEmptyObjects()
+    {
+        using var store = new Store();
+        var first = Produce(Entry(0, FirstGuid, null));
+        var shared = first with { Permissions = first.Permissions with
+        {
+            DistinguishedName = "OU=Shared,DC=contoso,DC=com",
+        } };
+        var absent = Produce() with { Permissions = Permissions() with
+        {
+            DistinguishedName = "OU=Unreadable,DC=contoso,DC=com", DescriptorId = null,
+            Availability = DescriptorAvailability.Unreadable,
+            DaclState = SecureAD.Kernel.Security.DaclState.Unreadable,
+            DaclCompleteness = SecureAD.Kernel.Security.DaclCompleteness.Unknown,
+        } };
+        store.Write(first);
+        store.Write(shared);
+        store.Write(absent);
+
+        store.Complete();
+
+        Assert.Equal(1L, store.Count("permission_classification_entry"));
+    }
+
+    [Theory]
+    [InlineData("DELETE FROM permission_classification_entry")]
+    [InlineData("INSERT INTO permission_classification_entry SELECT descriptor_id, ordinal+1, entry_id FROM permission_classification_entry")]
+    [InlineData("UPDATE permission_classification_object SET descriptor_id=9999999999")]
+    [InlineData("INSERT INTO permission_classification_entry SELECT 9999999999, ordinal, entry_id FROM permission_classification_entry")]
+    public void CompletionRefusesMissingExtraOrUnboundOccurrences(string damage)
+    {
+        using var store = new Store();
+        store.Write(Produce(Entry(0, FirstGuid, null)));
+        store.Execute("PRAGMA foreign_keys=OFF; " + damage);
+
+        Assert.Throws<InvalidDataException>(() => store.Complete());
+    }
+
+    [Fact]
+    public void CompletionAcceptsAStoredDescriptorWithNoEntries()
+    {
+        using var store = new Store();
+        var result = Produce();
+        store.Write(result);
+
+        store.Complete();
+
+        Assert.Equal(1L, store.Count("permission_classification_descriptor"));
+    }
+
+    [Fact]
+    public void CompletionRefusesADanglingObjectEvenWithNoOccurrences()
+    {
+        using var store = new Store();
+        store.Write(Produce());
+        store.Execute("PRAGMA foreign_keys=OFF; UPDATE permission_classification_object SET descriptor_id=9999999999");
+
+        Assert.Throws<InvalidDataException>(() => store.Complete());
+    }
+
+    [Fact]
     public void ReusedParametersPreserveChangingNullAndDuplicateEntries()
     {
         using var store = new Store();
@@ -239,6 +357,8 @@ public sealed class PermissionClassificationWriteReuseTests
             return PermissionClassificationStorage.Read(Connection, description, value.Permissions.DistinguishedName,
                 value.Permissions.DescriptorId, CancellationToken.None).Classification;
         }
+
+        public void Complete() => PermissionClassificationStorage.Complete(Connection, written);
 
         public long Count(string table)
         {

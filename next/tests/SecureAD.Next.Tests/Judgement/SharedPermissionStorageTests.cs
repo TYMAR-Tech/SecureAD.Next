@@ -9,6 +9,46 @@ namespace SecureAD.Next.Tests.Judgement;
 public sealed class SharedPermissionStorageTests
 {
     [Fact]
+    public void IdentityOnlyWriteSharesTheValueWithTargetBoundWrites()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        JudgementSchema.CreateTables(connection);
+        using var statements = new PreparedStatements(connection);
+        using var transaction = connection.BeginTransaction();
+        var storage = new SharedPermissionStorage(connection, transaction, statements, new PermissionWriteSession());
+        var generation = Guid.NewGuid();
+        var entry = FullControlEvaluatorTests.Allow(0) with
+        {
+            Trustee = new("S-1-5-10", "This object (Alice)", null, null, null, null, null),
+        };
+
+        var id = storage.WriteValue(generation, entry);
+        var bound = storage.Write("CN=Alice,DC=example", generation, entry);
+
+        Assert.Equal(id, bound.Id);
+    }
+
+    [Fact]
+    public void TargetBoundProofStillDiffersAcrossObjectsAfterIdentityOnlyWrite()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        JudgementSchema.CreateTables(connection);
+        using var statements = new PreparedStatements(connection);
+        using var transaction = connection.BeginTransaction();
+        var storage = new SharedPermissionStorage(connection, transaction, statements, new PermissionWriteSession());
+        var generation = Guid.NewGuid();
+        var entry = FullControlEvaluatorTests.Allow(0);
+        storage.WriteValue(generation, entry);
+
+        var first = storage.Write("CN=First,DC=example", generation, entry);
+        var second = storage.Write("CN=Second,DC=example", generation, entry);
+
+        Assert.False(first.Fingerprint.AsSpan().SequenceEqual(second.Fingerprint));
+    }
+
+    [Fact]
     public void RepeatedAssociationsAndFullControlSourcesShareValuesWithoutCollapsingOrdinals()
     {
         var result = FullControlStorageTests.Evaluation(FullControlEvaluatorTests.Allow(0), FullControlEvaluatorTests.Allow(1));

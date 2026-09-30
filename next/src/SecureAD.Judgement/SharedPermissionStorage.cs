@@ -104,6 +104,10 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         return (EntryId(generation, shared), fingerprint);
     }
 
+    /// <summary>Stores a shared value whose occurrence is bound by the descriptor-list proof.</summary>
+    internal long WriteValue(Guid generation, PermissionEntry entry) =>
+        EntryId(generation, Shared(entry));
+
     /// <summary>The entry as it is shared between objects, with nothing object-dependent in it.</summary>
     private static PermissionEntry Shared(PermissionEntry entry) =>
         entry with { Trustee = entry.Trustee.Shared() };

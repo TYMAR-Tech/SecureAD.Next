@@ -1,0 +1,71 @@
+Bind each occurrence to the reading that explains it (P-283)
+
+An occurrence's reading_id was covered by nothing. Repointing it at another valid
+reading left every fingerprint matching, and the structural checks underneath all
+pass for the swap that matters: the verdict is defined, the reason is non-empty,
+the wording is complete, and the rights still sum to the entry's own mask -
+because a deny reading of the same rights has the same bits. So an allow
+WRITE_DAC could be made to read as "A deny entry grants no access" and classify
+NotDangerous. Dangerous reported as harmless, which is the one thing an audit tool
+may not do.
+
+The whole-judgement seal catches an ordinary post-publication edit. It does not
+catch a wrong association written before sealing, and P-280 would have turned one
+such association into every occurrence of that entry - 209,252 rows on the
+laboratory, 330,856,576 on the production capture.
+
+THE READING'S DIGEST IS FOLDED INTO THE OCCURRENCE'S EXISTING FINGERPRINT rather
+than given a column of its own. A separate binding would have cost 32 bytes on
+every occurrence, which is 10.6 GB across the production capture, in a store
+P-280 exists to shrink. The 32 bytes already there now do the job they should
+have done. control_ace and full_control_source_entry name no interpretation and
+pass nothing, so their fingerprints are unchanged in meaning.
+
+THE READING IS VERIFIED BEFORE IT IS USED TO VERIFY ANYTHING ELSE. Its own digest
+is checked against its payload first, and only then is it handed to
+SharedPermissionStorage.Read as the material the occurrence is bound to. A value
+that has not been proved cannot be evidence that something else is sound - the
+same order P-285 established for resolving a trustee name against a target.
+
+JudgementSchema.Version is 45. A version 44 store's occurrence fingerprints did
+not cover the reading, so they do not verify against this build and it is refused
+on version rather than reported as tampered proofs. The layout checkpoint again
+repeats 43's DDL hash, because deliberately no table or index changed.
+
+MEASURED on ad.lab-20260923-231917, against the figures recorded after P-285. The
+check written down before the change was "the binding change should alter no count
+here at all. A count that moves is the finding."
+
+  permission_entry                   1,929 -> 1,929
+  permission_classification_entry  209,252 -> 209,252
+  permission_classification_reading    240 -> 240
+  finding                               27 -> 27
+  rules ran                             17 -> 17
+  judgement on disk            95,526,912 -> 95,535,104
+  judging wall clock                23.2 s -> 23.0 s
+
+Nothing moved. The store grew by one 8,192-byte page, which is what folding a
+value into an existing fingerprint rather than adding a column costs.
+
+TWO CHECKS. The repoint is refused, and - the negative control - the same object
+unrepointed reads back with its two entries carrying different readings. The
+second is what stops the first passing against a fixture whose two entries shared
+one reading row, where the repoint would be a no-op. It asserts on the assessment
+rather than the summary because both entries summarise as "Modify permissions":
+they carry the same right and only what that right is judged to mean differs.
+Written against the summary first, it failed, which is the whole use of it.
+Mutation-tested by removing the binding from both the write and the read side,
+which reproduces the repoint exactly.
+
+ONE CONSEQUENCE RECORDED RATHER THAN WORKED AROUND. A Shell test rewrites a stored
+reading to prove the reader shows recorded words instead of recomputing them, and
+repaired the reading's digest so the reader would reach them. That is no longer
+enough, because the occurrences bound to that reading move with it. The repair now
+rebinds them through SharedPermissionStorage.FingerprintOf - the writer's own key -
+rather than through a second copy of it, which could agree with itself while
+disagreeing with the product.
+
+Also repairs the P-280 specification's work order. Inserting the bench-shape
+section earlier in this session split the numbered list: step 3's heading was lost
+and its tail left orphaned between step 2b and step 4. The section now sits below
+the list and step 3 is restored with its completed status.

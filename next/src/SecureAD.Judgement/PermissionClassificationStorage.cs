@@ -100,8 +100,6 @@ internal static class PermissionClassificationStorage
         PermissionWriteSession session, CancellationToken token)
     {
         work.Total.Start();
-        PermissionSchemaSupport? lastSupport = null;
-        string? lastPayload = null;
         token.ThrowIfCancellationRequested();
         work.Validate.Start();
         Validate(result, token);
@@ -139,13 +137,13 @@ internal static class PermissionClassificationStorage
                 {
                     token.ThrowIfCancellationRequested();
                     work.SharedEntry.Start();
-                    var reference = shared.Write(target, generation, entry.Entry);
+                    var entryId = shared.WriteValue(generation, entry.Entry);
                     work.SharedEntry.Stop();
 
                     work.EntryRow.Start();
                     statements.Bind("INSERT INTO permission_classification_entry VALUES ($descriptor,$ordinal,$entry)",
                         transaction, ("$descriptor", descriptor), ("$ordinal", entry.Entry.Ordinal),
-                        ("$entry", reference.Id)).ExecuteNonQuery();
+                        ("$entry", entryId)).ExecuteNonQuery();
                     work.EntryRow.Stop();
 
                     // THE SCHEMA SUPPORT IS VERIFIED FOR EVERY ENTRY, NOT ONLY FOR EACH ENTRY WHOSE
@@ -164,7 +162,7 @@ internal static class PermissionClassificationStorage
                     // confirmed after following the contextual cases that might have made it
                     // otherwise. The two GUIDs are text and cost 14.9 GB on the occurrence.
                     work.ValueRow.Start();
-                    WriteValue(reference.Id, entry);
+                    WriteValue(entryId, entry);
                     work.ValueRow.Stop();
                     work.Entries++;
                 }
@@ -270,15 +268,15 @@ internal static class PermissionClassificationStorage
         void WriteSupport(PermissionSchemaSupport? support)
         {
             if (support is null) return;
+            var payload = session.SerializeSchema(support);
             // ONE VERIFICATION PER DISTINCT PAYLOAD PER RUN, NOT TWO PER ENTRY. The check exists to
             // catch a second, conflicting definition arriving under a GUID already stored, and it
             // still does: an identical payload is the case already proved, and anything else falls
             // through to the original write and read-back.
             if (session.TryGetSchema(support.Guid, out var known)
-                && string.Equals(known, Payload(support), StringComparison.Ordinal))
+                && string.Equals(known, payload, StringComparison.Ordinal))
                 return;
 
-            var payload = Payload(support);
             statements.Bind("INSERT OR IGNORE INTO permission_classification_schema VALUES ($guid,$payload)", transaction,
                 ("$guid", support.Guid), ("$payload", payload)).ExecuteNonQuery();
             var check = statements.Bind("SELECT payload FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY",
@@ -286,37 +284,31 @@ internal static class PermissionClassificationStorage
             if (check.ExecuteScalar() as string != payload) throw Invalid();
             session.AddSchema(support.Guid, payload);
         }
-
-        // Serialising a support record is not free either, so the last one is remembered by
-        // reference: the producer hands out the same instance for the same schema GUID.
-        string Payload(PermissionSchemaSupport support)
-        {
-            if (ReferenceEquals(support, lastSupport)) return lastPayload!;
-            lastSupport = support;
-            lastPayload = JsonSerializer.Serialize(support);
-            return lastPayload;
-        }
     }
 
     internal static void Complete(SqliteConnection connection, long objectCount)
     {
         using var command = connection.CreateCommand();
-        // COUNTS OCCURRENCES PER OBJECT, THROUGH THE DESCRIPTOR IT CARRIES (P-280). It read target
-        // directly before; it is a join now and it must keep refusing, because this is what stops a
-        // product being published with an object whose permissions were half written. An object with
-        // no descriptor must have no occurrences, which the LEFT JOIN and COALESCE state rather than
-        // leave to a NULL comparison quietly matching nothing.
-        //
-        // Mutation-tested 2026-09-25 by making the comparison trivially true:
-        // P280AProductMissingOccurrencesCannotBePublished failed with no exception thrown.
+        // Count the indexed occurrences once per descriptor, not again for every object using it.
+        // Link integrity is checked separately: an absent joined row must not compare as zero and
+        // silently make an object with a dangling descriptor look complete.
         command.CommandText = """
+            WITH counts AS MATERIALIZED (
+                SELECT descriptor_id, COUNT(*) AS entry_count
+                FROM permission_classification_entry GROUP BY descriptor_id
+            )
             UPDATE permission_classification_product SET state='Complete',object_count=$count
             WHERE singleton=1 AND state='Writing'
                 AND (SELECT COUNT(*) FROM permission_classification_object)=$count
+                AND NOT EXISTS (SELECT 1 FROM permission_classification_descriptor d
+                    LEFT JOIN counts c ON c.descriptor_id=d.descriptor_id
+                    WHERE d.entry_count <> COALESCE(c.entry_count,0))
                 AND NOT EXISTS (SELECT 1 FROM permission_classification_object o
                     LEFT JOIN permission_classification_descriptor d ON d.descriptor_id=o.descriptor_id
-                    WHERE COALESCE(d.entry_count,0) <>
-                        (SELECT COUNT(*) FROM permission_classification_entry e WHERE e.descriptor_id=o.descriptor_id))
+                    WHERE o.descriptor_id IS NOT NULL AND d.descriptor_id IS NULL)
+                AND NOT EXISTS (SELECT 1 FROM counts c
+                    LEFT JOIN permission_classification_descriptor d ON d.descriptor_id=c.descriptor_id
+                    WHERE d.descriptor_id IS NULL)
             """;
         command.Parameters.AddWithValue("$count", objectCount);
         if (command.ExecuteNonQuery() != 1) throw Invalid();
@@ -541,7 +533,8 @@ internal static class PermissionClassificationStorage
             if (value is null || value.Entry is null || value.Entry.Ordinal <= previous || value.Rights is null
                 || value.Scope is null || string.IsNullOrWhiteSpace(value.Summary)
                 || string.IsNullOrWhiteSpace(value.Scope.AppliesTo) || string.IsNullOrWhiteSpace(value.Scope.Inheritance)
-                || SharedPermissionStorage.ValueKey(value.Entry) != SharedPermissionStorage.ValueKey(permissions.Entries[index])) throw Invalid();
+                || !ReferenceEquals(value.Entry, permissions.Entries[index])
+                    && SharedPermissionStorage.ValueKey(value.Entry) != SharedPermissionStorage.ValueKey(permissions.Entries[index])) throw Invalid();
             previous = value.Entry.Ordinal;
             var mask = 0;
             foreach (var right in value.Rights)

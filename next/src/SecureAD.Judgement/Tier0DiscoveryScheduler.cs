@@ -158,10 +158,15 @@ internal sealed class Tier0DiscoveryScheduler
     /// limitations than the same scan reports afterwards, which is a completeness claim that depends
     /// on the order the caller happened to ask in.
     /// </remarks>
-    internal void Complete()
+    internal void Complete(PostPassDiagnostics? diagnostic = null)
     {
         if (_completed) return;
         _completed = true;
+        long processed = 0;
+        diagnostic?.Counter("candidateFactsTotal", _candidates.Count);
+        diagnostic?.Counter("candidateFactsCheckpoint", 0);
+        // A reporting cadence, never an expansion budget: every candidate is still resolved.
+        diagnostic?.Counter("candidateCheckpointInterval", 4096);
         foreach (var (key, pending) in _candidates)
         {
             _cancellationToken.ThrowIfCancellationRequested();
@@ -170,20 +175,24 @@ internal sealed class Tier0DiscoveryScheduler
             {
                 Limit(Tier0DiscoveryReason.UnresolvedTrustee, pending.Affected.DistinguishedName,
                     pending.Witness.PermissionOrdinal, pending.HolderSid);
-                continue;
             }
-
-            // An object controlling itself is not a route to anywhere.
-            if (controller == pending.Affected) continue;
-            _resolved.Add((key, Tier0RelevanceRelation.FromCapturedPermission(_input, controller,
-                pending.Affected, pending.Capability, pending.Witness)));
+            else if (controller != pending.Affected)
+            {
+                // An object controlling itself is not a route to anywhere.
+                _resolved.Add((key, Tier0RelevanceRelation.FromCapturedPermission(_input, controller,
+                    pending.Affected, pending.Capability, pending.Witness)));
+            }
+            processed++;
+            if ((processed & 4095) == 0) diagnostic?.Counter("candidateFactsCheckpoint", processed);
         }
+        diagnostic?.Counter("candidateFactsCheckpoint", processed);
     }
 
     /// <summary>The discovered candidates, ordered so a run is reproducible.</summary>
-    internal IReadOnlyList<Tier0RelevanceRelation> Candidates()
+    internal IReadOnlyList<Tier0RelevanceRelation> Candidates(PostPassDiagnostics? diagnostic = null)
     {
-        Complete();
+        Complete(diagnostic);
+        diagnostic?.Part("order-candidates");
         return _resolved
             .OrderBy(item => item.Key.Target, StringComparer.OrdinalIgnoreCase)
             .ThenBy(item => item.Key.Holder, StringComparer.OrdinalIgnoreCase)
@@ -276,14 +285,9 @@ internal sealed class Tier0DiscoveryScheduler
         if (_bySid.TryGetValue((sid.ToUpperInvariant(), scope?.ToUpperInvariant()), out var bySid))
             return bySid;
 
-        // A non-BUILTIN SID is unique forest-wide, so an unscoped match is safe for one.
-        if (scope is null && !Sid.IsBuiltinDomain(sid))
-        {
-            var matches = _bySid.Where(item => string.Equals(item.Key.Sid, sid, StringComparison.OrdinalIgnoreCase))
-                .Select(item => item.Value).Distinct().ToArray();
-            if (matches.Length == 1) return matches[0];
-            if (matches.Length > 1) return null;
-        }
+        // Observe indexes only IsValid targets, whose non-BUILTIN SIDs must have null scope.
+        // An exact miss therefore cannot be recovered by searching other scopes for that SID.
+        // Keep the captured-name fallback; a present ambiguous SID above must never reach it.
         if (distinguishedName is null) return null;
         if (_observed.TryGetValue(distinguishedName, out var observed)) return observed;
         var holder = _attributes(distinguishedName);

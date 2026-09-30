@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace SecureAD.Judgement;
 
@@ -40,6 +41,34 @@ internal sealed class PermissionWriteSession
     private readonly Dictionary<long, byte[]> _pendingDescriptors = [];
     private readonly HashSet<long> _values = [];
     private readonly HashSet<long> _pendingValues = [];
+    private readonly Dictionary<string, SchemaPayload> _schemaPayloads = new(StringComparer.Ordinal);
+
+    private sealed record SchemaPayload(PermissionSchemaSupport Snapshot, string Json);
+
+    /// <summary>Reuses schema JSON only while every value still matches an owned snapshot.</summary>
+    internal string SerializeSchema(PermissionSchemaSupport support)
+    {
+        // IReadOnlyList does not make the caller's arrays immutable. Never accept a previously
+        // seen reference (or GUID) without comparing it to the contents that were serialized.
+        if (_schemaPayloads.TryGetValue(support.Guid, out var saved)
+            && saved.Snapshot.Definitions.SequenceEqual(support.Definitions)
+            && saved.Snapshot.AmbiguousNames.SequenceEqual(support.AmbiguousNames)
+            && (saved.Snapshot.PropertySetMembers is null
+                ? support.PropertySetMembers is null
+                : support.PropertySetMembers is not null
+                    && saved.Snapshot.PropertySetMembers.SequenceEqual(support.PropertySetMembers)))
+            return saved.Json;
+
+        var snapshot = support with
+        {
+            Definitions = support.Definitions.ToArray(),
+            AmbiguousNames = support.AmbiguousNames.ToArray(),
+            PropertySetMembers = support.PropertySetMembers?.ToArray(),
+        };
+        var json = JsonSerializer.Serialize(snapshot);
+        _schemaPayloads[support.Guid] = new(snapshot, json);
+        return json;
+    }
 
     /// <summary>The payload already stored for a schema GUID, when there is one.</summary>
     /// <param name="guid">The schema GUID.</param>

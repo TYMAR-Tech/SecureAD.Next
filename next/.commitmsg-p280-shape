@@ -1,0 +1,94 @@
+Measure a forest's shape without carrying anything that identifies it (P-280)
+
+Step 2a of the P-280 work order. SecureAD.Measure --shape-profile BUNDLE
+[OUTPUT] reads a sealed capture and writes counts, distributions and the GUIDs
+and SIDs that mean the same thing in every Active Directory. 6,599 bytes on the
+bench, small enough to carry and harmless enough to be allowed out of the
+environment it was taken in.
+
+WHY. Every figure P-280 rests on came off a synthetic bundle this codebase
+generated, so it can only hold the assumptions the code already held. That is
+F-S44-2: the captured attribute catalogue had three sound suites agreeing with
+each other in both directions while fifteen attributes nobody had written a rule
+for were silently missing. The owner cannot export a bundle - he works only
+inside the production environment - so the anchor has to be something small
+enough to carry out.
+
+WHAT MAY BE WRITTEN DOWN is decided in one place, ShapeProfile.Publishable, and
+not field by field, because a field added later could otherwise leak by being
+written in a different style while every check still passed. A schema GUID is
+named only if SchemaGuidCatalog.Embedded knows it, and deliberately not if the
+bundle's own captured schema does: the captured layer re-reads the base schema
+as well as the extensions, so asking it would answer yes for contoso-PayrollId
+and print it. SchemaGuidSource's own summary already drew that line. A trustee is
+named only if WellKnownSidCatalog knows it, which excludes every S-1-5-21 domain
+SID as a consequence of admitting only the universal set rather than as a prefix
+case somebody had to remember. The bundle is reported by folder name alone and
+the executable path is not reported at all, because on the owner's machine both
+carry his account name.
+
+WHAT CANNOT BE NAMED IS STILL COUNTED. Distinct and total occurrences of schema
+GUIDs outside the shipped catalogue, and occurrences whose trustee is not
+well-known, are reported as numbers. A profile that discarded what it could not
+name would pass a leak gate perfectly and tell a generator nothing about how much
+of the forest is locally extended. Refusing to name a thing and refusing to count
+it are different acts and only the first is required.
+
+The distinguished name is read in pass one for three things and kept for none:
+its byte length, its comma depth, and its DC= suffix as a dictionary key whose
+keys are discarded and whose values are emitted sorted and unlabelled. The name
+cannot reach the document by any route, and ObjectsPerDomain being
+IReadOnlyList<long> means the domain key is structurally unable to, which is
+stronger than a check.
+
+Distributions rather than averages, because an average is what got the occurrence
+count wrong: 344 million was entries times reuse, exact only if a descriptor's
+entry count and its reuse count are unrelated, and the measurement came in 3.8%
+under. Percentiles are nearest-rank, so every value reported is one the forest
+really holds. The entries-against-reuse grid is the one thing two separate
+distributions cannot say, and it is where that assumption failed.
+
+Descriptors are parsed out of their stored bytes exactly as
+ObjectPermissions.EntriesOf parses them. Reading descriptor_entry would describe
+the canonical projection, which is sorted and deduplicated by ace_hash, and a
+generator taught to match that would build a forest whose DACLs never repeat a
+grant. The directory's do.
+
+THE FIRST OUTPUT IS ITSELF THE FINDING. On next/artifacts/p279-after: entries per
+descriptor p50, p99 and max all 521; name bytes p50, p99 and max all 97; one
+domain; objects per descriptor never above 3; zero occurrences carrying an object
+type; zero carrying S-1-5-10; zero carrying a well-known trustee; zero unreadable
+or partly parsed descriptors. A forest where the median, the 99th percentile and
+the maximum agree to the unit is not a forest, it is a constant. The two figures
+P-280's largest claim rests on - 72% of production occurrences carrying an
+object-type GUID, and normalising saving three times what per-descriptor keying
+saves - have never been checked against anything.
+
+TWENTY-FIVE CHECKS, and the two that mattered most were found by mutation to be
+measuring nothing. The leak gate is nine markers across four routes into the
+profile, with four negative controls: the published GUID and its name are present
+so the absences cannot pass against an empty document, the secret GUID and the
+secret trustee are each proved to have been counted, and Publishable is held
+directly to the shipped catalogue. Six mutations with explicit rebuilds either
+side. Four were killed at once - naming an unknown GUID, naming every trustee,
+discarding instead of counting, and zeroing the no-descriptor count.
+
+TWO SURVIVED. The path check asserted that C:\Users\... was absent from the
+document, and JSON escapes a backslash as a pair, so the raw path never appeared
+literally however much of it was emitted: the check passed with the whole path in
+the output. Rewritten against a backslash-free marker in the parent folder name,
+with a negative control that the run's own folder name is still reported. The
+percentile check asserted only p50 and p90, and shifting the rank from
+ceiling(f*n)-1 to floor(f*(n-1)) leaves both unchanged on ten values; strengthened
+to assert p99, where the definitions part and where a real forest's tail lives.
+Both corrected checks were then confirmed to kill the mutation they had slept
+through.
+
+Also records in the specification what the bench measured, so nothing that
+follows is believed on its authority, and notes on P-285 that measuring the SELF
+inflation now needs only a production run.
+
+Verified: the bench bundle is byte-identical after profiling, and the profile
+contains no account name, no path, no S-1-5-21 SID and no file name. Its
+occurrence total of 17,164,866 agrees exactly with --judgement-forecast's, which
+is a separately written pass over the same evidence.

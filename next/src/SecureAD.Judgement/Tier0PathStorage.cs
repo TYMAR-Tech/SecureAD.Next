@@ -52,16 +52,21 @@ internal static class Tier0PathStorage
         }
         beginPhase(PathRequesterWorkPhase.RequesterDacl);
         var requesters = RequesterDaclProofs.Create(connection, description, directory, inputs, requests, cancellationToken, obtainedMembership: null);
-        nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
+        if (requesters.Count != 0)
+            nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
         beginPhase(PathRequesterWorkPhase.OwnAccountMembership);
-        var ownAccounts = OwnAccountMembershipProofs.Create(connection, description, directory, inputs,
+        IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts = ownAccountRequests.Count == 0 ? []
+            : OwnAccountMembershipProofs.Create(connection, description, directory, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), ownAccountRequests, cancellationToken);
-        nodes = nodes.Select(node => node with { OwnAccountRoute = OwnAccountMembershipProofs.Best(node, ownAccounts, requesters) }).ToArray();
+        if (ownAccounts.Count != 0)
+            nodes = nodes.Select(node => node with { OwnAccountRoute = OwnAccountMembershipProofs.Best(node, ownAccounts, requesters) }).ToArray();
         beginPhase(PathRequesterWorkPhase.MembershipDacl);
-        var membershipDacls = MembershipDaclProofs.Create(connection, description, directory, inputs,
+        IReadOnlyList<SavedMembershipDaclProof> membershipDacls = membershipDaclRequests.Count == 0 ? []
+            : MembershipDaclProofs.Create(connection, description, directory, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), membershipDaclRequests, cancellationToken);
-        nodes = nodes.Select(node => node with
-            { MembershipDaclRoute = MembershipDaclProofs.Best(node, membershipDacls, requesters, ownAccounts) }).ToArray();
+        if (membershipDacls.Count != 0)
+            nodes = nodes.Select(node => node with
+                { MembershipDaclRoute = MembershipDaclProofs.Best(node, membershipDacls, requesters, ownAccounts) }).ToArray();
         beginPhase(PathRequesterWorkPhase.WritingProofs);
         Reconcile(selection, requesters, ownAccounts, membershipDacls);
         using var transaction = connection.BeginTransaction();

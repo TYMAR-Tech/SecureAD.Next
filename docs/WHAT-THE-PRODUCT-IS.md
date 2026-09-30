@@ -97,6 +97,70 @@ never needed the 17. But the *reason* given for it — that production objects a
 rather than repaired, and **nothing may be designed on the belief that an object carries a couple
 of dozen entries.** If paging is ever reconsidered, it must be against 502.
 
+**Owner-approved rule-path correction, 2026-09-27:** implement reuse of membership traversal inputs
+within one verified derivation reader, indexed protected-principal lookup, and reuse of the current
+object's permission reading across its rules, with correctness testing but no new performance
+campaign. The owner subsequently approved one quick bounded before/after measurement using existing
+offline inputs, not repeated trials or a profiler session; an inconclusive result is reported rather
+than used to start more measurements automatically. Preserve security answers, uncertainty, domain scope and generation
+binding; this does not authorize changing the running production job, the pending logging work,
+analysis budgets, publishing, committing or pushing. The supplied first-100,000-object checkpoint
+attributes 24,016,043 of 24,951,583 milliseconds to rules; it does not measure the later hours or
+establish a speedup for these corrections.
+
+**Owner-approved logging and carry-build follow-up, 2026-09-27:** replace callback-dependent logging
+with independent one-minute status in both CLI and UI judging, including the current rule/operation,
+completed-object count and elapsed activity, and five-minute per-rule detail including a rule that
+has not returned. Validate no-callback and shutdown behavior, then publish new self-contained CLI/UI
+packages containing the rule-path improvements without overwriting prior packages or touching the
+running production job; no further benchmark campaign, commit or push is authorized.
+
+**Owner-approved permission-storage follow-up:** implement the reviewed identity-only classification
+write, same-instance equality shortcut, mutation-safe reuse of schema serialization, and a single
+per-descriptor occurrence-count pass with link-integrity checks; validate correctness and provide
+fresh self-contained CLI/UI packages for owner-run production testing. Preserve existing proof
+formats, every permission occurrence, incomplete results and transaction behavior; no running-job
+interference, additional benchmark campaign, commit or push is authorized. Broader membership,
+trustee-resolution and later control/path optimizations remain outside this bounded change.
+
+**Owner-approved first post-object correction:** remove the redundant full SID-index search after
+an exact missing non-BUILTIN lookup, skip empty requester enrichment without skipping baseline paths
+or phase notifications, and avoid loading ownership targets before an already-planned scope branch.
+Validate exact identity/ambiguity, fallback names, unresolved witnesses, nonempty requester behavior
+and cancellation, then provide a separately named self-contained CLI/UI package; preserve the
+current production run and old packages. Witness-grouped validation and broader representation/cache
+changes are separate follow-ups; this scope authorizes no benchmark campaign, cleanup, commit or push.
+
+**Owner-approved quick post-object measurement, 2026-09-28:** compare the published
+`carry-storage-497ca6b5` and `carry-postpass-0290f7e7` CLI packages once each on separate copies of
+the same sealed lab input, with a two-minute limit per run and retained binary/input identities,
+logs and outcomes. This narrow follow-up authorizes no profiler, repeated campaign, new measurement
+harness, optimization, production access, cleanup, commit or push; a lab result is not a production
+runtime forecast.
+
+**Owner-approved bounded post-pass lookup correction and offline runner, 2026-09-29:** reuse the
+existing reader-local object-identity lookup before the first admitted target's evidence read and
+make stored candidate-edge parent lookup use its existing key while retaining exact target matching.
+The owner separately approved a new offline measurement runner because the existing judging
+benchmarks bypass discovery-gated admission: use a fixed forest-sized synthetic lookup population
+and fresh copies of retained sealed lab input, establish a baseline before either production change,
+then compare the same workload and mutation-verify the new behavior checks.
+Preserve permission proof, counting, ambiguity, incompleteness, generation binding, all prior work,
+original evidence, packages and failed attempts; isolate temporary directories before test loading.
+Stop on an unexpected measurement failure rather than repeating a campaign automatically; this
+approval does not authorize live access, production interruption, new budgets, UI changes,
+publishing, cleanup, commits or pushes, or establish the running production executable's identity.
+
+**Owner-approved bounded post-pass diagnostics and a separate validation package, 2026-09-29:**
+add run-log timings for candidate resolution, scope selection, admitted permission-proof reading,
+evaluation and storage, ownership assessment and completion checks, with distinct execution/traversal
+counters, process-memory snapshots and executable/engine identity.
+These are diagnostics, not security-completeness claims or UI changes; validate offline and produce
+a separately named CLI/UI package without replacing existing packages or disturbing the running audit.
+Preserve uncommitted work, sealed evidence, prior measurements, failed attempts and historical tests;
+isolate temporary storage before test discovery and rebuild deliberate defects and restored code.
+A representative full-sized offline run remains a separate approval: no live forest access,
+production interruption, recapture, new budgets, cleanup, commit or push is authorized here.
 
 **Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
 specifications and implement the remaining rule coverage.** The review and its retained source set are

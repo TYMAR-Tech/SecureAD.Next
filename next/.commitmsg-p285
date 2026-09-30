@@ -1,0 +1,80 @@
+Keep SELF as SELF in the shared value (P-285)
+
+94.8% of permission_entry was one SID. Measured on a real forest before this
+change: 34,593 of 36,484 rows were S-1-5-10. After it, 38.
+
+ContentKey serialised the whole PermissionEntry including Trustee.Name, and
+ObjectPermissions resolves PRINCIPAL SELF to "This object (Alice)" against the
+object being read. So Alice's SELF entry and Bob's hashed differently and never
+shared a row. That is exactly what kept P-279 correct - sharing the row would
+have shown one object's name against another object's permission - and it is why
+the table P-279 built to deduplicate barely deduplicated on a real directory.
+The synthetic bench could not say so, because it holds no SELF entries at all: it
+reported a 712:1 collapse and a clean success.
+
+THE RAW ACCESS CONTROL ENTRY IS EVIDENCE AND THE NAME IS PRESENTATION. What the
+directory holds is the SID. "This object (Alice)" is this product saying what
+that means when read against Alice. PermissionTrustee now owns both forms -
+Shared() and DisplayedAgainst(dn) - and WellKnownTrustee builds the displayed
+form through the same method, so the sentence is spelled in exactly one place
+rather than once in capture and once in the judgement's read path.
+
+SharedPermissionStorage generalises before hashing and resolves after verifying.
+The occurrence fingerprint therefore covers the target, the generation and the
+raw entry rather than the raw entry and a rendering of the target - the same
+binding it always was, with presentation taken out of it. The order is
+load-bearing and is enforced by the fingerprint itself: resolving before the
+check makes every SELF proof fail, which a mutation confirmed.
+
+JudgementSchema.Version is 44. A version 43 store's occurrence fingerprints were
+taken over the displayed form and do not verify against this build, so it is
+refused on version rather than reported as tampered proofs, which is what the
+number is for. The layout checkpoint carries 43's DDL hash because the physical
+layout is unchanged - permission_entry.name already existed and only its content
+differs - the same way 33 through 38 repeated theirs.
+
+MEASURED, on ad.lab-20260923-231917, same evidence and same seal, against a
+baseline recorded before the change:
+
+  permission_entry                 36,484 -> 1,929   (-94.7%)
+    of which S-1-5-10              34,593 ->    38   (-99.9%)
+    of which every other trustee    1,891 -> 1,891   unchanged
+  permission_classification_entry 209,252 -> 209,252 UNCHANGED
+  judgement on disk                107.9 MB -> 95.5 MB
+  rules ran / findings             17 / 27 -> 17 / 27
+  judging wall clock               22.8 s -> 23.2 s
+
+The occurrence count not moving is the check that mattered. Each of those 209,252
+rows is the distinct fact that this object, at this position, carries that entry,
+and an audit tool that lost one would be failing to report a permission the
+directory holds. What changed is how many times the entry behind them is written
+down. Rules and findings are identical, so no verdict moved as a side effect of
+changing how a trustee is stored. The prediction recorded in the baseline before
+the change was "roughly 1,900".
+
+The store fell 11.5% and not 94.7% because permission_entry was never the large
+table. permission_classification_entry is, at 209,252 rows, and shrinking that is
+P-280. What this removes is the reason P-279's saving did not survive contact with
+a real forest, and it removes it before P-280 chooses a sharing unit against a
+table that was 95% one SID.
+
+THREE CHECKS, and the third is the negative control: two objects carrying the
+identical SELF entry share one row, each still reads back naming itself rather
+than the other, and the stored row carries the catalogue's name rather than either
+object's. Without the third, a build that stored one object's rendering and
+re-derived nothing would satisfy the first two. Four mutations with explicit
+rebuilds either side: not generalising killed two checks, not re-resolving on read
+killed the misattribution check the review caught, resolving before verifying
+killed only the SELF check - correct, since DisplayedAgainst is a no-op for every
+other trustee - and generalising every trustee rather than only SELF killed three
+including the field-distinctness theory.
+
+One existing test changed rather than being worked around.
+FullControlRoundTripsEverySourceFieldIncludingUnsupportedInputs named S-1-5-10 to
+exercise odd field values; the trustee's name is no longer a round-tripped source
+field for that SID, so it now names an ordinary one and says why. The SELF
+behaviour is checked directly by the three new tests rather than as a side effect
+there.
+
+On the production capture the same defect covers 20,454,613 occurrences, measured
+in next/artifacts/p280-shape-profile/.

@@ -369,10 +369,12 @@ public static class JudgingRun
     {
         var account = new JudgingAccount();
         var began = System.Diagnostics.Stopwatch.GetTimestamp();
+        using var status = new JudgingStatus(log, progress, TimeProvider.System);
+        status.RecordBuildIdentity();
 
         var judged = JudgeIntoStore(
             bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
-            discoveryBudget, memberBudget, startedUtc, evaluationAsOf, progress, log, cancellationToken,
+            discoveryBudget, memberBudget, startedUtc, evaluationAsOf, status, log, cancellationToken,
             tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
             offlineSelection, account);
 
@@ -469,7 +471,7 @@ public static class JudgingRun
         MemberAttributionBudget? memberBudget,
         DateTimeOffset startedUtc,
         DateTimeOffset evaluationAsOf,
-        IProgress<JudgingProgress> progress,
+        JudgingStatus progress,
         IRunLog log,
         CancellationToken cancellationToken,
         bool tier0DiscoveryRequested,
@@ -785,6 +787,7 @@ public static class JudgingRun
             derivationGeneration,
             startedUtc,
             evaluationAsOf);
+        progress.RecordGeneration(writer.GenerationId, seal.Hash, derivationGeneration);
         writer.RecordEvidenceScope(scope.Value!);
 
         log.Note(
@@ -853,6 +856,7 @@ public static class JudgingRun
 
         Entering(progress, log, JudgingPhase.EvaluatingObjects, 0);
         work.Pass.Start();
+        progress.BeginOperation("read-object");
         foreach (var subject in bundle.StreamObjects().Objects)
         {
             // Checked per object rather than per batch. A rule catalogue that has grown expensive
@@ -860,10 +864,12 @@ public static class JudgingRun
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
 
+            progress.BeginOperation("store-laps");
             work.Laps.Start();
             writer.WriteLapsInventory(subject);
             work.Laps.Stop();
             unobservedRoots.Remove(subject.DistinguishedName);
+            progress.BeginOperation("read-permissions");
             work.Read.Start();
             var permissions = bundle.ReadPermissions(subject.DistinguishedName);
             work.Read.Stop();
@@ -876,6 +882,7 @@ public static class JudgingRun
             //
             // DERIVING AND STORING ARE CLOCKED SEPARATELY because they are the two halves any
             // optimisation must choose between, and one combined figure cannot say which.
+            progress.BeginOperation("derive-control-edges");
             work.ControlDerive.Start();
             var edges = tier0Discovery is null
                 ? ControlEdgeDeriver.Derive(subject,
@@ -884,11 +891,13 @@ public static class JudgingRun
                     permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids)
                     with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) };
             work.ControlDerive.Stop();
+            progress.BeginOperation("store-control-edges");
             work.ControlWrite.Start();
             writer.WriteControlEdges(edges, OwnershipAuditRun.Target(subject, namingContexts.Value));
             work.ControlWrite.Stop();
             if (tier0Discovery is not null)
             {
+                progress.BeginOperation("tier0-scan");
                 work.Tier0Scan.Start();
                 tier0Discovery.Observe(subject, permissions);
                 work.Tier0Scan.Stop();
@@ -898,28 +907,46 @@ public static class JudgingRun
             // P-249 has twice tried to optimise without ever measuring: two storage redesigns were
             // built and rejected while nothing here could say whether the cost was the verdicts or
             // the writing of them.
+            progress.BeginOperation("classify-permissions");
             work.Verdicts.Start();
             var classified = permissionClassifier.CreateObjectResult(
                 permissions ?? throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid")),
                 cancellationToken);
             work.Verdicts.Stop();
+            progress.BeginOperation("store-permissions");
             work.StorePermissions.Start();
             writer.WritePermissionClassification(classified, cancellationToken);
             work.StorePermissions.Stop();
+            progress.BeginOperation("membership-scan");
             work.MembershipScan.Start();
             discovery?.Observe(subject, permissions);
             work.MembershipScan.Stop();
 
+            // Reuse only the exact lookup already performed for this object. Other names retain
+            // the evidence reader's matching/ambiguity behavior; nothing survives this iteration.
+            var objectContext = context.Permissions is { } readPermissions
+                ? context with
+                {
+                    Permissions = dn => string.Equals(dn, subject.DistinguishedName, StringComparison.Ordinal)
+                        ? permissions : readPermissions(dn),
+                }
+                : context;
             work.Rules.Start();
             foreach (var tally in tallies)
-                tally.Offer(subject, context);
+            {
+                progress.BeginRule(tally.RuleId);
+                try { tally.Offer(subject, objectContext); }
+                finally { progress.EndRule(tally.RuleId, tally.Elapsed, tally.Judged, tally.NotApplicable); }
+            }
             work.Rules.Stop();
 
+            progress.BeginOperation("commit");
             work.Commit.Start();
             writer.CompleteObject();
             work.Commit.Stop();
 
             objectsRead++;
+            progress.CompleteObject(objectsRead);
 
             if (objectsRead % ProgressEvery == 0)
                 progress.Report(new JudgingProgress(objectsRead)
@@ -928,35 +955,32 @@ public static class JudgingRun
                     Tier0DiscoveryElapsed = work.Tier0Scan.Elapsed,
                 });
 
-            // WHERE THE TIME IS GOING, WHILE IT IS STILL GOING. The same breakdown is written when
-            // the pass ends, which is no use to an operator deciding at hour eight whether to wait
-            // or abandon - and no use at all to a run that is abandoned, because the accounting
-            // never reaches the log. docs/decisions and JudgingRun's own remark on the verdicts and
-            // storage split record that P-249 twice built and rejected a storage redesign with
-            // nothing able to say whether the cost was reaching verdicts or writing them; this is
-            // what answers that from a real forest rather than from a laboratory.
-            //
-            // Far rarer than progress. A line every hundred thousand objects is nine or ten over
-            // the owner's forest, against a report every thousand - the log must stay readable by
-            // the person it is for.
-            if (objectsRead % AccountingEvery == 0)
+            // Copy detailed totals only on the worker thread. The independent status/rule timer
+            // keeps reporting the active operation if this safe boundary cannot be reached.
+            if (progress.AccountingDue())
             {
+                progress.BeginOperation("write-accounting");
                 work.Note(log, JudgePhase, objectsRead);
                 writer.PermissionWrites.Note(log, JudgePhase);
             }
+            progress.BeginOperation("read-object");
         }
 
+        progress.BeginOperation("commit");
         work.Commit.Start();
         writer.FlushObjects();
         work.Commit.Stop();
 
+        progress.BeginOperation("complete-laps");
         work.LapsComplete.Start();
         writer.CompleteLapsInventory();
         work.LapsComplete.Stop();
+        progress.BeginOperation("complete-permissions");
         work.ClosePermissions.Start();
         writer.CompletePermissionClassifications(objectsRead);
         work.ClosePermissions.Stop();
 
+        progress.BeginOperation("unobserved-roots");
         work.UnobservedRoots.Start();
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",
@@ -981,7 +1005,7 @@ public static class JudgingRun
         {
             Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
             var admitted = writer.AdmitDiscoveredScope(bundle, ownershipDescription, memberInput, ownershipBinding!,
-                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken);
+                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken, progress);
             log.Note(JudgePhase, "tier0-discovery",
             [
                 new RunLogDetail("scan-ms", ((long)work.Tier0Scan.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
@@ -1268,24 +1292,10 @@ public static class JudgingRun
     /// How many objects pass between progress reports.
     /// </summary>
     /// <remarks>
-    /// Chosen so that a forest large enough to take hours still reports often enough to look alive,
-    /// without a run of millions spending its time raising events. It is not tuned against a real
-    /// forest, because no measurement of one exists yet.
+    /// Screen notifications keep their existing cadence. Log status has its own timer and does
+    /// not wait for these notifications, which may be hours apart during an expensive rule.
     /// </remarks>
     private const int ProgressEvery = 1_000;
-
-    /// <summary>
-    /// How many objects pass between timing breakdowns written to the run log.
-    /// </summary>
-    /// <remarks>
-    /// <b>A hundred times rarer than <see cref="ProgressEvery"/>, and deliberately.</b> A progress
-    /// report is a number on a screen; an accounting is a dozen lines naming every bucket, and one
-    /// of those per thousand objects would bury the run log in the one artefact an operator reads
-    /// when something has gone wrong. Over the owner's production forest this is nine or ten
-    /// accountings across a run measured in hours, which is enough to see a trend and few enough to
-    /// read.
-    /// </remarks>
-    private const int AccountingEvery = 100_000;
 
     /// <summary>
     /// Wraps a lookup so it is asked once per distinct argument for the life of a judging.

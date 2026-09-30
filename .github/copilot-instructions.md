@@ -93,8 +93,12 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 
 ## SecureAD.Next Completed-Run Browsing
 
-- For SecureAD.Next completed-run browsing, load only selected views while preserving exact evidence/derivation/judgement binding and explicit refusals. Do not replace unnecessary reads with stale-result caches, migration, legacy readers, empty-result substitutes, or analysis replay. Preserve historical evidence and verification artifacts; isolate TEMP/TMP before any test-assembly loading, including discovery, and explicitly rebuild deliberate defects and restored code. **When explaining browsing changes, check the existing screen and paging controls first, then explain precisely what would change rather than describing paging as though it were new to the application.** Use plain language for the AD/security administrator.
+- For SecureAD.Next completed-run browsing, load only selected views while preserving exact evidence/derivation/judgement binding and explicit refusals. Do not replace unnecessary reads with stale-result caches, migration, legacy readers, empty-result substitutes, or analysis replay. Preserve historical evidence and verification artifacts; isolate TEMP/TMP before any test-assembly loading, including discovery, and explicitly rebuild deliberate defects and restored code. Concrete UI behavior and wording require owner approval before implementation.
 
 ## SecureAD.Next Permission-Classification Storage
 
 - For SecureAD.Next saved permission-classification storage, preserve every original occurrence and saved answer with exact source/resource/generation binding. Bounded paging must not eagerly reconstruct whole objects, derive totals or risk from loaded pages, truncate oversized values, or conflate unloaded pages with incomplete captured evidence. Separate chunking/readback experiments from binary encoding, use fresh controls, preserve historical campaigns/outliers, and obtain explicit approval before implementation, measurement tooling/runs, UI changes or adoption.
+
+## Performance Reviews
+
+- For SecureAD.Next performance reviews, examine end-to-end algorithmic costs and repeated whole-forest work across later analysis/publication stages, not only the currently profiled hot function. Distinguish reachable production paths from disabled features and code-confirmed repeat patterns from measured runtime costs.

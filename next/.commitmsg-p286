@@ -1,0 +1,69 @@
+Let an unattended judging say where it is (P-286)
+
+Found in the field during the first production judging on the P-280
+build: three hours in, the run log said Phase=EvaluatingObjects and
+nothing else, and the owner was reduced to watching a file's size change
+to decide whether to wait or abandon.
+
+That is the state P-278 was opened to end, and it ended only half of it.
+The phases reached the log. The object count never did, because Judge in
+the command line passed JudgingRun.NobodyIsWatching and every progress
+report the judging raised was thrown away.
+
+The reasoning recorded beside that call was:
+
+    "a scheduled run has no operator to tell, and a log filling with
+     counts nobody reads is what the predecessor's progress reporting
+     became."
+
+The second half is right, and is why this is rate limited rather than
+simply switched on. The first half is exactly backwards. An unattended
+run is precisely the one nobody can watch, so the log is the only
+witness it has - and the judging that most needs to say where it is is
+the one running overnight against nine domains.
+
+JudgingHeartbeat writes a "still judging" line carrying the phase, the
+running total, how many objects moved since the last line, and a rate in
+objects per minute. The delta and the rate are the point: a stalled run
+reports zero, where a bare total would only reveal a stall by being
+compared against a line that scrolled off an hour ago.
+
+RATE LIMITED BY ELAPSED TIME, NOT BY OBJECT COUNT
+
+A user with four permissions and a container with four thousand are both
+one object. A line every N objects is therefore minutes apart in one
+part of a forest and hours apart in another - and it is elapsed time an
+operator is judging when deciding whether to keep waiting. Five minutes
+is roughly twenty lines across an eight-hour run: enough to answer the
+question, few enough to leave the log readable.
+
+AccountingEvery WAS ALSO WRONG, AND SAID SO ITSELF
+
+Its remark admitted the figure was "not tuned against a real forest,
+because no measurement of one exists yet." One exists now. The
+production run was committing roughly 500 objects every fourteen
+minutes, which puts 100,000 objects nearly two days apart rather than
+the "nine or ten accountings across a run measured in hours" the comment
+assumed - and the run reached hour three having written no accounting at
+all. Now 10,000, which gives that run one roughly every four hours and a
+laboratory capture none, which is correct: a capture finishing in twenty
+seconds has its full accounting at the end.
+
+ProgressEvery stays at 1,000. Its remark now says what it is - an offer
+rate, with rate limiting left to whoever is listening.
+
+Four checks, and both halves mutation-tested with explicit rebuilds:
+
+  - disabling the rate limit fails ReportsInsideOneIntervalAreNotWritten
+    and ARunCrossingThreeIntervalsSaysSoThreeTimes
+  - reporting the running total as the delta fails
+    AStalledRunReportsNoObjectsSinceTheLastLine
+
+RunLogFile already takes a lock on every write, so progress arriving
+from the judging thread needed no new synchronisation - checked rather
+than assumed.
+
+3,450 Judgement, Cli, Shell and EndToEnd tests green.
+
+Does not affect the run in flight, which was started from the earlier
+build.

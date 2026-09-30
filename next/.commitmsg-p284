@@ -1,0 +1,86 @@
+Stop the forecast reporting "could not read" as "found nothing" (P-284, P-285)
+
+Step 1 of the P-280 work order: make the measurement honest, first because every
+later measurement runs through this tool and because a false comment was still
+there for the next person to build on.
+
+THE COMMENT (P-285). SharedPermissionStorage.ContentKey said "The target never
+enters it and the ordinal is normalised away, so two objects share a row exactly
+when this agrees." The target does enter it. ObjectPermissions.ReadAt resolves
+trustees against the object being read, and WellKnownTrustee renders S-1-5-10 -
+PRINCIPAL SELF - as "This object (Alice)" on Alice and "This object (Bob)" on
+Bob; ContentKey serialises the whole PermissionEntry, that resolved name
+included. The code is right and P-279 is safe precisely because of this: Alice's
+SELF entry and Bob's hash differently, so sharing can never show one object's
+name against another object's permission. The comment was what a P-280 design
+that would have done exactly that was built on, which is how it reached review.
+
+It now says what is true, says that this is why P-279 is correct, and says the
+price: a SELF entry never deduplicates, so every object carrying one gets its
+own permission_entry row. S-1-5-10 sits in the default access control list of
+essentially every user and computer, so the table P-279 built to shrink is
+inflated by one row per such object, by an amount nobody has measured. The
+entry_hash paragraph now points at ContentKey, because the paragraph headed "NOR
+IS THE TARGET" is about the dropped column and reads at a glance as though the
+target were nowhere near the row - which is the misreading that produced the
+proposal. No test: a test that holds a comment to code is what this repository
+deleted 260 of on 2026-09-11. The measurement and the SELF fix stay open as
+P-285.
+
+THE FORECAST (P-284). JudgementForecast counted every row in
+object_security_descriptor as an object with readable permissions and then took
+.DaclAces, discarding the parse state, completeness and errors that
+SecurityDescriptorParser answers separately. A stored but unparseable descriptor
+therefore arrived as one object with readable permissions and zero occurrences,
+and a partly parsed one as an unqualified count of its survivors. The occurrence
+total was never wrong - judging writes what parses - but the tool was reporting
+could not compute as found nothing, which is the distinction the descriptor half
+of the schema exists to keep.
+
+Presence, unreadability and partial parsing are now three counts, each held at
+the object and the descriptor level: one malformed descriptor inherited by fifty
+thousand objects and fifty thousand malformed descriptors are the same object
+count and very different problems. Readable is presence minus unreadable, by
+subtraction rather than a second count, so the two cannot drift apart. Partly
+parsed stays readable, because DaclState.Unreadable means a DACL declared
+entries and yielded none, and striking such an object off would discard
+permissions the product did read and must report. Errors are counted separately
+again, because a descriptor can carry one and still have yielded every entry it
+declared.
+
+The declared count is still never substituted for the parsed one. The occurrence
+total has to stay a prediction of the rows judging will write, and topping it up
+with entries nobody could read would forecast rows that never exist while hiding
+the shortfall inside the same number. The printed report gains a WHAT COULD NOT
+BE READ block that is silent when all three counts are zero, so a page of
+zeroes does not teach an operator to skip the place the warning appears. The
+refusal at zero descriptors now says "stored" where it said "readable", and a
+bundle whose descriptors all fail to parse is forecast at zero rather than
+refused - refusing it would be the same substitution one layer up.
+
+VERIFIED against next/artifacts/p279-after: 17,164,866 occurrences exactly,
+unchanged, and still equal to that judgement's own row count. Every file in the
+bundle byte-identical afterwards. Nine checks, each killed by at least one of
+seven mutations with an explicit rebuild before running the mutated code and
+again after restoring, every restore confirmed green. The mutations were:
+readable = presence; the unreadable count removed; the partial count removed;
+the declared ACE count read out of the DACL header and substituted for the
+parsed one; unreadability attributed per descriptor rather than per object;
+unreadable objects dropped from presence; and partly parsed collapsed into
+unreadable. The fourth killed three checks including two occurrence totals,
+which is the rule stated as a number.
+
+AND THE BENCH COULD NOT HAVE FOUND THIS. p279-after holds zero unreadable, zero
+partly parsed and zero object-type GUIDs, so all five new counts read zero
+against it and every fixture had to be crafted by hand. That is F-S44-2 in
+miniature and the argument for step 2 of the work order: a synthetic generated
+by this codebase can only contain the assumptions the code already held.
+
+Three architecture gates fail in the working tree and none is from this change,
+established by running them against 0c48b61 in a throwaway worktree rather than
+by inspection: UnvouchedResultGateTests on ProblemCount.Count and the summary
+collections fails identically there, and is P-264; GreenfieldGateTests passes
+there and fails here only on the gitignored tree copy under next/.t/hc-d4ca030f
+left by sessions on 20-22 September, which is P-254, recorded with the
+instruction not to delete it to make the gate pass. No new punch-list row: both
+findings already exist.

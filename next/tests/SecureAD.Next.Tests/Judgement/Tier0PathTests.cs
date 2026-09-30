@@ -19,6 +19,44 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
     private const string RootDn = "DC=contoso,DC=com";
     private const string ConfigurationDn = "CN=Configuration,DC=contoso,DC=com";
 
+    [Fact]
+    public void DisabledRequesterPolicyStillPersistsBaselineMembershipPath()
+    {
+        var directory = Captured(depth: 2);
+        Derive(directory);
+        var result = JudgingRun.JudgeAudit(directory, [], PathRequesterPolicy.Disabled, Started, Started,
+            JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        using var reader = Open(directory);
+
+        Assert.Equal(new[] { (UserDn, GroupDn(1)), (GroupDn(1), CoreDn) },
+            reader.ReadTier0Path(UserDn).Steps.Select(step => (step.From.DistinguishedName, step.To.DistinguishedName)));
+    }
+
+    [Fact]
+    public void EmptyRequesterBatchesKeepThePhaseNotifications()
+    {
+        var directory = Captured(depth: 1);
+        Derive(directory);
+        var progress = new PathPhases();
+        var result = JudgingRun.JudgeAudit(directory, [], PathRequesterPolicy.Disabled, Started, Started,
+            progress, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
+        Assert.True(result.IsSuccess, result.Error?.Description);
+
+        Assert.Equal(new[] { PathRequesterWorkPhase.PreparingPaths, PathRequesterWorkPhase.RequesterDacl,
+            PathRequesterWorkPhase.OwnAccountMembership, PathRequesterWorkPhase.MembershipDacl,
+            PathRequesterWorkPhase.WritingProofs }, progress.Values);
+    }
+
+    private sealed class PathPhases : IProgress<JudgingRun.JudgingProgress>
+    {
+        internal List<PathRequesterWorkPhase> Values { get; } = [];
+        public void Report(JudgingRun.JudgingProgress value)
+        {
+            if (value.RequesterPhase is { } phase) Values.Add(phase);
+        }
+    }
+
     [Theory]
     [InlineData(CoreDn)]
     [InlineData(RootDn)]

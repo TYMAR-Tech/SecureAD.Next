@@ -62,6 +62,79 @@ public sealed class PrincipalExpansionTests
     /// </summary>
     private const int DistributionGroup = 0x00000002;
 
+    [Fact]
+    public void DifferentWalksReuseTheReadersIdentityRows()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        var first = reader.MembersOf(Readers, Scope).Members!.Single(member => member.Sid == Alice);
+
+        var second = Assert.Single(reader.MembersOf(Staff, Scope).Members!);
+
+        Assert.Same(first.Sid, second.Sid);
+    }
+
+    [Fact]
+    public void ReusedInputsKeepDifferentRootsIndependent()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope);
+
+        var expansion = reader.MembersOf(Staff, Scope);
+
+        Assert.Equal(new[] { Alice }, expansion.Members!.Select(member => member.Sid));
+    }
+
+    [Fact]
+    public void AShortFirstWalkDoesNotLimitTheNextWalk()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope, budget: 1);
+
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+    }
+
+    [Fact]
+    public void SeparateReadersNeverShareMembershipInputs()
+    {
+        var firstDirectory = Store(edges: [(0, 1)]);
+        var secondDirectory = Store(edges: [(0, 2)]);
+        using var first = DerivationReader.Open(firstDirectory).Value!;
+        using var second = DerivationReader.Open(secondDirectory).Value!;
+        first.MembersOf(Readers, Scope);
+
+        var expansion = second.MembersOf(Readers, Scope);
+
+        Assert.Equal(new[] { Alice }, expansion.Members!.Select(member => member.Sid));
+    }
+
+    [Fact]
+    public void ReusingInputsKeepsUnidentifiedMembershipExplicit()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)], unresolvedMembers: [1]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope);
+
+        var expansion = reader.MembersOf(Staff, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember, expansion.Outcome);
+    }
+
+    [Fact]
+    public void CachedInputsCannotBeReadAfterDisposal()
+    {
+        var directory = Store(edges: [(0, 1)]);
+        var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope);
+        reader.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => reader.MembersOf(Readers, Scope));
+    }
+
 
     /// <summary>
     /// A group that claimed a member nobody captured does not report as fully expanded.

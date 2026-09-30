@@ -291,7 +291,9 @@ internal static class ControlEdgeStorage
     private static ControlEdge ReadStoredEdge(SqliteConnection connection, JudgementDescription description, long id)
     {
         using var query = connection.CreateCommand();
-        query.CommandText = "SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object USING(target) WHERE id=$id";
+        // Seek with the parent's NOCASE key; the separate BINARY comparison preserves the old
+        // join's exact target binding rather than accepting differently spelled stored references.
+        query.CommandText = "SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object ON control_object.target = control_edge.target COLLATE NOCASE AND control_object.target = control_edge.target COLLATE BINARY WHERE id=$id";
         query.Parameters.AddWithValue("$id", id);
         var rows = new List<ControlEdge>();
         var evidenceCounts = new Dictionary<long, (int Aces, int Conditions)>();

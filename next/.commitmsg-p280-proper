@@ -1,0 +1,105 @@
+P-280: key the saved permission classification per descriptor
+
+209,252 occurrences become 12,955 on the laboratory capture, and every
+permission is still reachable.
+
+After P-279 a judgement held one row per permission occurrence, each
+carrying the object's distinguished name three times - in the row, in the
+primary key and in the unique index. On the owner's forest that projects
+to ~134 GB against 18.67 GB of evidence.
+
+The classification of an entry is a function of the entry and the run's
+catalogue and of nothing about the object carrying it. The 2026-09-24
+review followed the tempting contextual cases - computer creation on the
+Domain Controllers OU, WRITE_OWNER against OWNER RIGHTS, replication
+combinations, callback and inherit-only entries, property sets - and
+found no path from a target property to a verdict. So the occurrence now
+says *this descriptor, at this ordinal, carries that entry*, and objects
+reach their own rows through object_security_descriptor, which already
+exists and already has exactly the rows needed. 940,067 production
+objects carry 267,550 descriptors: 330,856,576 occurrences become
+141,693,937.
+
+THREE BINDINGS, NONE INFERRED FROM THE OTHERS
+
+This is the review's central demand and the reason the table is shaped
+this way rather than simply narrowed. Sharing a row between objects is
+precisely how one object comes to be shown another object's permissions.
+
+  1. object -> descriptor comes from the sealed EVIDENCE, through the
+     ObjectPermissions.DescriptorId added in aee2961. The judgement also
+     records it, and the read refuses when the two disagree. Recording
+     and trusting is the defect the review named - "X uses D2" where
+     evidence says D1 would validate every fingerprint, because whoever
+     edited it recomputes them. Recording and comparing is a second
+     witness, and it keeps Complete able to count occurrences per object.
+  2. descriptor -> ordered entries is one fingerprint over the whole
+     list. Per occurrence it would be 32 bytes x 141,693,937 = 4.5 GB in
+     a change worth 6.9; over the list it is 267,550 x 32 = 8.5 MB and
+     strictly stronger, because it binds the ordinals to each other.
+     Mutation-tested with the entry count disabled beside it so the count
+     could not stand in for it: both removal and reordering read back
+     with no exception thrown.
+  3. entry -> interpretation moves from the occurrence to the one row per
+     distinct entry. P-283 created this binding; normalisation is what
+     makes it urgent, because one wrong association now reaches every
+     occurrence of that entry at once.
+
+Also: position is gone - it was exactly zero-based rank by ordinal and is
+recovered by ordering at read, removing a column and an index. Ordinal
+gaps are kept; completeness is never inferred from contiguity, because a
+truncated tail leaves a contiguous prefix. The occurrence is WITHOUT
+ROWID on (descriptor_id, ordinal), so the key b-tree is the table.
+security_descriptor.raw_bytes is untouched: it lives in sealed evidence,
+and bumping BundleSchema.Version would make the owner's 18.67 GB capture
+unreadable by the build meant to be tested against it.
+
+Schema 46, checkpoint 06F6363E. Unlike 44 and 45 this one really does
+move the DDL.
+
+TWO THINGS FOUND WHILE MUTATION-TESTING, AND THEY ARE THE VALUE OF DOING IT
+
+The write-side descriptor agreement check MEASURED NOTHING. Disabling it
+left all sixty classification tests passing, because no case had two
+objects claim one descriptor while carrying different entries - which
+under per-descriptor keying is how up to 4,568 objects would silently
+take one object's permissions. P280ADescriptorCannotBeClaimedTwice-
+WithDifferentEntries was written for it and fails when it is disabled.
+
+And a first draft narrowed the schema-support verification to run only
+for entries whose interpretation was new. Two entries can name one schema
+GUID and disagree about what it means; that is a fault in the run's
+catalogue rather than in either entry, so it has to be caught wherever it
+appears. Caught by ConflictingSupportWithinTransactionRollsBackEverything.
+
+MEASURED ON ad.lab-20260923-231917
+
+  permission_classification_entry   209,252 -> 12,955
+  permission_entry                    1,929    unchanged
+  readings                              240    unchanged
+  findings                               27    unchanged
+  rules ran                              17    unchanged
+  judgement on disk          95,535,104 -> 26,296,320 bytes
+  permission write             6,560 ms -> 2,112 ms
+
+12,955 is the figure the shape profile forecast before any of this was
+built, met to the row. descriptor_entry would have said 12,952; the three
+permissions a projection-derived figure loses are present.
+
+Nothing was lost, and this is the measurement that says so rather than a
+row count: summing entry_count across every object through the descriptor
+it carries returns exactly 209,252, the original occurrence total,
+recovered in full from 12,955 stored rows. 378 descriptors serve 8,418
+objects, reused between 1 and 2,010 times, mean 22.3.
+
+NO LAB FIGURE MAY BE QUOTED AS A SAVING. The reduction here is 16.2x
+where the owner's forest will see 2.34x, because the laboratory's
+descriptors are reused 22.3 times against production's 2.46. What this
+run establishes is that the change is correct and complete on a real
+capture. What it saves on nine domains is a production re-judge.
+
+Dead code removed: SharedPermissionStorage.FingerprintOf lost its only
+caller when the reading binding moved to the value row.
+
+4,033 Evidence, Judgement and Shell tests green. Every check
+mutation-tested with explicit rebuilds before and after restoring.
