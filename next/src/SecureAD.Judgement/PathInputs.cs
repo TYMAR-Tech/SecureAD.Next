@@ -66,3 +66,17 @@ public sealed record PathInputs(Guid JudgementGenerationId, PathInputAvailabilit
     IReadOnlyList<Tier0Classification> Classifications, IReadOnlyList<Tier0RelevanceRelation> AdmissionRelationships,
     IReadOnlyList<long> PermissionIds, IReadOnlyList<PathUncertaintyRegion> UncertaintyRegions,
     SelfMembershipSummary? RequesterDiscovery);
+
+/// <summary>
+/// The bounded saved-input projection needed to display one selected path.
+/// Whole-forest classifications, relations and permission identifiers remain behind
+/// <see cref="JudgementReader.ReadPathInputs"/>.
+/// </summary>
+public sealed record SavedPathInputs(Guid JudgementGenerationId, PathInputAvailability Availability,
+    Tier0InputBinding? Input, Tier0Coverage Coverage, IReadOnlyList<Tier0Target> FixedTargets,
+    IReadOnlyList<PathUncertaintyRegion> UncertaintyRegions, SelfMembershipSummary? RequesterDiscovery)
+{
+    internal static SavedPathInputs From(PathInputs inputs) => new(inputs.JudgementGenerationId,
+        inputs.Availability, inputs.Input, inputs.Coverage, inputs.FixedTargets,
+        inputs.UncertaintyRegions, inputs.RequesterDiscovery);
+}

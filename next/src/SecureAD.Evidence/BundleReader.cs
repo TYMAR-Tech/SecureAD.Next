@@ -773,6 +773,27 @@ public sealed class BundleReader : IDisposable
         return ObjectPermissionsReader.Read(connection, distinguishedName);
     }
 
+    /// <summary>
+    /// Reads only the captured descriptor identity for one object, without reconstructing its ACL.
+    /// </summary>
+    public long? ReadDescriptorId(string distinguishedName)
+    {
+        var connection = Connection;
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT d.descriptor_id
+            FROM captured_object AS o
+            LEFT JOIN object_security_descriptor AS d ON d.object_id=o.object_id
+            WHERE o.distinguished_name=$dn COLLATE NOCASE
+            LIMIT 1
+            """;
+        command.Parameters.AddWithValue("$dn", distinguishedName);
+        var value = command.ExecuteScalar();
+        return value is null or DBNull ? null : Convert.ToInt64(value, CultureInfo.InvariantCulture);
+    }
+
     private bool StreamedNamesAreUnambiguous()
     {
         if (_streamedNamesAreUnambiguous is { } known)

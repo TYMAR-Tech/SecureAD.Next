@@ -201,6 +201,9 @@ internal sealed class RunSummaryViewModel
     /// </remarks>
     public bool MayJudge => AwaitingJudgement;
 
+    /// <summary>Whether an existing judgement can be explicitly discarded before judging the same inputs again.</summary>
+    public bool MayDiscardJudgement => HasResults && _listing.Products.HasDerivedFacts;
+
     /// <summary>Whether there is a detail worth a line of its own.</summary>
     public bool HasDetail => !string.IsNullOrWhiteSpace(_listing.Detail);
 

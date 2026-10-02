@@ -1,4 +1,5 @@
 using System.IO;
+using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 
@@ -41,6 +42,34 @@ internal sealed class RunCatalog : IRunCatalog
     /// <inheritdoc/>
     public Result<RunAnnotation> Annotate(string bundleDirectory, RunAnnotation annotation) =>
         RunAnnotations.Save(bundleDirectory, annotation);
+
+    /// <inheritdoc/>
+    public Result<string> DiscardJudgement(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        try
+        {
+            var path = Path.GetFullPath(Path.TrimEndingDirectorySeparator(bundleDirectory));
+            var root = Path.GetDirectoryName(path);
+            if (string.IsNullOrWhiteSpace(root))
+                throw new InvalidOperationException("The selected run is not inside a run library.");
+            var resolved = new RunLibrary(root, TimeProvider.System).Resolve(Path.GetFileName(path));
+            if (!resolved.IsSuccess) return resolved;
+            var openedLog = RunLogFile.Open(resolved.Value, "discard judgement", TimeProvider.System);
+            if (!openedLog.IsSuccess) return Result<string>.Failure(openedLog.Error);
+            using var log = openedLog.Value;
+            log.Note("Judging", "judgement discard requested", [new("run", resolved.Value)]);
+            var discarded = AnalysisStoreLifecycle.DiscardJudgement(resolved.Value);
+            log.Note("Judging", "judgement discarded", [new("generation", discarded.GenerationId.ToString("D"))]);
+            return resolved;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or ArgumentException or NotSupportedException or InvalidOperationException)
+        {
+            return Result<string>.Failure(AuditError.Create(ErrorCategory.Shell, "JudgementCannotBeDiscarded",
+                ErrorSeverity.Failed, $"The saved judgement could not be discarded. {error.Message}", bundleDirectory));
+        }
+    }
 
     /// <inheritdoc/>
     public Result<string> Delete(string bundleDirectory)

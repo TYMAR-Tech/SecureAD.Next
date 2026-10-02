@@ -538,6 +538,48 @@ public class DashboardViewModelTests
         Assert.DoesNotContain("0 groups", dashboard.MembershipNotice.Detail);
     }
 
+    [Fact]
+    public void MembershipReadFailureIsNotReportedAsDerivationNeverRunning()
+    {
+        var error = AuditError.Create(ErrorCategory.Shell, "SyntheticMembershipReadFailure",
+            ErrorSeverity.Failed, "The saved derivation is unreadable.", Bundle);
+        var dashboard = new DashboardViewModel(new FakeAssetSource
+        {
+            Inventory = AForestOf(Counted("ad.lab", ObjectCounts.None)),
+            GroupsWithUnidentifiedMembersFails = error,
+        });
+
+        dashboard.Show(Bundle);
+
+        Assert.Equal("Saved membership results could not be read.", dashboard.MembershipNotice?.Title);
+        Assert.Equal(error.Description, dashboard.MembershipNotice?.Detail);
+        Assert.DoesNotContain("Deriving has not run", dashboard.MembershipNotice?.Detail);
+    }
+
+    [Fact]
+    public async Task DashboardShowsApprovedLoadingStateWithoutOldResults()
+    {
+        var completion = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeAssetSource
+        {
+            Inventory = AForestOf(Counted("ad.lab", ObjectCounts.None)),
+            CompleteRead = async (value, token) =>
+            {
+                await completion.Task.WaitAsync(token);
+                return value;
+            },
+        };
+        var dashboard = new DashboardViewModel(source);
+
+        dashboard.Show(Bundle);
+        var loading = (dashboard.IsLoading, dashboard.HasRun, dashboard.HasNoRun, dashboard.Domains.Count);
+        completion.SetResult(new object());
+        await dashboard.ReadCompletion;
+
+        Assert.Equal((true, false, false, 0), loading);
+        Assert.True(dashboard.HasRun);
+    }
+
     // -------------------------------------------------------------------------------------------
 
     private const string Reason = "The controller refused the bind.";

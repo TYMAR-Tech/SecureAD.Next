@@ -31,7 +31,8 @@ internal static class Tier0AdmissionRun
     internal static int Admit(SqliteConnection connection, BundleReader bundle, JudgementDescription description,
         CapturedMembershipInput? input, Tier0InputBinding binding, Tier0DiscoveryScheduler discovery,
         JudgingContext context, Func<string, string?> domainSid, Guid generation, Guid? derivationGeneration,
-        CancellationToken cancellationToken, JudgingStatus? status)
+        CancellationToken cancellationToken, JudgingStatus? status, PreparedStatements statements,
+        PermissionWriteSession session)
     {
         ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(binding);
@@ -102,7 +103,7 @@ internal static class Tier0AdmissionRun
             assessment?.Part("evaluate-control");
             var evaluation = ControlEdgeDeriver.Derive(subject, permissions, context, generation, derivationGeneration, domainSid);
             assessment?.Part("store-control");
-            ControlEdgeStorage.Assess(connection, evaluation);
+            ControlEdgeStorage.Assess(connection, statements, session, evaluation);
             admitted++;
             assessment?.TargetFinished();
         }

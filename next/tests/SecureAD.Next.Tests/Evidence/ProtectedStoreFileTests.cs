@@ -77,6 +77,23 @@ public sealed class ProtectedStoreFileTests
     }
 
     [Fact]
+    public async Task AsyncClosureWaitsForTheLastLeaseBeforeAllowingDeletion()
+    {
+        var (directory, generation) = CreateStore();
+        using var file = ProtectedStoreFile.OpenAnalysis(directory, generation).Value;
+        using var lease = file.Acquire();
+
+        var closing = file.DisposeAsync().AsTask();
+        var waited = !closing.IsCompleted;
+        lease.Dispose();
+        await closing.WaitAsync(TimeSpan.FromSeconds(5));
+        File.Delete(Data(directory, generation));
+
+        Assert.True(waited);
+        Assert.False(File.Exists(Data(directory, generation)));
+    }
+
+    [Fact]
     public void CorruptedStoreIsNotOpened()
     {
         var (directory, generation) = CreateStore();

@@ -1,4 +1,8 @@
 using System.Windows.Data;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Markup;
+using System.Xml.Linq;
 using SecureAD.Evidence.Run;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -888,6 +892,177 @@ public sealed class RunLibraryViewModelTests
         Assert.Contains(
             "the rule schedule was empty", screen.AnalysisStatus, StringComparison.Ordinal);
         Assert.False(screen.IsAnalysing);
+    });
+
+    [Fact]
+    public void DiscardFirstIsASeparateActionForAlreadyJudgedRuns()
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        Assert.True(screen.CanDiscardJudgement);
+        Assert.False(screen.CanJudge);
+        screen.Selected = new RunSummaryViewModel(AwaitingJudgement("b-20260101-000000", @"D:\audits\b"));
+        Assert.False(screen.CanDiscardJudgement);
+        Assert.True(screen.CanJudge);
+    }
+
+    [Fact]
+    public void DecliningDiscardDoesNotCloseDeleteOrJudge() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Equal(1, _confirmation.TimesAsked);
+        Assert.Contains(@"D:\audits\a", _confirmation.Asked!.Value.Question, StringComparison.Ordinal);
+        Assert.Contains("there will be no completed judgement to open", _confirmation.Asked.Value.Question, StringComparison.Ordinal);
+        Assert.Equal("Discard judgement and judge again", _confirmation.Asked.Value.ConfirmLabel);
+        Assert.Equal(0, _opener.CloseCalls);
+        Assert.Null(_catalog.DiscardedJudgement);
+        Assert.False(_judging.WasRun);
+    });
+
+    [Fact]
+    public void ConfirmedDiscardWaitsForClosedReadersAndKeepsTheOriginallyChosenRun() => OneThread.Run(async () =>
+    {
+        var original = AlreadyJudged("a-20260101-000000", @"D:\audits\a");
+        var screen = Selecting(original);
+        _catalog.Runs.Add(AlreadyJudged("b-20260101-000000", @"D:\audits\b"));
+        screen.Refresh();
+        _confirmation.Answer = true;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _opener.WhenClosing = () => closed.Task;
+        _judging.WhileRunning = () => Assert.Equal(original.Path, _catalog.DiscardedJudgement);
+
+        var attempt = screen.DiscardJudgementAndJudgeAgainAsync();
+        var waiting = screen.IsAnalysing && _catalog.DiscardedJudgement is null && !_judging.WasRun;
+        var offeredWhileBusy = screen.CanDiscardJudgement;
+        var refused = screen.DiscardJudgementAndJudgeAgainAsync();
+        var refusedImmediately = refused.IsCompleted;
+        screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
+        closed.SetResult();
+        await Task.WhenAll(attempt, refused).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(waiting);
+        Assert.False(offeredWhileBusy);
+        Assert.True(refusedImmediately);
+        Assert.Equal(1, _confirmation.TimesAsked);
+        Assert.Equal(1, _opener.CloseCalls);
+        Assert.Equal(original.Path, _catalog.DiscardedJudgement);
+        Assert.Equal(original.Path, _judging.AskedFor);
+        Assert.Equal(@"D:\audits\b", screen.Selected?.Path);
+        Assert.Contains(original.Identifier, screen.AnalysisStatus, StringComparison.Ordinal);
+        Assert.False(screen.IsAnalysing);
+    });
+
+    [Fact]
+    public void ReaderClosureFailurePreventsDiscardAndJudging() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        _opener.WhenClosing = () => Task.FromException(new IOException("The old readers could not be closed."));
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Null(_catalog.DiscardedJudgement);
+        Assert.False(_judging.WasRun);
+        Assert.True(screen.Selected!.HasResults);
+        Assert.Contains("The old readers could not be closed.", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    [Fact]
+    public void FailedDiscardIsReportedAndJudgingNeverStarts() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        _catalog.DiscardFails = SecureAD.Kernel.AuditError.Create(SecureAD.Kernel.ErrorCategory.Shell,
+            "Locked", SecureAD.Kernel.ErrorSeverity.Failed, "The judgement is still open elsewhere.", null);
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Equal(1, _opener.CloseCalls);
+        Assert.False(_judging.WasRun);
+        Assert.Contains(_catalog.DiscardFails.Description, screen.AnalysisStatus, StringComparison.Ordinal);
+        Assert.False(screen.IsAnalysing);
+    });
+
+    [Fact]
+    public void StoppingBeforeReadersCloseDoesNotDiscardTheSavedJudgement() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _opener.WhenClosing = () => closed.Task;
+        var attempt = screen.DiscardJudgementAndJudgeAgainAsync();
+
+        screen.StopAnalysis();
+        closed.SetResult();
+        await attempt;
+
+        Assert.Null(_catalog.DiscardedJudgement);
+        Assert.False(_judging.WasRun);
+        Assert.True(screen.Selected!.HasResults);
+        Assert.Contains("stopped", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FailedOrStoppedRejudgingLeavesNoCompletedResultAndAllowsOrdinaryRetry(bool stopped) => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        if (stopped) _judging.WhileRunning = screen.StopAnalysis;
+        else _judging.Fails = SecureAD.Kernel.AuditError.Create(SecureAD.Kernel.ErrorCategory.Shell,
+            "JudgingFailed", SecureAD.Kernel.ErrorSeverity.Failed, "Synthetic judging failure.", null);
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Equal(@"D:\audits\a", _catalog.DiscardedJudgement);
+        Assert.True(_judging.WasRun);
+        Assert.False(screen.Selected!.HasResults);
+        Assert.True(screen.CanJudge);
+        Assert.False(screen.CanDiscardJudgement);
+        Assert.Contains(stopped ? "stopped" : "Synthetic judging failure.", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(320)]
+    public void ApprovedDiscardButtonBindsAndFitsTheAnalysisArea(int width) => AuditProgressViewTests.OnSta(() =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
+        XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var home = XDocument.Load(Path.Combine(shell, "Views", "HomeView.xaml"));
+        var action = Assert.Single(home.Descendants(wpf + "Button").Where(element =>
+            (string?)element.Attribute("Command") == "{Binding Library.DiscardJudgementAndJudgeAgainCommand}"));
+        var assembly = typeof(HomeViewModel).Assembly.GetName().Name;
+        var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
+            .Attributes("Source").Select(attribute => attribute.Value)
+            .Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
+        var root = new XElement(wpf + "Grid",
+            new XElement(wpf + "Grid.Resources", new XElement(wpf + "ResourceDictionary",
+                new XElement(wpf + "ResourceDictionary.MergedDictionaries", sources.Select(source =>
+                    new XElement(wpf + "ResourceDictionary", new XAttribute("Source",
+                        source.StartsWith("pack:", StringComparison.Ordinal) ? source
+                            : $"pack://application:,,,/{assembly};component/" + source)))))),
+            new XElement(action.Parent!));
+        var view = (Grid)XamlReader.Parse(root.ToString());
+        view.DataContext = new { Library = screen };
+        view.Measure(new Size(width, 160));
+        view.Arrange(new Rect(0, 0, width, 160));
+        view.UpdateLayout();
+        var row = Assert.IsType<Grid>(Assert.Single(view.Children.Cast<UIElement>()));
+        var button = Assert.Single(row.Children.OfType<Button>().Where(value =>
+            ReferenceEquals(value.Command, screen.DiscardJudgementAndJudgeAgainCommand)));
+        var text = Assert.IsType<TextBlock>(button.Content);
+
+        Assert.Equal(Visibility.Visible, button.Visibility);
+        Assert.True(button.IsEnabled);
+        Assert.Equal("Discard judgement and judge again", text.Text);
+        Assert.Equal(TextWrapping.Wrap, text.TextWrapping);
+        Assert.InRange(button.ActualWidth, 1, width);
+        if (width == 200) Assert.True(text.ActualHeight > text.FontSize * 1.5);
     });
 
     private RunLibraryViewModel Screen(string? chosenPath = null)

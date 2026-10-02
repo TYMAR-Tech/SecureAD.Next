@@ -41,6 +41,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly string _bundleDirectory;
     private readonly string _partialPath;
     private readonly SqliteConnection _connection;
+    private readonly IDisposable _writeLock;
     private readonly PreparedStatements _statements;
     private readonly PermissionWriteSession _session = new();
     private SqliteTransaction? _batch;
@@ -57,11 +58,12 @@ public sealed class JudgementWriter : IDisposable
     /// <summary>The immutable generation this writer will publish.</summary>
     public Guid GenerationId { get; } = Guid.NewGuid();
 
-    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection)
+    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection, IDisposable writeLock)
     {
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
+        _writeLock = writeLock;
         _statements = new PreparedStatements(connection);
     }
 
@@ -263,7 +265,7 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
         OwnershipAuditRun.Assess(_connection, bundle, description, input, binding, context, domainSid,
-            objectsRead, progress, log, cancellationToken, scopeAlreadyPlanned);
+            objectsRead, progress, log, cancellationToken, _statements, _session, scopeAlreadyPlanned);
     }
 
     /// <summary>
@@ -277,7 +279,7 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
         return Tier0AdmissionRun.Admit(_connection, bundle, description, input, binding, discovery, context,
-            domainSid, GenerationId, derivationGeneration, cancellationToken, status);
+            domainSid, GenerationId, derivationGeneration, cancellationToken, status, _statements, _session);
     }
 
     internal void WriteMemberAttributions(SecureAD.Derivation.CapturedMembershipInput input,
@@ -379,37 +381,47 @@ public sealed class JudgementWriter : IDisposable
                 + "evidence it judged, so the bundle must exist before it can be judged.");
         }
 
-        AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
-        var partialPath = BundleLayout.JudgementPartialPath(bundleDirectory);
-        if (File.Exists(partialPath))
-            File.Delete(partialPath);
+        var writeLock = AnalysisStoreLifecycle.LockJudgementWrites(bundleDirectory);
+        SqliteConnection? connection = null;
+        JudgementWriter? writer = null;
+        var transferred = false;
+        try
+        {
+            AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
+            var partialPath = BundleLayout.JudgementPartialPath(bundleDirectory);
+            if (File.Exists(partialPath))
+                File.Delete(partialPath);
 
-        var connection = new SqliteConnection(
-            new SqliteConnectionStringBuilder
+            connection = new SqliteConnection(
+                new SqliteConnectionStringBuilder
+                {
+                    DataSource = partialPath,
+                    Mode = SqliteOpenMode.ReadWriteCreate,
+                    Pooling = false,
+                    ForeignKeys = true,
+                }.ToString());
+            connection.Open();
+            Pragma(connection, "journal_mode = WAL");
+            Pragma(connection, "synchronous = NORMAL");
+            JudgementSchema.CreateTables(connection);
+
+            writer = new JudgementWriter(bundleDirectory, partialPath, connection, writeLock);
+            writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
+            transferred = true;
+            return writer;
+        }
+        finally
+        {
+            if (!transferred)
             {
-                DataSource = partialPath,
-                Mode = SqliteOpenMode.ReadWriteCreate,
-                Pooling = false,
-                ForeignKeys = true,
-            }.ToString());
-
-        connection.Open();
-
-        // Ordered as the evidence writer orders them, and for the same reasons: page size is fixed
-        // when the first table is created and cannot be changed afterwards without a VACUUM, and it
-        // cannot be set at all once write-ahead logging is on.
-        //
-        // The default page size is kept. A judgement holds findings and execution records, which are
-        // small rows - none of the large security descriptors that made 8192 the right answer for
-        // the evidence.
-        Pragma(connection, "journal_mode = WAL");
-        Pragma(connection, "synchronous = NORMAL");
-
-        JudgementSchema.CreateTables(connection);
-
-        var writer = new JudgementWriter(bundleDirectory, partialPath, connection);
-        writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
-        return writer;
+                if (writer is not null) writer.Dispose();
+                else
+                {
+                    try { connection?.Dispose(); }
+                    finally { writeLock.Dispose(); }
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -523,6 +535,7 @@ public sealed class JudgementWriter : IDisposable
             GenerationId,
             cancellationToken);
         _finished = true;
+        _writeLock.Dispose();
     }
 
     /// <summary>
@@ -551,6 +564,7 @@ public sealed class JudgementWriter : IDisposable
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
         _finished = true;
+        _writeLock.Dispose();
     }
 
     /// <inheritdoc />
@@ -559,13 +573,18 @@ public sealed class JudgementWriter : IDisposable
         if (_disposed)
             return;
 
-        RollBackSelfMembershipBatch();
-        AbandonBatch();
-        // BEFORE THE CONNECTION, because a compiled statement outliving its connection is exactly
-        // the kind of stranded handle P-250 was raised for.
-        _statements.Dispose();
-        _connection.Dispose();
         _disposed = true;
+        try
+        {
+            RollBackSelfMembershipBatch();
+            AbandonBatch();
+            _statements.Dispose();
+        }
+        finally
+        {
+            try { _connection.Dispose(); }
+            finally { _writeLock.Dispose(); }
+        }
     }
 
     /// <summary>Discards an assessment batch that was never completed.</summary>

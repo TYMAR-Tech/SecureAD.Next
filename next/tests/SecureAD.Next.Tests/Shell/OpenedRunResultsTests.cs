@@ -257,6 +257,57 @@ public sealed partial class OpenedRunResultsTests
     }
 
     [Fact]
+    public async Task AsyncSessionClosureDrainsAQueryBeforeJudgementDeletion()
+    {
+        var directory = CreateRun();
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value;
+        using var session = new OpenedRunResults(directory);
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reading = Task.Run(() => session.ReadJudgement(reader =>
+        {
+            entered.SetResult();
+            if (!release.Wait(TimeSpan.FromSeconds(15))) throw new TimeoutException("The test query was not released.");
+            return reader.Description.GenerationId;
+        }));
+        Task closing;
+        bool waited;
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            closing = session.DisposeAsync().AsTask();
+            waited = !closing.IsCompleted;
+        }
+        finally { release.Set(); }
+        var late = await reading.WaitAsync(TimeSpan.FromSeconds(10));
+        await closing.WaitAsync(TimeSpan.FromSeconds(10));
+        var data = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId);
+        File.Delete(data);
+
+        Assert.True(waited);
+        Assert.False(late.IsSuccess);
+        Assert.False(File.Exists(data));
+    }
+
+    [Fact]
+    public async Task SourceAsyncClosureInvalidatesOldRequestsAndReleasesJudgementFiles()
+    {
+        var directory = CreateRun();
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value;
+        using var source = new BundleAssetSource();
+        Assert.True(source.ReadFindings(directory, FindingsQuery.Everything()).IsSuccess);
+        var current = source.CaptureReadValidity();
+
+        await source.CloseRunAsync();
+
+        Assert.False(current());
+        Assert.False(source.ReadFindings(directory, FindingsQuery.Everything()).IsSuccess);
+        var data = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId);
+        File.Delete(data);
+        Assert.False(File.Exists(data));
+    }
+
+    [Fact]
     public async Task ConcurrentReadsDoNotShareAConnection()
     {
         var directory = CreateRun();

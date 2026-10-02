@@ -174,11 +174,18 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     }
 
     /// <inheritdoc/>
-    public void Dispose()
+    public void Dispose() => DetachRun()?.Dispose();
+
+    internal async Task CloseRunAsync()
+    {
+        if (DetachRun() is { } previous) await previous.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private OpenedRunResults? DetachRun()
     {
         OpenedRunResults? previous;
         lock (_sessionGate) { previous = _results; _results = null; _closed = true; }
-        previous?.Dispose();
+        return previous;
     }
 
     /// <inheritdoc/>

@@ -132,6 +132,32 @@ public sealed partial class SavedTier0PathSectionTests
         Assert.Contains("Some saved supported questions remain unresolved; completing their evaluation did not establish their authorization or membership outcome.", section.Limitations);
     }
 
+    [Fact]
+    public void SavedLimitationsUseOneHundredEntryPagesWithoutDroppingAny()
+    {
+        var saved = Saved();
+        var limitations = Enumerable.Range(0, 204)
+            .Select(index => new PathRequesterSelectionLimitation(PathRequesterSelectionReason.IdentityUnresolved,
+                CoreDn, index, "S-1-5-11", UserDn))
+            .ToArray();
+        var section = Read(saved with { Requesters = saved.Requesters with { Limitations = limitations } });
+
+        Assert.Equal(("Showing 1-100 of 205 saved limitations", 100, false, true),
+            (section.LimitationsHeading, section.Limitations.Count,
+                section.HasPreviousLimitations, section.HasNextLimitations));
+
+        section.NextLimitationsCommand.Execute(null);
+        Assert.Equal(("Showing 101-200 of 205 saved limitations", 100, true, true),
+            (section.LimitationsHeading, section.Limitations.Count,
+                section.HasPreviousLimitations, section.HasNextLimitations));
+
+        section.NextLimitationsCommand.Execute(null);
+        Assert.Equal(("Showing 201-205 of 205 saved limitations", 5, true, false),
+            (section.LimitationsHeading, section.Limitations.Count,
+                section.HasPreviousLimitations, section.HasNextLimitations));
+        Assert.Contains("\"PermissionOrdinal\": 203", section.Limitations[^1], StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(PathUncertaintyCause.CapturedEvidenceIncomplete, "Missing captured evidence")]
     [InlineData(PathUncertaintyCause.AnalysisUnsupported, "Unsupported analysis")]

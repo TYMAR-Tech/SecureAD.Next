@@ -39,7 +39,7 @@ internal sealed partial class AssetsViewModel
         {
             var path = new SavedTier0PathSectionViewModel(definition);
             path.ConfigureAsync(dn, cancellation => ReadBoundAsync(bundle, current,
-                reader => reader.ReadSavedTier0Path(bundle, dn), cancellation));
+                reader => reader.ReadSavedTier0Path(bundle, dn), cancellation, "read saved Tier 0 path"));
             return path;
         }
         if (definition.Key == ObjectSectionCatalog.ControlEdges)
@@ -50,14 +50,18 @@ internal sealed partial class AssetsViewModel
             var controls = new ControlEdgesSectionViewModel(definition);
             controls.ConfigureMemberAttributionAsync(
                 (row, cancellation) => ReadBoundAsync(bundle, current,
-                    reader => reader.ReadMemberAttribution(bundle, row.HolderSid, row.HolderScope, row.Target), cancellation),
+                    reader => reader.ReadMemberAttribution(bundle, row.HolderSid, row.HolderScope, row.Target), cancellation,
+                    "read saved member attribution"),
                 sid is null ? null : (expected, after, cancellation) => ReadBoundAsync(bundle, current,
-                    reader => reader.ReadPermissionsThroughMembership(bundle, sid, scope, expected, after), cancellation), current);
+                    reader => reader.ReadPermissionsThroughMembership(bundle, sid, scope, expected, after), cancellation,
+                    "read saved membership permissions"), current);
             controls.ConfigureAsync(sid is not null, string.Equals(objectClass, "user", StringComparison.OrdinalIgnoreCase),
                 (byHolder, expected, after, cancellation) => ReadBoundAsync(bundle, current,
-                    reader => reader.ReadControlEdges(bundle, byHolder ? null : dn, byHolder ? sid : null, scope, expected, after), cancellation),
+                    reader => reader.ReadControlEdges(bundle, byHolder ? null : dn, byHolder ? sid : null, scope, expected, after), cancellation,
+                    "read saved control edges"),
                 (byRequester, cancellation) => ReadBoundAsync(bundle, current,
-                    reader => reader.ReadSelfMembershipAssessments(bundle, byRequester ? null : dn, byRequester ? dn : null), cancellation));
+                    reader => reader.ReadSelfMembershipAssessments(bundle, byRequester ? null : dn, byRequester ? dn : null), cancellation,
+                    "read saved membership assessments"));
             using var cancellation = token.Register(controls.CancelRead);
             await controls.ReadCompletion;
             token.ThrowIfCancellationRequested();
@@ -93,23 +97,39 @@ internal sealed partial class AssetsViewModel
                     classification.IsSuccess ? null : classification.Error.Description));
             }
             return Result<ObjectSectionViewModel>.Success(ObjectViewModel.BuildAttributes(definition, attributes));
-        }, token);
+        }, token, "read object " + definition.Key);
         return content.IsSuccess ? content.Value : throw new InvalidOperationException(content.Error.Description);
     }
 
     private async Task<Result<T>> ReadBoundAsync<T>(string bundle, Func<bool> current,
-        Func<IAssetReader, Result<T>> read, CancellationToken token)
+        Func<IAssetReader, Result<T>> read, CancellationToken token, string action)
     {
-        token.ThrowIfCancellationRequested();
-        if (!current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-        var result = await _assets.ReadAsync(bundle, (reader, cancellation) =>
+        using var navigation = NavigationDiagnostics.Begin(bundle, action);
+        try
         {
-            cancellation.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
             if (!current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-            return read(reader);
-        }, token);
-        token.ThrowIfCancellationRequested();
-        if (!current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-        return result;
+            var result = await _assets.ReadAsync(bundle, (reader, cancellation) =>
+            {
+                cancellation.ThrowIfCancellationRequested();
+                if (!current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
+                return read(reader);
+            }, token);
+            token.ThrowIfCancellationRequested();
+            if (!current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
+            navigation.Complete(result.IsSuccess ? "success" : "refused",
+                result.IsSuccess ? null : result.Error.Code);
+            return result;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            navigation.Complete("cancelled", null);
+            throw;
+        }
+        catch (InvalidOperationException error)
+        {
+            navigation.Complete("refused", error.Message);
+            throw;
+        }
     }
 }

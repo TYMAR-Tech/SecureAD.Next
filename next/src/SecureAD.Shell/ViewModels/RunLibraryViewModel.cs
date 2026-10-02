@@ -167,6 +167,8 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// </remarks>
     public bool CanJudge => Selected?.MayJudge == true && !IsAnalysing;
 
+    public bool CanDiscardJudgement => Selected?.MayDiscardJudgement == true && !IsAnalysing;
+
     /// <summary>
     /// Whether the library was read and genuinely holds nothing. False while unread or failed, so
     /// that "no runs" is only ever said when it was established.
@@ -252,8 +254,10 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanDerive));
         OnPropertyChanged(nameof(CanJudge));
+        OnPropertyChanged(nameof(CanDiscardJudgement));
         DeriveFactsCommand.NotifyCanExecuteChanged();
         JudgeCommand.NotifyCanExecuteChanged();
+        DiscardJudgementAndJudgeAgainCommand.NotifyCanExecuteChanged();
         StopAnalysisCommand.NotifyCanExecuteChanged();
     }
 
@@ -589,6 +593,45 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
                 $"{selected.Name}: judging stopped on an error the product did not expect: "
                 + $"{defect} This is a defect rather than something you did. The evidence is "
                 + "sealed and can be judged again once it is fixed.");
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDiscardJudgement))]
+    public Task DiscardJudgementAndJudgeAgainAsync()
+    {
+        if (Selected is not { } selected) return Task.CompletedTask;
+        if (!CanDiscardJudgement)
+        {
+            Problem = $"{selected.Name} must have sealed evidence, derived facts and a saved judgement, "
+                + "with no analysis already running, before its judgement can be discarded.";
+            return Task.CompletedTask;
+        }
+        const string action = "Discard judgement and judge again";
+        if (!_confirmation.Confirm(action,
+            $"{selected.Name} ({selected.Path})\n\n"
+            + "This deletes this run's saved judgement before starting again. Captured evidence, "
+            + "derived facts and the run log are kept. If judging is stopped or fails, "
+            + "there will be no completed judgement to open.", action))
+            return Task.CompletedTask;
+
+        return AnalyseAsync(
+            selected,
+            $"Discarding the saved judgement and judging {selected.Name}. Nothing is read from the directory.",
+            read => $"Judging {selected.Name} - {read:N0} objects judged.",
+            async (path, report, token) =>
+            {
+                await _opener.CloseAsync();
+                token.ThrowIfCancellationRequested();
+                var discarded = await Task.Run(() => _catalog.DiscardJudgement(path), token);
+                if (!discarded.IsSuccess) return Result<JudgingOutcome>.Failure(discarded.Error);
+                return await _judging.RunAsync(path,
+                    new Progress<JudgingRun.JudgingProgress>(value => report(value.ObjectsRead)), token);
+            },
+            judged => Describe(selected.Name, judged),
+            refused => $"{selected.Name}: the discard-and-judge attempt did not finish successfully. "
+                + $"{refused} Captured evidence and derived facts are kept.",
+            $"{selected.Name}: judging was stopped. Captured evidence and derived facts are kept.",
+            defect => $"{selected.Name}: the discard-and-judge attempt stopped on an unexpected error: "
+                + $"{defect} Captured evidence and derived facts are kept.");
     }
 
     /// <summary>

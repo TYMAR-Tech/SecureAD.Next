@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SecureAD.Derivation;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
@@ -18,6 +19,9 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
     private CancellationTokenSource? _pending;
     private long _revision;
     private string? _subjectDn;
+    private IReadOnlyList<string> _allLimitations = [];
+    private int _limitationPage;
+    private const int LimitationPageSize = 100;
     [ObservableProperty] private string _result = SavedPathText.Get("NotRead");
     [ObservableProperty] private string _detail = "";
     [ObservableProperty] private string _provenance = "";
@@ -27,6 +31,9 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
     [ObservableProperty] private string _savedQuestions = SavedPathText.Get("NoneRecorded");
     [ObservableProperty] private IReadOnlyList<SavedPathStepViewModel> _steps = [];
     [ObservableProperty] private IReadOnlyList<string> _limitations = [];
+    [ObservableProperty] private string _limitationsHeading = "Showing 0-0 of 0 saved limitations";
+    [ObservableProperty] private bool _hasPreviousLimitations;
+    [ObservableProperty] private bool _hasNextLimitations;
 
     public string ResultHeading { get; } = SavedPathText.Get("ResultHeading");
     public string RouteHeading { get; } = SavedPathText.Get("RouteHeading");
@@ -87,7 +94,9 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
         AutomaticChecks = SavedPathText.Get("NotRead");
         SavedQuestions = SavedPathText.Get("NotRead");
         Steps = [];
-        Limitations = [];
+        _allLimitations = [];
+        _limitationPage = 0;
+        ApplyLimitationPage();
     }
 
     private async Task LoadAsync(Func<CancellationToken, Task<Result<SavedTier0Path?>>> read,
@@ -145,7 +154,9 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
             SavedPathText.Get("Selection" + value.Reason), Json(value))));
         if (saved.Requesters.Families.Any(value => value.UnresolvedResults > 0))
             limits.Add(SavedPathText.Get("UnresolvedQuestions"));
-        Limitations = limits;
+        _allLimitations = limits;
+        _limitationPage = 0;
+        ApplyLimitationPage();
         if (path.RequesterAssessments.Count + path.OwnAccountAssessments.Count + path.MembershipDaclAssessments.Count > 0)
             SavedQuestions = SavedPathText.Get("OwnContext") + "\n" + Json(new
             {
@@ -156,6 +167,7 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
             Result = SavedPathText.Get("Absent");
             Detail = SavedPathText.Get("AbsentDetail");
         }
+
         else if (path.Reachability == Tier0Reachability.Reachable)
         {
             var fixedTarget = path.ShortestProvenDistance == 0 && path.Subject is not null
@@ -175,6 +187,35 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
             Result = SavedPathText.Get("Unknown");
             Detail = SavedPathText.Get("UnknownDetail");
         }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasPreviousLimitations))]
+    private void PreviousLimitations()
+    {
+        if (!HasPreviousLimitations) return;
+        _limitationPage--;
+        ApplyLimitationPage();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasNextLimitations))]
+    private void NextLimitations()
+    {
+        if (!HasNextLimitations) return;
+        _limitationPage++;
+        ApplyLimitationPage();
+    }
+
+    private void ApplyLimitationPage()
+    {
+        var count = _allLimitations.Count;
+        var start = count == 0 ? 0 : _limitationPage * LimitationPageSize + 1;
+        var end = Math.Min(count, (_limitationPage + 1) * LimitationPageSize);
+        Limitations = count == 0 ? [] : _allLimitations.Skip(start - 1).Take(LimitationPageSize).ToArray();
+        LimitationsHeading = $"Showing {start:N0}-{end:N0} of {count:N0} saved limitations";
+        HasPreviousLimitations = _limitationPage > 0;
+        HasNextLimitations = end < count;
+        PreviousLimitationsCommand.NotifyCanExecuteChanged();
+        NextLimitationsCommand.NotifyCanExecuteChanged();
     }
 
     private void Refuse(string reason)

@@ -87,11 +87,35 @@ internal static class OwnershipAuditValidation
                 || !OwnershipAuditStorage.Hash(JsonSerializer.Serialize(classification, ProofSerialization.Options)).AsSpan().SequenceEqual(seed.Fingerprint.AsSpan()))
                 throw OwnershipAuditStorage.InvalidProof();
         }
-        var relations = new List<Tier0RelevanceRelation>();
-        var permissions = new Dictionary<string, IReadOnlyDictionary<int, string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var link in links)
+        // Visit one resource at a time, but retain the stored order in the returned proof.
+        // A changed order would change the fingerprint even when every witness still agrees.
+        var relations = new Tier0RelevanceRelation[links.Length];
+        var order = Enumerable.Range(0, links.Length).OrderBy(index =>
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!targets.TryGetValue(links[index].Affected, out var target)) throw OwnershipAuditStorage.InvalidProof();
+            return target.Identity.DistinguishedName;
+        }, StringComparer.Ordinal);
+        string? preparedTarget = null;
+        ObjectPermissions? preparedPermissions = null;
+        IReadOnlyDictionary<int, string>? originalEntries = null;
+        ObjectPermissions PermissionsFor(string target)
+        {
+            if (preparedTarget != target)
+            {
+                preparedTarget = null;
+                preparedPermissions = null;
+                originalEntries = null;
+                cancellationToken.ThrowIfCancellationRequested();
+                preparedPermissions = bundle.ReadPermissions(target) ?? throw OwnershipAuditStorage.InvalidProof();
+                preparedTarget = target;
+            }
+            return preparedPermissions!;
+        }
+        foreach (var index in order)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var link = links[index];
             if (!targets.TryGetValue(link.Controller, out var controller) || !targets.TryGetValue(link.Affected, out var affected)
                 || controller.Selection != OwnershipScopeState.Included || affected.Selection != OwnershipScopeState.Included)
                 throw OwnershipAuditStorage.InvalidProof();
@@ -104,7 +128,7 @@ internal static class OwnershipAuditValidation
             {
                 if (link.WitnessTarget is null || link.WitnessTrustee is null || link.WitnessCapability is not { } capability
                     || link.WitnessTarget != affected.Identity.DistinguishedName) throw OwnershipAuditStorage.InvalidProof();
-                var descriptor = bundle.ReadPermissions(link.WitnessTarget) ?? throw OwnershipAuditStorage.InvalidProof();
+                var descriptor = PermissionsFor(link.WitnessTarget);
                 if (link.WitnessIsOwner)
                 {
                     if (link.WitnessOrdinal is not null || descriptor.Owner?.Sid != link.WitnessTrustee)
@@ -114,22 +138,18 @@ internal static class OwnershipAuditValidation
                     || descriptor.Entries.FirstOrDefault(entry => entry.Ordinal == ordinal) is not { } witnessed
                     || witnessed.Trustee.Sid != link.WitnessTrustee)
                     throw OwnershipAuditStorage.InvalidProof();
-                relations.Add(Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity,
+                relations[index] = Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity,
                     affected.Identity, capability, new(link.WitnessTarget, link.WitnessOrdinal,
-                        link.WitnessTrustee, link.WitnessIsOwner)));
+                        link.WitnessTrustee, link.WitnessIsOwner));
                 continue;
             }
             var edge = ControlEdgeStorage.ReadEdge(connection, description, edgeId);
-            if (!permissions.TryGetValue(edge.Target, out var original))
-            {
-                var captured = bundle.ReadPermissions(edge.Target) ?? throw OwnershipAuditStorage.InvalidProof();
-                original = captured.Entries.ToDictionary(entry => entry.Ordinal, SharedPermissionStorage.ValueKey);
-                permissions.Add(edge.Target, original);
-            }
+            var captured = PermissionsFor(edge.Target);
+            var original = originalEntries ??= captured.Entries.ToDictionary(entry => entry.Ordinal, SharedPermissionStorage.ValueKey);
             if (ControlEdgeStorage.ReadExactAces(connection, edge).Any(entry =>
                 !original.TryGetValue(entry.Ordinal, out var source) || source != SharedPermissionStorage.ValueKey(entry)))
                 throw OwnershipAuditStorage.InvalidProof();
-            relations.Add(Tier0RelevanceRelation.FromControlEdge(header.Input, controller.Identity, affected.Identity, edge));
+            relations[index] = Tier0RelevanceRelation.FromControlEdge(header.Input, controller.Identity, affected.Identity, edge);
         }
         var replay = OwnershipScopeSelector.Select(header.Input, description.GenerationId, classifications, relations, header.Coverage,
             cancellationToken, progress: null);

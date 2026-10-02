@@ -11,7 +11,8 @@ internal static class Tier0PathStorage
     private static readonly ResourceManager Resources = new("SecureAD.Judgement.Resources.Tier0Path", typeof(Tier0PathStorage).Assembly);
     private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount,
         IReadOnlyList<SavedRequesterDaclProof> Requesters, IReadOnlyList<SavedOwnAccountMembershipProof> OwnAccounts,
-        IReadOnlyList<SavedMembershipDaclProof> MembershipDacls, bool OfflineSelection, PathRequesterSelection? Selection);
+        IReadOnlyList<SavedMembershipDaclProof> MembershipDacls, bool OfflineSelection,
+        PathRequesterSelection? Selection, SavedPathInputs Inputs);
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
@@ -80,31 +81,35 @@ internal static class Tier0PathStorage
                 ("$proof", json), ("$hash", OwnershipAuditStorage.Hash(json)));
         }
         var header = JsonSerializer.Serialize(new Header(Tier0PathCalculation.Version, description.GenerationId,
-            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters, ownAccounts, membershipDacls, offlineSelection, selection), ProofSerialization.Options);
+            Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters, ownAccounts, membershipDacls,
+            offlineSelection, selection, SavedPathInputs.From(inputs)), ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
         cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
     }
 
-    private static (PathInputs Inputs, Header? Header) ReadSaved(
+    private static (SavedPathInputs Inputs, Header? Header) ReadSaved(
         SqliteConnection connection, JudgementDescription description, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var inputs = PathInputStorage.Read(connection, description, cancellationToken);
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT proof,fingerprint FROM tier0_path_calculation WHERE id=1";
         Header? header;
         using (var read = query.ExecuteReader()) header = read.Read() ? Decode<Header>(read.GetString(0), (byte[])read.GetValue(1)) : null;
         if (header is null)
         {
-            if (inputs.Availability == PathInputAvailability.Recorded) throw InvalidProof();
-            return (inputs, null);
+            var completeInputs = PathInputStorage.Read(connection, description, cancellationToken);
+            if (completeInputs.Availability == PathInputAvailability.Recorded) throw InvalidProof();
+            return (SavedPathInputs.From(completeInputs), null);
         }
         if (header.Version != Tier0PathCalculation.Version || header.Generation != description.GenerationId
             || header.InputFingerprint is not { Length: 64 } || header.NodeCount < 0
             || header.Requesters is null || header.OwnAccounts is null || header.MembershipDacls is null
-            || header.OfflineSelection != (header.Selection is not null)) throw InvalidProof();
+            || header.OfflineSelection != (header.Selection is not null) || header.Inputs is null
+            || header.Inputs.JudgementGenerationId != description.GenerationId
+            || header.Inputs.FixedTargets is null || header.Inputs.UncertaintyRegions is null) throw InvalidProof();
+        var inputs = header.Inputs;
         cancellationToken.ThrowIfCancellationRequested();
         foreach (var proof in header.Requesters)
         {
@@ -177,7 +182,7 @@ internal static class Tier0PathStorage
         return (path, coverage);
     }
 
-    private static Tier0PathResult PathOf(SqliteConnection connection, PathInputs inputs, Header? header,
+    private static Tier0PathResult PathOf(SqliteConnection connection, SavedPathInputs inputs, Header? header,
         string subjectDn, CancellationToken cancellationToken)
     {
         if (header is null) return new(inputs, null, Tier0Reachability.Unknown, null, []);
@@ -241,7 +246,7 @@ internal static class Tier0PathStorage
         return CoverageOf(description, inputs, header);
     }
 
-    private static PathRequesterCoverage CoverageOf(JudgementDescription description, PathInputs inputs, Header? header)
+    private static PathRequesterCoverage CoverageOf(JudgementDescription description, SavedPathInputs inputs, Header? header)
     {
         var selection = header?.Selection;
         var requesters = header?.Requesters ?? [];

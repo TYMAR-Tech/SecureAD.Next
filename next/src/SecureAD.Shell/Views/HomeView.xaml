@@ -267,11 +267,9 @@
 
                      EACH APPEARS ONLY WHERE IT APPLIES. Derive is offered to a run holding
                      nothing; Judge only once facts exist, because rules that read more than one
-                     object rest on them and a judging that ran first would rest on nothing. A run
-                     already judged is offered neither, which is what stops a second judging
-                     overwriting the first. The view model refuses in words as well, for anything
-                     that reaches the command another way. -->
-                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                     object rest on them and a judging that ran first would rest on nothing.
+                     Rejudging is a separate, explicitly confirmed destructive action. -->
+                <Grid HorizontalAlignment="Left" Margin="0,16,0,0">
                     <Button Content="Derive facts"
                             Command="{Binding Library.DeriveFactsCommand}"
                             Visibility="{Binding Library.CanDerive, Converter={StaticResource Shown}}" />
@@ -279,6 +277,12 @@
                     <Button Content="Judge"
                             Command="{Binding Library.JudgeCommand}"
                             Visibility="{Binding Library.CanJudge, Converter={StaticResource Shown}}" />
+
+                    <Button Command="{Binding Library.DiscardJudgementAndJudgeAgainCommand}"
+                            Style="{StaticResource DangerButton}"
+                            Visibility="{Binding Library.CanDiscardJudgement, Converter={StaticResource Shown}}">
+                        <TextBlock Text="Discard judgement and judge again" TextWrapping="Wrap" />
+                    </Button>
 
                     <!-- The only way out of an analysis started here. This screen has none of the
                          audit window's progress machinery and does not borrow it: that window's
@@ -288,7 +292,7 @@
                             Command="{Binding Library.StopAnalysisCommand}"
                             Style="{StaticResource DangerButton}"
                             Visibility="{Binding Library.IsAnalysing, Converter={StaticResource Shown}}" />
-                </StackPanel>
+                </Grid>
 
                 <!-- What the analysis is doing or has said. Selectable, because the one thing an
                      operator needs from a failure is to copy it.

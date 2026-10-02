@@ -60,6 +60,150 @@ source-bound result and reopen it correctly at representative scale. Small-fixtu
 not meet that goal, and no customer-runtime ceiling has been agreed. This priority does not itself
 approve a new implementation scope, measurement campaign, publication or production retry.
 
+**Owner's three-day demonstration deadline, 2026-10-02:** review further improvements and prepare
+future publishing while the owner publishes and tests the verified `4deef9f` baseline.
+The owner requested follow-up work on a new branch rather than holding all preparation for the
+production result; use a separate checkout so the Visual Studio checkout and its test build do not
+change underneath him.
+The current follow-up is `p280-judging-followup`, including repeatable normal Release publishing
+and a review of remaining judging/completion/readback risks, not a restart of the completed benchmarks.
+Specific optimization and measurement scopes still require bounded approval; preserve permission
+answers, bindings, incompleteness and historical evidence, with no new UI presentation, production
+operations, commit or push authorized by this request.
+
+**Owner-reported browsing usability, 2026-10-02:** the owner reports that browsing the current
+implementation is unusably slow even in the small laboratory, not only at production scale.
+This is a usability observation, not a measured timing or identification of the exact running build.
+The existing calculate-once/stored-readback requirement remains in force across completed-result
+browsing; faster judging alone does not establish that the application is usable.
+The proposed larger correction must consider both result production and selected-result reading,
+while keeping the known whole-forest saved-path read separate from unconfirmed causes of other
+screen delays.
+This clarification does not approve a broader implementation, presentation change, measurement
+campaign or change to the owner's current production test.
+
+**Owner direction, 2026-10-02: ready to start the larger correction.**
+The owner wants the coordinated calculate-once/result-production and selected-result-reading fix,
+not another sequence of disconnected optimizations, and asks for navigation performance logging
+like the predecessor's if that data is needed.
+Use the existing separate checkout and preserve its verified uncommitted work; keep the active
+Visual Studio checkout, running judgement and historical evidence untouched.
+The concrete implementation/verification boundary and any visible loading or warning presentation
+still need to be stated before editing those surfaces; no live access, production retry, commit or
+push follows from this direction.
+
+**Owner-approved coordinated implementation scope, 2026-10-02.**
+Carry prepared evidence, saved-proof references and writing state through later judging stages;
+replace unnecessary whole-forest selected-result reads, preserve the protected open-run lifetime,
+and keep slow reading off the UI thread.
+Add local navigation diagnostics covering the action, run/build identity, opening/checking, queries,
+time until results are applied, and success/refusal/cancellation, without live-directory access.
+The owner explicitly approved Dashboard wording **"Loading saved results..."** and
+**"Saved membership results could not be read."**, rather than reporting failed reads as absent
+derivation.
+Saved-path limitations use 100-entry pages, matching object listing, with
+**"Showing X-Y of Z saved limitations"** and Previous/Next controls; retain every limitation and
+the distinction between missing captured evidence and unsupported analysis.
+This is a display page size, not an analysis budget.
+Approval includes exact-answer/fingerprint equivalence, source/generation and cancellation
+regressions, explicitly rebuilt isolated defects and correct rebuilds, and bounded fresh offline
+comparisons of judging, reopening and selected-view reads with a five-minute stop per invocation.
+Do not expand inconclusive measurements automatically or claim production acceptance from small
+fixtures.
+Use the separate checkout, preserve existing follow-up work and failed attempts, and do not change
+the running judgement, original checkout, rules, Tier-0 policy or discovery settings; no production
+retry, commit or push is authorized.
+
+**Implementation checkpoint, 2026-10-02: the coordinated correction is offline-verified.**
+The follow-up carries prepared statements and committed proof identities through later judging
+transactions without allowing rolled-back identities to escape; selected saved paths retain an
+explicit bounded, fingerprinted input projection, and completed-run permission classification
+obtains only the descriptor identity it needs.
+Dashboard reading runs off the UI thread and distinguishes loading, absent derivation and failed
+saved membership; saved limitations retain every entry behind the approved 100-entry pages, and
+local navigation diagnostics record build/run identity, opening, query, application and outcome.
+A fresh Release rebuild and all 6,268 ordinary tests pass, and eight explicitly rebuilt isolated
+defects are detected before the corrected isolated source is rebuilt and passes all controls.
+The bounded fresh witness comparison preserves the exact selected answer, evidence seal,
+generation, source binding, fixed targets, uncertainty, requester-family coverage and limitations;
+its small-fixture timings are evidence about that fixture only, not a production speed claim.
+
+**Production completion checkpoint, 2026-10-02.**
+The owner's supplied `run6.log` is from the same `4deef9f` Release executable recorded in the
+handoff and reaches terminal `CompletedDegraded` after proof writing and publication for 940,067
+objects, with no logged warning or error and approximately 4 hours 42 minutes elapsed.
+That establishes completed production judging, but the log does not establish that the result was
+successfully reopened or browsed, and the follow-up source has not been run in production.
+The original `SecureAD.Next` checkout remains at `4deef9f`; no live access, production retry,
+application publication, commit or push occurred in the follow-up.
+
+**Owner-approved discard-first rejudging, 2026-10-02.**
+The owner has limited disk space and explicitly chose **"Discard judgement and judge again"**:
+losing the existing judgement is acceptable during testing, so a whole-bundle copy or keeping both
+old and new judgements must not be required by this action.
+Reuse the same captured evidence and derived facts, preserve the run log, and discard only the
+selected run's judgement before invoking the existing judging engine.
+This is an explicit exception to retaining the previous judgement on cancellation: once discard
+has succeeded, stopping or failing the new attempt leaves no completed judgement to open.
+Do not present unfinished work as results, delete evidence or derived facts, access AD, or invoke
+this action against the owner's production bundle from an implementation/verification session.
+The owner approved the action in Home's existing analysis-action area for an already-judged run,
+with one confirmation naming the run: **"This deletes this run's saved judgement before starting
+again. Captured evidence, derived facts and the run log are kept. If judging is stopped or fails,
+there will be no completed judgement to open."**
+Use the existing judging progress and Stop control; ordinary Judge remains non-destructive.
+
+**Owner-supplied running snippet, 2026-10-02:** the corrected source is
+`C:\Users\jistrand\Downloads\new\run5.log`, preserved unchanged with its SHA-256 under
+`.v-pipeline-61f8b32d/production-run5/`.
+The logged executable SHA-256 matches the owner's local normal Release publish output and the
+engine identifies `4deef9f`; the evidence seal and derivation generation match the earlier run.
+The 940,067-object pass completes in 6,331,774 ms, scope selection in 453,488 ms and detailed
+control assessment in 2,224,368 ms, including 1,974,764 ms in its storage step.
+At the last supplied checkpoint, `2026-10-02T16:41:36Z`, ownership is still running with
+2,315 of 7,225 targets completed and no path-writing, publication, failure or successful-finish
+record; this is operational evidence, not a controlled comparison or a completed-run acceptance.
+
+**Owner-approved follow-up trial, 2026-10-02: witness-grouped validation only.**
+Within ownership/path source validation, prepare one resource's captured permissions once and check
+all of its saved witnesses before discarding that preparation.
+Preserve captured-owner and permission-entry checks, stored-edge proofs, original output order,
+exact fingerprints, resource/source/generation binding, incomplete results and cancellation; do not
+introduce a forest-wide permission cache, change analysis policy or activate requester discovery.
+Approval includes focused regressions with explicitly rebuilt isolated defects and correct rebuilds,
+complete saved-answer comparisons, and a fresh bounded before/after offline comparison of
+repeated-witness and no-reuse cases, with a five-minute stop per invocation.
+Do not automatically expand or repeat an inconclusive comparison; this tests the bounded change,
+not production-scale acceptance.
+Work only in the separate `p280-judging-followup` checkout while the owner tests `4deef9f`;
+future publishing setup remains separate, with no production operation, UI change, commit or push.
+
+**Witness-grouped trial outcome, 2026-10-02: isolated implementation verified, not adopted for
+production.** All 849 directly related regression cases pass, and all 10 new checks detect their
+intended explicitly rebuilt defects across five isolated variants before passing on correct rebuilds.
+Both fresh before/after pairs agree across all 61 saved tables and all 603 objects' complete permission
+answers, with exact source bindings, original occurrences and degraded results verified.
+In the repeated-witness case, validation reads fall from 594 to 18, phase time from 909.3502 to
+238.3459 ms and allocation from 297,692,496 to 18,781,936 bytes; complete judging plus reopening
+changes from 5,410.7821 to 4,209.4049 ms.
+The no-reuse case stays at 18 reads but is slower: validation 205.3262 to 248.8114 ms and complete
+judging plus reopening 2,043.7705 to 2,661.5928 ms, with essentially unchanged allocation.
+These are single fresh comparisons of small nine-domain synthetic fixtures, not representative
+forest measurements or a universal speedup, and the slowdown remains an open finding rather than
+being explained away or used to authorize more trials.
+The [verification record](../.v-witness-a6d9712f/validation-summary.json) retains binaries, source
+identities, input seals, failed attempts, comparisons and rebuilt controls.
+The owner's original checkout remains clean at `4deef9f`; the follow-up stays uncommitted and
+unpublished with no new production operation.
+
+**Future normal Release publishing is prepared on the follow-up branch.**
+`pwsh -File .\next\tools\Publish-Release.ps1` uses the existing GUI `FolderProfile`, includes the
+current working sources, creates fresh output/build folders and records source and package hashes;
+`-WhatIf` previews without building.
+Eight isolated script checks detect eight deliberately broken script variants and pass with correct
+scripts, including existing-output refusal, native failures, changed sources and dependency restoration.
+No real application package or startup verification was performed in this follow-up.
+
 **Earlier owner-approved priority, 2026-10-01: descriptor-first permission preparation and its
 bounded offline validation, before further UI polish.** After the end-to-end design review, the owner
 explicitly approved the first implementation scope below and requested a new-session handoff before
@@ -2712,32 +2856,28 @@ Thirty-nine of seventy-nine decision records reference it. The load-bearing diff
 ### Why it took hours, and why that is not inherent
 
 **The owner's measurement, 2026-09-03: capture took 30 to 45 minutes across nine domains, and the
-run took three to five hours.** Capture was never the problem. The time went on the graph.
+run took three to five hours.** The difference was after capture; that observation alone does not
+separate path calculation from the other analysis phases.
 
-Its own CONTROL-EDGES-AND-PATHS document, under docs/ in the predecessor tree, says how, and it is
-costs stacked on each other:
+**Correction, 2026-10-02: that timing does not establish the cause, and the old code currently on disk
+already searches backwards from its targets.** In frozen predecessor `f0726569`,
+`EscalationPathService.BuildAllPathsAsync` builds a compact graph, computes one reverse-distance
+index starting at all high-value targets, then reconstructs representative shortest paths.
+The default depth is five and the retained-candidate ceiling is 250,000; both belong to the old
+product, not to approved rebuild budgets.
+The old per-source forward-search API still exists, but it is not the active batch implementation.
+Its classifiers still use the stored transitive membership closure, while path links use direct
+memberships.
 
-- **`fact_group_membership_closure`** — the full transitive closure of every group, materialised.
-  Quadratic in the forest.
-- **"Traversal: BFS from each non-high-value principal to discover shortest paths to targets."**
-  With a hundred thousand principals that is a hundred thousand traversals of a graph holding
-  millions of edges.
-
-**Neither is required by the question being asked.** *Who can reach Tier 0* is answered by walking
-**backwards from the targets** — there are perhaps dozens of high-value targets against a hundred
-thousand principals, so the same answers cost three or four orders of magnitude less. The old
-application even built the reverse graph, as step 3 of that document, and then traversed forward
-from every principal anyway.
-
-**So the hours were an algorithmic choice, not the price of the analysis.** This matters now because
-escalation paths are unbuilt here and will be asked for eventually. Two things follow:
-
-- The closure is already refused: `what-stage-2a-derives.md` walks membership on demand, because
-  *the transitive closure of every group is quadratic in a real forest, while every consumer asks
-  about a handful of named principals*. That decision was taken for a different reason and happens
-  to remove the first cost entirely.
-- **When paths are built, traverse from the targets.** Reverse traversal needs `memberOf` edges,
-  which are linear in memberships and already persisted, and never needs the closure.
+The earlier account here relied on the predecessor's CONTROL-EDGES-AND-PATHS description and
+incorrectly attributed its reported hours to a forward search from every principal.
+Neither that attribution nor the claimed orders-of-magnitude advantage is established for the
+frozen code; the rebuild also searches backwards for its supported membership paths, and no new
+old/new runtime comparison was performed.
+The old selected-path detail reads an already-retained path and requests its individual permission
+evidence, rather than rebuilding whole-forest path inputs for every selected path.
+Preserving the rebuild's stronger source and permission qualification does not require that
+whole-forest readback cost; the separate saved-path browsing finding remains open.
 
 **One correction to a claim made in this session and left here so it is not repeated.** SYSVOL was
 suspected of being a runtime risk on the strength of lab capture rising from 7 to 11 seconds when it
@@ -2949,15 +3089,18 @@ nothing else in the roadmap depends on it. Deferring it costs nothing but the fi
 audit, if the user hit stop, it should get thrown away. im not going to try and figure out how to
 handle incomplete data from a user hitting stop."* **This is already how capture, derivation and
 judging behave** - each writes `<name>.db.partial` and renames it as its last act, so a run that was
-stopped has no file under the name a reader opens. A cancelled re-judging leaves the previous
-judgement intact, which is the same guarantee a crash gets by the same mechanism.
+stopped has no file under the name a reader opens. Ordinary re-judging leaves the previous
+judgement intact on cancellation, which is the same guarantee a crash gets by the same mechanism;
+the explicitly confirmed discard-first action approved on 2026-10-02 is the deliberate exception,
+because its previous judgement has already been removed before the new attempt starts.
 
-**The rule is recorded here because the shell cannot yet re-judge or re-derive, and will be able
-to.** `securead-cli` has `--derive` and `--judge` for a bundle already captured; the shell has no
-equivalent command, only *New audit*. When those buttons are built they must follow the rule above -
-delete whatever the interrupted attempt produced rather than keeping it for the operator to
-interpret. **No screen may offer partial results from a stop**, and nothing may ask an operator to
-decide what an incomplete judgement means.
+**The rule also governs analysis started from Home.** The shell offers initial deriving and judging,
+and the confirmed discard-first rejudging action described above reuses captured evidence and derived
+facts without copying the bundle.
+Stopping still requires deleting the interrupted attempt's output rather than keeping it for the
+operator to interpret; the remaining unfinished-file cleanup gap is recorded in `PUNCH-LIST.md`.
+**No screen may offer partial results from a stop**, and nothing may ask an operator to decide what
+an incomplete judgement means; unfinished diagnostic files on disk are not completed results.
 
 ## What a control edge means, decided 2026-09-05
 

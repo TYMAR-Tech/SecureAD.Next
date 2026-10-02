@@ -12,7 +12,7 @@ namespace SecureAD.Judgement;
 internal sealed class SharedPermissionStorage(SqliteConnection connection, SqliteTransaction transaction,
     PreparedStatements statements, PermissionWriteSession session)
 {
-    internal SharedProofStorage Proofs { get; } = new(connection, transaction, statements);
+    internal SharedProofStorage Proofs { get; } = new(connection, transaction, statements, session);
 
     internal const int ProjectionColumns = 29;
     internal const string Projection = """

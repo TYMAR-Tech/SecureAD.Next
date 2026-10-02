@@ -31,6 +31,11 @@
     </UserControl.Resources>
 
     <Grid>
+        <TextBlock Text="Loading saved results..."
+                   Style="{StaticResource Caption}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="{Binding IsLoading, Converter={StaticResource Shown}}" />
+
         <!-- No run chosen. A question the operator has not answered, which is not a failure and
              must not be worded as one. -->
         <TextBlock Text="Choose a run on Home to see what it captured."

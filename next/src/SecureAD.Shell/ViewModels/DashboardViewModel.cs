@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence.Inventory;
@@ -136,9 +137,18 @@ internal sealed partial class DashboardViewModel : ObservableObject
         ScopeWording.GetString(key, CultureInfo.CurrentUICulture) ?? throw new InvalidOperationException(key), values);
 
     private readonly IAssetSource _assets;
+    private CancellationTokenSource? _pending;
+    private long _revision;
+    private string? _membershipReadError;
 
     [ObservableProperty]
     private string? _bundlePath;
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    /// <summary>The current Dashboard read, including application of its result.</summary>
+    public Task ReadCompletion { get; private set; } = Task.CompletedTask;
 
     /// <summary>Why there is nothing to show, or null when there is.</summary>
     /// <remarks>
@@ -189,7 +199,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
     /// gives, and separately from <see cref="Refusal"/> because <i>you have not chosen a run</i>
     /// and <i>this run would not open</i> send an operator to do different things.
     /// </remarks>
-    public bool HasNoRun => _inventory is null && Refusal is null;
+    public bool HasNoRun => BundlePath is null && _inventory is null && Refusal is null;
 
     /// <summary>The forest the run captured.</summary>
     public string? ForestFqdn => _inventory?.ForestFqdn;
@@ -293,6 +303,9 @@ internal sealed partial class DashboardViewModel : ObservableObject
         {
             if (_inventory is null)
                 return null;
+
+            if (_membershipReadError is not null)
+                return new Notice("Saved membership results could not be read.", _membershipReadError);
 
             if (_groupsWithUnidentifiedMembers is not { } groups)
             {
@@ -437,46 +450,103 @@ internal sealed partial class DashboardViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
+        CancelRead();
         _assets.SelectRun(bundleDirectory);
         BundlePath = bundleDirectory;
-
-        var read = _assets.ReadInventory(bundleDirectory);
-
-        if (!read.IsSuccess)
-        {
-            _inventory = null;
-            _groupsWithUnidentifiedMembers = null;
-            Domains.Clear();
-            Refusal = new Notice("This run cannot be summarised", read.Error.Description);
-            Restated();
-            return;
-        }
-
-        _inventory = read.Value;
+        _inventory = null;
+        _groupsWithUnidentifiedMembers = null;
+        _membershipReadError = null;
         Refusal = null;
-
-        // A derivation that will not open is reported as one that has not run, deliberately. Both
-        // mean nobody has established what these groups hold, which is the only thing this screen
-        // says about it; the evidence refusal above is where a broken store is stated.
-        var membership = _assets.ReadGroupsWithUnidentifiedMembers(bundleDirectory);
-        _groupsWithUnidentifiedMembers = membership.IsSuccess ? membership.Value : null;
-
         Domains.Clear();
-        foreach (var domain in _inventory.Domains)
-            Domains.Add(new DomainInventoryRowViewModel(domain));
-
+        IsLoading = true;
         Restated();
+        var pending = new CancellationTokenSource();
+        _pending = pending;
+        ReadCompletion = LoadAsync(bundleDirectory, pending, _revision);
+    }
+
+    private async Task LoadAsync(string bundleDirectory, CancellationTokenSource pending, long revision)
+    {
+        using var navigation = NavigationDiagnostics.Begin(bundleDirectory, "open Dashboard");
+        try
+        {
+            var read = await _assets.ReadAsync(bundleDirectory, (reader, token) =>
+            {
+                token.ThrowIfCancellationRequested();
+                var inventory = reader.ReadInventory(bundleDirectory);
+                token.ThrowIfCancellationRequested();
+                var membership = reader.ReadGroupsWithUnidentifiedMembers(bundleDirectory);
+                token.ThrowIfCancellationRequested();
+                return (Inventory: inventory, Membership: membership);
+            }, pending.Token);
+            if (revision != _revision || pending.IsCancellationRequested)
+            {
+                navigation.Complete("cancelled", null);
+                return;
+            }
+
+            if (!read.Inventory.IsSuccess)
+            {
+                Refusal = new Notice("This run cannot be summarised", read.Inventory.Error.Description);
+                navigation.Complete("refused", read.Inventory.Error.Code);
+                return;
+            }
+
+            _inventory = read.Inventory.Value;
+            if (read.Membership.IsSuccess)
+                _groupsWithUnidentifiedMembers = read.Membership.Value;
+            else
+                _membershipReadError = read.Membership.Error.Description;
+            foreach (var domain in _inventory.Domains)
+                Domains.Add(new DomainInventoryRowViewModel(domain));
+            navigation.Complete(read.Membership.IsSuccess ? "success" : "refused",
+                read.Membership.IsSuccess ? null : read.Membership.Error.Code);
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested)
+        {
+            navigation.Complete("cancelled", null);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            if (revision == _revision && !pending.IsCancellationRequested)
+            {
+                Refusal = new Notice("This run cannot be summarised", error.Message);
+                navigation.Complete("refused", error.GetType().Name);
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_pending, pending))
+            {
+                _pending = null;
+                IsLoading = false;
+                Restated();
+            }
+            pending.Dispose();
+        }
     }
 
     /// <summary>Shows nothing, because no run is chosen.</summary>
     public void Clear()
     {
+        CancelRead();
         BundlePath = null;
         _inventory = null;
         _groupsWithUnidentifiedMembers = null;
+        _membershipReadError = null;
         Refusal = null;
         Domains.Clear();
         Restated();
+    }
+
+    private void CancelRead()
+    {
+        _revision++;
+        var pending = _pending;
+        _pending = null;
+        pending?.Cancel();
+        IsLoading = false;
     }
 
     /// <summary>
@@ -490,6 +560,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasRun));
         OnPropertyChanged(nameof(HasNoRun));
+        OnPropertyChanged(nameof(IsLoading));
         OnPropertyChanged(nameof(HasRefusal));
         OnPropertyChanged(nameof(ForestFqdn));
         OnPropertyChanged(nameof(CoverageHeadline));

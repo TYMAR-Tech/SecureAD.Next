@@ -486,6 +486,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Forgets the run being shown, so nothing describes a run no longer chosen.</summary>
     public void Clear()
     {
+        Opened?.Suspend();
         CancelRead();
         _resetting = true;
         _assets.CloseRun();

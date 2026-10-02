@@ -277,6 +277,21 @@ public sealed class ShellViewModelTests
 
     // ---------------------------------------------------------------------------------------
 
+    [Fact]
+    public void ClearingForDiscardRemovesBothScreensOldRun()
+    {
+        var shell = AShell();
+        shell.Assets.Show(@"C:\runs\discard-test", aCaptureIsRunning: false);
+        shell.Dashboard.Show(@"C:\runs\discard-test");
+
+        shell.ClearOpenedRun();
+
+        Assert.Null(shell.Assets.BundlePath);
+        Assert.Null(shell.Assets.Opened);
+        Assert.Null(shell.Dashboard.BundlePath);
+        Assert.False(shell.Dashboard.HasRun);
+    }
+
     private static ShellViewModel AShell()
     {
         var settings = new FakeSettingsStore();

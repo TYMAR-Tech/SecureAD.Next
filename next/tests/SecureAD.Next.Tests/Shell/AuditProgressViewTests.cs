@@ -138,7 +138,7 @@ public sealed class AuditProgressViewTests
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
-    private static void OnSta(Action action)
+    internal static void OnSta(Action action)
     {
         Exception? failure = null;
         var thread = new Thread(() => { try { action(); } catch (Exception error) { failure = error; } });

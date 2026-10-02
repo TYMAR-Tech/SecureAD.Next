@@ -301,6 +301,9 @@ public static class BundleLayout
     public static string JudgementPartialPath(string bundleDirectory) =>
         Combine(bundleDirectory, JudgementPartialFileName);
 
+    internal static string JudgementWriteLockPath(string bundleDirectory) =>
+        Combine(bundleDirectory, "judgement.write.lock");
+
     /// <summary>The judgement seal in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string JudgementSealPath(string bundleDirectory) =>

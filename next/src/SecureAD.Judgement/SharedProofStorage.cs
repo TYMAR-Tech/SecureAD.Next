@@ -8,17 +8,27 @@ using SecureAD.Storage;
 
 namespace SecureAD.Judgement;
 
-// Reuse lasts only for the owning object transaction; rolled-back IDs never escape it.
 internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
-    Func<string, byte[]> lookupHash, PreparedStatements statements)
+    Func<string, byte[]> lookupHash, PreparedStatements statements, PermissionWriteSession session)
 {
     internal const int FormatVersion = 1;
-    private readonly Dictionary<string, long> written = new(StringComparer.Ordinal);
     private readonly Func<string, byte[]> lookup = lookupHash ?? throw new ArgumentNullException(nameof(lookupHash));
 
     internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
+        PreparedStatements statements, PermissionWriteSession session)
+        : this(connection, transaction, Hash, statements, session)
+    {
+    }
+
+    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
+        Func<string, byte[]> lookupHash, PreparedStatements statements)
+        : this(connection, transaction, lookupHash, statements, new PermissionWriteSession())
+    {
+    }
+
+    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
         PreparedStatements statements)
-        : this(connection, transaction, Hash, statements)
+        : this(connection, transaction, Hash, statements, new PermissionWriteSession())
     {
     }
 
@@ -51,7 +61,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         {
             var key = ValueKey("Meaning", generation, null, 0, meaning);
             id = Put("Meaning", generation, null, 0, meaning, out _);
-            written[key] = id.Value;
+            session.AddProof(key, id.Value);
         }
         return (id, MeaningBinding(generation, entryKey, meaning));
     }
@@ -81,13 +91,13 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         if (routes is null || routes.Memberships is null) throw FullControlEvaluator.InvalidProof();
         var payload = JsonSerializer.Serialize(routes);
         var key = ValueKey("MembershipRoutes", generation, derived, catalogue, payload);
-        if (written.TryGetValue(key, out var cached)) return cached;
+        if (session.TryGetProof(key, out var cached)) return cached;
         var id = Put("MembershipRoutes", generation, derived, catalogue, payload, out var created);
         if (created)
             MembershipRouteStorage.Write(connection, transaction, RouteSubject(id), routes);
         else if (JsonSerializer.Serialize(ReadRoutes(connection, id, generation, derived, catalogue)) != payload)
             throw FullControlEvaluator.InvalidProof();
-        written.Add(key, id);
+        session.AddProof(key, id);
         return id;
     }
 
@@ -95,7 +105,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
     {
         Active();
         var key = ValueKey(kind, generation, derived, catalogue, payload);
-        if (written.TryGetValue(key, out var cached))
+        if (session.TryGetProof(key, out var cached))
         {
             created = false;
             return cached;

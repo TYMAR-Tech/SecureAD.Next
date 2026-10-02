@@ -4,13 +4,14 @@ using SecureAD.Kernel;
 namespace SecureAD.Evidence;
 
 /// <summary>A verified store whose database and seal remain protected until every acquired reader has closed.</summary>
-public sealed class ProtectedStoreFile : IDisposable
+public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly FileStream _data;
     private readonly FileStream _seal;
     private int _readers;
     private bool _closing;
+    private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal object EvidenceDescriptionGate { get; } = new();
     internal BundleDescription? EvidenceDescription { get; set; }
 
@@ -129,6 +130,13 @@ public sealed class ProtectedStoreFile : IDisposable
         }
     }
 
+    /// <summary>Closes the store and waits until every reader has released its file protection.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        await _closed.Task.ConfigureAwait(false);
+    }
+
     private void Release()
     {
         lock (_gate)
@@ -140,8 +148,17 @@ public sealed class ProtectedStoreFile : IDisposable
 
     private void CloseFiles()
     {
-        _seal.Dispose();
-        _data.Dispose();
+        try
+        {
+            _seal.Dispose();
+            _data.Dispose();
+            _closed.TrySetResult();
+        }
+        catch (IOException error)
+        {
+            _closed.TrySetException(error);
+            throw;
+        }
     }
 
     private static Result<ProtectedStoreFile> Failure(string reason, string detail, string path) =>

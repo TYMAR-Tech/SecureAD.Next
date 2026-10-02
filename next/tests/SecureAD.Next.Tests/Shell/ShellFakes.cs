@@ -76,6 +76,20 @@ internal sealed class FakeRunCatalog : IRunCatalog
 
     public AuditError? DeletionFails { get; set; }
 
+    public string? DiscardedJudgement { get; private set; }
+    public AuditError? DiscardFails { get; set; }
+    public Action? WhenDiscarding { get; set; }
+
+    public Result<string> DiscardJudgement(string bundleDirectory)
+    {
+        WhenDiscarding?.Invoke();
+        if (DiscardFails is { } error) return Result<string>.Failure(error);
+        DiscardedJudgement = bundleDirectory;
+        var index = Runs.FindIndex(run => run.Path == bundleDirectory);
+        if (index >= 0) Runs[index] = Runs[index] with { Products = Runs[index].Products with { HasJudgement = false } };
+        return Result<string>.Success(bundleDirectory);
+    }
+
     public Result<string> Delete(string bundleDirectory)
     {
         if (DeletionFails is { } error)
@@ -94,6 +108,15 @@ internal sealed class FakeRunCatalog : IRunCatalog
 /// </summary>
 internal sealed class FakeRunOpener : IRunOpener
 {
+    public Func<Task>? WhenClosing { get; set; }
+    public int CloseCalls { get; private set; }
+
+    public Task CloseAsync()
+    {
+        CloseCalls++;
+        return WhenClosing?.Invoke() ?? Task.CompletedTask;
+    }
+
     /// <summary>The run last opened, or null if nothing was.</summary>
     public string? Opened { get; private set; }
 

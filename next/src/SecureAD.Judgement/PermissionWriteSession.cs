@@ -41,6 +41,8 @@ internal sealed class PermissionWriteSession
     private readonly Dictionary<long, byte[]> _pendingDescriptors = [];
     private readonly HashSet<long> _values = [];
     private readonly HashSet<long> _pendingValues = [];
+    private readonly Dictionary<string, long> _proofs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _pendingProofs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SchemaPayload> _schemaPayloads = new(StringComparer.Ordinal);
 
     private sealed record SchemaPayload(PermissionSchemaSupport Snapshot, string Json);
@@ -146,6 +148,11 @@ internal sealed class PermissionWriteSession
     /// <param name="entryId">The shared entry row it was written for.</param>
     internal void AddValue(long entryId) => _pendingValues.Add(entryId);
 
+    internal bool TryGetProof(string key, out long id) =>
+        _proofs.TryGetValue(key, out id) || _pendingProofs.TryGetValue(key, out id);
+
+    internal void AddProof(string key, long id) => _pendingProofs[key] = id;
+
     /// <summary>Trusts everything written in the transaction that has just committed.</summary>
     internal void Promote()
     {
@@ -154,6 +161,7 @@ internal sealed class PermissionWriteSession
         foreach (var (hash, id) in _pendingEntries) _entries[hash] = id;
         foreach (var (id, fingerprint) in _pendingDescriptors) _descriptors[id] = fingerprint;
         foreach (var id in _pendingValues) _values.Add(id);
+        foreach (var (key, id) in _pendingProofs) _proofs[key] = id;
         Discard();
     }
 
@@ -165,6 +173,7 @@ internal sealed class PermissionWriteSession
         _pendingEntries.Clear();
         _pendingDescriptors.Clear();
         _pendingValues.Clear();
+        _pendingProofs.Clear();
     }
 
     /// <summary>The fingerprint that identifies a reading, as a dictionary key.</summary>

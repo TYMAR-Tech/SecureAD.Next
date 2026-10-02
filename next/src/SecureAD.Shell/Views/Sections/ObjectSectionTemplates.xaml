@@ -51,6 +51,17 @@
                 <TextBlock x:Name="SavedPathChecks" Text="{Binding AutomaticChecks}" />
                 <TextBlock Text="{Binding ChecksCaveat}" />
                 <TextBlock Text="{Binding CoverageScope}" />
+                <TextBlock Text="{Binding LimitationsHeading}" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Command="{Binding PreviousLimitationsCommand}"
+                            IsEnabled="{Binding HasPreviousLimitations}" Margin="0,0,8,0">
+                        <TextBlock Text="Previous" TextWrapping="Wrap" />
+                    </Button>
+                    <Button Command="{Binding NextLimitationsCommand}"
+                            IsEnabled="{Binding HasNextLimitations}">
+                        <TextBlock Text="Next" TextWrapping="Wrap" />
+                    </Button>
+                </StackPanel>
                 <ItemsControl x:Name="SavedPathLimitations" ItemsSource="{Binding Limitations}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -10,7 +11,7 @@ using SecureAD.Shell.ViewModels;
 namespace SecureAD.Shell.Services;
 
 /// <summary>Owns one selected run's protected files, never a connection shared between queries.</summary>
-internal sealed class OpenedRunResults(string directory) : IDisposable
+internal sealed class OpenedRunResults(string directory) : IDisposable, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1);
     private readonly CancellationTokenSource _stopping = new();
@@ -73,7 +74,7 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
     internal Result<SavedPermissionClassification> ReadPermissionClassification(string distinguishedName,
         CancellationToken cancellationToken = default)
     {
-        var carried = ReadEvidence(evidence => evidence.ReadPermissions(distinguishedName)?.DescriptorId, cancellationToken);
+        var carried = ReadEvidence(evidence => evidence.ReadDescriptorId(distinguishedName), cancellationToken);
         if (!carried.IsSuccess) return Result<SavedPermissionClassification>.Failure(carried.Error);
         var read = ReadJudgement((reader, token) => reader.ReadPermissionClassification(distinguishedName, carried.Value, token), cancellationToken);
         if (!read.IsSuccess && read.Error.Code == "Evidence.judgementManifestAbsent")
@@ -111,7 +112,9 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
             try
             {
                 if (_disposed) return Result<T>.Failure(Unavailable("GenerationChanged"));
+                var opening = Stopwatch.GetTimestamp();
                 opened = open(token);
+                NavigationDiagnostics.Mark("opening/checking", Stopwatch.GetElapsedTime(opening));
             }
             finally { _gate.Release(); }
             if (!opened.IsSuccess)
@@ -121,13 +124,17 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
             }
             using var reader = opened.Value;
             token.ThrowIfCancellationRequested();
+            var querying = Stopwatch.GetTimestamp();
             var value = read(reader, token);
+            NavigationDiagnostics.Mark("query", Stopwatch.GetElapsedTime(querying));
             token.ThrowIfCancellationRequested();
             _gate.Wait(token);
             try
             {
+                var checking = Stopwatch.GetTimestamp();
                 if (current(reader) is { } error) return Result<T>.Failure(error);
                 token.ThrowIfCancellationRequested();
+                NavigationDiagnostics.Mark("generation check", Stopwatch.GetElapsedTime(checking));
                 return Result<T>.Success(value);
             }
             finally { _gate.Release(); }
@@ -153,6 +160,7 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
             if (!file.IsSuccess) return Result<BundleReader>.Failure(file.Error);
             _evidence = file.Value;
         }
+        NavigationDiagnostics.Identity("evidenceSeal", _evidence.Fingerprint);
         return BundleReader.Open(_evidence, cancellationToken);
     }
 
@@ -204,6 +212,7 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
             if (!file.IsSuccess) return Result<JudgementReader>.Failure(file.Error);
             _judgement = file.Value;
         }
+        NavigationDiagnostics.Identity("judgementGeneration", _judgement.Generation.GenerationId.ToString("D"));
         var opened = JudgementReader.Open(_judgement, cancellationToken);
         if (!opened.IsSuccess) return opened;
         var reader = opened.Value;
@@ -276,5 +285,13 @@ internal sealed class OpenedRunResults(string directory) : IDisposable
             _stopping.Dispose();
         }
         finally { _gate.Release(); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        if (_judgement is { } judgement) await judgement.DisposeAsync().ConfigureAwait(false);
+        if (_derivation is { } derivation) await derivation.DisposeAsync().ConfigureAwait(false);
+        if (_evidence is { } evidence) await evidence.DisposeAsync().ConfigureAwait(false);
     }
 }

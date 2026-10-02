@@ -7,6 +7,7 @@ using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
+using SQLitePCL;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence;
@@ -39,6 +40,35 @@ public sealed class BundleReaderTests : IDisposable
         using var opening = Open();
 
         Assert.True(opening.IsSuccess);
+    }
+
+    [Fact]
+    public void DescriptorIdentityLookupDoesNotReconstructAccessEntries()
+    {
+        WriteABundleCanonicalisedBy(AceCanonicalization.Version);
+        using var opening = Open();
+        var reconstructedDescriptors = 0;
+        var sentinel = false;
+        strdelegate_trace callback = (_, sql) =>
+        {
+            if (sql == "SELECT 971") sentinel = true;
+            if (sql.Contains("JOIN security_descriptor AS s", StringComparison.Ordinal))
+                reconstructedDescriptors++;
+        };
+        raw.sqlite3_trace(opening.Value.Connection.Handle!, callback, null!);
+        using (var command = opening.Value.Connection.CreateCommand())
+        {
+            command.CommandText = "SELECT 971";
+            command.ExecuteScalar();
+        }
+
+        var descriptor = opening.Value.ReadDescriptorId(AnObject().DistinguishedName);
+
+        raw.sqlite3_trace(opening.Value.Connection.Handle!, (strdelegate_trace)null!, null!);
+        GC.KeepAlive(callback);
+        Assert.True(sentinel);
+        Assert.NotNull(descriptor);
+        Assert.Equal(0, reconstructedDescriptors);
     }
 
     [Fact]

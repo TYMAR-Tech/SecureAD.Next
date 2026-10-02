@@ -42,4 +42,7 @@ internal interface IRunCatalog
     /// <param name="bundleDirectory">The run's bundle directory, as listed.</param>
     /// <returns>The path removed, or why it could not be.</returns>
     Result<string> Delete(string bundleDirectory);
+
+    /// <summary>Discards only this run's saved judgement after explicit operator confirmation.</summary>
+    Result<string> DiscardJudgement(string bundleDirectory);
 }

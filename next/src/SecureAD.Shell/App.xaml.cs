@@ -81,6 +81,14 @@ internal partial class App : Application
         var judging = new JudgingLauncher(
             discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy);
 
+        var assets = new BundleAssetSource();
+        Task CloseOpenedRun()
+        {
+            var closed = assets.CloseRunAsync();
+            shell.ClearOpenedRun();
+            return closed;
+        }
+
         // The wizard opens the run it has just captured, which the library has never listed - it
         // was written after the last read. So this opener adopts the run (read again, select that
         // path) before navigating, where the library's own opener below must not: refreshing there
@@ -94,7 +102,7 @@ internal partial class App : Application
                 {
                     library.Adopt(path);
                     shell.Show(ShellSection.Assets);
-                }),
+                }, CloseOpenedRun),
                 deriving,
                 judging,
                 concurrency),
@@ -113,15 +121,13 @@ internal partial class App : Application
             //
             // It lands wherever ShellViewModel.ShowOpenedRun says, which is where that product
             // decision is written down and tested. Restating it here would be a second answer.
-            new RunOpener(_ => shell.ShowOpenedRun()),
+            new RunOpener(_ => shell.ShowOpenedRun(), CloseOpenedRun),
             deriving,
             judging);
 
         // One asset source for both screens, not one each. It holds the opened bundle so the seal
         // is verified once when the operator arrives at a run; two of them would re-hash gigabytes
         // of evidence every time he moved between the dashboard and the tree.
-        var assets = new BundleAssetSource();
-
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
             new AssetsViewModel(assets),

@@ -42,7 +42,7 @@ internal static class OwnershipAuditRun
     internal static void Assess(SqliteConnection connection, BundleReader bundle, JudgementDescription description,
         CapturedMembershipInput? input, Tier0InputBinding? binding, JudgingContext context, Func<string, string?> domainSid,
         long objectsRead, IProgress<JudgingRun.JudgingProgress> progress, IRunLog log, CancellationToken cancellationToken,
-        bool scopeAlreadyPlanned = false)
+        PreparedStatements statements, PermissionWriteSession session, bool scopeAlreadyPlanned = false)
     {
         var status = progress as JudgingStatus;
         JudgingRun.Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
@@ -121,7 +121,8 @@ internal static class OwnershipAuditRun
                 }
             }
             assessment?.Part("store-ownership");
-            ControlEdgeStorage.AppendOwnership(connection, description, target.Identity.DistinguishedName, transitions);
+            ControlEdgeStorage.AppendOwnership(connection, description, target.Identity.DistinguishedName, transitions,
+                statements, session);
             assessment?.TargetFinished();
             progress.Report(new(objectsRead) { Phase = JudgingPhase.AssessingOwnership });
         }

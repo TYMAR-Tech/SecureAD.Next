@@ -80,6 +80,56 @@ public sealed class SharedProofStorageTests
     }
 
     [Fact]
+    public void CommittedProofIdentityIsReusedAcrossLaterWriterTransactions()
+    {
+        using var connection = Memory();
+        using var statements = new PreparedStatements(connection);
+        var session = new PermissionWriteSession();
+        var generation = Guid.NewGuid();
+        long first;
+        using (var transaction = connection.BeginTransaction())
+        {
+            first = new SharedProofStorage(connection, transaction, statements, session)
+                .WriteMeaning(generation, "entry-A", "value").Id!.Value;
+            transaction.Commit();
+            session.Promote();
+        }
+
+        using var next = connection.BeginTransaction();
+        var reused = new SharedProofStorage(connection, next,
+            _ => throw new InvalidOperationException("Committed identity was looked up again."), statements, session)
+            .WriteMeaning(generation, "entry-B", "value").Id;
+        next.Commit();
+
+        Assert.Equal((first, 1), (reused, Count(connection, "SELECT COUNT(*) FROM shared_proof_value")));
+    }
+
+    [Fact]
+    public void RolledBackProofIdentityIsNotReusedByALaterWriterTransaction()
+    {
+        using var connection = Memory();
+        using var statements = new PreparedStatements(connection);
+        var session = new PermissionWriteSession();
+        var generation = Guid.NewGuid();
+        using (var transaction = connection.BeginTransaction())
+        {
+            new SharedProofStorage(connection, transaction, statements, session)
+                .WriteMeaning(generation, "entry-A", "value");
+            transaction.Rollback();
+            session.Discard();
+        }
+
+        using var next = connection.BeginTransaction();
+        var written = new SharedProofStorage(connection, next, statements, session)
+            .WriteMeaning(generation, "entry-B", "value").Id;
+        next.Commit();
+        session.Promote();
+
+        Assert.NotNull(written);
+        Assert.Equal(1, Count(connection, "SELECT COUNT(*) FROM shared_proof_value"));
+    }
+
+    [Fact]
     public void CompleteRoutesShareAcrossConsumersWithoutCollapsingOrderOrBindings()
     {
         var routes = Routes();

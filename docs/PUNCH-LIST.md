@@ -13,13 +13,57 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Production-scale judging completion — blocking owner priority (2026-10-02); path-proof memory failure is high severity, open.**
-The verified diagnostic build failed after 940,067 objects with `System.OutOfMemoryException` in JSON text conversion under `Tier0PathStorage.Write` during `WritingProofs`, at `2026-10-02T03:00:13Z`, before publication; the owner prioritizes completing production-scale judging over further Stage 7 work, new rules and UI performance/redesign.
-The approved fingerprint-only correction passes all 6,250 ordinary tests, with all 14 new checks detecting rebuilt defects and byte-exact hashing of 1,444,886,835 generated JSON bytes under a test-only 256 MiB managed-heap ceiling in [retained verification](../.v-pathmem-13a79d2e/validation-summary.json); verified input reuse and earlier evidence remain intact, the original failing allocation remains unproven, and the local-commit authorization below does not authorize an agent-run production retry, a new measurement campaign, judgement-result publication or push.
+**Discard-first rejudging from Home — implemented and offline-verified 2026-10-02.**
+The approved **"Discard judgement and judge again"** action confirms the selected run, closes its old readers, discards only saved judgement generations and starts the existing judging engine against the same evidence and derived facts, retaining the log and refusing concurrent writers, unfinished attempts or failed cleanup.
+A fresh Release rebuild passes all 6,292 tests, all 24 new cases detect rebuilt defects across 22 isolated variants and the restored controls pass in [retained verification](../.v-discard-20261002/final-verification.json); 200/320-pixel action-area checks pass, physical laptop/external-monitor checks remain outstanding, and no production invocation, application publication, commit or push occurred.
+
+**Unfinished judgement files — medium-severity disk-space risk, open; existing behavior retained.**
+Failed or stopped judging can leave unfinished judgement files, and an ordinary retry replaces its staging database but does not automatically remove every unselected generation left by interrupted publication.
+The new discard-first action refuses an unfinished attempt rather than assuming another process has stopped; broader failed-attempt cleanup remains separate work, with no automatic deletion of retained diagnostic evidence.
+
+**Production-scale judging completion — established 2026-10-02; production reopening and browsing acceptance remain open.**
+The preserved `run6.log` from the owner's original `4deef9f` Release executable records all 940,067 objects reaching `CompletedDegraded` after proof writing and publication, with no `ERROR` or `WARN` entry and approximately 4 hours 42 minutes total elapsed; its hash and executable identity are retained with the coordinated-correction verification.
+This establishes one completed production judgement, not that the follow-up source ran in production or that its result reopens correctly: the earlier same-build memory failure remains historical evidence, no agent-run production retry or browsing attempt occurred, and no publication, commit or push is authorized here.
+
+**Coordinated judging and browsing correction — implemented and offline-verified 2026-10-02; production browsing acceptance outstanding.**
+The follow-up now carries one source-bound preparation/writing lifetime safely across later transactions, reads the bounded selected saved-path projection and descriptor identity instead of reconstructing whole products, logs local navigation work/outcome, loads Dashboard results asynchronously with explicit failure truth, and pages every saved limitation 100 at a time.
+All 6,268 ordinary tests pass after a fresh Release rebuild, eight isolated rebuilt defects are detected and the corrected isolated source passes all controls, while the bounded before/after witness preserves every compared answer/binding/fingerprint and records 3.17→2.72 s judging, 50.1→45.9 ms first reopen/read and 26.0→14.4 ms subsequent selected read; these small-fixture timings are not a production speed claim, laptop and external-monitor visual checks remain outstanding, and no live access, production retry, commit, push or application publication occurred.
 
 **Release handoff — local commit authorized, 2026-10-02; owner will publish in Visual Studio.**
 The owner requested committing the verified source, tests and governing documents and stopped agent packaging before any publish command ran.
 The existing normal Release profile includes both corrections; retained verification and evidence stay outside Git, with no push or agent-run judging retry authorized.
+
+**Three-day demonstration follow-up — review and publishing preparation complete, 2026-10-02; isolated trial retained.**
+Keep the owner's `4deef9f` publishing/test checkout untouched and work separately on `p280-judging-followup`, reviewing remaining judging, memory and readback risks and preparing a repeatable normal Release command.
+The separately approved witness-validation trial is verified below, with the no-reuse slowdown and larger saved-path browsing risk still open; no production operation, presentation change, commit or push occurred.
+
+**Captured-witness validation — isolated implementation verified, 2026-10-02; production acceptance outstanding.**
+Resource-grouped validation retains every check and original relation order with one resource's permission preparation at a time; all 849 related tests pass, all 10 new checks detect rebuilt defects, and both complete-answer pairs match all 61 saved tables and 603 objects in [retained verification](../.v-witness-a6d9712f/validation-summary.json).
+The repeated case reduces reads from 594 to 18 and validation from 909.3502 to 238.3459 ms, but no-reuse validation rises from 205.3262 to 248.8114 ms and complete judging/reopening from 2,043.7705 to 2,661.5928 ms: that slowdown is medium severity, open, and one small-fixture comparison authorizes neither a universal speedup claim nor another measurement campaign.
+
+**Repeatable Release publishing — prepared and script-verified on the follow-up branch, 2026-10-02.**
+`next/tools/Publish-Release.ps1` uses the existing profile with fresh output/build folders, source/package hashes and explicit failure reporting; eight isolated checks reject eight broken script variants and pass with correct scripts, and the real-checkout dry-run creates no package.
+No real application publication or packaged startup check occurred, and the owner's Visual Studio checkout remains untouched.
+
+**Saved Tier-0 path browsing — bounded correction offline-verified 2026-10-02; production-scale acceptance open.**
+The selected saved path now reads its fingerprinted bounded projection without rebuilding generation-wide classifications, relations or permission identifiers, descriptor lookup avoids reconstructing the ACL, and every saved limitation remains available through approved 100-entry pages.
+The isolated defect checks prove the selected read refuses the old whole-forest route, and the fresh witness comparison preserves the exact selected answer and bindings, but the small fixture does not establish production browsing time and no production result was opened.
+
+**Completed-result browsing usability — high severity, production verification still open, 2026-10-02.**
+The coordinated correction now provides bounded selected reads, background Dashboard loading and local opening/query/application/outcome timing instead of assigning all delay to one suspected section.
+All offline controls pass, but the owner's earlier report concerned real application use and `run6.log` proves completion rather than reopening, so production browsing remains unverified and no automatic browsing attempt is authorized.
+
+**Predecessor Tier-0 comparison — historical explanation corrected, 2026-10-02.**
+Read-only review of frozen predecessor `f0726569` confirms its active batch already uses a compact reverse-distance search and retained representative paths, and its path display already distinguishes potential/plausible from live-validated routes.
+The governing history no longer attributes its reported hours to a per-principal forward search or claims an unmeasured orders-of-magnitude advantage; the old selected-result reading is useful prior evidence for the open browsing correction, not authorization to copy its broader permission-chain semantics or change either application.
+
+**Judgement publication cancellation — medium-severity responsiveness risk, open, 2026-10-02.**
+`AnalysisStoreLifecycle.Publish` calls the non-cancellable `BundleSealing.Seal` overload even though it has a cancellation token and a cancellable sealing overload exists, so a stop request during the final whole-file hash waits for that hash to finish.
+The later cancellation check still protects atomic result selection; forwarding cancellation is a separate bounded correction, not an established cause of the recorded memory failure or a measured runtime improvement.
+
+**Isolated SYSVOL test-helper deployment — low-severity verification setup issue, open, 2026-10-02.**
+The existing test-project copy target looks in the default helper output rather than the isolated artifacts directory, so a fresh checkout can build the helper but omit it beside the tests; an accidentally broad selector exposed this as a worker-start timeout.
+The failed attempt is retained and the exact test passes after deploying the same-build helper into verification output without editing source or weakening the test; correcting the general copy target remains separate work.
 
 **Judging terminal-error logging — implemented and offline verified (2026-10-01), without claiming the production interruption's underlying cause is fixed.**
 Failures, refusals and cancellation now retain attempt/source/generation, phase, exception and publication context without replacing the original error; all 21 new checks were challenged by seven explicitly rebuilt deliberate-defect variants, and the corrected build passes all 6,166 ordinary offline regression tests.

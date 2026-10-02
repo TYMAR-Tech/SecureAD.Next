@@ -134,6 +134,8 @@ internal sealed partial class AssetsViewModel
         Action<T, Func<bool>> apply, bool saved, bool tree = false)
     {
         CancelRead();
+        using var navigation = NavigationDiagnostics.Begin(bundle,
+            tree ? "open directory tree" : saved ? $"read saved {Pane}" : $"read captured {Pane}");
         var revision = _revision;
         var pending = new CancellationTokenSource();
         _pending = pending;
@@ -150,21 +152,40 @@ internal sealed partial class AssetsViewModel
                 token.ThrowIfCancellationRequested();
                 return (Answer: answer, Current: reader.CaptureReadValidity());
             }, pending.Token);
-            if (revision != _revision || pending.IsCancellationRequested || !_active) return;
+            if (revision != _revision || pending.IsCancellationRequested || !_active)
+            {
+                navigation.Complete("cancelled", null);
+                return;
+            }
             IsLoading = false;
             if (!result.Answer.IsSuccess)
+            {
                 RefuseView(result.Answer.Error.Description, tree);
+                navigation.Complete("refused", result.Answer.Error.Code);
+            }
             else if (!result.Current())
+            {
                 RefuseView(SavedPathText.Get("GenerationChanged"), tree);
+                navigation.Complete("refused", "generation changed");
+            }
             else
+            {
                 apply(result.Answer.Value, result.Current);
+                navigation.Complete("success", null);
+            }
         }
-        catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested)
+        {
+            navigation.Complete("cancelled", null);
+        }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException
             or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
         {
             if (revision == _revision && !pending.IsCancellationRequested && _active)
+            {
                 RefuseView(error.Message, tree);
+                navigation.Complete("refused", error.GetType().Name);
+            }
         }
         finally
         {

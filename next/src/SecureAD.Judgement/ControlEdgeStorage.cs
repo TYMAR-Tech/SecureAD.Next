@@ -129,36 +129,50 @@ internal static class ControlEdgeStorage
     /// descriptor was readable and nothing had assessed it. The ownership target row was already
     /// recorded during the stream and is not written again.
     /// </remarks>
-    internal static void Assess(SqliteConnection connection, ControlObjectEvaluation result)
+    internal static void Assess(SqliteConnection connection, PreparedStatements statements,
+        PermissionWriteSession session, ControlObjectEvaluation result)
     {
         using var transaction = connection.BeginTransaction();
-        using var statements = new PreparedStatements(connection);
-        // Its own session, because it is its own transaction: nothing written here may be promoted
-        // into a run that is not writing it. Entries the object pass already stored are found through
-        // permission_entry.entry_hash, which is why no reading back of this target's rows is needed.
-        var entries = new SharedPermissionStorage(connection, transaction, statements, new PermissionWriteSession());
-        Execute(connection, transaction, """
-            UPDATE control_object SET principal_sid=$sid, principal_scope=$scope, descriptor_outcome=$outcome,
-                uncertainty=$uncertainty, is_complete=$complete WHERE target=$target COLLATE NOCASE
-            """, ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
-            ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
-        var storedEdges = WriteEdges(connection, transaction, result.Edges, entries);
-        FullControlStorage.Write(connection, transaction, result, storedEdges, entries, manifestExists: true);
-        transaction.Commit();
+        try
+        {
+            var entries = new SharedPermissionStorage(connection, transaction, statements, session);
+            Execute(connection, transaction, """
+                UPDATE control_object SET principal_sid=$sid, principal_scope=$scope, descriptor_outcome=$outcome,
+                    uncertainty=$uncertainty, is_complete=$complete WHERE target=$target COLLATE NOCASE
+                """, ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
+                ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
+            var storedEdges = WriteEdges(connection, transaction, result.Edges, entries);
+            FullControlStorage.Write(connection, transaction, result, storedEdges, entries, manifestExists: true);
+            transaction.Commit();
+            session.Promote();
+        }
+        catch
+        {
+            session.Discard();
+            throw;
+        }
     }
 
     internal static void AppendOwnership(SqliteConnection connection, JudgementDescription description, string target,
-        IReadOnlyList<ControlEdge> transitions)
+        IReadOnlyList<ControlEdge> transitions, PreparedStatements statements, PermissionWriteSession session)
     {
         if (transitions.Any(edge => edge.Target != target || edge.GenerationId != description.GenerationId
             || edge.DerivationGenerationId != description.DerivationGenerationId
             || edge.Capability != ControlCapability.CanBecomeOwnerAndRewriteDacl)) throw OwnershipAuditStorage.InvalidProof();
         using var transaction = connection.BeginTransaction();
-        using var statements = new PreparedStatements(connection);
-        var entries = new SharedPermissionStorage(connection, transaction, statements, new PermissionWriteSession());
-        WriteEdges(connection, transaction, transitions, entries);
-        OwnershipAuditStorage.Assessed(connection, transaction, target, transitions.Count);
-        transaction.Commit();
+        try
+        {
+            var entries = new SharedPermissionStorage(connection, transaction, statements, session);
+            WriteEdges(connection, transaction, transitions, entries);
+            OwnershipAuditStorage.Assessed(connection, transaction, target, transitions.Count);
+            transaction.Commit();
+            session.Promote();
+        }
+        catch
+        {
+            session.Discard();
+            throw;
+        }
     }
 
     internal static IReadOnlyList<ControlEdge> ReadOwnerCandidates(SqliteConnection connection, JudgementDescription description, string target)

@@ -158,10 +158,29 @@ public sealed partial class OpenedRunResultsTests
         });
         using var source = new BundleAssetSource();
 
-        var classification = source.ReadSavedTier0Path(directory, CoreDn).Value!.Path.Inputs.Classifications
+        using var run = new OpenedRunResults(directory);
+        var classification = run.ReadJudgement(reader => reader.ReadPathInputs()).Value.Classifications
             .Single(value => value.Target.DistinguishedName == CoreDn);
 
         Assert.False(classification.Coverage.ProcessingComplete);
+    }
+
+    [Fact]
+    public void SelectedSavedPathDoesNotReconstructWholeForestClassifications()
+    {
+        var directory = CreatePathRun();
+        SelfMembershipCoverageTests.Mutate(directory, connection =>
+        {
+            using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE ownership_seed SET classification='not-json'";
+            update.ExecuteNonQuery();
+        });
+        using var source = new BundleAssetSource();
+
+        var selected = source.ReadSavedTier0Path(directory, UserDn);
+
+        Assert.True(selected.IsSuccess, selected.Error?.Description);
+        Assert.Equal(Tier0Reachability.Reachable, selected.Value!.Path.Reachability);
     }
 
     [Fact]

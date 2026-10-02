@@ -309,6 +309,12 @@ internal sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     public void Show(ShellSection section) => Section = section;
 
+    internal void ClearOpenedRun()
+    {
+        Dashboard.Clear();
+        Assets.Clear();
+    }
+
     /// <summary>
     /// Builds the second row of tabs for a section, and selects the first view that works.
     /// </summary>

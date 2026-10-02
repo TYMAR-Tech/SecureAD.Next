@@ -33,6 +33,66 @@ public static class AnalysisStoreLifecycle
 
     private const int ManifestVersion = 1;
 
+    /// <summary>Excludes another judgement writer or an explicitly requested discard in this bundle.</summary>
+    public static IDisposable LockJudgementWrites(string bundleDirectory) =>
+        new FileStream(BundleLayout.JudgementWriteLockPath(bundleDirectory), FileMode.OpenOrCreate,
+            FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+
+    /// <summary>Discards only saved judgement generations after the operator has confirmed their loss.</summary>
+    public static AnalysisStoreGeneration DiscardJudgement(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        using var writing = LockJudgementWrites(bundleDirectory);
+        if (HasUnpublishedChanges(bundleDirectory, AnalysisStoreKind.Judgement)
+            || HasUnpublishedChanges(bundleDirectory, AnalysisStoreKind.Derivation))
+            throw new InvalidOperationException("This run has an unfinished analysis attempt; its judgement was not discarded.");
+        var current = Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
+        if (!current.IsSuccess) throw new InvalidOperationException(current.Error.Description);
+        var derivation = Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
+        if (!derivation.IsSuccess) throw new InvalidOperationException(derivation.Error.Description);
+
+        var manifest = ManifestPath(bundleDirectory, AnalysisStoreKind.Judgement);
+        var files = Directory.EnumerateFiles(bundleDirectory)
+            .Where(IsJudgementGenerationFile).Prepend(manifest).ToArray();
+        var protectedFiles = new List<FileStream>();
+        try
+        {
+            foreach (var path in files)
+            {
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException($"The judgement file '{path}' is a link and was not discarded.");
+                protectedFiles.Add(new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Delete));
+            }
+
+            // Refuse new readers before unselecting the old result. A failed deletion stays visibly unfinished.
+            BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
+            foreach (var path in files) File.Delete(path);
+            File.Delete(manifest + ".partial");
+            return current.Value;
+        }
+        finally
+        {
+            foreach (var file in protectedFiles) file.Dispose();
+        }
+    }
+
+    private static bool IsJudgementGenerationFile(string path)
+    {
+        var name = Path.GetFileName(path);
+        var prefix = Prefix(AnalysisStoreKind.Judgement) + ".";
+        if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            || name.Length < prefix.Length + 32
+            || !Guid.TryParseExact(name.AsSpan(prefix.Length, 32), "N", out var generation))
+            return false;
+        var dataName = Path.GetFileName(BundleLayout.AnalysisGenerationDataPath(
+            ".", AnalysisStoreKind.Judgement, generation));
+        return name.Equals(dataName, StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + ".seal", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + "-wal", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + "-shm", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + "-journal", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Marks a new attempt before replacing its staging file; failure leaves the attempt visible.</summary>
     public static void BeginAttempt(string bundleDirectory, AnalysisStoreKind kind)
     {
