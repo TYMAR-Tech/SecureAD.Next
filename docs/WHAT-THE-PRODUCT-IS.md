@@ -51,7 +51,16 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
-**Owner-approved immediate priority, 2026-10-01: descriptor-first permission preparation and its
+**Owner's blocking priority, 2026-10-02: get production-scale judging to finish before further
+Stage 7 work, new rules or UI performance/redesign.** The owner cannot complete that work while a
+production-sized judgement fails. The bounded memory correction below builds on the verified,
+uncommitted input-reuse work rather than restarting that completed investigation.
+Getting past one exception is a checkpoint, not acceptance: judging must finish, publish its exact
+source-bound result and reopen it correctly at representative scale. Small-fixture gains alone do
+not meet that goal, and no customer-runtime ceiling has been agreed. This priority does not itself
+approve a new implementation scope, measurement campaign, publication or production retry.
+
+**Earlier owner-approved priority, 2026-10-01: descriptor-first permission preparation and its
 bounded offline validation, before further UI polish.** After the end-to-end design review, the owner
 explicitly approved the first implementation scope below and requested a new-session handoff before
 work starts. The goal is an audit that actually finishes in a realistic time, not just a faster object
@@ -69,8 +78,9 @@ and its 31 new test cases were already in local WIP commit `8858a3a` before the 
 The VS Code continuation completed their outstanding review, verification and measurement without
 another application-code edit; the benchmark compares the preserved old implementation with that
 already-modified implementation, not the working files at the start and end of the VS Code session.
-Later ownership/path stages still prepare inputs independently, so their cross-stage reuse is not
-built and the overall performance redesign is not complete.
+At that checkpoint later ownership/path stages still prepared inputs independently; the separately
+approved input-reuse follow-up below is now offline verified, but the overall performance redesign
+and production-scale acceptance are not complete.
 
 The owner approved the defined scope with: *"Approve this implementation scope and its bounded
 offline validation"* and subsequently said *"implement it"*; do not ask for that approval again.
@@ -106,14 +116,43 @@ pushing, publishing, restarting validation or changing the production run.
 propose bounded reuse of verified inputs through the currently active ownership/path-preparation
 stages.** The local commit records the completed main-pass verification and its limits; retained
 evidence and verification folders remain outside Git, and no push or publication is authorized.
-The next work is a read-only investigation and concrete proposal, not approval to implement a shared
-input context or run another measurement campaign. Trace the existing production-policy route using
-current sources and retained results, distinguish measured phase costs from code-confirmed repetition,
-and propose how protected readers and immutable source-bound inputs could be reused without dropping
-checks or retaining an unbounded decoded forest. The proposal must preserve exact evidence,
-derivation and judgement binding, resource scope, original occurrences, group-held counts, explicit
-incompleteness, cancellation and file-handle lifetime; no UI change, new format, cross-run cache,
-requester activation, budget change, live access or production operation is included.
+That read-only investigation is complete. **The owner approved its bounded replacement and offline
+validation on 2026-10-01: "approved lets implement it".** Reuse protected evidence and derivation
+readers and their already-validated membership inputs within one judging attempt, then load finished
+ownership records once for path preparation; never reuse pre-assessment status/counts as final.
+Preserve source qualification and saved-witness checks, exact evidence/derivation/judgement binding,
+resource scope, original occurrences, independent group-held counts, explicit incompleteness,
+cancellation and file-handle lifetime. Keep reusable inputs privately owned; do not retain decoded
+descriptors or extend classifier-index lifetimes across stages.
+
+Approval includes focused regression checks with explicitly rebuilt isolated defects and correct
+sources, complete saved-answer equivalence, and fresh control/candidate runs using unchanged
+BenchmarkSuite7 and its frozen inputs/settings. Isolate short fresh TEMP/TMP before any test assembly
+loading or discovery, retain exact binary provenance and failed attempts, and measure publication and
+reopening as well as the earlier phases. This is not approval for extra measurement instrumentation,
+UI changes, formats/migration, cross-run caches, parallel judging, requester activation, budgets,
+live access, publication, production operations, another commit or push; customer-scale acceptance
+and the no-sharing slowdown remain outstanding.
+
+**Bounded input-reuse outcome, 2026-10-02: implemented and offline verified, not published.**
+The attempt owns protected source readers and immutable membership inputs; path preparation shares
+one finished ownership snapshot while retaining source qualification and saved-witness checks.
+The selected derivation manifest is held only across final publication so it cannot change between
+the last source check and selecting the new judgement. All 6,236 ordinary offline cases pass, and
+all 39 new cases detect their intended explicitly rebuilt defects across 18 isolated variants before
+passing on correct rebuilds. All six fresh control/candidate pairs agree across all 61 saved tables
+and complete permission answers; comparison controls also reject a rebuilt empty comparison.
+
+The [retained comparison](../.v-inputs-8f3a2c91/benchmark-comparison.json) records lab 15.417 to 9.239
+seconds, shared 5.628 to 3.520, and distinct 10.889 to 6.758 on unchanged BenchmarkSuite7, with
+fresh controls rather than the earlier descriptor-first timings. Lab path preparation is 5,390.8
+to 3,004.8 ms and allocation 2,047.57 to 1,947.94 MiB; sampled working-set peaks fall on lab/shared
+but rise from 109.28 to 110.28 MiB on distinct. There is substantial object-pass timing variation
+too, so one configured iteration cannot attribute the whole elapsed difference to input reuse or
+establish a repeatable percentage gain. Exact builds, source snapshots, every invocation, publication
+and reopening, resource records, rebuilt defects and failed attempts are retained under
+`.v-inputs-8f3a2c91/`; this does not fix the production path-proof memory failure below, establish
+nine-domain viability, or authorize another correction, measurement campaign, publication or commit.
 
 **Continuation approved, 2026-10-01; the separate production interruption remains an open investigation.**
 The owner approved continuing and supplied `run3.log`, then clarified the observation: the Judge
@@ -132,11 +171,70 @@ and offline checks, 2026-10-01**, prioritizing getting the logging right. Record
 phase, attempt/generation and exception details without masking the original failure or changing
 publication safeguards; this approval does not include UI changes, a production rerun or changes to
 the frozen measurement runner. **The bounded logging correction is implemented and offline verified;
-the active rerun's executable hash, engine module identity and matching PDB source checksums now
+the rerun's executable hash, engine module identity and matching PDB source checksums now
 confirm that it contains the validated logging correction, while the earlier failure's underlying cause
 remains unknown.** The prepare-once approval remains intact, and the production log remains operational
 evidence rather than the controlled baseline; [the work queue](PUNCH-LIST.md#current-bounded-correction)
 records the retained observations and next proposed correction.
+
+**Owner-supplied terminal rerun log, 2026-10-01:** `run4.log` reports attempt
+`a7600b99-bcb7-419a-80d0-04c133869032` failing at `2026-10-02T03:00:13Z` with
+`System.OutOfMemoryException` in JSON text conversion called by `Tier0PathStorage.Write`,
+after 940,067 objects, during `WritingProofs`, with `publication=NotStarted` and cancellation false.
+The executable SHA-256 and engine module identity match the previously verified logging-corrected
+diagnostic build; this is not the in-progress input-reuse implementation, and an ended attempt is
+not a completed judgement. Path preparation completed in 8,007,370 ms with requester selection
+disabled; that operational observation is not a controlled comparison or a measurement of the
+individual repeated reads. The preserved copy and hash are under
+`.v-inputs-8f3a2c91/production-run4/`; the downloaded original was not changed.
+The stack names JSON serialization but not an exact call site or allocation size: the whole-input
+fingerprint's monolithic serialization is a concrete suspect, not a proven allocation-level cause.
+Input reuse does not remove that operation and must not be described as fixing this failure;
+the earlier run's unlogged failure is still not established to have the same cause.
+
+**Owner-approved bounded memory correction, 2026-10-02:** replace only the shared path fingerprint
+helper's whole-document JSON text/byte copies with streamed SHA-256 over exactly the same JSON bytes.
+Keep serialization settings, ordering, fingerprint text, permission answers, source/generation
+bindings and incomplete results unchanged; no format, graph, cache, processing-limit or UI change.
+The owner approved the correction and bounded offline checks, including a small test-only stress
+runner: compare with the existing algorithm, exercise at least 1 GiB of generated JSON under a
+256 MiB managed-heap ceiling, verify its full digest and length, and demonstrate the allocation
+failure in an explicitly rebuilt isolated old implementation.
+That ceiling is a test safeguard, not a product budget; every new behavior check requires a rebuilt
+defect witness and a correct rebuild, with short isolated TEMP/TMP set before test discovery.
+Preserve the current verified input-reuse files and all earlier evidence.
+This scope does not authorize a new end-to-end measurement campaign, production retry, publication,
+commit or push; representative nine-domain judging completion, isolated result publication and
+reopening still require separate authorization and remain the acceptance gate.
+
+**Bounded fingerprint-memory outcome, 2026-10-02: implemented and offline verified, not production
+acceptance.** All 6,250 ordinary offline tests pass; all 14 new checks detect their intended defects
+across three explicitly rebuilt isolated variants and pass after correct rebuilds.
+The approved stress check hashes 1,444,886,835 generated JSON bytes with the exact reference digest
+under a 256 MiB managed-heap ceiling; the rebuilt old algorithm runs out of memory, and a rebuilt
+dropped-byte variant is rejected rather than accepted merely for finishing.
+Its 940,067 occurrences repeat nine synthetic relation templates, so this is a serialization-capacity
+check, not a nine-domain forest-completion measurement.
+The [retained verification](../.v-pathmem-13a79d2e/validation-summary.json) includes source/build
+provenance, rebuilt controls and failed attempts; verified input reuse and earlier evidence remain
+unchanged, and no live source was restored.
+Loaded input graphs and individual large values still require memory, the exact allocation in
+`run4.log` remains unproven, and representative judging completion/publication/readback remain
+unaccepted and separately gated, with no production retry, publication, commit or push.
+
+**Owner authorization, 2026-10-02: publish the normal Release GUI application.** After confirming
+that the existing `FolderProfile` includes the current uncommitted input-reuse and memory corrections,
+the owner said *"ok publish it"*.
+Use the existing Windows x64, self-contained, single-file profile and preserve older packages by
+publishing into a fresh output folder; retain exact source and package identity.
+This authorizes local application packaging and its verification, not a new judging attempt,
+judgement-result publication, production access, recapture, measurement campaign, commit or push.
+
+**Owner follow-up, 2026-10-02: commit locally; the owner will publish in Visual Studio.**
+The owner stopped agent packaging and authorized committing the verified current source, tests and
+governing documents so he can publish his normal Release build without further packaging work here.
+No publish command had run; retained verification/evidence folders stay outside Git, and no push or
+agent-run judging retry is authorized.
 
 **Additional production observations, supplied with that approval:** Home shows capture `Finished`
 and analysis `Facts derived — not judged`, while Dashboard says `Group membership has not been
@@ -208,8 +306,8 @@ permissions, change rules or the authoritative Tier-0 definition, enable request
 new production limits, introduce cross-run caches, migration or legacy readers, or combine this with
 binary encoding, a database replacement or parallel execution. Replace repeated main-pass preparation
 without permanent competing implementations or an unchecked fast path. Protected input reuse through
-later ownership/path stages remains a separate, unapproved redesign; this first change does not claim
-to make every later permission read occur once.
+later ownership/path stages is covered by the separately approved follow-up above; neither change
+claims to make every later permission read occur once.
 
 **Offline validation is part of the approval, under these conditions:**
 

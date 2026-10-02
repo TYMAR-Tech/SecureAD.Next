@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -142,7 +144,56 @@ internal static class Tier0PathCalculation
     }
 
     internal static string HolderKey(string sid, string? scope) => sid + "\0" + (scope ?? string.Empty);
-    internal static string Fingerprint<T>(T value) => Convert.ToHexString(OwnershipAuditStorage.Hash(JsonSerializer.Serialize(value, ProofSerialization.Options)));
+    internal static string Fingerprint<T>(T value)
+    {
+        // The stream overload can still buffer a whole scalar collection. Consume committed
+        // UTF-8 segments directly; only an individual value can require a larger buffer.
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        using var buffer = new FingerprintBuffer(hash);
+        var options = ProofSerialization.Options;
+        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions
+        {
+            Encoder = options.Encoder,
+            Indented = options.WriteIndented,
+            IndentCharacter = options.IndentCharacter,
+            IndentSize = options.IndentSize,
+            NewLine = options.NewLine,
+            MaxDepth = options.MaxDepth == 0 ? 64 : options.MaxDepth,
+        }))
+        {
+            JsonSerializer.Serialize(writer, value, options);
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    private sealed class FingerprintBuffer(IncrementalHash hash) : IBufferWriter<byte>, IDisposable
+    {
+        private byte[] _buffer = [];
+
+        public void Advance(int count) => hash.AppendData(_buffer.AsSpan(0, count));
+
+        public Memory<byte> GetMemory(int sizeHint = 0)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
+            var minimum = Math.Max(sizeHint, 1);
+            if (_buffer.Length < minimum)
+            {
+                var replacement = ArrayPool<byte>.Shared.Rent(minimum);
+                if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = replacement;
+            }
+            return _buffer;
+        }
+
+        public Span<byte> GetSpan(int sizeHint = 0) => GetMemory(sizeHint).Span;
+
+        public void Dispose()
+        {
+            if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+            _buffer = [];
+        }
+    }
+
     private static string StepKey(Tier0PathStep step) => step.From.DistinguishedName.ToUpperInvariant() + "\0"
         + step.To.DistinguishedName.ToUpperInvariant() + "\0" + JsonSerializer.Serialize(step, ProofSerialization.Options);
 }

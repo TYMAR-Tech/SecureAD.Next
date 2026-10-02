@@ -20,24 +20,25 @@ internal static class Tier0PathStorage
             outcome TEXT NOT NULL, proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         """);
 
-    internal static void Write(SqliteConnection connection, JudgementDescription description, string directory,
+    internal static void Write(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
         IReadOnlyList<RequesterDaclRequest> requests, IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
         CancellationToken cancellationToken, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection,
         Action<PathRequesterWorkPhase> beginPhase)
     {
         cancellationToken.ThrowIfCancellationRequested();
         beginPhase(PathRequesterWorkPhase.PreparingPaths);
-        var inputs = PathInputStorage.Read(connection, description, cancellationToken);
-        PathInputStorage.ValidateSources(connection, description, directory, inputs, cancellationToken);
+        var directory = sources.Directory;
+        var inputs = PathInputStorage.Read(connection, description, out var ownership, cancellationToken);
+        PathInputStorage.ValidateSources(connection, description, sources, ownership, inputs, cancellationToken);
         IReadOnlyList<Tier0PathNode> nodes = [];
         if (inputs.Availability == PathInputAvailability.Recorded)
         {
-            var opened = BundleReader.Open(directory);
-            if (!opened.IsSuccess) throw InvalidProof();
-            using var bundle = opened.Value;
-            var contexts = bundle.ReadNamingContexts();
+            var bundle = sources.Bundle;
+            var contexts = sources.ReadNamingContexts();
             if (!contexts.IsSuccess) throw InvalidProof();
-            nodes = Tier0PathCalculation.Calculate(inputs, OwnershipAuditStorage.Targets(connection).Select(row => row.Identity).ToArray(),
+            if (ownership is null) throw InvalidProof();
+            ownership.RequireFor(connection, description);
+            nodes = Tier0PathCalculation.Calculate(inputs, ownership.Targets.Select(row => row.Identity).ToArray(),
                 TerminalPermissions(connection, description), bundle.ReadObjectAttributes, contexts.Value, cancellationToken);
         }
         PathRequesterSelection? selection = null;

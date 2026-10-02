@@ -542,24 +542,16 @@ public static class JudgingRun
             return refusal;
         }
 
-        var protectedEvidence = ProtectedStoreFile.OpenEvidence(bundleDirectory, cancellationToken);
-        if (!protectedEvidence.IsSuccess)
+        var openedInputs = JudgingInputs.Open(bundleDirectory, cancellationToken);
+        if (!openedInputs.IsSuccess)
         {
-            log.Record(JudgePhase, protectedEvidence.Error!, []);
-            return Result<JudgementRunState>.Failure(protectedEvidence.Error!);
+            log.Record(JudgePhase, openedInputs.Error!, []);
+            return Result<JudgementRunState>.Failure(openedInputs.Error!);
         }
-        using var evidence = protectedEvidence.Value;
-        if (!string.Equals(evidence.Fingerprint, seal.Hash, StringComparison.OrdinalIgnoreCase))
+        using var inputs = openedInputs.Value;
+        if (!string.Equals(inputs.EvidenceSeal, seal.Hash, StringComparison.OrdinalIgnoreCase))
             return Failure("EvidenceChanged", "The evidence seal changed while judging was opening it.", bundleDirectory);
-
-        var opened = BundleReader.Open(evidence, cancellationToken);
-        if (!opened.IsSuccess)
-        {
-            log.Record(JudgePhase, opened.Error!, []);
-            return Result<JudgementRunState>.Failure(opened.Error!);
-        }
-
-        using var bundle = opened.Value!;
+        var bundle = inputs.Bundle;
 
         var scope = bundle.ReadScope();
         if (!scope.IsSuccess)
@@ -592,7 +584,7 @@ public static class JudgingRun
             // than asking whether a file is present. A derivation belonging to different evidence
             // would produce confidently wrong findings, which docs/decisions/0091 names as the one
             // thing this product must not do.
-            var openedDerivation = DerivationReader.Open(bundleDirectory);
+            var openedDerivation = inputs.OpenDerivation();
 
             if (!openedDerivation.IsSuccess)
             {
@@ -609,7 +601,7 @@ public static class JudgingRun
             }
 
             derivation = openedDerivation.Value!;
-            var stored = derivation.Read();
+            var stored = inputs.Facts;
             derivationGeneration = stored.Description.GenerationId;
 
             var product = stored.ProtectedPrincipals;
@@ -618,8 +610,6 @@ public static class JudgingRun
                     nameof(DerivedFactKind.ProtectedPrincipals), StringComparer.OrdinalIgnoreCase)
                 && product.Availability != ProtectedPrincipalProductAvailability.Available)
             {
-                derivation.Dispose();
-
                 var refusal = Failure(
                     "DerivedFactsAbsent",
                     $"A scheduled rule reads {DerivedFactKind.ProtectedPrincipals}, and this "
@@ -656,8 +646,7 @@ public static class JudgingRun
                 // Read once for the whole forest, not per object. Whether an owner keeps the right
                 // to rewrite an object's permissions turns partly on this, so a rule that could not
                 // read it must refuse rather than assume the permissive default.
-                OwnerImplicitRights = DirectoryHeuristics.OwnerImplicitRights(
-                    bundle.ReadForestHeuristics()),
+                OwnerImplicitRights = inputs.OwnerRights,
             };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse
@@ -672,8 +661,6 @@ public static class JudgingRun
 
                 if (visibility.Availability != AttributeVisibilityAvailability.Available)
                 {
-                    derivation.Dispose();
-
                     var refusal = Failure(
                         "DerivedFactsAbsent",
                         $"A scheduled rule reads {DerivedFactKind.AttributeVisibility}, and this "
@@ -699,8 +686,6 @@ public static class JudgingRun
             {
                 if (!derivation.NestingWasDerived())
                 {
-                    derivation.Dispose();
-
                     var refusal = Failure(
                         "DerivedFactsAbsent",
                         $"A scheduled rule reads {DerivedFactKind.PrincipalExpansion}, and this "
@@ -750,11 +735,11 @@ public static class JudgingRun
         // Optional inputs never turn an evidence-only judging into a falsely complete owner answer.
         if (derivation is null)
         {
-            var ownershipInputs = DerivationReader.Open(bundleDirectory);
+            var ownershipInputs = inputs.OpenDerivation();
             if (ownershipInputs.IsSuccess)
             {
                 derivation = ownershipInputs.Value;
-                var stored = derivation.Read();
+                var stored = inputs.Facts;
                 derivationGeneration = stored.Description.GenerationId;
                 context = context with { ProtectedPrincipals = stored.ProtectedPrincipals.Value };
             }
@@ -775,14 +760,12 @@ public static class JudgingRun
             };
         }
 
-        using var _ = derivation;
-
         if (memberBudget is not null && derivation is null)
             return Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable"), bundleDirectory);
         CapturedMembershipInput? memberInput = null;
         if (derivation is not null)
         {
-            try { memberInput = derivation.ReadMembershipInput(); }
+            try { memberInput = inputs.ReadMembershipInput(); }
             catch (Exception error) when (error is InvalidOperationException or System.Text.Json.JsonException or Microsoft.Data.Sqlite.SqliteException)
             {
                 var refusal = memberBudget is not null
@@ -793,7 +776,7 @@ public static class JudgingRun
             }
         }
 
-        var namingContexts = bundle.ReadNamingContexts();
+        var namingContexts = inputs.ReadNamingContexts();
         if (!namingContexts.IsSuccess)
         {
             log.Record(JudgePhase, namingContexts.Error, []);
@@ -824,7 +807,7 @@ public static class JudgingRun
         {
             ForestFqdn = bundle.Description.ForestFqdn,
             SchemaGuids = context.SchemaGuids ?? bundle.ReadSchemaGuids(),
-            OwnerImplicitRights = context.OwnerImplicitRights ?? DirectoryHeuristics.OwnerImplicitRights(bundle.ReadForestHeuristics()),
+            OwnerImplicitRights = context.OwnerImplicitRights ?? inputs.OwnerRights,
             NamingContexts = namingContexts.Value,
             ControlPrincipals = attributes,
         };
@@ -837,8 +820,7 @@ public static class JudgingRun
 
         var ownershipDescription = new JudgementDescription(seal.Hash, writer.GenerationId, derivationGeneration,
             JudgementRunState.Running, evaluationAsOf, startedUtc, default);
-        var ownershipBinding = memberInput is not null && derivationGeneration is { } sourceGeneration
-            ? OwnershipAuditRun.Binding(bundleDirectory, seal.Hash, sourceGeneration, bundle.Description.ForestFqdn, namingContexts.Value) : null;
+        var ownershipBinding = memberInput is not null ? inputs.Binding() : null;
 
         // STARTED HERE BECAUSE THE SCOPING FLAG MUST MATCH WHAT ACTUALLY HAPPENS. Discovery needs a
         // pinned derivation binding to qualify seeds against; without one it does not run and every
@@ -1035,6 +1017,7 @@ public static class JudgingRun
         });
         if (tier0Discovery is not null)
         {
+            inputs.RequireFor(ownershipDescription);
             Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
             var admitted = writer.AdmitDiscoveredScope(bundle, ownershipDescription, memberInput, ownershipBinding!,
                 tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken, progress);
@@ -1179,7 +1162,7 @@ public static class JudgingRun
         var pathsCompleted = false;
         try
         {
-            writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
+            writer.CalculateTier0Paths(ownershipDescription, inputs, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
                 cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection, BeginPathPhase);
             pathsCompleted = true;
         }
@@ -1190,7 +1173,8 @@ public static class JudgingRun
 
         cancellationToken.ThrowIfCancellationRequested();
         Entering(progress, log, JudgingPhase.PublishingJudgement, objectsRead);
-        writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
+        using (inputs.ProtectPublication(ownershipDescription))
+            writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
         progress.PublicationCompleted();
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete

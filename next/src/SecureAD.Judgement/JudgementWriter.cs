@@ -239,12 +239,12 @@ public sealed class JudgementWriter : IDisposable
         PathInputStorage.Start(_connection, description, requested);
     }
 
-    internal void CalculateTier0Paths(JudgementDescription description, IReadOnlyList<RequesterDaclRequest> requests,
+    internal void CalculateTier0Paths(JudgementDescription description, JudgingInputs inputs, IReadOnlyList<RequesterDaclRequest> requests,
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests, CancellationToken cancellationToken,
         IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection, Action<PathRequesterWorkPhase> beginPhase)
     {
         ThrowIfFinished();
-        Tier0PathStorage.Write(_connection, description, _bundleDirectory, requests, ownAccountRequests, cancellationToken,
+        Tier0PathStorage.Write(_connection, description, inputs, requests, ownAccountRequests, cancellationToken,
             membershipDaclRequests, offlineSelection, beginPhase);
     }
 

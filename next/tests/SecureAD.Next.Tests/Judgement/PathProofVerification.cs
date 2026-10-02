@@ -16,11 +16,13 @@ internal static class PathProofVerification
     internal static PathInputs ReadInputs(JudgementReader reader)
     {
         using var connection = Open(reader);
-        var inputs = reader.ReadPathInputs();
+        var inputs = PathInputStorage.Read(connection, reader.Description, out var ownership, CancellationToken.None);
+        using var sources = ControlProofVerification.OpenSources(reader);
         if (inputs.Availability == PathInputAvailability.Recorded)
-            PathInputStorage.ValidateSources(connection, reader.Description, reader.BundleDirectory, inputs, CancellationToken.None);
+            PathInputStorage.ValidateSources(connection, reader.Description, sources, ownership, inputs, CancellationToken.None);
         else
-            OwnershipAuditValidation.Validate(connection, reader.Description, reader.BundleDirectory);
+            OwnershipAuditValidation.Validate(connection, reader.Description, sources,
+                new OwnershipAuditStorage.Snapshot(connection, reader.Description, CancellationToken.None));
         return inputs;
     }
 

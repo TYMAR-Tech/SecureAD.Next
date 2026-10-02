@@ -63,8 +63,12 @@ internal static class PathInputStorage
     }
 
     internal static PathInputs Read(SqliteConnection connection, JudgementDescription description,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => Read(connection, description, out _, cancellationToken);
+
+    internal static PathInputs Read(SqliteConnection connection, JudgementDescription description,
+        out OwnershipAuditStorage.Snapshot? ownershipInputs, CancellationToken cancellationToken)
     {
+        ownershipInputs = null;
         cancellationToken.ThrowIfCancellationRequested();
         var header = ReadHeader(connection);
         using var anchors = connection.CreateCommand();
@@ -95,14 +99,14 @@ internal static class PathInputStorage
             return Empty(description, header.Availability);
         }
         if (!scoped || header.Input is null || !header.Input.IsSupported) throw InvalidProof();
-        var ownership = OwnershipAuditStorage.ReadHeader(connection, requireComplete: true) ?? throw InvalidProof();
+        ownershipInputs = new OwnershipAuditStorage.Snapshot(connection, description, cancellationToken);
+        var ownership = ownershipInputs.Header ?? throw InvalidProof();
         if (ownership.Generation != description.GenerationId || ownership.EvidenceSeal != description.EvidenceSeal
             || ownership.DerivationGeneration != description.DerivationGenerationId
             || ownership.Input != header.Input || ownership.Coverage != header.Coverage) throw InvalidProof();
-        var seeds = OwnershipAuditStorage.Seeds(connection, cancellationToken);
-        var targets = OwnershipAuditStorage.Targets(connection, cancellationToken)
-            .ToDictionary(row => row.Identity.DistinguishedName, StringComparer.OrdinalIgnoreCase);
-        if (seeds.Count != ownership.SeedCount || targets.Count != ownership.TargetCount
+        var seeds = ownershipInputs.Seeds;
+        var targets = ownershipInputs.ByTarget;
+        if (seeds.Length != ownership.SeedCount || targets.Count != ownership.TargetCount
             || seeds.Any(seed => seed.Classification.Input != header.Input
                 || !targets.TryGetValue(seed.Target, out var target) || target.Identity != seed.Classification.Target
                 || target.Selection != OwnershipScopeState.Included)) throw InvalidProof();
@@ -111,7 +115,7 @@ internal static class PathInputStorage
         if (!targetNames.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(fixedTargets.Select(item => item.DistinguishedName)))
             throw InvalidProof();
         var relations = new List<Tier0RelevanceRelation>();
-        foreach (var link in OwnershipAuditStorage.Relations(connection))
+        foreach (var link in ownershipInputs.Relations)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!targets.TryGetValue(link.Controller, out var controller) || !targets.TryGetValue(link.Affected, out var affected)
@@ -143,19 +147,19 @@ internal static class PathInputStorage
     }
 
     // Source qualification belongs to producing a result, never to browsing its saved projection.
-    internal static void ValidateSources(SqliteConnection connection, JudgementDescription description, string directory,
-        PathInputs inputs, CancellationToken cancellationToken)
+    internal static void ValidateSources(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
+        OwnershipAuditStorage.Snapshot? ownership, PathInputs inputs, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        sources.RequireFor(description);
         if (inputs.Availability != PathInputAvailability.Recorded) return;
-        var validated = OwnershipAuditValidation.Validate(connection, description, directory, cancellationToken);
+        var validated = OwnershipAuditValidation.Validate(connection, description, sources,
+            ownership ?? throw InvalidProof(), cancellationToken);
         if (Tier0PathCalculation.Fingerprint(inputs.Classifications) != Tier0PathCalculation.Fingerprint(validated.Classifications)
             || Tier0PathCalculation.Fingerprint(inputs.AdmissionRelationships) != Tier0PathCalculation.Fingerprint(validated.Relations))
             throw InvalidProof();
-        var opened = BundleReader.Open(directory);
-        if (!opened.IsSuccess) throw InvalidProof();
-        using var bundle = opened.Value;
-        var contexts = bundle.ReadNamingContexts();
+        var bundle = sources.Bundle;
+        var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw InvalidProof();
         if (inputs.UncertaintyRegions.Count != 0) bundle.PrepareBulkObjectLookup();
         foreach (var region in inputs.UncertaintyRegions)

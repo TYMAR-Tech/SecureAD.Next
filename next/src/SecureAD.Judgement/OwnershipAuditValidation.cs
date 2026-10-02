@@ -14,16 +14,20 @@ internal static class OwnershipAuditValidation
 
     // Replay only stored seed witnesses and inclusion links. No new discovery, membership walk or assessment is performed.
     internal static (IReadOnlyList<Tier0Classification> Classifications, IReadOnlyList<Tier0RelevanceRelation> Relations)
-        Validate(SqliteConnection connection, JudgementDescription description, string directory, CancellationToken cancellationToken = default)
+        Validate(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
+            OwnershipAuditStorage.Snapshot ownership, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        AnalyticalReads.Add(1, new KeyValuePair<string, object?>("bundle", Path.GetFullPath(directory)));
+        sources.RequireFor(description);
+        ownership.RequireFor(connection, description);
+        AnalyticalReads.Add(1, new KeyValuePair<string, object?>("bundle", sources.Directory));
         var header = OwnershipAuditStorage.ValidateCounts(connection, description);
+        if (header != ownership.Header) throw OwnershipAuditStorage.InvalidProof();
         if (header is null) return ([], []);
-        var rows = OwnershipAuditStorage.Targets(connection, cancellationToken);
-        var targets = rows.ToDictionary(item => item.Identity.DistinguishedName, StringComparer.OrdinalIgnoreCase);
-        var seeds = OwnershipAuditStorage.Seeds(connection);
-        var links = OwnershipAuditStorage.Relations(connection);
+        var rows = ownership.Targets;
+        var targets = ownership.ByTarget;
+        var seeds = ownership.Seeds;
+        var links = ownership.Relations;
         var known = Enum.GetValues<Tier0Limitations>().Aggregate(Tier0Limitations.None, (all, value) => all | value);
         if ((header.Coverage.Limitations & ~known) != 0 || !header.Coverage.ProcessingComplete
             || header.Coverage.AnalysisComplete || header.Coverage.IsComplete) throw OwnershipAuditStorage.InvalidProof();
@@ -48,25 +52,20 @@ internal static class OwnershipAuditValidation
                     || target.Identity.SidScope != (read.IsDBNull(2) ? null : read.GetString(2))) throw OwnershipAuditStorage.InvalidProof();
             }
         }
-        var opened = BundleReader.Open(directory);
-        if (!opened.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
-        using var bundle = opened.Value;
-        if (OwnershipAuditRun.OwnerRightsHash(DirectoryHeuristics.OwnerImplicitRights(bundle.ReadForestHeuristics())) != header.OwnerRightsContextHash)
+        var bundle = sources.Bundle;
+        if (OwnershipAuditRun.OwnerRightsHash(sources.OwnerRights) != header.OwnerRightsContextHash)
             throw OwnershipAuditStorage.InvalidProof();
         if (header.Input is null)
         {
-            if (header.Coverage.InputsComplete || seeds.Count != 0 || links.Count != 0) throw OwnershipAuditStorage.InvalidProof();
+            if (header.Coverage.InputsComplete || seeds.Length != 0 || links.Length != 0) throw OwnershipAuditStorage.InvalidProof();
             return ([], []);
         }
-        var contexts = bundle.ReadNamingContexts();
+        var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
         if (header.DerivationGeneration is not { } generation
-            || OwnershipAuditRun.Binding(directory, description.EvidenceSeal, generation, bundle.Description.ForestFqdn, contexts.Value) != header.Input)
+            || sources.Binding() != header.Input)
             throw OwnershipAuditStorage.InvalidProof();
-        var derived = DerivationReader.Open(directory);
-        if (!derived.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
-        using var derivation = derived.Value;
-        var input = derivation.ReadMembershipInput();
+        var input = sources.ReadMembershipInput();
         if (input.DerivationGenerationId != generation) throw OwnershipAuditStorage.InvalidProof();
         var identities = input.Objects.GroupBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
@@ -79,13 +78,13 @@ internal static class OwnershipAuditValidation
         var seedByDn = seeds.ToDictionary(item => item.Target, StringComparer.OrdinalIgnoreCase);
         if (seeds.Any(seed => !targets.ContainsKey(seed.Target))) throw OwnershipAuditStorage.InvalidProof();
         var classifications = Tier0Classifier.QualifyMany(header.Input, seeds.Select(seed => targets[seed.Target].Identity), input,
-            target => seedByDn[target.DistinguishedName].Routes).Classifications;
+            target => seedByDn[target.DistinguishedName].Routes, cancellationToken).Classifications;
         foreach (var classification in classifications)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var seed = seedByDn[classification.Target.DistinguishedName];
             if (classification.State != Tier0State.Established || targets[seed.Target].Selection != OwnershipScopeState.Included
-                || !OwnershipAuditStorage.Hash(JsonSerializer.Serialize(classification, ProofSerialization.Options)).AsSpan().SequenceEqual(seed.Fingerprint))
+                || !OwnershipAuditStorage.Hash(JsonSerializer.Serialize(classification, ProofSerialization.Options)).AsSpan().SequenceEqual(seed.Fingerprint.AsSpan()))
                 throw OwnershipAuditStorage.InvalidProof();
         }
         var relations = new List<Tier0RelevanceRelation>();
@@ -133,10 +132,13 @@ internal static class OwnershipAuditValidation
             relations.Add(Tier0RelevanceRelation.FromControlEdge(header.Input, controller.Identity, affected.Identity, edge));
         }
         var replay = OwnershipScopeSelector.Select(header.Input, description.GenerationId, classifications, relations, header.Coverage,
-            CancellationToken.None, progress: null);
+            cancellationToken, progress: null);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (replay.WasCancelled) throw new OperationCanceledException(cancellationToken);
         var selected = replay.Decisions.Where(item => item.State == OwnershipScopeState.Included).Select(item => item.Target).ToHashSet();
         if (!selected.SetEquals(rows.Where(item => item.Selection == OwnershipScopeState.Included).Select(item => item.Identity)))
             throw OwnershipAuditStorage.InvalidProof();
+        ownership.RequireFor(connection, description);
         return (classifications, relations);
     }
 }

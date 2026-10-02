@@ -35,13 +35,33 @@ internal static class ControlProofVerification
             Pooling = false,
         }.ToString());
         connection.Open();
-        OwnershipAuditValidation.Validate(connection, reader.Description, reader.BundleDirectory);
+        using var sources = OpenSources(reader);
+        OwnershipAuditValidation.Validate(connection, reader.Description, sources,
+            new OwnershipAuditStorage.Snapshot(connection, reader.Description, CancellationToken.None));
         var predicate = target is not null ? "target = $value COLLATE NOCASE"
             : holder is not null ? "holder_sid = $value COLLATE NOCASE AND COALESCE(holder_scope,'') = $scope COLLATE NOCASE" : "1=1";
         ValidateSelection(connection, reader.Description, predicate, target, holder, scope);
         var page = reader.ReadControlEdges(target, holder, scope, expected, after);
         foreach (var edge in page.Edges) ControlEdgeStorage.ReadEdge(connection, reader.Description, edge.Id);
         return page;
+    }
+
+    internal static JudgingInputs OpenSources(JudgementReader reader)
+    {
+        var sources = JudgingInputs.Open(reader.BundleDirectory, CancellationToken.None);
+        if (!sources.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
+        try
+        {
+            if (reader.Description.DerivationGenerationId is not null && !sources.Value.OpenDerivation().IsSuccess)
+                throw OwnershipAuditStorage.InvalidProof();
+            sources.Value.RequireFor(reader.Description);
+            return sources.Value;
+        }
+        catch
+        {
+            sources.Value.Dispose();
+            throw;
+        }
     }
 
     private static void ValidateSelection(SqliteConnection connection, JudgementDescription description, string predicate,

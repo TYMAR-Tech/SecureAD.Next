@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -15,11 +16,58 @@ internal static class OwnershipAuditStorage
         int SelectorVersion, int EvaluatorVersion, int TargetCount, int SeedCount, int RelationCount);
     internal sealed record TargetRow(Tier0Target Identity, OwnershipScopeState Selection,
         OwnershipAssessmentExecution Execution, int Candidates, int Transitions);
-    internal sealed record SeedRow(string Target, MembershipRouteSummary Routes, byte[] Fingerprint,
+    internal sealed record SeedRow(string Target, MembershipRouteSummary Routes, ImmutableArray<byte> Fingerprint,
         Tier0Classification Classification);
     internal sealed record RelationRow(long? EdgeId, string Controller, string Affected,
         string? WitnessTarget, int? WitnessOrdinal, string? WitnessTrustee, bool WitnessIsOwner,
         ControlCapability? WitnessCapability);
+
+    internal sealed class Snapshot
+    {
+        private readonly SqliteConnection _connection;
+        private readonly JudgementDescription _description;
+        private readonly (long Changes, long Version) _revision;
+
+        internal Snapshot(SqliteConnection connection, JudgementDescription description, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _connection = connection;
+            _description = description;
+            _revision = Revision(connection);
+            Header = ReadHeader(connection, requireComplete: true);
+            Targets = Header is null ? [] : OwnershipAuditStorage.Targets(connection, cancellationToken).ToImmutableArray();
+            ByTarget = Targets.ToImmutableDictionary(row => row.Identity.DistinguishedName, StringComparer.OrdinalIgnoreCase);
+            Seeds = Header is null ? [] : OwnershipAuditStorage.Seeds(connection, cancellationToken)
+                .Select(seed => seed with { Routes = JudgingInputs.FreezeRoutes(seed.Routes) }).ToImmutableArray();
+            Relations = Header is null ? [] : OwnershipAuditStorage.Relations(connection, cancellationToken).ToImmutableArray();
+            RequireFor(connection, description);
+        }
+
+        internal Header? Header { get; }
+        internal ImmutableArray<TargetRow> Targets { get; }
+        internal ImmutableDictionary<string, TargetRow> ByTarget { get; }
+        internal ImmutableArray<SeedRow> Seeds { get; }
+        internal ImmutableArray<RelationRow> Relations { get; }
+
+        internal void RequireFor(SqliteConnection connection, JudgementDescription description)
+        {
+            if (!ReferenceEquals(connection, _connection) || description != _description
+                || Header is { } header && (header.Generation != description.GenerationId
+                    || header.EvidenceSeal != description.EvidenceSeal
+                    || header.DerivationGeneration != description.DerivationGenerationId
+                    || header.EvaluationAsOf != description.EvaluationAsOf)
+                || Revision(connection) != _revision) throw InvalidProof();
+        }
+
+        private static (long Changes, long Version) Revision(SqliteConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT total_changes()";
+            var changes = (long)command.ExecuteScalar()!;
+            command.CommandText = "PRAGMA data_version";
+            return (changes, (long)command.ExecuteScalar()!);
+        }
+    }
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE ownership_audit (id INTEGER PRIMARY KEY CHECK(id=1), header TEXT NOT NULL,
@@ -297,12 +345,12 @@ internal static class OwnershipAuditStorage
                     || !Enum.IsDefined(support.Basis) || support.Root is null || support.Evidence.IsDefault)) throw InvalidProof();
             seeds.Add(new(read.GetString(0),
                 JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1), ProofSerialization.Options) ?? throw InvalidProof(),
-                fingerprint, classification));
+                fingerprint.ToImmutableArray(), classification));
         }
         return seeds;
     }
 
-    internal static IReadOnlyList<RelationRow> Relations(SqliteConnection connection)
+    internal static IReadOnlyList<RelationRow> Relations(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
@@ -312,11 +360,15 @@ internal static class OwnershipAuditStorage
             """;
         using var read = command.ExecuteReader();
         var rows = new List<RelationRow>();
-        while (read.Read()) rows.Add(new(read.IsDBNull(0) ? null : read.GetInt64(0), read.GetString(1), read.GetString(2),
-            read.IsDBNull(3) ? null : read.GetString(3), read.IsDBNull(4) ? null : read.GetInt32(4),
-            read.IsDBNull(5) ? null : read.GetString(5), read.GetBoolean(6),
-            read.IsDBNull(7) ? null : Enum.TryParse<ControlCapability>(read.GetString(7), out var capability)
-                && Enum.IsDefined(capability) ? capability : throw InvalidProof()));
+        while (read.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            rows.Add(new(read.IsDBNull(0) ? null : read.GetInt64(0), read.GetString(1), read.GetString(2),
+                read.IsDBNull(3) ? null : read.GetString(3), read.IsDBNull(4) ? null : read.GetInt32(4),
+                read.IsDBNull(5) ? null : read.GetString(5), read.GetBoolean(6),
+                read.IsDBNull(7) ? null : Enum.TryParse<ControlCapability>(read.GetString(7), out var capability)
+                    && Enum.IsDefined(capability) ? capability : throw InvalidProof()));
+        }
         return rows;
     }
 
