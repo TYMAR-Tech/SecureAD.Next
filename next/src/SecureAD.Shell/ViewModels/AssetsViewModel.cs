@@ -751,6 +751,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
         RuleFilter = Any;
     }
 
+    /// <summary>Dismisses the explanation without changing the findings, filters or page.</summary>
+    [RelayCommand]
+    public void CloseFindingDetails() => SelectedFinding = null;
+
     /// <summary>Shows the next page of findings.</summary>
     [RelayCommand(CanExecute = nameof(HasMoreFindings))]
     public void NextFindings()

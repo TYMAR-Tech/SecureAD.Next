@@ -152,7 +152,8 @@ internal sealed record PostPassMemory(long? WorkingSetBytes, long? PrivateBytes,
 {
     internal static PostPassMemory Read()
     {
-        long? working = null, committed = null;
+        long? working = null;
+        long? committed = null;
         var status = "available";
         try
         {

@@ -158,7 +158,7 @@ public class PostPassLookupBenchmarks
             text.WriteLine(output);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         var token = cancellation.Token;
-        var admitted = Measure("AdmissionIncludingIdentityPreparation", () => writer.AdmitDiscoveredScope(bundle, description, input, binding, discovery, context, DomainSid, Derived, token));
+        var admitted = Measure("AdmissionIncludingIdentityPreparation", () => writer.AdmitDiscoveredScope(bundle, description, input, binding, discovery, context, DomainSid, Derived, token, status: null));
         Require(admitted == FocusedObjects, "Admission did not exercise all 27 expected targets.");
         var openedLog = RunLogFile.Open(output, "lookup-validation", TimeProvider.System);
         Require(openedLog.IsSuccess, "Cannot open retained log.");

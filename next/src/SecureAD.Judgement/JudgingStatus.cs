@@ -21,6 +21,12 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
     private JudgingPhase _phase = JudgingPhase.PreparingInputs;
     private string _operation = "PreparingInputs";
     private string? _rule;
+    private Guid? _generation;
+    private string? _evidenceSeal;
+    private Guid? _derivation;
+    private PathRequesterWorkPhase? _requesterPhase;
+    private PublicationState _publication;
+    private Action<IRunLog>? _deferredFailure;
     private long _operationStarted;
     private long _lastCompleted;
     private long _objects;
@@ -29,6 +35,8 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
     private long _lastAccounting;
     private bool _disposed;
     private bool _loggingFailed;
+
+    private enum PublicationState { NotStarted, Unconfirmed, Published }
 
     private sealed class RuleTotals
     {
@@ -40,15 +48,16 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
     private sealed record RuleSnapshot(string Rule, double CompletedMs, int Judged, int NotApplicable);
 
     internal JudgingStatus(IRunLog log, IProgress<JudgingRun.JudgingProgress> progress, TimeProvider time,
-        Func<PostPassMemory>? memory = null)
+        Func<PostPassMemory> memory)
     {
         ArgumentNullException.ThrowIfNull(log);
         ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(memory);
         _log = log;
         _progress = progress;
         _time = time;
-        _memory = memory ?? PostPassMemory.Read;
+        _memory = memory;
         _started = _operationStarted = _lastCompleted = _lastDetail = _lastAccounting = time.GetTimestamp();
         _timer = time.CreateTimer(_ => Tick(), null, Interval, Interval);
     }
@@ -57,12 +66,84 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
 
     internal void RecordBuildIdentity() => WriteDiagnostic(log => JudgingBuildIdentity.Write(log, AttemptId));
 
-    internal void RecordGeneration(Guid generation, string evidenceSeal, Guid? derivation) => WriteDiagnostic(log =>
-        log.Note("Judge", "judging generation",
+    internal void RecordGeneration(Guid generation, string evidenceSeal, Guid? derivation)
+    {
+        lock (_gate)
+        {
+            _generation = generation;
+            _evidenceSeal = evidenceSeal;
+            _derivation = derivation;
+        }
+        WriteDiagnostic(log => log.Note("Judge", "judging generation",
         [
             new("attempt", AttemptId.ToString("D")), new("generation", generation.ToString("D")),
             new("evidenceSeal", evidenceSeal), new("derivationGeneration", derivation?.ToString("D") ?? "none"),
         ]));
+    }
+
+    internal void PublicationCompleted()
+    {
+        lock (_gate) _publication = PublicationState.Published;
+    }
+
+    // Used as an always-false exception filter: record before scopes unwind, then preserve the
+    // original exception and stack. The CLR also ignores exceptions thrown by a failing log here.
+    internal bool RecordException(Exception error, bool cancellationRequested)
+    {
+        var cancelled = error is OperationCanceledException;
+        var detail = TerminalDetails(cancelled ? "Cancelled" : "Failed");
+        detail.Add(new("cancellationRequested", cancellationRequested.ToString(CultureInfo.InvariantCulture)));
+        detail.Add(new("exceptionType", error.GetType().FullName ?? error.GetType().Name));
+        detail.Add(new("exceptionMessage", error.Message));
+        detail.Add(new("exception", error.ToString()));
+        Action<IRunLog> write = cancelled
+            ? log => log.Note("Judge", "judging cancelled", detail)
+            : log => log.Record("Judge", AuditError.Create(ErrorCategory.Evidence,
+                "JudgingException", ErrorSeverity.Failed,
+                "The judging operation ended with an exception. See the recorded failure details.",
+                AttemptId.ToString("D")), detail);
+        // A filter still holds the failing scopes' locks. Do not wait for a reporter which may
+        // itself be waiting for such a lock; retain the context and flush it after unwinding.
+        if (!Monitor.TryEnter(_outputGate))
+        {
+            lock (_gate) _deferredFailure ??= write;
+            return false;
+        }
+        try { WriteDiagnostic(write); }
+        finally { Monitor.Exit(_outputGate); }
+        return false;
+    }
+
+    internal void RecordRefusal(AuditError error)
+    {
+        try
+        {
+            var detail = TerminalDetails("Failed");
+            detail.Add(new("errorContext", error.Context ?? "none"));
+            WriteDiagnostic(log => log.Record("Judge", error, detail));
+        }
+        catch (Exception)
+        {
+            // A broken diagnostic sink must not replace the failure result already being returned.
+        }
+    }
+
+    private List<RunLogDetail> TerminalDetails(string outcome)
+    {
+        lock (_gate)
+            return
+            [
+                new("attempt", AttemptId.ToString("D")), new("outcome", outcome),
+                new("generation", _generation?.ToString("D") ?? "none"),
+                new("evidenceSeal", _evidenceSeal ?? "none"),
+                new("derivationGeneration", _derivation?.ToString("D") ?? "none"),
+                new("phase", _phase.ToString()), new("operation", _operation),
+                new("requesterPhase", _requesterPhase?.ToString() ?? "none"),
+                new("rule", _rule ?? "none"), new("objects", Number(_objects)),
+                new("publication", _publication.ToString()),
+                new("elapsedMs", Number(_time.GetElapsedTime(_started).TotalMilliseconds)),
+            ];
+    }
 
     internal PostPassDiagnostics BeginPostPass(string stage, Guid generation)
     {
@@ -103,6 +184,9 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
     {
         lock (_gate)
         {
+            _requesterPhase = value.RequesterPhase;
+            if (value.Phase == JudgingPhase.PublishingJudgement)
+                _publication = PublicationState.Unconfirmed;
             if (_phase != value.Phase)
             {
                 _phase = value.Phase;
@@ -237,10 +321,24 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
     /// <summary>Stops reporting and waits for any in-flight log write before the log may be closed.</summary>
     public void Dispose()
     {
-        lock (_gate) _disposed = true;
+        Action<IRunLog>? deferred;
+        lock (_gate)
+        {
+            _disposed = true;
+            deferred = _deferredFailure;
+            _deferredFailure = null;
+        }
         _timer.Dispose();
         // A queued callback checks _disposed; one already writing must finish before we return.
-        lock (_outputGate) { }
+        lock (_outputGate)
+        {
+            if (deferred is null) return;
+            try { deferred(_log); }
+            catch (Exception)
+            {
+                // Disposal is on the original exception's path; diagnostic failure cannot replace it.
+            }
+        }
     }
 
     private static string Number(double value) => value.ToString("F0", CultureInfo.InvariantCulture);

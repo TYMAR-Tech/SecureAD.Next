@@ -369,22 +369,31 @@ public static class JudgingRun
     {
         var account = new JudgingAccount();
         var began = System.Diagnostics.Stopwatch.GetTimestamp();
-        using var status = new JudgingStatus(log, progress, TimeProvider.System);
-        status.RecordBuildIdentity();
-
-        var judged = JudgeIntoStore(
-            bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
-            discoveryBudget, memberBudget, startedUtc, evaluationAsOf, status, log, cancellationToken,
-            tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
-            offlineSelection, account);
-
-        if (judged.IsSuccess)
+        using var status = new JudgingStatus(log, progress, TimeProvider.System, PostPassMemory.Read);
+        try
         {
-            AppendPortableSummary(
-                bundleDirectory, System.Diagnostics.Stopwatch.GetElapsedTime(began), account);
-        }
+            status.RecordBuildIdentity();
+            var judged = JudgeIntoStore(
+                bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
+                discoveryBudget, memberBudget, startedUtc, evaluationAsOf, status, log, cancellationToken,
+                tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
+                offlineSelection, account);
 
-        return judged;
+            if (judged.IsSuccess)
+            {
+                AppendPortableSummary(
+                    bundleDirectory, System.Diagnostics.Stopwatch.GetElapsedTime(began), account);
+            }
+            else
+            {
+                status.RecordRefusal(judged.Error);
+            }
+            return judged;
+        }
+        catch (Exception error) when (status.RecordException(error, cancellationToken.IsCancellationRequested))
+        {
+            throw;
+        }
     }
 
     /// <summary>
@@ -533,7 +542,17 @@ public static class JudgingRun
             return refusal;
         }
 
-        var opened = BundleReader.Open(bundleDirectory);
+        var protectedEvidence = ProtectedStoreFile.OpenEvidence(bundleDirectory, cancellationToken);
+        if (!protectedEvidence.IsSuccess)
+        {
+            log.Record(JudgePhase, protectedEvidence.Error!, []);
+            return Result<JudgementRunState>.Failure(protectedEvidence.Error!);
+        }
+        using var evidence = protectedEvidence.Value;
+        if (!string.Equals(evidence.Fingerprint, seal.Hash, StringComparison.OrdinalIgnoreCase))
+            return Failure("EvidenceChanged", "The evidence seal changed while judging was opening it.", bundleDirectory);
+
+        var opened = BundleReader.Open(evidence, cancellationToken);
         if (!opened.IsSuccess)
         {
             log.Record(JudgePhase, opened.Error!, []);
@@ -833,7 +852,6 @@ public static class JudgingRun
         writer.StartLapsInventory();
         var classificationSchema = controlContext.SchemaGuids
             ?? throw new InvalidOperationException(nameof(controlContext.SchemaGuids));
-        var permissionClassifier = new PermissionClassificationProducer(classificationSchema);
         writer.StartPermissionClassifications(classificationSchema.HasCapturedEntries);
 
         var work = new ObjectWork();
@@ -856,8 +874,13 @@ public static class JudgingRun
 
         Entering(progress, log, JudgingPhase.EvaluatingObjects, 0);
         work.Pass.Start();
+        progress.BeginOperation("order-descriptor-groups");
+        work.Order.Start();
+        using var descriptors = bundle.StreamDescriptorObjects(cancellationToken);
+        work.Order.Stop();
+        var permissionPreparation = new PermissionClassificationPreparation(descriptors, classificationSchema, writer.GenerationId);
         progress.BeginOperation("read-object");
-        foreach (var subject in bundle.StreamObjects().Objects)
+        foreach (var subject in descriptors.Objects)
         {
             // Checked per object rather than per batch. A rule catalogue that has grown expensive
             // could spend a long time on one object, and a cancel that waits for the batch boundary
@@ -871,7 +894,8 @@ public static class JudgingRun
             unobservedRoots.Remove(subject.DistinguishedName);
             progress.BeginOperation("read-permissions");
             work.Read.Start();
-            var permissions = bundle.ReadPermissions(subject.DistinguishedName);
+            var reading = descriptors.ReadPermissions(subject);
+            var permissions = reading.Permissions;
             work.Read.Stop();
 
             // THE DESCRIPTOR RECORD IS WRITTEN FOR EVERY OBJECT; THE EDGES ARE NOT. Whether the
@@ -909,9 +933,7 @@ public static class JudgingRun
             // the writing of them.
             progress.BeginOperation("classify-permissions");
             work.Verdicts.Start();
-            var classified = permissionClassifier.CreateObjectResult(
-                permissions ?? throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid")),
-                cancellationToken);
+            var classified = permissionPreparation.Prepare(reading, writer.PermissionWrites, cancellationToken);
             work.Verdicts.Stop();
             progress.BeginOperation("store-permissions");
             work.StorePermissions.Start();
@@ -965,6 +987,16 @@ public static class JudgingRun
             }
             progress.BeginOperation("read-object");
         }
+
+        descriptors.Dispose();
+        log.Note(JudgePhase, "descriptor preparation", [
+            new RunLogDetail("preparedDescriptors", descriptors.PreparedDescriptors.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("preparedEntries", descriptors.PreparedEntries.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("classifiedDescriptors", permissionPreparation.ClassifiedDescriptors.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("classifiedEntries", permissionPreparation.ClassifiedEntries.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("orderingMs", ((long)work.Order.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("orderingTemporaryBytes", descriptors.OrderingTemporaryBytes.ToString(CultureInfo.InvariantCulture)),
+        ]);
 
         progress.BeginOperation("commit");
         work.Commit.Start();
@@ -1159,6 +1191,7 @@ public static class JudgingRun
         cancellationToken.ThrowIfCancellationRequested();
         Entering(progress, log, JudgingPhase.PublishingJudgement, objectsRead);
         writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
+        progress.PublicationCompleted();
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
             && tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
@@ -1390,10 +1423,13 @@ public static class JudgingRun
         /// <summary>The whole pass, against which every other bucket is accounted.</summary>
         public System.Diagnostics.Stopwatch Pass { get; } = new();
 
-        /// <summary>Reading one object's permissions out of the sealed bundle.</summary>
+        /// <summary>Creating the temporary descriptor-group order; sidecar reads remain in the pass.</summary>
+        public System.Diagnostics.Stopwatch Order { get; } = new();
+
+        /// <summary>Preparing each captured descriptor and binding its permissions to each object.</summary>
         public System.Diagnostics.Stopwatch Read { get; } = new();
 
-        /// <summary>Reaching the per-right verdicts for one object.</summary>
+        /// <summary>Reaching and validating per-right verdicts and fingerprints once per descriptor.</summary>
         public System.Diagnostics.Stopwatch Verdicts { get; } = new();
 
         /// <summary>Storing those verdicts. The half P-249 exists to make cheaper.</summary>
@@ -1497,6 +1533,7 @@ public static class JudgingRun
         /// <summary>The flat, never-nested buckets the pass measured, in a fixed order.</summary>
         private (string Part, TimeSpan Elapsed)[] Buckets() =>
         [
+            ("order-descriptor-groups", Order.Elapsed),
             ("read-permissions", Read.Elapsed),
             ("classify-permissions", Verdicts.Elapsed),
             ("store-permissions", StorePermissions.Elapsed),

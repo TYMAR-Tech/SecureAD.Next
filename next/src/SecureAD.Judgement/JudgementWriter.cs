@@ -177,6 +177,21 @@ public sealed class JudgementWriter : IDisposable
         }
     }
 
+    internal void WritePermissionClassification(PermissionClassificationPreparation.ObjectWrite prepared,
+        CancellationToken cancellationToken)
+    {
+        ThrowIfFinishedWithinObject();
+        try
+        {
+            prepared.Write(_connection, Batch(), GenerationId, PermissionWrites, _statements, _session, cancellationToken);
+        }
+        catch
+        {
+            AbandonBatch();
+            throw;
+        }
+    }
+
     /// <summary>Rolls back the open batch and forgets everything it wrote.</summary>
     private void AbandonBatch()
     {
@@ -258,7 +273,7 @@ public sealed class JudgementWriter : IDisposable
     internal int AdmitDiscoveredScope(BundleReader bundle, JudgementDescription description,
         SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding binding,
         Tier0DiscoveryScheduler discovery, JudgingContext context, Func<string, string?> domainSid,
-        Guid? derivationGeneration, CancellationToken cancellationToken, JudgingStatus? status = null)
+        Guid? derivationGeneration, CancellationToken cancellationToken, JudgingStatus? status)
     {
         ThrowIfFinished();
         return Tier0AdmissionRun.Admit(_connection, bundle, description, input, binding, discovery, context,

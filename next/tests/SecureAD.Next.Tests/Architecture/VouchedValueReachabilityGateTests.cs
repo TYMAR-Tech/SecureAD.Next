@@ -68,7 +68,7 @@ public sealed class VouchedValueReachabilityGateTests
     /// </summary>
     private static readonly string[] VouchShapes =
     [
-        "Errors", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
+        "Errors", "Problems", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
         "*AreComplete", "*WereAsked", "FailedPhase", "FailedPhases", "DidNotRun",
     ];
 

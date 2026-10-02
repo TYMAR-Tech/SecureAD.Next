@@ -99,16 +99,16 @@ public sealed class SchemaGuidCatalog
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(propertySetMembers);
 
-        Entries = entries.ToArray();
+        Entries = Array.AsReadOnly(entries.ToArray());
 
         _propertySetMembers = propertySetMembers.ToFrozenDictionary(
-            p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase);
+            p => p.Key, p => (IReadOnlyList<string>)Array.AsReadOnly(p.Value.ToArray()), StringComparer.OrdinalIgnoreCase);
 
         _byGuid = Entries
             .GroupBy(e => e.Guid, StringComparer.OrdinalIgnoreCase)
             .ToFrozenDictionary(
                 g => g.Key,
-                g => (IReadOnlyList<SchemaGuidEntry>)g.ToArray(),
+                g => (IReadOnlyList<SchemaGuidEntry>)Array.AsReadOnly(g.ToArray()),
                 StringComparer.OrdinalIgnoreCase);
 
         _byLdapName = Entries.ToFrozenDictionary(e => e.LdapName, StringComparer.OrdinalIgnoreCase);

@@ -51,7 +51,196 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
-**Owner-approved next work: Stage 7 — paths to Tier 0.** The bounded correctness pass **P-41,
+**Owner-approved immediate priority, 2026-10-01: descriptor-first permission preparation and its
+bounded offline validation, before further UI polish.** After the end-to-end design review, the owner
+explicitly approved the first implementation scope below and requested a new-session handoff before
+work starts. The goal is an audit that actually finishes in a realistic time, not just a faster object
+counter; no numeric customer-runtime commitment has been agreed. Approval covers this bounded
+implementation and validation on isolated offline inputs, not unrestricted optimization, new
+measurement harnesses beyond the separately approved runner below, later-stage redesign, live
+access or changes to the active production run.
+
+### First redesign: approved scope and offline validation
+
+**Status: implementation in progress, paused at a validated new-session checkpoint; not accepted,
+published or production-scale validated.**
+The owner approved the defined scope with: *"Approve this implementation scope and its bounded
+offline validation"* and subsequently said *"implement it"*; do not ask for that approval again.
+The prior review-only restriction is lifted only for this scope. The fresh logging-corrected
+before-control and current checkpoint are linked from [the work queue](PUNCH-LIST.md#current-bounded-correction).
+The owner requested a pause to move to VS Code; the current handoff is
+`.v-dfirst-cb4a8c95/checkpoint-02/handoff.json`, and validation is stopped.
+It retains a fresh Release rebuild and 128 passing focused checks, plus 33 passing checks against
+an isolated source copy; two rebuilt deliberate-defect variants have witnessed two of the 31 new
+checks, not the whole campaign. The third variant was interrupted before a test result, then its
+correct isolated sources were explicitly rebuilt and both selected checks passed; the interrupted
+attempt is retained, not counted as a defect witness. Implementation review, the remaining isolated
+deliberate-defect checks, full saved-answer comparison, broad regression, after-measurement and
+representative production-scale acceptance remain outstanding.
+Continue from the current working files, preserving subsequent work; snapshots are evidence, not
+instructions to overwrite the workspace. No deliberate test defect remains in live sources, and
+this unfinished implementation must not replace the owner's separately published diagnostic build.
+The owner subsequently authorized a **local work-in-progress commit** of the accumulated source,
+tests and governing-document changes. This saves unfinished work, not an accepted implementation;
+retained verification folders stay on disk outside Git, and this authorization does not include
+pushing, publishing, restarting validation or changing the production run.
+
+**Continuation approved, 2026-10-01; the production interruption is being clarified first.**
+The owner approved continuing and supplied `run3.log`, then clarified the observation: the Judge
+button was clickable again in the morning, no error was visible, and completion was an assumption,
+not an explicit success message. Do not ask for that observation again or record it as a successful
+judgement. The preserved file ends with `WritingProofs completed=False`, before any publication or
+successful-finish marker. The owner also supplied Windows report
+`b033d7cb-c426-4bad-8692-47aa4d4b439e` and then its event XML: `AppHangTransient` was logged at
+`2026-10-01T14:36:09.6863424Z`, 4 hours 8 minutes 17.6863424 seconds after the last judging record.
+That is the reporting time, not a proven hang-start time; event-emitting PID 9104 does not identify
+the hung application or contradict judging PID 4980. Three temporary attachments are listed, but
+their availability has not been checked and neither process termination nor causation is established.
+The timestamp question is answered and must not be asked again. Source review found a terminal-error
+logging gap on the normal production route; **the owner approved the judging failure-logging correction
+and offline checks, 2026-10-01**, prioritizing getting the logging right. Record failures/cancellation,
+phase, attempt/generation and exception details without masking the original failure or changing
+publication safeguards; this approval does not include UI changes, a production rerun or changes to
+the frozen measurement runner. **The bounded logging correction is implemented and offline verified;
+the active rerun's executable hash, engine module identity and matching PDB source checksums now
+confirm that it contains the validated logging correction, while the earlier failure's underlying cause
+remains unknown.** The prepare-once approval remains intact, and the production log remains operational
+evidence rather than the controlled baseline; [the work queue](PUNCH-LIST.md#current-bounded-correction)
+records the retained observations and next proposed correction.
+
+**Additional production observations, supplied with that approval:** Home shows capture `Finished`
+and analysis `Facts derived — not judged`, while Dashboard says `Group membership has not been
+worked out yet` and that deriving has not run. The owner reports unusably slow screen changes and
+Assets spending minutes loading before withholding a saved result for a source/generation mismatch
+or a generation change during reading. Source review confirmed that Dashboard currently maps a failed
+membership read to the same state as no derivation; that reporting defect remains unfixed, and the
+Assets refusal/loading cause is still unconfirmed. Do not equate a stored derivation with a successfully
+verified reading, weaken the refusal, change screen wording without approval, or substitute stale/empty
+results to make the screens agree.
+
+**Readback investigation follow-up:** the source retains unfinished judgement markers after a failed
+attempt, and the screen reader treats a pending judgement as a blocker even when reading derived
+facts; its captured-data validity check can also reject the read for that pending state. **The owner's
+pre-rerun inventory confirmed both `judgement.db.partial` and `judgement.current.json.partial`,
+with no published judgement manifest/database listed.** The recorded derivation was selected as
+`ce5b7114-14af-44da-95d7-acdca87a9015`, matching the judging log; its database and seal are present.
+The declared evidence seal also matches that log, but database bytes have not been rehashed. The
+pending files are sufficient to trigger the observed refusal path; their empty pending generation ID
+is the normal start-of-attempt marker, not something to repair manually. That historical inventory gave
+18.67 GiB of evidence, 2.84 GiB of derived facts, 12.42 GiB of failed judgement and 48.04 GiB free;
+it is not current capacity, a replay guarantee or evidence of free space when the failure occurred.
+Preserve failed output deliberately: starting another judgement replaces its staging database.
+**Owner clarification, 2026-10-01:** the owner wants to use the normal Release publish to obtain the
+better log, not wait for screen fixes or a special CLI package, and does not have space to duplicate
+the whole captured run. The normal GUI uses the corrected judging engine; a separate CLI package is
+optional, not a requirement. Begin investigation with a read-only file inventory, free-space reading,
+small current/pending manifests and seals, and the already supplied log; do not require database copies
+for that metadata check. This cannot recover an exception that was never logged. Any replay still
+replaces the failed staging database and needs space for new results, so decide explicitly what failed
+output to retain before overwriting it; lack of space is not permission to delete evidence or clear
+markers to bypass a refusal. No agent publication or replay has occurred, and this diagnostic priority
+does not accept the screen defects as fixed or establish production readiness.
+**Owner update, 2026-10-01: the new judgement is already running.** The owner reports deleting the
+partial judgement for space while doing other concurrent work unknown to the assistant; the exact
+deletion timing relative to the new attempt was not stated. The proposed archive plan is superseded,
+not a reason to stop the run, recreate the removed file or seek retroactive approval. Keep the active
+attempt's files untouched, use actual current free space, and retain
+the resulting log; the earlier log/inventory remain available but the removed database cannot be
+assumed available for post-mortem reading. Do not treat this shared-machine diagnostic run as a
+controlled performance comparison, or assume exclusive access to the owner's disk or other work.
+**Verified rerun checkpoint:** attempt `a7600b99-bcb7-419a-80d0-04c133869032` produces generation
+`d82215e2-0d2d-4af7-8b4d-a7f933d76db5` against the same evidence seal and derivation generation as
+the previous attempt. The supplied excerpt reaches 475,499 objects at `2026-10-01T20:57:36Z`, still
+in the object pass, with no terminal failure or publication shown; this is progress, not a completion
+forecast or proof that the later failing stage is repaired. Build/source verification and the checkpoint
+are retained alongside the previous log under `next/artifacts/production-run3-review-20261001-b03b6a84/`.
+
+**The unit of preparation is the captured descriptor, not each object carrying it.** During the main
+judging pass, decode the original descriptor bytes, retain capture/re-parsing errors and completeness,
+classify and validate its entries, and calculate its saved fingerprints once within the exact evidence,
+catalogue/parser/producer and analysis context. Hold an immutable prepared result; a repeated numeric
+descriptor ID supplied by a caller is never sufficient proof that reuse is valid. Process descriptor
+groups explicitly and stream their objects, rather than retaining the decoded forest or materializing
+an entire object's group in memory; ordering and temporary preparation costs belong in the measurement.
+
+**Object-specific work stays object-specific.** Every applicable object still reaches the existing
+rules, LAPS inventory and Tier-0 observation. Its identity, captured readability, SELF presentation,
+resource scope and requester authorization must not be inferred from another object's shared result.
+Grouping must preserve existing name-ambiguity behavior, logical answers and counting semantics;
+group-held permission counts remain independent of member/route counts. Write each descriptor's
+classifications once and retain every required object link, with pending identities trusted only in
+their transaction and promoted after commit or discarded on rollback.
+
+**Boundaries.** Preserve the saved format and completed-run reading contract, all original entry
+occurrences/ordinals/order/raw masks/application data, per-right meanings and reasons, inheritance and
+captured-schema support, and exact object/source/generation binding. Do not substitute canonicalized
+permissions, change rules or the authoritative Tier-0 definition, enable requester discovery, choose
+new production limits, introduce cross-run caches, migration or legacy readers, or combine this with
+binary encoding, a database replacement or parallel execution. Replace repeated main-pass preparation
+without permanent competing implementations or an unchecked fast path. Protected input reuse through
+later ownership/path stages remains a separate, unapproved redesign; this first change does not claim
+to make every later permission read occur once.
+
+**Offline validation is part of the approval, under these conditions:**
+
+- Before production edits, preserve the current uncommitted source and establish a measured baseline
+  with an existing suitable artifact that exercises the changed paths; use exact executable hashes
+  and module identities, not a Git revision alone. Any new measurement harness or extension still
+  requires separate approval. Freeze the measurement artifact and rerun the same workload after the
+  change, with identical evidence, derivation, rules, evaluation time, feature policy, runtime and
+  hardware; never treat the other machine's live log as a controlled before/after baseline.
+- **Separate measurement approval, 2026-10-01:** the owner approved *"the isolated measurement
+  runner and bounded offline baseline"*. Add a separate retained-output runner for the current
+  `JudgingRun.JudgeAudit` policy, initially covering shared/distinct synthetic descriptors and the
+  verified saved laboratory input, without changing the historical runners or their execution
+  guards. Isolate temporary files before assembly loading, identify the exact measured binaries,
+  keep requester discovery disabled and freeze the new runner after its first successful run;
+  this does not authorize live access, production-scale readiness claims or broader measurement
+  campaigns, and the remaining boundaries below still apply.
+- Use fresh isolated copies of sealed evidence and matching derivation, never the active run or
+  originals. Set TEMP/TMP before any test discovery or assembly loading. Retain failed attempts,
+  outliers, frozen evidence, historical measurements and subsequent uncommitted work; do not delete
+  originals, recapture, access a live forest, publish a package, commit or push.
+- Cover shared and distinct descriptors, SELF/owner/cross-domain cases, duplicate entries and
+  ordinal gaps, raw generic masks, inheritance, unsupported entries, missing/unreadable/malformed/
+  partial/null/empty DACLs, context isolation, reordered object processing, cancellation and rollback.
+  Prepared data must resist caller mutation and cannot be reused under a different bound context.
+- Independently test all three bindings in `docs/specs/P280-JUDGEMENT-OCCURRENCE-ROWS.md`:
+  evidence object-to-descriptor, descriptor/ordinal-to-entry, and entry-to-saved-interpretation.
+  Corrupted associations must be refused, including wrong descriptors with equal counts and
+  substituted otherwise-valid readings. Keep frozen hashes and Microsoft-anchored expectations;
+  needing to edit a golden value is a stop-and-review finding, not a test repair.
+- Mutation-test every new behavior check, explicitly rebuilding both the deliberately broken and
+  restored code. Compare saved logical fields and outcomes, not only aggregate counts; preserve
+  degraded/unknown answers rather than forcing success, and verify each result's own seals and
+  bindings even where generation identifiers or storage row ordering legitimately differ.
+- Validate focused synthetic cases, then lab integration, then representative nine-domain
+  production-scale evidence. A small or sharing-heavy synthetic capture cannot establish production
+  runtime, memory limits or readiness. Record actual descriptor preparation/classification counts,
+  preparation and object-pass timings, later phases, publication, reopening, peak memory and
+  temporary/final disk use; record cancellation and preserve the previously published generation.
+- Acceptance requires demonstrated removal of repeated preparation, reproducible runtime benefit
+  with resource trade-offs reported, unchanged security answers and successful publication/reopening.
+  Moving time into preparation or later stages is not an end-to-end gain. If occurrence-row writes
+  remain dominant, stop at the approved boundary and propose storage work separately; do not expand
+  this implementation or declare customer readiness without an agreed end-to-end runtime ceiling.
+
+The preservation snapshot is `next/artifacts/descriptor-first-handoff-20261001-7a23c981/`; its manifest
+records source state, copied supplied logs and the unchanged published GUI. It is not a measured
+baseline and must never be automatically restored over later work. P-191 remains implemented and
+offline verified in `.v-p191-0e09e3d1/`; the owner has begun a lab review but has not yet reported
+physical display or packaged-UI acceptance.
+
+**Previously approved bounded UI work, 2026-10-01: the Findings-screen pass (P-191).**
+While the existing production judgement runs, keep the findings list, add **Close details**, correct
+explanation contrast, and separate the existing **Why it matters**, **What to do**, and **What this
+rule looks for** sections. Verify navigation, filtering, selection and dismissal offline, with normal
+laptop/external-monitor checks remaining explicit if unperformed; preserve the running job, published
+package, evidence and prior uncommitted work. That approval moved this bounded presentation session
+ahead of further Stage 7 work, not a general UI redesign, rule expansion, reports, performance work,
+live access, publication, commit or push.
+
+**The next feature remains Stage 7 — paths to Tier 0, behind the performance-first priority above.** The bounded correctness pass **P-41,
 P-136, P-162, P-173** is implemented and offline verified, as recorded in
 [the work queue](PUNCH-LIST.md#agreed-next-work); P-136's reported case was already guarded and
 received regression coverage rather than a production change. Do not replace the next feature with
@@ -161,6 +350,18 @@ Preserve uncommitted work, sealed evidence, prior measurements, failed attempts 
 isolate temporary storage before test discovery and rebuild deliberate defects and restored code.
 A representative full-sized offline run remains a separate approval: no live forest access,
 production interruption, recapture, new budgets, cleanup, commit or push is authorized here.
+
+**Owner-approved correctness follow-up after repository recovery:** finish the required-argument
+and architecture-check repairs, retain portable-summary read failures, and complete the existing
+diagnostics verification before producing separate CLI/UI validation packages.
+Keep the existing summary presentation and error vocabulary; distinguish run completion from evidence
+coverage rather than introducing a blanket completion flag or exempting the summary from checks.
+Use synthetic/offline verification, rebuild deliberate defects and restored sources, and preserve
+prior work, evidence, measurement records and failed attempts.
+Package startup checks must not change the operator's settings or browse the original library merely
+to obtain a passing check; record unperformed UI and display checks as outstanding, not accepted.
+This continuation authorizes no live access, new performance campaign, production-sized replay,
+production budget or discovery change, cleanup, commit or push.
 
 **Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
 specifications and implement the remaining rule coverage.** The review and its retained source set are

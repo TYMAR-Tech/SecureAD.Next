@@ -22,6 +22,8 @@
          the audit, derivation, judgement, shell and command line projects already make. -->
     <InternalsVisibleTo Include="securead-cli" />
     <InternalsVisibleTo Include="SecureAD.Next.Tests" />
+    <!-- Judging consumes reader-owned descriptor groups; callers cannot forge preparation from IDs. -->
+    <InternalsVisibleTo Include="SecureAD.Judgement" />
   </ItemGroup>
 
 </Project>

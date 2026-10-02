@@ -448,6 +448,10 @@ public sealed class BundleReader : IDisposable
         new(Description.EveryDeclaredUnitRecordedAsRead,
             ObjectStreamReader.Stream(Connection, (id, dn) => _streamedIdentity = (id, dn)));
 
+    /// <summary>Orders the judging pass by captured descriptor within this reader's lifetime.</summary>
+    internal DescriptorObjectStream StreamDescriptorObjects(CancellationToken cancellationToken) =>
+        new(Connection, (id, dn) => _streamedIdentity = (id, dn), StreamedNamesAreUnambiguous(), cancellationToken);
+
     /// <summary>
     /// Reads how much of the forest this run covered, one entry per declared domain.
     /// </summary>

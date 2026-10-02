@@ -80,8 +80,8 @@ public sealed class PermissionClassificationProducer
         if (_support.TryGetValue(guid, out var support)) return support;
         var definitions = _catalog.FindByGuid(guid);
         support = new(guid, definitions, _catalog.MembersOfPropertySet(guid),
-            [.. definitions.Select(value => value.LdapName).Distinct(StringComparer.OrdinalIgnoreCase)
-                .Where(name => _catalog.FindUnambiguousByLdapName(name) is null)]);
+            Array.AsReadOnly(definitions.Select(value => value.LdapName).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(name => _catalog.FindUnambiguousByLdapName(name) is null).ToArray()));
         _support.Add(guid, support);
         return support;
     }

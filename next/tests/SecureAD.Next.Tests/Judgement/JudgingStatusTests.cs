@@ -11,11 +11,21 @@ namespace SecureAD.Next.Tests.Judgement;
 public sealed class JudgingStatusTests
 {
     [Fact]
+    public void MissingMemoryReaderIsRejectedAtConstruction()
+    {
+        Assert.Throws<ArgumentNullException>("memory", () =>
+        {
+            using var status = new JudgingStatus(
+                new StatusLog(), JudgingRun.NobodyIsWatching, new TimerClock(), null!);
+        });
+    }
+
+    [Fact]
     public void TimerReportsWithoutAnyProgressCallbacks()
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
 
         clock.Advance(TimeSpan.FromMinutes(3));
 
@@ -27,7 +37,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.Report(new(0) { Phase = JudgingPhase.EvaluatingObjects });
         status.BeginRule("TEST-BLOCKED");
 
@@ -43,7 +53,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.BeginRule("TEST-BLOCKED");
 
         clock.Advance(JudgingStatus.DetailInterval);
@@ -58,7 +68,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.BeginRule("TEST-RULE");
         clock.Advance(TimeSpan.FromMinutes(1));
         status.EndRule("TEST-RULE", TimeSpan.FromMinutes(1), 1, 0);
@@ -77,7 +87,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.CompleteObject(7);
 
         clock.Advance(JudgingStatus.Interval);
@@ -91,7 +101,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.CompleteObject(7);
         status.BeginRule("TEST-RULE");
         status.EndRule("TEST-RULE", TimeSpan.FromSeconds(1), 1, 0);
@@ -109,7 +119,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.Dispose();
 
         clock.Advance(TimeSpan.FromMinutes(10));
@@ -122,7 +132,7 @@ public sealed class JudgingStatusTests
     {
         var log = new FailingLog();
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
 
         clock.Advance(TimeSpan.FromMinutes(3));
 
@@ -133,7 +143,7 @@ public sealed class JudgingStatusTests
     public void AccountingIsDueByElapsedTimeNotObjectCount()
     {
         var clock = new TimerClock();
-        using var status = new JudgingStatus(new StatusLog(), JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(new StatusLog(), JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         clock.Advance(JudgingStatus.DetailInterval);
 
         Assert.Equal((true, false), (status.AccountingDue(), status.AccountingDue()));
@@ -144,7 +154,7 @@ public sealed class JudgingStatusTests
     {
         var log = new StatusLog();
         var clock = new TimerClock();
-        var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         status.Dispose();
 
         clock.FireQueuedCallback();
@@ -161,7 +171,7 @@ public sealed class JudgingStatusTests
         cancellation.Cancel();
         Assert.Throws<OperationCanceledException>(() =>
         {
-            using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+            using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
             cancellation.Token.ThrowIfCancellationRequested();
         });
 
@@ -181,7 +191,7 @@ public sealed class JudgingStatusTests
             if (!release.Wait(TimeSpan.FromSeconds(5))) throw new InvalidOperationException("Test log release timed out");
         });
         var clock = new TimerClock();
-        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock);
+        using var status = new JudgingStatus(log, JudgingRun.NobodyIsWatching, clock, PostPassMemory.Read);
         var reporting = Task.Run(() => clock.Advance(JudgingStatus.Interval));
         try
         {

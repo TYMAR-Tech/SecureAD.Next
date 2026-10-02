@@ -119,6 +119,59 @@ public sealed class GreenfieldGateTests
     }
 
     /// <summary>
+    /// Every entry in the solution has a name and a path.
+    ///
+    /// <para>
+    /// A re-save of the solution has twice left folder entries with an empty name and path, and
+    /// either one stops Visual Studio and <c>dotnet</c> opening the solution at all. The second time
+    /// the owner could not reach the project to ask for help from inside it.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EverySolutionEntryHasANameAndAPath()
+    {
+        var solution = Path.Combine(RebuildTree.Root(), "SecureAD.Next.sln");
+
+        var nameless = NamelessSolutionEntries(File.ReadAllLines(solution));
+
+        Assert.True(
+            nameless.Count == 0,
+            "SecureAD.Next.sln has entries with no name or path, which stop it opening. "
+            + "Delete each line below, its EndProject line, and its NestedProjects row:"
+            + Environment.NewLine + string.Join(Environment.NewLine, nameless));
+    }
+
+    /// <summary>
+    /// The nameless-entry check recognises the exact line that broke the solution on 2026-09-30,
+    /// and passes a well-formed one. Without this it could pass by matching nothing.
+    /// </summary>
+    [Fact]
+    public void TheNamelessEntryCheckRecognisesTheEntryThatBrokeTheSolution()
+    {
+        string[] lines =
+        [
+            "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \"\", \"\", \"{D0C50000-0000-0000-0000-000000E71E00}\"",
+            "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \"generated\", \"generated\", \"{D0C50000-0000-0000-0000-00000047454E}\"",
+        ];
+
+        var nameless = NamelessSolutionEntries(lines);
+
+        Assert.Equal([lines[0]], nameless);
+    }
+
+    private static List<string> NamelessSolutionEntries(IEnumerable<string> lines) =>
+        lines
+            .Where(line => line.StartsWith("Project(", StringComparison.Ordinal))
+            .Where(line =>
+            {
+                var parts = line.Split('"');
+                return parts.Length < 8
+                    || string.IsNullOrWhiteSpace(parts[3])
+                    || string.IsNullOrWhiteSpace(parts[5]);
+            })
+            .ToList();
+
+    /// <summary>
     /// Directories holding a project that <c>SecureAD.Next.sln</c> lists.
     /// </summary>
     private static List<string> ProjectDirectoriesInSolution(string root)

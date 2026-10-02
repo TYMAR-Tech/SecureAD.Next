@@ -156,7 +156,7 @@ internal static class OwnershipAuditRun
     }
 
     private sealed class ScopeProgress(IProgress<JudgingRun.JudgingProgress> progress, long objectsRead,
-        IProgress<OwnershipScopeProgress>? diagnostic = null) : IProgress<OwnershipScopeProgress>
+        IProgress<OwnershipScopeProgress>? diagnostic) : IProgress<OwnershipScopeProgress>
     {
         public void Report(OwnershipScopeProgress value)
         {

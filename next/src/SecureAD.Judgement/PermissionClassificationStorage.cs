@@ -97,15 +97,60 @@ internal static class PermissionClassificationStorage
 
     internal static void Write(SqliteConnection connection, SqliteTransaction transaction, Guid generation,
         PermissionClassification result, PermissionWriteWork work, PreparedStatements statements,
-        PermissionWriteSession session, CancellationToken token)
+        PermissionWriteSession session, CancellationToken token) =>
+        Prepare(result, generation, work, token).Write(connection, transaction, generation,
+            result.Permissions, work, statements, session, token);
+
+    internal static Prepared Prepare(PermissionClassification result, Guid generation,
+        PermissionWriteWork work, CancellationToken token)
+    {
+        work.Total.Start();
+        work.Validate.Start();
+        try
+        {
+            token.ThrowIfCancellationRequested();
+            var snapshot = Snapshot(result, token);
+            Validate(snapshot, token);
+            work.Validations++;
+            work.Validate.Stop();
+            work.Fingerprint.Start();
+            var fingerprint = snapshot.Permissions.DescriptorId is null ? null
+                : SharedPermissionStorage.DescriptorFingerprint(generation, snapshot.Permissions.Entries);
+            if (fingerprint is not null) work.Fingerprints++;
+            token.ThrowIfCancellationRequested();
+            return new(snapshot, generation, fingerprint);
+        }
+        finally
+        {
+            work.Validate.Stop();
+            work.Fingerprint.Stop();
+            work.Total.Stop();
+        }
+    }
+
+    /// <summary>Owned, validated data and its generation-bound list fingerprint; buffers never escape.</summary>
+    internal sealed class Prepared(PermissionClassification result, Guid generation, byte[]? fingerprint)
+    {
+        internal void Write(SqliteConnection connection, SqliteTransaction transaction, Guid requestedGeneration,
+            ObjectPermissions carried, PermissionWriteWork work, PreparedStatements statements,
+            PermissionWriteSession session, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (generation != requestedGeneration || carried.DescriptorId != result.Permissions.DescriptorId
+                || string.IsNullOrWhiteSpace(carried.DistinguishedName)) throw Invalid();
+            WritePrepared(connection, transaction, generation, result, carried, fingerprint,
+                work, statements, session, token);
+        }
+    }
+
+    private static void WritePrepared(SqliteConnection connection, SqliteTransaction transaction, Guid generation,
+        PermissionClassification result, ObjectPermissions carried, byte[]? fingerprint,
+        PermissionWriteWork work, PreparedStatements statements, PermissionWriteSession session, CancellationToken token)
     {
         work.Total.Start();
         token.ThrowIfCancellationRequested();
-        work.Validate.Start();
-        Validate(result, token);
-        work.Validate.Stop();
-        var target = result.Permissions.DistinguishedName;
-        var descriptorId = result.Permissions.DescriptorId;
+        var target = carried.DistinguishedName;
+        var descriptorId = carried.DescriptorId;
         var shared = new SharedPermissionStorage(connection, transaction, statements, session);
 
         // THE DESCRIPTOR IS WRITTEN BEFORE THE OBJECT THAT POINTS AT IT, because the object row now
@@ -114,12 +159,9 @@ internal static class PermissionClassificationStorage
         // foreign key is what makes that unwritable rather than merely unlikely.
         if (descriptorId is { } descriptor)
         {
-            // THE SECOND AND EVERY LATER OBJECT CARRYING THIS DESCRIPTOR WRITES NO PERMISSIONS. That
-            // is the whole of P-280: on the production capture 940,067 objects carry 267,550
-            // descriptors, so 71.5% of this work stops at the check below. The fingerprint is
-            // recomputed rather than trusted, so a descriptor already stored still has to agree
-            // with what this object read.
-            var fingerprint = SharedPermissionStorage.DescriptorFingerprint(generation, result.Permissions.Entries);
+            // The owned snapshot was validated and fingerprinted once. Reuse still compares that
+            // fingerprint with the transaction-aware store; a repeated numeric ID proves nothing.
+            if (fingerprint is null) throw Invalid();
             if (!Stored(descriptor, fingerprint))
             {
                 work.DescriptorRow.Start();
@@ -129,6 +171,7 @@ internal static class PermissionClassificationStorage
                     {
                         Entries = [], DescriptorId = null, DistinguishedName = null!,
                         Availability = default, UnreadableReason = null,
+                        Owner = result.Permissions.Owner?.Shared(),
                     })),
                     ("$count", result.Entries.Count), ("$hash", fingerprint)).ExecuteNonQuery();
                 work.DescriptorRow.Stop();
@@ -190,8 +233,8 @@ internal static class PermissionClassificationStorage
         // nothing", which is the distinction this half of the schema exists to keep.
         statements.Bind("INSERT INTO permission_classification_object VALUES ($target,$descriptor,$availability,$reason)", transaction,
             ("$target", target), ("$descriptor", descriptorId),
-            ("$availability", result.Permissions.Availability.ToString()),
-            ("$reason", result.Permissions.UnreadableReason)).ExecuteNonQuery();
+            ("$availability", carried.Availability.ToString()),
+            ("$reason", carried.UnreadableReason)).ExecuteNonQuery();
         work.ObjectRow.Stop();
         work.Objects++;
         work.Total.Stop();
@@ -415,6 +458,7 @@ internal static class PermissionClassificationStorage
                 DescriptorId = descriptorId,
                 Availability = Availability(read.GetString(2)),
                 UnreadableReason = read.IsDBNull(3) ? null : read.GetString(3),
+                Owner = permissions.Owner?.DisplayedAgainst(target),
             };
         }
         var entries = new List<ClassifiedPermissionEntry>();
@@ -513,6 +557,59 @@ internal static class PermissionClassificationStorage
             if (support.Guid != guid) throw Invalid();
             supports.Add(guid, support);
             return support;
+        }
+    }
+
+    private static PermissionClassification Snapshot(PermissionClassification result, CancellationToken token)
+    {
+        if (result?.Permissions is not { Entries: not null, Errors: not null } permissions
+            || result.Entries is null) throw Invalid();
+        var raw = permissions.Entries.Select(CopyEntry).ToArray();
+        var supports = new Dictionary<PermissionSchemaSupport, PermissionSchemaSupport>(ReferenceEqualityComparer.Instance);
+        var classified = new ClassifiedPermissionEntry[result.Entries.Count];
+        for (var index = 0; index < classified.Length; index++)
+        {
+            token.ThrowIfCancellationRequested();
+            var entry = result.Entries[index];
+            if (entry?.Rights is null) throw Invalid();
+            classified[index] = entry with
+            {
+                Entry = index < raw.Length && ReferenceEquals(entry.Entry, permissions.Entries[index])
+                    ? raw[index] : CopyEntry(entry.Entry),
+                Rights = Array.AsReadOnly(entry.Rights.ToArray()),
+                ObjectType = CopySupport(entry.ObjectType),
+                InheritedObjectType = CopySupport(entry.InheritedObjectType),
+            };
+        }
+        return result with
+        {
+            Permissions = permissions with
+            {
+                Entries = Array.AsReadOnly(raw), Errors = Array.AsReadOnly(permissions.Errors.ToArray()),
+            },
+            Entries = Array.AsReadOnly(classified),
+        };
+
+        PermissionEntry CopyEntry(PermissionEntry entry)
+        {
+            token.ThrowIfCancellationRequested();
+            if (entry?.ApplicationData is null || entry.Trustee is null) throw Invalid();
+            return entry with { ApplicationData = entry.ApplicationData.ToArray() };
+        }
+
+        PermissionSchemaSupport? CopySupport(PermissionSchemaSupport? support)
+        {
+            if (support is null) return null;
+            if (supports.TryGetValue(support, out var snapshot)) return snapshot;
+            if (support.Definitions is null || support.AmbiguousNames is null) throw Invalid();
+            snapshot = support with
+            {
+                Definitions = Array.AsReadOnly(support.Definitions.ToArray()),
+                AmbiguousNames = Array.AsReadOnly(support.AmbiguousNames.ToArray()),
+                PropertySetMembers = support.PropertySetMembers is { } members ? Array.AsReadOnly(members.ToArray()) : null,
+            };
+            supports.Add(support, snapshot);
+            return snapshot;
         }
     }
 

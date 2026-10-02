@@ -95,61 +95,70 @@
              item, because a binding a gate cannot resolve is a binding nobody is holding: the
              current-item path reads as a property name to ViewBindingGateTests, and a view naming
              something no view model publishes is how this shell crashed once with a green build. -->
-        <Border DockPanel.Dock="Bottom"
+        <Border x:Name="FindingDetails" DockPanel.Dock="Bottom"
                 Style="{StaticResource Card}"
                 Margin="0,8,0,0"
+                MaxHeight="280"
                 Visibility="{Binding HasSelectedFinding, Converter={StaticResource Shown}}">
-            <StackPanel>
-                <TextBlock Text="WHY IT MATTERS"
-                           Style="{StaticResource BlockLabel}" />
-                <TextBlock Text="{Binding SelectedFinding.WhyItMatters}"
-                           TextWrapping="Wrap"
-                           Margin="0,2,0,10" />
+            <DockPanel>
+                <Button DockPanel.Dock="Top" Content="Close details"
+                        Command="{Binding CloseFindingDetailsCommand}"
+                        HorizontalAlignment="Right" Margin="0,0,0,8" />
+                <ScrollViewer x:Name="FindingDetailsScroll"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock Text="WHY IT MATTERS"
+                                   Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding SelectedFinding.WhyItMatters}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,16" />
 
-                <TextBlock Text="WHAT TO DO"
-                           Style="{StaticResource BlockLabel}" />
-                <TextBlock Text="{Binding SelectedFinding.WhatToDo}"
-                           TextWrapping="Wrap"
-                           Margin="0,2,0,0" />
+                        <TextBlock Text="WHAT TO DO"
+                                   Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding SelectedFinding.WhatToDo}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0" />
 
-                <Expander Header="View membership evidence" Margin="0,10,0,0"
-                          Visibility="{Binding SelectedFinding.HasMembershipEvidence, Converter={StaticResource Shown}}">
-                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <TextBlock Text="{Binding SelectedFinding.MembershipCompleteness}" TextWrapping="Wrap" Margin="0,4,0,6" />
-                            <TextBox Text="{Binding SelectedFinding.MembershipDetails, Mode=OneWay}"
-                                     Style="{StaticResource SelectableMessage}" />
-                        </StackPanel>
-                    </ScrollViewer>
-                </Expander>
+                        <Expander Header="View membership evidence" Margin="0,10,0,0"
+                                  Visibility="{Binding SelectedFinding.HasMembershipEvidence, Converter={StaticResource Shown}}">
+                            <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedFinding.MembershipCompleteness}"
+                                               TextWrapping="Wrap" Margin="0,4,0,6" />
+                                    <TextBox Text="{Binding SelectedFinding.MembershipDetails, Mode=OneWay}"
+                                             Style="{StaticResource SelectableMessage}" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
 
-                <!-- WHAT THIS RULE LOOKS FOR, AND WHAT IT DOES NOT. A rule reporting a subset of a
-                     problem must not let its silence read as "nothing else is wrong", and until
-                     this had a field of its own the only place to say so was inside each finding's
-                     own text - repeated once per object, and attached to the machines that fired
-                     rather than to the rule.
+                        <!-- WHAT THIS RULE LOOKS FOR, AND WHAT IT DOES NOT. A rule reporting a subset of a
+                             problem must not let its silence read as "nothing else is wrong", and until
+                             this had a field of its own the only place to say so was inside each finding's
+                             own text - repeated once per object, and attached to the machines that fired
+                             rather than to the rule.
 
-                     IT IS ALSO ON THE RULES TAB, WHICH IS WHERE HALF ITS AUDIENCE IS. The operator
-                     who most needs it is the one looking at a rule that reported nothing, and he
-                     never opens a finding. Repeated here because a reader of one finding should not
-                     have to leave it to learn what the rule does not cover. -->
-                <TextBlock Text="WHAT THIS RULE LOOKS FOR"
-                           Style="{StaticResource BlockLabel}"
-                           Margin="0,10,0,0" />
-                <TextBlock Text="{Binding SelectedFinding.About}"
-                           TextWrapping="Wrap"
-                           Foreground="{StaticResource SecondaryTextBrush}"
-                           Margin="0,2,0,0" />
+                             IT IS ALSO ON THE RULES TAB, WHICH IS WHERE HALF ITS AUDIENCE IS. The operator
+                             who most needs it is the one looking at a rule that reported nothing, and he
+                             never opens a finding. Repeated here because a reader of one finding should not
+                             have to leave it to learn what the rule does not cover. -->
+                        <TextBlock Text="WHAT THIS RULE LOOKS FOR"
+                                   Style="{StaticResource SectionTitle}"
+                                   Margin="0,16,0,0" />
+                        <TextBlock Text="{Binding SelectedFinding.About}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0" />
 
-                <!-- The source, so a customer can check the reasoning rather than take it. Shown
-                     only when one is recorded: an empty line where a citation belongs suggests the
-                     claim has one and it was lost. -->
-                <TextBlock Text="{Binding SelectedFinding.MicrosoftReference}"
-                           TextWrapping="Wrap"
-                           Margin="0,10,0,0"
-                           Foreground="{StaticResource SecondaryTextBrush}"
-                           Visibility="{Binding SelectedFinding.HasMicrosoftReference, Converter={StaticResource Shown}}" />
-            </StackPanel>
+                        <!-- The source, so a customer can check the reasoning rather than take it. Shown
+                             only when one is recorded: an empty line where a citation belongs suggests the
+                             claim has one and it was lost. -->
+                        <TextBlock Text="{Binding SelectedFinding.MicrosoftReference}"
+                                   Style="{StaticResource Caption}"
+                                   Margin="0,16,0,0"
+                                   Visibility="{Binding SelectedFinding.HasMicrosoftReference, Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
         </Border>
 
         <DataGrid ItemsSource="{Binding Findings}"

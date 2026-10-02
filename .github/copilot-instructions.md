@@ -86,6 +86,9 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## SecureAD.Next Regression Work
 
 - For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.
+- Keep deliberately broken variants in isolated source copies/builds, not the active working files; explicitly rebuild the correct sources afterwards and never hand off a deliberate defect in the live workspace.
+- Before a long regression run, smoke-check that the staged tests resolve the real source tree and that short, fresh TEMP/TMP paths were isolated before discovery. Retain failed attempts rather than weakening checks or changing historical fixtures to make the test location work.
+- Keep sessions to one bounded approved correction, batch independent inspection, and automate repeated build/test/provenance steps. Reserve capacity for final validation and an accurate checkpoint in the existing governing documents; do not replace safety checks with speed or ask again for an approval already recorded.
 
 ## SecureAD.Next Completed-Run Readback
 

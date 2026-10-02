@@ -158,7 +158,7 @@ internal sealed class Tier0DiscoveryScheduler
     /// limitations than the same scan reports afterwards, which is a completeness claim that depends
     /// on the order the caller happened to ask in.
     /// </remarks>
-    internal void Complete(PostPassDiagnostics? diagnostic = null)
+    internal void Complete(PostPassDiagnostics? diagnostic)
     {
         if (_completed) return;
         _completed = true;
@@ -189,7 +189,7 @@ internal sealed class Tier0DiscoveryScheduler
     }
 
     /// <summary>The discovered candidates, ordered so a run is reproducible.</summary>
-    internal IReadOnlyList<Tier0RelevanceRelation> Candidates(PostPassDiagnostics? diagnostic = null)
+    internal IReadOnlyList<Tier0RelevanceRelation> Candidates(PostPassDiagnostics? diagnostic)
     {
         Complete(diagnostic);
         diagnostic?.Part("order-candidates");
@@ -204,7 +204,7 @@ internal sealed class Tier0DiscoveryScheduler
     /// <summary>What this scan inspected and what stopped it being complete.</summary>
     internal Tier0DiscoveryCoverage Coverage()
     {
-        Complete();
+        Complete(diagnostic: null);
         return new(Tier0DiscoveryCoverage.CurrentVersion,
             _captureComplete, _objects, _permissions, _owners,
             _resolved.Count, _limitations

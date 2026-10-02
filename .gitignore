@@ -61,6 +61,13 @@ coverage.cobertura.xml
 # Isolated verification TEMP/TMP roots contain retained test data, not source.
 /t-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
 
+# Local verification records, deliberately broken source copies and isolated temporary data.
+# Preserve these on disk as evidence; they must never enter a source checkpoint commit.
+/.v-*/
+/.vt-*/
+/.t-df-*/
+/.m-df-*/
+
 # DocFX leftovers. The site is no longer built or published; these entries stay so a
 # stale local build cannot be committed by accident.
 _site/

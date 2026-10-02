@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using System.Reflection;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -19,9 +19,8 @@ namespace SecureAD.Next.Tests.Architecture;
 /// nothing ever failed to say so. A mechanism nobody is obliged to use is a mechanism nobody uses.
 /// </para>
 /// <para>
-/// The gate is stated in <c>docs/next/README.md</c> § Gates about service constructors. It is
-/// enforced here as the wider rule — no production parameter at all — because the text scan cannot
-/// tell a constructor from a method, and because the failure it prevents is the same either way.
+/// The gate covers every production parameter, including private methods and constructors,
+/// because silently optional collaborators cause the same failure at either boundary.
 /// A parameter that genuinely has no value passes a nullable type explicitly at the call site,
 /// which puts the decision in the caller's diff rather than in the signature.
 /// </para>
@@ -29,34 +28,42 @@ namespace SecureAD.Next.Tests.Architecture;
 public sealed class NullDefaultGateTests
 {
     /// <summary>
-    /// A parameter defaulted to <c>null</c>: a type, then the parameter name, then the literal,
-    /// then the comma or closing parenthesis that can only follow it inside a parameter list.
-    /// A field or local initialiser ends in a semicolon and so does not match.
+    /// Compiler metadata distinguishes parameters from locals and object initializers. The old
+    /// line pattern mistook both XmlResolver = null and a multi-variable local for parameters.
     /// </summary>
     /// <remarks>
-    /// <b>The type is part of the pattern because without it the gate fired on an object
-    /// initialiser.</b> It was written as <c>=\s*null\s*[,)]</c>, on the stated reasoning that an
-    /// initialiser ends in a semicolon - true of a field, false of a member inside an object
-    /// initialiser, which ends in a comma like a parameter does. It therefore flagged
-    /// <c>XmlResolver = null,</c> in <c>GroupPolicyPreferenceParser</c>, which is the setting that
-    /// stops the parser resolving external entities in a Group Policy Preferences file. Satisfying
-    /// the gate there would have removed an XXE defence from a security product to please a text
-    /// scan.
-    /// <para>
-    /// A parameter default always names a type before the parameter; an object initialiser member
-    /// never does. That is the whole difference, and it is what the pattern now requires. The class
-    /// admits the characters a type can end with - a word character, <c>?</c> for a nullable,
-    /// <c>&gt;</c> for a generic, <c>]</c> for an array.
-    /// </para>
+    /// The initializer is an XXE defence; changing valid production code to please an ambiguous
+    /// pattern would be the wrong fix. GreenfieldGateTests separately holds source inclusion to
+    /// the solution, and this check must run against a rebuilt assembly, like the other reflected
+    /// architecture checks. Nonpublic members are included so internal collaborators cannot escape.
     /// </remarks>
-    private static readonly Regex NullDefaultedParameter =
-        new(@"[\w\?>\]]\s+\w+\s*=\s*null\s*[,)]", RegexOptions.Compiled);
+    private const BindingFlags DeclaredMembers = BindingFlags.Public | BindingFlags.NonPublic
+        | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+    // The shared surface gates cover the libraries. This gate also covers both hosts, as the
+    // former next/src source scan did. No test or measurement assembly is added to that scope.
+    private static IEnumerable<Assembly> ProductionAssemblies() => RebuildAssemblies.All.Concat(
+        [Assembly.Load("securead-cli"), Assembly.Load("SecureAD")]);
+
+    private static IEnumerable<ParameterInfo> Parameters(Type type) => type
+        .GetConstructors(DeclaredMembers).Cast<MethodBase>()
+        .Concat(type.GetMethods(DeclaredMembers))
+        .SelectMany(member => member.GetParameters());
+
+    private static bool DefaultsToNull(ParameterInfo parameter) =>
+        parameter.HasDefaultValue && parameter.DefaultValue is null
+        && (!parameter.ParameterType.IsValueType
+            || Nullable.GetUnderlyingType(parameter.ParameterType) is not null);
 
     [Fact]
     public void NoProductionParameterDefaultsToNull()
     {
-        var offenders = RebuildTree.ScanPattern(
-            RebuildTree.ProductionFiles(), NullDefaultedParameter);
+        var offenders = ProductionAssemblies().SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(Parameters)
+            .Where(DefaultsToNull)
+            .Select(parameter => $"  {parameter.Member.DeclaringType?.FullName}.{parameter.Member.Name}: {parameter.Name}")
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToList();
 
         Assert.True(
             offenders.Count == 0,
@@ -64,51 +71,79 @@ public sealed class NullDefaultGateTests
             + "makes a collaborator optional without anyone deciding it should be, which is how "
             + "progress, cancellation and the performance log all became unused in the previous "
             + "implementation. Pass the value explicitly at each call site instead:"
-            + Environment.NewLine + RebuildTree.Describe(offenders));
+            + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
 
     /// <summary>
-    /// The gate read real files. Without this it passes by scanning an empty set, which is the
+    /// The gate reads real parameters. Without this it passes by scanning an empty set, which is the
     /// failure the scanner self-tests exist to catch.
     /// </summary>
     [Fact]
-    public void TheGateReadsRealProductionFiles()
+    public void TheGateReadsRealProductionParameters()
     {
-        var files = RebuildTree.ProductionFiles().ToList();
+        var parameters = ProductionAssemblies().SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(Parameters).ToList();
 
-        Assert.True(
-            files.Count > 0,
-            $"Found no production .cs files under {Path.Combine(RebuildTree.Root(), "src")}.");
-        Assert.Contains(files, f => f.EndsWith("AceNormalizer.cs", StringComparison.Ordinal));
+        Assert.Contains(parameters, parameter => parameter.Member.DeclaringType == typeof(SecureAD.Judgement.JudgingStatus)
+            && parameter.Name == "memory");
     }
 
     /// <summary>
-    /// The pattern recognises a defaulted null when one is present, and does not fire on the
-    /// constructs that merely look similar. Asserted against literals rather than a temporary file,
-    /// so the check needs no fixture on disk.
+    /// The compiled fixtures exercise the same distinctions as the old text cases, without
+    /// making formatting determine whether a real parameter is inspected.
     /// </summary>
     [Theory]
-    [InlineData("public Runner(IProgressPublisher? publisher = null)")]
-    [InlineData("    IProgressPublisher? publisher = null,")]
-    [InlineData("public void Run(CancellationToken? token = null) { }")]
-    [InlineData("    Guid? objectType = null, Guid? inherited = null)")]
-    public void ThePatternRecognisesADefaultedNull(string line)
+    [InlineData(typeof(DefaultedConstructor), ".ctor", "path")]
+    [InlineData(typeof(Signatures), "PublicDefault", "value")]
+    [InlineData(typeof(Signatures), "PrivateDefault", "value")]
+    [InlineData(typeof(Signatures), "InternalDefault", "value")]
+    [InlineData(typeof(Signatures), "NullableValue", "value")]
+    [InlineData(typeof(Signatures), "TwoDefaults", "first")]
+    [InlineData(typeof(Signatures), "TwoDefaults", "second")]
+    public void TheGateRecognisesADefaultedNull(Type type, string member, string name)
     {
-        Assert.Matches(NullDefaultedParameter, line);
+        var parameter = Assert.Single(Parameters(type), p => p.Member.Name == member && p.Name == name);
+
+        Assert.True(DefaultsToNull(parameter));
     }
 
     [Theory]
-    [InlineData("private string? _path = null;")]
-    [InlineData("var parsed = Parse(bytes, null);")]
-    [InlineData("return NormalizeGuid(guid) ?? null;")]
-    [InlineData("Assert.Equal(null, result.OwnerSid);")]
-    // The object initialiser that the original pattern flagged. A member assignment inside one
-    // ends in a comma exactly as a parameter does, and names no type - which is what tells them
-    // apart. This line is an XXE defence and must never be what a gate argues away.
-    [InlineData("            XmlResolver = null,")]
-    [InlineData("    Indent = null,")]
-    public void ThePatternDoesNotFireOnSomethingElse(string line)
+    [InlineData("RequiredNullable")]
+    [InlineData("ValueDefault")]
+    [InlineData("TextDefault")]
+    [InlineData("NullLocalsAndInitializers")]
+    public void TheGateDoesNotFireOnSomethingElse(string member)
     {
-        Assert.DoesNotMatch(NullDefaultedParameter, line);
+        var parameter = Assert.Single(Parameters(typeof(Signatures)), p => p.Member.Name == member);
+
+        Assert.False(DefaultsToNull(parameter));
+    }
+
+    [Fact]
+    public void TheGateCoversBothHostsAndEveryLibrary() => Assert.Equal(
+        new[] { "SecureAD", "SecureAD.Audit", "SecureAD.Derivation", "SecureAD.Evidence", "SecureAD.Judgement", "SecureAD.Kernel", "securead-cli" },
+        ProductionAssemblies().Select(assembly => assembly.GetName().Name).OrderBy(name => name, StringComparer.Ordinal));
+
+    private sealed class DefaultedConstructor(string? path = null)
+    {
+        internal string? Path { get; } = path;
+    }
+
+    private sealed class Signatures
+    {
+        public static string? PublicDefault(string? value = null) => value;
+        private static string? PrivateDefault(string? value = null) => value;
+        internal static string? InternalDefault(string? value = null) => value;
+        internal static CancellationToken? NullableValue(CancellationToken? value = null) => value;
+        internal static (Guid?, Guid?) TwoDefaults(Guid? first = null, Guid? second = null) => (first, second);
+        internal static string? RequiredNullable(string? value) => value;
+        internal static CancellationToken ValueDefault(CancellationToken value = default) => value;
+        internal static string TextDefault(string value = "present") => value;
+        internal static object NullLocalsAndInitializers(string? supplied)
+        {
+            long? working = null, committed = null;
+            var settings = new System.Xml.XmlReaderSettings { XmlResolver = null, };
+            return (supplied, working, committed, settings);
+        }
     }
 }

@@ -114,7 +114,9 @@ public sealed class UnvouchedResultGateTests
     /// </summary>
     private static readonly string[] VouchShapes =
     [
-        "Errors", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
+        // Portable summaries carry sanitized, counted errors as Problems. Readback failures must
+        // reach that list too; PortableSummaryContentTests holds that behavior, not this name scan.
+        "Errors", "Problems", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
         "*AreComplete", "*WereAsked", "FailedPhase", "FailedPhases", "DidNotRun",
     ];
 
@@ -323,6 +325,7 @@ public sealed class UnvouchedResultGateTests
             .Where(m => IsCountShaped(m.Member.Name))
             .Where(m => IsBareNumber(m.Returns))
             .Where(m => !IsVouched(m.Type))
+            .Where(m => !VouchedByContainment.Value.Contains(m.Type))
             .Select(m => $"  {ReadableName(m.Type)}.{m.Member.Name} returns {ReadableName(m.Returns)}")
             .OrderBy(t => t, StringComparer.Ordinal)
             .ToList();
@@ -404,6 +407,41 @@ public sealed class UnvouchedResultGateTests
         Assert.DoesNotContain(
             typeof(SecureAD.Kernel.Security.SecurityDescriptorParser), VouchedByContainment.Value);
     }
+
+    [Theory]
+    [InlineData(typeof(SecureAD.Evidence.Run.CaptureSummary))]
+    [InlineData(typeof(SecureAD.Evidence.Run.DerivationSummary))]
+    [InlineData(typeof(SecureAD.Evidence.Run.JudgingSummary))]
+    public void SummaryProblemsCarryTheOutcome(Type summary) => Assert.True(IsVouched(summary));
+
+    [Fact]
+    public void RecordedProblemCountsKeepTheirContainersOutcome() =>
+        Assert.Contains(typeof(SecureAD.Evidence.Run.ProblemCount), VouchedByContainment.Value);
+
+    [Theory]
+    [InlineData(typeof(ProblemContainer), true)]
+    [InlineData(typeof(NothingVouching), false)]
+    public void ACountLeafRequiresEveryProducerToCarryAnOutcome(Type secondProducer, bool expected)
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(ProblemContainer), typeof(IReadOnlyList<CountLeaf>)),
+            (secondProducer, typeof(CountLeaf)),
+        ]);
+
+        Assert.Equal(expected, leaves.Contains(typeof(CountLeaf)));
+    }
+
+    [Fact]
+    public void AProducerCannotVouchForItself() => Assert.DoesNotContain(
+        typeof(ProblemContainer), VouchedLeaves([(typeof(ProblemContainer), typeof(ProblemContainer))]));
+
+    [Fact]
+    public void AStateNameAloneDoesNotVouchForCounts() => Assert.False(IsVouched(typeof(StateOnly)));
+
+    private sealed record CountLeaf(int Count);
+    private sealed record ProblemContainer(IReadOnlyList<SecureAD.Kernel.AuditError> Problems);
+    private sealed record StateOnly(string State, int Count);
 
     /// <summary>
     /// Every leaf it clears really is produced only by types that vouch. Stated as its own
@@ -819,9 +857,10 @@ public sealed class UnvouchedResultGateTests
     /// </para>
     /// </remarks>
     private static readonly Lazy<HashSet<Type>> VouchedByContainment = new(() =>
-    {
-        var members = PublicMembers().ToList();
+        VouchedLeaves(PublicMembers().Select(member => (member.Type, member.Returns))));
 
+    private static HashSet<Type> VouchedLeaves(IEnumerable<(Type Type, Type Returns)> members)
+    {
         var exposersOf = new Dictionary<Type, List<Type>>();
         foreach (var member in members)
         {
@@ -848,7 +887,7 @@ public sealed class UnvouchedResultGateTests
                 container => IsVouched(container) || IsExempt(ReadableName(container))))
             .Select(pair => pair.Key)
             .ToHashSet();
-    });
+    }
 
     /// <summary>
     /// The types a member hands back: what it returns, and - when that is a collection - what the

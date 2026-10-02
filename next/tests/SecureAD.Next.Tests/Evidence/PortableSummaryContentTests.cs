@@ -289,9 +289,120 @@ public sealed class PortableSummaryContentTests
         Assert.Contains("example.com", written, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("DELETE FROM domain_coverage", "Evidence.CoverageAbsent")]
+    [InlineData("DROP TABLE domain_capture_failure", "Evidence.DomainCaptureHistoryUnreadable")]
+    public async Task UnreadableCaptureDetailsReachTheSummary(string change, string code)
+    {
+        var bundle = await ACapturedForest();
+        ChangeCapturedEvidence(bundle, change);
+
+        var summary = CaptureSummaryOf(bundle);
+
+        Assert.Equal(new[] { (code, 1) }, summary.Problems.Select(problem => (problem.Code, problem.Count)));
+    }
+
+    [Fact]
+    public void UnrecognisedRunIsReportedAsAProblem()
+    {
+        var summary = CaptureSummaryOf(TempDirectories.Create("summary-not-run"));
+
+        Assert.Contains(summary.Problems, problem => problem.Code == "Evidence.NotARunDirectory" && problem.Count == 1);
+    }
+
+    [Fact]
+    public async Task UnopenableEvidenceRetainsItsRefusal()
+    {
+        var bundle = await ACapturedForest();
+        File.WriteAllText(BundleLayout.SealPath(bundle), "not a seal");
+        var refusal = BundleReader.Open(bundle);
+        Assert.False(refusal.IsSuccess);
+
+        var summary = CaptureSummaryOf(bundle);
+
+        Assert.Equal(new[] { (refusal.Error!.Code, 1) }, summary.Problems.Select(problem => (problem.Code, problem.Count)));
+    }
+
+    [Theory]
+    [InlineData(RunOutcome.Failed, RunState.Failed)]
+    [InlineData(RunOutcome.Cancelled, RunState.Cancelled)]
+    public void UnfinishedCaptureKeepsItsStateWithoutInventingDomainCounts(RunOutcome outcome, RunState state)
+    {
+        var bundle = TempDirectories.Create("summary-unfinished");
+        RunOutcomeFile.Write(bundle, outcome, "Capture did not complete.");
+
+        var summary = CaptureSummaryOf(bundle);
+
+        Assert.Equal((state, 0), (summary.RunState, summary.Domains.Count));
+    }
+
+    [Fact]
+    public async Task SealedPartialCaptureStillNamesThePartialDomain()
+    {
+        var bundle = await ACapturedForest();
+        ChangeCapturedEvidence(bundle, "UPDATE domain_coverage SET outcome = 'PartiallyRead', reason = 'Synthetic read failure'");
+
+        var written = Summarised(bundle);
+
+        Assert.Equal("PartiallyRead", DomainRow(written).Outcome);
+    }
+
+    [Fact]
+    public async Task RepeatedProblemsKeepTheirRecordedCount()
+    {
+        var bundle = await ACapturedForest();
+        ChangeCapturedEvidence(bundle, "DELETE FROM domain_coverage");
+        var ending = AuditError.Create(ErrorCategory.Evidence, "CoverageAbsent", ErrorSeverity.Failed,
+            "CN=private-account,DC=private,DC=example", "private-controller");
+
+        var summary = PortableSummaryReading.OfCapture(bundle, 0, [], [], ending);
+
+        Assert.Equal(new[] { ("Evidence.CoverageAbsent", 2) }, summary.Problems.Select(problem => (problem.Code, problem.Count)));
+    }
+
+    [Fact]
+    public async Task CaptureReadFailureUsesSanitizedProblemColumns()
+    {
+        var bundle = await ACapturedForest();
+        ChangeCapturedEvidence(bundle, "DELETE FROM domain_coverage");
+        var ending = AuditError.Create(ErrorCategory.Evidence, "CoverageAbsent", ErrorSeverity.Failed,
+            "CN=private-account,DC=private,DC=example", "private-controller");
+        var summary = PortableSummaryReading.OfCapture(bundle, 0, [], [], ending);
+
+        var result = PortableSummaryFile.WriteCapture(bundle, summary);
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        var line = Assert.Single(File.ReadAllLines(result.Value), value => value.Contains("CoverageAbsent", StringComparison.Ordinal));
+
+        Assert.Equal(new[] { "Evidence", "/", "Evidence.CoverageAbsent", "Failed", "x2" },
+            line.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    }
+
     // -----------------------------------------------------------------------------------------
     // Fixtures.
     // -----------------------------------------------------------------------------------------
+
+    private static CaptureSummary CaptureSummaryOf(string bundle) =>
+        PortableSummaryReading.OfCapture(bundle, 0, [], [], ending: null);
+
+    private static void ChangeCapturedEvidence(string bundle, string sql)
+    {
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.EvidencePath(bundle),
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false,
+        }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.ExecuteNonQuery();
+        }
+
+        // Only this test's synthetic bundle is resealed, so rejection must come from the intended
+        // read failure rather than an unrelated hash mismatch before the read is even attempted.
+        BundleSealing.Seal(BundleLayout.EvidencePath(bundle), BundleLayout.SealPath(bundle));
+    }
 
     /// <summary>Objects captured under a partition the forest calls a domain.</summary>
     private const string DomainObjectCount =

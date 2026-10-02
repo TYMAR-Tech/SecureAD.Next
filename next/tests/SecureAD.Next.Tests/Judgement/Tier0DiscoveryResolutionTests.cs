@@ -35,7 +35,7 @@ public sealed class Tier0DiscoveryResolutionTests
         evidence.Describe(target, entries: [evidence.Allow(3, holder, Tier0DiscoveryEvidence.WriteDacl)]);
         evidence.Describe(holder);
 
-        Assert.Equal(holder.DistinguishedName, Assert.Single(Run(evidence).Candidates()).Controller.DistinguishedName);
+        Assert.Equal(holder.DistinguishedName, Assert.Single(Run(evidence).Candidates(diagnostic: null)).Controller.DistinguishedName);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class Tier0DiscoveryResolutionTests
         evidence.Describe(first);
         evidence.Describe(second);
 
-        Assert.Empty(Run(evidence).Candidates());
+        Assert.Empty(Run(evidence).Candidates(diagnostic: null));
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class Tier0DiscoveryResolutionTests
         evidence.Describe(target, entries: [entry]);
         evidence.Describe(holder);
 
-        Assert.Equal(holder.DistinguishedName, Assert.Single(Run(evidence).Candidates()).Controller.DistinguishedName);
+        Assert.Equal(holder.DistinguishedName, Assert.Single(Run(evidence).Candidates(diagnostic: null)).Controller.DistinguishedName);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public sealed class Tier0DiscoveryResolutionTests
         evidence.Describe(second);
 
         Assert.Equal(new[] { first.DistinguishedName, second.DistinguishedName },
-            Run(evidence).Candidates().Select(item => item.Controller.DistinguishedName));
+            Run(evidence).Candidates(diagnostic: null).Select(item => item.Controller.DistinguishedName));
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class Tier0DiscoveryResolutionTests
             }, CancellationToken.None);
         foreach (var subject in evidence.Stream()) scheduler.Observe(subject, evidence.Permissions(subject.DistinguishedName));
 
-        Assert.Empty(scheduler.Candidates());
+        Assert.Empty(scheduler.Candidates(diagnostic: null));
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public sealed class Tier0DiscoveryResolutionTests
         foreach (var subject in evidence.Stream()) scheduler.Observe(subject, evidence.Permissions(subject.DistinguishedName));
         stop.Cancel();
 
-        Assert.Throws<OperationCanceledException>(() => scheduler.Candidates());
+        Assert.Throws<OperationCanceledException>(() => scheduler.Candidates(diagnostic: null));
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class Tier0DiscoveryResolutionTests
         scheduler.Observe(second, null);
         scheduler.Observe(target, evidence.Describe(target, entries: [entry]));
 
-        Assert.Equal(first.DistinguishedName, Assert.Single(scheduler.Candidates()).Controller.DistinguishedName);
+        Assert.Equal(first.DistinguishedName, Assert.Single(scheduler.Candidates(diagnostic: null)).Controller.DistinguishedName);
     }
 
     private static Tier0DiscoveryScheduler Run(Tier0DiscoveryEvidence evidence)

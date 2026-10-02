@@ -31,7 +31,7 @@ internal static class Tier0AdmissionRun
     internal static int Admit(SqliteConnection connection, BundleReader bundle, JudgementDescription description,
         CapturedMembershipInput? input, Tier0InputBinding binding, Tier0DiscoveryScheduler discovery,
         JudgingContext context, Func<string, string?> domainSid, Guid generation, Guid? derivationGeneration,
-        CancellationToken cancellationToken, JudgingStatus? status = null)
+        CancellationToken cancellationToken, JudgingStatus? status)
     {
         ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(binding);

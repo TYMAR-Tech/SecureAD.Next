@@ -95,6 +95,9 @@ public static class PortableSummaryReading
 
         var problems = new List<AuditError>();
 
+        if (!observed.IsSuccess)
+            problems.Add(observed.Error);
+
         if (ending is { } failure)
             problems.Add(failure);
 
@@ -110,12 +113,18 @@ public static class PortableSummaryReading
 
             if (scope.IsSuccess)
                 rows = Rows(scope.Value!, CapturedTotals(bundle.Connection), domains);
+            else
+                problems.Add(scope.Error);
 
             var failures = bundle.ReadDomainCaptureFailures();
 
             if (failures.IsSuccess)
                 problems.AddRange(failures.Value!.Select(f => f.Error));
+            else
+                problems.Add(failures.Error);
         }
+        else
+            problems.Add(opened.Error);
 
         return new CaptureSummary(
             ProductVersion,

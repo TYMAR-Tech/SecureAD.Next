@@ -28,6 +28,11 @@ internal sealed class PermissionWriteWork
     /// <summary>Checking the classification before any of it is stored.</summary>
     public System.Diagnostics.Stopwatch Validate { get; } = new();
 
+    /// <summary>Binding the owned ordered entries to this judgement generation.</summary>
+    public System.Diagnostics.Stopwatch Fingerprint { get; } = new();
+    internal long Validations { get; set; }
+    internal long Fingerprints { get; set; }
+
     /// <summary>Writing the object's own row, which now names only its descriptor and its read.</summary>
     public System.Diagnostics.Stopwatch ObjectRow { get; } = new();
 
@@ -69,6 +74,7 @@ internal sealed class PermissionWriteWork
         (string Part, TimeSpan Elapsed)[] buckets =
         [
             ("validate", Validate.Elapsed),
+            ("fingerprint", Fingerprint.Elapsed),
             ("object-row", ObjectRow.Elapsed),
             ("descriptor-row", DescriptorRow.Elapsed),
             ("shared-entry", SharedEntry.Elapsed),
@@ -99,6 +105,8 @@ internal sealed class PermissionWriteWork
                 new RunLogDetail("objects", Objects.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("descriptors", Descriptors.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("entries", Entries.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("validations", Validations.ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("fingerprints", Fingerprints.ToString(CultureInfo.InvariantCulture)),
             ]);
     }
 
