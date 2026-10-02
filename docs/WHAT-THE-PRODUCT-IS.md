@@ -62,30 +62,60 @@ access or changes to the active production run.
 
 ### First redesign: approved scope and offline validation
 
-**Status: implementation in progress, paused at a validated new-session checkpoint; not accepted,
-published or production-scale validated.**
+**Status: approved small-fixture offline validation complete; not published or accepted at
+production scale.**
+**What was implemented versus what this continuation finished:** the main-pass application change
+and its 31 new test cases were already in local WIP commit `8858a3a` before the VS Code handoff.
+The VS Code continuation completed their outstanding review, verification and measurement without
+another application-code edit; the benchmark compares the preserved old implementation with that
+already-modified implementation, not the working files at the start and end of the VS Code session.
+Later ownership/path stages still prepare inputs independently, so their cross-stage reuse is not
+built and the overall performance redesign is not complete.
+
 The owner approved the defined scope with: *"Approve this implementation scope and its bounded
 offline validation"* and subsequently said *"implement it"*; do not ask for that approval again.
 The prior review-only restriction is lifted only for this scope. The fresh logging-corrected
 before-control and current checkpoint are linked from [the work queue](PUNCH-LIST.md#current-bounded-correction).
-The owner requested a pause to move to VS Code; the current handoff is
-`.v-dfirst-cb4a8c95/checkpoint-02/handoff.json`, and validation is stopped.
-It retains a fresh Release rebuild and 128 passing focused checks, plus 33 passing checks against
-an isolated source copy; two rebuilt deliberate-defect variants have witnessed two of the 31 new
-checks, not the whole campaign. The third variant was interrupted before a test result, then its
-correct isolated sources were explicitly rebuilt and both selected checks passed; the interrupted
-attempt is retained, not counted as a defect witness. Implementation review, the remaining isolated
-deliberate-defect checks, full saved-answer comparison, broad regression, after-measurement and
-representative production-scale acceptance remain outstanding.
-Continue from the current working files, preserving subsequent work; snapshots are evidence, not
-instructions to overwrite the workspace. No deliberate test defect remains in live sources, and
-this unfinished implementation must not replace the owner's separately published diagnostic build.
-The owner subsequently authorized a **local work-in-progress commit** of the accumulated source,
-tests and governing-document changes. This saves unfinished work, not an accepted implementation;
-retained verification folders stay on disk outside Git, and this authorization does not include
+**The owner approved resuming the same scope in VS Code, 2026-10-01, from current working files,
+never by restoring a checkpoint over them.** That continuation completed implementation review,
+all 31 new checks' deliberate-defect witnesses and a fresh Release rebuild with all 6,197 ordinary
+offline cases passing. All six frozen before/after pairs agree across all 61 saved tables and every
+object's complete permission answer, with their own seals, original occurrences, resource scope,
+generation bindings and degraded outcomes verified; eight comparison controls also reject an
+explicitly rebuilt implementation that compares nothing, then pass after a correct rebuild.
+The [current checkpoint](../.v-dfirst-cb4a8c95/checkpoint-03/handoff.json) preserves the previous
+checkpoints, interrupted attempts and exact measured binaries; no production or test source was
+changed or restored during this continuation.
+
+The [unchanged CPU benchmark comparison](../.v-dfirst-cb4a8c95/continuation-03-563b1149/benchmark-comparison.json)
+records lab 12.820 → 9.875 seconds, shared 5.003 → 3.210 seconds, and distinct 6.527 → 7.094 seconds,
+with allocation, memory, temporary/final storage, later phases and reopening retained for every
+invocation. Repeated main-pass preparation is removed on these inputs, but the no-sharing slowdown
+remains an open performance finding; these one-iteration synthetic/lab measurements do not establish
+representative nine-domain performance, a customer-runtime ceiling or production readiness.
+Further optimization or later-stage redesign needs a separate bounded approval, and this build must
+not replace the owner's separately published diagnostic build; during that validation no application
+publication, commit, push, live-forest access, production-run change, discovery activation or budget
+change occurred.
+Before the VS Code continuation, the owner authorized a **local work-in-progress commit** of the
+accumulated source, tests and governing-document changes. That saved unfinished work, not an accepted
+implementation; retained verification folders stay on disk outside Git, and that authorization did not include
 pushing, publishing, restarting validation or changing the production run.
 
-**Continuation approved, 2026-10-01; the production interruption is being clarified first.**
+**New owner authorization, 2026-10-01: commit the completed checkpoint locally, then investigate and
+propose bounded reuse of verified inputs through the currently active ownership/path-preparation
+stages.** The local commit records the completed main-pass verification and its limits; retained
+evidence and verification folders remain outside Git, and no push or publication is authorized.
+The next work is a read-only investigation and concrete proposal, not approval to implement a shared
+input context or run another measurement campaign. Trace the existing production-policy route using
+current sources and retained results, distinguish measured phase costs from code-confirmed repetition,
+and propose how protected readers and immutable source-bound inputs could be reused without dropping
+checks or retaining an unbounded decoded forest. The proposal must preserve exact evidence,
+derivation and judgement binding, resource scope, original occurrences, group-held counts, explicit
+incompleteness, cancellation and file-handle lifetime; no UI change, new format, cross-run cache,
+requester activation, budget change, live access or production operation is included.
+
+**Continuation approved, 2026-10-01; the separate production interruption remains an open investigation.**
 The owner approved continuing and supplied `run3.log`, then clarified the observation: the Judge
 button was clickable again in the morning, no error was visible, and completion was an assumption,
 not an explicit success message. Do not ask for that observation again or record it as a successful
@@ -3256,4 +3286,3 @@ that obligation.
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,
 it belongs here, in the same turn.
-
