@@ -10,18 +10,15 @@ internal sealed record SavedOwnAccountMembershipProof(OwnAccountMembershipAssess
 internal static class OwnAccountMembershipProofs
 {
     internal static IReadOnlyList<SavedOwnAccountMembershipProof> Create(SqliteConnection connection,
-        JudgementDescription description, string directory, PathInputs inputs,
+        JudgementDescription description, JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
         IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<OwnAccountMembershipRequest> requests,
         CancellationToken cancellationToken, bool membershipContinuation = true)
     {
         if (requests.Count == 0) return [];
-        var opened = BundleReader.Open(directory);
-        if (!opened.IsSuccess) throw Tier0PathStorage.InvalidProof();
-        using var bundle = opened.Value;
-        var contexts = bundle.ReadNamingContexts();
+        sources.RequireFor(description);
+        var bundle = sources.Bundle;
+        var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
-        var identities = OwnershipAuditStorage.Targets(connection).Select(row => row.Identity)
-            .ToDictionary(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         var schema = new List<ObjectAttributes>();
         foreach (var identity in identities.Values.OrderBy(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase))
         {

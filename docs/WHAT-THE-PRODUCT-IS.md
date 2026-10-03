@@ -114,6 +114,86 @@ Use the separate checkout, preserve existing follow-up work and failed attempts,
 the running judgement, original checkout, rules, Tier-0 policy or discovery settings; no production
 retry, commit or push is authorized.
 
+**Owner-approved navigation-logging correction, 2026-10-02.**
+The owner approved replacing navigation's repeated executable hashing with one successful
+fingerprint calculation per running application, retaining that exact fingerprint in every entry.
+Keep each action's run, evidence and judgement-generation identity and outcome independent;
+this is not a cache of saved results and does not remove any captured-evidence verification.
+The first navigation can still pay the one-time identification cost, which remains included in
+its recorded total; subsequent navigation must not read the executable again for logging.
+Use bounded offline verification with rebuilt isolated defects, preserve the supplied lab log,
+and do not infer publication, a new lab/production measurement run, commit or push approval.
+
+**Owner direction for risk-first path presentation, 2026-10-02.**
+The owner rejects the raw whole-analysis diagnostic block in the normal object view:
+**"this is a security audit tool, the user need to know where risk is."**
+The normal presentation must lead with the selected object's supported security risk and the
+permission, membership or ownership evidence behind it, not thousands of serialized uncertainty
+records from across the run.
+Relevant missing evidence, unsupported analysis and work that was not run still need concise,
+plain-language explanations; removing the diagnostic block must not turn an unknown answer into
+"no risk" or turn an expected administrative relationship into a security finding.
+Keep the underlying saved proofs and coverage records intact.
+This establishes the product direction, not approval of a particular replacement layout, new path
+semantics, requester activation or a restarted measurement campaign; the existing Stage 7 completion
+requirements and bounded approval boundaries below remain in force.
+
+**Owner-approved requester activation candidate and lab-first verification, 2026-10-02.**
+Enable the existing shared GUI/CLI supported-question policy in the local candidate without
+changing permission semantics, the three supported families, budgets, path compositions, rules
+or screens; the separate legacy membership scan stays inactive.
+The owner approved using the supplied copy at
+`C:\Users\jistrand\source\repos\SecureAD.Next\next\artifacts\ad.lab-20261002-225337`
+directly for the first real-capture check, rather than requiring another synthetic bundle or
+another copy of this laboratory audit.
+Preserve the existing judgement, manifest, summary and log before rejudging, hash-check the
+sealed evidence and derivation, and retain earlier results and failed attempts.
+The supplied audit records 8,418 objects and the domains `ad.lab`, `ba.ad.lab` and `ph.ad.lab`;
+report what this capture demonstrates, not unverified cross-forest or production-scale coverage.
+Synthetic verification remains necessary for precise edge cases and rebuilt deliberate defects.
+The candidate must retain meaningful work and saved answers for each supported family, exact
+source bindings, independent holder counts, explicit uncertainty, cancellation rollback and passive
+reopening; a missing family is a verification gap, not a reason to manufacture a lab finding.
+This is local candidate approval, not production readiness or permission to publish it: a later
+production acceptance run and final activation decision remain separate, and no live access,
+recapture, paused-campaign restart, optimization, new budget, UI change, commit or push is authorized.
+
+**Separately approved requester-input reuse prerequisite, 2026-10-02.**
+After the candidate exposed repeated capture verification in the existing source-reuse tests,
+the owner approved carrying the existing protected capture reader and target lookup through
+requester selection and all three proof families before the lab check.
+Replace repeated opening/rebuilding in that branch without changing permission semantics,
+source/generation checks, saved answers, counting or uncertainty; preserve the first failing
+verification and exercise established combined questions with rebuilt isolated defects.
+This bounded correction does not restart measurements, change processing limits, authorize
+further optimization or waive the later production acceptance and activation decision.
+
+**Owner-approved completion-message correction, 2026-10-02.**
+The real lab candidate completed supported requester work while both hosts' existing wording
+said membership questions were not scheduled; that sentence described a different, inactive scan.
+The owner approved replacing only that message in CLI and GUI completion with:
+"The separate Self-Membership scan was not run because no processing limit is configured.
+Tier 0 requester checks have their own saved coverage; this does not mean nobody can add
+themselves to a group."
+This changes no layout, permission calculation, risk classification or scan, and does not
+authorize repeating the completed lab judgement or implementing the broader risk-first presentation.
+
+**Requester candidate checkpoint, 2026-10-02: implemented and real-lab verified, not production acceptance.**
+The current unpublished candidate enables the shared supported-question policy in both hosts;
+the old production-disabled statements below describe the earlier P-242 checkpoints, not this
+local candidate.
+The [verified handoff](../.v-requester-20261002/handoff.json) retains the source/build identities,
+6,300-test pass, rebuilt defect checks, single lab invocation and unchanged original security
+answers, including the first failures rather than replacing them with the later passes.
+The lab's combined answers all use existing memberships; hypothetical new-membership combinations
+remain synthetic verification, and the lab does not establish production resource requirements.
+Peak memory was not obtained from this invocation, ordinary Add readiness remains separately
+qualified, and neither completed supported questions nor a readable result constitutes all-path
+coverage, a new SEC-071 finding or live takeover.
+Representative production acceptance, final activation/release approval and the risk-first
+presentation remain owed; no additional run, campaign, optimization, budget or publication follows
+automatically from this checkpoint.
+
 **Implementation checkpoint, 2026-10-02: the coordinated correction is offline-verified.**
 The follow-up carries prepared statements and committed proof identities through later judging
 transactions without allowing rolled-back identities to escape; selected saved paths retain an

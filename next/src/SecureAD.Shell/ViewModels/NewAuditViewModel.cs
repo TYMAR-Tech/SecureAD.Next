@@ -2187,9 +2187,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         return Environment.NewLine + requesters.Discovery.Verdict switch
         {
             "NotStarted" =>
-                "Own-account membership questions were not scheduled: no processing limit is "
-                + "configured for that scan. This is not a finding that nobody can add themselves "
-                + "to a group.",
+                "The separate Self-Membership scan was not run because no processing limit is "
+                + "configured. Tier 0 requester checks have their own saved coverage; this does "
+                + "not mean nobody can add themselves to a group.",
             "ExplicitRequestsOnly" =>
                 $"Stored {requesters.AssessmentsStored:N0} own-account membership answer(s) from "
                 + "explicitly requested questions. No automatic scan was run.",

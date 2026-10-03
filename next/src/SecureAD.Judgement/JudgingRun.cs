@@ -41,8 +41,8 @@ namespace SecureAD.Judgement;
 /// </remarks>
 public static class JudgingRun
 {
-    /// <summary>Production activation remains a separate approval from offline integration and measurement.</summary>
-    public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.Disabled;
+    /// <summary>The shared GUI/CLI policy selects the three supported captured-question families.</summary>
+    public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.SupportedCapturedQuestions;
 
     /// <summary>
     /// How far a judging has got.

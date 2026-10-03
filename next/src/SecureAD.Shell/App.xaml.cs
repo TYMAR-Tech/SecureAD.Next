@@ -74,9 +74,8 @@ internal partial class App : Application
         // Sharing the instances is safe where sharing a NewAuditViewModel is not: a launcher holds
         // no half-planned run, only the decision about what a production analysis does.
         //
-        // No automatic own-account membership scan runs until a processing limit has been measured
-        // and approved. Passed explicitly so the absence is a stated decision rather than a default
-        // nobody chose.
+        // The shared requester policy does not activate the separate legacy membership scan.
+        // That scan still needs its own measured and approved processing limit.
         var deriving = new DerivationLauncher();
         var judging = new JudgingLauncher(
             discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy);

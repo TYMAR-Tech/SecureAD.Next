@@ -482,7 +482,7 @@ public sealed class JudgingInputReuseTests
         public void Report(JudgingRun.JudgingProgress value) => report(value);
     }
 
-    private sealed class Statements : IDisposable
+    internal sealed class Statements : IDisposable
     {
         private readonly SqliteConnection _connection;
         private readonly strdelegate_trace _callback;
@@ -502,7 +502,7 @@ public sealed class JudgingInputReuseTests
         }
     }
 
-    private sealed class Verifications : IDisposable
+    internal sealed class Verifications : IDisposable
     {
         private readonly MeterListener _listener = new();
         private readonly ConcurrentDictionary<string, long> _counts = new();

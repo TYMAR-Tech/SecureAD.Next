@@ -13,6 +13,22 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Stage 7 continuation — requester candidate and real-lab checkpoint verified 2026-10-02.**
+Continue from the verified source on `p280-judging-followup` and the [pre-commit requester handoff](../.v-requester-20261002/handoff.json), preserving the earlier fingerprint correction and historical evidence rather than restoring an earlier snapshot.
+The next bounded step is a specifically approved representative production-acceptance check and final activation decision, not a repeat of the completed integration or lab check, a disabled-policy production run, broader path implementation, or an automatic restart of paused measurements.
+
+**Requester activation candidate — implemented and real-lab verified, production acceptance open, 2026-10-02.**
+One direct invocation against the owner's supplied audit copy saved 92 requester permission answers, 60 own-account membership outcomes and 184 combined answers for six accounts, with all questions reconciled and all selected account results reopened; the 27 findings, 209,252 original permission occurrences and 1,172 control-edge proofs are unchanged.
+The 13.2-second lab invocation is not a production forecast, peak memory was unavailable, all combined lab answers used existing membership, and the final 6,300-test pass plus 102 focused coverage cases and eight rebuilt defect variants do not accept production scale, complete Stage 7, authorize publication or resume measurements.
+
+**Requester-enabled source reuse — high severity, corrected and offline-verified, 2026-10-02.**
+The approved correction carries the existing protected capture reader and target lookup through requester selection and all three proof families, replacing repeated whole-capture verification and per-question target rebuilding without changing permission semantics or saved answers.
+The original three failures remain in `.v-requester-20261002/focused-tests.trx`, the once-per-source and once-per-target-read checks now pass and detect rebuilt defects, and the [logical lab comparison](../.v-requester-20261002/lab-candidate/logical-comparison.json) verifies every original permission classification and control-edge proof under its own generation rather than ignoring changed fingerprints.
+
+**Completion wording confused two requester products — high severity, corrected and offline-verified, 2026-10-02.**
+Both hosts now use the [owner-approved wording](WHAT-THE-PRODUCT-IS.md#fix-and-feature-priority) distinguishing the inactive separate Self-Membership scan from saved Tier 0 requester coverage, rather than saying membership questions were not scheduled after those checks ran.
+All three changed wording checks detect the two rebuilt host-specific defects and pass after explicit restoration; the lab was not rejudged for this message change, no layout changed, and packaged GUI, physical-display and broader risk-first presentation acceptance remain outstanding.
+
 **Discard-first rejudging from Home — implemented and offline-verified 2026-10-02.**
 The approved **"Discard judgement and judge again"** action confirms the selected run, closes its old readers, discards only saved judgement generations and starts the existing judging engine against the same evidence and derived facts, retaining the log and refusing concurrent writers, unfinished attempts or failed cleanup.
 A fresh Release rebuild passes all 6,292 tests, all 24 new cases detect rebuilt defects across 22 isolated variants and the restored controls pass in [retained verification](../.v-discard-20261002/final-verification.json); 200/320-pixel action-area checks pass, physical laptop/external-monitor checks remain outstanding, and no production invocation, application publication, commit or push occurred.
@@ -51,7 +67,19 @@ The isolated defect checks prove the selected read refuses the old whole-forest 
 
 **Completed-result browsing usability — high severity, production verification still open, 2026-10-02.**
 The coordinated correction now provides bounded selected reads, background Dashboard loading and local opening/query/application/outcome timing instead of assigning all delay to one suspected section.
-All offline controls pass, but the owner's earlier report concerned real application use and `run6.log` proves completion rather than reopening, so production browsing remains unverified and no automatic browsing attempt is authorized.
+The owner's verified `4c0494c` lab log now records 18 successful navigation reads, including a saved Tier-0 path result, but it also exposes the logging overhead below; production `run6.log` still proves judging completion rather than production reopening, so production browsing remains unverified and no automatic browsing attempt is authorized.
+
+**Navigation logging's repeated executable hashing — corrected and offline-verified, 2026-10-02.**
+The approved correction retains one successful executable fingerprint for navigation for the process lifetime while preserving each entry's own run, generation and outcome; first use still includes the identification cost, and evidence verification is unchanged.
+A correct-source rebuild passes all 494 related checks, both new behavior checks detect rebuilt defects across four isolated variants and restored controls pass in [retained verification](../.v-navigation-fingerprint-20261002/final-verification.json); the owner's [follow-on lab log](../.v-navigation-fingerprint-20261002/lab-after-fingerprint-20261002/run.log) now records 23 successful reads without the recurring approximately 0.85-second ordinary-navigation floor, which is operational evidence rather than a controlled benchmark or production acceptance.
+
+**Saved Tier-0 path presentation mixes object results with whole-analysis diagnostics — medium severity, open, owner-reported 2026-10-02.**
+The owner's [screenshot](../.v-navigation-fingerprint-20261002/lab-after-fingerprint-20261002/saved-tier0-path.png) shows an OU in the child domain beside 9,246 saved limitations and raw scope data naming a different object in the forest-root domain; that list includes whole-analysis uncertainty and summary messages, not that many findings against the selected OU.
+The owner rejects that raw block in the normal object view and requires risk-first output with supporting evidence and concise relevant uncertainty; retain the saved proof/coverage data and obtain approval for a concrete replacement presentation rather than merely hiding an incomplete result or treating every supported administrative route as a finding.
+
+**Saved-path read timing ends before limitation formatting and application — medium severity, open, 2026-10-02.**
+`AssetsViewModel.ReadBoundAsync` records `appliedMs` before returning the saved path to `SavedTier0PathSectionViewModel.Apply`, which formats every saved limitation before choosing the displayed 100-entry page.
+The logged saved-path durations therefore do not measure the full display preparation or rendering cost, and aligning completion with actual data application is a separate bounded correction with preserved generation and cancellation checks, not authorization to infer or optimize an unmeasured cost.
 
 **Predecessor Tier-0 comparison — historical explanation corrected, 2026-10-02.**
 Read-only review of frozen predecessor `f0726569` confirms its active batch already uses a compact reverse-distance search and retained representative paths, and its path display already distinguishes potential/plausible from live-validated routes.

@@ -78,9 +78,8 @@ internal static class Program
 
         try
         {
-            // No automatic own-account membership scan runs until a processing limit has been
-            // measured and approved, and a real run always captures for itself. Both are stated
-            // here rather than defaulted, per gate 1.
+            // The shared requester policy is separate from the legacy membership scan, whose
+            // processing limit remains unapproved. A real capture has no substitute.
             return await RunAsync(parsed, stopping.Token, discoveryBudget: null, capture: null,
                 requesterPolicy: JudgingRun.ProductionPathRequesterPolicy)
                 .ConfigureAwait(false);
@@ -688,8 +687,9 @@ internal static class Program
         return Environment.NewLine + "  " + requesters.Discovery.Verdict switch
         {
             "NotStarted" =>
-                "Own-account membership questions were not scheduled: no processing limit is "
-                + "configured. This is not a result saying nobody can add themselves to a group.",
+                "The separate Self-Membership scan was not run because no processing limit is "
+                + "configured. Tier 0 requester checks have their own saved coverage; this does "
+                + "not mean nobody can add themselves to a group.",
             "ExplicitRequestsOnly" =>
                 $"Own-account membership: {requesters.AssessmentsStored} stored answer(s) from "
                 + "explicit requests; no automatic scan ran.",

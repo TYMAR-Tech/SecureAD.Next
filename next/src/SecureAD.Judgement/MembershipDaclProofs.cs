@@ -9,14 +9,14 @@ internal sealed record SavedMembershipDaclProof(MembershipDaclAssessment Assessm
 internal static class MembershipDaclProofs
 {
     internal static IReadOnlyList<SavedMembershipDaclProof> Create(SqliteConnection connection,
-        JudgementDescription description, string directory, PathInputs inputs,
+        JudgementDescription description, JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
         IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<MembershipDaclRequest> requests,
         CancellationToken cancellationToken)
     {
         if (requests.Count == 0) return [];
         var questions = requests.Select(request => new OwnAccountMembershipRequest(request.RequesterDn, request.GroupDn)
             { PermissionKind = request.PermissionKind }).DistinctBy(OwnAccountMembershipProofs.Key).ToArray();
-        var memberships = OwnAccountMembershipProofs.Create(connection, description, directory, inputs, nodes,
+        var memberships = OwnAccountMembershipProofs.Create(connection, description, sources, identities, inputs, nodes,
             questions, cancellationToken, membershipContinuation: false)
             .ToDictionary(proof => OwnAccountMembershipProofs.Key(proof.Assessment.Request), StringComparer.Ordinal);
         var result = new List<SavedMembershipDaclProof>();
@@ -31,7 +31,7 @@ internal static class MembershipDaclProofs
             IReadOnlyList<Tier0PathStep> steps = [];
             if (state == ControlEvaluationState.Established)
             {
-                dacl = RequesterDaclProofs.Create(connection, description, directory, inputs,
+                dacl = RequesterDaclProofs.Create(connection, description, sources, identities, inputs,
                     [new(request.RequesterDn, request.TargetDn)], cancellationToken, membership.Assessment).Single();
                 state = dacl.Assessment.Authorization;
                 if (state == ControlEvaluationState.Established)

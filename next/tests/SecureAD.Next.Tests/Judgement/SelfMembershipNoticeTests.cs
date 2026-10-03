@@ -1,4 +1,7 @@
+using System.Reflection;
+using SecureAD.Cli;
 using SecureAD.Judgement;
+using SecureAD.Kernel;
 using SecureAD.Next.Tests.Shell;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
@@ -21,9 +24,31 @@ public sealed class SelfMembershipNoticeTests
     {
         var report = await ShellReport(budget: null);
 
-        Assert.Contains("were not scheduled", report, StringComparison.Ordinal);
+        Assert.Contains("The separate Self-Membership scan was not run", report, StringComparison.Ordinal);
         Assert.Contains("no processing limit is configured", report, StringComparison.Ordinal);
-        Assert.Contains("not a finding that nobody can add themselves", report, StringComparison.Ordinal);
+        Assert.Contains("Tier 0 requester checks have their own saved coverage", report, StringComparison.Ordinal);
+        Assert.Contains("this does not mean nobody can add themselves", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CliCompletionDistinguishesTheSeparateMembershipScan()
+    {
+        var directory = SelfMembershipDiscoveryTests.Bundle();
+        SelfMembershipDiscoveryTests.Derive(directory);
+        var when = SelfMembershipDiscoveryTests.Started;
+        var judged = JudgingRun.JudgeAudit(directory, RuleCatalogue.All, JudgingRun.ProductionPathRequesterPolicy,
+            when, when, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, null);
+        Assert.True(judged.IsSuccess, judged.Error?.Description);
+        using var reader = JudgementReader.Open(directory).Value;
+        Assert.Equal(PathRequesterCoverageState.EvaluatedSupportedQuestions, reader.ReadPathRequesterCoverage().Verdict);
+        var method = typeof(Program).GetMethod("Requesters", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var report = Assert.IsType<string>(method.Invoke(null, [reader]));
+
+        Assert.Contains("The separate Self-Membership scan was not run", report, StringComparison.Ordinal);
+        Assert.Contains("Tier 0 requester checks have their own saved coverage", report, StringComparison.Ordinal);
+        Assert.Contains("this does not mean nobody can add themselves", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("Own-account membership questions were not scheduled", report, StringComparison.Ordinal);
     }
 
     [Fact]

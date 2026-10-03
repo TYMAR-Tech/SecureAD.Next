@@ -156,8 +156,9 @@ public sealed class SelfMembershipWorkflowTests
         Assert.Equal(0, summary.AssessmentsStored);
         Assert.Equal(0, summary.Discovery.ObjectsVisited);
         Assert.Equal(SelfMembershipDiscoveryReason.ProductionBudgetNotConfigured, Assert.Single(summary.Discovery.Limitations).Reason);
-        Assert.Contains("Own-account membership questions were not scheduled: no processing limit is configured", completion.JudgingReport);
-        Assert.Contains("This is not a finding that nobody can add themselves to a group", completion.JudgingReport);
+        Assert.Contains("The separate Self-Membership scan was not run because no processing limit is configured", completion.JudgingReport);
+        Assert.Contains("Tier 0 requester checks have their own saved coverage", completion.JudgingReport);
+        Assert.Contains("this does not mean nobody can add themselves to a group", completion.JudgingReport);
     }
 
     [Theory]

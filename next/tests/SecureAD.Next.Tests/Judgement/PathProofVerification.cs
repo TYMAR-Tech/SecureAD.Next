@@ -63,10 +63,13 @@ internal static class PathProofVerification
         if (header.Version != Tier0PathCalculation.Version || header.Generation != reader.Description.GenerationId
             || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != saved.Count)
             throw Tier0PathStorage.InvalidProof();
-        using var bundle = BundleReader.Open(reader.BundleDirectory).Value;
-        var contexts = bundle.ReadNamingContexts().Value;
+        using var sources = ControlProofVerification.OpenSources(reader);
+        var bundle = sources.Bundle;
+        var contexts = sources.ReadNamingContexts().Value;
+        var identities = OwnershipAuditStorage.Targets(connection).Select(row => row.Identity)
+            .ToDictionary(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<Tier0PathNode> nodes = inputs.Availability == PathInputAvailability.Recorded
-            ? Tier0PathCalculation.Calculate(inputs, OwnershipAuditStorage.Targets(connection).Select(row => row.Identity).ToArray(),
+            ? Tier0PathCalculation.Calculate(inputs, identities.Values.ToArray(),
                 TerminalPermissions(connection, reader.Description), bundle.ReadObjectAttributes, contexts, CancellationToken.None)
             : [];
         if (header.Selection is { } selection)
@@ -75,16 +78,16 @@ internal static class PathProofVerification
                 nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), contexts, CancellationToken.None).Select();
             Equal(selection, expected);
         }
-        var requesters = RequesterDaclProofs.Create(connection, reader.Description, reader.BundleDirectory, inputs,
+        var requesters = RequesterDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
             header.Requesters.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, obtainedMembership: null);
         Equal(header.Requesters, requesters);
         nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
-        var ownAccounts = OwnAccountMembershipProofs.Create(connection, reader.Description, reader.BundleDirectory, inputs,
+        var ownAccounts = OwnAccountMembershipProofs.Create(connection, reader.Description, sources, identities, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
             header.OwnAccounts.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
         Equal(header.OwnAccounts, ownAccounts);
         nodes = nodes.Select(node => node with { OwnAccountRoute = OwnAccountMembershipProofs.Best(node, ownAccounts, requesters) }).ToArray();
-        var membershipDacls = MembershipDaclProofs.Create(connection, reader.Description, reader.BundleDirectory, inputs,
+        var membershipDacls = MembershipDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
             header.MembershipDacls.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
         Equal(header.MembershipDacls, membershipDacls);

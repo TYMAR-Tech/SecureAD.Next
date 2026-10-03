@@ -9,18 +9,15 @@ internal sealed record SavedRequesterDaclProof(RequesterDaclAssessment Assessmen
 internal static class RequesterDaclProofs
 {
     internal static IReadOnlyList<SavedRequesterDaclProof> Create(SqliteConnection connection,
-        JudgementDescription description, string directory, PathInputs inputs,
+        JudgementDescription description, JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
         IReadOnlyList<RequesterDaclRequest> requests, CancellationToken cancellationToken,
         OwnAccountMembershipAssessment? obtainedMembership)
     {
         if (requests.Count == 0) return [];
-        var opened = BundleReader.Open(directory);
-        if (!opened.IsSuccess) throw Tier0PathStorage.InvalidProof();
-        using var bundle = opened.Value;
-        var contexts = bundle.ReadNamingContexts();
+        sources.RequireFor(description);
+        var bundle = sources.Bundle;
+        var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
-        var identities = OwnershipAuditStorage.Targets(connection).Select(row => row.Identity)
-            .ToDictionary(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         var results = new List<SavedRequesterDaclProof>();
         foreach (var request in requests.OrderBy(Key, StringComparer.Ordinal))
         {
