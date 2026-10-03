@@ -811,12 +811,7 @@ public static class JudgingRun
             NamingContexts = namingContexts.Value,
             ControlPrincipals = attributes,
         };
-        var domainSids = Memoised(domain =>
-        {
-            var root = bundle.ReadObjectAttributes(string.Join(',', domain.Split('.').Select(part => "DC=" + part)));
-            var value = root?.Find("objectSid")?.OnlyValue;
-            return value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
-        });
+        Func<string, string?> domainSids = inputs.ReadDomainSid;
 
         var ownershipDescription = new JudgementDescription(seal.Hash, writer.GenerationId, derivationGeneration,
             JudgementRunState.Running, evaluationAsOf, startedUtc, default);

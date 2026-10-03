@@ -125,7 +125,7 @@ public sealed partial class OwnAccountMembershipPathTests
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString());
         connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
+        command.CommandText = "DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
         command.ExecuteNonQuery();
         using var sources = ControlProofVerification.OpenSources(reader);
         using var trace = new JudgingInputReuseTests.Statements(connection);

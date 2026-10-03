@@ -661,9 +661,9 @@ public sealed class ObjectOwnershipRuleTests
     /// <remarks>
     /// <b>The least recoverable reason, and the one a capture can never fix.</b> Appendix C lists
     /// Read-only Domain Controllers among the protected groups while the group pages answer
-    /// separately for Enterprise Read-only Domain Controllers, so the catalogue records the claim as
-    /// disputed rather than picking a side. Telling an operator to capture again over a
-    /// documentation conflict is the exact waste <c>UnresolvedReason</c> exists to prevent.
+    /// separately for Enterprise Read-only Domain Controllers, so catalogue version 3 recorded a
+    /// dispute. That saved reason remains meaningful after P-88; telling an operator to capture
+    /// again over a documentation conflict is the waste <c>UnresolvedReason</c> exists to prevent.
     /// </remarks>
     [Fact]
     public void ADisputedCatalogueClaimIsNotReportedAsIncompleteMembership()

@@ -94,6 +94,8 @@ internal static class Tier0PathStorage
             offlineSelection, selection, SavedPathInputs.From(inputs)), ProofSerialization.Options);
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
+        PathRequesterRiskStorage.Write(connection, transaction, description, sources, inputs, offlineSelection,
+            requesters, ownAccounts, membershipDacls, Convert.ToHexString(OwnershipAuditStorage.Hash(header)), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
     }

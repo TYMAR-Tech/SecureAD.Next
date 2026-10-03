@@ -6,7 +6,7 @@ namespace SecureAD.Next.Tests.Derivation;
 public sealed class AdminSdHolderCatalogueSemanticTests
 {
     [Theory]
-    [InlineData(498, 2, 3)]
+    [InlineData(498, 1, 3)]
     [InlineData(516, 0, 3)]
     [InlineData(521, 0, 3)]
     [InlineData(526, 0, 3)]
@@ -40,6 +40,7 @@ public sealed class AdminSdHolderCatalogueSemanticTests
     [Theory]
     [InlineData(500, 0)]
     [InlineData(512, 0)]
+    [InlineData(498, 1)]
     [InlineData(518, 1)]
     [InlineData(519, 1)]
     [InlineData(527, 1)]
@@ -55,7 +56,18 @@ public sealed class AdminSdHolderCatalogueSemanticTests
     [Fact]
     public void TheCatalogueVersionMovesWhenItsSemanticsDo()
     {
-        Assert.Equal(3, ProtectedGroupCatalogue.Default.Version);
+        Assert.Equal(4, ProtectedGroupCatalogue.Default.Version);
+    }
+
+    [Fact]
+    public void Rid498RecordsTheAcceptedProtocolClaimWithoutSettlingPropagation()
+    {
+        var entry = Entry(498);
+
+        Assert.Equal(CatalogueClaimProvenance.ProtocolSpecification, entry.PrincipalProtection.Provenance);
+        Assert.Equal("MS-ADTS-3.1.1.6.1.2-P88-2026-10", entry.PrincipalProtection.SourceId);
+        Assert.Equal(CatalogueClaimStatus.Unverified, entry.MemberPropagation.Status);
+        Assert.False(entry.CanBeDisabledByAdminSdExMask);
     }
 
     [Fact]

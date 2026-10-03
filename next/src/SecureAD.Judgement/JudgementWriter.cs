@@ -515,6 +515,7 @@ public sealed class JudgementWriter : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         LapsInventoryStorage.RequirePublishable(_connection);
         PermissionClassificationStorage.RequirePublishable(_connection);
+        PathRequesterRiskStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)

@@ -108,6 +108,8 @@ public sealed class ControlEdgeLayoutTests
         // reading_id and both schema columns to become (descriptor_id, ordinal, entry_id)
         // WITHOUT ROWID. Observed from this approved build, not an independent historical anchor.
         [46] = "06F6363EC8C1E35C0A4255B2C0FE4382A09EB9BAE46588A084663CEB2F02F07C",
+        // Observed from the format-47 build adding independent requester-risk records; older checkpoints are unchanged.
+        [47] = "5D9F0069E035B69531D4B86C75F7F6E79752F19E0FCB90625EA9B139C4AF3A19",
     };
 
     [Fact]

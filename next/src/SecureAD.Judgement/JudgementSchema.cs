@@ -104,8 +104,10 @@ public static class JudgementSchema
     /// <c>WITHOUT ROWID</c> on <c>(descriptor_id, ordinal)</c>. The per-occurrence fingerprint is
     /// replaced by one per descriptor over its whole ordered list, which is both far cheaper and
     /// stronger, and an object's descriptor is supplied by the <b>evidence</b> on every read.</para>
+    /// <para>47 saves separate per-question path-risk qualification and coverage, bound to the
+    /// original path calculation and captured pre-change authority; it adds no finding or permission semantics.</para>
     /// </remarks>
-    public const int Version = 46;
+    public const int Version = 47;
 
     private static readonly string[] TableDdl =
     [
@@ -667,6 +669,7 @@ public static class JudgementSchema
         SelfMembershipStorage.CreateTables(connection);
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
+        PathRequesterRiskStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
         PermissionClassificationStorage.CreateTables(connection);
     }

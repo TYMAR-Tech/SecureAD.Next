@@ -15,6 +15,69 @@ public sealed class ProtectedPrincipalDeriverTests
 {
     private const string DomainSid = "S-1-5-21-1111111111-2222222222-3333333333";
 
+    // MS-ADTS 3.1.1.6.1.2 and P-88's sealed Windows Server 2022 lab observation distinguish
+    // the forest-root universal RID 498 from protected RID 521; neither settles propagation.
+    [Fact]
+    public void EnterpriseRodcGroupIsNotAutomaticallyProtectedOrAcceptedAsOwner()
+    {
+        var closure = Derive([EnterpriseRodc(0), Security(1, 521), Security(2, 512), Security(3, 513)], []);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
+        Assert.Equal(ProtectionUnknownReason.None, closure.ReasonsFor(0));
+        Assert.Null(closure.BasisFor(0));
+        Assert.Empty(closure.PathFor(0));
+        Assert.Equal(OwnerAcceptance.NotAccepted, closure.OwnerAcceptanceOf(0));
+        Assert.Equal(ProtectedPrincipalEvaluation.Protected, closure.EvaluationOf(1));
+        Assert.Equal(ProtectedPrincipalEvaluation.Protected, closure.EvaluationOf(2));
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(3));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EnterpriseRodcGroupCanStillBeProtectedByAnotherMembership(bool nested)
+    {
+        var closure = Derive([Security(0, 512), Security(1, 1200), EnterpriseRodc(2), User(3, 1104)],
+            nested ? [(0, 1), (1, 2), (2, 3)] : [(0, 2), (2, 3)]);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.Protected, closure.EvaluationOf(2));
+        Assert.Equal(ProtectionUnknownReason.None, closure.ReasonsFor(2));
+        Assert.Equal(512, closure.BasisFor(2)!.CatalogueRid);
+        Assert.Equal(nested ? [2, 1, 0] : new[] { 2, 0 }, closure.PathFor(2));
+        Assert.Equal(ProtectedPrincipalEvaluation.Protected, closure.EvaluationOf(3));
+    }
+
+    [Fact]
+    public void EnterpriseRodcMembershipAloneRemainsUnresolved()
+    {
+        var closure = Derive([EnterpriseRodc(0), User(1, 1104)], [(0, 1)]);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(0));
+        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, closure.EvaluationOf(1));
+        Assert.Equal(ProtectionUnknownReason.PossibleRootReached, closure.ReasonsFor(1));
+    }
+
+    [Fact]
+    public void EnterpriseRodcIncompleteMembershipEvidenceIsNotANegativeAnswer()
+    {
+        var closure = Derive([EnterpriseRodc(0)], [], membershipEvidenceIsPartial: true);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.Unknown, closure.EvaluationOf(0));
+        Assert.Equal(ProtectionUnknownReason.MembershipEvidenceIncomplete, closure.ReasonsFor(0));
+    }
+
+    [Fact]
+    public void EnterpriseRodcClaimDoesNotCreateAChildDomainPropagationRoot()
+    {
+        Fixture[] principals = [EnterpriseRodc(0), User(1, 1104)];
+        var closure = ProtectedPrincipalDeriver.Derive(GraphOf(principals, [(0, 1)]), SidsFor(principals),
+            ProtectedGroupCatalogue.NarrowedBy(string.Empty), false, CancellationToken.None,
+            OtherDomainSid, EveryDomainRead, NoStubOnlyPrincipals);
+
+        Assert.Equal(ProtectedPrincipalEvaluation.NotProtected, closure.EvaluationOf(1));
+        Assert.Equal(ProtectionUnknownReason.None, closure.ReasonsFor(1));
+    }
+
     /// <summary>
     /// A member of a protected group is protected.
     /// </summary>
@@ -684,6 +747,10 @@ public sealed class ProtectedPrincipalDeriverTests
         new(
             new PrincipalRow(sidId, Guid.NewGuid(), IsGroup: true, GroupType: unchecked((int)0x80000002), PrimaryGroupSidId: null),
             rid);
+
+    private static Fixture EnterpriseRodc(int sidId) =>
+        new(new PrincipalRow(sidId, Guid.NewGuid(), IsGroup: true,
+            GroupType: unchecked((int)0x80000008), PrimaryGroupSidId: null), 498);
 
     private static Fixture Distribution(int sidId, int rid) =>
         new(

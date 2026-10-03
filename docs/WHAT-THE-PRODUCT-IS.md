@@ -138,6 +138,99 @@ This establishes the product direction, not approval of a particular replacement
 semantics, requester activation or a restarted measurement campaign; the existing Stage 7 completion
 requirements and bounded approval boundaries below remain in force.
 
+**Owner clarification: findings must represent risk, not ownership inventory, 2026-10-02.**
+After the computer-owned Windows Virtual Machine service record was shown as SEC-031, the owner
+stated that this creates noise and that expected ownership must be established and excluded from
+findings.
+A technically correct ownership capability is not, by itself, sufficient justification for a
+risk finding; retain the captured ownership and permission evidence even when a supported
+expectation excludes the relationship from findings.
+This supersedes the earlier SEC-031 justification that the self-owned service-record pattern
+necessarily belongs in findings merely because its non-administrative ownership is real.
+It does not approve blanket exclusions for computer accounts, service accounts or service-connection
+points, and uncertain expectedness must not be silently treated as expected.
+Clarify Stage 7 completion before starting finding tuning; the existing Stage 7-first delivery order
+remains, with concrete expected-ownership criteria, implementation and presentation still requiring
+a bounded proposal rather than being inferred from this direction.
+
+**Owner-confirmed path-analysis outcome and continuation, 2026-10-02.**
+The owner confirmed that the goal is one coherent, automatic analysis of unintended control leading
+to Tier 0, not a permission inventory presented as findings or a menu of separately requested paths.
+Connect the supported membership, ownership, permission and operation evidence into justified chains;
+the three currently exercised requester families are a foundation, not the completion definition.
+Expected administration must be distinguished from risk without erasing relationships an unexpected
+principal could use, and missing evidence or unsupported reasoning must remain explicit.
+Valid independent security-rule findings remain separate from path findings; proven source-action
+remediation, reports and run comparisons remain the later product stages already specified.
+
+The owner will take a build to the production environment, rejudge there and return **only the run
+log**; no other production data can be exported.
+Do not request bundles, databases, proof dumps, separate summaries or other exports, or work around
+that boundary by adding object-level data dumps to logging.
+The log can establish recorded execution, build/generation identity, timings, failures and recorded
+readback outcomes, but phase completion alone does not prove nonempty requester work, every saved
+answer, or complete production acceptance; further checks must remain on site and be explicitly
+approved if needed.
+This is owner-operated validation, not permission for the agent to access AD, replay production
+evidence, restart paused measurements, expand logging or change production budgets.
+
+Continue implementation preparation in `stage7-completion` at
+`C:\Users\jistrand\source\repos\SecureAD.Next-stage7`, independently of that production run.
+The existing `p280-judging-followup` checkout remains the owner's build source, with its uncommitted
+RID 498 correction preserved; do not change it or its published executables underneath the owner.
+The separate checkout carries the same verified code and preceding documentation changes without a
+new commit, while historical evidence and verification artifacts remain in the original checkouts.
+The next Stage 7 implementation still needs a concrete bounded scope; this continuation does not
+approve general finding tuning, new screen wording/layout, further optimization, commit or push.
+
+**Production-check workflow clarification, 2026-10-03 (P-110).**
+The current GUI offers **Derive facts** only for sealed evidence with no existing analysis;
+it cannot rebuild facts for an already derived run.
+**Discard judgement and judge again** deletes only saved judgements and invokes judging against
+the retained evidence and derived facts, keeping the log; cancellation or failure can therefore
+leave no completed judgement to reopen.
+This judgement-only workflow can exercise the new Stage 7 requester analysis without rederiving,
+but does not apply the RID 498 correction to an older saved protection catalogue.
+Do not make the independent catalogue correction or missing GUI refresh action a prerequisite for
+that requester check, or describe judgement-only output as testing refreshed derived facts.
+The CLI's separate derive command exists, but no new GUI workflow, manual deletion, recapture or
+agent-operated production run is authorized by this clarification.
+
+**Owner-reported production preparation, 2026-10-03.**
+The owner moved both existing derivation and judgement files into another folder, reopened the GUI
+and was then offered **Derive facts**, with judgement to follow.
+This is an owner-operated refresh of both implemented analysis stages from the retained capture,
+not a new GUI refresh feature or permission for the agent to move production files.
+The refreshed run can exercise the current protection catalogue as well as requester analysis, but
+its outcome is still to be established and it cannot verify Stage 7 features not yet implemented.
+Only its run log may be returned, and development continues independently in `stage7-completion`.
+
+**Owner-approved saved path-risk qualification checkpoint, 2026-10-03.**
+Qualify every saved question in the three existing concrete-requester proof families against the
+requester's captured, pre-change authority on the actual reached target, reusing the existing scoped
+control-plane policy.
+Save a proven unexpected route, a proven expected route, a route not established for that question,
+or an unresolved answer; none is a whole-forest safety verdict.
+Do not inherit expectedness from a granting group, use obtained membership to justify its own
+escalation, hide out-of-scope control because the requester is Tier 0 elsewhere, or inspect only the
+route selected for display.
+Keep original permission and operation proofs, ordinary Add readiness, current membership,
+generation binding and group-held permission counts independent.
+This checkpoint saves qualification for later SEC-071 production but emits no findings and changes
+no screens, path combinations, Tier-0 definition or permission semantics.
+Use synthetic/offline verification and preserve historical data and the owner's production-test
+checkout/package, with no production access, measurement campaign, commit or push.
+Implemented in **judgement format 47**, with **6,341 tests passing**, **582 focused coverage
+cases** and assertion-based witnesses for all **30 new behavior cases** across **16 rebuilt
+isolated defects**, followed by restored controls and an explicit correct-source rebuild.
+The [checkpoint handoff](../.v-path-risk-20261003/handoff.json) preserves source/build identities,
+earlier failures, original evidence and the untouched production-test package.
+Selected requester readback has an explicit requested/unavailable/no-recorded-question state and
+stays internal until the next approved consumer exists; no public-surface gate was exempted.
+Older judgement formats are refused by this branch rather than migrated or reinterpreted, while
+the owner's frozen format-46 production-test application remains unchanged.
+This is the saved qualification needed before SEC-071, not SEC-071 delivery or completed Stage 7.
+
 **Owner-approved requester activation candidate and lab-first verification, 2026-10-02.**
 Enable the existing shared GUI/CLI supported-question policy in the local candidate without
 changing permission semantics, the three supported families, budgets, path compositions, rules
@@ -193,6 +286,34 @@ coverage, a new SEC-071 finding or live takeover.
 Representative production acceptance, final activation/release approval and the risk-first
 presentation remain owed; no additional run, campaign, optimization, budget or publication follows
 automatically from this checkpoint.
+
+**Owner-approved RID 498 evidence check, 2026-10-02 (P-88).**
+The owner approved comparing Enterprise Read-only Domain Controllers with protected and
+unprotected controls and the AdminSDHolder template in the existing sealed lab audit, read-only.
+The [captured comparison](../.v-lab-readback-20261003-011110/captured-protection-comparison.json)
+corroborates the MS-ADTS reading that RID 498 is not automatically protected: its ordered permission
+list matches Domain Users and inherits, while Domain Admins and RID 521 match AdminSDHolder and
+block inheritance, in the captured Windows Server 2022 root-domain context.
+This is one saved state, not observed SDProp execution, universal Windows-version proof, or a
+decision about protection passed to members.
+The subsequent **"ok make the correction"** approves only the bounded principal-claim correction:
+RID 498 does not automatically confer AdminSDHolder protection, while independently established
+membership protection still applies and its member-propagation claim remains unverified.
+This supersedes only the RID 498 principal-protection position in `0089`, using the MS-ADTS
+protected-set definition with the captured lab corroboration, not an assertion that Microsoft's
+conflicting group-reference page was corrected or that every Windows version was observed.
+Advance the protection catalogue version and retain saved older answers without reinterpretation;
+do not change accepted owners, the authoritative Tier-0 definition, permission evaluation or screens.
+Verification is synthetic/offline; original captures, frozen expectations and prior failures remain,
+with no live testing, historical-bundle rederivation/rejudgement, publication, commit or push authorized.
+The correction is implemented as protection catalogue **version 4** and offline verified with
+**6,311 passing tests**, **120 focused coverage cases** and **15 new/updated behavior cases**
+that detect nine isolated rebuilt defects, with correct sources explicitly rebuilt after restoration.
+The [verified correction handoff](../.v-rid498-20261002/handoff.json) retains the initial fixture
+failure, source/build identities and unchanged original evidence.
+Existing version-3 derivations still carry their original disputed answer: applying this correction
+to an older capture requires new derivation and judgement, not merely reopening it or using the
+judgement-only discard action, and no original lab bundle was changed for this verification.
 
 **Implementation checkpoint, 2026-10-02: the coordinated correction is offline-verified.**
 The follow-up carries prepared statements and committed proof identities through later judging
@@ -735,6 +856,15 @@ remain owed. Screens read and validate saved results rather than starting new an
 evidence, unsupported analysis and failed or unfinished work remain explicit rather than becoming safe
 answers. Automatic analysis does not authorize changes to AD; the existing separate approval boundaries
 for production activation, budgets and paused measurements still apply.
+
+**Stage 7 completion clarification, 2026-10-02:** the successful requester-enabled packaged GUI
+lab audit verifies the three existing supported families, not the full Stage 7 requirement above.
+Unfinished implementation includes the remaining approved path combinations, P-143 declarations,
+SEC-071 risk findings and risk-first path presentation with trustworthy run-wide counts; representative
+production execution/readback acceptance remains outstanding separately.
+General finding tuning must not replace this work, but deciding which paths represent actual risk
+rather than expected administration is part of delivering Stage 7's own findings, not something that
+can all be deferred until after Stage 7 is called complete.
 
 **Owner-selected next Stage 7 priority: production requester coverage**, before broader path
 compositions, P-143 declarations, SEC-071 findings and path presentation. Start from checkpoint 7's

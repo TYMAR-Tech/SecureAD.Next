@@ -19,6 +19,7 @@ internal sealed class JudgingInputs : IDisposable
     private CapturedMembershipInput? _membership;
     private Result<IReadOnlyDictionary<string, NamingContextKind>>? _contexts;
     private OwnerImplicitRightsSetting? _ownerRights;
+    private readonly Dictionary<string, string?> _domainSids = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
     private JudgingInputs(ProtectedStoreFile evidence, BundleReader bundle, CancellationToken cancellationToken)
@@ -134,6 +135,17 @@ internal sealed class JudgingInputs : IDisposable
             ? Result<IReadOnlyDictionary<string, NamingContextKind>>.Success(
                 read.Value.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase))
             : read).Value;
+    }
+
+    internal string? ReadDomainSid(string domain)
+    {
+        CheckLifetime();
+        if (_domainSids.TryGetValue(domain, out var sid)) return sid;
+        var root = Bundle.ReadObjectAttributes(string.Join(',', domain.Split('.').Select(part => "DC=" + part)));
+        var value = root?.Find("objectSid")?.OnlyValue;
+        sid = value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
+        _domainSids.Add(domain, sid);
+        return sid;
     }
 
     internal Tier0InputBinding Binding()

@@ -212,6 +212,23 @@ public sealed partial class JudgementReader : IDisposable
         return Tier0PathStorage.ReadCoverage(_connection, Description);
     }
 
+    /// <summary>Reads saved qualification counts for existing requester questions, not whole-forest risk coverage.</summary>
+    public PathRiskCoverage ReadPathRiskCoverage(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        RequireCurrentPathGeneration();
+        return PathRequesterRiskStorage.ReadCoverage(_connection, Description, cancellationToken);
+    }
+
+    /// <summary>Reads only this requester's saved risk qualifications without replaying authorization or expectedness.</summary>
+    internal PathRequesterRiskSet ReadPathRequesterRisks(string requesterDn, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
+        RequireCurrentPathGeneration();
+        return PathRequesterRiskStorage.Read(_connection, Description, requesterDn, cancellationToken);
+    }
+
     private void RequireCurrentPathGeneration()
     {
         var judgement = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Judgement);

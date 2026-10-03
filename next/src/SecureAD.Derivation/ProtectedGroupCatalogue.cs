@@ -46,10 +46,11 @@ internal sealed record AdminSdHolderCatalogueEntry(
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The set is Microsoft's, and it is named here rather than inferred.</b> It is the fifteen
-/// accounts and groups listed in
+/// <b>Claims are evidenced individually, not inferred from adminCount.</b> The starting set is
+/// Microsoft's
 /// <see href="https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory">
-/// Appendix C: Protected Accounts and Groups in Active Directory</see>. <c>adminCount</c> is not
+/// Appendix C: Protected Accounts and Groups in Active Directory</see>, with separately sourced
+/// negative and unresolved claims. <c>adminCount</c> is not
 /// used to derive it: the same documentation states the attribute stays set after an account leaves
 /// a protected group, so it records history rather than current protection.
 /// </para>
@@ -90,14 +91,11 @@ internal sealed record ProtectedGroupCatalogue(
         "MS-ADTS-UNVERIFIED-2026-08");
 
     /// <summary>
-    /// The fifteen entries, unchanged since version 2.
+    /// Scoped principal and propagation claims, including explicit negative and unresolved answers.
     /// </summary>
     /// <remarks>
-    /// <b>Version 3 changed a traversal rule and not this list.</b> The entries are Appendix C's set
-    /// and are shared by both versions, so the name says what the list is rather than which revision
-    /// first carried it: naming it after one version would make every future revision either rename
-    /// it or lie. What changed in 3 is that primary-group-only membership answers
-    /// <c>NotProtected</c> instead of <c>Unknown</c>, per <c>0118</c>.
+    /// Version 3 settled primary-group-only traversal under <c>0118</c>. Version 4 changes only
+    /// RID 498's own protection claim under P-88; its member-propagation claim remains unresolved.
     /// </remarks>
     private static readonly IReadOnlyList<AdminSdHolderCatalogueEntry> AppendixCEntries =
     [
@@ -119,8 +117,13 @@ internal sealed record ProtectedGroupCatalogue(
             EstablishedPrincipal, UnverifiedPropagation),
         Entry(8, "Key Admins", CataloguePrincipalScope.PerDomainRid, 526, EstablishedPrincipal,
             UnverifiedPropagation),
+        // MS-ADTS 3.1.1.6.1.2 omits RID 498 from automatic protection, unlike RID 521:
+        // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/a0d0b4fa-2895-4c64-b182-ba64ad0f84b8
+        // P-88 accepts that reading, corroborated by the 2026-10-03 ad.lab capture and controls.
+        // The group-reference page's contrary "Yes" remains recorded; other membership can protect it.
         Entry(9, "Enterprise Read-only Domain Controllers", CataloguePrincipalScope.ForestRootRid, 498,
-            Claim(CatalogueClaimStatus.Disputed, "MS-APPENDIX-C-VS-GROUP-PAGE-2026-08"),
+            new CatalogueClaim(CatalogueClaimStatus.EstablishedNo, CatalogueClaimProvenance.ProtocolSpecification,
+                "MS-ADTS-3.1.1.6.1.2-P88-2026-10"),
             UnverifiedPropagation),
         Entry(10, "Schema Admins", CataloguePrincipalScope.ForestRootRid, SchemaOwnerRid, EstablishedPrincipal,
             EstablishedPropagation),
@@ -231,7 +234,7 @@ internal sealed record ProtectedGroupCatalogue(
     /// </para>
     /// </remarks>
     public static ProtectedGroupCatalogue Default { get; } = new(
-        Version: 3,
+        Version: 4,
         Entries: AppendixCEntries,
         Exclusions: new AdminSdExclusionMask(
             [], HeuristicReadOutcome.NotRead, Character: null));
