@@ -83,7 +83,7 @@ public sealed class RulePermissionReuseTests
         Assert.True(judged.IsSuccess, judged.Error?.Description);
     }
 
-    private sealed class ReadingRule(string id) : IRule
+    private sealed class ReadingRule(string id) : IObjectRule
     {
         public RuleDefinition Definition { get; } = new(id, "Read object permissions", Severity.Low, 1,
             [], ["objectClass"], [nameof(DerivedFactKind.PrincipalExpansion)]);

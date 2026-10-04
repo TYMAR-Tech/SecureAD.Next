@@ -38,8 +38,8 @@ internal sealed partial class AssetsViewModel
         if (definition.Key == ObjectSectionCatalog.SavedTier0Path)
         {
             var path = new SavedTier0PathSectionViewModel(definition);
-            path.ConfigureAsync(dn, cancellation => ReadBoundAsync(bundle, current,
-                reader => reader.ReadSavedTier0Path(bundle, dn), cancellation, "read saved Tier 0 path"));
+            path.ConfigureAsync(dn, (group, after, cancellation) => ReadBoundAsync(bundle, current,
+                reader => reader.ReadSavedTier0Path(bundle, dn, group, after), cancellation, "read saved Tier 0 path"));
             return path;
         }
         if (definition.Key == ObjectSectionCatalog.ControlEdges)

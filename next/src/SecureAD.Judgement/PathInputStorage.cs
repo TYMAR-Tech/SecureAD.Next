@@ -126,7 +126,8 @@ internal static class PathInputStorage
                     ControlEdgeStorage.ReadExact(connection, description, link.Affected, id))
                 : Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity, affected.Identity,
                     link.WitnessCapability ?? throw InvalidProof(), new(link.WitnessTarget ?? throw InvalidProof(),
-                        link.WitnessOrdinal, link.WitnessTrustee ?? throw InvalidProof(), link.WitnessIsOwner)));
+                        link.WitnessOrdinal, link.WitnessTrustee ?? throw InvalidProof(), link.WitnessIsOwner)
+                        { GroupMembership = link.GroupMembership }));
         }
         if (relations.Count != ownership.RelationCount) throw InvalidProof();
         // These are references, not a new permission interpretation. Full permission proofs remain
@@ -174,7 +175,7 @@ internal static class PathInputStorage
     private static PathInputs Empty(JudgementDescription description, PathInputAvailability availability) =>
         new(description.GenerationId, availability, null, OwnershipAuditStorage.UnavailableCoverage, [], [], [], [], [], null);
 
-    private static IEnumerable<Tier0Target> FixedTargets(IEnumerable<Tier0Classification> classifications) =>
+    internal static IEnumerable<Tier0Target> FixedTargets(IEnumerable<Tier0Classification> classifications) =>
         classifications.Where(item => item.Supports.Any(support => support.Basis is Tier0Basis.Core or Tier0Basis.PartitionRoot
             or Tier0Basis.EnterpriseCaRegistration or Tier0Basis.EnterpriseCaHost))
             .Select(item => item.Target).Distinct().OrderBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase);

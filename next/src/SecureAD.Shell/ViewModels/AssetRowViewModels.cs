@@ -256,7 +256,9 @@ internal sealed class FindingRowViewModel
     public string Rule => _finding.RuleId;
 
     /// <summary>Who or what the finding is about.</summary>
-    public string Principal => _finding.Subject.Key;
+    public string Principal => _finding.PrincipalName;
+
+    public bool HasTier0Routes => _finding.Evidence is Tier0RouteFindingEvidence;
 
     /// <summary>The object it is about, named as an operator would say it.</summary>
     public string Target => DnHelper.ExtractNameFromDn(_finding.DistinguishedName);

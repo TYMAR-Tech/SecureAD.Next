@@ -206,6 +206,21 @@ internal sealed class FakeAssetSource : IAssetSource
         return SavedPath;
     }
 
+    public Func<PathRiskVerdict, PathRiskPageMark?, Result<SavedTier0Path?>>? PathPage { get; set; }
+    public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName,
+        PathRiskVerdict group, PathRiskPageMark? after)
+    {
+        PathQueries.Add((bundleDirectory, distinguishedName));
+        return PathPage is { } page ? page(group, after) : SavedPath;
+    }
+
+    public Result<Tier0FindingSummary?> Tier0Summary { get; set; } = Result<Tier0FindingSummary?>.Success(null);
+    public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory)
+    {
+        Reads.Add("Tier0Summary");
+        return Tier0Summary;
+    }
+
     public Result<MemberAttributionDetail> ReadMemberAttribution(string bundleDirectory, string holderSid, string? holderScope, string target) =>
         Result<MemberAttributionDetail>.Success(new(false, null, []) { GenerationId = ControlEdges.GenerationId ?? Guid.Empty });
     public Result<MemberPermissionPage> ReadPermissionsThroughMembership(string bundleDirectory, string memberSid, string? memberScope, bool includeExpected, long afterId) =>

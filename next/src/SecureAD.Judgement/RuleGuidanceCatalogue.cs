@@ -27,6 +27,21 @@ public static class RuleGuidanceCatalogue
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
         new RuleGuidance(
+            "SEC-071",
+            "Tier 0",
+            MitreTechnique: null,
+            WhyItMatters:
+                "The saved evidence establishes a supported route to Tier 0 outside this account's expected administrative authority on the reached target.",
+            WhatToDo:
+                "Open View saved routes for the account, target, relevant permission and actual granting entry. "
+                + "Remove only the permission identified there, keeping the entry's other permissions unchanged unless separately reviewed. "
+                + "Group-held and inherited grants must be reviewed at their actual source, including effects on other members and descendants. "
+                + "This addresses the relationship shown, not every possible route. A new capture is needed to verify the change.",
+            About:
+                "Saved permission, membership and ownership evidence is not proof of account takeover or a successful live operation.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-access-model"),
+        new RuleGuidance(
             "SEC-010",
             "Delegation",
             MitreTechnique: null,

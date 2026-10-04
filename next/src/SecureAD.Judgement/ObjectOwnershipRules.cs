@@ -168,7 +168,7 @@ internal static class ProtectedObjectReading
 /// <c>docs/specs/rules/SEC-031-object-owned-by-a-non-administrator.md</c>.
 /// </para>
 /// </remarks>
-public sealed class ObjectOwnedByNonAdministrator : IRule
+public sealed class ObjectOwnedByNonAdministrator : IObjectRule
 {
     private const string RuleId = "SEC-031";
 
@@ -246,7 +246,7 @@ public sealed class ObjectOwnedByNonAdministrator : IRule
 /// <c>docs/specs/rules/SEC-032-protected-object-owned-by-a-non-administrator.md</c>.
 /// </para>
 /// </remarks>
-public sealed class ProtectedObjectOwnedByNonAdministrator : IRule
+public sealed class ProtectedObjectOwnedByNonAdministrator : IObjectRule
 {
     private const string RuleId = "SEC-032";
 

@@ -110,6 +110,12 @@ public sealed class ControlEdgeLayoutTests
         [46] = "06F6363EC8C1E35C0A4255B2C0FE4382A09EB9BAE46588A084663CEB2F02F07C",
         // Observed from the format-47 build adding independent requester-risk records; older checkpoints are unchanged.
         [47] = "5D9F0069E035B69531D4B86C75F7F6E79752F19E0FCB90625EA9B139C4AF3A19",
+        // Observed format-48 canonical requester proofs and SEC-071 publication; no earlier value is replaced.
+        [48] = "F9E42384A1C323930DD733AD6BB5058129602EE68CB35CAE3EBD0EF1E3A25736",
+        // Schema 49 changes nested requester proof semantics only; keep the schema-48 physical-layout anchor.
+        [49] = "F9E42384A1C323930DD733AD6BB5058129602EE68CB35CAE3EBD0EF1E3A25736",
+        // Observed format-50 layout adds the captured group-nesting admission witness; earlier values stay fixed.
+        [50] = "041C226CA55863BADAF2CE5BFC13AFFA3E90A09039DB66355F476A8364172776",
     };
 
     [Fact]

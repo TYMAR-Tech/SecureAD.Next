@@ -77,8 +77,8 @@ public enum FindingSubjectKind
 /// </summary>
 /// <param name="Kind">What sort of thing this is.</param>
 /// <param name="Key">
-/// The stable key for that kind. For an account this is its <c>sAMAccountName</c>, which is what
-/// an administrator will recognise in a report.
+/// The rule's stable subject key. A captured display name can be recorded separately in
+/// <see cref="Finding.PrincipalName"/> without changing that identity.
 /// </param>
 public sealed record FindingSubject(FindingSubjectKind Kind, string Key);
 
@@ -152,4 +152,8 @@ public sealed record Finding(
     string ObjectClass,
     string Detail,
     EvidenceCompleteness Coverage,
-    FindingEvidence Evidence);
+    FindingEvidence Evidence)
+{
+    /// <summary>The captured display name, independent of a rule's stable subject key.</summary>
+    public string PrincipalName { get; init; } = Subject.Key;
+}

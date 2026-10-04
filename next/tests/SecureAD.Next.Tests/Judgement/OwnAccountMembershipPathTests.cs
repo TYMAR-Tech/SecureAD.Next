@@ -485,7 +485,7 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
     public void AlteredOwnAccountProofIsRejectedEvenWithARefreshedHash(string path, string value)
     {
         var directory = Prepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
+        PathProofVerification.AlterRequesterProof(directory, path, "'" + value + "'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));

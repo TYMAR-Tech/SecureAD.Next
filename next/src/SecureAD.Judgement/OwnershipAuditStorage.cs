@@ -20,7 +20,10 @@ internal static class OwnershipAuditStorage
         Tier0Classification Classification);
     internal sealed record RelationRow(long? EdgeId, string Controller, string Affected,
         string? WitnessTarget, int? WitnessOrdinal, string? WitnessTrustee, bool WitnessIsOwner,
-        ControlCapability? WitnessCapability);
+        ControlCapability? WitnessCapability)
+    {
+        public RequesterMembershipEvidence? GroupMembership { get; init; }
+    }
 
     internal sealed class Snapshot
     {
@@ -92,9 +95,10 @@ internal static class OwnershipAuditStorage
             affected_target TEXT NOT NULL COLLATE NOCASE REFERENCES ownership_target(target),
             witness_target TEXT NULL COLLATE NOCASE, witness_ordinal INTEGER NULL CHECK(witness_ordinal IS NULL OR witness_ordinal>=0),
             witness_trustee TEXT NULL, witness_is_owner INTEGER NOT NULL CHECK(witness_is_owner IN (0,1)),
-            witness_capability TEXT NULL,
+            witness_capability TEXT NULL, witness_membership TEXT NULL,
             CHECK((edge_id IS NULL) <> (witness_target IS NULL)),
             CHECK(witness_target IS NULL OR (witness_trustee IS NOT NULL AND witness_capability IS NOT NULL)),
+            CHECK(witness_membership IS NULL OR (edge_id IS NULL AND witness_is_owner=0)),
             CHECK(witness_is_owner = 0 OR witness_ordinal IS NULL));
         CREATE UNIQUE INDEX ux_ownership_relation_edge ON ownership_relation(edge_id) WHERE edge_id IS NOT NULL;
         CREATE UNIQUE INDEX ux_ownership_relation_witness ON ownership_relation(
@@ -192,12 +196,13 @@ internal static class OwnershipAuditStorage
                         || relation.Capability is not { } capability) throw InvalidProof();
                     Execute(connection, transaction, """
                         INSERT INTO ownership_relation (edge_id,controller_target,affected_target,
-                            witness_target,witness_ordinal,witness_trustee,witness_is_owner,witness_capability)
-                        VALUES (NULL,$controller,$affected,$witness,$ordinal,$trustee,$owner,$capability)
+                            witness_target,witness_ordinal,witness_trustee,witness_is_owner,witness_capability,witness_membership)
+                        VALUES (NULL,$controller,$affected,$witness,$ordinal,$trustee,$owner,$capability,$membership)
                         """, ("$controller", relation.Controller.DistinguishedName),
                         ("$affected", relation.Affected.DistinguishedName), ("$witness", witness.TargetDn),
                         ("$ordinal", witness.PermissionOrdinal), ("$trustee", witness.TrusteeSid),
-                        ("$owner", witness.IsOwner), ("$capability", capability.ToString()));
+                        ("$owner", witness.IsOwner), ("$capability", capability.ToString()),
+                        ("$membership", witness.GroupMembership is { } membership ? JsonSerializer.Serialize(membership, ProofSerialization.Options) : null));
                 }
                 else throw InvalidProof();
                 links++;
@@ -355,7 +360,7 @@ internal static class OwnershipAuditStorage
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT edge_id,controller_target,affected_target,witness_target,witness_ordinal,witness_trustee,
-                witness_is_owner,witness_capability
+                witness_is_owner,witness_capability,witness_membership
             FROM ownership_relation ORDER BY id
             """;
         using var read = command.ExecuteReader();
@@ -367,7 +372,8 @@ internal static class OwnershipAuditStorage
                 read.IsDBNull(3) ? null : read.GetString(3), read.IsDBNull(4) ? null : read.GetInt32(4),
                 read.IsDBNull(5) ? null : read.GetString(5), read.GetBoolean(6),
                 read.IsDBNull(7) ? null : Enum.TryParse<ControlCapability>(read.GetString(7), out var capability)
-                    && Enum.IsDefined(capability) ? capability : throw InvalidProof()));
+                    && Enum.IsDefined(capability) ? capability : throw InvalidProof())
+                { GroupMembership = read.IsDBNull(8) ? null : JsonSerializer.Deserialize<RequesterMembershipEvidence>(read.GetString(8), ProofSerialization.Options) ?? throw InvalidProof() });
         }
         return rows;
     }

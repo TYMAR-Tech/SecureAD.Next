@@ -89,6 +89,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private FindingRowViewModel? _selectedFinding;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTier0Summary))]
+    private string _tier0SummaryText = "";
+
+    public string Tier0SummaryHeading { get; } = SavedPathText.Get("SummaryHeading");
+    public bool HasTier0Summary => !string.IsNullOrEmpty(Tier0SummaryText);
+
+    [ObservableProperty]
     private ListingScope _scope = ListingScope.OneLevel;
 
     [ObservableProperty]
@@ -634,6 +641,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
             return;
 
         Open(finding.DistinguishedName, ObjectSectionCatalog.Findings);
+    }
+
+    [RelayCommand]
+    private void OpenSavedRoutes(FindingRowViewModel? finding)
+    {
+        if (finding?.HasTier0Routes != true || BundlePath is null) return;
+        Open(finding.DistinguishedName, ObjectSectionCatalog.SavedTier0Path);
     }
 
     /// <summary>

@@ -10,18 +10,18 @@ using SecureAD.Kernel.Security;
 namespace SecureAD.Judgement;
 
 /// <summary>
-/// Judging a sealed bundle: read every object once, offer it to every rule, and write what they
-/// concluded beside the evidence.
+/// Judging a sealed bundle: stream object rules once, then publish qualified path findings
+/// beside the evidence.
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>One pass over the bundle, not one per rule.</b> The evidence is read sequentially and each
-/// object is offered to every scheduled rule while it is in hand. Judging forty rules therefore
+/// object is offered to every scheduled object rule while it is in hand. Judging forty such rules therefore
 /// costs the same read as judging one, and adding a rule costs comparisons rather than another walk
-/// of the forest.
+/// of the forest. SEC-071 consumes the later saved qualification rather than repeating that pass.
 /// </para>
 /// <para>
-/// <b>A rule that throws loses only itself.</b> It is recorded as
+/// <b>An object rule that throws loses only itself.</b> It is recorded as
 /// <see cref="RuleExecutionOutcome.Error"/>, offered no further objects, and the rules beside it
 /// carry on. Its findings are discarded, because a rule that failed part way through has no verdict
 /// and its partial output would read as a complete one.
@@ -492,6 +492,9 @@ public static class JudgingRun
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
+        if (rules.Any(rule => rule is not IObjectRule and not UnexpectedTier0Route))
+            throw new ArgumentException("A scheduled rule has no supported execution stage.", nameof(rules));
+        var pathRule = rules.OfType<UnexpectedTier0Route>().SingleOrDefault();
         ArgumentNullException.ThrowIfNull(selfMembershipRequests);
         ArgumentNullException.ThrowIfNull(selfMembershipBudget);
         ArgumentNullException.ThrowIfNull(progress);
@@ -797,7 +800,7 @@ public static class JudgingRun
             "started",
             [new RunLogDetail("rules", rules.Count.ToString(CultureInfo.InvariantCulture))]);
 
-        var tallies = rules.Select(r => new Tally(r)).ToList();
+        var tallies = rules.OfType<IObjectRule>().Select(r => new Tally(r)).ToList();
 
         long objectsRead = 0;
         writer.StartSelfMembershipAssessments();
@@ -1015,7 +1018,8 @@ public static class JudgingRun
             inputs.RequireFor(ownershipDescription);
             Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
             var admitted = writer.AdmitDiscoveredScope(bundle, ownershipDescription, memberInput, ownershipBinding!,
-                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken, progress);
+                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken, progress,
+                inputs, offlineSelection || membershipDaclRequests.Count != 0);
             log.Note(JudgePhase, "tier0-discovery",
             [
                 new RunLogDetail("scan-ms", ((long)work.Tier0Scan.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
@@ -1158,12 +1162,20 @@ public static class JudgingRun
         try
         {
             writer.CalculateTier0Paths(ownershipDescription, inputs, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
-                cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection, BeginPathPhase);
+                cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection, BeginPathPhase, progress);
             pathsCompleted = true;
         }
         finally
         {
             RecordPathPhase(pathsCompleted);
+        }
+
+        if (pathRule is not null)
+        {
+            var ruleWatch = System.Diagnostics.Stopwatch.StartNew();
+            var execution = writer.WriteTier0Findings(pathRule, ownershipDescription, inputs, cancellationToken);
+            ruleWatch.Stop();
+            tallies.Add(new Tally(pathRule, execution, ruleWatch.Elapsed));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -1539,6 +1551,15 @@ public static class JudgingRun
     /// </remarks>
     private sealed class Tally(IRule rule)
     {
+        private readonly RuleExecution? _completed;
+        private readonly TimeSpan _completedElapsed;
+
+        public Tally(IRule rule, RuleExecution completed, TimeSpan elapsed) : this(rule)
+        {
+            _completed = completed;
+            _completedElapsed = elapsed;
+        }
+
         private readonly List<Finding> _findings = [];
         private readonly Dictionary<string, int> _missing = new(StringComparer.OrdinalIgnoreCase);
 
@@ -1560,21 +1581,21 @@ public static class JudgingRun
         private string? _error;
 
         public RuleExecutionOutcome Outcome =>
-            _error is not null ? RuleExecutionOutcome.Error
+            _completed?.Outcome ?? (_error is not null ? RuleExecutionOutcome.Error
             : _notJudged > 0 ? RuleExecutionOutcome.Indeterminate
-            : RuleExecutionOutcome.Succeeded;
+            : RuleExecutionOutcome.Succeeded);
 
         /// <summary>Which rule this is tallying, so a log line can name it.</summary>
         public string RuleId => rule.Definition.Id;
 
         /// <summary>How long this rule took, across every object it was offered.</summary>
-        public TimeSpan Elapsed => _clock.Elapsed;
+        public TimeSpan Elapsed => _completed is null ? _clock.Elapsed : _completedElapsed;
 
         /// <summary>How many objects this rule actually judged, as opposed to filtered out.</summary>
-        public int Judged => _judged;
+        public int Judged => _completed?.ObjectsJudged ?? _judged;
 
         /// <summary>How many objects were not this rule's concern.</summary>
-        public int NotApplicable => _notApplicable;
+        public int NotApplicable => _completed?.ObjectsNotApplicable ?? _notApplicable;
 
         /// <summary>
         /// Offers one object to the rule, unless it has already thrown or the rule is not about
@@ -1623,7 +1644,9 @@ public static class JudgingRun
 
             try
             {
-                verdict = rule.Judge(subject, context);
+                if (rule is not IObjectRule objectRule)
+                    throw new InvalidOperationException("A saved-result rule cannot be offered an individual object.");
+                verdict = objectRule.Judge(subject, context);
             }
             catch (Exception error) when (error is not OutOfMemoryException
                                               and not StackOverflowException)
@@ -1663,7 +1686,7 @@ public static class JudgingRun
         }
 
         public RuleExecution ToExecution() =>
-            _error is not null
+            _completed ?? (_error is not null
                 ? RuleExecution.Threw(rule.Definition, _error)
                 : new RuleExecution(
                     rule.Definition,
@@ -1675,6 +1698,6 @@ public static class JudgingRun
                         .OrderBy(m => m.Key, StringComparer.OrdinalIgnoreCase)
                         .Select(m => new MissingInput(m.Key, m.Value))],
                     _findings,
-                    null);
+                    null));
     }
 }

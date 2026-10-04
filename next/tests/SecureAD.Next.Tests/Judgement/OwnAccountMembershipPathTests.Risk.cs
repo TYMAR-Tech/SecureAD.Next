@@ -266,19 +266,14 @@ public sealed partial class OwnAccountMembershipPathTests
         var directory = PrepareRisk(RiskCapture());
         using var reader = Open(directory);
         using var connection = RiskDatabase(reader, writableCopy: false);
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT proof FROM tier0_path_calculation WHERE id=1";
-        using var header = JsonDocument.Parse((string)command.ExecuteScalar()!);
+        var proofs = PathRequesterRiskStorage.ReadProofs(connection, reader.Description, CancellationToken.None);
         var risks = ReadRisks(reader).Assessments;
 
-        Assert.Equal(Tier0PathCalculation.Fingerprint(header.RootElement.GetProperty("Requesters")[0]
-                .Deserialize<SavedRequesterDaclProof>(ProofSerialization.Options)),
+        Assert.Equal(Tier0PathCalculation.Fingerprint(Assert.Single(proofs.Requesters)),
             risks.Single(value => value.Family == PathRequesterFamily.RequesterDacl).SourceProofFingerprint);
-        Assert.Equal(Tier0PathCalculation.Fingerprint(header.RootElement.GetProperty("OwnAccounts")[0]
-                .Deserialize<SavedOwnAccountMembershipProof>(ProofSerialization.Options)),
+        Assert.Equal(Tier0PathCalculation.Fingerprint(Assert.Single(proofs.OwnAccounts)),
             risks.Single(value => value.Family == PathRequesterFamily.OwnAccountMembership).SourceProofFingerprint);
-        Assert.Equal(Tier0PathCalculation.Fingerprint(header.RootElement.GetProperty("MembershipDacls")[0]
-                .Deserialize<SavedMembershipDaclProof>(ProofSerialization.Options)),
+        Assert.Equal(Tier0PathCalculation.Fingerprint(Assert.Single(proofs.MembershipDacls)),
             risks.Single(value => value.Family == PathRequesterFamily.MembershipDacl).SourceProofFingerprint);
     }
 
@@ -299,7 +294,7 @@ public sealed partial class OwnAccountMembershipPathTests
         using var sources = ControlProofVerification.OpenSources(reader);
 
         Assert.Throws<OperationCanceledException>(() => Tier0PathStorage.Write(connection, reader.Description,
-            sources, [], [], stopping.Token, [], true, _ => { }));
+            sources, [], [], stopping.Token, [], true, _ => { }, null));
 
         Assert.Equal(1, inserted);
         command.CommandText = "SELECT (SELECT COUNT(*) FROM path_requester_risk)+(SELECT COUNT(*) FROM path_risk_product)+(SELECT COUNT(*) FROM tier0_path_node)+(SELECT COUNT(*) FROM tier0_path_calculation)";
@@ -356,7 +351,7 @@ public sealed partial class OwnAccountMembershipPathTests
     }
 
     private string RiskCapture(bool currentAdministrator = false, bool schemaAdministrator = false,
-        bool missingMembership = false, string? coreDescriptor = null) =>
+        bool missingMembership = false, string? coreDescriptor = null, Action<BundleWriter, PartitionCoverage>? extra = null) =>
         Capture(members: currentAdministrator ? [UserDn] : [],
             coreDescriptor: coreDescriptor ?? $"O:SYG:SYD:(A;;WD;;;{TargetSid})(A;;WD;;;{UserSid})",
             userAttributes: missingMembership
@@ -374,6 +369,7 @@ public sealed partial class OwnAccountMembershipPathTests
                 if (schemaAdministrator)
                     Write(writer, domain, "CN=Schema Admins,DC=contoso,DC=com", ["top", "group"], "S-1-5-21-1-2-3-518",
                         [Text("groupType", "-2147483640"), Text("member", UserDn)], "O:SYG:SYD:");
+                extra?.Invoke(writer, domain);
             });
 
     private static string PrepareRisk(string directory)

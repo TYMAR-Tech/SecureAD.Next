@@ -32,7 +32,7 @@ internal static class Tier0AdmissionRun
         CapturedMembershipInput? input, Tier0InputBinding binding, Tier0DiscoveryScheduler discovery,
         JudgingContext context, Func<string, string?> domainSid, Guid generation, Guid? derivationGeneration,
         CancellationToken cancellationToken, JudgingStatus? status, PreparedStatements statements,
-        PermissionWriteSession session)
+        PermissionWriteSession session, JudgingInputs? sources, bool membershipContinuations)
     {
         ArgumentNullException.ThrowIfNull(discovery);
         ArgumentNullException.ThrowIfNull(binding);
@@ -46,7 +46,7 @@ internal static class Tier0AdmissionRun
         using (var diagnostic = status?.BeginPostPass("scope-selection", generation))
         {
             diagnostic?.Part("resolve-candidates");
-            var candidates = discovery.Candidates(diagnostic);
+            var candidates = discovery.Candidates(diagnostic).ToList();
             diagnostic?.Counter("resolvedRelations", candidates.Count);
             diagnostic?.Part("discovery-coverage");
             var coverage = discovery.Coverage();
@@ -58,6 +58,50 @@ internal static class Tier0AdmissionRun
                 target => target.Sid is { } sid ? context.ProtectedPrincipals?.Lookup(sid, target.SidScope)?.MembershipRoutes : null,
                 cancellationToken).Classifications;
             diagnostic?.Counter("classifiedTargets", classifications.Count());
+            if (membershipContinuations)
+            {
+                var memberships = (sources ?? throw Tier0PathStorage.InvalidProof())
+                    .RequesterMemberships(binding, discovery.Observed, cancellationToken);
+                var anchors = PathInputStorage.FixedTargets(classifications).ToHashSet();
+                var editable = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                var terminalOrdinals = new Dictionary<Tier0Target, HashSet<int>>();
+                var descriptorCandidates = candidates.Count;
+                // Admit only groups with a captured membership-edit question and a supported
+                // nesting route to a fixed target's permission holder. This is scope, not access.
+                foreach (var candidate in candidates.ToArray())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!anchors.Contains(candidate.Affected) || candidate.Capability != ControlCapability.CanWriteDacl
+                        || candidate.Witness is not { IsOwner: false, PermissionOrdinal: not null } witness) continue;
+                    if (!terminalOrdinals.TryGetValue(candidate.Affected, out var ordinals))
+                    {
+                        ordinals = [];
+                        foreach (var entry in bundle.ReadPermissions(candidate.Affected.DistinguishedName)?.Entries ?? [])
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            if ((entry.AccessMask & 0x40000) != 0) ordinals.Add(entry.Ordinal);
+                        }
+                        terminalOrdinals.Add(candidate.Affected, ordinals);
+                    }
+                    if (!ordinals.Contains(witness.PermissionOrdinal.Value)) continue;
+                    foreach (var route in memberships.Groups(candidate.Controller.DistinguishedName))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (!editable.TryGetValue(route.GroupDn, out var hasQuestion))
+                        {
+                            hasQuestion = bundle.ReadPermissions(route.GroupDn)?.Entries.Any(entry =>
+                                (entry.AccessMask & 0x28) != 0
+                                && SecureAD.Kernel.Security.EntryReachReader.FromPropagationFlags(entry.PropagationFlags)
+                                    == SecureAD.Kernel.Security.EntryReach.ThisObject) == true;
+                            editable.Add(route.GroupDn, hasQuestion);
+                        }
+                        if (!hasQuestion) continue;
+                        candidates.Add(Tier0RelevanceRelation.FromCapturedPermission(binding, route.Evidence.Links[0].Member,
+                            candidate.Affected, ControlCapability.CanWriteDacl, witness with { GroupMembership = route.Evidence }));
+                    }
+                }
+                diagnostic?.Counter("membershipCandidates", candidates.Count - descriptorCandidates);
+            }
             diagnostic?.Part("select-scope");
             selection = OwnershipScopeSelector.Select(binding, generation, classifications, candidates,
                 Source(coverage), cancellationToken, diagnostic?.ScopeProgress);

@@ -17,6 +17,7 @@ internal sealed class JudgingInputs : IDisposable
     private DerivationReader? _derivation;
     private StoredDerivation? _facts;
     private CapturedMembershipInput? _membership;
+    private RequesterMembershipContext? _requesterMemberships;
     private Result<IReadOnlyDictionary<string, NamingContextKind>>? _contexts;
     private OwnerImplicitRightsSetting? _ownerRights;
     private readonly Dictionary<string, string?> _domainSids = new(StringComparer.OrdinalIgnoreCase);
@@ -135,6 +136,21 @@ internal sealed class JudgingInputs : IDisposable
             ? Result<IReadOnlyDictionary<string, NamingContextKind>>.Success(
                 read.Value.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase))
             : read).Value;
+    }
+
+    internal RequesterMembershipContext RequesterMemberships(Tier0InputBinding binding,
+        IReadOnlyDictionary<string, Tier0Target> identities, CancellationToken cancellationToken)
+    {
+        RequireCurrent();
+        if (_requesterMemberships is { } existing)
+        {
+            existing.RequireBinding(binding);
+            return existing;
+        }
+        var derivation = OpenDerivation();
+        var contexts = ReadNamingContexts();
+        if (!derivation.IsSuccess || !contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
+        return _requesterMemberships = new(derivation.Value, binding, Bundle.ReadObjectAttributes, identities, contexts.Value, cancellationToken);
     }
 
     internal string? ReadDomainSid(string domain)

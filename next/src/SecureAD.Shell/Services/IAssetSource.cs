@@ -63,6 +63,13 @@ internal interface IAssetReader
     /// <summary>Reads one saved path and its coverage from the same validated generation, without new analysis.</summary>
     Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName);
 
+    /// <summary>Reads a selected saved qualification group; the continuation is bound to its original generation.</summary>
+    Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName,
+        PathRiskVerdict group, PathRiskPageMark? after);
+
+    /// <summary>Reads whole-run SEC-071 counts, independent of the findings grid's current filters and page.</summary>
+    Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory);
+
     /// <summary>Reads a page of stored control statements, with coverage and hidden expected counts.</summary>
     Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
         string? holderScope, bool includeExpected, long afterId);

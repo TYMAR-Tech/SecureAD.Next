@@ -158,7 +158,8 @@ public sealed class PostPassLookupTests
         }
 
         internal int Admit(bool missingInput = false) => writer.AdmitDiscoveredScope(Bundle, description, missingInput ? null : input,
-            binding, discovery, context, ControlEdgeDeriverTests.DomainSid, input.DerivationGenerationId, CancellationToken.None, status: null);
+            binding, discovery, context, ControlEdgeDeriverTests.DomainSid, input.DerivationGenerationId, CancellationToken.None, status: null,
+            sources: null, membershipContinuations: false);
 
         internal void Assess() => writer.AssessAutomaticOwnership(Bundle, description, input, binding, context,
             ControlEdgeDeriverTests.DomainSid, objects, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, scopeAlreadyPlanned: true);

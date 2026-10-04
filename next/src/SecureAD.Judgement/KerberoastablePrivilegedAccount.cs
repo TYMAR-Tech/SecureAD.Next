@@ -51,7 +51,7 @@ namespace SecureAD.Judgement;
 /// Specified in <c>docs/specs/rules/SEC-021-kerberoastable-privileged-account.md</c>.
 /// </para>
 /// </remarks>
-public sealed class KerberoastablePrivilegedAccount : IRule
+public sealed class KerberoastablePrivilegedAccount : IObjectRule
 {
     /// <summary>
     /// The class this rule judges, and it is checked as the object's <i>most derived</i> class.

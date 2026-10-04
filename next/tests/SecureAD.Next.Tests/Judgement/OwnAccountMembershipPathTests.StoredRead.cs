@@ -24,7 +24,7 @@ public sealed partial class OwnAccountMembershipPathTests
             coverageJson = JsonSerializer.Serialize(coverage);
         }
         // This resealed, test-only marker changes no saved answer, but a source replay must reject it.
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'$." + family + "[0].SourceFingerprint','stored-only')");
+        PathProofVerification.AlterRequesterProof(directory, "$." + family + "[0].SourceFingerprint", "'" + new string('f', 64) + "'");
         using var reader = Open(directory);
 
         var path = reader.ReadTier0Path(UserDn);
@@ -36,6 +36,7 @@ public sealed partial class OwnAccountMembershipPathTests
             JsonSerializer.Serialize(path), JsonSerializer.Serialize(coverageRead),
             JsonSerializer.Serialize(together.Path), JsonSerializer.Serialize(together.Coverage),
         });
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Theory]
@@ -45,7 +46,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void P248CoverageRefusesAnAssessmentFromAnotherGeneration(string path)
     {
         var directory = CoveragePrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','11111111-1111-1111-1111-111111111111')");
+        PathProofVerification.AlterRequesterProof(directory, path, "'11111111-1111-1111-1111-111111111111'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => reader.ReadPathRequesterCoverage());

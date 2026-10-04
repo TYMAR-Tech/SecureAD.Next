@@ -11,6 +11,31 @@ namespace SecureAD.Next.Tests.Shell;
 public sealed partial class OpenedRunResultsTests
 {
     [Fact]
+    public void Sec071AdminSavedReadbackBindsTheSelectedCapturedAccountNameWithoutAnalysis()
+    {
+        var directory = CreatePathRun();
+        using var counts = new ReadbackCounts(directory);
+        using var source = new BundleAssetSource();
+        var captured = source.ReadObjectAttributes(directory, UserDn).Value!;
+        var before = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).Select(path => (path, Hash: Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))))).ToArray();
+
+        var saved = FirstRecordedPathPage(source, directory);
+        var empty = source.ReadSavedTier0Path(directory, CoreDn).Value!;
+
+        var account = Assert.IsType<SavedPathAccount>(saved.Account);
+        Assert.Equal((UserDn, captured.ObjectGuid), (account.DistinguishedName, account.ObjectGuid));
+        Assert.Equal(captured.Find("sAMAccountName")?.OnlyValue?.Text, account.AccountName);
+        Assert.Equal(captured.Find("givenName")?.OnlyValue?.Text, account.GivenName);
+        Assert.Equal(captured.Find("displayName")?.OnlyValue?.Text ?? SecureAD.Kernel.Naming.DnHelper.ExtractNameFromDn(UserDn), account.Name);
+        Assert.Empty(empty.Page.Questions);
+        Assert.Null(empty.Account);
+        Assert.Equal((0L, 1L, 1L, 1L), (counts.AnalyticalReads, counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
+        Assert.Equal(before, Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).Select(path => (path, Hash: Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))))).ToArray());
+    }
+
+    [Fact]
     public void P248SavedPathsShareProtectedFilesAcrossObjects()
     {
         var directory = CreatePathRun();
@@ -20,7 +45,7 @@ public sealed partial class OpenedRunResultsTests
         var first = source.ReadSavedTier0Path(directory, UserDn);
         var second = source.ReadSavedTier0Path(directory, CoreDn);
 
-        Assert.Equal((Tier0Reachability.Reachable, (int?)0, 1L, 1L, 1L, 0L), (first.Value!.Path.Reachability, second.Value!.Path.ShortestProvenDistance,
+        Assert.Equal((PathRiskReadVerdict.RecordedQuestions, true, 1L, 1L, 1L, 0L), (first.Value!.Page.Verdict, second.Value!.Page.IsFixedTarget,
             counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications, counts.AnalyticalReads));
     }
 
@@ -36,7 +61,7 @@ public sealed partial class OpenedRunResultsTests
 
         var saved = source.ReadSavedTier0Path(directory, UserDn).Value!;
 
-        Assert.Equal((Tier0Reachability.Reachable, 2L, 2L, 2L), (saved.Path.Reachability,
+        Assert.Equal((PathRiskReadVerdict.RecordedQuestions, 2L, 2L, 2L), (saved.Page.Verdict,
             counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
     }
 
@@ -72,7 +97,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreatePathRun();
         using var source = new BundleAssetSource();
 
-        var permission = Assert.Single(source.ReadSavedTier0Path(directory, UserDn).Value!.Permissions);
+        var permission = Assert.Single(FirstRecordedPathPage(source, directory).Permissions);
 
         Assert.Equal(("DC=contoso,DC=com", UserSid, ControlCapability.CanWriteDacl),
             (permission.Target, permission.HolderSid, permission.Capability));
@@ -120,9 +145,9 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreatePathRun();
         using var source = new BundleAssetSource();
 
-        var path = source.ReadSavedTier0Path(directory, "CN=NotCaptured,DC=contoso,DC=com").Value!.Path;
+        var path = source.ReadSavedTier0Path(directory, "CN=NotCaptured,DC=contoso,DC=com").Value!.Page;
 
-        Assert.Equal((Tier0Reachability.Unknown, (int?)null, 0), (path.Reachability, path.ShortestProvenDistance, path.Steps.Count));
+        Assert.Equal((PathRiskReadVerdict.NoRecordedQuestions, 0), (path.Verdict, path.Questions.Count));
     }
 
     [Fact]
@@ -132,7 +157,7 @@ public sealed partial class OpenedRunResultsTests
         MutateControlRun(directory, "UPDATE tier0_path_node SET proof='not json' WHERE target='" + TargetDn + "'");
         using var source = new BundleAssetSource();
 
-        Assert.Equal(Tier0Reachability.Reachable, source.ReadSavedTier0Path(directory, UserDn).Value!.Path.Reachability);
+        Assert.Single(FirstRecordedPathPage(source, directory).Page.Questions);
     }
 
     [Fact]
@@ -180,7 +205,8 @@ public sealed partial class OpenedRunResultsTests
         var selected = source.ReadSavedTier0Path(directory, UserDn);
 
         Assert.True(selected.IsSuccess, selected.Error?.Description);
-        Assert.Equal(Tier0Reachability.Reachable, selected.Value!.Path.Reachability);
+        Assert.Equal(PathRiskReadVerdict.RecordedQuestions, selected.Value!.Page.Verdict);
+        Assert.Single(FirstRecordedPathPage(source, directory).Page.Questions);
     }
 
     [Fact]
@@ -206,9 +232,20 @@ public sealed partial class OpenedRunResultsTests
     {
         var directory = Bundle(tier0Route: true, members: [UserDn], rootDescriptor: $"O:SYG:SYD:(A;;WD;;;{UserSid})");
         Derive(directory);
-        var judged = JudgingRun.JudgeWithTier0Discovery(directory, [], Started, Started,
-            JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
+        var judged = JudgingRun.JudgeWithTier0Discovery(directory, [], [new RequesterDaclRequest(UserDn, "DC=contoso,DC=com")], Started, Started,
+            JudgingRun.NobodyIsWatching, RunLog.Discarded, selfMembershipDiscoveryBudget: null, CancellationToken.None);
         Assert.True(judged.IsSuccess, judged.Error?.Description);
         return directory;
+    }
+
+    private static SavedTier0Path FirstRecordedPathPage(BundleAssetSource source, string directory)
+    {
+        var first = source.ReadSavedTier0Path(directory, UserDn);
+        Assert.True(first.IsSuccess, first.Error?.Description);
+        var saved = Assert.IsType<SavedTier0Path>(first.Value);
+        var group = Enum.GetValues<PathRiskVerdict>().First(value => saved.Page.Counts.For(value) > 0);
+        var page = source.ReadSavedTier0Path(directory, UserDn, group, null);
+        Assert.True(page.IsSuccess, page.Error?.Description);
+        return Assert.IsType<SavedTier0Path>(page.Value);
     }
 }

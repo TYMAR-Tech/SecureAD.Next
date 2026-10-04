@@ -88,7 +88,7 @@ internal static class UnconstrainedDelegation
 }
 
 /// <summary>SEC-010 — a user or service account trusted for unconstrained delegation.</summary>
-public sealed class UnconstrainedDelegationOnAccount : IRule
+public sealed class UnconstrainedDelegationOnAccount : IObjectRule
 {
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
@@ -113,7 +113,7 @@ public sealed class UnconstrainedDelegationOnAccount : IRule
 }
 
 /// <summary>SEC-011 — a non-domain-controller computer trusted for unconstrained delegation.</summary>
-public sealed class UnconstrainedDelegationOnNonDomainController : IRule
+public sealed class UnconstrainedDelegationOnNonDomainController : IObjectRule
 {
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(

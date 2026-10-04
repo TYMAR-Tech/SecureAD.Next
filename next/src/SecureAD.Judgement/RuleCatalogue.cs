@@ -44,5 +44,6 @@ public static class RuleCatalogue
         new BroadPrincipalCanTakeOverObject(),
         new ObjectOwnedByNonAdministrator(),
         new ProtectedObjectOwnedByNonAdministrator(),
+        new UnexpectedTier0Route(),
     ];
 }

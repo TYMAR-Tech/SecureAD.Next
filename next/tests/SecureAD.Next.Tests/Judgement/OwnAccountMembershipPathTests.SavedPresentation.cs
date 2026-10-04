@@ -17,12 +17,13 @@ public sealed partial class OwnAccountMembershipPathTests
         using var source = new BundleAssetSource();
         var section = Presentation(source, directory);
 
-        Assert.Equal("Supported route recorded", section.Result);
+        Assert.NotEmpty(PresentationQuestions(section));
+        Assert.Equal("Not requested", section.Result);
     }
 
     [Theory]
-    [InlineData("SW", OwnAccountMembershipPermissionKind.SelfMembership, "Self-Membership validated write")]
-    [InlineData("WP", OwnAccountMembershipPermissionKind.WriteMembers, "ordinary Write Members")]
+    [InlineData("SW", OwnAccountMembershipPermissionKind.SelfMembership, "Self-Membership")]
+    [InlineData("WP", OwnAccountMembershipPermissionKind.WriteMembers, "Write members")]
     public void SavedPathCombinedDisplayKeepsTheSelectedMembershipMechanism(string right, OwnAccountMembershipPermissionKind kind, string expected)
     {
         var directory = Capture($"O:SYG:SYD:(OA;;{right};{MemberGuid};;{UserSid})", membershipTail: false, daclTail: true);
@@ -31,7 +32,8 @@ public sealed partial class OwnAccountMembershipPathTests
         using var source = new BundleAssetSource();
         var section = Presentation(source, directory);
 
-        Assert.Contains("Saved own-account membership proof (" + expected + ")", section.Steps[0].Evidence);
+        Assert.Contains(PresentationQuestions(section).SelectMany(value => value.Entries),
+            value => value.Value.Contains("Relevant permission: " + expected, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -43,7 +45,8 @@ public sealed partial class OwnAccountMembershipPathTests
         using var source = new BundleAssetSource();
         var section = Presentation(source, directory);
 
-        Assert.Contains(MembershipDaclAssessment.Context, section.Steps[^1].Evidence);
+        Assert.Contains(PresentationQuestions(section).SelectMany(value => value.RecordDetails),
+            value => value.Label == "Saved membership-followed-by-permission assumptions" && value.Value == MembershipDaclAssessment.Context);
     }
 
     [Fact]
@@ -55,7 +58,9 @@ public sealed partial class OwnAccountMembershipPathTests
         using var source = new BundleAssetSource();
         var section = Presentation(source, directory);
 
-        Assert.Contains("Saved concrete requester authorization and ordered permission evidence:", section.Steps[^1].Evidence);
+        Assert.Contains("not to act as that object", PresentationSteps(section)[^1].Description);
+        Assert.Contains(PresentationQuestions(section).SelectMany(value => value.RecordDetails),
+            value => value.Label == "Requester distinguished name" && value.Value == UserDn);
     }
 
     [Fact]
@@ -63,11 +68,13 @@ public sealed partial class OwnAccountMembershipPathTests
     {
         var directory = Prepared();
         using var source = new BundleAssetSource();
-        var saved = source.ReadSavedTier0Path(directory, UserDn).Value!;
+        var first = source.ReadSavedTier0Path(directory, UserDn).Value!;
+        var group = Enum.GetValues<PathRiskVerdict>().First(value => first.Page.Counts.For(value) > 0);
+        var saved = source.ReadSavedTier0Path(directory, UserDn, group, null).Value!;
         using var reader = Open(directory);
         var original = reader.ReadControlEdges(TargetDn, null, null, true, 0);
 
-        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Edges.Single(edge => edge.Id == saved.Path.Steps[0].PermissionId)),
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Edges.Single(edge => edge.Id == saved.Page.Questions[0].Steps[0].PermissionId)),
             System.Text.Json.JsonSerializer.Serialize(Assert.Single(saved.Permissions)));
     }
 
@@ -147,7 +154,8 @@ public sealed partial class OwnAccountMembershipPathTests
         using var source = new BundleAssetSource();
         var section = Presentation(source, directory);
 
-        Assert.Contains("Unknown current membership and unknown ordinary Add readiness remain unknown.", section.Steps[0].Evidence);
+        Assert.Contains("Captured membership: unresolved", PresentationQuestions(section)[0].Membership);
+        Assert.Contains("Prerequisites for adding this account to the group: unresolved", PresentationQuestions(section)[0].Membership);
     }
 
     private static string UnpublishedPath(string directory, AnalysisStoreKind kind, bool manifest) => manifest
@@ -161,14 +169,22 @@ public sealed partial class OwnAccountMembershipPathTests
         using var source = new BundleAssetSource();
         var section = Presentation(source, directory);
 
-        Assert.Contains("\"Readiness\": \"Unknown\"", section.SavedQuestions);
+        Assert.Contains(PresentationQuestions(section).SelectMany(value => value.RecordDetails),
+            value => value.Label == "Ordinary Add readiness" && value.Value == "Unknown");
     }
 
     private static SavedTier0PathSectionViewModel Presentation(BundleAssetSource source, string directory)
     {
-        var section = new SavedTier0PathSectionViewModel(new(ObjectSectionCatalog.SavedTier0Path, "Saved Tier 0 path", []));
-        section.Configure(UserDn, () => source.ReadSavedTier0Path(directory, UserDn));
+        var section = new SavedTier0PathSectionViewModel(new(ObjectSectionCatalog.SavedTier0Path, "Tier 0 findings and routes", []));
+        section.ConfigureAsync(UserDn, (group, after, _) => Task.FromResult(source.ReadSavedTier0Path(directory, UserDn, group, after)));
         section.Read();
+        foreach (var group in section.Groups) group.IsExpanded = true;
         return section;
     }
+
+    private static IReadOnlyList<SavedPathQuestionViewModel> PresentationQuestions(SavedTier0PathSectionViewModel section) =>
+        section.Groups.SelectMany(group => group.Questions).ToArray();
+
+    private static IReadOnlyList<SavedPathStepViewModel> PresentationSteps(SavedTier0PathSectionViewModel section) =>
+        PresentationQuestions(section).SelectMany(question => question.Steps).ToArray();
 }

@@ -578,12 +578,31 @@ public sealed class DerivationReader : IDisposable
     /// <param name="scope">The scope its SID is unique within, empty for a forest-wide principal.</param>
     /// <param name="budget">The most principals to return before stopping.</param>
     /// <returns>What is inside it, and what the walk could not reach.</returns>
-    public PrincipalExpansion MembersOf(string sid, string scope, int budget = DefaultExpansionBudget)
+    public PrincipalExpansion MembersOf(string sid, string scope, int budget = DefaultExpansionBudget) =>
+        MembersOf(sid, scope, budget, null, CancellationToken.None);
+
+    /// <summary>
+    /// Walks the same saved nesting with a caller's source-backed link qualification. Only accepted
+    /// links enter the visited set; an unsupported shortcut cannot hide a supported longer route.
+    /// This finite captured-graph walk has no additional result or depth limit.
+    /// </summary>
+    public PrincipalExpansion MembersOf(string sid, string scope,
+        Func<(string Sid, string Scope), (string Sid, string Scope), bool> qualifyLink,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(qualifyLink);
+        return MembersOf(sid, scope, null, qualifyLink, cancellationToken);
+    }
+
+    private PrincipalExpansion MembersOf(string sid, string scope, int? budget,
+        Func<(string Sid, string Scope), (string Sid, string Scope), bool>? qualifyLink,
+        CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(sid);
         ArgumentNullException.ThrowIfNull(scope);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(budget);
+        if (budget is { } ceiling) ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ceiling);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Discriminated on the phase and not on the table being empty, for the reason the schema
         // gives everywhere else in this store: a forest with no nesting in it and a bundle whose
@@ -640,13 +659,20 @@ public sealed class DerivationReader : IDisposable
 
         while (queue.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var current = queue.Dequeue();
 
             if (!edges.TryGetValue(current, out var members))
                 continue;
 
-            foreach (var member in members)
+            IEnumerable<int> ordered = qualifyLink is null ? members
+                : members.OrderBy(member => identities[member].Sid, StringComparer.Ordinal)
+                    .ThenBy(member => identities[member].Scope, StringComparer.Ordinal);
+            foreach (var member in ordered)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (qualifyLink is not null && !qualifyLink(identities[current], identities[member]))
+                    continue;
                 // The visited set is what makes a cycle terminate. Without it a loop that Microsoft
                 // says may exist would be walked until something ran out.
                 if (!seen.Add(member))
@@ -654,6 +680,9 @@ public sealed class DerivationReader : IDisposable
 
                 parent[member] = current;
                 order.Add(member);
+                // A qualified group with no resolved children may still name uncaptured members.
+                if (qualifyLink is not null && unresolvedMembers.Contains(member))
+                    throughUnidentifiedMember = true;
 
                 // LISTED EITHER WAY, ENTERED ONLY WHERE THE HOP CARRIES AUTHORIZATION. A
                 // distribution group nested in a security group really is a member of it, so it
@@ -688,7 +717,7 @@ public sealed class DerivationReader : IDisposable
                     }
                 }
 
-                if (order.Count < budget)
+                if (budget is null || order.Count < budget)
                     continue;
 
                 stopped = true;
@@ -703,6 +732,7 @@ public sealed class DerivationReader : IDisposable
 
         foreach (var memberId in order)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var identity = identities.GetValueOrDefault(memberId);
 
             // A member is complete when nothing below it was left unreached. Where the walk stopped,

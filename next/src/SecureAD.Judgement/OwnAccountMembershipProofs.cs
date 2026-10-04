@@ -16,6 +16,7 @@ internal static class OwnAccountMembershipProofs
     {
         if (requests.Count == 0) return [];
         sources.RequireFor(description);
+        var membershipContext = RequesterMembershipContext.Create(sources, identities, inputs, cancellationToken);
         var bundle = sources.Bundle;
         var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
@@ -50,7 +51,7 @@ internal static class OwnAccountMembershipProofs
             var edges = ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id)).ToArray();
             var assessment = OwnAccountMembershipEvaluator.Assess(request, inputs, description, identities,
                 bundle.ReadObjectAttributes, permissions, schema, catalogue, contexts.Value, edges,
-                bundle.Description.ForestFqdn, cancellationToken);
+                bundle.Description.ForestFqdn, cancellationToken, membershipContext);
             var steps = membershipContinuation ? Steps(assessment, inputs, nodes, cancellationToken) : [];
             if (membershipContinuation && assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
                 assessment = assessment with { Issues = [.. assessment.Issues, OwnAccountMembershipIssue.MembershipContinuationUnresolved] };
@@ -72,19 +73,6 @@ internal static class OwnAccountMembershipProofs
         return result;
     }
 
-    internal static OwnAccountMembershipRequest? Best(Tier0PathNode node, IReadOnlyList<SavedOwnAccountMembershipProof> proofs,
-        IReadOnlyList<SavedRequesterDaclProof> requesters)
-    {
-        if (node.MembershipDistance == 0) return null;
-        var previous = node.Terminal is not null ? 1 : node.MembershipDistance;
-        if (node.RequesterRoute is { } existing)
-            previous = requesters.Single(proof => proof.Assessment.Request == existing).Assessment.Steps.Count;
-        var candidate = proofs.Where(proof => proof.Assessment.Obtainability == ControlEvaluationState.Established
-            && proof.Assessment.Requester == node.Subject && proof.Steps.Count != 0)
-            .OrderBy(proof => proof.Steps.Count).ThenBy(proof => Key(proof.Assessment.Request), StringComparer.Ordinal).FirstOrDefault();
-        return candidate is not null && (previous is null || candidate.Steps.Count < previous) ? candidate.Assessment.Request : null;
-    }
-
     private static IReadOnlyList<Tier0PathStep> Steps(OwnAccountMembershipAssessment assessment, PathInputs inputs,
         IReadOnlyDictionary<string, Tier0PathNode> nodes, CancellationToken cancellationToken)
     {
@@ -92,13 +80,7 @@ internal static class OwnAccountMembershipProofs
             || assessment.Target is not { } target || !nodes.TryGetValue(target.DistinguishedName, out var current)
             || current.Subject != target || current.MembershipDistance is null) return [];
         var steps = new List<Tier0PathStep>();
-        if (assessment.Basis == OwnAccountMembershipBasis.ExistingMembership)
-            steps.Add(new(requester, target, Tier0PathStepKind.Membership, null, null, assessment.MembershipEvidence[0], null)
-            { OwnAccountRequest = assessment.Request });
-        else if (assessment.Basis == OwnAccountMembershipBasis.ExistingOrAuthorizedAdd)
-            steps.Add(new(requester, target, Tier0PathStepKind.OwnAccountMembership, null, null, null, assessment.Permissions.Single().Id)
-            { OwnAccountRequest = assessment.Request });
-        else throw Tier0PathStorage.InvalidProof();
+        steps.Add(InitialStep(assessment));
 
         // Only the original membership certificate can continue this new relationship. A target's
         // terminal WRITE_DAC, requester proof, or another hypothetical addition is not a membership.
@@ -113,6 +95,20 @@ internal static class OwnAccountMembershipProofs
         }
         if (current.MembershipDistance != 0 || !inputs.FixedTargets.Contains(current.Subject)) throw Tier0PathStorage.InvalidProof();
         return steps;
+    }
+
+    internal static Tier0PathStep InitialStep(OwnAccountMembershipAssessment assessment)
+    {
+        var requester = assessment.Requester ?? throw Tier0PathStorage.InvalidProof();
+        var target = assessment.Target ?? throw Tier0PathStorage.InvalidProof();
+        return assessment.Basis switch
+        {
+            OwnAccountMembershipBasis.ExistingMembership => new(requester, target, Tier0PathStepKind.Membership,
+                null, null, assessment.MembershipEvidence[0], null) { OwnAccountRequest = assessment.Request },
+            OwnAccountMembershipBasis.ExistingOrAuthorizedAdd => new(requester, target, Tier0PathStepKind.OwnAccountMembership,
+                null, null, null, assessment.Permissions.Single().Id) { OwnAccountRequest = assessment.Request },
+            _ => throw Tier0PathStorage.InvalidProof(),
+        };
     }
 
     internal static string Key(OwnAccountMembershipRequest value) => value.RequesterDn.ToUpperInvariant() + "\0"

@@ -15,6 +15,7 @@ public enum RequesterTrusteeReason
     OtherCurrentUser, NonUserIdentity, IdentityMissing, UnsupportedIdentity,
     ResourceContextUnknown, GroupTypeMissing, UnsupportedGroupScope, MembershipNotEstablished,
     ObtainedGlobalMembership,
+    NestedGlobalMembership,
 }
 
 /// <summary>A source-backed authorization route, not an AdminSDHolder protection route or a complete token.</summary>

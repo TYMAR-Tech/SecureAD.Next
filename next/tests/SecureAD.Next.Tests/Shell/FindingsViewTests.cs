@@ -19,6 +19,37 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class FindingsViewTests
 {
+    [Theory]
+    [InlineData(900, 430)]
+    [InlineData(1300, 650)]
+    public void Sec071SummaryAndRouteActionAreVisibleWithoutHidingTheList(int width, int height) => OnSta(() =>
+    {
+        var (model, source) = Model();
+        var generation = Guid.NewGuid();
+        var account = Guid.NewGuid();
+        var seal = new string('a', 64);
+        source.Tier0Summary = SecureAD.Kernel.Result<Tier0FindingSummary?>.Success(
+            new(1, generation, null, seal, seal, 1, PathRiskAvailability.Recorded, RuleExecutionOutcome.Succeeded, 9, 7, 0));
+        model.RuleFilter = "SEC-071";
+        var row = new FindingRowViewModel(new Finding("SEC-071", 1, Severity.High,
+            new(FindingSubjectKind.Account, account.ToString("D")), account, "CN=Alice,DC=contoso,DC=com",
+            "contoso.com", "user", "Unexpected route", EvidenceCompleteness.Complete,
+            new Tier0RouteFindingEvidence(generation, null, seal, seal, "Tier0ControlPlane", account,
+                "S-1-5-21-1-2-3-1100", "CN=Alice,DC=contoso,DC=com", 1, seal)) { PrincipalName = "Alice" });
+        model.SelectedFinding = row;
+        var view = View(model);
+        Layout(view, width, height);
+        var summary = (TextBlock)view.FindName("Tier0FindingSummary");
+        Assert.Contains("Accounts with SEC-071 findings: 7", summary.Text);
+        Assert.Contains("Supported checks only; other routes may exist.", summary.Text);
+        var button = Assert.Single(Descendants<Button>(view), value => Equals(value.Content, "View saved routes"));
+        Assert.Equal(Visibility.Visible, button.Visibility);
+        Assert.Same(model.OpenSavedRoutesCommand, button.Command);
+        Assert.Same(row, button.CommandParameter);
+        Assert.True(Assert.Single(Descendants<DataGrid>(view)).ActualHeight >= 50);
+        Assert.True(((ScrollViewer)view.FindName("FindingDetailsScroll")).ActualHeight >= 30);
+    });
+
     [Fact]
     public void CloseDetailsReturnsTheListSpaceWithoutChangingItsQuestion() => OnSta(() =>
     {

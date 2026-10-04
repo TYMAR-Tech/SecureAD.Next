@@ -16,6 +16,7 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
     private string? _part;
     private long _partStarted;
     private bool _completed;
+    private string? _interruption;
     private bool _disposed;
 
     private sealed record PartSnapshot(string Name, double CompletedMs, double ActiveMs);
@@ -79,6 +80,11 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
         lock (_gate) _completed = true;
     }
 
+    internal void Interrupted(bool cancelled)
+    {
+        lock (_gate) _interruption = cancelled ? "cancelled" : "failed";
+    }
+
     internal void Report(string outcome = "running")
     {
         Snapshot snapshot;
@@ -136,7 +142,7 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
             if (_disposed) return;
             var now = time.GetTimestamp();
             if (_completed) ClosePart(now);
-            snapshot = Read(_completed ? "completed" : "interrupted", now);
+            snapshot = Read(_completed ? "completed" : _interruption ?? "interrupted", now);
             _disposed = true;
         }
         owner.EndPostPass(this);

@@ -13,11 +13,10 @@ public sealed partial class SavedTier0PathSectionTests
     {
         var section = Read(Saved());
         var pending = PendingPath();
-        section.ConfigureAsync(UserDn, _ => pending.Task);
+        section.ConfigureAsync(UserDn, (_, _, _) => pending.Task);
         section.Read();
-        Assert.Equal(("Loading and validating saved results...", "Saved results have not been read.",
-            "Saved results have not been read.", 0, ""),
-            (section.Result, section.AutomaticChecks, section.SavedQuestions, section.Steps.Count, section.Provenance));
+        Assert.Equal(("Loading and validating saved results...", "Saved results have not been read.", 0, ""),
+            (section.Result, section.AutomaticChecks, Steps(section).Count, section.Provenance));
         pending.SetResult(Result<SavedTier0Path?>.Success(Saved()));
         await section.ReadCompletion;
     }
@@ -29,14 +28,16 @@ public sealed partial class SavedTier0PathSectionTests
         var expected = Read(saved);
         var section = Section();
         var pending = PendingPath();
-        section.ConfigureAsync(UserDn, _ => pending.Task);
+        section.ConfigureAsync(UserDn, (_, _, _) => pending.Task);
         section.Read();
         pending.SetResult(Result<SavedTier0Path?>.Success(saved));
         await section.ReadCompletion;
-        Assert.Equal((expected.Result, expected.Provenance, expected.AutomaticChecks, expected.SavedQuestions,
-            expected.Distance, expected.Destination), (section.Result, section.Provenance, section.AutomaticChecks,
-            section.SavedQuestions, section.Distance, section.Destination));
-        Assert.Equal(expected.Steps, section.Steps);
+        Assert.Equal((expected.Result, expected.Provenance, expected.AutomaticChecks, expected.Severity),
+            (section.Result, section.Provenance, section.AutomaticChecks, section.Severity));
+        Assert.Equal(Questions(expected).SelectMany(value => value.RecordDetails), Questions(section).SelectMany(value => value.RecordDetails));
+        Assert.Equal(Steps(expected), Steps(section));
+        Assert.NotEmpty(Steps(section));
+        Assert.Contains(saved.Description.GenerationId.ToString(), section.Provenance);
         Assert.Equal(expected.Limitations, section.Limitations);
     }
 
@@ -46,14 +47,14 @@ public sealed partial class SavedTier0PathSectionTests
         var section = Section();
         var pending = PendingPath();
         CancellationToken observed = default;
-        section.ConfigureAsync(UserDn, token => { observed = token; return pending.Task; });
+        section.ConfigureAsync(UserDn, (_, _, token) => { observed = token; return pending.Task; });
         section.Read();
         var completion = section.ReadCompletion;
         section.CancelRead();
         Assert.True(observed.IsCancellationRequested);
         pending.SetResult(Result<SavedTier0Path?>.Success(Saved()));
         await completion;
-        Assert.Equal(("Saved results have not been read.", 0, ""), (section.Result, section.Steps.Count, section.Provenance));
+        Assert.Equal(("Saved results have not been read.", 0, ""), (section.Result, Steps(section).Count, section.Provenance));
     }
 
     [Fact]
@@ -61,16 +62,16 @@ public sealed partial class SavedTier0PathSectionTests
     {
         var section = Section();
         var pending = PendingPath();
-        section.ConfigureAsync(UserDn, _ => pending.Task);
+        section.ConfigureAsync(UserDn, (_, _, _) => pending.Task);
         section.Read();
         var first = section.ReadCompletion;
         var replacement = Saved();
-        section.ConfigureAsync(UserDn, _ => Task.FromResult(Result<SavedTier0Path?>.Success(replacement)));
+        section.ConfigureAsync(UserDn, (_, _, _) => Task.FromResult(Result<SavedTier0Path?>.Success(replacement)));
         section.Read();
         await section.ReadCompletion;
         pending.SetResult(Result<SavedTier0Path?>.Success(Saved()));
         await first;
-        Assert.Equal(Read(replacement).Provenance, section.Provenance);
+        Assert.Contains(replacement.Description.GenerationId.ToString(), section.Provenance);
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public sealed partial class SavedTier0PathSectionTests
         first.Release();
         await originalCompletion;
         var section = Assert.IsType<SavedTier0PathSectionViewModel>(screen.Opened.Selected);
-        Assert.Equal(Read(source.SavedPath.Value).Provenance, section.Provenance);
+        Assert.Contains(source.SavedPath.Value!.Description.GenerationId.ToString(), section.Provenance);
     }
 
     [Theory]
@@ -136,7 +137,7 @@ public sealed partial class SavedTier0PathSectionTests
         await screen.ReadCompletion;
         var section = Assert.IsType<SavedTier0PathSectionViewModel>(screen.Opened.Selected);
         Assert.Equal(2, source.PathQueries.Count);
-        Assert.Equal("Supported route recorded", section.Result);
+        Assert.Equal("SEC-071 — Unexpected route to Tier 0", section.Result);
     }
 
     private sealed class PendingNavigationRead
@@ -157,12 +158,12 @@ public sealed partial class SavedTier0PathSectionTests
     public async Task P246AsyncFailureIsUnavailableNotAnEmptySecurityAnswer()
     {
         var section = Section();
-        section.ConfigureAsync(UserDn, _ => Task.FromException<Result<SavedTier0Path?>>(new IOException("synthetic failure")));
+        section.ConfigureAsync(UserDn, (_, _, _) => Task.FromException<Result<SavedTier0Path?>>(new IOException("synthetic failure")));
         section.Read();
         await section.ReadCompletion;
         Assert.Equal("Saved result unavailable", section.Result);
         Assert.Contains("synthetic failure", section.Detail);
-        Assert.Empty(section.Steps);
+        Assert.Empty(Steps(section));
     }
 
     [Fact]
@@ -173,7 +174,7 @@ public sealed partial class SavedTier0PathSectionTests
         var thread = Environment.CurrentManagedThreadId;
         var notifications = new List<int>();
         section.PropertyChanged += (_, _) => notifications.Add(Environment.CurrentManagedThreadId);
-        section.ConfigureAsync(UserDn, _ => pending.Task);
+        section.ConfigureAsync(UserDn, (_, _, _) => pending.Task);
         section.Read();
         var frame = new DispatcherFrame();
         var dispatcher = Dispatcher.CurrentDispatcher;
@@ -181,7 +182,7 @@ public sealed partial class SavedTier0PathSectionTests
         _ = Task.Run(() => pending.SetResult(Result<SavedTier0Path?>.Success(Saved())));
         Dispatcher.PushFrame(frame);
         section.ReadCompletion.GetAwaiter().GetResult();
-        Assert.Equal("Supported route recorded", section.Result);
+        Assert.Equal("SEC-071 — Unexpected route to Tier 0", section.Result);
         Assert.NotEmpty(notifications);
         Assert.All(notifications, id => Assert.Equal(thread, id));
     });

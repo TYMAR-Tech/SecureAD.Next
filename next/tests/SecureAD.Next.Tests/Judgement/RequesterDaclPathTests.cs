@@ -305,7 +305,7 @@ public sealed class RequesterDaclPathTests(ITestOutputHelper output)
         var directory = Capture($"O:SYG:SYD:(A;;WD;;;{UserSid})");
         Derive(directory);
         Judge(directory, [new(UserDn, CoreDn)]);
-        Mutate(directory, $"UPDATE tier0_path_calculation SET proof=json_set(proof,'{path}',{value})");
+        PathProofVerification.AlterRequesterProof(directory, path, value);
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));

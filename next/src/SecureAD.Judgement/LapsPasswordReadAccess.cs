@@ -38,7 +38,7 @@ namespace SecureAD.Judgement;
 /// <c>docs/specs/rules/SEC-090-who-can-read-laps-passwords.md</c>.
 /// </para>
 /// </remarks>
-public sealed class LapsPasswordReadAccess : IRule
+public sealed class LapsPasswordReadAccess : IObjectRule
 {
     /// <summary><c>ADS_RIGHT_DS_READ_PROP</c>.</summary>
     private const int ReadProperty = 0x00000010;

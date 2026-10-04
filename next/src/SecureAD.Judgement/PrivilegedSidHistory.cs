@@ -59,7 +59,7 @@ namespace SecureAD.Judgement;
 /// Specified in <c>docs/specs/rules/SEC-027-privileged-sid-history.md</c>.
 /// </para>
 /// </remarks>
-public sealed class PrivilegedSidHistory : IRule
+public sealed class PrivilegedSidHistory : IObjectRule
 {
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(

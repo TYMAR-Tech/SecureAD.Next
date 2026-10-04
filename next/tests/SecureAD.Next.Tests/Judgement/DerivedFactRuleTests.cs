@@ -33,7 +33,7 @@ public sealed class DerivedFactRuleTests
     /// <summary>
     /// A rule declaring a derived fact, so a judging can be asked for one without SEC-030 existing.
     /// </summary>
-    private sealed class NeedsProtectedPrincipals : IRule
+    private sealed class NeedsProtectedPrincipals : IObjectRule
     {
         public RuleDefinition Definition { get; } = new(
             "TEST-DERIVED",
@@ -62,7 +62,7 @@ public sealed class DerivedFactRuleTests
     /// A rule declaring the principal expansion, so a judging can be asked for one before
     /// SEC-090 or SEC-093 exists.
     /// </summary>
-    private sealed class NeedsPrincipalExpansion : IRule
+    private sealed class NeedsPrincipalExpansion : IObjectRule
     {
         public RuleDefinition Definition { get; } = new(
             "TEST-EXPANSION",
@@ -88,7 +88,7 @@ public sealed class DerivedFactRuleTests
     }
 
     /// <summary>A rule that reads only the captured object, as today's two delegation rules do.</summary>
-    private sealed class NeedsNothingDerived : IRule
+    private sealed class NeedsNothingDerived : IObjectRule
     {
         public RuleDefinition Definition { get; } = new(
             "TEST-PLAIN",
@@ -112,7 +112,7 @@ public sealed class DerivedFactRuleTests
     /// A rule that reaches the derived facts and finds them undecided, the way SEC-030 will for a
     /// principal whose only route runs through a disputed catalogue entry.
     /// </summary>
-    private sealed class CannotResolve : IRule
+    private sealed class CannotResolve : IObjectRule
     {
         public RuleDefinition Definition { get; } = new(
             "TEST-UNRESOLVED",
@@ -345,7 +345,7 @@ public sealed class DerivedFactRuleTests
     /// A rule that records the reference time it was handed, so a test can prove the recorded
     /// evaluation time reaches the rules rather than stopping at the writer.
     /// </summary>
-    private sealed class RecordsTheReferenceTime : IRule
+    private sealed class RecordsTheReferenceTime : IObjectRule
     {
         public RuleDefinition Definition { get; } = new(
             "TEST-ASOF",

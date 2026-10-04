@@ -22,10 +22,13 @@ public sealed partial class OwnAccountMembershipPathTests
     {
         var directory = PagingCapture(fullControl);
         Derive(directory);
-        Judge(directory, []);
+        Judge(directory, [], [new(UserDn, CoreDn)]);
         using var source = new BundleAssetSource();
 
-        var saved = source.ReadSavedTier0Path(directory, UserDn);
+        var first = source.ReadSavedTier0Path(directory, UserDn);
+        Assert.True(first.IsSuccess, first.Error?.Description);
+        var group = Enum.GetValues<PathRiskVerdict>().First(value => first.Value!.Page.Counts.For(value) > 0);
+        var saved = source.ReadSavedTier0Path(directory, UserDn, group, null);
 
         Assert.True(saved.IsSuccess, saved.Error?.Description);
         Assert.Equal(PagingSubjectSid, saved.Value!.Permissions.Single().HolderSid);

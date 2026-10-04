@@ -106,8 +106,14 @@ public static class JudgementSchema
     /// stronger, and an object's descriptor is supplied by the <b>evidence</b> on every read.</para>
     /// <para>47 saves separate per-question path-risk qualification and coverage, bound to the
     /// original path calculation and captured pre-change authority; it adds no finding or permission semantics.</para>
+    /// <para>48 stores each original requester proof once beside its qualification, with a certificate
+    /// fingerprint over the complete proof set, and publishes SEC-071 findings and bound summary counts.</para>
+    /// <para>49 retains qualified nested global-group requester witnesses in selected questions and
+    /// ordered permission proofs; member attribution and the other operation families are unchanged.</para>
+    /// <para>50 saves captured group-nesting reasons for assessing membership-edit permissions and
+    /// separates obtained-group continuation witnesses from the user's captured membership proof.</para>
     /// </remarks>
-    public const int Version = 47;
+    public const int Version = 50;
 
     private static readonly string[] TableDdl =
     [
@@ -670,6 +676,7 @@ public static class JudgementSchema
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
         PathRequesterRiskStorage.CreateTables(connection);
+        Tier0RouteFindingStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
         PermissionClassificationStorage.CreateTables(connection);
     }

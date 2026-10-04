@@ -130,7 +130,7 @@ public sealed partial class OwnAccountMembershipPathTests
         using var sources = ControlProofVerification.OpenSources(reader);
         using var trace = new JudgingInputReuseTests.Statements(connection);
 
-        Tier0PathStorage.Write(connection, reader.Description, sources, [], [], CancellationToken.None, [], true, _ => { });
+        Tier0PathStorage.Write(connection, reader.Description, sources, [], [], CancellationToken.None, [], true, _ => { }, null);
 
         Assert.Single(trace.Sql.Where(sql => sql.StartsWith("SELECT target,identity_json,fingerprint,", StringComparison.Ordinal)));
     }

@@ -233,7 +233,7 @@ public sealed class JudgingStatusTests
         }
     }
 
-    private sealed class WaitingRule(ManualResetEventSlim reported, CancellationToken token) : IRule
+    private sealed class WaitingRule(ManualResetEventSlim reported, CancellationToken token) : IObjectRule
     {
         public RuleDefinition Definition { get; } = new("TEST-BLOCKED", "Held diagnostic test rule", Severity.Low,
             1, [], ["objectClass"], []);

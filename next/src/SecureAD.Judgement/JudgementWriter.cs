@@ -243,11 +243,12 @@ public sealed class JudgementWriter : IDisposable
 
     internal void CalculateTier0Paths(JudgementDescription description, JudgingInputs inputs, IReadOnlyList<RequesterDaclRequest> requests,
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests, CancellationToken cancellationToken,
-        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection, Action<PathRequesterWorkPhase> beginPhase)
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection, Action<PathRequesterWorkPhase> beginPhase,
+        JudgingStatus status)
     {
         ThrowIfFinished();
         Tier0PathStorage.Write(_connection, description, inputs, requests, ownAccountRequests, cancellationToken,
-            membershipDaclRequests, offlineSelection, beginPhase);
+            membershipDaclRequests, offlineSelection, beginPhase, status);
     }
 
     internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
@@ -275,11 +276,12 @@ public sealed class JudgementWriter : IDisposable
     internal int AdmitDiscoveredScope(BundleReader bundle, JudgementDescription description,
         SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding binding,
         Tier0DiscoveryScheduler discovery, JudgingContext context, Func<string, string?> domainSid,
-        Guid? derivationGeneration, CancellationToken cancellationToken, JudgingStatus? status)
+        Guid? derivationGeneration, CancellationToken cancellationToken, JudgingStatus? status,
+        JudgingInputs? sources, bool membershipContinuations)
     {
         ThrowIfFinished();
         return Tier0AdmissionRun.Admit(_connection, bundle, description, input, binding, discovery, context,
-            domainSid, GenerationId, derivationGeneration, cancellationToken, status, _statements, _session);
+            domainSid, GenerationId, derivationGeneration, cancellationToken, status, _statements, _session, sources, membershipContinuations);
     }
 
     internal void WriteMemberAttributions(SecureAD.Derivation.CapturedMembershipInput input,
@@ -437,6 +439,20 @@ public sealed class JudgementWriter : IDisposable
     /// The store is already finished, or this rule has been written once already.
     /// </exception>
     public void Write(RuleExecution execution)
+        => WriteExecution(execution, null, CancellationToken.None);
+
+    internal RuleExecution WriteTier0Findings(UnexpectedTier0Route rule, JudgementDescription description,
+        JudgingInputs inputs, CancellationToken cancellationToken)
+    {
+        ThrowIfFinished();
+        var (execution, summary) = rule.JudgeSaved(_connection, description, inputs, cancellationToken);
+        WriteExecution(execution, transaction => Tier0RouteFindingStorage.WriteSummary(_connection, transaction, summary),
+            cancellationToken);
+        return execution;
+    }
+
+    private void WriteExecution(RuleExecution execution, Action<SqliteTransaction>? additional,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(execution);
         ThrowIfFinished();
@@ -484,8 +500,13 @@ public sealed class JudgementWriter : IDisposable
         }
 
         foreach (var finding in execution.Findings)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             WriteFinding(transaction, finding);
+        }
 
+        additional?.Invoke(transaction);
+        cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
         _outcomes.Add(execution.Outcome);
     }
@@ -516,6 +537,7 @@ public sealed class JudgementWriter : IDisposable
         LapsInventoryStorage.RequirePublishable(_connection);
         PermissionClassificationStorage.RequirePublishable(_connection);
         PathRequesterRiskStorage.RequirePublishable(_connection);
+        Tier0RouteFindingStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
@@ -684,7 +706,7 @@ public sealed class JudgementWriter : IDisposable
                 command.Parameters.AddWithValue("$rank", (int)finding.Severity);
 
                 command.Parameters.AddWithValue("$dn", finding.DistinguishedName);
-                command.Parameters.AddWithValue("$principal", finding.Subject.Key);
+                command.Parameters.AddWithValue("$principal", finding.PrincipalName);
                 command.Parameters.AddWithValue("$domain", finding.DomainFqdn);
                 command.Parameters.AddWithValue("$class", finding.ObjectClass);
                 command.Parameters.AddWithValue("$detail", finding.Detail);
@@ -707,6 +729,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case Tier0RouteFindingEvidence route:
+                Tier0RouteFindingStorage.WriteEvidence(_connection, transaction, findingId, route);
+                break;
             case UnconstrainedDelegationEvidence delegation:
                 Execute(
                     transaction,

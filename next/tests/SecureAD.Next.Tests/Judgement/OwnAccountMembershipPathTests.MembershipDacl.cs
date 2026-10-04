@@ -99,7 +99,7 @@ public sealed partial class OwnAccountMembershipPathTests
     }
 
     [Fact]
-    public void MembershipDaclKeepsANestedDenyPossibleRatherThanIgnoringIt()
+    public void MembershipDaclAppliesACapturedNestedDenyAfterObtainingMembership()
     {
         var directory = Capture(membershipTail: false, holderMembers: [TargetDn],
             coreDescriptor: $"O:SYG:SYD:(D;;WD;;;{HolderSid})(A;;WD;;;{TargetSid})");
@@ -107,7 +107,7 @@ public sealed partial class OwnAccountMembershipPathTests
         JudgeMembershipDacl(directory, [new(UserDn, TargetDn, CoreDn)]);
         using var reader = Open(directory);
 
-        Assert.Equal(ControlEvaluationState.Unknown, Combined(reader).Authorization);
+        Assert.Equal(ControlEvaluationState.NotEstablished, Combined(reader).Authorization);
     }
 
     [Theory]
@@ -124,14 +124,14 @@ public sealed partial class OwnAccountMembershipPathTests
     }
 
     [Fact]
-    public void MembershipDaclDoesNotChainAnUnprovedNestedGrant()
+    public void MembershipDaclEstablishesTheCapturedNestedGrant()
     {
         var directory = Capture(membershipTail: true, holderMembers: [TargetDn], coreDescriptor: $"O:SYG:SYD:(A;;WD;;;{HolderSid})");
         Derive(directory);
         JudgeMembershipDacl(directory, [new(UserDn, TargetDn, CoreDn)]);
         using var reader = Open(directory);
 
-        Assert.Equal(ControlEvaluationState.Unknown, Combined(reader).Dacl!.Authorization);
+        Assert.Equal(ControlEvaluationState.Established, Combined(reader).Dacl!.Authorization);
     }
 
     [Theory]
@@ -423,7 +423,7 @@ public sealed partial class OwnAccountMembershipPathTests
     {
         var directory = PreparedMembershipDacl();
         using (var before = Open(directory)) Assert.Equal(ControlEvaluationState.Established, Combined(before).Authorization);
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
+        PathProofVerification.AlterRequesterProof(directory, path, "'" + value + "'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));

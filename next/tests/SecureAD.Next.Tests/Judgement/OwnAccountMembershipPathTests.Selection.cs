@@ -191,15 +191,16 @@ public sealed partial class OwnAccountMembershipPathTests
     }
 
     [Fact]
-    public void SelectionDoesNotFollowANestedGroupAsAConcreteRequester()
+    public void SelectionDoesNotTreatAnEmptyNestedGroupAsAConcreteRequester()
     {
         var directory = Capture(membershipTail: false, holderMembers: [TargetDn], coreDescriptor: $"O:SYG:SYD:(A;;WD;;;{HolderSid})");
         Derive(directory);
         JudgeSelection(directory);
         using var reader = Open(directory);
 
-        Assert.Contains(new(PathRequesterSelectionReason.RequesterKindUnsupported, CoreDn, 0, HolderSid, TargetDn),
-            reader.ReadTier0Path(UserDn).RequesterSelection!.Limitations);
+        var selection = reader.ReadTier0Path(UserDn).RequesterSelection!;
+        Assert.DoesNotContain(selection.Candidates, value => value.Family == PathRequesterFamily.RequesterDacl);
+        Assert.Contains(new(PathRequesterSelectionReason.MembershipVisibilityUnknown, CoreDn, 0, HolderSid, null), selection.Limitations);
     }
 
     [Fact]

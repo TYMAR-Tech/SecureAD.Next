@@ -138,9 +138,15 @@ internal static class OwnershipAuditValidation
                     || descriptor.Entries.FirstOrDefault(entry => entry.Ordinal == ordinal) is not { } witnessed
                     || witnessed.Trustee.Sid != link.WitnessTrustee)
                     throw OwnershipAuditStorage.InvalidProof();
+                if (link.GroupMembership is { } membership)
+                {
+                    if (link.WitnessIsOwner || capability != ControlCapability.CanWriteDacl) throw OwnershipAuditStorage.InvalidProof();
+                    RequesterMembershipContext.RequireGroupSources(membership, controller.Identity, affected.Identity,
+                        link.WitnessTrustee, bundle.ReadObjectAttributes, cancellationToken);
+                }
                 relations[index] = Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity,
                     affected.Identity, capability, new(link.WitnessTarget, link.WitnessOrdinal,
-                        link.WitnessTrustee, link.WitnessIsOwner));
+                        link.WitnessTrustee, link.WitnessIsOwner) { GroupMembership = link.GroupMembership });
                 continue;
             }
             var edge = ControlEdgeStorage.ReadEdge(connection, description, edgeId);

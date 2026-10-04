@@ -23,45 +23,14 @@
                         <Setter Property="Margin" Value="0,0,0,8" />
                     </Style>
                 </StackPanel.Resources>
-                <TextBlock Text="{Binding ResultHeading}" FontWeight="SemiBold" />
-                <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" />
+                <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" FontWeight="SemiBold" />
+                <TextBlock x:Name="SavedPathSeverity" Text="{Binding Severity}" />
                 <TextBlock Text="{Binding Detail}" />
                 <TextBlock Text="{Binding Boundary}" />
-                <TextBlock x:Name="SavedPathProvenance" Text="{Binding Provenance}" />
-
-                <TextBlock Text="{Binding RouteHeading}" FontWeight="SemiBold" Margin="0,16,0,8" />
-                <TextBlock x:Name="SavedPathDistance" Text="{Binding Distance}" />
-                <TextBlock Text="{Binding Destination}" />
-                <ItemsControl x:Name="SavedPathSteps" ItemsSource="{Binding Steps}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
-                                <Expander IsExpanded="False">
-                                    <Expander.Header><TextBlock Text="{Binding EvidenceHeading}" TextWrapping="Wrap" /></Expander.Header>
-                                    <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Margin="8" />
-                                </Expander>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
+                <ItemsControl ItemsSource="{Binding Groups}" />
                 <TextBlock Text="{Binding CoverageHeading}" FontWeight="SemiBold" Margin="0,16,0,8" />
-                <TextBlock Text="{Binding ChecksHeading}" FontWeight="SemiBold" />
                 <TextBlock x:Name="SavedPathChecks" Text="{Binding AutomaticChecks}" />
-                <TextBlock Text="{Binding ChecksCaveat}" />
-                <TextBlock Text="{Binding CoverageScope}" />
-                <TextBlock Text="{Binding LimitationsHeading}" />
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <Button Command="{Binding PreviousLimitationsCommand}"
-                            IsEnabled="{Binding HasPreviousLimitations}" Margin="0,0,8,0">
-                        <TextBlock Text="Previous" TextWrapping="Wrap" />
-                    </Button>
-                    <Button Command="{Binding NextLimitationsCommand}"
-                            IsEnabled="{Binding HasNextLimitations}">
-                        <TextBlock Text="Next" TextWrapping="Wrap" />
-                    </Button>
-                </StackPanel>
+                <TextBlock Text="{Binding Scope}" />
                 <ItemsControl x:Name="SavedPathLimitations" ItemsSource="{Binding Limitations}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -69,12 +38,106 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Expander IsExpanded="False">
-                    <Expander.Header><TextBlock Text="{Binding SavedQuestionsHeading}" TextWrapping="Wrap" /></Expander.Header>
-                    <TextBlock Text="{Binding SavedQuestions}" TextWrapping="Wrap" Margin="8" />
+                <Expander x:Name="SavedPathRecordDetails" IsExpanded="False" Margin="0,8,0,0">
+                    <Expander.Style>
+                        <Style TargetType="Expander">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasRecordDetails}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Expander.Style>
+                    <Expander.Header><TextBlock Text="{Binding RecordDetailsHeading}" TextWrapping="Wrap" /></Expander.Header>
+                    <StackPanel Margin="8">
+                        <TextBlock x:Name="SavedPathProvenance" Text="{Binding Provenance}" />
+                        <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:SavedPathGroupViewModel}">
+                                    <ItemsControl ItemsSource="{Binding Questions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:SavedPathQuestionViewModel}">
+                                                <StackPanel Margin="0,8,0,8">
+                                                    <TextBlock Text="{Binding Heading}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                                    <ItemsControl x:Name="SavedPathRecordFields" ItemsSource="{Binding RecordDetails}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </Expander>
             </StackPanel>
         </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:SavedPathGroupViewModel}">
+        <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,8,0,8">
+            <Expander.Header><TextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" /></Expander.Header>
+            <StackPanel Margin="8">
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding Questions}" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding PageNumber, StringFormat=Page {0}}" TextWrapping="Wrap" Margin="0,0,12,0" />
+                    <Button Command="{Binding PreviousCommand}" IsEnabled="{Binding HasPrevious}" Margin="0,0,8,0">
+                        <TextBlock Text="Previous" TextWrapping="Wrap" />
+                    </Button>
+                    <Button Command="{Binding NextCommand}" IsEnabled="{Binding HasNext}">
+                        <TextBlock Text="Next" TextWrapping="Wrap" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Expander>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:SavedPathQuestionViewModel}">
+        <StackPanel Margin="0,0,0,16">
+            <StackPanel.Resources>
+                <Style x:Key="RecommendationBlock" TargetType="StackPanel">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasRecommendation}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Resources>
+            <TextBlock x:Name="SavedPermissionHeadline" Text="{Binding Heading}" TextWrapping="Wrap" FontWeight="SemiBold" />
+            <StackPanel Style="{StaticResource RecommendationBlock}">
+                <TextBlock Text="{Binding RecommendationHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock x:Name="SavedPermissionChange" Text="{Binding RecommendedChange}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding WhereHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock x:Name="SavedPermissionWhere" Text="{Binding WhereToChange}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding ExplanationHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+            <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+            <StackPanel Style="{StaticResource RecommendationBlock}">
+                <TextBlock Text="{Binding RecommendationBoundaryHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock Text="{Binding RecommendationBoundary}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding PermissionDetailsHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,12,0,4" />
+            <ItemsControl x:Name="SavedPermissionFields" ItemsSource="{Binding PermissionDetails}" />
+            <TextBlock Text="{Binding Membership}" TextWrapping="Wrap" />
+            <ItemsControl x:Name="SavedPathSteps" ItemsSource="{Binding Steps}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:SavedPathStepViewModel}">
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl x:Name="SavedPermissionEntries" ItemsSource="{Binding Entries}" />
+        </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:SavedPathFieldViewModel}">
+        <StackPanel Margin="0,0,0,8">
+            <TextBlock Text="{Binding Label, StringFormat={}{0}:}" TextWrapping="Wrap" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Value}" TextWrapping="Wrap" />
+        </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type vm:ControlEdgesSectionViewModel}">

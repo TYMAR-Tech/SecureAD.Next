@@ -82,13 +82,16 @@ internal sealed partial class AssetsViewModel
                     {
                         var choices = reader.ReadFindingsFilterValues(question.Bundle);
                         if (!choices.IsSuccess)
-                            return Result<(FindingsPage Page, FindingsFilterValues? Filters)>.Failure(choices.Error);
+                            return Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(choices.Error);
                         filters = choices.Value;
                     }
                     var page = reader.ReadFindings(question.Bundle, question.Findings!);
-                    return page.IsSuccess
-                        ? Result<(FindingsPage Page, FindingsFilterValues? Filters)>.Success((page.Value, filters))
-                        : Result<(FindingsPage Page, FindingsFilterValues? Filters)>.Failure(page.Error);
+                    if (!page.IsSuccess)
+                        return Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(page.Error);
+                    var summary = reader.ReadTier0FindingSummary(question.Bundle);
+                    return summary.IsSuccess
+                        ? Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Success((page.Value, filters, summary.Value))
+                        : Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(summary.Error);
                 }, (read, current) =>
                 {
                     if (read.Filters is { } filters)
@@ -104,6 +107,7 @@ internal sealed partial class AssetsViewModel
                     foreach (var row in read.Page.Findings) Findings.Add(new FindingRowViewModel(row));
                     _findingsFrom = read.Page.Next;
                     NothingWasFound = read.Page.NothingWasFound;
+                    Tier0SummaryText = SavedPathText.Summary(read.Summary);
                     RememberPage(question, current);
                 }, saved: true);
                 break;
@@ -248,6 +252,7 @@ internal sealed partial class AssetsViewModel
                 Shortfall = null;
                 break;
             case AssetsPane.Findings:
+                Tier0SummaryText = "";
                 SelectedFinding = null;
                 Findings.Clear();
                 FindingsRefusal = null;

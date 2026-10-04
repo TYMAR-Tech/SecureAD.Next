@@ -256,7 +256,7 @@ public sealed class JudgingInputReuseTests
         Execute(fixture.Database, "DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation");
         using var trace = new Statements(fixture.Database);
         var phases = new List<PathRequesterWorkPhase>();
-        Tier0PathStorage.Write(fixture.Database, fixture.Description, fixture.Sources, [], [], CancellationToken.None, [], false, phases.Add);
+        Tier0PathStorage.Write(fixture.Database, fixture.Description, fixture.Sources, [], [], CancellationToken.None, [], false, phases.Add, null);
         Assert.Contains(PathRequesterWorkPhase.PreparingPaths, phases);
         Assert.Contains(PathRequesterWorkPhase.WritingProofs, phases);
         Assert.Single(trace.Sql.Where(sql => sql.StartsWith("SELECT target,identity_json,fingerprint,", StringComparison.Ordinal)));

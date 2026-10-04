@@ -64,13 +64,57 @@ public sealed record PathRiskCoverage(int Version, Guid GenerationId, Guid? Deri
     PathRiskAvailability Availability, bool AutomaticSelectionRequested, Tier0Coverage PathCoverage,
     IReadOnlyList<PathRiskFamilyCoverage> Families);
 
-internal enum PathRiskReadVerdict
+public enum PathRiskReadVerdict
 {
     NotRequested,
     InputsUnavailable,
     NoRecordedQuestions,
     RecordedQuestions,
 }
+
+/// <summary>Complete selected-requester question counts, never counts of distinct routes or permission holders.</summary>
+public sealed record PathRiskQuestionCounts(int Unexpected, int Expected, int NotEstablished, int Unresolved)
+{
+    public int Total => checked(Unexpected + Expected + NotEstablished + Unresolved);
+
+    public int For(PathRiskVerdict verdict) => verdict switch
+    {
+        PathRiskVerdict.UnexpectedRoute => Unexpected,
+        PathRiskVerdict.ExpectedRoute => Expected,
+        PathRiskVerdict.NotEstablished => NotEstablished,
+        PathRiskVerdict.Unknown => Unresolved,
+        _ => throw new ArgumentOutOfRangeException(nameof(verdict)),
+    };
+}
+
+/// <summary>A continuation belongs to one requester, qualification group and saved generation.</summary>
+public sealed record PathRiskPageMark(Guid GenerationId, string RequesterDn, PathRiskVerdict Verdict, long AfterId);
+
+/// <summary>One qualified question and its original permission or operation proof, not a newly evaluated answer.</summary>
+public sealed record PathRiskQuestion(long Id, PathRequesterRiskAssessment Risk, string SourceFingerprint,
+    IReadOnlyList<Tier0PathStep> Steps, RequesterDaclAssessment? Requester,
+    OwnAccountMembershipAssessment? OwnAccount, MembershipDaclAssessment? Membership);
+
+/// <summary>A selected group of saved questions, with counts covering the whole requester rather than this page.</summary>
+public sealed record PathRiskPage(PathRiskCoverage Coverage, string RequesterDn, PathRiskVerdict Group,
+    PathRiskQuestionCounts Counts, IReadOnlyList<PathRiskQuestion> Questions, PathRiskPageMark? Next,
+    bool IsFixedTarget)
+{
+    public const int PageSize = 50;
+
+    public PathRiskReadVerdict Verdict => Coverage.Availability switch
+    {
+        PathRiskAvailability.NotRequested => PathRiskReadVerdict.NotRequested,
+        PathRiskAvailability.InputsUnavailable => PathRiskReadVerdict.InputsUnavailable,
+        PathRiskAvailability.Recorded => Counts.Total == 0
+            ? PathRiskReadVerdict.NoRecordedQuestions : PathRiskReadVerdict.RecordedQuestions,
+        _ => throw Tier0PathStorage.InvalidProof(),
+    };
+}
+
+internal sealed record PathRequesterProofs(IReadOnlyList<SavedRequesterDaclProof> Requesters,
+    IReadOnlyList<SavedOwnAccountMembershipProof> OwnAccounts,
+    IReadOnlyList<SavedMembershipDaclProof> MembershipDacls);
 
 /// <summary>Only the selected requester's saved answers, with the separately named whole-batch coverage.</summary>
 internal sealed record PathRequesterRiskSet(PathRiskCoverage BatchCoverage,

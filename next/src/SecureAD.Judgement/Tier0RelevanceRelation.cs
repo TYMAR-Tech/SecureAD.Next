@@ -42,9 +42,13 @@ public enum Tier0RelevanceKind
 /// <param name="IsOwner">Whether the fact is the captured owner rather than an access control entry.</param>
 public sealed record Tier0CaptureWitness(string TargetDn, int? PermissionOrdinal, string TrusteeSid, bool IsOwner = false)
 {
+    /// <summary>Captured nesting from an assessed group to the named holder, not requester authorization.</summary>
+    public RequesterMembershipEvidence? GroupMembership { get; init; }
+
     /// <summary>Whether this witness names a captured fact precisely enough to be found again.</summary>
     public bool IsValid => !string.IsNullOrWhiteSpace(TargetDn) && !string.IsNullOrWhiteSpace(TrusteeSid)
-        && PermissionOrdinal is null or >= 0 && (!IsOwner || PermissionOrdinal is null);
+        && PermissionOrdinal is null or >= 0 && (!IsOwner || PermissionOrdinal is null)
+        && (GroupMembership is null || !IsOwner && PermissionOrdinal is not null && GroupMembership.Links is { Count: > 0 });
 }
 
 /// <summary>A directed relation from a controller/dependency to the object it could affect.</summary>

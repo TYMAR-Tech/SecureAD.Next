@@ -47,7 +47,7 @@ namespace SecureAD.Judgement;
 /// <c>docs/specs/rules/SEC-094-windows-laps-not-applied-on-capable-computer.md</c>.
 /// </para>
 /// </remarks>
-public sealed class WindowsLapsNotAppliedOnCapableComputer : IRule
+public sealed class WindowsLapsNotAppliedOnCapableComputer : IObjectRule
 {
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(

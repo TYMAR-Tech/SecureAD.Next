@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, 17 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 18 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -51,7 +51,186 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
-**Owner's blocking priority, 2026-10-02: get production-scale judging to finish before further
+**Owner-authorized source handoff to the lab machine, 2026-10-03.**
+The owner installed VS Code on the lab machine and requested that all current product work be
+committed and pushed to the repository so it can be downloaded there.
+Publish the existing `stage7-completion` branch without merging or overwriting `main`; source,
+tests and governing decisions travel together, while local verification folders, captured runs,
+credentials and built packages remain excluded from Git.
+The owner intends to authorize help with AD test setup and inspection on that machine; individual
+live checks or changes still need a concrete lab scope, and this source handoff performs none.
+Production remains owner-operated with run-log-only export, and combined lab and display acceptance
+remain outstanding.
+
+**Owner-authorized second bounded completion slice and lab plan, 2026-10-03.**
+The owner requested "begin next slice" after the first slice and its passive lab check: implement one
+obtainable own-account membership followed by captured same-domain global-security-group nesting and
+Modify permissions on a fixed Tier 0 target, keeping Self-Membership and Write members separate.
+The owner will prepare the lab to test the combined work after this slice; that planned test is not
+yet acceptance or authorization for agent-operated live changes, rejudging, recapture or publication.
+Reuse the approved presentation where accurate, retain pre-change authorization and post-change
+ordered denies, and do not let the proposed membership authorize itself or become a second operation.
+
+**Second bounded completion checkpoint — obtained membership through existing nesting, implemented and offline verified, 2026-10-03.**
+The normal GUI and both CLI judging paths now select and save one supported own-account membership
+outcome followed by captured same-domain global-group nesting and Modify permissions on a fixed
+Tier 0 target.
+Self-Membership and Write members remain different permissions, and the original permission to
+obtain membership is checked before considering that membership.
+The existing direct-user/single-global-group boundary for that initial permission remains; this
+slice extends the continuation after it, not every possible way to obtain the first membership.
+
+A group whose membership can be edited can now be admitted for assessment through its captured
+nesting to the actual granting group, without classifying it as a fixed Tier 0 target or treating
+membership alone as permission proof.
+Saved results retain that assessment reason, each direct membership witness, both original
+permissions, ordered existing and newly applicable denies, the actual granting group and exact
+Evidence/Derivation/Judgement bindings.
+Captured existing membership does not become a fictional Add, unknown current membership and
+ordinary Add readiness remain explicit, and cycles do not add counted permissions or operations.
+The same run-bound identity and membership indexes are reused across assessment, question selection
+and permission proofs; no new forest-wide membership engine, processing limit or measurement
+campaign was introduced.
+
+The [validated checkpoint](../.v-obtained-nesting-20261003-f7b2/handoff.json) records **6,536 passing
+offline tests** after the final correct-source rebuild, and all **54 new plus 20 adapted cases**
+detecting assertion failures across **31 rebuilt defects with 31 passing restored controls**.
+Judgement format **50**, path-calculation version **8** and requester-selection version **3** carry
+the saved extension; Evidence/Derivation formats and the 18-rule catalogue remain unchanged, and all
+earlier layout hashes, failed attempts, supplied lab files and verification checkpoints are retained.
+The approved screen wording/layout is reused unchanged; owner-operated combined lab coverage,
+physical-display checks and production acceptance remain outstanding.
+Broader resource contexts, saved distance/route/coverage summaries and SEC-052 remain later Stage 7
+work; no live directory operation, original-bundle rejudging, package overwrite, commit or push was
+performed.
+
+**Owner-approved bounded Stage 7 completion scope, 2026-10-03; begin in a fresh session.**
+After the difficulty/usability assessment, the owner said "i agree with this" and requested that the
+work begin in a new session while the current build is moved to the production forest for a new
+judgement of the existing sealed capture.
+The owner explicitly clarified that rejudging, not recapturing, is the intended production check.
+Carry this approval forward without reopening the overall scope or treating it as approval to build
+an unrestricted attack-path simulator.
+
+- Extend concrete requester permission checks through supported captured nested security-group
+  memberships, reusing existing membership/cycle facts and preserving relevant allows, denies,
+  identity, resource scope and exact source bindings.
+- Extend the existing one-obtained-membership model through supported existing nested memberships
+  to a permission on a fixed Tier 0 target, keeping Self-Membership and Write members distinct.
+- Add meaningful same-forest authorization contexts in bounded slices, including the applicable
+  global/universal/domain-local group semantics; this is not a blanket promise of every cross-domain
+  or cross-forest case, and unresolved resource context remains explicit.
+- Complete saved distance, best-supported-route ordering and whole-run Tier 0/route/coverage
+  summaries, preserving the distinction between a supported route's length and an established
+  overall minimum, classified Tier 0 objects and other reachers, and findings and unresolved or
+  unassessed work.
+  This does not create Tier 1/2 classifications or change SEC-071's fixed High severity.
+- Deliver SEC-052 circular-group findings as contained rule work over the existing persisted cycle
+  product, including P-125's known self-referencing-group gap; cycle findings remain separate from
+  proof of a route to Tier 0.
+
+The first bounded implementation should be nested-group requester authorization in the existing
+ordinary-user, same-domain context, before expanding resource contexts or adding another operation.
+Preserve the captured direct membership witnesses rather than treating a flattened membership set
+as sufficient proof of every permission.
+General sequences of several hypothetical membership changes, arbitrary permission-rewrite and
+account-takeover simulations, and exhaustive path enumeration are not this completion requirement.
+Proven complete remediation remains Stage 8; P-143 and cosmetic UI redesign remain deferred.
+Functional paging, cancellation and selected-only passive readback are part of usability, not
+deferred visual polish.
+Concrete new screen wording/layout, changed production budgets and new measurement campaigns still
+need their own bounded approval; no new live operation, package overwrite, commit or push is
+authorized for the agent.
+
+**First bounded completion checkpoint — nested requester permissions, implemented and offline verified, 2026-10-03.**
+Ordinary users' explicit captured `member` chains through same-domain global security groups now
+support concrete `WRITE_DAC` (Modify permissions) checks on fixed Tier 0 targets.
+The normal GUI and both CLI judging paths select these questions automatically; ordered allows and
+denies, each direct membership witness, complete identities and exact source/generation bindings
+remain in the saved proof, risk qualification, fixed High SEC-071 findings and selected passive readback.
+The existing saved nesting walk is reused, with per-group member lookup and shared link/route evidence;
+cycles do not add permissions, and member counts do not multiply group-held permission counts.
+
+This slice does not extend own-account operations, primary-group or SID-history authorization,
+universal/domain-local or cross-domain contexts, or computer actors.
+It requires explicit group `member` witnesses; a primary-group link, `memberOf` alone or a nesting
+step through a group carrying captured SID history is not promoted into this new proof.
+Missing captured evidence, unsupported reasoning and unperformed work remain distinct, and existing
+permission-reference refusals remain refusals even when membership or target-relative SELF is resolved.
+No new screen wording/layout, processing ceiling, production budget, discovery activation or
+measurement campaign was introduced.
+
+The [validated checkpoint](../.v-nested-requester-20261003-c8e1/handoff.json) records **6,482 passing
+offline tests** after a final correct-source rebuild, with all **51 new and 30 adapted cases**
+detecting assertion failures across **38 useful rebuilt defects**, and **40 passing restored controls**
+including the retained unsuccessful mutation attempts.
+Judgement format **49**, path-calculation version **7** and requester-selection version **2** carry
+the new proof semantics; Evidence/Derivation formats, all 18 rules and every historical layout hash
+are preserved, with format 49 using format 48's unchanged physical layout.
+The later approved completion items remain work, not delivered features; Stage 7, physical-display
+acceptance and owner-operated log-only production acceptance are not declared complete.
+
+**Owner-supplied nested-slice build lab run, checked passively, 2026-10-03.**
+The supplied `ad.lab-20261004-011642` records completed judging of 8,418 objects in 28.3 seconds,
+with 18 rules and Judgement 49/path 7/selection 2.
+Its bundled executable is recorded as SHA-256
+`3F2E2C5276B039704E932CC1ACF5162E6DF9BAFFA890409B9FF5AED427691BDD`, with judging-module identity
+`8e9a71a3-c9d5-4d8a-955f-30bb04c360cf`; these are the owner's run identities, not a claim that its
+published binary is byte-identical to the separate offline verification build.
+All 337 saved questions for seven accounts read successfully on a fresh copy: 336 expected
+administration answers and Barbara Hernandez's one High SEC-071 permission finding.
+The [passive check](../.v-nested-lab-20261003-e40d/passive-lab-ready-result.json) verified three seals,
+replayed no analysis and left all 16 original and copied files unchanged.
+
+None of those questions contains a newly qualified nested-group permission route, so this run does
+not supply a positive lab witness for the new slice; the synthetic/offline verification remains its
+positive evidence.
+The saved broader coverage limitations and 42 questions with unknown current membership/ordinary Add
+readiness remain explicit, and this is not production-scale or physical-display acceptance.
+No subsequent implementation was started during that lab check; the second checkpoint above records
+the later implementation of the already-approved obtainable-membership continuation.
+
+**Session-entry baseline and preservation.**
+Continue in the existing `C:\Users\jistrand\source\repos\SecureAD.Next-stage7` checkout on
+`stage7-completion`, HEAD `98cd4d094326ec8ff2719c321da5d759e7a11a99` plus all current uncommitted
+work, not the bare commit; 84 changed/new paths were inherited at this session's entry.
+At entry, all 912 executable-source files matched the preceding
+[verified checkpoint](../.v-sec071-admin-20261003-a4c6/handoff.json), with 6,431 passing offline tests
+and 53 rebuilt defects/restored controls; that checkpoint and its tested sources remain historical evidence,
+not a replacement for the newly verified current files.
+Do not create another checkout/worktree, alter the owner's other checkouts or rebuild/publish over
+existing lab/production outputs.
+Preserve all prior verification and evidence, including `.v-sec071-20261003`,
+`.v-requester-reuse-20261003` and `.v-sec071-admin-20261003-a4c6`.
+Use isolated source/build copies for verification, short source paths where the unchanged fixtures
+require them, and fresh short TEMP/TMP before test-assembly loading or discovery; retain failed
+attempts, mutation-test new behavior in isolated sources, rebuild defects and restored controls
+explicitly, and finish with a correct-source rebuild.
+
+**Owner-confirmed completion order, 2026-10-03: finish the remaining Stage 7 analysis before rules.**
+The owner explicitly declined closing Stage 7 as only the three currently supported families:
+finish the wider supported path combinations and remaining distance/tier summaries first, so the
+judging workload being accepted represents the completed stage rather than a smaller implementation.
+This is a delivery priority, not measured evidence that path analysis is the largest runtime cost.
+P-143 customer-declared assets are deferred until after the main feature/rule work and no longer gate
+Stage 7 completion; its entry workflow remains undecided, and future rules must continue to use the
+shared authoritative Tier 0 definition rather than introducing private lists.
+
+The owner likes the corrected SEC-071 information in the supplied lab screenshot, but describes the
+presentation as a "white wall of text"; a modern visual redesign is deferred until the main features
+work, not approved as the next session.
+This is positive owner feedback on the displayed information, not acceptance of every physical
+laptop/external-monitor check.
+The owner is moving the lab-tested build to production to rejudge the existing sealed capture and
+check whether judging time improves; recapture is not planned for these analysis/presentation changes.
+Keep the original evidence, previous results and logs preserved, and identify the build and retained
+derived inputs when comparing timings.
+No new production result is reported, and a timing for the current families does not establish the
+cost of the remaining Stage 7 analysis.
+Production validation stays owner-operated and log-only; no agent-operated live access, package
+overwrite, new measurement campaign, commit or push is authorized by this discussion.
+
+**Earlier blocking priority, 2026-10-02: get production-scale judging to finish before further
 Stage 7 work, new rules or UI performance/redesign.** The owner cannot complete that work while a
 production-sized judgement fails. The bounded memory correction below builds on the verified,
 uncommitted input-reuse work rather than restarting that completed investigation.
@@ -138,6 +317,113 @@ This establishes the product direction, not approval of a particular replacement
 semantics, requester activation or a restarted measurement campaign; the existing Stage 7 completion
 requirements and bounded approval boundaries below remain in force.
 
+**Owner rejection of the positive SEC-071 presentation, 2026-10-03.**
+The owner supplied `ad.lab-20261003-192529` and a screenshot, reporting that the route's
+**From/To** distinguished names read as "change Barbara to DC" rather than explaining her permission.
+The owner requires actionable administrator wording, exemplified by removing **Modify permissions**
+from Barbara, and explicitly rejects raw JSON as user-facing supporting evidence.
+The screen must name the affected account, permission, actual target and place where the grant
+can be changed; a domain distinguished name must not read as a domain-controller computer.
+This supersedes treating generic guidance and expanded serialized proofs as an adequate SEC-071
+presentation, while leaving the saved proofs, rule semantics and severity unchanged.
+The approved replacement below is implemented and offline verified in the existing
+`stage7-completion` checkout; existing lab and production packages remain unchanged.
+
+Read-only inspection of that sealed lab run verifies one High SEC-071 finding for `bhernandez`,
+with a direct, non-inherited allow entry on the `ba.ad.lab` domain object, applying to that object
+only and including `WRITE_DAC`.
+The entry also contains other rights, so removing the relevant **Modify permissions** right must
+not be phrased as deleting every permission in the entry without separate review.
+The run completed judging in 28.0 seconds with 28 total findings; all three seals and the unexpected
+question/source fingerprints verify, and all 16 supplied files remained unchanged.
+No permission was changed, no analysis replayed and no production operation performed during review.
+Permission-specific change guidance must not claim a proven complete fix for every route or mark a
+finding resolved without new captured evidence.
+
+**Owner-approved SEC-071 administrator presentation correction, 2026-10-03; implemented and offline verified.**
+The owner selected **"Approve for the next implementation session"** for the following bounded
+wording/layout correction, preserving the current uncommitted work and lab/production packages.
+The subsequent **"implement"** authorizes this exact correction, followed immediately by the owner's
+request to continue in a fresh session because the current context is long.
+Carry that approval forward without asking again, work in the existing `stage7-completion` checkout,
+and preserve all current working files rather than restoring `98cd4d0` over the uncommitted changes.
+No UI implementation was begun before this handoff.
+For the supplied Barbara case, the approved presentation is:
+
+> **High · SEC-071**
+>
+> **Barbara Hernandez can change permissions on the ba.ad.lab domain**
+>
+> **Recommended change**
+>
+> Remove **Modify permissions** from **Barbara Hernandez's explicit permissions** on
+> **ba.ad.lab (domain)**. Keep the entry's other permissions unchanged unless they are separately reviewed.
+>
+> **Where to change it**
+>
+> Active Directory Users and Computers → ba.ad.lab → Properties → Security → Advanced →
+> Barbara Hernandez's entry → Edit → clear **Modify permissions**.
+>
+> **Why this is a finding**
+>
+> The captured permissions allow Barbara to change this domain object's permissions, but the
+> captured evidence does not establish an expected administrative role for her on this domain.
+>
+> **Scope of this recommendation**
+>
+> This addresses the permission shown, not every possible route. A new capture is needed to verify the change.
+
+Remove the **From/To** block, duplicate **Supporting evidence** sections and all raw JSON from
+administrator-facing SEC-071 evidence.
+Use one **Permission details** section with the following labelled information:
+
+| Field | Supplied Barbara example |
+|---|---|
+| Account | Barbara Hernandez (`bhernandez`) |
+| Target | ba.ad.lab — Domain |
+| Relevant permission | Modify permissions (`WRITE_DAC`) |
+| Granted to | Barbara Hernandez directly |
+| Assignment | Explicit; not inherited |
+| Applies to | This object only |
+| Permission check | Allowed |
+
+Show relevant captured allow/deny entries and membership evidence as labelled rows and sentences,
+not serialized records.
+Exact directory names, SIDs, object identifiers and saved-run identity remain available in a collapsed
+**Record details** area as labelled fields, also without JSON.
+
+- Apply readable relationship wording to all three currently supported SEC-071 families: direct
+  permission, existing membership and supported own-account membership followed by permission.
+- For group-held or inherited access, name the actual granting group and source rather than telling
+  the operator to remove a direct user grant that does not exist.
+  Explain when a change affects other members or descendants, or when the original grant location
+  is not established.
+- Keep missing evidence and unknown membership/Add prerequisites explicit in plain language;
+  an uncertain operation must not become a claim that it succeeded.
+- Keep finding identity, High severity, risk classifications, independent counts and paging unchanged.
+  Read only selected saved results, preserving original proofs and exact generation bindings.
+- This is permission-specific guidance, not automatic AD remediation or a new engine claiming a
+  complete fix across all routes.
+
+Verify the supplied case and synthetic direct/group/inherited/unknown cases, readable evidence,
+exact permission wording, cancellation and laptop-sized layouts with rebuilt negative controls.
+Preserve the supplied image/bundle, existing work and lab/production packages.
+No directory change, recapture, original-bundle rejudging, new measurement, package overwrite,
+commit or push is included.
+
+**Validated checkpoint, 2026-10-03:** the [retained handoff](../.v-sec071-admin-20261003-a4c6/handoff.json)
+records 6,431 passing offline tests after the final correct-source rebuild, with assertion witnesses
+for all 32 new and 15 adapted behavior cases across 53 rebuilt isolated defects and passing restored
+controls.
+The supplied positive case matches the approved headline, permission-specific change and editor
+location on a fresh copy, with three verified seals, no analysis replay and all 16 copied files unchanged.
+Its explanation uses the full captured name and "this account": this capture does not supply a given
+name or pronouns, and neither is guessed from the directory name.
+Original evidence and image, prior verification artifacts and both other checkouts/packages remain
+unchanged, and the owner's pre-existing work is preserved; physical laptop/external-monitor checks
+and owner-operated, log-only production acceptance remain outstanding, with no publication, commit
+or push performed.
+
 **Owner clarification: findings must represent risk, not ownership inventory, 2026-10-02.**
 After the computer-owned Windows Virtual Machine service record was shown as SEC-031, the owner
 stated that this creates noise and that expected ownership must be established and excluded from
@@ -205,6 +491,255 @@ The refreshed run can exercise the current protection catalogue as well as reque
 its outcome is still to be established and it cannot verify Stage 7 features not yet implemented.
 Only its run log may be returned, and development continues independently in `stage7-completion`.
 
+**Owner-supplied partial production log and planned lab test, 2026-10-03.**
+The owner reports that the overnight judgement is still unfinished and supplied
+`C:\Users\jistrand\Downloads\new\run.log`, with older derivation/judgement sections removed for
+readability; use the new analysis markers rather than the original capture date for elapsed time.
+The supplied excerpt identifies the preserved format-46 production-test executable by its recorded
+fingerprint, with 17 rules and 940,067 objects, starting judgement at **04:30:12 UTC** and still
+reporting status at **15:46:13 UTC**.
+Its last completed requester subphase is **PreparingPaths at 08:30:26 UTC**; the matching code places
+the following uncompleted interval in account/question selection, but the log does not identify an
+inner hot function, establish continuing progress or provide a completion forecast.
+The owner will test the new SEC-071 candidate in the laboratory independently of this production run.
+That is not production performance acceptance or authorization for agent-operated lab/production
+access, optimization, new measurement tooling/runs, extra logging or changing the running package.
+Compared with this production package, the candidate adds both saved risk qualification and SEC-071
+publication; its correctness verification does not establish their incremental production runtime.
+
+**Owner-operated corrected-build lab run, supplied 2026-10-03.**
+The owner supplied `C:\Users\jistrand\Downloads\ad.lab-20261003-184702` for read-only inspection.
+Its Release executable fingerprint is
+`31195D043235EDC59B58BB16EF533F621F57E2E9A6F5FB0D975A1E17B89EDFB1`,
+with judgement-engine MVID `8fa900d7-938e-42c5-93cc-9b0ed5dbf254`.
+The run captures 8,418 objects across `ad.lab`, `ba.ad.lab` and `ph.ad.lab`, completes derivation in
+2.8 seconds and judging in 29.3 seconds, and publishes judgement
+`919487dc-82a1-4542-990f-4d9b3e2f73dc` against derivation
+`186898a4-b81b-4408-8316-f91f8c61c3a8`.
+The new diagnostics establish that the corrected selection/matching code ran: the whole selection
+phase took 258.1 ms (246 ms inside its diagnostic scope), indexed all 8,418 identities and completed
+48 resources, producing 336 distinct questions for six accounts.
+The three answer batches retain 92 requester-permission, 60 own-account membership and 184 combined
+answers, with matching scopes totaling approximately 42 ms.
+
+SEC-071's finding-publication work took 153 ms, not the entire path-analysis or qualification cost.
+All 336 saved qualifications are expected same-domain administration, so the rule ran but emitted
+no SEC-071 finding; 27 separate-rule findings remain.
+All three database seals, every saved question/source-proof fingerprint and their evidence,
+derivation and calculation bindings were checked read-only, and all 16 supplied files, including
+database sidecars, remained byte-for-byte unchanged.
+The log records successful saved findings and Tier-0 section navigation, including a 68.1 ms Tier-0
+read, but does not establish a new-process reopen or physical-display acceptance.
+
+This run does not establish forest-wide safety: saved path coverage still distinguishes incomplete
+inputs from unsupported analysis, and 42 own-account questions retain unknown current membership and
+ordinary Add readiness under the existing two-case proof.
+Read-only clarification of those 42 answers: 21 use Self-Membership and 21 use ordinary Write Members,
+and the applicable permission is established in every case; these are questions, not 42 accounts or
+failed directory modifications.
+The saved issues include `MembershipStateUnknown` and `LiveOperationNotEvaluated`, because not seeing
+the account's membership value is not treated as proof of absence.
+The two-case answer means membership is already available if present, or the supported permission
+allows adding the account's own value if absent; it does not assert that an ordinary Add is ready or
+that any live operation succeeded.
+All 184 combined lab answers use existing membership; a positive SEC-071 finding and hypothetical
+new-membership combinations remain covered by synthetic verification rather than demonstrated by
+this captured run.
+This is useful packaged lab execution/readback evidence, not a controlled before/after timing
+comparison, a forecast for the 940,067-object production capture, or production acceptance.
+Any production retry remains separately authorized, owner-operated and log-only.
+
+**Owner-approved requester repeated-work correction, 2026-10-03; implemented and offline verified.**
+The owner selected **"Approve for the next implementation session"** for one coordinated correction
+to account/question selection and matching its saved answers back to objects.
+The subsequent **"begin implementation"** authorizes that recorded correction now, without expanding
+its measurement, production, package or publication boundaries.
+The owner asked whether the overnight production run must continue: it is not a prerequisite for
+this correction, and normal application cancellation with the log and run files retained was
+recommended, not agent-operated termination or a claim of production acceptance.
+Whether the owner actually cancels the run is not yet reported.
+The final correct-source rebuild in an isolated short-path source copy passes **6,399 offline tests**
+with coverage, and all **31 new behavior/work-counter cases** detect assertion failures across
+**17 rebuilt isolated defects** and pass restored controls.
+The [verified correction checkpoint](../.v-requester-reuse-20261003/handoff.json) retains the prior
+source/binary baseline, independent earlier-algorithm references, failed attempts and exact build
+provenance; the seven retained lab-baseline binaries and all 27 published files remain unchanged.
+The saved format remains **48** and no security semantics, scope, numerical analysis budget or UI
+wording/layout changed.
+These checks establish removal of the repeated work and preservation of answers, not a measured
+production runtime reduction or completed production acceptance.
+Start from the current uncommitted SEC-071 working files in the existing `stage7-completion`
+checkout, not by restoring the bare `98cd4d0` commit or a verification snapshot over subsequent work.
+The owner-operated SEC-071 lab test remains separate, and its baseline and package must be preserved.
+
+- Build one identity lookup for the current bound run, keyed by security identity and domain scope,
+  instead of scanning the entire path-node collection for each qualification.
+  Duplicate or unresolved identities remain unresolved; never select whichever object appeared first.
+- Work out each group's relevant target-permission references once and reuse those references when
+  selecting questions for its members.
+  A group's permission is not the member's authorization: every required account-specific permission
+  and membership check still runs with its original resource and pre-change/obtained-membership context.
+- Reuse each account's unchanged fingerprint and accumulate duplicate supporting references without
+  repeatedly rebuilding growing lists.
+  Retain every original witness, the existing deduplication meaning and output ordering.
+- Index saved answers by the correct requester identity before matching them back to objects, rather
+  than searching whole proof lists for each object after every family.
+  Preserve the existing route-choice and tie-breaking rules, permission classifications, expectedness,
+  SEC-071 findings, independent holder/account/question counts and explicit incomplete outcomes.
+
+Reuse the existing periodic diagnostics for aggregate-only log progress covering
+**"Selecting account checks"** and **"Matching saved answers"**.
+Report the current step, resources processed/total, distinct access checks selected, answers processed,
+elapsed time and completed/cancelled/failed status, with the existing build/run/generation identity.
+A resource here means a group or target being examined.
+Add no account names, SIDs, object names or proof dumps, and change no screen wording or layout.
+These counters describe execution progress, not security-analysis completeness.
+
+Verification compares before/after questions, witnesses, permission answers, findings and independent
+counts on offline fixtures under properly bound generations.
+Work-count regression checks must prove that more questions do not cause another full-object scan per
+question, another full-target scan per member or another full-answer scan per object.
+Exercise ambiguous identities, domain scope, duplicate evidence, cancellation and failed publication,
+with explicitly rebuilt isolated deliberate defects and restored controls, then a correct-source
+rebuild and the existing offline regression suite.
+Preserve historical fixtures, hashes, failed attempts and prior verification records rather than
+changing expected values to bless a different answer.
+
+The accepted engineering trade-off is temporary lookup memory for the duration of the run, referencing
+existing data rather than copying whole evidence or proof objects.
+This removes avoidable repetition, not genuine required work, and does not promise a particular runtime
+reduction or accept production scale.
+No new checkout, analysis limit, security-semantic change, measurement-campaign restart, live access,
+production retry, publication, commit or push is authorized.
+Do not overwrite the production-test or lab package.
+The already-running process cannot benefit from a code change; any later production test remains
+separately authorized, owner-operated and log-only.
+
+**Owner-approved SEC-071 findings and minimum risk-first readback, 2026-10-03.**
+The owner selected **"Approve this proposal for the next implementation session"**.
+This approves the following bounded scope, wording and grouping, not implementation during the
+proposal session or completion of Stage 7.
+The owner's subsequent **"begin"** authorizes implementation of this recorded slice; it does not
+expand the scope or the separate production, measurement and publication boundaries.
+**Status: implemented and offline verified in judgement format 48.**
+The final correct-source Release rebuild passes all **6,368 offline tests**, with coverage witnesses
+for the new components; all **55 selected new or changed behavior and public-contract cases** detect
+assertion failures across **31 rebuilt isolated defects** and pass restored controls.
+The [verified checkpoint](../.v-sec071-20261003/handoff.json) retains failed attempts, source/build
+identity and preservation checks, including the unchanged production-test executable and all earlier
+layout hashes.
+Physical laptop/external-monitor checks and representative production acceptance remain outstanding;
+no measurement restart, production operation, application publication, commit or push occurred.
+Continue from `98cd4d0` on `stage7-completion` in the existing
+`C:\Users\jistrand\source\repos\SecureAD.Next-stage7` checkout; do not create another checkout.
+
+- Produce SEC-071 automatically during normal GUI/CLI judging, after the existing saved
+  qualification, from every qualified unexpected result across requester permission, own-account
+  membership, and membership followed by requester permission.
+  Do not add path combinations or change qualification, permission semantics or the authoritative
+  Tier-0 definition.
+- Produce one finding per affected account for the overall Tier-0 control plane, following the
+  [canonical identity specification](specs/JUDGEMENT-HALF.md).
+  Multiple destinations and supporting questions belong under that finding rather than producing
+  duplicates; its identity survives route and account-name changes.
+  Use one fixed **High** severity for SEC-071, with no severity split or grading by path length.
+- Expected routes, unresolved answers and questions that did not establish a route remain saved
+  but produce no SEC-071 finding.
+  An expected route must not hide another unexpected route for the same account, and merely being
+  a Tier-0 target is not a finding.
+- Save findings, supporting proof references, rule-execution status and whole-run counts with the
+  same evidence and analysis generation; cancellation or validation failure must not publish a
+  partial result.
+  Opening a screen reads only saved results for the selected account and never reruns analysis.
+  Account, access-check and group-held permission counts remain independent, and displayed pages
+  must not supply whole-run totals.
+- Retain original permission, membership and ownership evidence, captured membership and the
+  separate state of ordinary Add prerequisites.
+  An unresolved prerequisite remains unresolved rather than becoming proof that an operation or
+  takeover succeeded.
+
+Reuse the existing **Findings** screen, keeping severity ordering and filters, with this compact,
+explicitly whole-run summary:
+
+> **Whole-run Tier 0 summary**
+>
+> **Accounts with SEC-071 findings: {N}**
+>
+> **Unresolved access checks: {U}**
+>
+> Supported checks only; other routes may exist.
+
+An access check means one saved question about an account's access, not a distinct account or a
+unique route.
+Counts come from the complete saved result, not the displayed page; missing or unperformed analysis
+shows its status instead of zero.
+
+Rename the existing **"Saved Tier 0 path"** section to **"Tier 0 findings and routes"**, with no new
+top-level screen.
+A SEC-071 finding offers **"View saved routes"**, opening that same account-specific section.
+The approved grouping and order are:
+
+| Group | Default presentation |
+|---|---|
+| **Unexpected routes** | Open first: finding, reached target, why authority is unexpected, readable steps, then expandable supporting evidence. |
+| **Unresolved access checks** | A concise warning when present, distinguishing missing captured evidence, unsupported analysis and unfinished work. |
+| **Expected administration — not findings** | Collapsed, preserving the relationship and its evidence. |
+| **Other completed checks — no route established** | Collapsed, explicitly not a safety verdict. |
+
+Finding heading:
+
+> **SEC-071 — Unexpected route to Tier 0**
+
+Explanation:
+
+> The saved evidence establishes a supported route to Tier 0 outside this account's expected
+> administrative authority on the reached target.
+
+Boundary:
+
+> Saved permission, membership and ownership evidence is not proof of account takeover or a
+> successful live operation.
+
+Show existing membership and whether the prerequisites for adding the account to a group were
+established or remain unresolved wherever relevant.
+Label a displayed route **"Saved supporting route"**, not "best route", "shortest attack" or a complete
+fix; all supporting questions remain accessible through paging.
+
+When assessed questions produce no finding:
+
+> No SEC-071 finding was established by these checks. This does not establish that no route exists.
+
+When none were recorded:
+
+> No saved access checks for this object. This does not assess accounts that may reach it.
+
+Retain explicit existing not-run, unavailable, unfinished and wrong-generation refusals.
+Replace the whole-analysis raw diagnostic block with concise relevant explanations while preserving
+the underlying records, and keep a selected object's existing Tier-0 classification informational
+and separate from findings.
+The new rule's **"What to do"** guidance is:
+
+> Review the recorded permission or membership relationship and its scope before making changes.
+> This finding does not establish a complete remediation for all routes.
+
+Verification covers duplicate-free stable account identity, all-question coverage, mixed expected
+and unexpected cases, exact independent counts, operation-readiness caveats, publication rollback
+and passive generation-bound reopening.
+Use offline fixtures and rebuilt isolated deliberate-defect checks for every new behavior check,
+with explicit correct-source rebuilds, preserving frozen values, historical evidence and failed
+attempts.
+Include normal layout checks; any unperformed physical-display checks remain outstanding.
+
+This requires saved finding/evidence integration, not just wording, and older saved analyses are
+not rewritten or migrated.
+No broader path composition, declared-asset work, incoming-route browser, remediation engine,
+SEC-031 or general finding tuning, dashboard redesign, new budgets, measurement restart,
+production operation, package change, new checkout, commit or push is authorized.
+Preserve the production-test checkout/package and historical evidence; production validation remains
+owner-operated.
+Only its run log may leave that environment; do not add object-level export logging.
+Stage 7 completion and production acceptance remain separate and outstanding.
+
 **Owner-approved saved path-risk qualification checkpoint, 2026-10-03.**
 Qualify every saved question in the three existing concrete-requester proof families against the
 requester's captured, pre-change authority on the actual reached target, reusing the existing scoped
@@ -225,8 +760,9 @@ cases** and assertion-based witnesses for all **30 new behavior cases** across *
 isolated defects**, followed by restored controls and an explicit correct-source rebuild.
 The [checkpoint handoff](../.v-path-risk-20261003/handoff.json) preserves source/build identities,
 earlier failures, original evidence and the untouched production-test package.
-Selected requester readback has an explicit requested/unavailable/no-recorded-question state and
-stays internal until the next approved consumer exists; no public-surface gate was exempted.
+The format-47 selected requester readback kept explicit requested/unavailable/no-recorded-question
+states internal until consumer approval; the format-48 paged consumer is approved above, and no
+public-surface gate was exempted.
 Older judgement formats are refused by this branch rather than migrated or reinterpreted, while
 the owner's frozen format-46 production-test application remains unchanged.
 This is the saved qualification needed before SEC-071, not SEC-071 delivery or completed Stage 7.
@@ -725,8 +1261,9 @@ inventory additions, and speculative performance tuning are deferred as listed i
 [the work queue](PUNCH-LIST.md#deferred-from-the-next-pass). P-217 gates deletion of valuable evidence;
 P-157 must be addressed before relying on the affected LAPS results, without automatically blocking all
 path development. P-93 remains a Stage 10 acceptance-lifecycle question and P-96 waits for actual path
-results; production requester discovery and P-143 declarations remain Stage 7 work, while P-142's
-bounded enterprise CA classification is implemented and offline verified.
+results; production requester acceptance and wider supported paths remain Stage 7 work, while
+P-143 declarations are deferred until after main feature/rule delivery under the 2026-10-03 decision.
+P-142's bounded enterprise CA classification is implemented and offline verified.
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
@@ -837,7 +1374,7 @@ This continuation authorizes no live access, new performance campaign, productio
 production budget or discovery change, cleanup, commit or push.
 
 **Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
-specifications and implement the remaining rule coverage.** The review and its retained source set are
+specifications and implement the remaining rule coverage; reaffirmed 2026-10-03 with P-143 deferred.** The review and its retained source set are
 recorded as P-235–P-239 in [the work queue](PUNCH-LIST.md#rule-specification-review--after-stage-7).
 The proposed handoff is a basis for later bounded implementation, not blanket approval of its severities,
 thresholds, collection extensions, compatibility requirements or screen changes; inventory/correlation
@@ -851,22 +1388,26 @@ A normal GUI or CLI audit must select the relevant account questions from captur
 Stage 7 analysis, and save its findings, routes and coverage without an administrator-maintained
 requester list or a separate per-object analysis step. This completion requirement covers the remaining
 Stage 7 scope, not merely automatic execution of the three currently supported requester families;
-SEC-071 findings, broader approved compositions, P-143 declarations and run-wide presentation/counts
-remain owed. Screens read and validate saved results rather than starting new analysis, and missing
+SEC-071 findings, broader approved compositions and run-wide presentation/counts remain required.
+P-143 declarations remain owed but were explicitly deferred beyond this milestone on 2026-10-03.
+Screens read and validate saved results rather than starting new analysis, and missing
 evidence, unsupported analysis and failed or unfinished work remain explicit rather than becoming safe
 answers. Automatic analysis does not authorize changes to AD; the existing separate approval boundaries
 for production activation, budgets and paused measurements still apply.
 
 **Stage 7 completion clarification, 2026-10-02:** the successful requester-enabled packaged GUI
 lab audit verifies the three existing supported families, not the full Stage 7 requirement above.
-Unfinished implementation includes the remaining approved path combinations, P-143 declarations,
-SEC-071 risk findings and risk-first path presentation with trustworthy run-wide counts; representative
-production execution/readback acceptance remains outstanding separately.
+The approved SEC-071 checkpoint now provides findings and risk-first saved readback for the three
+current qualified families, including whole-run counts.
+Remaining approved path combinations and distance/tier summaries, with their corresponding findings
+and presentation, are still unfinished; the owner confirmed on 2026-10-03 that these must be completed
+before closing Stage 7 rather than deferred with P-143.
+Representative production execution/readback acceptance remains outstanding separately.
 General finding tuning must not replace this work, but deciding which paths represent actual risk
 rather than expected administration is part of delivering Stage 7's own findings, not something that
 can all be deferred until after Stage 7 is called complete.
 
-**Owner-selected next Stage 7 priority: production requester coverage**, before broader path
+**Earlier owner-selected Stage 7 priority: production requester coverage**, before broader path
 compositions, P-143 declarations, SEC-071 findings and path presentation. Start from checkpoint 7's
 offline permission-led selector and checkpoint 8's shared targets, and prepare a bounded proposal
 for normal GUI/CLI account selection, execution and coverage accounting, including the representative
@@ -2995,6 +3536,13 @@ prevent.
 
 ## What it deliberately is not
 
+- **Not intended to replace BloodHound, clarified by the owner on 2026-10-03.** The owner wants the
+  richest practical evidence-backed rule and path coverage while keeping both judging and navigation
+  usable, and requested an engineering assessment of which remaining path capabilities are too
+  difficult or costly for that goal.
+  This direction does not approve every possible path family, a processing limit or a new measurement
+  campaign; the next implementation scope must distinguish established permissions, supported
+  operations and capabilities that the captured evidence cannot prove.
 - **Not a live tool.** No live effective access, inheritance, ACL compare or delegation reporting
   (`0008`).
 - **Not a policy compliance checker.** Password policy is captured and shown; nothing grades it.
@@ -3441,6 +3989,18 @@ to watch and hides nothing. Declaring a principal would hide edges by default an
 depend on local configuration. A specific edge that is fine here is handled by accepting the finding,
 which stays on the record. **A declaration never moves a severity** - that is fixed by the rule
 (`0066`, `0082`).
+
+**P-143 is deferred until after the main feature/rule work; its entry workflow remains undecided, 2026-10-03.**
+The owner explicitly lowered this feature's priority rather than making it a Stage 7 completion
+prerequisite; the wider supported paths and remaining distance/tier summaries are not deferred with it.
+The owner is considering the workflow while testing the latest SEC-071 correction in the laboratory;
+neither a captured-object-only picker nor manual pre-run entry has implementation approval.
+The owner notes that selecting objects from an earlier audit preserves recorded names, whereas
+manual entry before a run introduces misspellings and other typing errors.
+A small live name-validation step before adding an asset was raised as a possible alternative, not
+authorized live access or an approved design.
+Keep this decision pending: any proposed connected validation must respect capture's exclusive
+directory-access boundary, and saved-result browsing must remain passive.
 
 ## What was settled alongside the control plane, 2026-09-06
 

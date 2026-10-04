@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -10,8 +12,8 @@ namespace SecureAD.Next.Tests.Judgement;
 internal static class PathProofVerification
 {
     private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount,
-        IReadOnlyList<SavedRequesterDaclProof> Requesters, IReadOnlyList<SavedOwnAccountMembershipProof> OwnAccounts,
-        IReadOnlyList<SavedMembershipDaclProof> MembershipDacls, bool OfflineSelection, PathRequesterSelection? Selection);
+        int RequesterCount, int OwnAccountCount, int MembershipDaclCount, string ProofFingerprint,
+        bool OfflineSelection, PathRequesterSelection? Selection);
 
     internal static PathInputs ReadInputs(JudgementReader reader)
     {
@@ -63,6 +65,10 @@ internal static class PathProofVerification
         if (header.Version != Tier0PathCalculation.Version || header.Generation != reader.Description.GenerationId
             || header.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs) || header.NodeCount != saved.Count)
             throw Tier0PathStorage.InvalidProof();
+        var proofs = PathRequesterRiskStorage.ReadProofs(connection, reader.Description, CancellationToken.None);
+        if (proofs.Requesters.Count != header.RequesterCount || proofs.OwnAccounts.Count != header.OwnAccountCount
+            || proofs.MembershipDacls.Count != header.MembershipDaclCount
+            || Tier0PathCalculation.Fingerprint(proofs) != header.ProofFingerprint) throw Tier0PathStorage.InvalidProof();
         using var sources = ControlProofVerification.OpenSources(reader);
         var bundle = sources.Bundle;
         var contexts = sources.ReadNamingContexts().Value;
@@ -74,26 +80,104 @@ internal static class PathProofVerification
             : [];
         if (header.Selection is { } selection)
         {
-            var expected = new PathRequesterSelector(bundle, inputs,
-                nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), contexts, CancellationToken.None).Select();
+            var expected = new RequesterSelectionReference(bundle.ReadObjectAttributes, bundle.ReadPermissions, inputs,
+                nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), contexts, CancellationToken.None)
+                .Select() with { Version = PathRequesterSelector.Version };
             Equal(selection, expected);
         }
         var requesters = RequesterDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
-            header.Requesters.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, obtainedMembership: null);
-        Equal(header.Requesters, requesters);
-        nodes = nodes.Select(node => node with { RequesterRoute = RequesterDaclProofs.Best(node, requesters) }).ToArray();
+            proofs.Requesters.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, obtainedMembership: null,
+            RequesterMembershipContext.Create(sources, identities, inputs, CancellationToken.None));
+        Equal(proofs.Requesters, requesters);
+        nodes = nodes.Select(node => node with { RequesterRoute = RequesterRouteReference.Requester(node, requesters) }).ToArray();
         var ownAccounts = OwnAccountMembershipProofs.Create(connection, reader.Description, sources, identities, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
-            header.OwnAccounts.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
-        Equal(header.OwnAccounts, ownAccounts);
-        nodes = nodes.Select(node => node with { OwnAccountRoute = OwnAccountMembershipProofs.Best(node, ownAccounts, requesters) }).ToArray();
+            proofs.OwnAccounts.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
+        Equal(proofs.OwnAccounts, ownAccounts);
+        nodes = nodes.Select(node => node with { OwnAccountRoute = RequesterRouteReference.OwnAccount(node, ownAccounts, requesters) }).ToArray();
         var membershipDacls = MembershipDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
-            header.MembershipDacls.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
-        Equal(header.MembershipDacls, membershipDacls);
-        nodes = nodes.Select(node => node with { MembershipDaclRoute = MembershipDaclProofs.Best(node, membershipDacls, requesters, ownAccounts) }).ToArray();
+            proofs.MembershipDacls.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None,
+            RequesterMembershipContext.Create(sources, identities, inputs, CancellationToken.None));
+        Equal(proofs.MembershipDacls, membershipDacls);
+        nodes = nodes.Select(node => node with { MembershipDaclRoute = RequesterRouteReference.MembershipDacl(node, membershipDacls, requesters, ownAccounts) }).ToArray();
         Equal(saved, nodes);
         reader.ReadPathRequesterCoverage();
+    }
+
+    internal static void AlterRequesterProof(string directory, string address, string sqlValue) =>
+        SelfMembershipCoverageTests.Mutate(directory, connection =>
+        {
+            var match = Regex.Match(address, @"^\$\.(Requesters|OwnAccounts|MembershipDacls)\[(\d+)\](\..+)$");
+            if (!match.Success) throw new ArgumentException("A proof mutation must identify its family, ordinal and member.", nameof(address));
+            var family = match.Groups[1].Value switch
+            {
+                "Requesters" => PathRequesterFamily.RequesterDacl,
+                "OwnAccounts" => PathRequesterFamily.OwnAccountMembership,
+                _ => PathRequesterFamily.MembershipDacl,
+            };
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                UPDATE path_requester_risk SET source_proof=json_set(source_proof,$path,
+                """ + sqlValue + """
+                ) WHERE id=(SELECT id FROM path_requester_risk
+                WHERE json_extract(proof,'$.Family')=$family ORDER BY id LIMIT 1 OFFSET $ordinal)
+                """;
+            command.Parameters.AddWithValue("$path", "$" + match.Groups[3].Value);
+            command.Parameters.AddWithValue("$family", family.ToString());
+            command.Parameters.AddWithValue("$ordinal", int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
+            if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The intended source-proof mutation changed no question.");
+            RebindRequesterProofs(connection);
+        });
+
+    internal static void RebindRequesterProofs(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id,proof,source_proof FROM path_requester_risk ORDER BY id";
+        var rows = new List<(long Id, JsonObject Risk, string Source)>();
+        using (var read = command.ExecuteReader())
+            while (read.Read()) rows.Add((read.GetInt64(0), JsonNode.Parse(read.GetString(1))!.AsObject(), read.GetString(2)));
+        var direct = new List<SavedRequesterDaclProof>();
+        var own = new List<SavedOwnAccountMembershipProof>();
+        var combined = new List<SavedMembershipDaclProof>();
+        foreach (var row in rows)
+        {
+            var family = Enum.Parse<PathRequesterFamily>(row.Risk["Family"]!.GetValue<string>());
+            if (family == PathRequesterFamily.RequesterDacl)
+                direct.Add(JsonSerializer.Deserialize<SavedRequesterDaclProof>(row.Source, ProofSerialization.Options)!);
+            else if (family == PathRequesterFamily.OwnAccountMembership)
+                own.Add(JsonSerializer.Deserialize<SavedOwnAccountMembershipProof>(row.Source, ProofSerialization.Options)!);
+            else
+                combined.Add(JsonSerializer.Deserialize<SavedMembershipDaclProof>(row.Source, ProofSerialization.Options)!);
+        }
+        command.Parameters.Clear();
+        command.CommandText = "SELECT proof FROM tier0_path_calculation WHERE id=1";
+        var header = JsonNode.Parse((string)command.ExecuteScalar()!)!.AsObject();
+        header["ProofFingerprint"] = Tier0PathCalculation.Fingerprint(new PathRequesterProofs(direct, own, combined));
+        var headerJson = header.ToJsonString(ProofSerialization.Options);
+        var calculation = Convert.ToHexString(OwnershipAuditStorage.Hash(headerJson));
+        Update("tier0_path_calculation", 1, headerJson);
+        foreach (var row in rows)
+        {
+            row.Risk["SourceProofFingerprint"] = Convert.ToHexString(OwnershipAuditStorage.Hash(row.Source));
+            row.Risk["CalculationFingerprint"] = calculation;
+            Update("path_requester_risk", row.Id, row.Risk.ToJsonString(ProofSerialization.Options));
+        }
+        command.Parameters.Clear();
+        command.CommandText = "SELECT proof FROM path_risk_product WHERE id=1";
+        var coverage = JsonNode.Parse((string)command.ExecuteScalar()!)!.AsObject();
+        coverage["CalculationFingerprint"] = calculation;
+        Update("path_risk_product", 1, coverage.ToJsonString(ProofSerialization.Options));
+
+        void Update(string table, long id, string json)
+        {
+            command.Parameters.Clear();
+            command.CommandText = $"UPDATE {table} SET proof=$proof,fingerprint=$hash WHERE id=$id";
+            command.Parameters.AddWithValue("$proof", json);
+            command.Parameters.AddWithValue("$hash", OwnershipAuditStorage.Hash(json));
+            command.Parameters.AddWithValue("$id", id);
+            if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("A proof binding was not updated.");
+        }
     }
 
     private static IEnumerable<ControlEdge> TerminalPermissions(SqliteConnection connection, JudgementDescription description)

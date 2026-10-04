@@ -502,7 +502,7 @@ public sealed class DescriptorPreparationTests
         return connection;
     }
 
-    private sealed class Observer(Action? observed = null) : IRule
+    private sealed class Observer(Action? observed = null) : IObjectRule
     {
         internal Dictionary<string, string> Subjects { get; } = new(StringComparer.Ordinal);
         public RuleDefinition Definition { get; } = new("TEST-DESCRIPTOR", "Descriptor preparation observer", Severity.Low, 1,

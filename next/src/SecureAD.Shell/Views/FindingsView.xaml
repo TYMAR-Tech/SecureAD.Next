@@ -36,6 +36,14 @@
                     Visibility="{Binding IsFiltered, Converter={StaticResource Shown}}" />
         </StackPanel>
 
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,8"
+                Visibility="{Binding HasTier0Summary, Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="{Binding Tier0SummaryHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock x:Name="Tier0FindingSummary" Text="{Binding Tier0SummaryText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            </StackPanel>
+        </Border>
+
         <!-- WHY A REFUSAL IS A SENTENCE RATHER THAN AN EMPTY TABLE. A bundle nobody judged and a
              forest with nothing wrong with it draw the same blank grid, and an operator reads a
              blank grid as reassurance. This says which it is, in words, where the findings would
@@ -95,15 +103,37 @@
              item, because a binding a gate cannot resolve is a binding nobody is holding: the
              current-item path reads as a property name to ViewBindingGateTests, and a view naming
              something no view model publishes is how this shell crashed once with a green build. -->
-        <Border x:Name="FindingDetails" DockPanel.Dock="Bottom"
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition MaxHeight="280">
+                    <RowDefinition.Style>
+                        <Style TargetType="RowDefinition">
+                            <Setter Property="Height" Value="2*" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSelectedFinding}" Value="False">
+                                    <Setter Property="Height" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </RowDefinition.Style>
+                </RowDefinition>
+            </Grid.RowDefinitions>
+        <Border x:Name="FindingDetails" Grid.Row="1"
                 Style="{StaticResource Card}"
                 Margin="0,8,0,0"
                 MaxHeight="280"
                 Visibility="{Binding HasSelectedFinding, Converter={StaticResource Shown}}">
             <DockPanel>
-                <Button DockPanel.Dock="Top" Content="Close details"
+                <DockPanel DockPanel.Dock="Top">
+                <Button DockPanel.Dock="Right" Content="Close details"
                         Command="{Binding CloseFindingDetailsCommand}"
                         HorizontalAlignment="Right" Margin="0,0,0,8" />
+                <Button Content="View saved routes"
+                        Command="{Binding OpenSavedRoutesCommand}" CommandParameter="{Binding SelectedFinding}"
+                        Visibility="{Binding SelectedFinding.HasTier0Routes, Converter={StaticResource Shown}}"
+                        HorizontalAlignment="Left" Margin="0,0,0,8" />
+                </DockPanel>
                 <ScrollViewer x:Name="FindingDetailsScroll"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
@@ -161,7 +191,7 @@
             </DockPanel>
         </Border>
 
-        <DataGrid ItemsSource="{Binding Findings}"
+        <DataGrid Grid.Row="0" ItemsSource="{Binding Findings}"
                   SelectedItem="{Binding SelectedFinding, Mode=TwoWay}"
                   ColumnHeaderStyle="{StaticResource TableColumnHeader}"
                   AutoGenerateColumns="False"
@@ -202,5 +232,6 @@
                                     Width="3*" />
             </DataGrid.Columns>
         </DataGrid>
+        </Grid>
     </DockPanel>
 </UserControl>

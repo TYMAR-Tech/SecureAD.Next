@@ -182,7 +182,7 @@ public sealed partial class JudgementReader : IDisposable
     /// source qualification, requester selection or path calculation.
     /// An uncaptured subject remains Unknown, not NotReachable.
     /// </summary>
-    public Tier0PathResult ReadTier0Path(string subjectDn)
+    internal Tier0PathResult ReadTier0Path(string subjectDn)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
@@ -191,7 +191,7 @@ public sealed partial class JudgementReader : IDisposable
     }
 
     /// <summary>Reads path and requester coverage from the same saved inputs and generation, without proof replay.</summary>
-    public (Tier0PathResult Path, PathRequesterCoverage Coverage) ReadTier0PathWithCoverage(
+    internal (Tier0PathResult Path, PathRequesterCoverage Coverage) ReadTier0PathWithCoverage(
         string subjectDn, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -227,6 +227,26 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
         RequireCurrentPathGeneration();
         return PathRequesterRiskStorage.Read(_connection, Description, requesterDn, cancellationToken);
+    }
+
+    /// <summary>Reads only one saved qualification group and its original proofs for this requester.</summary>
+    public PathRiskPage ReadPathRiskPage(string requesterDn, PathRiskVerdict verdict,
+        PathRiskPageMark? after, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return PathRequesterRiskStorage.ReadPage(_connection, Description, requesterDn, verdict, after, cancellationToken);
+    }
+
+    /// <summary>Reads the complete saved SEC-071 production summary; null means this rule was not scheduled.</summary>
+    public Tier0FindingSummary? ReadTier0FindingSummary(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0RouteFindingStorage.ReadSummary(_connection, Description, cancellationToken);
     }
 
     private void RequireCurrentPathGeneration()
@@ -778,7 +798,10 @@ public sealed partial class JudgementReader : IDisposable
         """
         f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
         f.severity, f.distinguished_name, f.detail, f.coverage,
-        f.domain_fqdn, f.object_class,
+        f.domain_fqdn, f.object_class, f.principal_name,
+        z.proof                             AS z_proof,
+        z.fingerprint                       AS z_fingerprint,
+        zc.fingerprint                      AS z_calculation_fingerprint,
         d.user_account_control              AS d_user_account_control,
         d.is_computer                       AS d_is_computer,
         d.server_trust_account_bit          AS d_server_trust_account_bit,
@@ -852,6 +875,8 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_laps_decryptor e ON e.finding_id = f.finding_id
         LEFT JOIN finding_object_takeover t ON t.finding_id = f.finding_id
         LEFT JOIN finding_object_ownership w ON w.finding_id = f.finding_id
+        LEFT JOIN finding_tier0_route z ON z.finding_id = f.finding_id
+        LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
     /// <summary>
@@ -918,7 +943,24 @@ public sealed partial class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (!reader.IsDBNull(delegationUac))
+        if (ruleId == UnexpectedTier0Route.RuleId)
+        {
+            var proof = reader.GetOrdinal("z_proof");
+            var calculation = reader.GetOrdinal("z_calculation_fingerprint");
+            if (reader.IsDBNull(proof) || reader.IsDBNull(calculation)) throw Tier0PathStorage.InvalidProof();
+            var route = Tier0RouteFindingStorage.ReadEvidence(reader.GetString(proof),
+                (byte[])reader.GetValue(reader.GetOrdinal("z_fingerprint")), Description,
+                Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), Convert.ToHexString((byte[])reader.GetValue(calculation)));
+            evidence = route;
+            if (reader.GetString(reader.GetOrdinal("subject_key")) != route.RequesterGuid.ToString("D")
+                || reader.GetString(reader.GetOrdinal("subject_kind")) != nameof(FindingSubjectKind.Account)
+                || reader.GetString(reader.GetOrdinal("severity")) != nameof(Severity.High))
+                throw Tier0PathStorage.InvalidProof();
+        }
+        else if (!reader.IsDBNull(reader.GetOrdinal("z_proof")))
+            throw Tier0PathStorage.InvalidProof();
+        else if (!reader.IsDBNull(delegationUac))
         {
             evidence = new UnconstrainedDelegationEvidence(
                 (uint)reader.GetInt64(delegationUac),
@@ -1080,7 +1122,7 @@ public sealed partial class JudgementReader : IDisposable
             reader.GetString(reader.GetOrdinal("object_class")),
             reader.GetString(reader.GetOrdinal("detail")),
             Enum.Parse<EvidenceCompleteness>(reader.GetString(reader.GetOrdinal("coverage"))),
-            evidence);
+            evidence) { PrincipalName = reader.GetString(reader.GetOrdinal("principal_name")) };
     }
 
     /// <summary>

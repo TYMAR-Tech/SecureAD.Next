@@ -40,7 +40,7 @@ namespace SecureAD.Judgement;
 /// policy that never mentions the value is therefore silent here, not a finding.
 /// </para>
 /// </remarks>
-public sealed class LapsDecryptorBroadPrincipal : IRule
+public sealed class LapsDecryptorBroadPrincipal : IObjectRule
 {
     private const string RuleId = "SEC-093";
 

@@ -64,12 +64,12 @@ public sealed record RuleVerdict(
 }
 
 /// <summary>
-/// Executable judgement logic: what a rule is, and what it makes of one captured object.
+/// The durable identity and requirements of a scheduled rule.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Execution belongs above both Evidence and Derivation.</b> Today's rules need only one captured
-/// object. A derived-fact rule will need inputs from both stores. Judgement is the layer allowed to
+/// <b>Execution belongs above both Evidence and Derivation.</b> Object rules and saved-path rules
+/// consume different stages of the same bound inputs. Judgement is the layer allowed to
 /// coordinate those inputs; Evidence must not reference Derivation, and Derivation must never see a
 /// rule.
 /// </para>
@@ -86,7 +86,11 @@ public interface IRule
 {
     /// <summary>What this rule is, as durable data.</summary>
     RuleDefinition Definition { get; }
+}
 
+/// <summary>A rule evaluated while each captured object is in hand, before saved path qualification.</summary>
+public interface IObjectRule : IRule
+{
     /// <summary>What this rule makes of one object, and what it could not read to decide.</summary>
     /// <param name="subject">The object to judge.</param>
     RuleVerdict Judge(ObjectAttributes subject);
