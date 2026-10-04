@@ -62,6 +62,51 @@ live checks or changes still need a concrete lab scope, and this source handoff 
 Production remains owner-operated with run-log-only export, and combined lab and display acceptance
 remain outstanding.
 
+**Owner-authorized combined nested-slice lab campaign, 2026-10-04.**
+The owner confirmed `ba.ad.lab` as the authorized laboratory domain and approved the bounded setup,
+fresh capture and saved-result verification for the two completed nested-group slices, including
+eight temporary test permission entries on the real BA Domain Admins object.
+Use only the named isolated OU, ordinary test users and same-domain global security groups; preserve
+separate existing-membership, Self-Membership, Write members, deny, loop, expected-administrator and
+unrelated controls, with no test principal added to Domain Admins and no credential retained.
+The owner explicitly requested that all test objects, memberships and permission entries remain after
+testing for future campaigns; retain the manifest and rollback tooling, but do not perform cleanup
+without a new request.
+After the first capture showed the two deny controls also made unrelated positive checks explicitly
+unknown, the owner approved a second isolated capture with only those two recorded deny entries
+temporarily removed, followed by exact restoration so the retained lab setup finishes unchanged.
+
+**Combined nested-slice lab checkpoint — live AD and saved results validated, 2026-10-04.**
+The `ba.ad.lab` campaign passed 520 focused offline cases before live work, created the approved
+23 marked objects, 13 memberships, three group permission entries and eight Domain Admins permission
+entries, and retained that full setup exactly as the owner requested. The two fresh three-domain
+captures each recorded 8,441 objects and 11,388 permission entries; after the isolated positive
+capture, both deny entries were restored exactly once and the live Domain Admins DACL again matched
+the completed setup fingerprint.
+
+The deny-enabled saved result proves that the existing-membership and proposed-membership denies are
+`NotEstablished` in captured entry order. The isolated positive result proves the existing nested
+route, separate Self-Membership and Write members continuations, and terminating loop traversal;
+normal GUI and CLI judging both completed all 18 rules with 34 findings, 13 SEC-071 questions judged,
+no unjudged SEC-071 questions and the same seven High SEC-071 findings. The unrelated account has no
+saved authorization, the expected administrator's 78 saved questions remain expected rather than
+SEC-071 findings, and each of the six granting groups retains exactly one counted `WRITE_DAC` grant
+regardless of members, route questions or the loop.
+
+Protected passive readback verified the original permission entries, granting groups, direct
+membership witnesses and exact Evidence/Derivation/Judgement bindings in both GUI and CLI results.
+Saved paging returned every expected-administrator question without repetition, cancellation of a
+saved read was honored, and all checked result files remained byte-for-byte unchanged; cancellation
+of a new live judging attempt was not exercised. This is laboratory functional evidence, not wider
+resource-context, production-scale or production acceptance.
+
+The owner passed the findings screen on the laptop for readability and operation, but found the
+amount of relationship-target information confusing and questioned how much of it an administrator
+needs to see. Do not remove or regroup that evidence yet: the owner will review it on an external
+monitor and then decide what should be pared down, so external-monitor acceptance and the concrete
+presentation decision remain outstanding. No UI wording or layout change is authorized by this
+checkpoint.
+
 **Owner-authorized second bounded completion slice and lab plan, 2026-10-03.**
 The owner requested "begin next slice" after the first slice and its passive lab check: implement one
 obtainable own-account membership followed by captured same-domain global-security-group nesting and

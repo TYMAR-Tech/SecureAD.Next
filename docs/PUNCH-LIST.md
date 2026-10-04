@@ -13,6 +13,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Stage 7 nested slices — live AD and saved-result validation complete; presentation decision pending, 2026-10-04.**
+The authorized `ba.ad.lab` campaign passed the existing-membership, Self-Membership, Write members, applicable-deny, loop, expected-administrator and unrelated-account cases across separate deny-enabled and positive captures, with identical GUI/CLI security evidence and one counted grant per granting group.
+Protected readback verified original permissions, membership witnesses, exact generation bindings, paging and saved-read cancellation without changing any result file; new-judging cancellation, external-monitor and production acceptance remain unexercised, while the approved full AD setup remains for later tests.
+The owner passed laptop operation but found the volume of relationship-target information confusing, so no UI text or layout is changed until the planned external-monitor review decides what can be pared down.
+
 **Stage 7 source handoff to the lab machine — publication authorized, 2026-10-03.**
 The owner installed VS Code in the lab and requested the current source, tests and decisions on the remote `stage7-completion` branch, leaving `main` and the other local checkouts untouched.
 The source handoff includes the verified requester corrections, SEC-071 presentation and both nested-group slices, while all captured runs, local verification artifacts, credentials and compiled packages remain local.
