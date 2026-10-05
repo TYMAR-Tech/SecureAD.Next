@@ -29,6 +29,14 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Isolate verification temporary files
+        shell: pwsh
+        run: |
+          $temporary = Join-Path ([IO.Path]::GetPathRoot($env:RUNNER_TEMP)) ('sa-test-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+          New-Item -ItemType Directory -Path $temporary | Out-Null
+          "TEMP=$temporary" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TMP=$temporary" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       # The solution is named on every step, deliberately. A bare `dotnet restore` at
       # the repository root once found a tracked but empty SecureAD.Next.sln beside this
       # file, which restored, built and tested nothing and reported success - a green
@@ -46,7 +54,9 @@ jobs:
         run: dotnet build next/SecureAD.Next.sln --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test next/SecureAD.Next.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        # Unrelated blocking fixtures must not starve one another on the shared worker.
+        # Concurrency within each test is unchanged and remains asserted by those tests.
+        run: dotnet test next/SecureAD.Next.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults -- xUnit.ParallelizeTestCollections=false
 
       - name: Upload coverage
         if: always()
