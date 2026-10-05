@@ -101,6 +101,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecureAD.Sysvol.TestWorker"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite7", "BenchmarkSuite7\BenchmarkSuite7.csproj", "{CF6062D3-0C1E-8482-9A07-AF3BA034CFB3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite6", "BenchmarkSuite6\BenchmarkSuite6.csproj", "{496C70F8-C073-4843-A0C4-33EA954D5799}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -279,6 +281,12 @@ Global
 		{CF6062D3-0C1E-8482-9A07-AF3BA034CFB3}.Release|x64.Build.0 = Release|Any CPU
 		{CF6062D3-0C1E-8482-9A07-AF3BA034CFB3}.Release|x86.ActiveCfg = Release|Any CPU
 		{CF6062D3-0C1E-8482-9A07-AF3BA034CFB3}.Release|x86.Build.0 = Release|Any CPU
+		{496C70F8-C073-4843-A0C4-33EA954D5799}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{496C70F8-C073-4843-A0C4-33EA954D5799}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{496C70F8-C073-4843-A0C4-33EA954D5799}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{496C70F8-C073-4843-A0C4-33EA954D5799}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{496C70F8-C073-4843-A0C4-33EA954D5799}.Release|x64.ActiveCfg = Release|Any CPU
+		{496C70F8-C073-4843-A0C4-33EA954D5799}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
