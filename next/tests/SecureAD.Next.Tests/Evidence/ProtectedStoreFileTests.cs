@@ -145,31 +145,27 @@ public sealed class ProtectedStoreFileTests
     }
 
     [Fact]
-    public async Task CancellationInterruptsAnExecutingStatement()
+    public void CancellationInterruptsAnExecutingStatement()
     {
         var (directory, generation) = CreateStore();
         using var stopping = new CancellationTokenSource();
         using var file = ProtectedStoreFile.OpenAnalysis(directory, generation).Value;
         using var lease = file.Acquire(stopping.Token);
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        lease.Connection.CreateFunction("started", () => { started.TrySetResult(); return 1; });
-        using var query = lease.Connection.CreateCommand();
-        query.CommandText = "WITH RECURSIVE work(n) AS (SELECT started() UNION ALL SELECT n+1 FROM work WHERE n<1000000000) SELECT SUM(n) FROM work";
-        var reading = Task.Run(() => query.ExecuteScalar());
-        try
+        var entered = false;
+        lease.Connection.CreateFunction("started", () =>
         {
-            await started.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            entered = true;
             stopping.Cancel();
-            var error = await Record.ExceptionAsync(async () => await reading.WaitAsync(TimeSpan.FromSeconds(5)));
+            return 1;
+        });
+        using var query = lease.Connection.CreateCommand();
+        // Request cancellation inside SQLite, not on a continuation that can lose the race on a
+        // saturated test worker. The finite query also lets a deliberately broken callback finish.
+        query.CommandText = "WITH RECURSIVE work(n) AS (SELECT started() UNION ALL SELECT n+1 FROM work WHERE n<10000) SELECT SUM(n) FROM work";
+        var error = Record.Exception(() => query.ExecuteScalar());
 
-            Assert.Equal((typeof(SqliteException), 9), (error?.GetType(), (error as SqliteException)?.SqliteErrorCode));
-        }
-        finally
-        {
-            // A deliberate cancellation defect must not leave the synthetic query running.
-            SQLitePCL.raw.sqlite3_interrupt(lease.Connection.Handle);
-            await reading.ContinueWith(task => _ = task.Exception, TaskScheduler.Default);
-        }
+        Assert.True(entered);
+        Assert.Equal((typeof(SqliteException), 9), (error?.GetType(), (error as SqliteException)?.SqliteErrorCode));
     }
 
     private static (string Directory, AnalysisStoreGeneration Generation) CreateStore()
