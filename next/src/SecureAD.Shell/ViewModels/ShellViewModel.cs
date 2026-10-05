@@ -335,6 +335,7 @@ internal sealed partial class ShellViewModel : ObservableObject
             Views.Add(SectionView.Built("Findings"));
             Views.Add(SectionView.Built("LAPS"));
             Views.Add(SectionView.Built("Rules"));
+            Views.Add(SectionView.Built("Delegations"));
         }
 
         foreach (var view in Views)
@@ -378,6 +379,7 @@ internal sealed partial class ShellViewModel : ObservableObject
             "Findings" => AssetsPane.Findings,
             "LAPS" => AssetsPane.Laps,
             "Rules" => AssetsPane.Rules,
+            "Delegations" => AssetsPane.Delegations,
             _ => AssetsPane.Objects,
         };
 

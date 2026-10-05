@@ -22,7 +22,7 @@ public sealed partial class OwnAccountMembershipPathTests
         using var sources = ControlProofVerification.OpenSources(reader);
         var inputs = reader.ReadPathInputs();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT proof FROM tier0_path_node ORDER BY target";
+        command.CommandText = "SELECT path_json(proof) FROM tier0_path_node ORDER BY target";
         var nodes = new Dictionary<string, Tier0PathNode>(StringComparer.OrdinalIgnoreCase);
         using (var read = command.ExecuteReader())
             while (read.Read())

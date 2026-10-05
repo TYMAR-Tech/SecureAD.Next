@@ -15,7 +15,7 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
         CancellationToken cancellationToken, PostPassDiagnostics? diagnostic)
         : this(bundle.ReadObjectAttributes, bundle.ReadPermissions, inputs, nodes, contexts, cancellationToken, diagnostic) { }
 
-    internal const int Version = 3;
+    internal const int Version = 4;
     internal RequesterMembershipContext? Memberships { get; init; }
     private const int WriteDacl = 0x40000;
     private readonly Dictionary<string, ObjectAttributes?> _attributes = new(StringComparer.OrdinalIgnoreCase);
@@ -187,7 +187,8 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
 
     private IEnumerable<PathRequesterSelectionWitness> Requesters(string resource, PermissionEntry entry, int mask)
     {
-        var holder = Holder(resource, entry);
+        var sameForest = mask == WriteDacl && Memberships?.HasForestScope == true;
+        var holder = sameForest ? Memberships!.Holder(entry.Trustee, nodes[resource].Subject)?.DistinguishedName : Holder(resource, entry);
         if (entry.Trustee.Sid is "S-1-1-0" or "S-1-5-11")
         {
             Limit(PathRequesterSelectionReason.BroadIdentityNotExpanded, resource, entry, null);
@@ -198,23 +199,29 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
             Limit(PathRequesterSelectionReason.IdentityUnresolved, resource, entry, null);
             yield break;
         }
-        if (Qualification(holder, resource) is { } issue)
+        if (Qualification(holder, resource, sameForest) is { } issue)
         {
             Limit(issue, resource, entry, null);
             yield break;
         }
         if (User(holder)) { yield return new(resource, entry.Ordinal, mask, holder, null); yield break; }
-        if (!Global(holder))
+        if (!Global(holder) && (!sameForest || !Group(holder)))
         {
             Limit(Group(holder) ? PathRequesterSelectionReason.GlobalGroupRequired : PathRequesterSelectionReason.RequesterKindUnsupported, resource, entry, null);
             yield break;
         }
+        if (sameForest && RequesterTrusteeReading.Number(Attributes(holder), "groupType") is { } type
+            && !RequesterTrusteeReading.SupportsSecurityNesting(type, null, true, Sid.IsBuiltinDomain(entry.Trustee.Sid)))
+        {
+            Limit(PathRequesterSelectionReason.PermissionUnsupported, resource, entry, null);
+            yield break;
+        }
         Limit(PathRequesterSelectionReason.MembershipVisibilityUnknown, resource, entry, null);
-        foreach (var member in Attributes(holder)?.Find("member")?.Values ?? [])
+        foreach (var member in Global(holder) ? Attributes(holder)?.Find("member")?.Values ?? [] : [])
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(member.Text)) { Limit(PathRequesterSelectionReason.IdentityUnresolved, resource, entry, null); continue; }
-            if (Qualification(member.Text, resource) is { } memberIssue) { Limit(memberIssue, resource, entry, member.Text); continue; }
+            if (Qualification(member.Text, resource, sameForest) is { } memberIssue) { Limit(memberIssue, resource, entry, member.Text); continue; }
             if (!User(member.Text))
             {
                 if (mask != WriteDacl || Memberships is null || !Global(member.Text))
@@ -224,9 +231,13 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
             yield return new(resource, entry.Ordinal, mask, holder, member.Text);
         }
         if (mask != WriteDacl || Memberships is null) yield break;
-        foreach (var nested in Memberships.Requesters(holder))
+        var routes = sameForest ? Memberships.CapturedRequesters(holder) : Memberships.Requesters(holder);
+        foreach (var nested in routes)
+        {
+            if (Global(holder) && nested.Evidence.Links.Count == 1) continue;
             yield return new(resource, entry.Ordinal, mask, holder, nested.RequesterDn) { Membership = nested.Evidence };
-        foreach (var limitation in Memberships.Limitations(holder))
+        }
+        foreach (var limitation in sameForest ? Memberships.CapturedLimitations(holder) : Memberships.Limitations(holder))
             Limit(limitation.Reason, resource, entry, limitation.Dn);
     }
 
@@ -289,7 +300,9 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
         cancellationToken.ThrowIfCancellationRequested();
         return fingerprint;
     }
-    private PathRequesterSelectionReason? Qualification(string dn, string resource)
+    private PathRequesterSelectionReason? Qualification(string dn, string resource) => Qualification(dn, resource, false);
+
+    private PathRequesterSelectionReason? Qualification(string dn, string resource, bool sameForest)
     {
         var value = Attributes(dn);
         if (!nodes.TryGetValue(dn, out var node) || value is null || node.Subject.ObjectGuid is null || !node.Subject.IsValid
@@ -299,7 +312,8 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
             || node.Subject.Sid is { } sid && _identityCounts.GetValueOrDefault(IdentityKey(sid, node.Subject.SidScope)) != 1)
             return PathRequesterSelectionReason.IdentityUnresolved;
         if (!nodes.TryGetValue(resource, out var target) || !Domain(node.Subject) || !Domain(target.Subject)
-            || !Same(node.Subject.DomainFqdn, target.Subject.DomainFqdn)) return PathRequesterSelectionReason.ResourceContextUnsupported;
+            || (sameForest ? !Memberships!.InResourceForest(node.Subject, target.Subject)
+                : !Same(node.Subject.DomainFqdn, target.Subject.DomainFqdn))) return PathRequesterSelectionReason.ResourceContextUnsupported;
         return null;
     }
     private bool Domain(Tier0Target identity) => contexts.TryGetValue(identity.NamingContext, out var kind) && kind == NamingContextKind.Domain

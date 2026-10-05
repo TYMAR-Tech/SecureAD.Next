@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Resources;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
@@ -20,17 +19,21 @@ internal static class Tier0PathStorage
         [JsonIgnore] public IReadOnlyList<SavedMembershipDaclProof> MembershipDacls { get; init; } = [];
     }
 
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
+    internal static void CreateTables(SqliteConnection connection)
+    {
+        PathProofStorage.CreateTables(connection);
+        Execute(connection, null, """
+        CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof INTEGER NOT NULL REFERENCES path_proof(id),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         CREATE TABLE tier0_path_node (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
-            outcome TEXT NOT NULL, proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
+            outcome TEXT NOT NULL, proof INTEGER NOT NULL REFERENCES path_proof(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         """);
+    }
 
     internal static void Write(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
         IReadOnlyList<RequesterDaclRequest> requests, IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
         CancellationToken cancellationToken, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection,
-        Action<PathRequesterWorkPhase> beginPhase, JudgingStatus? status)
+        Action<PathRequesterWorkPhase> beginPhase, JudgingStatus? status, PreparedStatements statements)
     {
         cancellationToken.ThrowIfCancellationRequested();
         beginPhase(PathRequesterWorkPhase.PreparingPaths);
@@ -67,17 +70,19 @@ internal static class Tier0PathStorage
             membershipDaclRequests = PathRequesterSelector.MembershipDacls(selection);
         }
         beginPhase(PathRequesterWorkPhase.RequesterDacl);
-        var requesters = RequesterDaclProofs.Create(connection, description, sources, identities, inputs, requests, cancellationToken,
-            obtainedMembership: null, memberships);
+        var requesterQuestions = requests.OrderBy(RequesterDaclProofs.Key, StringComparer.Ordinal)
+            .Select(request => new RequesterDaclProofs.Question(request, null)).ToArray();
+        var requesters = RequesterDaclProofs.Create(connection, description, sources, identities, inputs, requesterQuestions,
+            cancellationToken, memberships);
         var routeIndex = new PathRequesterRouteIndex();
         if (requesters.Count != 0)
             Match("requester-permission", requesters.Count,
                 diagnostic => routeIndex.AddRequesters(requesters, cancellationToken, diagnostic),
                 node => node with { RequesterRoute = routeIndex.Requester(node) });
         beginPhase(PathRequesterWorkPhase.OwnAccountMembership);
+        var prerequisites = new OwnAccountMembershipProofs(connection, description, sources, identities, inputs, cancellationToken);
         IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts = ownAccountRequests.Count == 0 ? []
-            : OwnAccountMembershipProofs.Create(connection, description, sources, identities, inputs,
-            nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), ownAccountRequests, cancellationToken);
+            : prerequisites.Create(nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), ownAccountRequests);
         if (ownAccounts.Count != 0)
             Match("own-account-membership", ownAccounts.Count,
                 diagnostic => routeIndex.AddOwnAccounts(ownAccounts, cancellationToken, diagnostic),
@@ -85,7 +90,7 @@ internal static class Tier0PathStorage
         beginPhase(PathRequesterWorkPhase.MembershipDacl);
         IReadOnlyList<SavedMembershipDaclProof> membershipDacls = membershipDaclRequests.Count == 0 ? []
             : MembershipDaclProofs.Create(connection, description, sources, identities, inputs,
-            nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), membershipDaclRequests, cancellationToken, memberships);
+            nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), membershipDaclRequests, cancellationToken, memberships, prerequisites);
         if (membershipDacls.Count != 0)
             Match("membership-permission", membershipDacls.Count,
                 diagnostic => routeIndex.AddMembershipDacls(membershipDacls, cancellationToken, diagnostic),
@@ -95,22 +100,23 @@ internal static class Tier0PathStorage
         ownership?.RequireFor(connection, description);
         Reconcile(selection, requesters, ownAccounts, membershipDacls);
         using var transaction = connection.BeginTransaction();
+        using var proofs = new PathProofStorage.Writer(connection, transaction, cancellationToken);
         foreach (var node in nodes)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var json = JsonSerializer.Serialize(node, ProofSerialization.Options);
-            Execute(connection, transaction, "INSERT INTO tier0_path_node VALUES ($target,$outcome,$proof,$hash)",
+            var proof = proofs.Write(node);
+            if (statements.Bind("INSERT INTO tier0_path_node VALUES ($target,$outcome,$proof,$hash)", transaction,
                 ("$target", node.Subject.DistinguishedName), ("$outcome", node.Reachability.ToString()),
-                ("$proof", json), ("$hash", OwnershipAuditStorage.Hash(json)));
+                ("$proof", proof.Id), ("$hash", proof.Fingerprint)).ExecuteNonQuery() != 1) throw InvalidProof();
         }
-        var header = JsonSerializer.Serialize(new Header(Tier0PathCalculation.Version, description.GenerationId,
+        var header = proofs.Write(new Header(Tier0PathCalculation.Version, description.GenerationId,
             Tier0PathCalculation.Fingerprint(inputs), nodes.Count, requesters.Count, ownAccounts.Count, membershipDacls.Count,
             Tier0PathCalculation.Fingerprint(new PathRequesterProofs(requesters, ownAccounts, membershipDacls)),
-            offlineSelection, selection, SavedPathInputs.From(inputs)), ProofSerialization.Options);
+            offlineSelection, selection, SavedPathInputs.From(inputs)));
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
-            ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
+            ("$proof", header.Id), ("$hash", header.Fingerprint));
         PathRequesterRiskStorage.Write(connection, transaction, description, sources, inputs, offlineSelection,
-            requesters, ownAccounts, membershipDacls, Convert.ToHexString(OwnershipAuditStorage.Hash(header)), cancellationToken);
+            requesters, ownAccounts, membershipDacls, Convert.ToHexString(header.Fingerprint), proofs, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
 
@@ -166,7 +172,8 @@ internal static class Tier0PathStorage
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT proof,fingerprint FROM tier0_path_calculation WHERE id=1";
         Header? header;
-        using (var read = query.ExecuteReader()) header = read.Read() ? Decode<Header>(read.GetString(0), (byte[])read.GetValue(1)) : null;
+        using (var read = query.ExecuteReader()) header = read.Read()
+            ? PathProofStorage.Read<Header>(connection, read.GetInt64(0), Convert.ToHexString((byte[])read.GetValue(1)), cancellationToken) : null;
         if (header is null)
         {
             var completeInputs = PathInputStorage.Read(connection, description, cancellationToken);
@@ -383,7 +390,8 @@ internal static class Tier0PathStorage
         query.Parameters.AddWithValue("$target", target);
         using var read = query.ExecuteReader();
         if (!read.Read()) return null;
-        var node = Decode<Tier0PathNode>(read.GetString(2), (byte[])read.GetValue(3));
+        var node = PathProofStorage.Read<Tier0PathNode>(connection, read.GetInt64(2),
+            Convert.ToHexString((byte[])read.GetValue(3)), cancellationToken);
         if (node.Subject is null || node.Subject.DistinguishedName != read.GetString(0)
             || node.Reachability.ToString() != read.GetString(1) || node.MembershipDistance < 0
             || node.MembershipDistance is null or 0 && node.MembershipNext is not null) throw InvalidProof();
@@ -403,19 +411,6 @@ internal static class Tier0PathStorage
         foreach (var edge in ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id))
             .OrderBy(edge => edge.Target, StringComparer.OrdinalIgnoreCase).ThenBy(edge => edge.Capability).ThenBy(edge => edge.Id))
             yield return edge;
-    }
-
-    private static T Decode<T>(string json, byte[] fingerprint)
-    {
-        if (!OwnershipAuditStorage.Hash(json).AsSpan().SequenceEqual(fingerprint)) throw InvalidProof();
-        try
-        {
-            return JsonSerializer.Deserialize<T>(json, ProofSerialization.Options) ?? throw InvalidProof();
-        }
-        catch (JsonException)
-        {
-            throw InvalidProof();
-        }
     }
 
     internal static InvalidDataException InvalidProof() => new(Resources.GetString("InvalidProof", System.Globalization.CultureInfo.CurrentUICulture));

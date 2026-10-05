@@ -255,7 +255,7 @@ public static class Stage2aRun
                 DerivationCompleteness.NothingWasRead(scope.Value!, writer.GenerationId));
 
             progress.Report(new DerivationProgress("PublishingDerivation", 0));
-            writer.Complete(DateTimeOffset.UtcNow);
+            writer.Complete(DateTimeOffset.UtcNow, log);
             return DerivationRunState.CompletedDegraded;
         }
 
@@ -328,7 +328,7 @@ public static class Stage2aRun
         writer.RecordCompleteness(completeness);
 
         progress.Report(new DerivationProgress("PublishingDerivation", 0));
-        var state = writer.Complete(DateTimeOffset.UtcNow);
+        var state = writer.Complete(DateTimeOffset.UtcNow, log);
 
         log.Note(DerivePhase, "finished", [new RunLogDetail("state", state.ToString())]);
 

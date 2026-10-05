@@ -163,6 +163,7 @@ Saved selection scope: {1}</value></data>
   <data name="ConditionalAllowed" xml:space="preserve"><value>Allowed under the saved membership assumption; not proof of current access or a completed Add</value></data>
   <data name="DirectGrantee" xml:space="preserve"><value>{0} directly</value></data>
   <data name="GroupGrantee" xml:space="preserve"><value>{0} (group); {1}'s access is through this group</value></data>
+  <data name="DomainQualifiedName" xml:space="preserve"><value>{0} ({1})</value></data>
   <data name="OtherGrantee" xml:space="preserve"><value>{0}; this is not an identified direct grant to {1}</value></data>
   <data name="HolderUnresolved" xml:space="preserve"><value>Unresolved permission holder; identifier in Record details</value></data>
   <data name="RemoveExplicitRight" xml:space="preserve"><value>Remove {0} from {1}'s explicit permissions on {2}. Keep the entry's other permissions unchanged unless they are separately reviewed.</value></data>

@@ -162,13 +162,41 @@ internal static class PathInputStorage
         var bundle = sources.Bundle;
         var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw InvalidProof();
-        if (inputs.UncertaintyRegions.Count != 0) bundle.PrepareBulkObjectLookup();
-        foreach (var region in inputs.UncertaintyRegions)
+        ValidateWitnesses(bundle, contexts.Value, inputs.UncertaintyRegions, cancellationToken);
+        sources.RequireFor(description);
+    }
+
+    internal static void ValidateWitnesses(BundleReader bundle, IReadOnlyDictionary<string, NamingContextKind> contexts,
+        IReadOnlyList<PathUncertaintyRegion> regions, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (regions.Count != 0) bundle.PrepareBulkObjectLookup();
+        foreach (var batch in regions.Select(region =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return region;
+            }).GroupBy(region => region.Source.TargetDn, StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var subject = region.Source.TargetDn is { } dn ? bundle.ReadObjectAttributes(dn) : null;
-            var target = subject is null ? null : OwnershipAuditRun.Target(subject, contexts.Value);
-            if (region != Region(region.Source, target) || !WitnessMatches(region.Source, target, bundle)) throw InvalidProof();
+            var subject = batch.Key is { } dn ? bundle.ReadObjectAttributes(dn) : null;
+            var target = subject is null ? null : OwnershipAuditRun.Target(subject, contexts);
+            var descriptor = target is not null && batch.Any(region =>
+                region.Source.Reason is not (Tier0DiscoveryReason.CaptureIncomplete or Tier0DiscoveryReason.MissingIdentity))
+                ? bundle.ReadPermissions(target.DistinguishedName) : null;
+            var occurrences = descriptor is not null && batch.Any(region => region.Source.PermissionOrdinal.HasValue)
+                ? descriptor.Entries.Select(entry => (entry.Ordinal, (string?)entry.Trustee.Sid)).ToHashSet() : null;
+            var captureIncomplete = false;
+            if (batch.Any(region => region.Source.Reason == Tier0DiscoveryReason.CaptureIncomplete))
+            {
+                var scope = bundle.ReadScope();
+                captureIncomplete = scope.IsSuccess && !scope.Value.AllDeclaredDomainsAreComplete;
+            }
+            foreach (var region in batch)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (region != Region(region.Source, target)
+                    || !WitnessMatches(region.Source, target, descriptor, occurrences, captureIncomplete)) throw InvalidProof();
+            }
         }
     }
 
@@ -197,23 +225,20 @@ internal static class PathInputStorage
             source.TargetDn is null ? PathTargetScope.Forest : PathTargetScope.Object, target);
     }
 
-    private static bool WitnessMatches(Tier0DiscoveryLimitation source, Tier0Target? target, BundleReader bundle)
+    private static bool WitnessMatches(Tier0DiscoveryLimitation source, Tier0Target? target, ObjectPermissions? descriptor,
+        HashSet<(int Ordinal, string? Sid)>? occurrences, bool captureIncomplete)
     {
         if (source.Reason == Tier0DiscoveryReason.CaptureIncomplete)
-        {
-            var scope = bundle.ReadScope();
-            return source.TargetDn is null && scope.IsSuccess && !scope.Value.AllDeclaredDomainsAreComplete;
-        }
+            return source.TargetDn is null && captureIncomplete;
         if (target is null || source.TargetDn != target.DistinguishedName) return false;
         if (source.Reason == Tier0DiscoveryReason.MissingIdentity) return !target.IsValid;
-        var descriptor = bundle.ReadPermissions(target.DistinguishedName);
         if (source.Reason == Tier0DiscoveryReason.DescriptorUnavailable)
             return descriptor is null || descriptor.Availability != DescriptorAvailability.Read || descriptor.DaclState == DaclState.Unreadable;
         if (descriptor is null) return false;
         if (source.Reason == Tier0DiscoveryReason.DescriptorIncomplete) return descriptor.DaclCompleteness != DaclCompleteness.Complete;
         if (source.Reason == Tier0DiscoveryReason.NullDacl) return descriptor.DaclState == DaclState.Null;
         return source.PermissionOrdinal is { } ordinal
-            ? descriptor.Entries.Any(entry => entry.Ordinal == ordinal && entry.Trustee.Sid == source.TrusteeSid)
+            ? occurrences?.Contains((ordinal, source.TrusteeSid)) == true
             : descriptor.Owner?.Sid == source.TrusteeSid || descriptor.DaclState == DaclState.Null && source.TrusteeSid == "S-1-1-0";
     }
 

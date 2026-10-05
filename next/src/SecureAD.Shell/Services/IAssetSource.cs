@@ -57,6 +57,12 @@ internal interface IAssetReader
     /// <summary>Unverified sources cannot vouch for retained data; protected readers supply their own check.</summary>
     Func<bool> CaptureReadValidity() => () => false;
 
+    /// <summary>Finds captured user/group identities for direct permission lookup.</summary>
+    Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after);
+
+    /// <summary>Reads a bounded page of original captured entries naming the selected principal.</summary>
+    Result<DelegationPage> ReadDelegations(string bundleDirectory, DelegationQuery query, DelegationPageMark? after);
+
     /// <summary>Reads one object's completed saved permission classification without new analysis.</summary>
     Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName);
 

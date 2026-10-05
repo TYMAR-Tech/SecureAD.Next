@@ -1,6 +1,9 @@
+using System.Collections.Immutable;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel.Naming;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
@@ -11,6 +14,14 @@ public sealed record RequesterMembershipLink(Tier0Target Member, Tier0Target Gro
 /// <summary>A captured-only membership answer, including unavailable work and unsupported links.</summary>
 public sealed record RequesterMembershipEvidence(PrincipalExpansionOutcome Verdict, string SourceFingerprint,
     IReadOnlyList<RequesterMembershipLink> Links, IReadOnlyList<PathRequesterSelectionReason> Limitations);
+
+/// <summary>The captured resource domain and forest declaration, not a complete authentication token.</summary>
+public sealed record RequesterResourceContext(Tier0Target ResourceDomain, IReadOnlyList<string> ReadDomains, string ScopeFingerprint)
+{
+    public bool IsComplete => ResourceDomain is { IsValid: true, ObjectGuid: not null, Sid: not null, DomainFqdn: not null }
+        && ResourceDomain.DistinguishedName == ResourceDomain.NamingContext && ScopeFingerprint is { Length: 64 }
+        && ReadDomains.Contains(ResourceDomain.DomainFqdn, StringComparer.OrdinalIgnoreCase);
+}
 
 internal sealed class RequesterMembershipContext
 {
@@ -26,6 +37,10 @@ internal sealed class RequesterMembershipContext
     private readonly Dictionary<string, Dictionary<string, AttributeValue>> _memberValues = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<(string Member, string Group), RequesterMembershipLink> _links = [];
     private readonly Dictionary<string, Expansion> _expansions = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string>? _readDomains;
+    private string? _scopeFingerprint;
+    private readonly Dictionary<string, Tier0Target?> _domainRoots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, RequesterResourceContext> _resources = new(StringComparer.OrdinalIgnoreCase);
 
     private sealed record Expansion(PrincipalExpansion Members, string Fingerprint,
         IReadOnlyList<(PathRequesterSelectionReason Reason, string Dn)> Limitations)
@@ -67,6 +82,55 @@ internal sealed class RequesterMembershipContext
         if (_binding != binding) throw Tier0PathStorage.InvalidProof();
     }
 
+    internal bool HasForestScope => _readDomains is not null;
+
+    internal void BindForestScope(RunScope scope)
+    {
+        var fingerprint = Tier0PathCalculation.Fingerprint(scope);
+        if (_scopeFingerprint is not null && _scopeFingerprint != fingerprint) throw Tier0PathStorage.InvalidProof();
+        _scopeFingerprint = fingerprint;
+        _readDomains ??= scope.Domains.Where(domain => domain.Outcome == DomainReadOutcome.Read)
+            .Select(domain => domain.DomainFqdn).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    internal bool InResourceForest(Tier0Target subject, Tier0Target resource) => KnownDomain(subject) is not null && KnownDomain(resource) is not null;
+
+    internal RequesterResourceContext? Resource(Tier0Target target)
+    {
+        if (KnownDomain(target) is not { } domain) return null;
+        if (!_resources.TryGetValue(domain.NamingContext, out var value))
+            _resources[domain.NamingContext] = value = new(domain,
+                _readDomains!.Order(StringComparer.OrdinalIgnoreCase).ToImmutableArray(), _scopeFingerprint!);
+        return value;
+    }
+
+    internal ObjectAttributes? Holder(PermissionTrustee trustee, Tier0Target resource) =>
+        trustee.Sid == "S-1-5-10" ? Attributes(resource.DistinguishedName)
+        : Sid.IsBuiltinDomain(trustee.Sid) ? Resolve(trustee.Sid, resource.DomainFqdn) is { } local ? Attributes(local.DistinguishedName) : null
+        : trustee.DistinguishedName is { } dn ? Attributes(dn) : null;
+
+    internal RequesterTrusteeEvidence Trustee(ObjectAttributes user, ObjectAttributes resource, PermissionTrustee trustee,
+        ObjectAttributes? holder, string forest) =>
+        RequesterTrusteeReading.ReadSameForest(user, resource, trustee, holder, forest, _readDomains ?? throw Tier0PathStorage.InvalidProof());
+
+    private Tier0Target? KnownDomain(Tier0Target identity)
+    {
+        if (_readDomains is null || identity.DomainFqdn is null || !_readDomains.Contains(identity.DomainFqdn) || !Domain(identity))
+            return null;
+        if (!_domainRoots.TryGetValue(identity.NamingContext, out var root))
+        {
+            root = _identities.GetValueOrDefault(identity.NamingContext);
+            var source = Attributes(identity.NamingContext);
+            if (root is null || !Qualified(source, root) || root.Sid is null
+                || !RequesterTrusteeReading.HasClass(source, "domainDNS")) root = null;
+            _domainRoots.Add(identity.NamingContext, root);
+        }
+        if (root is null || !Same(root.DomainFqdn, identity.DomainFqdn)) return null;
+        return identity.Sid is null || Same(identity.Sid, root.Sid)
+            || Sid.IsBuiltinDomain(identity.Sid) && Same(identity.SidScope, identity.DomainFqdn)
+            || Same(Sid.IssuingDomain(identity.Sid), root.Sid) ? root : null;
+    }
+
     internal bool Qualified(ObjectAttributes? source, Tier0Target? identity) =>
         source is not null && identity is { ObjectGuid: not null, IsValid: true }
         && Tier0Target.From(source, identity.NamingContext) == identity
@@ -86,6 +150,20 @@ internal sealed class RequesterMembershipContext
         }
     }
 
+    internal IEnumerable<(string RequesterDn, RequesterMembershipEvidence Evidence)> CapturedRequesters(string holderDn)
+    {
+        var expansion = ExpansionFor(holderDn, true);
+        foreach (var member in expansion.Members.Members ?? [])
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            if (Resolve(member.Sid, member.Scope) is not { } identity || !User(Attributes(identity.DistinguishedName))) continue;
+            yield return (identity.DistinguishedName, Read(identity.DistinguishedName, holderDn, true));
+        }
+    }
+
+    internal IReadOnlyList<(PathRequesterSelectionReason Reason, string Dn)> CapturedLimitations(string holderDn) =>
+        ExpansionFor(holderDn, true).Limitations;
+
     internal IReadOnlyList<(PathRequesterSelectionReason Reason, string Dn)> Limitations(string holderDn) =>
         ExpansionFor(holderDn).Limitations;
 
@@ -104,9 +182,11 @@ internal sealed class RequesterMembershipContext
         return expansion.Groups = result;
     }
 
-    internal RequesterMembershipEvidence Read(string requesterDn, string holderDn)
+    internal RequesterMembershipEvidence Read(string requesterDn, string holderDn) => Read(requesterDn, holderDn, false);
+
+    internal RequesterMembershipEvidence Read(string requesterDn, string holderDn, bool sameForest)
     {
-        var expansion = ExpansionFor(holderDn);
+        var expansion = ExpansionFor(holderDn, sameForest);
         if (expansion.Routes.TryGetValue(requesterDn, out var existing)) return existing;
         var links = new List<RequesterMembershipLink>();
         if (_identities.TryGetValue(requesterDn, out var requester) && requester.Sid is { } sid
@@ -115,8 +195,11 @@ internal sealed class RequesterMembershipContext
             for (var index = member.PathFromRoot.Count - 1; index > 0; index--)
             {
                 _cancellationToken.ThrowIfCancellationRequested();
-                var from = Resolve(member.PathFromRoot[index], null) ?? throw Tier0PathStorage.InvalidProof();
-                var group = Resolve(member.PathFromRoot[index - 1], null) ?? throw Tier0PathStorage.InvalidProof();
+                var domain = _identities[holderDn].DomainFqdn;
+                var fromSid = member.PathFromRoot[index];
+                var groupSid = member.PathFromRoot[index - 1];
+                var from = Resolve(fromSid, Sid.IsBuiltinDomain(fromSid) ? domain : null) ?? throw Tier0PathStorage.InvalidProof();
+                var group = Resolve(groupSid, Sid.IsBuiltinDomain(groupSid) ? domain : null) ?? throw Tier0PathStorage.InvalidProof();
                 links.Add(Link(from, group));
             }
         }
@@ -126,10 +209,13 @@ internal sealed class RequesterMembershipContext
         return result;
     }
 
-    private Expansion ExpansionFor(string holderDn)
+    private Expansion ExpansionFor(string holderDn) => ExpansionFor(holderDn, false);
+
+    private Expansion ExpansionFor(string holderDn, bool sameForest)
     {
         _cancellationToken.ThrowIfCancellationRequested();
-        if (_expansions.TryGetValue(holderDn, out var existing)) return existing;
+        var key = (sameForest ? "forest\0" : "global\0") + holderDn;
+        if (_expansions.TryGetValue(key, out var existing)) return existing;
         var holder = _identities.GetValueOrDefault(holderDn) ?? throw Tier0PathStorage.InvalidProof();
         var limits = new HashSet<(PathRequesterSelectionReason Reason, string Dn)>();
         var sources = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { holderDn };
@@ -143,11 +229,12 @@ internal sealed class RequesterMembershipContext
         var fingerprint = Tier0PathCalculation.Fingerprint(new
         {
             Input = _binding, Holder = holder, members.Outcome,
+            SameForest = sameForest, ForestScope = sameForest ? _scopeFingerprint : null,
             Sources = sources.Order(StringComparer.OrdinalIgnoreCase).Select(dn => new PathRequesterSelectionSource(dn, Fingerprint(dn))).ToArray(),
         });
         var result = new Expansion(members, fingerprint, limits.OrderBy(value => value.Reason)
             .ThenBy(value => value.Dn, StringComparer.OrdinalIgnoreCase).ToArray());
-        _expansions.Add(holderDn, result);
+        _expansions.Add(key, result);
         return result;
 
         bool Qualify((string Sid, string Scope) parent, (string Sid, string Scope) child)
@@ -166,12 +253,14 @@ internal sealed class RequesterMembershipContext
             var memberSource = Attributes(member.DistinguishedName);
             if (!Qualified(groupSource, group) || !Qualified(memberSource, member))
                 return Limit(PathRequesterSelectionReason.IdentityUnresolved, member.DistinguishedName);
-            if (!Domain(group) || !Domain(member) || !Same(group.NamingContext, holder.NamingContext)
+            if (sameForest ? KnownDomain(group) is null || KnownDomain(member) is null
+                : !Domain(group) || !Domain(member) || !Same(group.NamingContext, holder.NamingContext)
                 || !Same(member.NamingContext, holder.NamingContext) || !Same(group.DomainFqdn, holder.DomainFqdn)
                 || !Same(member.DomainFqdn, holder.DomainFqdn))
                 return Limit(PathRequesterSelectionReason.ResourceContextUnsupported, member.DistinguishedName);
             var memberIsGroup = RequesterTrusteeReading.HasClass(memberSource, "group");
-            if (!Global(groupSource) || memberIsGroup && !Global(memberSource))
+            if (sameForest ? !RequesterTrusteeReading.SupportsSecurityNesting(groupSource!, memberSource!)
+                : !Global(groupSource) || memberIsGroup && !Global(memberSource))
                 return Limit(PathRequesterSelectionReason.GlobalGroupRequired, member.DistinguishedName);
             if (!memberIsGroup && !User(memberSource))
                 return Limit(PathRequesterSelectionReason.RequesterKindUnsupported, member.DistinguishedName);

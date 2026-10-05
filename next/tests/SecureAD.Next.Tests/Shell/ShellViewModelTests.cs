@@ -35,7 +35,21 @@ public sealed class ShellViewModelTests
 
         shell.Show(ShellSection.Assets);
 
-        Assert.Equal(["Objects", "Findings", "LAPS", "Rules"], shell.Views.Select(v => v.Name));
+        Assert.Equal(["Objects", "Findings", "LAPS", "Rules", "Delegations"], shell.Views.Select(v => v.Name));
+    }
+
+    [Fact]
+    public void SelectingDelegationsShowsTheBuiltDelegationPane()
+    {
+        var shell = AShell();
+        shell.Show(ShellSection.Assets);
+        var tab = Assert.Single(shell.Views, view => view.Name == "Delegations");
+        tab.IsSelected = true;
+
+        Assert.True(tab.IsBuilt);
+        Assert.Same(tab, shell.SelectedView);
+        Assert.Equal(AssetsPane.Delegations, shell.Assets.Pane);
+        Assert.Same(shell.Assets, shell.Current);
     }
 
     /// <summary>

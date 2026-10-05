@@ -60,6 +60,14 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     }
 
     /// <inheritdoc/>
+    public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after) =>
+        WithRun(bundleDirectory, reader => reader.FindDelegationPrincipals(bundleDirectory, search, after));
+
+    /// <inheritdoc/>
+    public Result<DelegationPage> ReadDelegations(string bundleDirectory, DelegationQuery query, DelegationPageMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadDelegations(bundleDirectory, query, after));
+
+    /// <inheritdoc/>
     public Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName) =>
         WithRun(bundleDirectory, reader => reader.ReadPermissionClassification(bundleDirectory, distinguishedName));
 

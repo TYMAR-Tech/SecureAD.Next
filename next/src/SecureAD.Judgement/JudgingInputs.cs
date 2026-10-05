@@ -149,8 +149,11 @@ internal sealed class JudgingInputs : IDisposable
         }
         var derivation = OpenDerivation();
         var contexts = ReadNamingContexts();
-        if (!derivation.IsSuccess || !contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
-        return _requesterMemberships = new(derivation.Value, binding, Bundle.ReadObjectAttributes, identities, contexts.Value, cancellationToken);
+        var scope = Bundle.ReadScope();
+        if (!derivation.IsSuccess || !contexts.IsSuccess || !scope.IsSuccess) throw Tier0PathStorage.InvalidProof();
+        var result = new RequesterMembershipContext(derivation.Value, binding, Bundle.ReadObjectAttributes, identities, contexts.Value, cancellationToken);
+        result.BindForestScope(scope.Value);
+        return _requesterMemberships = result;
     }
 
     internal string? ReadDomainSid(string domain)

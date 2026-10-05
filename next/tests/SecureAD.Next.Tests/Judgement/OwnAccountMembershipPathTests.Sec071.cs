@@ -81,22 +81,24 @@ public sealed partial class OwnAccountMembershipPathTests
         using var command = connection.CreateCommand();
         // Publication consumes qualified answers; qualification itself has independent semantic tests.
         command.CommandText = """
-            SELECT id,proof FROM path_requester_risk
-            WHERE json_extract(proof,'$.Family')='RequesterDacl'
+            SELECT id,proof,path_json(proof) FROM path_requester_risk
+            WHERE json_extract(path_json(proof),'$.Family')='RequesterDacl'
             """;
         long id;
+        long proofId;
         PathRequesterRiskAssessment value;
         using (var read = command.ExecuteReader())
         {
             Assert.True(read.Read());
             id = read.GetInt64(0);
-            value = JsonSerializer.Deserialize<PathRequesterRiskAssessment>(read.GetString(1), ProofSerialization.Options)!;
+            proofId = read.GetInt64(1);
+            value = JsonSerializer.Deserialize<PathRequesterRiskAssessment>(read.GetString(2), ProofSerialization.Options)!;
         }
         var expected = value with { Verdict = PathRiskVerdict.ExpectedRoute, Expectedness = ControlExpectedness.Expected,
             ExpectednessReason = ControlExpectednessReason.ExpectedSameDomainControlPlane };
         var json = JsonSerializer.Serialize(expected, ProofSerialization.Options);
-        command.CommandText = "UPDATE path_requester_risk SET verdict='ExpectedRoute',proof=$proof,fingerprint=$hash WHERE id=$id";
-        command.Parameters.AddWithValue("$proof", json);
+        PathProofVerification.ReplaceJson(connection, proofId, json);
+        command.CommandText = "UPDATE path_requester_risk SET verdict='ExpectedRoute',fingerprint=$hash WHERE id=$id";
         command.Parameters.AddWithValue("$hash", OwnershipAuditStorage.Hash(json));
         command.Parameters.AddWithValue("$id", id);
         Assert.Equal(1, command.ExecuteNonQuery());
@@ -175,7 +177,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Assert.Equal(before, Snapshot(directory));
         using var connection = RiskDatabase(reader, writableCopy: false);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT proof FROM tier0_path_calculation WHERE id=1";
+        command.CommandText = "SELECT path_json(proof) FROM tier0_path_calculation WHERE id=1";
         using var header = JsonDocument.Parse((string)command.ExecuteScalar()!);
         Assert.False(header.RootElement.TryGetProperty("Requesters", out _));
         Assert.False(header.RootElement.TryGetProperty("OwnAccounts", out _));
@@ -284,8 +286,8 @@ public sealed partial class OwnAccountMembershipPathTests
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE path_requester_risk SET source_proof='not json' WHERE id=(SELECT MAX(id) FROM path_requester_risk)";
-            Assert.Equal(1, command.ExecuteNonQuery());
+            command.CommandText = "SELECT source_proof FROM path_requester_risk WHERE id=(SELECT MAX(id) FROM path_requester_risk)";
+            PathProofVerification.ReplaceJson(connection, Assert.IsType<long>(command.ExecuteScalar()), "not json");
         });
         using var reader = Open(directory);
         PathRiskPage? first = null;

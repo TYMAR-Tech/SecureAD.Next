@@ -1,22 +1,75 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
+using SecureAD.Kernel.Schema;
 
 namespace SecureAD.Judgement;
 
 internal sealed record SavedOwnAccountMembershipProof(OwnAccountMembershipAssessment Assessment,
     string SourceFingerprint, IReadOnlyList<Tier0PathStep> Steps);
 
-internal static class OwnAccountMembershipProofs
+internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, JudgementDescription description,
+    JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
+    CancellationToken cancellationToken)
 {
-    internal static IReadOnlyList<SavedOwnAccountMembershipProof> Create(SqliteConnection connection,
-        JudgementDescription description, JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
+    private sealed record Preparation(IReadOnlyDictionary<string, NamingContextKind> Contexts,
+        IReadOnlyList<ObjectAttributes> Schema, SchemaGuidCatalog Catalogue, RequesterMembershipContext? Memberships,
+        PathSourceFingerprints Fingerprints);
+
+    private readonly Dictionary<OwnAccountMembershipRequest, SavedOwnAccountMembershipProof> _prerequisites = [];
+    private Preparation? _preparation;
+
+    internal void RequireFor(SqliteConnection expectedConnection, JudgementDescription expectedDescription,
+        JudgingInputs expectedSources, IReadOnlyDictionary<string, Tier0Target> expectedIdentities, PathInputs expectedInputs,
+        CancellationToken expectedCancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        expectedCancellationToken.ThrowIfCancellationRequested();
+        if (!ReferenceEquals(connection, expectedConnection) || description != expectedDescription
+            || !ReferenceEquals(sources, expectedSources) || !ReferenceEquals(identities, expectedIdentities)
+            || !ReferenceEquals(inputs, expectedInputs) || cancellationToken != expectedCancellationToken
+            || inputs.JudgementGenerationId != description.GenerationId
+            || inputs.Input is { } binding && (binding.EvidenceSeal != description.EvidenceSeal
+                || binding.DerivationGenerationId != description.DerivationGenerationId))
+            throw Tier0PathStorage.InvalidProof();
+        sources.RequireFor(description);
+    }
+
+    internal IReadOnlyList<SavedOwnAccountMembershipProof> Create(
         IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<OwnAccountMembershipRequest> requests,
-        CancellationToken cancellationToken, bool membershipContinuation = true)
+        bool membershipContinuation = true)
     {
         if (requests.Count == 0) return [];
+        RequireFor(connection, description, sources, identities, inputs, cancellationToken);
+        var ordered = requests.OrderBy(Key, StringComparer.Ordinal).ToArray();
+        var result = new SavedOwnAccountMembershipProof[ordered.Length];
+        // Exact spellings preserve the source reader's SQLite name-resolution behavior.
+        foreach (var group in ordered.Select((request, index) => (Request: request, Index: index))
+            .GroupBy(value => value.Request.TargetDn, StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var pending = group.Select(value => value.Request).Where(request => !_prerequisites.ContainsKey(request)).Distinct().ToArray();
+            if (pending.Length != 0) PrepareGroup(group.Key, pending);
+            foreach (var (request, index) in group)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var proof = _prerequisites[request];
+                var assessment = proof.Assessment;
+                var steps = membershipContinuation ? Steps(assessment, inputs, nodes, cancellationToken) : [];
+                if (membershipContinuation && assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
+                    assessment = assessment with { Issues = [.. assessment.Issues, OwnAccountMembershipIssue.MembershipContinuationUnresolved] };
+                // Continuation limitations belong to this family, never to the reusable pre-change question.
+                result[index] = proof with { Assessment = assessment, Steps = steps };
+            }
+        }
         sources.RequireFor(description);
-        var membershipContext = RequesterMembershipContext.Create(sources, identities, inputs, cancellationToken);
+        return result;
+    }
+
+    private Preparation Prepare()
+    {
+        if (_preparation is { } prepared) return prepared;
+        var memberships = RequesterMembershipContext.Create(sources, identities, inputs, cancellationToken);
         var bundle = sources.Bundle;
         var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
@@ -32,45 +85,72 @@ internal static class OwnAccountMembershipProofs
         var catalogue = bundle.ReadSchemaGuids();
         var roots = contexts.Value.Where(pair => pair.Value == NamingContextKind.Domain)
             .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).Select(pair => bundle.ReadObjectAttributes(pair.Key)).ToArray();
-        var result = new List<SavedOwnAccountMembershipProof>();
-        foreach (var request in requests.OrderBy(Key, StringComparer.Ordinal))
+        var fingerprints = new PathSourceFingerprints(PathSourceFamily.OwnAccountMembership, description, inputs, new
+        {
+            Roots = roots, Schema = schema, Catalogue = catalogue.Entries,
+            Contexts = contexts.Value.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToArray(), Forest = bundle.Description.ForestFqdn,
+        }, cancellationToken);
+        return _preparation = new(contexts.Value, schema, catalogue, memberships, fingerprints);
+    }
+
+    private void PrepareGroup(string targetDn, IReadOnlyList<OwnAccountMembershipRequest> requests)
+    {
+        var prepared = Prepare();
+        var bundle = sources.Bundle;
+        var permissions = bundle.ReadPermissions(targetDn);
+        var target = bundle.ReadObjectAttributes(targetDn);
+        var holders = new Dictionary<string, ObjectAttributes?>(StringComparer.Ordinal);
+        foreach (var dn in (permissions?.Entries ?? []).Select(entry => entry.Trustee.DistinguishedName)
+            .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var permissions = bundle.ReadPermissions(request.TargetDn);
-            using var query = connection.CreateCommand();
-            query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND capability=$capability ORDER BY id";
-            query.Parameters.AddWithValue("$target", request.TargetDn);
-            query.Parameters.AddWithValue("$capability", request.PermissionKind == OwnAccountMembershipPermissionKind.WriteMembers
-                ? nameof(ControlCapability.CanModifyGroupMembership) : nameof(ControlCapability.CanAddSelfToGroup));
+            holders.Add(dn, string.Equals(dn, targetDn, StringComparison.Ordinal) ? target : bundle.ReadObjectAttributes(dn));
+        }
+        var holderValues = holders.Values.ToArray();
+        var fingerprint = prepared.Fingerprints.PrepareTarget(target, permissions, holderValues);
+        var edges = new Dictionary<OwnAccountMembershipPermissionKind, IReadOnlyList<ControlEdge>>();
+        using var query = connection.CreateCommand();
+        query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND capability=$capability ORDER BY id";
+        query.Parameters.AddWithValue("$target", targetDn);
+        var capability = query.Parameters.Add("$capability", SqliteType.Text);
+        query.Prepare();
+        foreach (var kind in requests.Select(request => request.PermissionKind).Distinct())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            capability.Value = kind == OwnAccountMembershipPermissionKind.WriteMembers
+                ? nameof(ControlCapability.CanModifyGroupMembership) : nameof(ControlCapability.CanAddSelfToGroup);
             var ids = new List<long>();
             using (var read = query.ExecuteReader()) while (read.Read())
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ids.Add(read.GetInt64(0));
             }
-            var edges = ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id)).ToArray();
-            var assessment = OwnAccountMembershipEvaluator.Assess(request, inputs, description, identities,
-                bundle.ReadObjectAttributes, permissions, schema, catalogue, contexts.Value, edges,
-                bundle.Description.ForestFqdn, cancellationToken, membershipContext);
-            var steps = membershipContinuation ? Steps(assessment, inputs, nodes, cancellationToken) : [];
-            if (membershipContinuation && assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
-                assessment = assessment with { Issues = [.. assessment.Issues, OwnAccountMembershipIssue.MembershipContinuationUnresolved] };
-            var holders = new List<ObjectAttributes?>();
-            foreach (var dn in (permissions?.Entries ?? []).Select(entry => entry.Trustee.DistinguishedName)
-                .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                holders.Add(bundle.ReadObjectAttributes(dn));
-            }
-            var source = Tier0PathCalculation.Fingerprint(new
-            {
-                Requester = bundle.ReadObjectAttributes(request.RequesterDn), Target = bundle.ReadObjectAttributes(request.TargetDn),
-                Permissions = permissions, Holders = holders, Roots = roots, Schema = schema, Catalogue = catalogue.Entries,
-                Contexts = contexts.Value.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToArray(), Forest = bundle.Description.ForestFqdn,
-            });
-            result.Add(new(assessment, source, steps));
+            edges.Add(kind, ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id)).ToArray());
         }
-        return result;
+        string? previousRequester = null;
+        ObjectAttributes? requester = null;
+        foreach (var request in requests)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.Equals(previousRequester, request.RequesterDn, StringComparison.Ordinal))
+            {
+                requester = string.Equals(request.RequesterDn, targetDn, StringComparison.Ordinal) ? target
+                    : holders.TryGetValue(request.RequesterDn, out var holder) ? holder : bundle.ReadObjectAttributes(request.RequesterDn);
+                previousRequester = request.RequesterDn;
+            }
+            var assessment = OwnAccountMembershipEvaluator.Assess(request, inputs, description, identities,
+                Attributes, permissions, prepared.Schema, prepared.Catalogue, prepared.Contexts, edges[request.PermissionKind],
+                bundle.Description.ForestFqdn, cancellationToken, prepared.Memberships);
+            var source = fingerprint.OwnAccount(requester);
+            _prerequisites.Add(request, new(assessment, source, []));
+
+            ObjectAttributes? Attributes(string dn)
+            {
+                if (string.Equals(dn, request.RequesterDn, StringComparison.Ordinal)) return requester;
+                if (string.Equals(dn, targetDn, StringComparison.Ordinal)) return target;
+                return holders.TryGetValue(dn, out var holder) ? holder : bundle.ReadObjectAttributes(dn);
+            }
+        }
     }
 
     private static IReadOnlyList<Tier0PathStep> Steps(OwnAccountMembershipAssessment assessment, PathInputs inputs,

@@ -166,7 +166,7 @@ public sealed partial class OwnAccountMembershipPathTests
         var nested = new RequesterMembershipContext(sources.OpenDerivation().Value, inputs.Input!, Read, identities, contexts, CancellationToken.None);
         var result = RequesterDaclEvaluator.Assess(new(UserDn, CoreDn), inputs, reader.Description, identities, Read,
             sources.Bundle.ReadPermissions(CoreDn), contexts, reader.ReadControlEdges(CoreDn, null, null, true, 0).Edges,
-            sources.Bundle.Description.ForestFqdn, CancellationToken.None, membership, nested);
+            sources.Bundle.Description.ForestFqdn, CancellationToken.None, membership, nested, TargetPermissionReference.EntryMatches);
         Assert.Equal(ControlEvaluationState.Unknown, result.Authorization);
         Assert.Empty(result.Steps);
     }
@@ -183,9 +183,9 @@ public sealed partial class OwnAccountMembershipPathTests
         var input = reader.ReadPathInputs();
         RequesterMembershipContext.Create(sources, identities, input, CancellationToken.None);
         identities.Reset();
-        var assessments = OwnAccountMembershipProofs.Create(connection, reader.Description, sources, identities, input,
-            new Dictionary<string, Tier0PathNode>(), Enumerable.Repeat(original.Request, 8).ToArray(),
-            CancellationToken.None, membershipContinuation: false);
+        var prerequisites = new OwnAccountMembershipProofs(connection, reader.Description, sources, identities, input, CancellationToken.None);
+        var assessments = prerequisites.Create(new Dictionary<string, Tier0PathNode>(),
+            Enumerable.Repeat(original.Request, 8).ToArray(), membershipContinuation: false);
         Assert.Equal(8, assessments.Count);
         Assert.All(assessments, value => Assert.Equal(Tier0PathCalculation.Fingerprint(original), Tier0PathCalculation.Fingerprint(value.Assessment)));
         // The batch visits identities once to select captured schema, never once per identity check.

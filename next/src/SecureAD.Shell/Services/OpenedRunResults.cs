@@ -11,7 +11,7 @@ using SecureAD.Shell.ViewModels;
 namespace SecureAD.Shell.Services;
 
 /// <summary>Owns one selected run's protected files, never a connection shared between queries.</summary>
-internal sealed class OpenedRunResults(string directory) : IDisposable, IAsyncDisposable
+internal sealed partial class OpenedRunResults(string directory) : IDisposable, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1);
     private readonly CancellationTokenSource _stopping = new();

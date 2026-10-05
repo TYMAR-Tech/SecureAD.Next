@@ -524,6 +524,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         LapsShortfall = null;
         LapsRefusal = null;
         SelectedFinding = null;
+        ClearDelegationSearch();
+        DelegationPrincipalSearch = "";
         _filterValidity = null;
         _listingReady = false;
         ViewRefusal = null;
@@ -906,7 +908,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         ClearListing(AssetsPane.Objects);
         ClearListing(AssetsPane.Findings);
         ClearListing(AssetsPane.Laps);
-        if (Pane != AssetsPane.Rules) LoadVisible();
+        if (Pane is not (AssetsPane.Rules or AssetsPane.Delegations)) LoadVisible();
         Announce();
     }
 
@@ -942,6 +944,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </summary>
     private void Announce()
     {
+        AnnounceDelegations();
         OnPropertyChanged(nameof(HasViewRefusal));
         OnPropertyChanged(nameof(IsOpeningTree));
         OnPropertyChanged(nameof(HasListingResult));

@@ -18,6 +18,14 @@ public enum AnalysisStoreKind
 /// <param name="GenerationId">The identifier from which <see cref="BundleLayout"/> derives its paths.</param>
 public sealed record AnalysisStoreGeneration(AnalysisStoreKind Kind, Guid GenerationId);
 
+internal enum AnalysisPublicationPart
+{
+    WritePendingManifest,
+    MoveData,
+    SealData,
+    SelectManifest,
+}
+
 /// <summary>
 /// Stages and atomically publishes immutable Derivation and Judgement generations.
 /// </summary>
@@ -144,7 +152,28 @@ public static class AnalysisStoreLifecycle
         string bundleDirectory,
         AnalysisStoreKind kind,
         Guid generationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Publish(bundleDirectory, kind, generationId, cancellationToken, null);
+
+    /// <summary>Publishes with aggregate file-sealing diagnostics, preserving the existing publication boundary.</summary>
+    /// <param name="bundleDirectory">The bundle containing the analysis store.</param>
+    /// <param name="kind">The analysis store being published.</param>
+    /// <param name="generationId">The immutable generation being selected.</param>
+    /// <param name="cancellationToken">The existing pre-publication cancellation boundary.</param>
+    /// <param name="log">The run log receiving aggregate sealing diagnostics.</param>
+    public static AnalysisStoreGeneration PublishWithDiagnostics(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, IRunLog log)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+        return Publish(bundleDirectory, kind, generationId, cancellationToken, null, log);
+    }
+
+    internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart) =>
+        Publish(bundleDirectory, kind, generationId, cancellationToken, beginPart, null);
+
+    internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart, IRunLog? log)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         cancellationToken.ThrowIfCancellationRequested();
@@ -170,10 +199,16 @@ public static class AnalysisStoreLifecycle
         var stagedManifestPath = manifestPath + ".partial";
         // The staging database disappears during sealing. Keep the unfinished attempt visible
         // until the single atomic operation that makes its sealed generation current.
+        beginPart?.Invoke(AnalysisPublicationPart.WritePendingManifest);
         WritePendingManifest(stagedManifestPath, new(ManifestVersion, generationId.ToString("D")));
 
+        beginPart?.Invoke(AnalysisPublicationPart.MoveData);
         File.Move(stagingPath, dataPath);
-        BundleSealing.Seal(dataPath, sealPath);
+        beginPart?.Invoke(AnalysisPublicationPart.SealData);
+        // Analysis has always checked cancellation after sealing, immediately before selecting the manifest.
+        if (log is null) BundleSealing.Seal(dataPath, sealPath);
+        else BundleSealing.SealWithDiagnostics(dataPath, sealPath, CancellationToken.None, log, kind, generationId);
+        beginPart?.Invoke(AnalysisPublicationPart.SelectManifest);
         cancellationToken.ThrowIfCancellationRequested();
         File.Move(stagedManifestPath, manifestPath, overwrite: true);
         return generation;

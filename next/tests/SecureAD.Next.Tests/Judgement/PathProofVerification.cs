@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -14,6 +15,75 @@ internal static class PathProofVerification
     private sealed record Header(int Version, Guid Generation, string InputFingerprint, int NodeCount,
         int RequesterCount, int OwnAccountCount, int MembershipDaclCount, string ProofFingerprint,
         bool OfflineSelection, PathRequesterSelection? Selection);
+
+    internal static void EnableJsonReads(SqliteConnection connection) =>
+        connection.CreateFunction("path_json", (long id) => Json(connection, id));
+
+    internal static string Json(SqliteConnection connection, long id)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT data FROM path_proof_chunk WHERE proof_id=$id ORDER BY ordinal";
+        command.Parameters.AddWithValue("$id", id);
+        using var read = command.ExecuteReader();
+        using var bytes = new MemoryStream();
+        while (read.Read()) bytes.Write((byte[])read.GetValue(0));
+        return Encoding.UTF8.GetString(bytes.ToArray());
+    }
+
+    internal static void ReplaceJson(SqliteConnection connection, long id, string json)
+    {
+        var bytes = Encoding.UTF8.GetBytes(json);
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM path_proof_chunk WHERE proof_id=$id";
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+        command.CommandText = "INSERT INTO path_proof_chunk VALUES ($id,$ordinal,$data)";
+        command.Parameters.Add("$ordinal", SqliteType.Integer);
+        command.Parameters.Add("$data", SqliteType.Blob);
+        var chunks = 0;
+        for (var offset = 0; offset < bytes.Length; offset += PathProofStorage.ChunkSize)
+        {
+            command.Parameters["$ordinal"].Value = chunks++;
+            command.Parameters["$data"].Value = bytes.AsSpan(offset, Math.Min(PathProofStorage.ChunkSize, bytes.Length - offset)).ToArray();
+            command.ExecuteNonQuery();
+        }
+        command.Parameters.Clear();
+        command.CommandText = "UPDATE path_proof SET byte_length=$length,chunk_count=$chunks WHERE id=$id";
+        command.Parameters.AddWithValue("$length", bytes.Length);
+        command.Parameters.AddWithValue("$chunks", chunks);
+        command.Parameters.AddWithValue("$id", id);
+        if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The proof manifest was not replaced.");
+    }
+
+    internal static void AlterJson(SqliteConnection connection, string table, string expression,
+        string condition = "", string column = "proof")
+    {
+        EnableJsonReads(connection);
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT rowid,{column} FROM {table} {condition}";
+        var rows = new List<(long Row, long Proof)>();
+        using (var read = command.ExecuteReader())
+            while (read.Read()) rows.Add((read.GetInt64(0), read.GetInt64(1)));
+        if (rows.Count == 0) throw new InvalidOperationException("The mutation did not select a saved proof.");
+        foreach (var row in rows)
+        {
+            command.Parameters.Clear();
+            command.CommandText = "SELECT " + expression;
+            command.Parameters.AddWithValue("$json", Json(connection, row.Proof));
+            var json = (string)command.ExecuteScalar()!;
+            ReplaceJson(connection, row.Proof, json);
+            if (column != "proof") continue;
+            command.Parameters.Clear();
+            command.CommandText = $"UPDATE {table} SET fingerprint=$hash WHERE rowid=$row";
+            command.Parameters.AddWithValue("$hash", OwnershipAuditStorage.Hash(json));
+            command.Parameters.AddWithValue("$row", row.Row);
+            if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The proof fingerprint was not replaced.");
+        }
+    }
+
+    internal static void ChangeJson(string directory, string table, string path, string sqlValue, string condition = "") =>
+        SelfMembershipCoverageTests.Mutate(directory,
+            connection => AlterJson(connection, table, $"json_set($json,'{path}',{sqlValue})", condition));
 
     internal static PathInputs ReadInputs(JudgementReader reader)
     {
@@ -47,12 +117,13 @@ internal static class PathProofVerification
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT proof,fingerprint FROM tier0_path_calculation WHERE id=1";
         Header? header;
-        using (var read = query.ExecuteReader()) header = read.Read() ? Decode<Header>(read.GetString(0), (byte[])read.GetValue(1)) : null;
+        using (var read = query.ExecuteReader()) header = read.Read()
+            ? Decode<Header>(Json(connection, read.GetInt64(0)), (byte[])read.GetValue(1)) : null;
         query.CommandText = "SELECT target,outcome,proof,fingerprint FROM tier0_path_node ORDER BY target";
         var saved = new List<Tier0PathNode>();
         using (var read = query.ExecuteReader()) while (read.Read())
         {
-            var node = Decode<Tier0PathNode>(read.GetString(2), (byte[])read.GetValue(3));
+            var node = Decode<Tier0PathNode>(Json(connection, read.GetInt64(2)), (byte[])read.GetValue(3));
             if (node.Subject.DistinguishedName != read.GetString(0) || node.Reachability.ToString() != read.GetString(1))
                 throw Tier0PathStorage.InvalidProof();
             saved.Add(node);
@@ -85,20 +156,20 @@ internal static class PathProofVerification
                 .Select() with { Version = PathRequesterSelector.Version };
             Equal(selection, expected);
         }
-        var requesters = RequesterDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
+        var requesters = TargetPermissionReference.Create(connection, reader.Description, sources, identities, inputs,
             proofs.Requesters.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, obtainedMembership: null,
-            RequesterMembershipContext.Create(sources, identities, inputs, CancellationToken.None));
+            RequesterMembershipContext.Create(sources, identities, inputs, CancellationToken.None), currentSourceFingerprints: true);
         Equal(proofs.Requesters, requesters);
         nodes = nodes.Select(node => node with { RequesterRoute = RequesterRouteReference.Requester(node, requesters) }).ToArray();
-        var ownAccounts = OwnAccountMembershipProofs.Create(connection, reader.Description, sources, identities, inputs,
+        var ownAccounts = MembershipPrerequisiteReference.OwnAccounts(connection, reader.Description, sources, identities, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
-            proofs.OwnAccounts.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None);
+            proofs.OwnAccounts.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None, currentSourceFingerprints: true);
         Equal(proofs.OwnAccounts, ownAccounts);
         nodes = nodes.Select(node => node with { OwnAccountRoute = RequesterRouteReference.OwnAccount(node, ownAccounts, requesters) }).ToArray();
-        var membershipDacls = MembershipDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
+        var membershipDacls = MembershipPrerequisiteReference.Combined(connection, reader.Description, sources, identities, inputs,
             nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
             proofs.MembershipDacls.Select(proof => proof.Assessment.Request).ToArray(), CancellationToken.None,
-            RequesterMembershipContext.Create(sources, identities, inputs, CancellationToken.None));
+            RequesterMembershipContext.Create(sources, identities, inputs, CancellationToken.None), currentSourceFingerprints: true);
         Equal(proofs.MembershipDacls, membershipDacls);
         nodes = nodes.Select(node => node with { MembershipDaclRoute = RequesterRouteReference.MembershipDacl(node, membershipDacls, requesters, ownAccounts) }).ToArray();
         Equal(saved, nodes);
@@ -116,17 +187,10 @@ internal static class PathProofVerification
                 "OwnAccounts" => PathRequesterFamily.OwnAccountMembership,
                 _ => PathRequesterFamily.MembershipDacl,
             };
-            using var command = connection.CreateCommand();
-            command.CommandText = """
-                UPDATE path_requester_risk SET source_proof=json_set(source_proof,$path,
-                """ + sqlValue + """
-                ) WHERE id=(SELECT id FROM path_requester_risk
-                WHERE json_extract(proof,'$.Family')=$family ORDER BY id LIMIT 1 OFFSET $ordinal)
-                """;
-            command.Parameters.AddWithValue("$path", "$" + match.Groups[3].Value);
-            command.Parameters.AddWithValue("$family", family.ToString());
-            command.Parameters.AddWithValue("$ordinal", int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
-            if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The intended source-proof mutation changed no question.");
+            var ordinal = int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+            AlterJson(connection, "path_requester_risk", $"json_set($json,'${match.Groups[3].Value}',{sqlValue})",
+                $"WHERE id=(SELECT id FROM path_requester_risk WHERE json_extract(path_json(proof),'$.Family')='{family}' ORDER BY id LIMIT 1 OFFSET {ordinal})",
+                "source_proof");
             RebindRequesterProofs(connection);
         });
 
@@ -136,7 +200,8 @@ internal static class PathProofVerification
         command.CommandText = "SELECT id,proof,source_proof FROM path_requester_risk ORDER BY id";
         var rows = new List<(long Id, JsonObject Risk, string Source)>();
         using (var read = command.ExecuteReader())
-            while (read.Read()) rows.Add((read.GetInt64(0), JsonNode.Parse(read.GetString(1))!.AsObject(), read.GetString(2)));
+            while (read.Read()) rows.Add((read.GetInt64(0), JsonNode.Parse(Json(connection, read.GetInt64(1)))!.AsObject(),
+                Json(connection, read.GetInt64(2))));
         var direct = new List<SavedRequesterDaclProof>();
         var own = new List<SavedOwnAccountMembershipProof>();
         var combined = new List<SavedMembershipDaclProof>();
@@ -152,7 +217,7 @@ internal static class PathProofVerification
         }
         command.Parameters.Clear();
         command.CommandText = "SELECT proof FROM tier0_path_calculation WHERE id=1";
-        var header = JsonNode.Parse((string)command.ExecuteScalar()!)!.AsObject();
+        var header = JsonNode.Parse(Json(connection, (long)command.ExecuteScalar()!))!.AsObject();
         header["ProofFingerprint"] = Tier0PathCalculation.Fingerprint(new PathRequesterProofs(direct, own, combined));
         var headerJson = header.ToJsonString(ProofSerialization.Options);
         var calculation = Convert.ToHexString(OwnershipAuditStorage.Hash(headerJson));
@@ -172,8 +237,19 @@ internal static class PathProofVerification
         void Update(string table, long id, string json)
         {
             command.Parameters.Clear();
-            command.CommandText = $"UPDATE {table} SET proof=$proof,fingerprint=$hash WHERE id=$id";
-            command.Parameters.AddWithValue("$proof", json);
+            if (table != "path_risk_product")
+            {
+                command.CommandText = $"SELECT proof FROM {table} WHERE id=$id";
+                command.Parameters.AddWithValue("$id", id);
+                ReplaceJson(connection, (long)command.ExecuteScalar()!, json);
+                command.Parameters.Clear();
+                command.CommandText = $"UPDATE {table} SET fingerprint=$hash WHERE id=$id";
+            }
+            else
+            {
+                command.CommandText = $"UPDATE {table} SET proof=$proof,fingerprint=$hash WHERE id=$id";
+                command.Parameters.AddWithValue("$proof", json);
+            }
             command.Parameters.AddWithValue("$hash", OwnershipAuditStorage.Hash(json));
             command.Parameters.AddWithValue("$id", id);
             if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("A proof binding was not updated.");

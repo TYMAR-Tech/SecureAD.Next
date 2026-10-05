@@ -115,7 +115,8 @@ public sealed class RequesterWorkloadTests(RequesterWorkloadTests.Workloads work
             }.ToString());
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT json_extract(proof,'$.Family'),source_proof FROM path_requester_risk ORDER BY id";
+            PathProofVerification.EnableJsonReads(connection);
+            command.CommandText = "SELECT json_extract(path_json(proof),'$.Family'),path_json(source_proof) FROM path_requester_risk ORDER BY id";
             using var read = command.ExecuteReader();
             var families = new Dictionary<string, List<JsonElement>>
             { ["Requesters"] = [], ["OwnAccounts"] = [], ["MembershipDacls"] = [] };

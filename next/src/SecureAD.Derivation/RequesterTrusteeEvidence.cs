@@ -16,6 +16,7 @@ public enum RequesterTrusteeReason
     ResourceContextUnknown, GroupTypeMissing, UnsupportedGroupScope, MembershipNotEstablished,
     ObtainedGlobalMembership,
     NestedGlobalMembership,
+    DirectSecurityMembership, NestedSecurityMembership, DomainLocalOutsideResource,
 }
 
 /// <summary>A source-backed authorization route, not an AdminSDHolder protection route or a complete token.</summary>
@@ -35,7 +36,16 @@ public static class RequesterTrusteeReading
 {
     /// <summary>Returns a bounded authorization explanation from captured objects, never a live token.</summary>
     public static RequesterTrusteeEvidence Read(ObjectAttributes requester, ObjectAttributes target,
-        PermissionTrustee trustee, ObjectAttributes? holder, string forest)
+        PermissionTrustee trustee, ObjectAttributes? holder, string forest) =>
+        ReadCore(requester, target, trustee, holder, forest, null);
+
+    /// <summary>Reads a captured trustee after the caller has bound these domains to the sealed forest declaration.</summary>
+    public static RequesterTrusteeEvidence ReadSameForest(ObjectAttributes requester, ObjectAttributes target,
+        PermissionTrustee trustee, ObjectAttributes? holder, string forest, IReadOnlySet<string> readDomains) =>
+        ReadCore(requester, target, trustee, holder, forest, readDomains);
+
+    private static RequesterTrusteeEvidence ReadCore(ObjectAttributes requester, ObjectAttributes target,
+        PermissionTrustee trustee, ObjectAttributes? holder, string forest, IReadOnlySet<string>? readDomains)
     {
         var isSelf = trustee.Sid == "S-1-5-10";
         if (isSelf) holder = target;
@@ -48,7 +58,8 @@ public static class RequesterTrusteeReading
             || (isSelf && (sid is null || target.ObjectGuid is null)))
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.IdentityMissing, null);
         if (!IsDomainObject(requester, forest) || !IsDomainObject(target, forest)
-            || !Same(requester.DomainFqdn, target.DomainFqdn))
+            || (readDomains is null ? !Same(requester.DomainFqdn, target.DomainFqdn)
+                : !Declared(requester) || !Declared(target)))
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.ResourceContextUnknown, null);
         if (Same(sid, requesterSid))
             return Answer(RequesterTrusteeState.Matches, RequesterTrusteeReason.DirectIdentity, null);
@@ -56,11 +67,11 @@ public static class RequesterTrusteeReading
             return Answer(RequesterTrusteeState.Matches, RequesterTrusteeReason.AuthenticatedIdentity, null);
         if (sid is "S-1-5-18" or "S-1-5-7")
             return Answer(RequesterTrusteeState.DoesNotMatch, RequesterTrusteeReason.NonUserIdentity, null);
-        if (sid is null || Sid.IsBuiltinDomain(sid))
+        if (sid is null || readDomains is null && Sid.IsBuiltinDomain(sid))
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedIdentity, null);
         if (holder is null || holder.ObjectGuid is null || !Same(SidOf(holder), sid))
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.IdentityMissing, null);
-        if (!IsDomainObject(holder, forest) || !Same(holder.DomainFqdn, requester.DomainFqdn))
+        if (!IsDomainObject(holder, forest) || (readDomains is null ? !Same(holder.DomainFqdn, requester.DomainFqdn) : !Declared(holder)))
             return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.ResourceContextUnknown, null);
         // A holder's current type cannot exclude its SID when the requester carries that identity
         // historically. This is uncertainty, not support for constructing a SID-history token.
@@ -72,16 +83,61 @@ public static class RequesterTrusteeReading
                 return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.GroupTypeMissing, null);
             if ((groupType.Value & 0x80000000L) == 0)
                 return Answer(RequesterTrusteeState.DoesNotMatch, RequesterTrusteeReason.DistributionGroup, null);
-            if ((groupType.Value & 0x0f) != 2)
+            var scope = groupType.Value & 0x0f;
+            if (readDomains is null ? scope != 2 : scope is not (2 or 4 or 5 or 8))
                 return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedGroupScope, null);
+            if (readDomains is not null)
+            {
+                if ((scope != 2 || !Same(requester.DomainFqdn, target.DomainFqdn)) && holder.Find("sIDHistory")?.HasValue == true)
+                    return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedIdentity, null);
+                if (scope is 4 or 5 && !Same(holder.DomainFqdn, target.DomainFqdn))
+                    return Answer(RequesterTrusteeState.DoesNotMatch, RequesterTrusteeReason.DomainLocalOutsideResource, null);
+            }
             var direct = holder.Find("member")?.Values.Any(value => Same(value.Text, requester.DistinguishedName)) == true;
+            if (direct && readDomains is not null && !SupportsSecurityNesting(holder, requester))
+                return Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedGroupScope, null);
             return direct
-                ? Answer(RequesterTrusteeState.Matches, RequesterTrusteeReason.DirectGlobalMembership, requester.DistinguishedName)
+                ? Answer(RequesterTrusteeState.Matches, scope == 2 ? RequesterTrusteeReason.DirectGlobalMembership
+                    : RequesterTrusteeReason.DirectSecurityMembership, requester.DistinguishedName)
                 : Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.MembershipNotEstablished, null);
         }
         return HasClass(holder, "user")
             ? Answer(RequesterTrusteeState.DoesNotMatch, RequesterTrusteeReason.OtherCurrentUser, null)
             : Answer(RequesterTrusteeState.Unknown, RequesterTrusteeReason.UnsupportedIdentity, null);
+
+        bool Declared(ObjectAttributes value) => value.DomainFqdn is { } domain && readDomains!.Contains(domain);
+    }
+
+    /// <summary>Qualifies one security-group hop under Microsoft's scope table; it does not discover membership or prove access.</summary>
+    public static bool SupportsSecurityNesting(ObjectAttributes group, ObjectAttributes member)
+    {
+        if (!HasClass(group, "group") || Number(group, "groupType") is not { } type) return false;
+        if (!HasClass(member, "group") && !HasClass(member, "user") && !HasClass(member, "computer")) return false;
+        var memberType = HasClass(member, "group") ? Number(member, "groupType") : null;
+        if (HasClass(member, "group") && memberType is null) return false;
+        return SupportsSecurityNesting(type, memberType, Same(group.DomainFqdn, member.DomainFqdn),
+            SidOf(group) is { } sid && Sid.IsBuiltinDomain(sid));
+    }
+
+    /// <summary>Checks the same hop rules against stored group-type witnesses; a null member type identifies the ordinary user.</summary>
+    public static bool SupportsSecurityNesting(long type, long? memberType, bool sameDomain, bool builtinHolder)
+    {
+        if ((type & 0x80000000L) == 0) return false;
+        var scope = type & 0x0f;
+        if (scope is not (2 or 4 or 5 or 8)) return false;
+        if (memberType is null) return scope != 2 || sameDomain;
+        if ((memberType.Value & 0x80000000L) == 0) return false;
+        var memberScope = memberType.Value & 0x0f;
+        // BUILTIN groups are supported as resource-domain holders, not as transferable nested identities.
+        if (builtinHolder && memberScope is not (2 or 8)) return false;
+        return scope switch
+        {
+            2 => sameDomain && memberScope == 2,
+            8 => memberScope is 2 or 8,
+            4 => memberScope is 2 or 8 || memberScope == 4 && sameDomain,
+            5 => memberScope is 2 or 8,
+            _ => false,
+        };
     }
 
     internal static bool IsDomainObject(ObjectAttributes value, string forest)

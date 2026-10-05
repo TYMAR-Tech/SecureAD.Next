@@ -248,7 +248,7 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
         Tier0PathStorage.Write(_connection, description, inputs, requests, ownAccountRequests, cancellationToken,
-            membershipDaclRequests, offlineSelection, beginPhase, status);
+            membershipDaclRequests, offlineSelection, beginPhase, status, _statements);
     }
 
     internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
@@ -530,13 +530,26 @@ public sealed class JudgementWriter : IDisposable
     /// </remarks>
     /// <param name="completedUtc">When judging finished.</param>
     /// <param name="cancellationToken">Cancels finalization before the generation is selected for publication.</param>
-    public void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken = default)
+    public void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken = default) =>
+        Complete(completedUtc, cancellationToken, null);
+
+    internal void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken, PostPassDiagnostics? diagnostic) =>
+        Complete(completedUtc, cancellationToken, diagnostic, null);
+
+    internal void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken, PostPassDiagnostics? diagnostic,
+        SecureAD.Kernel.IRunLog? sealingLog)
     {
         ThrowIfFinished();
         cancellationToken.ThrowIfCancellationRequested();
+        diagnostic?.Part("validate-laps");
         LapsInventoryStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-permission-classifications");
         PermissionClassificationStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-path-fragments");
+        PathProofStorage.RequirePublishable(_connection, cancellationToken);
+        diagnostic?.Part("validate-path-questions");
         PathRequesterRiskStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-tier0-findings");
         Tier0RouteFindingStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
@@ -544,11 +557,15 @@ public sealed class JudgementWriter : IDisposable
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
 
+        diagnostic?.Part("record-completion");
         FinishWithState(state, completedUtc);
 
+        diagnostic?.Part("build-indexes");
         JudgementSchema.CreateDeferredIndexes(_connection);
         cancellationToken.ThrowIfCancellationRequested();
+        diagnostic?.Part("checkpoint-database");
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        diagnostic?.Part("close-database");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
@@ -556,8 +573,17 @@ public sealed class JudgementWriter : IDisposable
             _bundleDirectory,
             AnalysisStoreKind.Judgement,
             GenerationId,
-            cancellationToken);
+            cancellationToken,
+            diagnostic is null ? null : part => diagnostic.Part(part switch
+            {
+                AnalysisPublicationPart.WritePendingManifest => "write-pending-manifest",
+                AnalysisPublicationPart.MoveData => "move-generation-file",
+                AnalysisPublicationPart.SealData => "seal-generation",
+                AnalysisPublicationPart.SelectManifest => "select-generation",
+                _ => throw new ArgumentOutOfRangeException(nameof(part)),
+            }), sealingLog);
         _finished = true;
+        diagnostic?.Part("release-write-lock");
         _writeLock.Dispose();
     }
 

@@ -129,8 +129,9 @@ public sealed partial class OwnAccountMembershipPathTests
         command.ExecuteNonQuery();
         using var sources = ControlProofVerification.OpenSources(reader);
         using var trace = new JudgingInputReuseTests.Statements(connection);
+        using var statements = new PreparedStatements(connection);
 
-        Tier0PathStorage.Write(connection, reader.Description, sources, [], [], CancellationToken.None, [], true, _ => { }, null);
+        Tier0PathStorage.Write(connection, reader.Description, sources, [], [], CancellationToken.None, [], true, _ => { }, null, statements);
 
         Assert.Single(trace.Sql.Where(sql => sql.StartsWith("SELECT target,identity_json,fingerprint,", StringComparison.Ordinal)));
     }
@@ -333,7 +334,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void CoverageRejectsChangedQuestionSources(string path, string value)
     {
         var directory = CoveragePrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", path, "'" + value + "'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => reader.ReadPathRequesterCoverage());

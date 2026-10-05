@@ -10,6 +10,7 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed class SavedPathQuestionViewModel
 {
     private static readonly PermissionVocabulary Vocabulary = PermissionVocabulary.Shipped;
+    private readonly bool _qualifyDomains;
     private static string ModifyPermissions => Vocabulary.Words.Describe(0x40000, null).Rights.Single().Name;
 
     public SavedPathQuestionViewModel(PathRiskQuestion question, SavedTier0Path saved)
@@ -17,15 +18,21 @@ internal sealed class SavedPathQuestionViewModel
         var risk = question.Risk;
         var own = question.OwnAccount ?? question.Membership?.Membership;
         var dacl = question.Requester ?? question.Membership?.Dacl;
-        var name = saved.Account?.Name ?? Name(risk.RequesterDn, null);
+        var capturedName = saved.Account?.Name ?? Name(risk.RequesterDn, null);
         var accountName = saved.Account?.AccountName ?? (saved.Finding?.PrincipalName is { } principal
             && !Same(principal, risk.RequesterDn) ? principal : Text("AccountNameNotRecorded"));
-        var shortName = saved.Account?.GivenName ?? name;
         var checks = ReadChecks(question, saved.Permissions);
+        _qualifyDomains = dacl?.ResourceContext is not null
+            && new[] { dacl.Requester?.DomainFqdn, dacl.Target?.DomainFqdn }
+                .Concat(question.Steps.SelectMany(step => new[] { step.From.DomainFqdn, step.To.DomainFqdn }))
+                .Concat(checks.Select(check => check.Trustee.HolderDomain)).OfType<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase).Skip(1).Any();
+        var name = QualifiedName(capturedName, dacl?.Requester?.DomainFqdn);
+        var shortName = saved.Account?.GivenName ?? name;
         var targetClass = checks.FirstOrDefault(value => Same(value.Target, risk.TargetDn))?.TargetClass
             ?? (risk.Family == PathRequesterFamily.OwnAccountMembership ? "group" : null);
         var kind = Kind(targetClass);
-        var targetName = Name(risk.TargetDn, targetClass);
+        var targetName = QualifiedName(Name(risk.TargetDn, targetClass), dacl?.Target?.DomainFqdn);
         Target = Text("NamedObject", targetName, kind);
         var groupName = Name(risk.GroupDn ?? own?.Request.TargetDn ?? risk.TargetDn, "group");
         var established = risk.Authorization == ControlEvaluationState.Established;
@@ -77,7 +84,8 @@ internal sealed class SavedPathQuestionViewModel
                     ? "ConditionalAllowed" : "PermissionCheck" + permissionState)),
         ];
         Entries = checks.Select(value => new SavedPathFieldViewModel(
-            Text("EntryHeading", Text(EntryKind(value.Entry)), value.Entry.Ordinal, Name(value.Target, value.TargetClass), Kind(value.TargetClass)),
+            Text("EntryHeading", Text(EntryKind(value.Entry)), value.Entry.Ordinal,
+                QualifiedName(Name(value.Target, value.TargetClass), dacl?.Target?.DomainFqdn), Kind(value.TargetClass)),
             Text("EntryDetails", Holder(value), value.Right, EntryRights(value.Entry),
                 Text(value.Entry.IsInherited ? "InheritedAssignment" : "ExplicitAssignment"), Scope(value.Entry),
                 Text("EntryScope" + value.Scope), Text("Trustee" + value.Trustee.State))
@@ -174,12 +182,14 @@ internal sealed class SavedPathQuestionViewModel
         }
     }
 
-    private static SavedPathStepViewModel Step(Tier0PathStep step, IReadOnlyList<ControlEdge> permissions, string account, string accountDn)
+    private SavedPathStepViewModel Step(Tier0PathStep step, IReadOnlyList<ControlEdge> permissions, string account, string accountDn)
     {
         var edge = step.PermissionId is { } id ? permissions.Single(value => value.Id == id && Same(value.Target, step.To.DistinguishedName)) : null;
-        var from = Same(step.From.DistinguishedName, accountDn) ? account : Name(step.From.DistinguishedName, null);
+        var from = Same(step.From.DistinguishedName, accountDn) ? account
+            : QualifiedName(Name(step.From.DistinguishedName, null), step.From.DomainFqdn);
         var targetClass = edge?.TargetClass ?? (step.Kind == Tier0PathStepKind.Membership ? "group" : null);
-        var description = Text("Relationship" + step.Kind, from, Name(step.To.DistinguishedName, targetClass), Kind(targetClass));
+        var description = Text("Relationship" + step.Kind, from,
+            QualifiedName(Name(step.To.DistinguishedName, targetClass), step.To.DomainFqdn), Kind(targetClass));
         var evidence = step.MembershipWitness is { } witness
             ? Text(witness.Attribute == "primaryGroupID" ? "PrimaryGroupWitness" : "MembershipEntryWitness", witness.Ordinal)
             : step.Kind == Tier0PathStepKind.OwnAccountMembership ? Text("ObtainableWitness")
@@ -187,16 +197,20 @@ internal sealed class SavedPathQuestionViewModel
         return new(description, evidence);
     }
 
-    private static string Grantee(EntryCheck value, string account) => Text(
+    private string Grantee(EntryCheck value, string account) => Text(
         value.Trustee.Reason == RequesterTrusteeReason.DirectIdentity ? "DirectGrantee"
             : IsGroup(value) ? "GroupGrantee" : "OtherGrantee", Holder(value), account);
 
     private static bool IsGroup(EntryCheck value) => value.Trustee.GroupType is not null
         || value.Trustee.Reason is RequesterTrusteeReason.DirectGlobalMembership or RequesterTrusteeReason.ObtainedGlobalMembership;
 
-    private static string Holder(EntryCheck value) => value.Trustee.HolderDn is { } dn ? Name(dn, null)
+    private string Holder(EntryCheck value) => value.Trustee.HolderDn is { } dn
+        ? QualifiedName(Name(dn, null), value.Trustee.HolderDomain)
         : value.Entry.Trustee.DisplayedAgainst(value.Target).Name is { Length: > 0 } name && name != value.Entry.Trustee.Sid
             ? name : Text("HolderUnresolved");
+
+    private string QualifiedName(string name, string? domain) => _qualifyDomains && domain is { Length: > 0 } && !Same(name, domain)
+        ? Text("DomainQualifiedName", name, domain) : name;
 
     private static string MembershipRight(OwnAccountMembershipPermissionKind? kind) => Text(kind switch
     {

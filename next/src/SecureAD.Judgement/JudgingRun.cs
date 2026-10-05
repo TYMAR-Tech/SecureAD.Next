@@ -1180,9 +1180,27 @@ public static class JudgingRun
 
         cancellationToken.ThrowIfCancellationRequested();
         Entering(progress, log, JudgingPhase.PublishingJudgement, objectsRead);
-        using (inputs.ProtectPublication(ownershipDescription))
-            writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
-        progress.PublicationCompleted();
+        using (var diagnostic = progress.BeginPostPass("Publishing judgement", writer.GenerationId))
+        {
+            try
+            {
+                diagnostic.Part("protect-input-generation");
+                using (inputs.ProtectPublication(ownershipDescription))
+                    writer.Complete(DateTimeOffset.UtcNow, cancellationToken, diagnostic, progress.DiagnosticLog);
+                progress.PublicationCompleted();
+                diagnostic.Complete();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                diagnostic.Interrupted(cancelled: true);
+                throw;
+            }
+            catch
+            {
+                diagnostic.Interrupted(cancelled: false);
+                throw;
+            }
+        }
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
             && tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)

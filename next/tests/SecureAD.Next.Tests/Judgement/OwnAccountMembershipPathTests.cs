@@ -495,7 +495,8 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
     public void AnOmittedProvenOperationRouteIsRejected()
     {
         var directory = Prepared();
-        Mutate(directory, "UPDATE tier0_path_node SET proof=json_set(proof,'$.OwnAccountRoute',NULL),outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
+        PathProofVerification.ChangeJson(directory, "tier0_path_node", "$.OwnAccountRoute", "NULL", "WHERE target LIKE 'CN=Alice,%'");
+        Mutate(directory, "UPDATE tier0_path_node SET outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
@@ -571,21 +572,6 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
         using var change = connection.CreateCommand();
         change.CommandText = sql;
         change.ExecuteNonQuery();
-        foreach (var table in new[] { "tier0_path_calculation", "tier0_path_node" })
-        {
-            using var query = connection.CreateCommand();
-            query.CommandText = "SELECT rowid,proof FROM " + table;
-            var proofs = new List<(long Id, string Proof)>();
-            using (var read = query.ExecuteReader()) while (read.Read()) proofs.Add((read.GetInt64(0), read.GetString(1)));
-            foreach (var proof in proofs)
-            {
-                using var update = connection.CreateCommand();
-                update.CommandText = "UPDATE " + table + " SET fingerprint=$hash WHERE rowid=$id";
-                update.Parameters.AddWithValue("$hash", SHA256.HashData(Encoding.UTF8.GetBytes(proof.Proof)));
-                update.Parameters.AddWithValue("$id", proof.Id);
-                update.ExecuteNonQuery();
-            }
-        }
     });
 
     private string Capture(string? descriptor = null, string[]? members = null, long? groupType = -2147483646,
@@ -593,7 +579,8 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
         EvidenceAttribute[]? memberSchema = null, bool membershipTail = true, bool daclTail = false,
         bool existingUserRoute = false, string[]? holderMembers = null, string? coreDescriptor = null, string userSid = UserSid,
         bool crossDomainRequester = false, string? selfGuidOverride = null,
-        Action<BundleWriter, PartitionCoverage>? additional = null, bool missingCoreDescriptor = false, string? rootDescriptor = null)
+        Action<BundleWriter, PartitionCoverage>? additional = null, bool missingCoreDescriptor = false, string? rootDescriptor = null,
+        string[]? coreMembers = null)
     {
         var directory = Bundle(users: 0, members: members ?? [], groupType: groupType,
             sddl: descriptor ?? $"O:SYG:SYD:(OA;;SW;{MemberGuid};;{UserSid})",
@@ -605,7 +592,7 @@ public sealed partial class OwnAccountMembershipPathTests(ITestOutputHelper outp
                 Write(writer, coverage, HolderDn, ["top", "group"], HolderSid,
                     [Text("groupType", "-2147483646"), Values("member", holderMembers ?? [UserDn])], "O:SYG:SYD:");
                 Write(writer, coverage, CoreDn, ["top", "group"], "S-1-5-21-1-2-3-512",
-                    [Text("groupType", "-2147483646"), Values("member", existingUserRoute ? [UserDn] : membershipTail ? [TargetDn] : [])],
+                    [Text("groupType", "-2147483646"), Values("member", coreMembers ?? (existingUserRoute ? [UserDn] : membershipTail ? [TargetDn] : []))],
                     missingCoreDescriptor ? null : coreDescriptor ?? (daclTail ? $"O:SYG:SYD:(A;;WD;;;{TargetSid})" : "O:SYG:SYD:"));
                 additional?.Invoke(writer, coverage);
                 if (crossDomainRequester)

@@ -64,6 +64,17 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
 
     internal Guid AttemptId { get; } = Guid.NewGuid();
 
+    internal IRunLog DiagnosticLog => new DiagnosticSink(this);
+
+    private sealed class DiagnosticSink(JudgingStatus owner) : IRunLog
+    {
+        public void Note(string phase, string message, IReadOnlyList<RunLogDetail> detail) =>
+            owner.WriteDiagnostic(log => log.Note(phase, message, detail));
+
+        public void Record(string phase, AuditError error, IReadOnlyList<RunLogDetail> detail) =>
+            owner.WriteDiagnostic(log => log.Record(phase, error, detail));
+    }
+
     internal void RecordBuildIdentity() => WriteDiagnostic(log => JudgingBuildIdentity.Write(log, AttemptId));
 
     internal void RecordGeneration(Guid generation, string evidenceSeal, Guid? derivation)

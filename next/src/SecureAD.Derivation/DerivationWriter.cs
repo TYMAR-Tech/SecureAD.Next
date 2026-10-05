@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Kernel;
 using SecureAD.Storage;
 
 namespace SecureAD.Derivation;
@@ -839,7 +840,9 @@ internal sealed class DerivationWriter : IDisposable
     /// </para>
     /// </remarks>
     /// <param name="completedUtc">When deriving finished.</param>
-    public DerivationRunState Complete(DateTimeOffset completedUtc)
+    public DerivationRunState Complete(DateTimeOffset completedUtc) => Complete(completedUtc, null);
+
+    internal DerivationRunState Complete(DateTimeOffset completedUtc, IRunLog? log)
     {
         ThrowIfFinished();
 
@@ -862,10 +865,10 @@ internal sealed class DerivationWriter : IDisposable
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
-        AnalysisStoreLifecycle.Publish(
-            _bundleDirectory,
-            AnalysisStoreKind.Derivation,
-            GenerationId);
+        if (log is null)
+            AnalysisStoreLifecycle.Publish(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId);
+        else
+            AnalysisStoreLifecycle.PublishWithDiagnostics(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId, CancellationToken.None, log);
         _finished = true;
         return state;
     }

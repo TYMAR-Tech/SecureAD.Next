@@ -293,8 +293,9 @@ public sealed partial class OwnAccountMembershipPathTests
         command.ExecuteNonQuery();
         using var sources = ControlProofVerification.OpenSources(reader);
 
+        using var statements = new PreparedStatements(connection);
         Assert.Throws<OperationCanceledException>(() => Tier0PathStorage.Write(connection, reader.Description,
-            sources, [], [], stopping.Token, [], true, _ => { }, null));
+            sources, [], [], stopping.Token, [], true, _ => { }, null, statements));
 
         Assert.Equal(1, inserted);
         command.CommandText = "SELECT (SELECT COUNT(*) FROM path_requester_risk)+(SELECT COUNT(*) FROM path_risk_product)+(SELECT COUNT(*) FROM tier0_path_node)+(SELECT COUNT(*) FROM tier0_path_calculation)";
@@ -326,25 +327,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void RiskRejectsChangedBindingsEvenWhenTheRowHashIsRefreshed(string path, string value)
     {
         var directory = PrepareRisk(RiskCapture());
-        SelfMembershipCoverageTests.Mutate(directory, connection =>
-        {
-            using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE path_requester_risk SET proof=json_set(proof,$path,$value)";
-            command.Parameters.AddWithValue("$path", path);
-            command.Parameters.AddWithValue("$value", value);
-            command.ExecuteNonQuery();
-            command.CommandText = "SELECT id,proof FROM path_requester_risk";
-            var rows = new List<(long Id, string Proof)>();
-            using (var read = command.ExecuteReader()) while (read.Read()) rows.Add((read.GetInt64(0), read.GetString(1)));
-            foreach (var row in rows)
-            {
-                command.CommandText = "UPDATE path_requester_risk SET fingerprint=$hash WHERE id=$id";
-                command.Parameters.Clear();
-                command.Parameters.AddWithValue("$hash", SHA256.HashData(Encoding.UTF8.GetBytes(row.Proof)));
-                command.Parameters.AddWithValue("$id", row.Id);
-                command.ExecuteNonQuery();
-            }
-        });
+        PathProofVerification.ChangeJson(directory, "path_requester_risk", path, "'" + value + "'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => reader.ReadPathRequesterRisks(UserDn, CancellationToken.None));
@@ -401,6 +384,7 @@ public sealed partial class OwnAccountMembershipPathTests
             DataSource = path, Pooling = false, Mode = writableCopy ? SqliteOpenMode.ReadWrite : SqliteOpenMode.ReadOnly,
         }.ToString());
         connection.Open();
+        PathProofVerification.EnableJsonReads(connection);
         return connection;
     }
 }

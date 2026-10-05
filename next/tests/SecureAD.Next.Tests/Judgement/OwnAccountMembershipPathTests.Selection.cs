@@ -231,15 +231,22 @@ public sealed partial class OwnAccountMembershipPathTests
     [Theory]
     [InlineData(-2147483644L)]
     [InlineData(2L)]
-    public void SelectionDoesNotExpandAnUnsupportedGrantingGroup(long type)
+    public void SelectionSeparatesSupportedDomainLocalPermissionFromUnsupportedDistributionGroup(long type)
     {
         var directory = Capture(membershipTail: false, groupType: type, members: [UserDn], daclTail: true);
         Derive(directory);
         JudgeSelection(directory);
         using var reader = Open(directory);
 
-        Assert.Contains(new(PathRequesterSelectionReason.GlobalGroupRequired, CoreDn, 0, TargetSid, null),
-            reader.ReadTier0Path(UserDn).RequesterSelection!.Limitations);
+        var path = reader.ReadTier0Path(UserDn);
+        if (type == 2)
+        {
+            Assert.Empty(path.RequesterAssessments);
+            Assert.Contains(new(PathRequesterSelectionReason.PermissionUnsupported, CoreDn, 0, TargetSid, null), path.RequesterSelection!.Limitations);
+        }
+        else Assert.Equal(ControlEvaluationState.Established, Assert.Single(path.RequesterAssessments).Authorization);
+        Assert.Empty(path.OwnAccountAssessments);
+        Assert.Empty(path.MembershipDaclAssessments);
     }
 
     [Fact]
@@ -342,7 +349,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void SelectionRejectsAlteredProvenanceEvenWithARefreshedHash(string path, string value)
     {
         var directory = SelectionPrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", path, "'" + value + "'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
@@ -355,7 +362,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void SelectionRejectsAlteredTypedWitnessValues(string path, int value)
     {
         var directory = SelectionPrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "'," + value + ")");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", path, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
@@ -365,7 +372,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void SelectionRejectsOmittedQuestionsEvenWhenTheirProofsRemain()
     {
         var directory = SelectionPrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'$.Selection.Candidates',json('[]'))");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", "$.Selection.Candidates", "json('[]')");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
@@ -375,7 +382,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void SelectionCannotDisappearFromASelectionEnabledGeneration()
     {
         var directory = SelectionPrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'$.Selection',NULL)");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", "$.Selection", "NULL");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
@@ -389,7 +396,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void SelectionRejectsNullRecordsAsInvalidStoredProof(string path)
     {
         var directory = SelectionPrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "',NULL)");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", path, "NULL");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));

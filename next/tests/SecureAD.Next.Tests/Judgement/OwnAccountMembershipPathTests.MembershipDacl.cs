@@ -433,7 +433,8 @@ public sealed partial class OwnAccountMembershipPathTests
     public void MembershipDaclRejectsAnOmittedProvenRoute()
     {
         var directory = PreparedMembershipDacl();
-        Mutate(directory, "UPDATE tier0_path_node SET proof=json_set(proof,'$.MembershipDaclRoute',NULL),outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
+        PathProofVerification.ChangeJson(directory, "tier0_path_node", "$.MembershipDaclRoute", "NULL", "WHERE target LIKE 'CN=Alice,%'");
+        Mutate(directory, "UPDATE tier0_path_node SET outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));

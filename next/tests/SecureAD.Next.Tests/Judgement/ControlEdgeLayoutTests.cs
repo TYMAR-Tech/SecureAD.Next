@@ -116,6 +116,12 @@ public sealed class ControlEdgeLayoutTests
         [49] = "F9E42384A1C323930DD733AD6BB5058129602EE68CB35CAE3EBD0EF1E3A25736",
         // Observed format-50 layout adds the captured group-nesting admission witness; earlier values stay fixed.
         [50] = "041C226CA55863BADAF2CE5BFC13AFFA3E90A09039DB66355F476A8364172776",
+        // Format 51 extends saved JSON proof semantics; the format-50 physical layout is unchanged.
+        [51] = "041C226CA55863BADAF2CE5BFC13AFFA3E90A09039DB66355F476A8364172776",
+        // Observed format-52 fragmented path proofs; every earlier layout checkpoint remains unchanged.
+        [52] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
+        // Format 53 changes source-fingerprint meaning, not the independently recorded format-52 layout.
+        [53] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
     };
 
     [Fact]

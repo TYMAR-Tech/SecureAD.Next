@@ -21,7 +21,7 @@ internal sealed record Tier0PathNode(Tier0Target Subject, int? MembershipDistanc
 
 internal static class Tier0PathCalculation
 {
-    internal const int Version = 8;
+    internal const int Version = 9;
 
     internal static IReadOnlyList<Tier0PathNode> Calculate(PathInputs inputs, IReadOnlyList<Tier0Target> targets,
         IEnumerable<ControlEdge> permissions, Func<string, ObjectAttributes?> attributes,
@@ -150,6 +150,12 @@ internal static class Tier0PathCalculation
         // UTF-8 segments directly; only an individual value can require a larger buffer.
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         using var buffer = new FingerprintBuffer(hash);
+        WriteJson(buffer, value);
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    internal static void WriteJson<T>(IBufferWriter<byte> buffer, T value)
+    {
         var options = ProofSerialization.Options;
         using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions
         {
@@ -163,7 +169,6 @@ internal static class Tier0PathCalculation
         {
             JsonSerializer.Serialize(writer, value, options);
         }
-        return Convert.ToHexString(hash.GetHashAndReset());
     }
 
     private sealed class FingerprintBuffer(IncrementalHash hash) : IBufferWriter<byte>, IDisposable

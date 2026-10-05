@@ -112,6 +112,8 @@ public sealed class BundleReader : IDisposable
     private (long ObjectId, string Dn)? _streamedIdentity;
     private bool? _streamedNamesAreUnambiguous;
     private Dictionary<string, long>? _bulkObjectIds;
+    private string? _verifiedFingerprint;
+    private (SchemaGuidCatalog Schema, DelegationCoverage Coverage)? _delegationPreparation;
 
     private BundleReader(
         string bundleDirectory, SqliteConnection connection, BundleDescription description)
@@ -233,7 +235,12 @@ public sealed class BundleReader : IDisposable
                     : OpenConnection(store.BundleDirectory, lease.Connection);
                 if (opened.IsSuccess) store.EvidenceDescription = opened.Value.Description;
             }
-            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            if (opened.IsSuccess)
+            {
+                opened.Value._verifiedFingerprint = store.Fingerprint;
+                opened.Value._protection = lease;
+                lease = null;
+            }
             return opened;
         }
         finally { lease?.Dispose(); }
@@ -612,6 +619,46 @@ public sealed class BundleReader : IDisposable
     /// <param name="pageNumber">The page to fetch, counting from one.</param>
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
         ObjectListingReader.Read(Connection, containerDn, scope, pageNumber);
+
+    /// <summary>Finds captured user/group identities under a protected evidence lifetime.</summary>
+    public DelegationPrincipalPage FindDelegationPrincipals(string search, DelegationPrincipalMark? after,
+        CancellationToken cancellationToken = default) =>
+        DelegationLookup.FindPrincipals(Connection, DelegationFingerprint(), Description, search, after, cancellationToken);
+
+    /// <summary>Reads original direct-trustee permission occurrences; never computes effective access.</summary>
+    public DelegationPage ReadDelegations(DelegationQuery query, DelegationPageMark? after,
+        CancellationToken cancellationToken = default, int pageSize = DelegationPage.PageSize)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var fingerprint = DelegationFingerprint();
+        var preparation = _delegationPreparation ??= (ReadSchemaGuids(), DelegationLookup.ReadCoverage(Connection, Description));
+        return DelegationLookup.Read(Connection, fingerprint, preparation.Coverage, preparation.Schema, query, after, cancellationToken, pageSize);
+    }
+
+    /// <summary>Resolves one saved membership identity without reconstructing the object's attributes or permissions.</summary>
+    public DelegationPrincipal? ResolveDelegationPrincipal(string sid, string scope, Guid? objectGuid)
+    {
+        var bytes = Sid.ToBytes(sid) ?? throw new ArgumentException("Invalid SID.", nameof(sid));
+        using var command = Connection.CreateCommand();
+        command.CommandText = """
+            SELECT object_id, distinguished_name, domain_fqdn FROM captured_object
+            WHERE objectsid=$sid AND ($scope='' OR domain_fqdn=$scope COLLATE NOCASE)
+              AND ($guid IS NULL OR object_guid=$guid COLLATE NOCASE)
+            ORDER BY object_id LIMIT 2
+            """;
+        command.Parameters.Add("$sid", SqliteType.Blob).Value = bytes;
+        command.Parameters.AddWithValue("$scope", scope);
+        command.Parameters.AddWithValue("$guid", objectGuid is { } guid && guid != Guid.Empty ? guid.ToString("D") : (object)DBNull.Value);
+        using var read = command.ExecuteReader();
+        if (!read.Read()) return null;
+        var principal = new DelegationPrincipal(read.GetInt64(0), sid, DnHelper.ExtractFirstRdn(read.GetString(1)),
+            read.GetString(1), read.GetString(2));
+        if (read.Read()) throw new InvalidDataException("The saved membership identity matches more than one captured object.");
+        return principal;
+    }
+
+    private string DelegationFingerprint() => _verifiedFingerprint
+        ?? throw new InvalidOperationException("Delegation lookup requires an open protected evidence lifetime.");
 
     /// <summary>
     /// The name a security identifier is known by in this bundle, for showing a principal a rule

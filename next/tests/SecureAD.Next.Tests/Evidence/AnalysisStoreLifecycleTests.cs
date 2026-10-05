@@ -6,7 +6,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Evidence;
 
 /// <summary>The generation manifest that atomically selects a disposable analysis store.</summary>
-public sealed class AnalysisStoreLifecycleTests
+public sealed partial class AnalysisStoreLifecycleTests
 {
     [Theory]
     [InlineData(AnalysisStoreKind.Derivation)]

@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using SecureAD.Kernel;
 
 namespace SecureAD.Evidence;
 
@@ -106,31 +107,77 @@ public static class BundleSealing
     /// <summary>Hashes a file cooperatively, without leaving a reader running after cancellation.</summary>
     /// <param name="filePath">The file to hash.</param>
     /// <param name="cancellationToken">Cancellation checked between reads.</param>
-    public static string HashFile(string filePath, CancellationToken cancellationToken)
+    public static string HashFile(string filePath, CancellationToken cancellationToken) =>
+        HashFile(filePath, cancellationToken, null);
+
+    private static string HashFile(string filePath, CancellationToken cancellationToken, FileSealWork? work)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var stream = File.OpenRead(filePath);
-        return HashStream(stream, cancellationToken);
+        FileStream? stream = null;
+        try
+        {
+            work?.Begin(FileSealPart.OpenData);
+            stream = File.OpenRead(filePath);
+            work?.End();
+            return HashStream(stream, cancellationToken, work);
+        }
+        catch
+        {
+            work?.RecordInterruptedPart();
+            throw;
+        }
+        finally
+        {
+            if (stream is not null)
+            {
+                work?.Begin(FileSealPart.CloseData);
+                try { stream.Dispose(); work?.End(); }
+                catch { work?.RecordInterruptedPart(); throw; }
+            }
+        }
     }
 
     /// <summary>Hashes the remaining stream contents, leaving the caller-owned stream open.</summary>
     /// <param name="stream">The evidence bytes to hash.</param>
     /// <param name="cancellationToken">Cancellation checked before and after each read, including EOF.</param>
-    public static string HashStream(Stream stream, CancellationToken cancellationToken)
+    public static string HashStream(Stream stream, CancellationToken cancellationToken) =>
+        HashStream(stream, cancellationToken, null);
+
+    internal static string HashStream(Stream stream, CancellationToken cancellationToken, FileSealWork? work)
     {
         ArgumentNullException.ThrowIfNull(stream);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buffer = new byte[81920];
-        while (true)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var read = stream.Read(buffer, 0, buffer.Length);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (read == 0)
-                return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
-            hash.AppendData(buffer, 0, read);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                work?.Begin(FileSealPart.ReadData);
+                work?.Reading();
+                var read = stream.Read(buffer, 0, buffer.Length);
+                work?.Read(read);
+                work?.End();
+                cancellationToken.ThrowIfCancellationRequested();
+                if (read == 0)
+                {
+                    work?.Begin(FileSealPart.FinishHash);
+                    var result = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+                    work?.End();
+                    return result;
+                }
+                work?.Begin(FileSealPart.HashData);
+                hash.AppendData(buffer, 0, read);
+                work?.Hashed(read);
+                work?.End();
+            }
+        }
+        catch
+        {
+            work?.RecordInterruptedPart();
+            throw;
         }
     }
 
@@ -146,14 +193,58 @@ public static class BundleSealing
     /// <param name="evidenceFilePath">The evidence file being sealed.</param>
     /// <param name="sealFilePath">Where the seal is written.</param>
     /// <param name="cancellationToken">Cancellation during hashing and before writing the seal.</param>
-    public static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken)
+    public static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken) =>
+        Seal(evidenceFilePath, sealFilePath, cancellationToken, null);
+
+    /// <summary>Seals normally and records aggregate file-operation timings without directory-object data.</summary>
+    /// <param name="evidenceFilePath">The file to seal.</param>
+    /// <param name="sealFilePath">The unchanged seal-file destination.</param>
+    /// <param name="cancellationToken">The caller's existing sealing cancellation boundary.</param>
+    /// <param name="log">The run log receiving one aggregate record, including interrupted attempts.</param>
+    /// <param name="kind">The analysis store, or null for captured evidence.</param>
+    /// <param name="generation">The analysis generation, or null for captured evidence.</param>
+    public static void SealWithDiagnostics(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken,
+        IRunLog log, AnalysisStoreKind? kind, Guid? generation)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+        if (kind is { } value && !Enum.IsDefined(value) || kind.HasValue != generation.HasValue)
+            throw new ArgumentException("Sealing diagnostics must identify either evidence or one analysis generation.", nameof(kind));
+        var work = new FileSealWork(TimeProvider.System);
+        var outcome = "Failed";
+        try
+        {
+            Seal(evidenceFilePath, sealFilePath, cancellationToken, work);
+            outcome = "Completed";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            outcome = "Cancelled";
+            throw;
+        }
+        finally { work.Report(log, kind, generation, outcome); }
+    }
+
+    internal static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken, FileSealWork? work)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(evidenceFilePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(sealFilePath);
 
-        var contents = new BundleSealContents(Algorithm, HashFile(evidenceFilePath, cancellationToken));
-        cancellationToken.ThrowIfCancellationRequested();
-        File.WriteAllText(sealFilePath, JsonSerializer.Serialize(contents, ProofSerialization.Options));
+        try
+        {
+            var contents = new BundleSealContents(Algorithm, HashFile(evidenceFilePath, cancellationToken, work));
+            cancellationToken.ThrowIfCancellationRequested();
+            work?.Begin(FileSealPart.EncodeSeal);
+            var json = JsonSerializer.Serialize(contents, ProofSerialization.Options);
+            work?.End();
+            work?.Begin(FileSealPart.WriteSeal);
+            File.WriteAllText(sealFilePath, json);
+            work?.End();
+        }
+        catch
+        {
+            work?.RecordInterruptedPart();
+            throw;
+        }
     }
 
     /// <summary>

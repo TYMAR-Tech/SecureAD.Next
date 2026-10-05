@@ -86,7 +86,7 @@
                  READING ONE. Same geometry either way, so nothing reflows and the content half
                  stays full width. -->
             <Grid Grid.Column="0"
-                  Visibility="{Binding ShowsListing, Converter={StaticResource Shown}}">
+                  Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -232,6 +232,9 @@
                  operator reading one object is still somewhere in the directory. -->
             <views:ObjectSectionList Grid.Column="0"
                                      Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}" />
+
+            <views:DelegationsView Grid.ColumnSpan="3"
+                                   Visibility="{Binding ShowsDelegationsListing, Converter={StaticResource Shown}}" />
 
             <views:ObjectView Grid.Column="2"
                               Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}" />

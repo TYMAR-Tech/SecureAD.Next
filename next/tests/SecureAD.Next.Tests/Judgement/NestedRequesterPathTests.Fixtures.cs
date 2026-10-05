@@ -175,7 +175,7 @@ public sealed partial class NestedRequesterPathTests
         var memberships = new RequesterMembershipContext(sources.OpenDerivation().Value, inputs.Input!, Read, identities,
             sources.ReadNamingContexts().Value, CancellationToken.None);
         return Assert.Single(RequesterDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
-            [new(UserDn, CoreDn)], CancellationToken.None, null, memberships)).Assessment;
+            [new(new(UserDn, CoreDn), null)], CancellationToken.None, memberships)).Assessment;
     }
 
     private static string[] Snapshot(string directory) => Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)

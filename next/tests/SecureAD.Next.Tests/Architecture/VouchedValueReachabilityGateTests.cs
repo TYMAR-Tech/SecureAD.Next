@@ -493,6 +493,12 @@ public sealed class VouchedValueReachabilityGateTests
     /// not a statement of effective access. Storage checks it against the saved named-bit flags;
     /// the screen retains it in its wording. Direct saved-product tests read true for a named mask
     /// and false for a mask containing an unnamed bit, without replaying the wording on readback.
+    /// 70 adds <c>RequesterResourceContext.IsComplete</c>: the resource-domain identity must occur
+    /// in the bound forest declaration. Coordinated constructor inputs exercise a matching domain
+    /// and an absent domain; neither result claims a complete authentication token.
+    /// 71 adds <c>DelegationCoverage.IsComplete</c>: declared capture scope, excluded classes and
+    /// unreadable/unattempted/incomplete permissions or descriptor errors remain independent of
+    /// result paging. A fully read, gap-free capture is true; each recorded gap can make it false.
     /// </para>
     /// </summary>
     [Fact]
@@ -507,7 +513,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -538,6 +544,7 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "Tier0RelevanceRelation" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ListingCoverage" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ClassifiedPermissionEntry" && v.Name == "RightsAreComplete");
+        Assert.Contains(found, v => v.Type.Name == "RequesterResourceContext" && v.Name == "IsComplete");
     }
 
     /// <summary>
@@ -660,6 +667,13 @@ public sealed class VouchedValueReachabilityGateTests
     /// </summary>
     private static IEnumerable<object> ConstructEveryWay(Type type)
     {
+        if (type == typeof(SecureAD.Judgement.RequesterResourceContext))
+        {
+            var domain = new SecureAD.Derivation.Tier0Target(Guid.NewGuid(), "DC=contoso,DC=com", "DC=contoso,DC=com",
+                "contoso.com", "S-1-5-21-1-2-3", null);
+            yield return new SecureAD.Judgement.RequesterResourceContext(domain, ["contoso.com"], new string('a', 64));
+            yield return new SecureAD.Judgement.RequesterResourceContext(domain, [], new string('a', 64));
+        }
         // The generic linear vectors cannot coordinate the nested expansion's stop/limits with
         // the outer availability flag. Exercise the real public getters; do not exempt them.
         if (type == typeof(SecureAD.Judgement.MemberAttributionDetail))

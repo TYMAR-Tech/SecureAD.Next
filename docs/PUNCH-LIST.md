@@ -13,6 +13,186 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Production judgement — completed and published; major runtime improvement confirmed, 2026-10-05.**
+The [retained production log](../.v-production-log-20261005-0708-c2a7/run.log) matches the verified detailed-sealing package and the earlier attempt's exact evidence/derivation inputs, publishing after 4h 37m 25s rather than failing after 15h 44m 7s while answering 110,385 selected questions instead of 50,694.
+The three account-question phases fell from 11h 1m 4.7s to 2m 7.6s and proof writing completed, but the result is CompletedDegraded with seven Indeterminate rules, high recorded memory snapshots and substantial remaining object/control/ownership/path-preparation work.
+The [review](../.v-production-log-20261005-0708-c2a7/review.json) preserves the exact measurements and limitations; owner-local completed-run browsing/demo acceptance remains open, and no code, package, live action, optimization, commit or push is authorized by this log review.
+
+**Nested lookup query-plan check — High; corrected and negatively verified, 2026-10-05.**
+The deliberate no-index mutation passed because the SQL constant had been copied into the test assembly, so the query-plan check inspected the old query instead of the rebuilt production query.
+The query now comes from the production runtime property, the test and production assemblies were rebuilt, and the deliberate scan failed its assertion while the explicitly rebuilt restored control passed.
+The original surviving mutation and its restored control are retained under the nested-delegation verification campaign, with no historical fixture or result replaced.
+
+**Delegation principal selection — Medium; corrected offline, owner acceptance open, 2026-10-05.**
+The approved Matching principal label and sole-first-page auto-selection remove the hidden manual step while leaving ambiguous, continuing and single-tail results unselected.
+The [retained checkpoint](../.v-delegation-selection-20261005-19c3/handoff.json) records 1,459 passing Shell/Architecture tests and all 12 new/adapted cases detecting seven rebuilt defects with restored controls, including the real controls without programmatic selection of the sole result.
+The screenshot, owner packages and all prior evidence remain intact with no format/query change or publication, the nested-group extension is now recorded separately below, and the broader visual redesign still needs concrete presentation approval.
+
+**Overall UI contrast — Medium; next owner-requested work after the verified nesting extension, 2026-10-05.**
+The owner wants a sleek modern WPF interface using first-party Microsoft packages, strong attribute-title/value contrast and recognizable ADUC-like directory-tree icons rather than the current white-on-white presentation.
+Prepare a coherent light-theme proposal with clearly separated controls, selections and results while the owner tests nesting in the lab, then obtain concrete presentation approval before implementation.
+Preserve the tested package and truthful status/LDAP/raw-value details, do not treat the selection fix as theme acceptance, and retain physical laptop/external-monitor checks as outstanding.
+
+**Navigation search, default scope and coverage presentation — owner-selected first UI implementation, 2026-10-05.**
+Build object search above the directory tree across the entire selected capture, Subtree as the initial browsing scope and compact capture coverage in place of the large Not shown, and why box before the broader visual overhaul.
+Retain deliberate Base/One level choices and visible run-specific capture gaps with accessible details, reserving Help for general exclusions rather than hiding failed capture behind it.
+The owner approved a checkpoint on stage7-completion, its push/pull request and merge into main only after build/test checks pass, plus a ui-navigation branch from that baseline in the same checkout; preserve packages/evidence and leave subsequent UI changes uncommitted.
+
+**Production delegation usability — positive owner feedback, 2026-10-05.**
+The owner reports that the delegation build is working well in production and results are quick to retrieve.
+This confirms useful real-environment interaction, not a new measured latency, exact-build identity or exhaustive acceptance of every membership and permission case.
+Proceed with the approved navigation improvements while retaining the existing explicit coverage, generation and effective-access distinctions.
+
+**Demo delegation lookup — implemented and offline verified; owner acceptance open, 2026-10-05.**
+Assets -> Delegations now provides the approved domain-qualified name/SID picker, permission filters, explicit/inherited choice, original recorded-entry pages and permission-detail navigation, stating that nested-group permissions and effective access are not assessed.
+The [retained checkpoint](../.v-delegations-20261005-4c91/handoff.json) records 6,866 passing offline tests and all 61 new/adapted checks detecting 38 rebuilt defects with restored controls, including real small/large-window controls and AD-only coverage separate from SYSVOL.
+Formats and the running production package are unchanged with no recapture/rejudging requirement, original evidence and prior artifacts remain intact, and owner lab/demo and physical display acceptance are outstanding without assistant publication, live AD access, commit or push.
+
+**Nested-group delegation visibility — implemented and offline verified; owner acceptance open, 2026-10-05.**
+Include group-held permissions now defaults on, with the approved holder column and membership-chain explanation, primary groups, retained alternative links/cycles and original permission counts independent of route counts.
+The [retained checkpoint](../.v-delegation-nesting-20261005-7ac2/handoff.json) records 6,905 passing offline tests and all 31 new/adapted cases detecting 25 rebuilt defects with restored controls, including the corrected runtime-bound query-plan check and exact evidence/derivation/resource identity.
+Formats, current owner packages, screenshot and original evidence are preserved with no new judging requirement or publication, while owner lab/demo and physical display acceptance remain open and the broader visual redesign is next.
+
+**Owner-run production test — log returned and publication confirmed, 2026-10-05.**
+The owner returned only the production run log, which confirms the known lab package completed and published against the same captured inputs as the prior failure.
+The previously recorded read-only performance candidates remain relevant: this run spent about 38m 33s storing later control results and 36m 10s storing ownership results, while the main object pass and path preparation remain substantial.
+No production database, bundle or trace is requested, and further optimization, measurement campaigns, live access, package replacement, commit or push remain separately authorized work.
+
+**Demo deadline — two days; performance prioritization requested, 2026-10-04.**
+The owner asked whether the measured file-open pause is an occasional completion cost or repeated work, with a demo due in two days.
+Seal creation is once per new result file, while opening/reopening and the post-judging summary separately verify files; normal screens share protected verification during the selected run's open lifetime, and the observed pause is not proven to recur or scale with bytes.
+Prioritize validating a completed, browseable demo candidate and large-forest judging behaviour before speculative sealing changes, with any production run, new measurement campaign or further implementation separately authorized.
+
+**Judgement sealing delay — file-open step isolated; responsible component unknown, 2026-10-04.**
+The [latest detailed log](../.v-lab-log-20261004-51b9/run.log) records 10,042.115 ms opening the judgement file, versus 31.793 ms reading its 48,369,664 bytes, 203.755 ms hashing and 1.279 ms writing the seal, with all 18 rules and 459 questions completed and the result published.
+The logged executable and engine exactly match the verified owner publish, while evidence/derivation opens in the same run took 1.024/2.477 ms; the delay is before data reading, not checksum calculation.
+Inspect the slow file-open operation locally in the lab before selecting a correction, without assuming an antivirus/storage cause, disabling protections, removing corruption checks, exporting production traces or authorizing agent live access.
+
+**Detailed sealing diagnostics — implemented, offline verified and lab-completed, 2026-10-04.**
+Capture, derivation and judgement now record aggregate file open/read/hash/finalize/close and seal-record serialization/write timings, byte/read counts, longest calls and explicit outcomes, without per-object or per-buffer log output.
+The [validated checkpoint](../.v-seal-detail-20261004-f31e/handoff.json) records 6,807 passing offline tests, all 22 new checks plus one strengthened log-isolation check detecting 19 useful rebuilt defects with restored controls, and 944 matching build inputs; failed attempts and the original checkpoints are retained.
+Checksum bytes, corruption safeguards, file I/O policy, formats and publication/cancellation boundaries remain unchanged, and the owner's concurrent publish was preserved and source/symbol-checked rather than restored, with no agent live access, timed campaign, packaging, commit or push.
+
+**Sealing requirement — corruption protection, not deliberate tampering, reaffirmed 2026-10-04.**
+The owner requires protection from corrupted data, not forensic/court proof or protection against a person intentionally editing files, reaffirming accepted decisions 0020 and 0030.
+The current adjacent checksum is not a signature, and corruption detection, completed publication and exact run-generation binding remain necessary rather than being justified as anti-tampering.
+The detailed timings now isolate the file-open step, and the responsible component still needs identification without removing safeguards or treating this clarification as live-measurement approval.
+
+**Format-53 lab completion — confirmed; publication pause localized, 2026-10-04.**
+The [latest log](../.v-lab-log-20261004-23d0/run.log) confirms the current source completed all 18 rules and 459 questions for the same reported 8,441 objects, with requester/own-account/combined checks at 604.4/857.0/475.1 ms but proof writing higher at 1,990.2 ms.
+Publication took 10,048 ms with 9,956 ms in judgement-file sealing, and overall judging was about 29 seconds rather than 18; the logged engine and 106 compiler source checksums match the verified format-53 checkpoint and all 942 active inputs match.
+This establishes current-build lab completion and the location of this publication pause, not an internal sealing cause or overall/production speedup, and no code, live action, package replacement, commit or push occurred in this review.
+
+**Versioned source-fingerprint reuse — implemented, offline verified and lab-completed, 2026-10-04.**
+Judgement 53 binds membership/requester proofs through shared source/schema/domain and target fingerprints, preserving all original fields, witnesses and security answers while intentionally changing source hashes and refusing older judgements rather than migrating them.
+The [validated checkpoint](../.v-source-fp-20261004-e5d2/handoff.json) records 6,785 passing offline tests, all 54 new plus 53 adapted cases detecting 22 rebuilt defects with restored controls, and 942 matching build inputs; normal 64-question membership production uses one shared and two target hashes, with larger repeated-input work checks retained.
+All historical evidence, results, hashes and owner work were preserved during implementation and the subsequent format-53 lab completion is recorded above, while production benefit and detailed acceptance remain open without agent live access, original-bundle rejudging, timed campaigns, package replacement, UI changes, commit or push.
+
+**Production performance goal — judging improvement, owner clarified, 2026-10-04.**
+The owner does not expect the predecessor's 4-6-hour whole-audit time to carry over unchanged because SecureAD now captures additional SYSVOL evidence.
+The required improvement is in judging the large production forest, preserving coverage and proof rather than using small-lab totals or capture time as the acceptance measure.
+Continue bounded judging-performance corrections, with no new numeric ceiling, production retry, timed campaign or live access authorized by this clarification.
+
+**Current proof-work build — owner-run lab completion and publication diagnostics confirmed, 2026-10-04.**
+The [latest retained log](../.v-lab-log-20261004-8a91/run.log) confirms all 18 rules and 459 selected questions completed for the same reported 8,441 objects, with judging around 18 seconds and publication completing in 285 ms, including 203 ms sealing, 38 ms path-fragment validation and 16 ms database checkpointing.
+The logged engine identity and 105 compiler-recorded source checksums match the proof-work checkpoint, with all 938 active build inputs unchanged and no logged errors or cancellation.
+The previous ten-second publication delay did not recur but capture sealing again took 8.9 seconds, so intermittent finalization attribution, controlled performance gains and broader acceptance remain open without any code change, live action, package replacement, commit or push in this review.
+
+**Original-entry fingerprint reuse, node writes and publication diagnostics — implemented, offline verified and lab-completed, 2026-10-04.**
+Prepared requester targets reuse unchanged original-entry fingerprints, path-node rows reuse the writer's statement helper, and fifteen publication timing parts distinguish final checks, indexing, checkpointing and sealing without changing saved answers, fingerprints, formats or durability.
+The [validated checkpoint](../.v-proof-work-20261004-c24f/handoff.json) records 6,731 passing offline tests, all 35 new cases plus one adapted check detecting 19 rebuilt defects with restored controls, and 938 matching build inputs; failure/cancellation and no-object-data diagnostics are verified.
+All prior work was preserved during implementation and the later current-build lab completion is recorded above, while the intermittent delay and production acceptance remain open without agent live access, timed campaigns, production retry, packaging, build-workflow changes, UI changes, commit or push.
+
+**Current target-preparation build — owner-run lab completion confirmed, 2026-10-04.**
+The [new retained log](../.v-lab-log-20261004-7e2a/run.log) confirms the current engine completed all 18 rules and 459 questions for the same reported 8,441 objects, with path preparation falling from 5,861.9 to 3,777.6 ms, requester permissions from 1,811.0 to 729.1, and combined checks from 1,880.4 to 569.7.
+The logged module identity and 105 compiler-recorded source checksums match the verified target-preparation source, with all 934 active inputs unchanged, but final publication took about ten seconds and total judging was about 29 seconds rather than 23.
+This is successful owner-run completion with an operational timing comparison, not a controlled speedup, identical-answer comparison or production acceptance; the owner requested continuing performance work while preserving all artifacts and without agent-run live access, timed campaigns, packaging, commit or push.
+
+**Intermittent sealing delay — medium severity, open; file-open call measured at ten seconds, 2026-10-04.**
+Earlier logs alternated between fast sealing and approximately ten-second sealing phases, and the latest detailed log isolates 10,042.115 ms to opening the judgement file before reads or hash calculation.
+The application-side location is established but the responsible operating-system, file-system or other component is not, so no specific root cause or fix is claimed.
+A targeted local lab file-access trace is the next diagnostic recommendation, with no code change, weaker corruption checks, security-tool disablement or production trace export authorized by this review.
+
+**Target-by-target permission preparation — implemented, offline verified and lab-completed, 2026-10-04.**
+Direct and combined requester proofs prepare evidence by exact target, and path-source validation checks every original witness against one target reading, preserving independent authorization, saved ordering, source fingerprints, uncertainty and generation binding without a new whole-forest permission cache.
+The [validated checkpoint](../.v-target-prep-20261004-9b31/handoff.json) records 6,696 passing offline tests, all 62 new checks detecting 23 rebuilt defects with restored controls, and 934 matching build inputs; synthetic batches require two descriptor reads for 32 requester questions and two for 4,000 witness occurrences.
+Judgement 52/path 9/selection 4 and historical hashes are unchanged, all owner work was preserved, and the later lab completion is recorded above; controlled timing, detailed saved-output/display and production acceptance remain open without build-workflow changes, UI changes, agent live access, packaging, commit or push.
+
+**Owner-run lab verification — preceding two-correction build completed; latest batch offline only, 2026-10-04.**
+The [retained log](../.v-lab-log-20261004-d8c4/run.log) records capture through published judgement in approximately 52 seconds for 8,441 objects across three domains, with all 18 rules successful, all 459 selected questions completed and proof writing finished in 1,622.3 ms without logged errors or cancellation.
+The logged engine identity matches the retained local Release assembly and its 105 compiler-recorded source checksums match the membership-reuse checkpoint, with all 929 build inputs then checked matching that source; SEC-071 assessed eight accounts rather than eight permission questions or findings.
+This confirms lab completion of the preceding two corrections, not the later target-preparation batch, a production speedup, customer-scale memory acceptance or saved-screen correctness, and no agent-run live access, timed campaign, package replacement, commit or push is authorized.
+
+**Shared membership prerequisites and preparation — implemented and offline verified, 2026-10-04.**
+Exact pre-change membership answers are shared across standalone and combined checks, with common schema/domain and group-at-a-time permission/holder preparation, while source fingerprints, saved occurrences, later resource-specific authorization and family-specific continuations remain unchanged.
+The [validated checkpoint](../.v-prerequisites-20261004-a63e/handoff.json) records 6,634 passing tests in one final full regression, all 36 new plus one adapted check detecting 15 rebuilt defects with restored controls, and a 64-question synthetic batch using two group-descriptor reads with no further evidence queries when repeated.
+All 929 build inputs match the verified source, Judgement 52/path 9/selection 4 and historical hashes are unchanged, and all owner work and prior artifacts are preserved; production runtime/acceptance and the remaining recommendations stay open without live access, timed campaigns, retry, UI changes, package replacement, commit or push.
+
+**Path-proof storage replacement — implemented and offline verified; production acceptance open, 2026-10-04.**
+Judgement 52 uses ordered bounded JSON fragments for path calculation, node and requester proofs, preserving all answers, witnesses, bindings and passive selected pages without migration, screen changes, result caps or changed path/selection semantics.
+The [validated checkpoint](../.v-proofstore-20261004-e91c/handoff.json) records 6,598 passing offline tests, all 24 new plus 20 related checks detecting 15 rebuilt defects with restored controls, and 1,594,000,714 exact synthetic JSON bytes saved under a 256 MiB managed-heap ceiling while the whole-value defect ran out of memory.
+All 927 build inputs match the tested source and all owner work, original logs, packages and prior artifacts are preserved; exact production attribution, end-to-end acceptance and later reuse work remain open, with no timed campaign, live access, package overwrite, new checkout, commit or push.
+
+**Current priority — coverage-preserving judging memory/performance, five corrections verified offline, 2026-10-04.**
+The owner selected this work ahead of further Stage 7 feature expansion; proof storage, membership reuse/preparation, target preparation/witness validation, exact-entry fingerprint/node writes and versioned shared-source fingerprints are verified above, not completion of the entire efficiency priority.
+Work remains in the existing `stage7-completion` checkout at `3d9177a6cad7009e779d1b181c08e9b4641448f5` plus all 71 current changed/new paths and 944 verified build inputs, including the subsequent diagnostic-only addition and preserving every prior checkpoint and the lab-tested package.
+Remaining improvements can be grouped where they share inputs and verification but still need bounded scope, preserving complete results, coverage, bindings and all owner work without a new checkout, timed campaign, production retry, live AD action, package overwrite, commit or push.
+
+**Whole-audit repeated work — high severity, code-confirmed opportunities; runtime attribution pending, 2026-10-04.**
+Shared membership prerequisites, common/per-group preparation, requester target preparation, grouped witness reading, exact-entry fingerprints, prepared node writes and versioned source/schema component reuse are now verified above.
+Repeated permission-entry interpretation across descriptors remains a candidate, and the owner-requested read-only review below identifies additional storage/preparation costs rather than treating the earlier implementation list as an exhaustive performance audit.
+Only the five bounded corrections above have implementation approval and offline verification; runtime gains still need end-to-end production judging evidence, and existing descriptor deduplication, batching, protected-input reuse, identity indexes and inactive discovery limits must not be redone or presented as missing features.
+
+**Later control/ownership storage — high severity, open; repeated command setup and per-target commits confirmed, 2026-10-04.**
+The reachable admitted-control and ownership paths still create commands per edge/support/source row and commit separately per target in [ControlEdgeStorage](../next/src/SecureAD.Judgement/ControlEdgeStorage.cs) and [FullControlStorage](../next/src/SecureAD.Judgement/FullControlStorage.cs), unlike the already-batched main object pass and prepared node writes.
+The older production log records 1,965,603 ms in admitted `store-control` and 2,202,660 ms in `store-ownership`, but these whole storage buckets also contain serialization and validation, so neither figure is attributable entirely to command setup or commits.
+Compare those parts in the current owner-run log before choosing bounded command reuse or batching, preserving per-target proof, transaction-aware sharing, cancellation and atomic publication; no implementation or durability change is approved.
+
+**Shared route proofs — high severity, open; serialization repeats despite stored-value sharing, 2026-10-04.**
+[SharedProofStorage](../next/src/SecureAD.Judgement/SharedProofStorage.cs) serializes complete membership routes before its reuse lookup and again for each consumer binding, while [FullControlStorage](../next/src/SecureAD.Judgement/FullControlStorage.cs) serializes routes into a JSON node only to remove that already-shared property and repeats source-entry serialization per assessment.
+Both paths are reached during later permission/ownership storage, not the disabled requester-discovery scan, and the earlier 32.8/36.7-minute storage buckets do not separately measure this work.
+Investigate reusing exact immutable source representations or avoiding discarded serialization without changing stored bytes, original witnesses, generation bindings or reader behaviour; this is a code-confirmed opportunity, not an approved optimization or promised saving.
+
+**Shared entry identity work — high severity, open; reuse lookup follows repeated serialization/hash, 2026-10-04.**
+[SharedPermissionStorage.EntryId](../next/src/SecureAD.Judgement/SharedPermissionStorage.cs) builds a normalized JSON content key and SHA-256 identity before consulting the existing transaction-aware entry map, so storing each distinct entry once does not eliminate identity preparation across the 141,693,937 recorded descriptor positions.
+The older production `shared-entry` bucket was 1,082,307 ms and also includes lookups/new-row writes; the code confirms repetition but does not attribute that whole duration to hashing or serialization.
+Consider validated prepared identities across truly identical entry values only after the current log establishes priority, preserving SELF/resource meaning, each ordinal, every occurrence and generation binding rather than reintroducing a second permission verdict cache.
+
+**Descriptor fingerprint allocations — medium severity, open; whole-value copies remain outside the corrected path writer, 2026-10-04.**
+[SharedPermissionStorage.DescriptorFingerprint](../next/src/SecureAD.Judgement/SharedPermissionStorage.cs) still creates a complete JSON string and UTF-8 byte array per descriptor, alongside the owned classification snapshot, whereas the completed path-proof correction streams its distinct JSON contract.
+The older descriptor-fingerprint bucket was 626,644 ms across 267,550 descriptors, which identifies relevant measured work but not a current-build saving or a second proven out-of-memory failure.
+A streaming implementation would have to reproduce the existing default serializer bytes and all ordered occurrence bindings exactly, not substitute the differently configured path serializer or edit historical hashes; no correction is authorized by this review.
+
+**Repeated whole-input preparation — medium severity, open; current snapshot reuse does not eliminate every rebuild, 2026-10-04.**
+Admission and later source validation each call [Tier0Classifier.QualifyMany](../next/src/SecureAD.Derivation/Tier0Classifier.cs), which rebuilds the captured-input index, and [OwnershipAuditValidation](../next/src/SecureAD.Judgement/OwnershipAuditValidation.cs) builds another whole-input identity grouping while path phases also recreate node lookup collections.
+The existing protected-input and ownership-snapshot reuse remain in place, and no timing isolates these remaining allocations from the broader preparation phases, so the older 73.9-minute `PreparingPaths` figure cannot be assigned to them.
+Review shared immutable index lifetimes and temporary collection retention only if current production preparation/memory remains significant, preserving full source qualification and explicit unsupported/incomplete results rather than skipping validation.
+
+**Post-judging summary reopening — medium severity, open; extra full-file verification after publication confirmed, 2026-10-04.**
+[JudgingRun.AppendPortableSummary](../next/src/SecureAD.Judgement/JudgingRun.cs) opens the completed judgement through the normal verifying reader, causing a further full-file hash after the already-timed publication has finished.
+This is not per-object work or ordinary per-screen rehashing, but its source verification is outside the new publication/sealing timing and can add completion-to-return latency on a large result.
+If that gap matters in the production test, design an explicitly bound handoff for summary reading rather than disabling corruption checks or replacing stored counts with reconstructed guesses; no change is approved.
+
+**Permission-entry interpretation reuse — production timing bounds the opportunity, 2026-10-04.**
+The preserved failed production run records 141,693,937 classified entry positions across 267,550 descriptors, with 1,387,606 ms in the classification/preparation bucket out of the 7,091,873 ms object pass.
+That roughly 23-minute bucket includes validation and fingerprint preparation, not just entry interpretation, so reusing interpretations cannot be credited with eliminating the whole bucket or fixing the later multi-hour membership checks.
+It remains an unimplemented candidate with plausible savings but no measured net benefit; with the two-day demo deadline, prioritize evidence from the current large-forest build over assuming this last recorded optimization will transform overall judging time.
+
+**Production path-proof storage — high severity, failure confirmed; correction verified offline, 2026-10-04.**
+The [final failure log](../.v-production-failure-20261004-1452/run.log) records all 50,694 requester questions completed before `JsonSerializer.WriteString` in `Tier0PathStorage.Write` failed with `OutOfMemoryException` after 15h 44m, with publication not started.
+The whole-value storage shape has now been replaced and exercised with the actual header type on synthetic input, but the exact failing production call/allocation size is still not established and the identity-index correction remains a separate earlier change.
+Production completion and an end-to-end performance check remain unaccepted and separately authorized; the offline correction neither discards evidence nor grants a retry, timed campaign, recapture, live access, package replacement, commit or push.
+
+**Production requester runtime — high severity, end-to-end acceptance open, 2026-10-04.**
+The [retained production log](../.v-production-log-20261004-1435/run.log) shows 15h 27m without publication in the preserved pre-nesting package, including a completed 9h 29m batch of 28,790 own-account membership checks and a subsequent unfinished combined batch; selection took 22 seconds and answer matching remained below one second.
+The running code repeats whole-identity scans and per-question source work, while the current branch's operation identity-index correction has offline work-count verification but no controlled production after-result; no ETA or allocation of the whole delay to one function is established.
+The owner reports a 4-6-hour predecessor audit and concern about usability, so a bounded performance-acceptance checkpoint is recommended before further workload growth, without new optimization, measurements, budgets, live access, package replacement, commit or push authorized by this log-review request.
+
+**Stage 7 same-forest captured permissions — implemented and offline verified, new lab/display acceptance pending, 2026-10-04.**
+Ordinary users' captured global/universal/domain-local routes now support Modify permissions across declared forest domains, with resource-domain BUILTIN identity, ordered denies, exact stored permission binding and the approved domain-qualified labels in existing GUI/CLI saved results.
+The [validated checkpoint](../.v-sameforest-20261004-b72f/handoff.json) records 6,574 passing offline tests and all 38 new plus 29 adapted cases detecting 31 useful rebuilt defects, with 33 passing restored controls and failed attempts retained; Judgement 51/path 9/selection 4 preserve the historical layout hashes.
+The membership-change families remain at their previous boundary, and later resource-context continuations, saved summaries, SEC-052 and acceptance remain outstanding; the inherited count-label correction, lab setup, packages and prior artifacts are preserved without new live access, budgets, measurements, commit or push.
+
 **Stage 7 nested slices — live AD and saved-result validation complete; presentation decision pending, 2026-10-04.**
 The authorized `ba.ad.lab` campaign passed the existing-membership, Self-Membership, Write members, applicable-deny, loop, expected-administrator and unrelated-account cases across separate deny-enabled and positive captures, with identical GUI/CLI security evidence and one counted grant per granting group.
 Protected readback verified original permissions, membership witnesses, exact generation bindings, paging and saved-read cancellation without changing any result file; new-judging cancellation, external-monitor and production acceptance remain unexercised, while the approved full AD setup remains for later tests.

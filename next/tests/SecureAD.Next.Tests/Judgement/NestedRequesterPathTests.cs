@@ -179,9 +179,9 @@ public sealed partial class NestedRequesterPathTests
     }
 
     [Theory]
-    [InlineData("A", ControlEvaluationState.Unknown)]
+    [InlineData("A", ControlEvaluationState.Established)]
     [InlineData("D", ControlEvaluationState.NotEstablished)]
-    public void NestedSelfTrusteeKeepsTargetIdentityAndExistingPermissionReferenceRefusals(string kind, ControlEvaluationState expected)
+    public void NestedSelfTrusteeKeepsTargetIdentityAndExactPermissionBinding(string kind, ControlEvaluationState expected)
     {
         var assessment = Assess("self", $"O:SYG:SYD:({kind};;WD;;;S-1-5-10)");
         Assert.Equal(expected, assessment.Authorization);
@@ -189,8 +189,12 @@ public sealed partial class NestedRequesterPathTests
         var membership = Assert.IsType<RequesterMembershipEvidence>(entry.Membership);
         Assert.Equal(("S-1-5-10", CoreDn, "S-1-5-21-1-2-3-512"),
             (entry.Entry.Trustee.Sid, membership.Links[^1].Group.DistinguishedName, membership.Links[^1].Group.Sid));
-        if (kind == "A") Assert.Contains(RequesterDaclIssue.PermissionReferenceUnavailable, assessment.Issues);
-        Assert.Empty(assessment.Steps);
+        if (kind == "A")
+        {
+            Assert.DoesNotContain(RequesterDaclIssue.PermissionReferenceUnavailable, assessment.Issues);
+            Assert.Equal(Assert.Single(assessment.Permissions).Id, assessment.Steps[^1].PermissionId);
+        }
+        else Assert.Empty(assessment.Steps);
     }
 
     [Fact]
@@ -323,9 +327,9 @@ public sealed partial class NestedRequesterPathTests
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE path_requester_risk SET source_proof='unreadable other account proof' WHERE requester=$requester";
+            command.CommandText = "SELECT source_proof FROM path_requester_risk WHERE requester=$requester";
             command.Parameters.AddWithValue("$requester", UserName(1));
-            Assert.Equal(1, command.ExecuteNonQuery());
+            PathProofVerification.ReplaceJson(connection, Assert.IsType<long>(command.ExecuteScalar()), "unreadable other account proof");
         });
         using var source = new BundleAssetSource();
         var selected = source.ReadSavedTier0Path(directory, UserDn);

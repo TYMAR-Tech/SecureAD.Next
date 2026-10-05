@@ -5,10 +5,8 @@ namespace SecureAD.Shell.ViewModels;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Four views of one screen, not four screens.</b> All of them are scoped by the same tree
-/// selection and the same level, so an operator who narrows to an organisational unit stays
-/// narrowed to it when he moves between them. That is why the shell tells this screen which of its
-/// views is showing rather than switching between view models the way the navigation rail does.
+/// The directory-scoped views share the tree selection and level. Rules and Delegations answer
+/// whole-run questions instead; changing the tree must not silently narrow those answers.
 /// </para>
 /// <para>
 /// <b>It replaced a pair of booleans when the third view arrived.</b> The pair worked while one was
@@ -45,4 +43,7 @@ internal enum AssetsPane
     /// of the whole forest, so narrowing the tree does not narrow it.
     /// </remarks>
     Rules,
+
+    /// <summary>Original permission entries naming a selected principal, across captured AD objects.</summary>
+    Delegations,
 }

@@ -112,8 +112,14 @@ public static class JudgementSchema
     /// ordered permission proofs; member attribution and the other operation families are unchanged.</para>
     /// <para>50 saves captured group-nesting reasons for assessing membership-edit permissions and
     /// separates obtained-group continuation witnesses from the user's captured membership proof.</para>
+    /// <para>51 binds captured requester authorization to declared forest domains and the target's
+    /// domain, retaining scoped global/universal/domain-local membership without widening operation proofs.</para>
+    /// <para>52 stores path calculation, node and requester proofs as ordered UTF-8 JSON fragments,
+    /// retaining their exact fingerprints without whole-document text materialization.</para>
+    /// <para>53 binds membership and requester source proofs through versioned component fingerprints,
+    /// retaining complete source coverage without rehashing shared schema/domain/target data per question.</para>
     /// </remarks>
-    public const int Version = 50;
+    public const int Version = 53;
 
     private static readonly string[] TableDdl =
     [

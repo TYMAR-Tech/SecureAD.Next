@@ -4,6 +4,7 @@ using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Security;
 using SecureAD.Storage;
 
 namespace SecureAD.Derivation;
@@ -314,6 +315,25 @@ public sealed class DerivationReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return MembershipInputStorage.Read(_connection, Description.GenerationId);
+    }
+
+    /// <summary>Reads only the saved containing-group relationships reachable from the selected current SID.</summary>
+    public DelegationMembership ReadContainingGroups(string sid, string? domainFqdn, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!NestingWasDerived())
+            throw new InvalidOperationException("Saved group nesting is unavailable. Uncheck Include group-held permissions to search direct entries.");
+        var scope = Sid.IsBuiltinDomain(sid)
+            ? !string.IsNullOrWhiteSpace(domainFqdn) ? domainFqdn.ToLowerInvariant()
+                : throw new ArgumentException("Select a domain-qualified identity for this built-in SID.", nameof(domainFqdn))
+            : "";
+        var root = FindSidId(sid, scope)
+            ?? throw new InvalidOperationException("The selected SID has no saved membership identity. Direct-only lookup remains available.");
+        if (PrincipalCarrying(root) != root)
+            throw new InvalidOperationException("SID history is not group nesting. Select the current principal or use direct-only lookup.");
+        return ContainingGroupReader.Read(_connection, Description, root, cancellationToken);
     }
 
     /// <summary>

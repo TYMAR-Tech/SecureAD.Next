@@ -537,7 +537,8 @@ public sealed class CaptureRun
         try
         {
             sealing = writer.Complete(
-                coverage, _time.GetUtcNow(), reconciliation, plan.ObjectScope, cancellationToken);
+                coverage, _time.GetUtcNow(), reconciliation, plan.ObjectScope, cancellationToken,
+                (data, seal, token) => BundleSealing.SealWithDiagnostics(data, seal, token, _log, null, null));
         }
         catch (OperationCanceledException cancellation) when (
             cancellationToken.IsCancellationRequested && cancellation.CancellationToken == cancellationToken)

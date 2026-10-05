@@ -81,14 +81,17 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal("Evidence.ProtectedStoreMismatch", source.ReadSavedTier0Path(directory, UserDn).Error?.Code);
     }
 
-    [Fact]
-    public void P248SavedPathsRefuseThePreviousFormatWithoutFallback()
+    [Theory]
+    [InlineData(38)]
+    [InlineData(51)]
+    [InlineData(52)]
+    public void P248SavedPathsRefuseThePreviousFormatWithoutFallback(int format)
     {
         var directory = CreatePathRun();
-        MutateControlRun(directory, "UPDATE judgement SET schema_version=38");
+        MutateControlRun(directory, "UPDATE judgement SET schema_version=" + format);
         using var source = new BundleAssetSource();
 
-        Assert.Contains("schema version 38", source.ReadSavedTier0Path(directory, UserDn).Error?.Description ?? "", StringComparison.Ordinal);
+        Assert.Contains("schema version " + format, source.ReadSavedTier0Path(directory, UserDn).Error?.Description ?? "", StringComparison.Ordinal);
     }
 
     [Fact]
@@ -154,7 +157,8 @@ public sealed partial class OpenedRunResultsTests
     public void P248SavedPathsDoNotDecodeUnrelatedPathNodes()
     {
         var directory = CreatePathRun();
-        MutateControlRun(directory, "UPDATE tier0_path_node SET proof='not json' WHERE target='" + TargetDn + "'");
+        SelfMembershipCoverageTests.Mutate(directory, connection =>
+            PathProofVerification.AlterJson(connection, "tier0_path_node", "'not json'", "WHERE target='" + TargetDn + "'"));
         using var source = new BundleAssetSource();
 
         Assert.Single(FirstRecordedPathPage(source, directory).Page.Questions);

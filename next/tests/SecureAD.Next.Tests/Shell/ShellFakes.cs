@@ -187,6 +187,22 @@ internal sealed class FakeAssetSource : IAssetSource
             : value;
     }
 
+    public Result<DelegationPrincipalPage> DelegationPrincipals { get; set; } = new DelegationPrincipalPage([], null, true);
+    public Func<DelegationQuery, DelegationPageMark?, Result<DelegationPage>>? Delegations { get; set; }
+    public List<(DelegationQuery Query, DelegationPageMark? After)> DelegationQueries { get; } = [];
+    public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after)
+    {
+        Reads.Add("DelegationPrincipals");
+        return DelegationPrincipals;
+    }
+    public Result<DelegationPage> ReadDelegations(string bundleDirectory, DelegationQuery query, DelegationPageMark? after)
+    {
+        Reads.Add("Delegations");
+        DelegationQueries.Add((query, after));
+        return Delegations?.Invoke(query, after) ?? Result<DelegationPage>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestDelegationsNotSupplied", ErrorSeverity.Failed, "No delegation answer was supplied by this test.", bundleDirectory));
+    }
+
     public Result<SavedPermissionClassification> PermissionClassification { get; set; } =
         Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell,
             "PermissionClassificationUnavailable", ErrorSeverity.Failed,

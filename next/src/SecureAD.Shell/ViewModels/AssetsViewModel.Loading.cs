@@ -15,7 +15,7 @@ internal sealed partial class AssetsViewModel
     private readonly Dictionary<AssetsPane, (ListingQuestion Question, Func<bool> IsCurrent)> _pages = [];
 
     private ListingQuestion Question() => new(Pane, BundlePath!,
-        Pane == AssetsPane.Rules ? null : Selected?.DistinguishedName,
+        Pane is AssetsPane.Rules or AssetsPane.Delegations ? null : Selected?.DistinguishedName,
         Pane is AssetsPane.Objects or AssetsPane.Laps ? Scope : null,
         Pane == AssetsPane.Objects ? PageNumber : 1,
         Pane == AssetsPane.Findings ? FindingsAsked() : null);
@@ -41,6 +41,10 @@ internal sealed partial class AssetsViewModel
 
         switch (question.Pane)
         {
+            case AssetsPane.Delegations:
+                CancelRead();
+                Announce();
+                break;
             case AssetsPane.Objects:
                 await ReadViewAsync(question.Bundle,
                     reader => reader.ListObjects(question.Bundle, question.Container!, question.Scope!.Value, question.Page),
@@ -246,6 +250,9 @@ internal sealed partial class AssetsViewModel
         if (pane == Pane) _listingReady = false;
         switch (pane)
         {
+            case AssetsPane.Delegations:
+                ClearDelegationSearch();
+                break;
             case AssetsPane.Objects:
                 Objects.Clear();
                 Total = 0;
