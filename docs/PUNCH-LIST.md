@@ -13,6 +13,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Combined UI/baseline integration — High; Gallery corrected locally, passing exact-head CI still required, 2026-10-06.**
+Run [37418319664](https://github.com/TYMAR-Tech/SecureAD.Next/actions/runs/37418319664) failed compilation at head `5e4aad996794f47becf2da4215fd8572850ff047` before tests ran because Gallery lacked the shared themes' `FieldGrid` and `TreeNodeIconKind` dependencies; the owner approved fixing the tool, and it now links both existing Shell sources without excluding any project or changing application presentation.
+The [isolated checkpoint](../.v-gallery-ci-20261006-7d42/handoff.json) retains the reproduced compiler failures, a full-solution Release rebuild with zero errors, 45 passing existing shared-theme checks and a responsive Gallery window that closed normally, with all 281 original Shell outputs unchanged; the full 7,074-test suite was not rerun for this project-link correction.
+The owner authorized committing and pushing this correction on 2026-10-06; PR #4 still requires passing CI for the new exact head before merging, and PR #3 must remain open until baseline inclusion is confirmed after that merge.
+
 **Rules list/detail — implemented; full offline verification passed, 2026-10-06.**
 The owner agreed to return to opening-performance and Stage 7 work after first reviewing a left-hand rules list with a selected explanation on the right.
 The owner approved implementing the selectable list with independently scrollable details and adjustable divider, then committing/pushing the accumulated UI work and addressing the CI/merge issue last before a new Stage 7 session.
@@ -43,10 +48,10 @@ The owner reports that Dashboard looks good and requests a Home mockup with a sh
 He approved implementing the compact introduction, clear New audit/Open run actions, scope-grouped saved runs and readable selected-run panel, keeping annotation actions separate from destructive or long-running work.
 The [isolated checkpoint](../.v-ui-home-20261005-f82b/handoff.json) records 711 passing combined UI/library checks and all nine new cases detecting rebuilt defects with restored controls, retaining metadata-only listing and confirmations while exposing analysis status/Stop and failures outside selection-dependent disclosures; owner visual acceptance and earlier unrelated blockers remain outstanding, with slow opening next and no hashing-policy change.
 
-**Slow startup and run opening — High; owner-reported, diagnosis pending, 2026-10-05.**
-The owner reports very slow opening and suspects hash calculations and repeated costs elsewhere, but no new timing or exact executable provenance accompanies this report.
-After the bounded Home UI work, investigate startup, library listing, selected-run verification, reopening and subsequent browsing separately, reusing existing diagnostics and retaining the accepted protected-lifetime integrity rules.
-Prior file-open and hashing measurements must remain distinct from this report, and no integrity-check removal, stale cache, live access or new performance harness is approved by the Home preview request.
+**Slow application launch in the lab — High; owner clarified scope, diagnosis pending, 2026-10-06.**
+The owner clarified that the reported delay is launching the application in the lab, not opening a selected saved run; hashing remains a suspicion without current timing or exact executable provenance.
+Investigate launch through usable Home, including the initial metadata-only library listing before the window is shown, separately from saved-run verification, reopening and browsing; existing navigation logs do not measure the whole startup interval.
+Prior file-open and hashing measurements must remain distinct from this report, and no integrity-check removal, stale cache, live access, new measurement run or performance harness is authorized by this clarification.
 
 **Dashboard redesign — implemented; bounded verification passed, 2026-10-05.**
 The owner wants a substantial Dashboard redesign and is leaving further Assets visual review until his external monitor is available.

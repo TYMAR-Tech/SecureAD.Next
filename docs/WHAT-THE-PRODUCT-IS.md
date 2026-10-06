@@ -51,6 +51,15 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-approved Gallery CI correction, 2026-10-06.**
+The owner approved fixing the UI Gallery tool after exact-head CI failed to compile its shared
+Shell themes, before any tests ran.
+Keep the correction to the missing shared-source dependencies and isolated validation of the tool
+and full solution, without removing projects from CI or changing application wording/layout.
+The owner subsequently authorized committing and pushing this correction on 2026-10-06; passing
+exact-head CI remains required before integration, and performance measurement or optimization
+remains outside this approval.
+
 **Owner-confirmed return to core work after a Rules comparison mockup, 2026-10-05.**
 After the remaining-work review, the owner agreed to return to opening-performance and Stage 7
 completion work, but first requested a Rules mockup with a selectable list on the left and the
@@ -151,6 +160,10 @@ This is positive Dashboard feedback, not blanket physical-display acceptance or 
 existing regression/merge blockers.
 He also reports very slow opening, attributes it to hash calculations and suspects costs elsewhere,
 and asked whether to finish the UI redesign before investigating.
+The owner clarified on 2026-10-06 that this report means launching the application in the lab,
+not opening a selected saved run.
+Focus the next bounded investigation on launch through usable Home, including its initial library
+listing; saved-run navigation logs do not by themselves measure that interval.
 Recommend the Home mockup and one explicitly approved bounded Home implementation, then make
 startup/selected-run opening and repeated verification the next engineering priority; do not turn
 this into further general UI expansion.
