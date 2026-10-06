@@ -75,8 +75,14 @@ Retain the failed full-suite attempt; long qualification text must be scrollable
 than falsely required to fit in a single viewport.
 The [list/detail and compact-object checkpoint](../.v-ui-rules-split-20261006-c48a/handoff.json)
 records 95 passing final rebuilt checks and rebuilt negative witnesses for all ten required
-split/layout cases; the retained 7,074-case full run was not green, and the judging-progress
-timeout remains for the final CI correction.
+split/layout cases; the earlier failed 7,074-case run remains retained.
+The [final CI correction checkpoint](../.v-ci-progress-20261006-a47b/handoff.json) passes all
+7,074 offline tests with coverage after the existing P-261 progress fixture was corrected to
+observe queued messages while judging remains active, without changing the production late-report
+guard; the adapted test detects a rebuilt missing-counter defect and passes restored controls.
+The accumulated UI checkpoint is committed as `b3f18e0` on **ui-navigation**.
+Use a superseding combined baseline/UI pull request rather than silently broadening #3's original
+scope, preserving its failed-run history and requiring passing exact-head CI before merging.
 
 **Rules-tab preview requested, 2026-10-05.**
 The owner selected Rules for a design mockup, specifically asking for better formatting and a
