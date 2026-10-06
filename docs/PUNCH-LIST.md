@@ -13,6 +13,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**CI footer viewport fixture — High; corrected locally, full offline verification passed, 2026-10-06.**
+Run [37454723408](https://github.com/TYMAR-Tech/SecureAD.Next/actions/runs/37454723408) built head `f8508ff9eb13b18fb34b0c1992e0aec7651050dc` successfully and passed 7,072 of 7,074 tests, with two footer-layout failures reproduced locally at the exact 35.95-pixel offset by constraining the native host window.
+The test now fixes and asserts the requested logical view dimensions, adds three constrained-host cases and retains the wide/narrow layout assertions without changing production UI; all seven focused cases pass, and rebuilt wide/narrow defects fail all six applicable cases with passing restored controls, while rebuilt missing-width/height fixture defects each fail all six dimension assertions.
+The [isolated checkpoint](../.v-ci-footer-20261006-9f31/handoff.json) records a passing full correct-source solution rebuild and all 7,077 offline tests passing with coverage, zero failures/skips and 1,033 matching source inputs; earlier attempts remain retained, including the width-defect runner's overly narrow failure-count expectation, and the owner authorized committing and pushing this correction on 2026-10-06 while PR #4 remains gated on passing exact-head CI.
+
 **Combined UI/baseline integration — High; Gallery corrected locally, passing exact-head CI still required, 2026-10-06.**
 Run [37418319664](https://github.com/TYMAR-Tech/SecureAD.Next/actions/runs/37418319664) failed compilation at head `5e4aad996794f47becf2da4215fd8572850ff047` before tests ran because Gallery lacked the shared themes' `FieldGrid` and `TreeNodeIconKind` dependencies; the owner approved fixing the tool, and it now links both existing Shell sources without excluding any project or changing application presentation.
 The [isolated checkpoint](../.v-gallery-ci-20261006-7d42/handoff.json) retains the reproduced compiler failures, a full-solution Release rebuild with zero errors, 45 passing existing shared-theme checks and a responsive Gallery window that closed normally, with all 281 original Shell outputs unchanged; the full 7,074-test suite was not rerun for this project-link correction.

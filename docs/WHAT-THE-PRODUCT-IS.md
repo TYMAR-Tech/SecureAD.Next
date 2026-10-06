@@ -51,6 +51,12 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-authorized footer-test correction commit and push, 2026-10-06.**
+After all 7,077 offline tests passed with coverage, the owner authorized committing and pushing
+the CI footer viewport fixture correction and its governing checkpoint.
+Production UI is unchanged; integration still requires passing exact-head CI, and this authorization
+does not extend to performance measurement or optimization.
+
 **Owner-approved Gallery CI correction, 2026-10-06.**
 The owner approved fixing the UI Gallery tool after exact-head CI failed to compile its shared
 Shell themes, before any tests ran.

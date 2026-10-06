@@ -15,18 +15,23 @@ namespace SecureAD.Next.Tests.Shell;
 public sealed class CoverageFooterViewTests
 {
     [Theory]
-    [InlineData(1280, 800, false)]
-    [InlineData(1280, 800, true)]
-    [InlineData(900, 470, true)]
-    public void CoverageSharesThePagerFooterAndReclaimsTheTopStrip(int width, int height, bool incomplete) => OnSta(() =>
+    [InlineData(1280, 800, false, 1280)]
+    [InlineData(1280, 800, true, 1280)]
+    [InlineData(900, 470, true, 900)]
+    [InlineData(1280, 800, false, 1024)]
+    [InlineData(1280, 800, true, 1024)]
+    [InlineData(900, 470, true, 640)]
+    public void CoverageSharesThePagerFooterAndReclaimsTheTopStrip(int width, int height, bool incomplete, int hostWidth) => OnSta(() =>
     {
         var (model, source) = Model(incomplete);
         var view = View(model);
-        var window = WindowFor(view, width, height);
+        var window = WindowFor(view, width, height, hostWidth);
         window.Show();
         try
         {
             Layout(view, width, height);
+            Assert.Equal(width, view.ActualWidth, 3);
+            Assert.Equal(height, view.ActualHeight, 3);
             var footer = Assert.IsType<Grid>(view.FindName("AssetsFooter"));
             var summary = Assert.IsType<WrapPanel>(view.FindName("CaptureCoverageSummary"));
             var action = CoverageAction(view, model);
@@ -134,11 +139,18 @@ public sealed class CoverageFooterViewTests
         return (model, source);
     }
 
-    private static Window WindowFor(UserControl view, int width, int height) => new()
+    private static Window WindowFor(UserControl view, int width, int height, int? hostWidth = null)
     {
-        Content = view, Width = width, Height = height, WindowStyle = WindowStyle.None,
-        ShowInTaskbar = false, Left = -10000, Top = -10000,
-    };
+        // The native window can be capped by the CI desktop; test the requested logical viewport.
+        view.Width = width;
+        view.Height = height;
+        return new Window
+        {
+            Content = view, Width = hostWidth ?? width, MaxWidth = hostWidth ?? width,
+            Height = height, WindowStyle = WindowStyle.None,
+            ShowInTaskbar = false, Left = -10000, Top = -10000,
+        };
+    }
 
     private static Button CoverageAction(DependencyObject view, AssetsViewModel model) =>
         Assert.Single(Descendants<Button>(view), button => ReferenceEquals(button.Command, model.ToggleCaptureCoverageCommand));
