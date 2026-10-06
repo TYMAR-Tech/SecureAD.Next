@@ -2,86 +2,149 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels">
-    <Grid Background="{StaticResource WindowBackground}">
+    <Grid Background="{StaticResource AssetCanvasBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="3*" />
-            <RowDefinition Height="2*" />
+            <RowDefinition Height="2*" MinHeight="80" MaxHeight="270" />
+            <RowDefinition Height="2*" MinHeight="185" />
             <RowDefinition Height="Auto" />
+            <RowDefinition MaxHeight="240">
+                <RowDefinition.Style><Style TargetType="RowDefinition">
+                    <Setter Property="Height" Value="1.3*" />
+                    <Style.Triggers><DataTrigger Binding="{Binding HasDelegationSelection}" Value="False">
+                        <Setter Property="Height" Value="0" />
+                    </DataTrigger></Style.Triggers>
+                </Style></RowDefinition.Style>
+            </RowDefinition>
         </Grid.RowDefinitions>
-        <StackPanel>
-            <TextBlock Text="{x:Static vm:DelegationText.Heading}" Style="{StaticResource RowTitle}" />
-            <TextBlock Text="{Binding DelegationBoundary}" TextWrapping="Wrap"
-                       Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,10" />
-        </StackPanel>
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel>
-            <WrapPanel IsEnabled="{Binding DelegationControlsAreEnabled}">
-                <StackPanel Margin="0,0,12,6">
-                    <TextBlock Text="{x:Static vm:DelegationText.Principal}" Style="{StaticResource BlockLabel}" />
-                    <TextBox Text="{Binding DelegationPrincipalSearch, UpdateSourceTrigger=PropertyChanged}" MinWidth="250" />
-                </StackPanel>
-                <Button Content="{x:Static vm:DelegationText.FindPrincipal}" Command="{Binding FindDelegationPrincipalCommand}"
-                        VerticalAlignment="Bottom" Margin="0,0,12,6" />
-                <Button Content="{x:Static vm:DelegationText.MorePrincipals}" Command="{Binding NextDelegationPrincipalsCommand}"
-                        VerticalAlignment="Bottom" Margin="0,0,0,6" />
-            </WrapPanel>
-            <TextBlock Text="{x:Static vm:DelegationText.MatchingPrincipal}" Style="{StaticResource BlockLabel}" />
-            <ComboBox ItemsSource="{Binding DelegationPrincipals}" SelectedItem="{Binding SelectedDelegationPrincipal}"
-                      DisplayMemberPath="Label" IsEnabled="{Binding DelegationControlsAreEnabled}" Margin="0,0,0,4" />
-            <TextBlock Text="{Binding DelegationPrincipalStatus}" TextWrapping="Wrap"
-                       Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,8" />
-            <WrapPanel IsEnabled="{Binding DelegationControlsAreEnabled}">
-                <StackPanel Margin="0,0,12,6">
-                    <TextBlock Text="{x:Static vm:DelegationText.Permission}" Style="{StaticResource BlockLabel}" />
-                    <ComboBox ItemsSource="{Binding DelegationPermissions}" SelectedItem="{Binding DelegationPermissionFilter}"
-                              DisplayMemberPath="Name" MinWidth="225" />
-                </StackPanel>
-                <CheckBox Content="{x:Static vm:DelegationText.IncludeInherited}" IsChecked="{Binding IncludeInheritedDelegations}"
-                          VerticalAlignment="Bottom" Margin="0,0,12,10" />
-                <CheckBox Content="{x:Static vm:DelegationText.IncludeGroups}" IsChecked="{Binding IncludeGroupHeldPermissions}"
-                          VerticalAlignment="Bottom" Margin="0,0,12,10" />
-                <Button Content="{x:Static vm:DelegationText.FindDelegations}" Command="{Binding FindDelegationsCommand}"
-                        VerticalAlignment="Bottom" Margin="0,0,0,6" />
-            </WrapPanel>
-            <WrapPanel Visibility="{Binding IsLoading, Converter={StaticResource Shown}}">
-                <TextBlock Text="{Binding LoadingText}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                <Button Content="{x:Static vm:DelegationText.Cancel}" Command="{Binding CancelDelegationSearchCommand}" />
-            </WrapPanel>
-            <StackPanel Visibility="{Binding HasViewRefusal, Converter={StaticResource Shown}}">
-                <TextBlock Text="{Binding ViewRefusal.Title}" Style="{StaticResource RowTitle}" />
-                <TextBox Text="{Binding ViewRefusal.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource FaultBrush}" />
+        <Border Style="{StaticResource DelegationPanelHeading}">
+            <StackPanel>
+                <TextBlock Text="{x:Static vm:DelegationText.SearchTitle}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{x:Static vm:DelegationText.Heading}" Style="{StaticResource Caption}" Margin="0,4,0,0" />
             </StackPanel>
-            <TextBlock Text="{Binding DelegationStatus}" TextWrapping="Wrap" Margin="0,4,0,4" />
-            <TextBlock Text="{Binding DelegationCoverage}" TextWrapping="Wrap"
-                       Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,6" />
-        </StackPanel>
-        </ScrollViewer>
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Delegations}" SelectedItem="{Binding SelectedDelegation}"
-                  AutoGenerateColumns="False" IsReadOnly="True" EnableRowVirtualization="True" CanUserSortColumns="False"
-                  Visibility="{Binding HasDelegationAnswer, Converter={StaticResource Shown}}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.RecordedOn}" Binding="{Binding RecordedOn}" Width="2*" MinWidth="170" />
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.Domain}" Binding="{Binding Domain}" Width="*" MinWidth="105" />
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.PermissionHolder}" Binding="{Binding PermissionHeldBy}" Width="*" MinWidth="150" />
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.Permission}" Binding="{Binding Permission}" Width="*" MinWidth="145" />
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.AppliesTo}" Binding="{Binding AppliesTo}" Width="*" MinWidth="145" />
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.EntryType}" Binding="{Binding EntryType}" Width="Auto" />
-                <DataGridTextColumn Header="{x:Static vm:DelegationText.Inheritance}" Binding="{Binding Inheritance}" Width="Auto" />
-            </DataGrid.Columns>
-        </DataGrid>
-        <StackPanel Grid.Row="3" Margin="0,8,0,0">
-            <TextBlock Text="{x:Static vm:DelegationText.InheritedNote}" TextWrapping="Wrap"
-                       Foreground="{StaticResource SecondaryTextBrush}" />
-            <TextBox Text="{Binding SelectedDelegation.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                     MaxHeight="80" VerticalScrollBarVisibility="Auto"
-                     Visibility="{Binding HasDelegationSelection, Converter={StaticResource Shown}}" />
-            <WrapPanel Margin="0,6,0,0">
-                <Button Content="{x:Static vm:DelegationText.Previous}" Command="{Binding PreviousDelegationsCommand}" Margin="0,0,8,0" />
-                <Button Content="{x:Static vm:DelegationText.Next}" Command="{Binding NextDelegationsCommand}" Margin="0,0,16,0" />
-                <Button Content="{x:Static vm:DelegationText.OpenDetails}" Command="{Binding OpenDelegationDetailsCommand}" />
-            </WrapPanel>
-        </StackPanel>
+        </Border>
+        <Border Grid.Row="1" Style="{StaticResource DelegationPanel}" Margin="0,0,0,10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="12">
+                    <ItemsControl ItemsPanel="{StaticResource DelegationColumns}">
+                        <StackPanel Margin="0,0,16,8" IsEnabled="{Binding DelegationControlsAreEnabled}">
+                            <TextBlock Text="{x:Static vm:DelegationText.PrincipalStep}" Style="{StaticResource RowTitle}" Margin="0,0,0,8" />
+                            <TextBlock Text="{x:Static vm:DelegationText.Principal}" Style="{StaticResource DelegationLabel}" />
+                            <DockPanel Margin="0,0,0,8">
+                            <Button DockPanel.Dock="Right" Content="{x:Static vm:DelegationText.FindPrincipal}"
+                                    Command="{Binding FindDelegationPrincipalCommand}" Margin="8,0,0,0" />
+                            <TextBox Text="{Binding DelegationPrincipalSearch, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding FindDelegationPrincipalCommand}" /></TextBox.InputBindings>
+                            </TextBox>
+                            </DockPanel>
+                            <TextBlock Text="{x:Static vm:DelegationText.MatchingPrincipal}" Style="{StaticResource DelegationLabel}" />
+                            <ComboBox ItemsSource="{Binding DelegationPrincipals}" SelectedItem="{Binding SelectedDelegationPrincipal, Mode=TwoWay}"
+                                      DisplayMemberPath="Label" />
+                            <DockPanel Margin="0,6,0,0">
+                                <Button DockPanel.Dock="Right" Content="{x:Static vm:DelegationText.MorePrincipals}"
+                                        Command="{Binding NextDelegationPrincipalsCommand}" Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding DelegationPrincipalStatus}" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </StackPanel>
+                        <StackPanel IsEnabled="{Binding DelegationControlsAreEnabled}">
+                            <TextBlock Text="{x:Static vm:DelegationText.PermissionStep}" Style="{StaticResource RowTitle}" Margin="0,0,0,8" />
+                            <TextBlock Text="{x:Static vm:DelegationText.Permission}" Style="{StaticResource DelegationLabel}" />
+                            <ComboBox ItemsSource="{Binding DelegationPermissions}" SelectedItem="{Binding DelegationPermissionFilter, Mode=TwoWay}" DisplayMemberPath="Name" />
+                            <WrapPanel Margin="0,10,0,6">
+                                <CheckBox Content="{x:Static vm:DelegationText.IncludeGroups}" IsChecked="{Binding IncludeGroupHeldPermissions, Mode=TwoWay}"
+                                          Style="{StaticResource MissingAttributeToggle}" Margin="0,0,12,6" />
+                                <CheckBox Content="{x:Static vm:DelegationText.IncludeInherited}" IsChecked="{Binding IncludeInheritedDelegations, Mode=TwoWay}"
+                                          Style="{StaticResource MissingAttributeToggle}" Margin="0,0,0,6" />
+                            </WrapPanel>
+                            <Button Content="{x:Static vm:DelegationText.FindDelegations}" Command="{Binding FindDelegationsCommand}"
+                                    Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding DelegationBoundary}" Style="{StaticResource Caption}" Margin="0,6,0,0" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+        <Border Grid.Row="2" Style="{StaticResource DelegationPanel}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource DelegationPanelHeading}">
+                    <TextBlock Text="{x:Static vm:DelegationText.EntriesTitle}" Style="{StaticResource RowTitle}" />
+                </Border>
+                <ScrollViewer DockPanel.Dock="Top" MaxHeight="95" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10,4">
+                        <WrapPanel Visibility="{Binding IsLoading, Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding LoadingText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <Button Content="{x:Static vm:DelegationText.Cancel}" Command="{Binding CancelDelegationSearchCommand}" />
+                        </WrapPanel>
+                        <StackPanel Visibility="{Binding HasViewRefusal, Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding ViewRefusal.Title}" Style="{StaticResource RowTitle}" />
+                            <TextBox Text="{Binding ViewRefusal.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding DelegationStatus}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding DelegationCoverage}" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+                <DataGrid ItemsSource="{Binding Delegations}" SelectedItem="{Binding SelectedDelegation, Mode=TwoWay}"
+                          AutoGenerateColumns="False" IsReadOnly="True" EnableRowVirtualization="True" CanUserSortColumns="False"
+                          CanUserAddRows="False" ColumnHeaderStyle="{StaticResource DelegationColumnHeader}" HeadersVisibility="Column"
+                          HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}" GridLinesVisibility="Horizontal"
+                          Background="{StaticResource AssetNavigationBackground}" BorderThickness="0"
+                          Visibility="{Binding HasDelegationAnswer, Converter={StaticResource Shown}}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.RecordedOn}" Binding="{Binding RecordedOn}" Width="2*" MinWidth="170" />
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.Domain}" Binding="{Binding Domain}" Width="*" MinWidth="105" />
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.PermissionHolder}" Binding="{Binding PermissionHeldBy}" Width="*" MinWidth="150" />
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.Permission}" Binding="{Binding Permission}" Width="*" MinWidth="145" />
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.AppliesTo}" Binding="{Binding AppliesTo}" Width="*" MinWidth="145" />
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.EntryType}" Binding="{Binding EntryType}" Width="Auto" />
+                        <DataGridTextColumn Header="{x:Static vm:DelegationText.Inheritance}" Binding="{Binding Inheritance}" Width="Auto" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Border>
+        <WrapPanel Grid.Row="3" Margin="0,8,0,8">
+            <Button Content="{x:Static vm:DelegationText.Previous}" Command="{Binding PreviousDelegationsCommand}" Margin="0,0,8,0" />
+            <Button Content="{x:Static vm:DelegationText.Next}" Command="{Binding NextDelegationsCommand}" />
+        </WrapPanel>
+        <Border Grid.Row="4" Style="{StaticResource DelegationPanel}"
+                Visibility="{Binding HasDelegationSelection, Converter={StaticResource Shown}}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource DelegationPanelHeading}">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="{x:Static vm:DelegationText.OpenDetails}"
+                                Command="{Binding OpenDelegationDetailsCommand}" Margin="10,0,0,0" />
+                        <TextBlock Text="{x:Static vm:DelegationText.SelectedEntryTitle}" Style="{StaticResource RowTitle}" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Border>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="12">
+                        <ItemsControl ItemsPanel="{StaticResource DelegationColumns}">
+                            <StackPanel Margin="0,0,16,8">
+                                <TextBlock Text="{x:Static vm:DelegationText.RecordedOn}" Style="{StaticResource DelegationLabel}" />
+                                <TextBox Text="{Binding SelectedDelegation.RecordedOn, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                         FontFamily="{StaticResource IdentifierFontFamily}" />
+                                <TextBlock Text="{x:Static vm:DelegationText.Permission}" Style="{StaticResource DelegationLabel}" Margin="0,8,0,5" />
+                                <TextBox Text="{Binding SelectedDelegation.Permission, Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                <TextBox Text="{Binding SelectedDelegation.AppliesTo, Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                <WrapPanel Margin="0,6,0,0">
+                                    <TextBlock Text="{Binding SelectedDelegation.EntryType}" Margin="0,0,12,0" />
+                                    <TextBlock Text="{Binding SelectedDelegation.Inheritance}" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{x:Static vm:DelegationText.PermissionHolder}" Style="{StaticResource DelegationLabel}" />
+                                <TextBox Text="{Binding SelectedDelegation.PermissionHeldBy, Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                <TextBlock Text="{x:Static vm:DelegationText.MembershipChain}" Style="{StaticResource DelegationLabel}" Margin="0,8,0,5" />
+                                <TextBox Text="{Binding SelectedDelegation.MembershipDetail, Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                            </StackPanel>
+                        </ItemsControl>
+                        <TextBlock Text="{x:Static vm:DelegationText.InheritedNote}" Style="{StaticResource Caption}" Margin="0,8,0,8" />
+                        <Expander Header="{x:Static vm:DelegationText.OriginalEvidence}">
+                            <TextBox Text="{Binding SelectedDelegation.OriginalDetail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     FontFamily="{StaticResource IdentifierFontFamily}" Margin="0,8,0,0" />
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
     </Grid>
 </UserControl>

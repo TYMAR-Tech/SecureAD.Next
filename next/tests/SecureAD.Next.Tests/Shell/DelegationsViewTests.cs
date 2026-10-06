@@ -106,6 +106,10 @@ public sealed class DelegationsViewTests
             grid.SetCurrentValue(Selector.SelectedItemProperty, model.Delegations[0]);
             Layout(view, width, height);
             Assert.True(Button(view, DelegationText.OpenDetails).IsEnabled);
+            var evidence = Assert.Single(Descendants<Expander>(view));
+            Assert.False(evidence.IsExpanded);
+            evidence.IsExpanded = true;
+            Layout(view, width, height);
             Assert.Contains(Descendants<TextBox>(view), text => text.Text.Contains("Original entry position", StringComparison.Ordinal));
             Assert.True(grid.ActualHeight >= 50, $"Selecting an entry leaves only {grid.ActualHeight} pixels for results.");
         }
@@ -125,7 +129,7 @@ public sealed class DelegationsViewTests
         Assert.Contains("ShowsDelegationsListing", view.Attribute("Visibility")?.Value);
     }
 
-    private static UserControl View(AssetsViewModel model)
+    internal static UserControl View(AssetsViewModel model)
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";

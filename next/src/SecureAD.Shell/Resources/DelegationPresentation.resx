@@ -5,6 +5,12 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Heading" xml:space="preserve"><value>Recorded permissions - not an effective access check</value></data>
+  <data name="SearchTitle" xml:space="preserve"><value>Find recorded delegations</value></data>
+  <data name="PrincipalStep" xml:space="preserve"><value>1  Find the user or group</value></data>
+  <data name="PermissionStep" xml:space="preserve"><value>2  Choose the permissions to find</value></data>
+  <data name="EntriesTitle" xml:space="preserve"><value>Recorded entries</value></data>
+  <data name="SelectedEntryTitle" xml:space="preserve"><value>Selected recorded entry</value></data>
+  <data name="OriginalEvidence" xml:space="preserve"><value>Original entry evidence</value></data>
   <data name="Boundary" xml:space="preserve"><value>Entire captured forest, AD objects only. Only entries naming the selected SID are included. Permissions through other groups, SID history and implicit owner rights are not included. An Allow entry does not prove the operation would succeed.</value></data>
   <data name="GroupBoundary" xml:space="preserve"><value>Entire captured forest, AD objects only. Direct entries and group-held entries linked by captured membership are included. SID history and implicit owner rights are not included. A membership chain or an Allow entry does not prove effective access.</value></data>
   <data name="IncludeGroups" xml:space="preserve"><value>Include group-held permissions</value></data>

@@ -95,6 +95,9 @@ internal sealed class RunSummaryViewModel
     /// </remarks>
     public string When => _listing.Moment.Utc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture);
 
+    public string WhenDate => _listing.Moment.Utc.ToLocalTime().ToString("dd MMM yyyy", CultureInfo.CurrentCulture);
+    public string WhenTime => _listing.Moment.Utc.ToLocalTime().ToString("t", CultureInfo.CurrentCulture);
+
     /// <summary>
     /// Whether <see cref="When"/> is the moment the run recorded for itself.
     /// </summary>

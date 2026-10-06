@@ -34,6 +34,15 @@
     <SolidColorBrush x:Key="SurfaceBackground" Color="{StaticResource Neutral50}" />
     <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="{StaticResource Neutral0}" />
 
+    <SolidColorBrush x:Key="AssetCanvasBackground" Color="{StaticResource Slate200}" />
+    <SolidColorBrush x:Key="AssetNavigationBackground" Color="{StaticResource Slate50}" />
+    <SolidColorBrush x:Key="AttributeHeaderBackground" Color="{StaticResource Slate100}" />
+    <SolidColorBrush x:Key="ObjectSectionHeadingBackground" Color="{StaticResource Slate300}" />
+    <SolidColorBrush x:Key="AttributeCardBorderBrush" Color="{StaticResource Slate400}" />
+    <SolidColorBrush x:Key="AttributeLabelBrush" Color="{StaticResource Slate700}" />
+    <SolidColorBrush x:Key="AttributeSourceBrush" Color="{StaticResource Slate600}" />
+    <SolidColorBrush x:Key="AttributeValueBrush" Color="{StaticResource Slate900}" />
+
     <!-- Divider between rows and sections. Deliberately faint: a table of forty domains ruled in
          a strong colour is a grid of lines with some text in it. -->
     <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource Neutral200}" />

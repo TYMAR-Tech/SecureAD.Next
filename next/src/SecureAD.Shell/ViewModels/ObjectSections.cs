@@ -61,7 +61,7 @@ internal sealed class UnloadedObjectSectionViewModel(ObjectSectionDefinition def
 /// <para>
 /// <b>An attribute with no value says nothing about the object.</b> Active Directory omits an
 /// absent attribute without saying whether the caller was refused it
-/// (<c>docs/decisions/0022</c>), so the row reads as <i>not in this bundle</i> - which is a fact
+/// (<c>docs/decisions/0022</c>), so the row reads as <i>No captured value</i> - which is a fact
 /// about the evidence - and never as <i>this object has none</i>, which nobody knows.
 /// </para>
 /// </remarks>
@@ -71,12 +71,12 @@ internal sealed class AttributeValueViewModel
     /// <remarks>
     /// <b>Short, because most rows on most objects say it.</b> An organizational unit has no
     /// account name, no user principal name and no security identifier, and a full sentence
-    /// repeated six times down a card drowns the values that are there. It still says
-    /// <i>bundle</i> rather than <i>object</i>: the absence is a fact about the evidence, and
+    /// repeated six times down a card drowns the values that are there. The absence is a fact about
+    /// the captured evidence rather than the object, and
     /// Active Directory omits an attribute it will not disclose exactly as it omits one that is
     /// not there.
     /// </remarks>
-    public const string NothingStored = "Not in this bundle";
+    public const string NothingStored = "No captured value";
 
     /// <summary>What a row says when no attribute values were read for the object at all.</summary>
     public const string NothingRead = "Not read";
@@ -143,13 +143,20 @@ internal sealed class AttributeValueViewModel
     public bool IsDescriptor { get; }
 
     /// <summary>What the attribute is called on screen.</summary>
-    public string Label { get; }
+    public string Label { get; init; }
+
+    /// <summary>The source name beside a friendly label, omitted when the label is already that name.</summary>
+    public string AttributeCaption => string.Equals(Label, Attribute, StringComparison.Ordinal)
+        ? "" : $" ({Attribute})";
 
     /// <summary>The attribute's own name, for an operator checking this against the directory.</summary>
     public string Attribute { get; }
 
     /// <summary>Whether the bundle holds anything for this attribute.</summary>
     public bool HasValue => _attribute is { HasValue: true };
+
+    /// <summary>A failed or unperformed read is not an optional empty attribute.</summary>
+    public bool IsUnread => !_wasRead;
 
     /// <summary>
     /// The value in the most readable form this build can put it in, or why there is none.
@@ -187,7 +194,14 @@ internal sealed class AttributeValueViewModel
     /// judgement made without knowing that is wrong by up to a fortnight. Said on the row rather
     /// than in a manual nobody has open.
     /// </remarks>
-    public string? Caveat => _time?.Caveat;
+    public string? Caveat => !HasValue
+        ? _wasRead ? "The attribute may be unset or unavailable to the capture account." : null
+        : _time?.Caveat ?? Attribute.ToUpperInvariant() switch
+        {
+            "MANAGEDBY" => "A directory reference. This does not establish the security owner or who can control this object.",
+            "DSHEURISTICS" => "Raw captured text. No interpretation of the individual forest-wide settings is implied.",
+            _ => null,
+        };
 
     /// <summary>Whether there is a caveat to read.</summary>
     public bool HasCaveat => Caveat is not null;
@@ -253,6 +267,7 @@ internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
         _permissions = permissions;
         ObjectType = objectType;
         Values = definition.Rows(attributes);
+        Cards = new(Values);
     }
 
     /// <summary>What kind of object it is.</summary>
@@ -310,6 +325,7 @@ internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
 
     /// <summary>The identity attributes this section is responsible for.</summary>
     public IReadOnlyList<AttributeValueViewModel> Values { get; }
+    public AttributeCardsViewModel Cards { get; }
 }
 
 /// <summary>
@@ -348,6 +364,7 @@ internal sealed class AccountSectionViewModel : ObjectSectionViewModel
 
         _wasRead = attributes is not null;
         Values = definition.Rows(attributes);
+        Cards = new(Values);
         _stored = Values.FirstOrDefault(v =>
             string.Equals(v.Attribute, "userAccountControl", StringComparison.OrdinalIgnoreCase))
             ?? new AttributeValueViewModel(
@@ -357,6 +374,7 @@ internal sealed class AccountSectionViewModel : ObjectSectionViewModel
 
     /// <summary>Every attribute this section is responsible for, worded and stored.</summary>
     public IReadOnlyList<AttributeValueViewModel> Values { get; }
+    public AttributeCardsViewModel Cards { get; }
 
     /// <summary>What the account's state flags say, one sentence each.</summary>
     public IReadOnlyList<string> Flags =>
@@ -817,17 +835,41 @@ internal sealed class FindingsSectionViewModel : ObjectSectionViewModel
 /// attribute whatever its class, so an object can hold a value its class does not justify. Without
 /// somewhere for those to land, curation would silently drop a value the bundle holds - and a value
 /// this product captured and cannot show is worse than one it never captured, because the customer
-/// paid for it and nobody can prove it exists. Shown only when there are some, so it never appears
-/// as an empty section on the wrong class.
+/// paid for it and nobody can prove it exists. Only populated attributes become rows; the section
+/// keeps an explicit empty or unread state rather than disappearing.
 /// </remarks>
 internal sealed class OtherValuesSectionViewModel : ObjectSectionViewModel
 {
+    private readonly bool _wasRead;
+
     /// <summary>Creates the overflow section.</summary>
     /// <param name="definition">What the catalogue says this section is.</param>
-    public OtherValuesSectionViewModel(ObjectSectionDefinition definition)
+    /// <param name="attributes">Captured values for the selected object, or null when not read.</param>
+    /// <param name="objectClass">The most-derived captured class, not a listing or name-based guess.</param>
+    public OtherValuesSectionViewModel(ObjectSectionDefinition definition, ObjectAttributes? attributes, string? objectClass)
         : base(definition)
     {
+        _wasRead = attributes is not null;
+        var claimed = ObjectSectionCatalog.AttributesShownFor(objectClass);
+        Values = attributes is null ? [] : [.. attributes.Attributes
+            .Where(attribute => attribute.HasValue
+                && !claimed.Contains(attribute.LdapDisplayName)
+                && !ObjectSectionCatalog.NotShown.ContainsKey(attribute.LdapDisplayName))
+            .Select(attribute => new AttributeValueViewModel(
+                attribute.LdapDisplayName, attribute, true, attributes.CapturedUtc)
+            {
+                Label = attribute.LdapDisplayName,
+            })];
+        Cards = new(Values);
     }
+
+    public IReadOnlyList<AttributeValueViewModel> Values { get; }
+    public AttributeCardsViewModel Cards { get; }
+    public bool HasAnyValue => Values.Count != 0;
+    public Notice? Emptiness => HasAnyValue ? null : _wasRead
+        ? new("No additional captured values", "No populated attributes outside this object's standard sections were recorded.")
+        : new("Not read", "The object's attribute information was not read. This does not establish whether additional values exist.");
+    public bool HasEmptiness => Emptiness is not null;
 }
 
 /// <summary>
@@ -864,10 +906,12 @@ internal sealed class AttributeSectionViewModel : ObjectSectionViewModel
 
         _wasRead = attributes is not null;
         Values = definition.Rows(attributes);
+        Cards = new(Values);
     }
 
     /// <summary>Every attribute this section is responsible for, worded and stored.</summary>
     public IReadOnlyList<AttributeValueViewModel> Values { get; }
+    public AttributeCardsViewModel Cards { get; }
 
     /// <summary>Whether the bundle holds a value for anything this section shows.</summary>
     public bool HasAnyValue => Values.Any(v => v.HasValue);
@@ -922,6 +966,7 @@ internal sealed class PolicyLinksSectionViewModel : ObjectSectionViewModel
 
         _wasRead = attributes is not null;
         Values = definition.Rows(attributes);
+        Cards = new(Values);
 
         var stored = attributes?.Find("gPLink")?.OnlyValue?.Stored;
         var parsed = PolicyLinkList.Of(stored);
@@ -932,6 +977,7 @@ internal sealed class PolicyLinksSectionViewModel : ObjectSectionViewModel
 
     /// <summary>The attributes this section is responsible for, worded and stored.</summary>
     public IReadOnlyList<AttributeValueViewModel> Values { get; }
+    public AttributeCardsViewModel Cards { get; }
 
     /// <summary>
     /// The linked policies, strongest first.

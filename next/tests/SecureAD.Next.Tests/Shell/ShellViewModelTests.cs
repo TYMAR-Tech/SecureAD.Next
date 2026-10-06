@@ -35,7 +35,7 @@ public sealed class ShellViewModelTests
 
         shell.Show(ShellSection.Assets);
 
-        Assert.Equal(["Objects", "Findings", "LAPS", "Rules", "Delegations"], shell.Views.Select(v => v.Name));
+        Assert.Equal(["Objects", "Findings", "LAPS", "Delegations"], shell.Views.Select(v => v.Name));
     }
 
     [Fact]
@@ -50,6 +50,22 @@ public sealed class ShellViewModelTests
         Assert.Same(tab, shell.SelectedView);
         Assert.Equal(AssetsPane.Delegations, shell.Assets.Pane);
         Assert.Same(shell.Assets, shell.Current);
+    }
+
+    [Fact]
+    public void ObjectSearchFromAnotherPaneSelectsTheObjectsTab()
+    {
+        var shell = AShell();
+        shell.Show(ShellSection.Assets);
+        shell.Assets.Show(@"C:\synthetic-runs\object-search", false);
+        shell.Views.Single(view => view.Name == "Findings").IsSelected = true;
+        shell.Assets.ObjectSearchText = "Alice";
+
+        shell.Assets.SearchObjectsCommand.Execute(null);
+
+        Assert.Equal(AssetsPane.Objects, shell.Assets.Pane);
+        Assert.Equal("Objects", shell.SelectedView!.Name);
+        Assert.Single(shell.Views, view => view.IsSelected);
     }
 
     /// <summary>
@@ -318,6 +334,6 @@ public sealed class ShellViewModelTests
             new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
             new AssetsViewModel(new FakeAssetSource()),
             new DashboardViewModel(new FakeAssetSource()),
-            new SettingsViewModel(new DomainConcurrency(settings)));
+            new SettingsViewModel(new DomainConcurrency(settings)), new RulesViewModel(new FakeAssetSource()));
     }
 }

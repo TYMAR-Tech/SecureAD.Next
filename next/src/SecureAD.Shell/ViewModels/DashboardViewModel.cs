@@ -56,6 +56,16 @@ internal sealed class DomainInventoryRowViewModel
     /// </remarks>
     public bool ExplanationIsShown => _counts is null;
 
+    public string CaptureStatus => Inventory.Coverage.Outcome switch
+    {
+        DomainReadOutcome.Read => "Read",
+        DomainReadOutcome.PartiallyRead => "Partially read",
+        DomainReadOutcome.NotRead => "Not read",
+        DomainReadOutcome.ExcludedByChoice => "Excluded by choice",
+        DomainReadOutcome.ExcludedForWantOfCandidates => "No writable controller",
+        _ => "Outcome not recognised",
+    };
+
     /// <summary>How many accounts whose most specific class is <c>user</c>.</summary>
     public string? Users => Formatted(_counts?.Users);
 
@@ -147,6 +157,9 @@ internal sealed partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading;
 
+    [ObservableProperty]
+    private bool _showsCaptureScope;
+
     /// <summary>The current Dashboard read, including application of its result.</summary>
     public Task ReadCompletion { get; private set; } = Task.CompletedTask;
 
@@ -235,6 +248,13 @@ internal sealed partial class DashboardViewModel : ObservableObject
 
     /// <summary>Whether every declared domain was read, so the totals are the whole forest.</summary>
     public bool EveryDomainCounted => _inventory?.AllDeclaredDomainsAreComplete ?? false;
+
+    public string DomainCoverageSummary => _inventory is { } inventory
+        ? $"{inventory.DomainsCounted:N0} of {inventory.DomainsDeclared:N0} declared domains read"
+        : string.Empty;
+
+    public bool HasCoverageLimitations => _inventory is not null &&
+        (!EveryDomainCounted || SomePoliciesWereNotRead || HasMembershipNotice || HasConfidentialCaveat);
 
     /// <summary>
     /// The warning that goes above everything, or null when there is none.
@@ -334,6 +354,18 @@ internal sealed partial class DashboardViewModel : ObservableObject
     /// <summary>Whether there is anything to say about group membership.</summary>
     public bool HasMembershipNotice => MembershipNotice is not null;
 
+    public string MembershipSummary => _inventory is null ? string.Empty
+        : MembershipNotice is { } notice
+            ? _membershipReadError is null && _groupsWithUnidentifiedMembers is > 0
+                ? $"{Count(_groupsWithUnidentifiedMembers.Value, "group")} "
+                  + (_groupsWithUnidentifiedMembers == 1 ? "has" : "have") + " unidentified members"
+                : notice.Title
+        : "No unidentified group members reported";
+
+    public string MembershipDetail => _inventory is null ? string.Empty
+        : MembershipNotice is { } notice ? notice.Detail
+        : "The saved derivation reports no groups with unidentified members. This is not a claim about groups outside the capture scope.";
+
     /// <summary>Accounts across every domain that was read.</summary>
     public string TotalUsers => Total(c => c.Users);
 
@@ -410,6 +442,13 @@ internal sealed partial class DashboardViewModel : ObservableObject
     /// <summary>Whether some declared policy's files were not read.</summary>
     public bool SomePoliciesWereNotRead => _inventory is { AllPoliciesRead: false };
 
+    public bool HasDeclaredPolicies => _inventory is { PoliciesDeclared: > 0 };
+    public int PoliciesDeclaredCount => _inventory?.PoliciesDeclared ?? 0;
+    public int PoliciesReadCount => _inventory?.PoliciesRead ?? 0;
+    public string PolicyCoverageSummary => _inventory is not { } inventory ? string.Empty
+        : inventory.PoliciesDeclared == 0 ? Policies
+        : $"{inventory.PoliciesRead:N0} of {inventory.PoliciesDeclared:N0} policies read in full";
+
     /// <summary>
     /// The caveat about confidential attributes, or null where none applies.
     /// </summary>
@@ -452,6 +491,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
 
         CancelRead();
         _assets.SelectRun(bundleDirectory);
+        ShowsCaptureScope = false;
         BundlePath = bundleDirectory;
         _inventory = null;
         _groupsWithUnidentifiedMembers = null;
@@ -531,6 +571,7 @@ internal sealed partial class DashboardViewModel : ObservableObject
     public void Clear()
     {
         CancelRead();
+        ShowsCaptureScope = false;
         BundlePath = null;
         _inventory = null;
         _groupsWithUnidentifiedMembers = null;
@@ -566,10 +607,14 @@ internal sealed partial class DashboardViewModel : ObservableObject
         OnPropertyChanged(nameof(CoverageHeadline));
         OnPropertyChanged(nameof(ObjectClassScopeStatement));
         OnPropertyChanged(nameof(EveryDomainCounted));
+        OnPropertyChanged(nameof(DomainCoverageSummary));
+        OnPropertyChanged(nameof(HasCoverageLimitations));
         OnPropertyChanged(nameof(Warning));
         OnPropertyChanged(nameof(HasWarning));
         OnPropertyChanged(nameof(MembershipNotice));
         OnPropertyChanged(nameof(HasMembershipNotice));
+        OnPropertyChanged(nameof(MembershipSummary));
+        OnPropertyChanged(nameof(MembershipDetail));
         OnPropertyChanged(nameof(TotalUsers));
         OnPropertyChanged(nameof(TotalComputers));
         OnPropertyChanged(nameof(TotalGroups));
@@ -578,6 +623,10 @@ internal sealed partial class DashboardViewModel : ObservableObject
         OnPropertyChanged(nameof(HasTotals));
         OnPropertyChanged(nameof(Policies));
         OnPropertyChanged(nameof(SomePoliciesWereNotRead));
+        OnPropertyChanged(nameof(HasDeclaredPolicies));
+        OnPropertyChanged(nameof(PoliciesDeclaredCount));
+        OnPropertyChanged(nameof(PoliciesReadCount));
+        OnPropertyChanged(nameof(PolicyCoverageSummary));
         OnPropertyChanged(nameof(ConfidentialCaveat));
         OnPropertyChanged(nameof(HasConfidentialCaveat));
     }

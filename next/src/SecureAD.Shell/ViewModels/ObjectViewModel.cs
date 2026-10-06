@@ -56,7 +56,20 @@ internal sealed partial class ObjectViewModel : ObservableObject
 
     /// <summary>The section being read.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedKey))]
     private ObjectSectionViewModel? _selected;
+
+    /// <summary>Stable navigation identity while a placeholder is replaced by its read result.</summary>
+    public string? SelectedKey
+    {
+        get => Selected?.Key;
+        set
+        {
+            // A selector briefly clears its value when its selected item is replaced. That is
+            // not a request to cancel the read or forget the operator's section choice.
+            if (value is not null && value != Selected?.Key) Show(value);
+        }
+    }
 
     /// <summary>Creates navigation from captured identity, without preparing any section's content.</summary>
     public ObjectViewModel(
@@ -120,7 +133,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// copies of it would drift.
     /// </remarks>
     internal static ObjectSectionViewModel BuildAttributes(
-        ObjectSectionDefinition definition, ObjectAttributes attributes) =>
+        ObjectSectionDefinition definition, ObjectAttributes attributes, string? objectClass) =>
         definition.Key switch
         {
             ObjectSectionCatalog.Account =>
@@ -135,7 +148,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
                 or ObjectSectionCatalog.Policy =>
                 new AttributeSectionViewModel(definition, attributes),
             ObjectSectionCatalog.OtherValues =>
-                new OtherValuesSectionViewModel(definition),
+                new OtherValuesSectionViewModel(definition, attributes, objectClass),
             _ => new NotBuiltSectionViewModel(definition),
         };
 

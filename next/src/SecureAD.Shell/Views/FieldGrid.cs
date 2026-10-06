@@ -43,13 +43,29 @@ internal sealed class FieldGrid : Panel
         set => SetValue(ColumnsProperty, value);
     }
 
+    public static readonly DependencyProperty MinimumColumnWidthProperty = DependencyProperty.Register(
+        nameof(MinimumColumnWidth), typeof(double), typeof(FieldGrid),
+        new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsMeasure),
+        value => value is double width && double.IsFinite(width) && width >= 0);
+
+    /// <summary>When set, reduce the column count to keep fields readable in the available width.</summary>
+    public double MinimumColumnWidth
+    {
+        get => (double)GetValue(MinimumColumnWidthProperty);
+        set => SetValue(MinimumColumnWidthProperty, value);
+    }
+
+    private int ColumnsFor(double width) =>
+        MinimumColumnWidth > 0 && double.IsFinite(width)
+            ? (int)Math.Max(1, Math.Min(Math.Max(1, Columns), Math.Floor(width / MinimumColumnWidth)))
+            : Math.Max(1, Columns);
+
     protected override Size MeasureOverride(Size availableSize)
     {
-        var columns = Math.Max(1, Columns);
+        var columns = ColumnsFor(availableSize.Width);
 
         // An infinite width would make every column infinitely wide and every value one long line.
-        // The sections cap their own width, so this only bites in a measuring pass with no
-        // constraint, where falling back to what the children ask for is the honest answer.
+        // With no constraint, use what the children ask for.
         var columnWidth = double.IsInfinity(availableSize.Width)
             ? double.PositiveInfinity
             : availableSize.Width / columns;
@@ -83,7 +99,7 @@ internal sealed class FieldGrid : Panel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var columns = Math.Max(1, Columns);
+        var columns = ColumnsFor(finalSize.Width);
         var columnWidth = finalSize.Width / columns;
 
         var y = 0d;

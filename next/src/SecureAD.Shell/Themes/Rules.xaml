@@ -1,0 +1,51 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Controls.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="RuleCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+    <Style x:Key="RuleLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style x:Key="RuleText" TargetType="TextBox" BasedOn="{StaticResource SelectableMessage}">
+        <Setter Property="Foreground" Value="{StaticResource AttributeValueBrush}" />
+        <Setter Property="Margin" Value="0,0,0,14" />
+    </Style>
+    <Style x:Key="RuleListItem" TargetType="ListBoxItem">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="RowBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Stretch" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                            <Setter Property="BorderThickness" Value="3,1,1,1" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="RowBorder" Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+                            <Setter TargetName="RowBorder" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

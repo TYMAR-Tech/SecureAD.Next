@@ -96,7 +96,7 @@ internal sealed partial class AssetsViewModel
                     classification.IsSuccess ? classification.Value.Classification : null,
                     classification.IsSuccess ? null : classification.Error.Description));
             }
-            return Result<ObjectSectionViewModel>.Success(ObjectViewModel.BuildAttributes(definition, attributes));
+            return Result<ObjectSectionViewModel>.Success(ObjectViewModel.BuildAttributes(definition, attributes, objectClass));
         }, token, "read object " + definition.Key);
         return content.IsSuccess ? content.Value : throw new InvalidOperationException(content.Error.Description);
     }

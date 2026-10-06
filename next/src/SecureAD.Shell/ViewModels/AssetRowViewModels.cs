@@ -58,6 +58,25 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>The container's full name, for an operator who needs to be certain which it is.</summary>
     public string DistinguishedName => _node.DistinguishedName;
 
+    public TreeNodeIconKind IconKind => _node.Origin == TreeNodeOrigin.NeverCaptured
+        ? TreeNodeIconKind.Unknown
+        : _node.PartitionKind switch
+        {
+            NamingContextKind.Domain => TreeNodeIconKind.Domain,
+            NamingContextKind.Configuration => TreeNodeIconKind.Configuration,
+            NamingContextKind.Schema => TreeNodeIconKind.Schema,
+            _ => _node.ObjectClass?.ToLowerInvariant() switch
+            {
+                "domaindns" => TreeNodeIconKind.Domain,
+                "organizationalunit" => TreeNodeIconKind.OrganizationalUnit,
+                "configuration" => TreeNodeIconKind.Configuration,
+                "dmd" => TreeNodeIconKind.Schema,
+                "container" or "builtindomain" or "lostandfound" or "msds-quotacontainer" or
+                    "rpccontainer" or "mstpm-informationobjectscontainer" => TreeNodeIconKind.Container,
+                _ => TreeNodeIconKind.Unknown,
+            },
+        };
+
     /// <summary>The containers directly beneath it.</summary>
     public IReadOnlyList<TreeNodeViewModel> Children { get; }
 
@@ -136,6 +155,7 @@ internal sealed class TreeGapViewModel
 
     /// <summary>What the run recorded about it, in the evidence layer's own words.</summary>
     public string Detail => _gap.Detail;
+    public bool IsProductExclusion => _gap.Reason == TreeGapReason.PartitionNotRead;
 
     /// <summary>
     /// What this means for what is on the screen.
@@ -191,6 +211,8 @@ internal sealed class ListedObjectViewModel
     /// this row has. Wording it would make "not recorded" a class name.
     /// </remarks>
     public string? ObjectClass => _listed.ObjectClass;
+    public string Domain => _listed.DomainFqdn ?? "not recorded";
+    public string Location => _listed.ParentDistinguishedName ?? _listed.DistinguishedName;
 
     /// <summary>The container it sits in, named as an operator would say it.</summary>
     public string Parent => _listed.ParentDistinguishedName is { } parent
@@ -640,6 +662,20 @@ internal sealed class RuleRowViewModel
         ?? $"No description is recorded for {Rule} in this build.";
 
     private RuleGuidance? Guidance => RuleGuidanceCatalogue.For(Rule);
+
+    // Paragraph boundaries are authored in the guidance, never guessed from punctuation.
+    public string LooksFor => AboutParagraphs[0];
+    public IReadOnlyList<string> ScopeNotes => AboutParagraphs.Skip(1).ToArray();
+    public bool HasScopeNotes => ScopeNotes.Count != 0;
+    private string[] AboutParagraphs => About.Replace("\r\n", "\n", StringComparison.Ordinal)
+        .Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    public string DeclaredEvidence => _definition is null
+        ? "This build has no input declaration for this recorded rule."
+        : "Captured attributes: " + string.Join(", ", _definition.RequiredAttributes)
+          + (_definition.RequiredDerivedFacts.Count == 0 ? ""
+              : "\nRequired derived facts: " + string.Join(", ", _definition.RequiredDerivedFacts));
+    public string? MicrosoftReference => Guidance?.MicrosoftReference;
+    public bool HasMicrosoftReference => MicrosoftReference is not null;
 
     /// <summary>How many findings it wrote on this run.</summary>
     public int Findings => _execution?.FindingsProduced ?? 0;

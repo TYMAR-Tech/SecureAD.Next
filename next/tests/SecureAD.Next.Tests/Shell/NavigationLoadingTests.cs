@@ -28,7 +28,7 @@ public sealed class NavigationLoadingTests
     [Theory]
     [InlineData(1, 2, 0, 0)]
     [InlineData(2, 0, 2, 0)]
-    [InlineData(3, 0, 0, 1)]
+    [InlineData(3, 0, 0, 0)]
     public void TreeChangesReadOnlyTheVisibleListing(int pane, int findings, int laps, int rules)
     {
         var source = Source();
@@ -48,7 +48,7 @@ public sealed class NavigationLoadingTests
         var screen = Show(source);
         screen.Pane = (AssetsPane)pane;
         var before = (source.ObjectListings, source.FindingsReads, source.RuleExecutionReads);
-        screen.Scope = ListingScope.Subtree;
+        screen.Scope = ListingScope.OneLevel;
         Assert.Equal(before, (source.ObjectListings, source.FindingsReads, source.RuleExecutionReads));
     }
 
@@ -138,14 +138,13 @@ public sealed class NavigationLoadingTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    [InlineData(3)]
     public async Task LoadingWithholdsRowsGuidanceAndCounts(int pane)
     {
         var source = Source();
         var screen = Show(source);
         screen.Pane = AssetsPane.Findings;
         screen.SelectedFinding = screen.Findings[0];
-        screen.Pane = (AssetsPane)((pane + 1) % 4);
+        screen.Pane = (AssetsPane)((pane + 1) % 3);
         var pending = new PendingRead();
         source.CompleteRead = pending.Hold;
         screen.Pane = (AssetsPane)pane;
@@ -252,8 +251,8 @@ public sealed class NavigationLoadingTests
         screen.Pane = (AssetsPane)pane;
         screen.OpenObject(new(new(Subject, "Alice", null, "user", Domain)));
         var opened = screen.Opened;
-        screen.Pane = AssetsPane.Rules;
-        Assert.Equal((false, true, opened), (screen.HasOpenObject, screen.ShowsRulesListing, screen.Opened));
+        screen.Pane = AssetsPane.Delegations;
+        Assert.Equal((false, true, opened), (screen.HasOpenObject, screen.ShowsDelegationsListing, screen.Opened));
     }
 
     [Fact]
@@ -263,7 +262,7 @@ public sealed class NavigationLoadingTests
         var screen = Show(source);
         screen.OpenObject(screen.Objects[0]);
         screen.Opened!.Show(ObjectSectionCatalog.Account);
-        screen.Pane = AssetsPane.Rules;
+        screen.Pane = AssetsPane.Delegations;
         source.Reads.Clear();
         screen.Pane = AssetsPane.Objects;
         Assert.Equal((ObjectSectionCatalog.Account, ""), (screen.Opened.Selected!.Key, string.Join(",", source.Reads)));
@@ -312,7 +311,7 @@ public sealed class NavigationLoadingTests
             new FakeDerivationLauncher(), new FakeJudgingLauncher());
         var screen = new AssetsViewModel(source);
         var shell = new ShellViewModel(new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
-            screen, new DashboardViewModel(source), new SettingsViewModel(new DomainConcurrency(settings)));
+            screen, new DashboardViewModel(source), new SettingsViewModel(new DomainConcurrency(settings)), new RulesViewModel(source));
         shell.Show(ShellSection.Assets);
         screen.Show(Bundle, false);
         var pending = new PendingRead();
@@ -441,7 +440,7 @@ public sealed class NavigationLoadingTests
 
     private static int VisibleRows(AssetsViewModel screen, int pane) => pane switch
     {
-        0 => screen.Objects.Count, 1 => screen.Findings.Count, 2 => screen.LapsComputers.Count, _ => screen.RuleRows.Count,
+        0 => screen.Objects.Count, 1 => screen.Findings.Count, 2 => screen.LapsComputers.Count, _ => screen.Delegations.Count,
     };
 
     private sealed class PendingRead

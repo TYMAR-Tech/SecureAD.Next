@@ -96,7 +96,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     public bool HasTier0Summary => !string.IsNullOrEmpty(Tier0SummaryText);
 
     [ObservableProperty]
-    private ListingScope _scope = ListingScope.OneLevel;
+    private ListingScope _scope = ListingScope.Subtree;
 
     [ObservableProperty]
     private int _pageNumber = 1;
@@ -163,9 +163,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Whether the LAPS inventory is the view showing.</summary>
     public bool ShowsLaps => Pane is AssetsPane.Laps;
 
-    /// <summary>Whether the rule listing is the view showing.</summary>
-    public bool ShowsRules => Pane is AssetsPane.Rules;
-
     /// <summary>
     /// Whether the object grid should be on screen: the objects tab, and no object opened from it.
     /// </summary>
@@ -181,15 +178,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     /// <summary>Whether the LAPS inventory grid should be on screen.</summary>
     public bool ShowsLapsListing => ShowsLaps && ShowsListing && HasListingResult;
-
-    /// <summary>
-    /// Whether the rule listing should be on screen.
-    /// </summary>
-    /// <remarks>
-    /// It stands down while an object is open for the same reason the others do: the object fills
-    /// the pane, and two grids in one place is the crowding the predecessor's window suffered.
-    /// </remarks>
-    public bool ShowsRulesListing => ShowsRules && ShowsListing && HasListingResult;
 
     /// <summary>The severities a finding on this run actually has, worst first.</summary>
     /// <remarks>
@@ -320,23 +308,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     public bool HasLapsShortfall => LapsShortfall is not null;
 
     /// <summary>
-    /// Every rule this build ships, and what became of it on this run.
-    /// </summary>
-    /// <remarks>
-    /// <b>Not scoped by the tree.</b> A rule is a question asked of the whole forest, and showing
-    /// "judged 2,082 objects" narrowed to one organisational unit would be a count of something
-    /// the judging never measured.
-    /// </remarks>
-    public ObservableCollection<RuleRowViewModel> RuleRows { get; } = [];
-
-    /// <summary>Why what the rules did could not be read, or null when it was.</summary>
-    [ObservableProperty]
-    private Notice? _rulesRefusal;
-
-    /// <summary>Whether the rule listing has something to say about why it is empty.</summary>
-    public bool HasRulesRefusal => RulesRefusal is not null;
-
-    /// <summary>
     /// Whether a finding is selected, so there is an explanation to show beneath the grid.
     /// </summary>
     /// <remarks>
@@ -381,7 +352,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// objects. False while nothing is selected and false while the listing is short, so
     /// "nothing here" is only ever said when it was established.
     /// </summary>
-    public bool IsEmpty => HasListingResult && ShowsObjects && HasTree && HasSelection && Objects.Count == 0 && Shortfall is null;
+    public bool IsEmpty => HasListingResult && ShowsObjects && !IsObjectSearch && HasTree && HasSelection && Objects.Count == 0 && Shortfall is null;
 
     /// <summary>
     /// Whether this listing is short by an unknown number of objects, because part of the
@@ -395,7 +366,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// at the narrower levels the column would repeat the container just selected on every row,
     /// which is what the predecessor's grid did.
     /// </summary>
-    public bool ParentIsWorthShowing => Scope == ListingScope.Subtree;
+    public bool ParentIsWorthShowing => !IsObjectSearch && Scope == ListingScope.Subtree;
 
     /// <summary>
     /// Whether the listing shows the selected object alone.
@@ -454,6 +425,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         get
         {
+            if (IsObjectSearch && HasListingResult)
+                return ObjectNavigationText.Format("SearchPage", _objectSearchBack.Count + 1, Objects.Count,
+                    _objectSearchNext is null ? "" : ObjectNavigationText.Get("MoreResults"));
             if (!HasListingResult || Total == 0)
                 return string.Empty;
 
@@ -465,10 +439,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>Whether there is a page before this one.</summary>
-    public bool HasPreviousPage => HasListingResult && PageNumber > 1;
+    public bool HasPreviousPage => HasListingResult && (IsObjectSearch ? _objectSearchBack.Count > 0 : PageNumber > 1);
 
     /// <summary>Whether there is a page after this one.</summary>
-    public bool HasNextPage => HasListingResult && PageNumber * ObjectPaging.PageSize < Total;
+    public bool HasNextPage => HasListingResult && (IsObjectSearch ? _objectSearchNext is not null : PageNumber * ObjectPaging.PageSize < Total);
 
     /// <summary>
     /// Shows the assets of the run in <paramref name="bundleDirectory"/>.
@@ -497,6 +471,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         CancelRead();
         _resetting = true;
         _assets.CloseRun();
+        ResetObjectSearch();
+        ShowsCaptureCoverageDetails = false;
         BundlePath = null;
         Refusal = null;
         HasLooked = false;
@@ -506,8 +482,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Gaps.Clear();
         Objects.Clear();
         Findings.Clear();
-        RuleRows.Clear();
-        RulesRefusal = null;
         FindingsRefusal = null;
         NothingWasFound = false;
         Severities.Clear();
@@ -541,6 +515,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         CancelRead();
         _resetting = true;
         Opened = null;
+        ResetObjectSearch();
+        ShowsCaptureCoverageDetails = false;
         Roots.Clear();
         Gaps.Clear();
         ClearListings();
@@ -602,6 +578,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (!HasPreviousPage)
             return;
 
+        if (IsObjectSearch)
+        {
+            ReadCompletion = ReadObjectSearchPageAsync(_objectSearchBack.Peek(), -1);
+            return;
+        }
         PageNumber--;
         LoadVisible();
     }
@@ -613,6 +594,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (!HasNextPage)
             return;
 
+        if (IsObjectSearch)
+        {
+            ReadCompletion = ReadObjectSearchPageAsync(_objectSearchNext, 1);
+            return;
+        }
         PageNumber++;
         LoadVisible();
     }
@@ -836,6 +822,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     partial void OnPaneChanged(AssetsPane value)
     {
         CancelRead();
+        if (value != AssetsPane.Objects) ResetObjectSearch();
         Opened?.Suspend();
         ViewRefusal = null;
         if (!_active || _resetting) return;
@@ -864,11 +851,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsObjects));
         OnPropertyChanged(nameof(ShowsFindings));
         OnPropertyChanged(nameof(ShowsLaps));
-        OnPropertyChanged(nameof(ShowsRules));
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
         OnPropertyChanged(nameof(ShowsLapsListing));
-        OnPropertyChanged(nameof(ShowsRulesListing));
 
         Announce();
     }
@@ -901,6 +886,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     partial void OnSelectedChanged(TreeNodeViewModel? value)
     {
         if (_resetting) return;
+        var leavesDelegationObject = HasOpenObject && ShowsDelegations;
+        ResetObjectSearch();
         Opened = null;
         PageNumber = 1;
         _findingsBack.Clear();
@@ -908,7 +895,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         ClearListing(AssetsPane.Objects);
         ClearListing(AssetsPane.Findings);
         ClearListing(AssetsPane.Laps);
-        if (Pane is not (AssetsPane.Rules or AssetsPane.Delegations)) LoadVisible();
+        if (leavesDelegationObject) Pane = AssetsPane.Objects;
+        else if (Pane != AssetsPane.Delegations) LoadVisible();
         Announce();
     }
 
@@ -923,6 +911,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
     partial void OnScopeChanged(ListingScope value)
     {
         if (_resetting) return;
+        if (IsObjectSearch)
+        {
+            OnPropertyChanged(nameof(ShowsBase));
+            OnPropertyChanged(nameof(ShowsOneLevel));
+            OnPropertyChanged(nameof(ShowsSubtree));
+            return;
+        }
         PageNumber = 1;
         OnPropertyChanged(nameof(ParentIsWorthShowing));
         OnPropertyChanged(nameof(ShowsBase));
@@ -944,6 +939,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </summary>
     private void Announce()
     {
+        AnnounceObjectNavigation();
         AnnounceDelegations();
         OnPropertyChanged(nameof(HasViewRefusal));
         OnPropertyChanged(nameof(IsOpeningTree));
@@ -966,8 +962,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
         OnPropertyChanged(nameof(ShowsLapsListing));
-        OnPropertyChanged(nameof(ShowsRulesListing));
-        OnPropertyChanged(nameof(HasRulesRefusal));
 
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(IsShort));

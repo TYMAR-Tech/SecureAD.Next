@@ -1,218 +1,187 @@
 <UserControl x:Class="SecureAD.Shell.Views.DashboardView" x:ClassModifier="internal"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
-    <!-- What am I looking at: how much of the forest this run read, and what it held.
-
-         COVERAGE IS FIRST AND IS ALWAYS PRESENT. The owner's decision, 2026-09-05. A headline
-         that appeared only when something had gone wrong would teach an operator to read its
-         absence as reassurance - and an absent headline is also what a broken binding looks like.
-
-         A COUNT IS NEVER DRAWN FOR A DOMAIN THAT WAS NOT READ. The row switches between its
-         numbers and its explanation on CountsAreShown, and the view model has no number to give
-         for an unread domain - so there is no zero here to leak onto the screen even if this
-         markup were wrong. The guarantee is in the type, not in this file.
-
-         NO FINDINGS AND NO SEVERITIES. ROADMAP.md stage 2. The findings pane already counts them,
-         and a second count here is two numbers about one judgement that will eventually
-         disagree. -->
-
-    <UserControl.Resources>
-        <!-- The counted figure. Right-aligned so a column of them can be compared down the page. -->
-        <Style x:Key="Metric" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
-            <Setter Property="FontSize" Value="{StaticResource ScreenTitleFontSize}" />
-            <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
-            <Setter Property="HorizontalAlignment" Value="Right" />
-        </Style>
-
-        <Style x:Key="MetricLabel" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-            <Setter Property="HorizontalAlignment" Value="Right" />
-        </Style>
-    </UserControl.Resources>
-
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource AssetCanvasBackground}">
     <Grid>
-        <TextBlock Text="Loading saved results..."
-                   Style="{StaticResource Caption}"
+        <TextBlock Text="Loading saved results..." Style="{StaticResource Caption}"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    Visibility="{Binding IsLoading, Converter={StaticResource Shown}}" />
-
-        <!-- No run chosen. A question the operator has not answered, which is not a failure and
-             must not be worded as one. -->
-        <TextBlock Text="Choose a run on Home to see what it captured."
-                   Style="{StaticResource Caption}"
+        <TextBlock Text="Choose a run on Home to see what it captured." Style="{StaticResource Caption}"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    Visibility="{Binding HasNoRun, Converter={StaticResource Shown}}" />
-
-        <!-- The run would not open, or its coverage could not be established. Stated in the
-             evidence layer's own words rather than reworded, and never as an empty screen. -->
-        <Border Style="{StaticResource Card}" MaxWidth="620"
+        <Border Style="{StaticResource Card}" MaxWidth="620" Margin="18"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
                 Visibility="{Binding HasRefusal, Converter={StaticResource Shown}}">
             <StackPanel>
                 <TextBlock Text="{Binding Refusal.Title}" Style="{StaticResource SectionTitle}" />
                 <TextBlock Text="{Binding Refusal.Detail}" TextWrapping="Wrap"
-                           Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,0" />
+                           Foreground="{StaticResource FaultBrush}" Margin="0,4,0,0" />
             </StackPanel>
         </Border>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto"
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       Visibility="{Binding HasRun, Converter={StaticResource Shown}}">
-            <StackPanel Margin="18">
-
-                <!-- ABOVE EVERYTHING: a domain the forest could name no controller for. Not an
-                     exclusion the operator chose, and 0063 requires it never to read as one. -->
-                <Border Style="{StaticResource Card}"
-                        Background="{StaticResource FaultSubtleBrush}"
-                        BorderBrush="{StaticResource FaultBrush}"
+            <StackPanel Margin="20" MaxWidth="1600">
+                <!-- A domain without a controller is not a deliberate exclusion. -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12"
+                        Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
                         Visibility="{Binding HasWarning, Converter={StaticResource Shown}}">
                     <StackPanel>
-                        <TextBlock Text="{Binding Warning.Title}"
-                                   Style="{StaticResource SectionTitle}"
-                                   Foreground="{StaticResource FaultBrush}" />
-                        <TextBlock Text="{Binding Warning.Detail}" TextWrapping="Wrap"
-                                   Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Warning.Title}" Style="{StaticResource SectionTitle}" Foreground="{StaticResource FaultBrush}" />
+                        <TextBlock Text="{Binding Warning.Detail}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
 
-                <!-- THEN COVERAGE, before any number on this screen. -->
-                <StackPanel Margin="0,12,0,0">
-                    <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource ScreenTitle}" />
-                    <TextBlock Text="{Binding CoverageHeadline}" TextWrapping="Wrap"
-                               Style="{StaticResource BlockLabel}" Margin="0,2,0,0" />
-                    <TextBlock Text="{Binding ObjectClassScopeStatement}" TextWrapping="Wrap"
-                               Style="{StaticResource Caption}" Margin="0,6,0,0" />
-                </StackPanel>
-
-                <!-- THEN WHAT THE GROUPS COULD NOT SAY, directly under the coverage headline
-                     because it is a coverage fact: a group listing a member the run could not
-                     identify holds more than this bundle can show. NotEstablished rather than
-                     Fault - nothing broke, and the remedy is a wider capture rather than a
-                     technical fix. Owner's decision, 2026-09-12. P-164. -->
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
-                        Background="{StaticResource NotEstablishedSubtleBrush}"
-                        BorderBrush="{StaticResource NotEstablishedBrush}"
-                        Visibility="{Binding HasMembershipNotice, Converter={StaticResource Shown}}">
+                <Border Style="{StaticResource DashboardPanel}" Background="{StaticResource AttributeHeaderBackground}" Padding="18">
                     <StackPanel>
-                        <TextBlock Text="{Binding MembershipNotice.Title}"
-                                   Style="{StaticResource SectionTitle}"
-                                   Foreground="{StaticResource NotEstablishedBrush}" />
-                        <TextBlock Text="{Binding MembershipNotice.Detail}" TextWrapping="Wrap"
-                                   Margin="0,4,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <!-- THEN THE TOTAL, with what it covers stated beneath it rather than left to be
-                     inferred from the rows below. -->
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
-                        Visibility="{Binding HasTotals, Converter={StaticResource Shown}}">
-                    <StackPanel>
-                        <UniformGrid Columns="4">
-                            <StackPanel>
-                                <TextBlock Text="{Binding TotalUsers}"
-                                           Style="{StaticResource Metric}" />
-                                <TextBlock Text="Users" Style="{StaticResource MetricLabel}" />
+                        <ItemsControl ItemsPanel="{StaticResource DashboardCoverageColumns}">
+                            <StackPanel Margin="0,0,24,8">
+                                <TextBlock Text="Captured forest" Style="{StaticResource Caption}" />
+                                <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource ScreenTitle}" />
+                                <TextBlock Text="Coverage and inventory" Style="{StaticResource Caption}" Margin="0,4,0,0" />
                             </StackPanel>
-                            <StackPanel>
-                                <TextBlock Text="{Binding TotalComputers}"
-                                           Style="{StaticResource Metric}" />
-                                <TextBlock Text="Computers" Style="{StaticResource MetricLabel}" />
-                            </StackPanel>
-                            <StackPanel>
-                                <TextBlock Text="{Binding TotalGroups}"
-                                           Style="{StaticResource Metric}" />
-                                <TextBlock Text="Groups" Style="{StaticResource MetricLabel}" />
-                            </StackPanel>
-                            <StackPanel>
-                                <TextBlock Text="{Binding TotalOrganisationalUnits}"
-                                           Style="{StaticResource Metric}" />
-                                <TextBlock Text="Organisational units"
-                                           Style="{StaticResource MetricLabel}" />
-                            </StackPanel>
-                        </UniformGrid>
-
-                        <TextBlock Text="{Binding TotalsCover}" TextWrapping="Wrap"
-                                   Style="{StaticResource Caption}" Margin="0,8,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <!-- THEN THE DOMAINS, one row each. A domain that was not read is a visibly
-                     present row carrying no numbers - not an absent row, which would be one more
-                     way of saying nothing. -->
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-                    <StackPanel>
-                        <TextBlock Text="By domain" Style="{StaticResource SectionTitle}" />
-
-                        <ItemsControl ItemsSource="{Binding Domains}" Margin="0,4,0,0">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{StaticResource DividerBrush}"
-                                            BorderThickness="0,0,0,1" Padding="0,8">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding DomainFqdn}"
-                                                       Style="{StaticResource RowTitle}" />
-
-                                            <!-- Read: its numbers. -->
-                                            <UniformGrid Columns="4" Margin="0,4,0,0"
-                                                         Visibility="{Binding CountsAreShown, Converter={StaticResource Shown}}">
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding Users}"
-                                                               Style="{StaticResource Metric}" />
-                                                    <TextBlock Text="Users"
-                                                               Style="{StaticResource MetricLabel}" />
-                                                </StackPanel>
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding Computers}"
-                                                               Style="{StaticResource Metric}" />
-                                                    <TextBlock Text="Computers"
-                                                               Style="{StaticResource MetricLabel}" />
-                                                </StackPanel>
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding Groups}"
-                                                               Style="{StaticResource Metric}" />
-                                                    <TextBlock Text="Groups"
-                                                               Style="{StaticResource MetricLabel}" />
-                                                </StackPanel>
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding OrganisationalUnits}"
-                                                               Style="{StaticResource Metric}" />
-                                                    <TextBlock Text="Organisational units"
-                                                               Style="{StaticResource MetricLabel}" />
-                                                </StackPanel>
-                                            </UniformGrid>
-
-                                            <!-- Not read: what happened, in words. Never a zero,
-                                                 and never a blank row either. -->
-                                            <TextBlock Text="{Binding Explanation}"
-                                                       TextWrapping="Wrap" Margin="0,4,0,0"
-                                                       Foreground="{StaticResource FaultBrush}"
-                                                       Visibility="{Binding ExplanationIsShown, Converter={StaticResource Shown}}" />
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
+                            <Border Style="{StaticResource DashboardCoverageBadge}" Margin="0,0,0,8" HorizontalAlignment="Right">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding DomainCoverageSummary}" Style="{StaticResource RowTitle}" />
+                                    <TextBlock Text="Within the recorded object-class scope" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
                         </ItemsControl>
+                        <Expander Header="Capture scope and exclusions" IsExpanded="{Binding ShowsCaptureScope, Mode=TwoWay}" Margin="0,6,0,0">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Text="{Binding CoverageHeadline}" Style="{StaticResource BaseTextBlock}" />
+                                <TextBlock Text="{Binding ObjectClassScopeStatement}" Style="{StaticResource Caption}" Margin="0,6,0,0" />
+                                <TextBlock Text="Domain coverage describes what the capture read. It does not mean every attribute was returned or that the directory is secure."
+                                           Style="{StaticResource Caption}" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Expander>
                     </StackPanel>
                 </Border>
 
-                <!-- Group Policy, as read of declared. -->
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-                    <StackPanel>
-                        <TextBlock Text="Group Policy" Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="{Binding Policies}" TextWrapping="Wrap"
-                                   Margin="0,4,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <!-- What a controller may have withheld without saying so. Last, because it
-                     qualifies detail elsewhere rather than anything counted above. -->
                 <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
+                        Visibility="{Binding HasCoverageLimitations, Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Some captured evidence needs qualification" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="Review the domain coverage and the Group Policy, membership and attribute qualifications below."
+                                   Style="{StaticResource BaseTextBlock}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Margin="0,18,0,8">
+                    <TextBlock Text="Captured inventory" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="{Binding TotalsCover}" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+                </StackPanel>
+                <ItemsControl ItemsPanel="{StaticResource DashboardMetricColumns}"
+                              Visibility="{Binding HasTotals, Converter={StaticResource Shown}}">
+                    <ItemsControl ItemsPanel="{StaticResource DashboardMetricPairColumns}">
+                    <Border Style="{StaticResource DashboardMetric}"><StackPanel>
+                        <TextBlock Text="Users" Style="{StaticResource DashboardMetricLabel}" />
+                        <TextBlock Text="{Binding TotalUsers}" Style="{StaticResource DashboardMetricValue}" />
+                    </StackPanel></Border>
+                    <Border Style="{StaticResource DashboardMetric}"><StackPanel>
+                        <TextBlock Text="Computers" Style="{StaticResource DashboardMetricLabel}" />
+                        <TextBlock Text="{Binding TotalComputers}" Style="{StaticResource DashboardMetricValue}" />
+                    </StackPanel></Border>
+                    </ItemsControl>
+                    <ItemsControl ItemsPanel="{StaticResource DashboardMetricPairColumns}">
+                    <Border Style="{StaticResource DashboardMetric}"><StackPanel>
+                        <TextBlock Text="Groups" Style="{StaticResource DashboardMetricLabel}" />
+                        <TextBlock Text="{Binding TotalGroups}" Style="{StaticResource DashboardMetricValue}" />
+                    </StackPanel></Border>
+                    <Border Style="{StaticResource DashboardMetric}"><StackPanel>
+                        <TextBlock Text="Organisational units" Style="{StaticResource DashboardMetricLabel}" />
+                        <TextBlock Text="{Binding TotalOrganisationalUnits}" Style="{StaticResource DashboardMetricValue}" />
+                    </StackPanel></Border>
+                    </ItemsControl>
+                </ItemsControl>
+
+                <Border Style="{StaticResource DashboardPanel}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <Border Style="{StaticResource DashboardPanelHeading}">
+                            <TextBlock Text="Inventory by domain" Style="{StaticResource SectionTitle}" />
+                        </Border>
+                        <DataGrid x:Name="DomainInventoryTable" ItemsSource="{Binding Domains}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  CanUserDeleteRows="False" CanUserReorderColumns="False"
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" MaxHeight="420"
+                                  HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}"
+                                  Background="{StaticResource AssetNavigationBackground}"
+                                  BorderThickness="0" ColumnHeaderStyle="{StaticResource DashboardColumnHeader}">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                    <Setter Property="DetailsVisibility" Value="{Binding ExplanationIsShown, Converter={StaticResource Shown}}" />
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.RowDetailsTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="12,4,12,12"
+                                               Foreground="{StaticResource FaultBrush}" />
+                                </DataTemplate>
+                            </DataGrid.RowDetailsTemplate>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Domain" Binding="{Binding DomainFqdn}" Width="2*" MinWidth="160"
+                                                    ElementStyle="{StaticResource DashboardCell}" />
+                                <DataGridTemplateColumn Header="Capture status" Width="1.5*" MinWidth="120">
+                                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                        <TextBlock Text="{Binding CaptureStatus}" Style="{StaticResource DashboardStatusLabel}" Margin="8" />
+                                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Users" Binding="{Binding Users}" Width="*" MinWidth="65"
+                                                    HeaderStyle="{StaticResource DashboardNumberHeader}" ElementStyle="{StaticResource DashboardNumberCell}" />
+                                <DataGridTextColumn Header="Computers" Binding="{Binding Computers}" Width="*" MinWidth="90"
+                                                    HeaderStyle="{StaticResource DashboardNumberHeader}" ElementStyle="{StaticResource DashboardNumberCell}" />
+                                <DataGridTextColumn Header="Groups" Binding="{Binding Groups}" Width="*" MinWidth="65"
+                                                    HeaderStyle="{StaticResource DashboardNumberHeader}" ElementStyle="{StaticResource DashboardNumberCell}" />
+                                <DataGridTextColumn Header="OUs" Binding="{Binding OrganisationalUnits}" Width="*" MinWidth="65"
+                                                    HeaderStyle="{StaticResource DashboardNumberHeader}" ElementStyle="{StaticResource DashboardNumberCell}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Text="Captured objects, not live directory counts. Uncounted domains have no figures; they are not empty domains."
+                                   Style="{StaticResource Caption}" Margin="14,10" />
+                    </StackPanel>
+                </Border>
+
+                <ItemsControl ItemsPanel="{StaticResource DashboardCoverageColumns}">
+                    <Border Style="{StaticResource DashboardPanel}" Margin="0,0,12,12">
+                        <StackPanel>
+                            <Border Style="{StaticResource DashboardPanelHeading}">
+                                <TextBlock Text="Group Policy coverage" Style="{StaticResource SectionTitle}" />
+                            </Border>
+                            <StackPanel Margin="14">
+                                <TextBlock Text="{Binding PolicyCoverageSummary}" Style="{StaticResource ScreenTitle}" />
+                                <ProgressBar x:Name="PolicyCoverageBar" Minimum="0" Maximum="{Binding PoliciesDeclaredCount}"
+                                             Value="{Binding PoliciesReadCount, Mode=OneWay}" Height="6" Margin="0,12"
+                                             Foreground="{StaticResource AttributeSourceBrush}"
+                                             Background="{StaticResource AttributeHeaderBackground}"
+                                             AutomationProperties.Name="Group Policy read coverage"
+                                             Visibility="{Binding HasDeclaredPolicies, Converter={StaticResource Shown}}" />
+                                <TextBlock Text="{Binding Policies}" Style="{StaticResource BaseTextBlock}" Margin="0,6,0,0" />
+                                <TextBlock Text="Directory declarations and SYSVOL file evidence; not a policy-security verdict."
+                                           Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource DashboardPanel}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <Border Style="{StaticResource DashboardPanelHeading}">
+                                <TextBlock Text="Group membership coverage" Style="{StaticResource SectionTitle}" />
+                            </Border>
+                            <StackPanel Margin="14">
+                                <TextBlock Text="{Binding MembershipSummary}" Style="{StaticResource RowTitle}" />
+                                <TextBlock Text="{Binding MembershipDetail}" Style="{StaticResource BaseTextBlock}" Margin="0,8,0,0" />
+                                <TextBlock Text="Saved membership evidence, not a permission check or proof of a path to Tier 0."
+                                           Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </ItemsControl>
+                <Border Style="{StaticResource Card}"
+                        Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
                         Visibility="{Binding HasConfidentialCaveat, Converter={StaticResource Shown}}">
                     <StackPanel>
-                        <TextBlock Text="{Binding ConfidentialCaveat.Title}"
-                                   Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="{Binding ConfidentialCaveat.Detail}" TextWrapping="Wrap"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
-                                   Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding ConfidentialCaveat.Title}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding ConfidentialCaveat.Detail}" Style="{StaticResource BaseTextBlock}" Margin="0,6,0,0" />
                     </StackPanel>
                 </Border>
             </StackPanel>

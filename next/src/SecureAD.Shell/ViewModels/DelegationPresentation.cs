@@ -33,6 +33,13 @@ internal static class DelegationText
     public static string Previous => Get(nameof(Previous));
     public static string Next => Get(nameof(Next));
     public static string OpenDetails => Get(nameof(OpenDetails));
+    public static string SearchTitle => Get(nameof(SearchTitle));
+    public static string PrincipalStep => Get(nameof(PrincipalStep));
+    public static string PermissionStep => Get(nameof(PermissionStep));
+    public static string EntriesTitle => Get(nameof(EntriesTitle));
+    public static string SelectedEntryTitle => Get(nameof(SelectedEntryTitle));
+    public static string OriginalEvidence => Get(nameof(OriginalEvidence));
+    public static string MembershipChain => Get(nameof(MembershipChain));
 }
 
 internal sealed record DelegationPermissionChoice(DelegationPermission Value, string Name);
@@ -64,11 +71,12 @@ internal sealed class DelegationRowViewModel(DelegationEntry source, PermissionV
         "AccessDeniedCallback" or "AccessDeniedCallbackObject" => DelegationText.Format("Conditional", DelegationText.Get("Deny")),
         _ => DelegationText.Format("Unsupported", Source.Entry.AceType),
     };
-    public string Detail => (Source.HolderMembershipId is { } holder
+    public string MembershipDetail => Source.HolderMembershipId is { } holder
         ? membership?.Describe(holder) ?? throw new InvalidOperationException(DelegationText.Get("MembershipInvalid"))
-        : DelegationText.Get("DirectEntry"))
-        + "\n" + DelegationText.Format("HolderDetail", PermissionHeldBy, Source.Entry.Trustee.Sid)
+        : DelegationText.Get("DirectEntry");
+    public string OriginalDetail => DelegationText.Format("HolderDetail", PermissionHeldBy, Source.Entry.Trustee.Sid)
         + "\n" + DelegationText.Format("Detail", RecordedOn, Source.Entry.Ordinal, Source.DescriptorId,
         Source.Entry.AccessMask, Source.Entry.AceType, Source.Entry.ObjectTypeGuid ?? "-", Source.Entry.InheritedObjectTypeGuid ?? "-",
         Source.Entry.InheritanceFlags, Source.Entry.PropagationFlags, Source.DaclCompleteness, Source.ScopeQualification ?? "");
+    public string Detail => MembershipDetail + "\n" + OriginalDetail;
 }

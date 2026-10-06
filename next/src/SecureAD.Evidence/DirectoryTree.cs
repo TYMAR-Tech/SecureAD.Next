@@ -50,7 +50,13 @@ public sealed record TreeNode(
     string Name,
     Guid? ObjectGuid,
     TreeNodeOrigin Origin,
-    IReadOnlyList<TreeNode> Children);
+    IReadOnlyList<TreeNode> Children)
+{
+    /// <summary>The most specific class actually captured for this object, if available.</summary>
+    public string? ObjectClass { get; init; }
+    /// <summary>The partition kind recorded by capture, independent of the root's display name.</summary>
+    public NamingContextKind? PartitionKind { get; init; }
+}
 
 /// <summary>
 /// Why part of the directory is not in the tree, or is in it only in part.
@@ -189,9 +195,10 @@ internal static class DirectoryTreeReader
         var nodes = new Dictionary<string, Node>(StringComparer.OrdinalIgnoreCase);
         var gaps = new List<TreeGap>();
 
-        var roots = ReadRoots(connection);
+        var partitions = ReadRoots(connection);
+        var roots = partitions.Keys.ToList();
         foreach (var root in roots)
-            nodes[root] = new Node(root, TreeNodeOrigin.Partition);
+            nodes[root] = new Node(root, TreeNodeOrigin.Partition) { PartitionKind = partitions[root] };
 
         foreach (var parentDn in ReadObservedParents(connection))
             AddWithItsAncestors(nodes, roots, parentDn);
@@ -215,15 +222,21 @@ internal static class DirectoryTreeReader
     /// The naming contexts the run read. These and only these are roots: a root is a partition the
     /// run recorded reading, never a name inferred from an object beneath it.
     /// </summary>
-    private static List<string> ReadRoots(SqliteConnection connection)
+    private static Dictionary<string, NamingContextKind> ReadRoots(SqliteConnection connection)
     {
-        var roots = new List<string>();
+        var roots = new Dictionary<string, NamingContextKind>(StringComparer.OrdinalIgnoreCase);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT DISTINCT naming_context_dn FROM partition_coverage";
+        command.CommandText = "SELECT DISTINCT naming_context_dn, naming_context_kind FROM partition_coverage";
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
-            roots.Add(reader.GetString(0));
+        {
+            var dn = reader.GetString(0);
+            var kind = Enum.Parse<NamingContextKind>(reader.GetString(1));
+            if (roots.TryGetValue(dn, out var previous) && previous != kind)
+                throw new InvalidDataException("A captured partition has conflicting kinds.");
+            roots[dn] = kind;
+        }
 
         return roots;
     }
@@ -344,15 +357,17 @@ internal static class DirectoryTreeReader
         {
             command.CommandText =
                 """
-                SELECT distinguished_name, object_guid
-                FROM captured_object
-                WHERE distinguished_name IN
+                SELECT o.distinguished_name, o.object_guid,
+                       (SELECT c.value FROM objectclass_value c WHERE c.object_id=o.object_id ORDER BY c.ordinal DESC LIMIT 1)
+                FROM captured_object o
+                WHERE o.distinguished_name IN
                       (SELECT DISTINCT parent_dn FROM captured_object WHERE parent_dn IS NOT NULL)
                 """;
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
-                Capture(nodes, reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1));
+                Capture(nodes, reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2));
         }
 
         var remaining = nodes.Values
@@ -364,12 +379,17 @@ internal static class DirectoryTreeReader
         {
             using var command = connection.CreateCommand();
             command.CommandText =
-                "SELECT object_guid FROM captured_object WHERE distinguished_name = $dn LIMIT 1";
+                """
+                SELECT o.object_guid,
+                       (SELECT c.value FROM objectclass_value c WHERE c.object_id=o.object_id ORDER BY c.ordinal DESC LIMIT 1)
+                FROM captured_object o WHERE o.distinguished_name = $dn LIMIT 1
+                """;
             command.Parameters.AddWithValue("$dn", dn);
 
             using var reader = command.ExecuteReader();
             if (reader.Read())
-                Capture(nodes, dn, reader.IsDBNull(0) ? null : reader.GetString(0));
+                Capture(nodes, dn, reader.IsDBNull(0) ? null : reader.GetString(0),
+                    reader.IsDBNull(1) ? null : reader.GetString(1));
         }
     }
 
@@ -378,12 +398,13 @@ internal static class DirectoryTreeReader
     /// is a fact about the run, and is not overwritten by the partition also having been captured
     /// as an object.
     /// </summary>
-    private static void Capture(Dictionary<string, Node> nodes, string dn, string? objectGuid)
+    private static void Capture(Dictionary<string, Node> nodes, string dn, string? objectGuid, string? objectClass)
     {
         if (!nodes.TryGetValue(dn, out var node))
             return;
 
         node.ObjectGuid = objectGuid is null ? null : Guid.Parse(objectGuid);
+        node.ObjectClass = objectClass;
         if (node.Origin == TreeNodeOrigin.NeverCaptured)
             node.Origin = TreeNodeOrigin.Captured;
     }
@@ -491,6 +512,8 @@ internal static class DirectoryTreeReader
         public TreeNodeOrigin Origin { get; set; } = origin;
 
         public Guid? ObjectGuid { get; set; }
+        public string? ObjectClass { get; set; }
+        public NamingContextKind? PartitionKind { get; set; }
 
         public bool IsOrphanRoot { get; set; }
 
@@ -503,6 +526,7 @@ internal static class DirectoryTreeReader
             Origin,
             [.. Children
                 .OrderBy(c => DnHelper.ExtractFirstRdn(c.DistinguishedName), StringComparer.OrdinalIgnoreCase)
-                .Select(c => c.Freeze())]);
+                .Select(c => c.Freeze())])
+        { ObjectClass = ObjectClass, PartitionKind = PartitionKind };
     }
 }

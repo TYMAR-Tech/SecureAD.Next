@@ -620,17 +620,24 @@ public sealed class BundleReader : IDisposable
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
         ObjectListingReader.Read(Connection, containerDn, scope, pageNumber);
 
+    /// <summary>Searches all captured objects by name/account name or DN without reading analysis stores.</summary>
+    public ObjectSearchPage SearchObjects(string search, ObjectSearchMark? after, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CapturedObjectSearch.Read(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken);
+    }
+
     /// <summary>Finds captured user/group identities under a protected evidence lifetime.</summary>
     public DelegationPrincipalPage FindDelegationPrincipals(string search, DelegationPrincipalMark? after,
         CancellationToken cancellationToken = default) =>
-        DelegationLookup.FindPrincipals(Connection, DelegationFingerprint(), Description, search, after, cancellationToken);
+        DelegationLookup.FindPrincipals(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken);
 
     /// <summary>Reads original direct-trustee permission occurrences; never computes effective access.</summary>
     public DelegationPage ReadDelegations(DelegationQuery query, DelegationPageMark? after,
         CancellationToken cancellationToken = default, int pageSize = DelegationPage.PageSize)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fingerprint = DelegationFingerprint();
+        var fingerprint = ProtectedQueryFingerprint();
         var preparation = _delegationPreparation ??= (ReadSchemaGuids(), DelegationLookup.ReadCoverage(Connection, Description));
         return DelegationLookup.Read(Connection, fingerprint, preparation.Coverage, preparation.Schema, query, after, cancellationToken, pageSize);
     }
@@ -657,8 +664,8 @@ public sealed class BundleReader : IDisposable
         return principal;
     }
 
-    private string DelegationFingerprint() => _verifiedFingerprint
-        ?? throw new InvalidOperationException("Delegation lookup requires an open protected evidence lifetime.");
+    private string ProtectedQueryFingerprint() => _verifiedFingerprint
+        ?? throw new InvalidOperationException("Captured-data searches require an open protected evidence lifetime.");
 
     /// <summary>
     /// The name a security identifier is known by in this bundle, for showing a principal a rule

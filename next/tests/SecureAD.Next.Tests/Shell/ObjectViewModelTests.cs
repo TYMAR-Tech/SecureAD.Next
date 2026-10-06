@@ -65,7 +65,7 @@ public sealed class ObjectViewModelTests
     {
         var screen = Opened(Permissions());
 
-        screen.ShowsSubtree = true;
+        screen.ShowsOneLevel = true;
 
         Assert.False(screen.HasOpenObject);
     }

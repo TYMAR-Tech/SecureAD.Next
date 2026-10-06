@@ -57,6 +57,9 @@ internal interface IAssetReader
     /// <summary>Unverified sources cannot vouch for retained data; protected readers supply their own check.</summary>
     Func<bool> CaptureReadValidity() => () => false;
 
+    /// <summary>Searches the entire selected capture without loading permissions or judgement.</summary>
+    Result<ObjectSearchPage> SearchObjects(string bundleDirectory, string search, ObjectSearchMark? after);
+
     /// <summary>Finds captured user/group identities for direct permission lookup.</summary>
     Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after);
 

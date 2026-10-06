@@ -13,6 +13,91 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Rules list/detail — implemented; focused verification passed, full-suite blocker retained, 2026-10-06.**
+The owner agreed to return to opening-performance and Stage 7 work after first reviewing a left-hand rules list with a selected explanation on the right.
+The owner approved implementing the selectable list with independently scrollable details and adjustable divider, then committing/pushing the accumulated UI work and addressing the CI/merge issue last before a new Stage 7 session.
+The [checkpoint](../.v-ui-rules-split-20261006-c48a/handoff.json) records 274 passing split-view checks, 95 passing final rebuilt Rules/object-layout checks and all ten required split/layout cases detecting rebuilt defects with restored controls; the full run retained 46 subsequently corrected layout-host/geometry failures plus the outstanding judging-progress timeout, so full-suite success is not claimed.
+
+**Stage 7 remaining-work check — current source reviewed, 2026-10-05.**
+The approved completion scope still owes broader membership-change/resource-context combinations, completed saved distance/best-route/whole-run summaries and SEC-052 including the known singleton self-loop gap; automatic supported-family selection, SEC-071 findings and protected passive readback already exist.
+The executable catalogue has 18 rules, while the 62 predecessor cards have mixed preserve/implement/shared/inventory/deferred dispositions rather than 44 independent missing rules, and proven remediation, reports/export and comparison remain separate later stages.
+The owner agreed to end general cosmetic expansion and return to the reported opening delay and bounded Stage 7 completion before broader rule rollout, requesting one Rules list/detail mockup first; this order does not itself authorize new measurement tooling or optimization.
+
+**Rule-spec review reference availability — Low; local retained-copy path absent, 2026-10-05.**
+The after-Stage-7 review points at next/artifacts/rule-spec-review/a3574036d1b244f7a80a1bd18ffd9e21, which is absent in the current Stage 7 checkout.
+The original 13-file set remains available read-only under C:/Users/jistrand/Downloads/comp/Rebuild Rules and was used only to identify proposed rule families and migration dispositions in this status check.
+Before implementing that handoff, locate its retained review/manifest or re-establish the exact reviewed source identity rather than treating the current Downloads files as hash-verified copies; no files were copied or replaced.
+
+**Rules presentation — top-level page implemented; bounded verification passed, 2026-10-05.**
+The owner requests a cleaner Rules tab, particularly readable formatting for What this rule looks for rather than a dense paragraph.
+The fictional preview separates the reported condition, captured evidence and exclusions/limits, keeping execution outcome apart from severity and retaining whole-run scope.
+The owner-approved Home | Dashboard | Rules | Assets | Settings navigation and tree-free Rules page are implemented, with the [checkpoint](../.v-ui-rules-20261005-b61e/handoff.json) recording 767 passing combined checks, 106 passing post-render restored-source checks and all 55 new/adapted cases detecting 19 rebuilt defects; other tree/pop-out decisions and owner display acceptance remain deferred.
+
+**Delegations presentation — implemented; bounded verification passed, 2026-10-05.**
+While testing Home, the owner requested a Delegations-tab mockup with the same visual direction.
+The owner approved implementing the two-step search, original-entry table and selected-entry/membership panels within the existing tab, preserving domain scope, inherited-entry qualifications and explicit incomplete evidence.
+The [isolated checkpoint](../.v-ui-delegations-20261005-a92d/handoff.json) records 721 passing combined checks and all seven new/adapted cases detecting seven rebuilt defects with restored controls; pop-out windows and physical display acceptance remain deferred for external-monitor review, separately from the outstanding slow-opening investigation.
+
+**Home redesign — implemented; bounded verification passed, 2026-10-05.**
+The owner reports that Dashboard looks good and requests a Home mockup with a short explanation of SecureAD, as the last immediate UI area before further Assets review on an external monitor.
+He approved implementing the compact introduction, clear New audit/Open run actions, scope-grouped saved runs and readable selected-run panel, keeping annotation actions separate from destructive or long-running work.
+The [isolated checkpoint](../.v-ui-home-20261005-f82b/handoff.json) records 711 passing combined UI/library checks and all nine new cases detecting rebuilt defects with restored controls, retaining metadata-only listing and confirmations while exposing analysis status/Stop and failures outside selection-dependent disclosures; owner visual acceptance and earlier unrelated blockers remain outstanding, with slow opening next and no hashing-policy change.
+
+**Slow startup and run opening — High; owner-reported, diagnosis pending, 2026-10-05.**
+The owner reports very slow opening and suspects hash calculations and repeated costs elsewhere, but no new timing or exact executable provenance accompanies this report.
+After the bounded Home UI work, investigate startup, library listing, selected-run verification, reopening and subsequent browsing separately, reusing existing diagnostics and retaining the accepted protected-lifetime integrity rules.
+Prior file-open and hashing measurements must remain distinct from this report, and no integrity-check removal, stale cache, live access or new performance harness is approved by the Home preview request.
+
+**Dashboard redesign — implemented; bounded verification passed, 2026-10-05.**
+The owner wants a substantial Dashboard redesign and is leaving further Assets visual review until his external monitor is available.
+The owner approved implementing the coverage-and-inventory preview with a coverage-first header, distinct inventory cards, a per-domain table and separate Group Policy/membership qualifications, including deliberately excluded and no-controller domain scenarios.
+The [isolated checkpoint](../.v-ui-dashboard-20261005-e19a/handoff.json) records 610 passing final Dashboard/Assets checks and all 21 new cases detecting ten rebuilt defects with restored controls, preserving existing counts and explicit missing-evidence meanings; owner visual acceptance, further Assets refinements and earlier unrelated blockers remain outstanding.
+
+**Comprehensive attribute-card policy — implemented; bounded verification passed, 2026-10-05.**
+The owner wants one Microsoft-documentation-backed pass across supported object types and captured attributes rather than individual card fixes.
+Microsoft permits UPN on computers through User inheritance, so schema applicability alone cannot remove that empty card, and the current capture does not hold complete forest-specific class inheritance and attribute lists.
+The owner-approved populated-only default and Show missing attributes now share one implementation across all five attribute-card layouts, with the [checkpoint](../.v-ui-populated-cards-20261005-d81c/handoff.json) recording 556 passing combined checks and all 14 new/adapted cases detecting rebuilt defects while preserving unread evidence, qualifications and stored occurrences; owner display acceptance and unrelated blockers remain outstanding.
+
+**Class-appropriate attribute cards — Medium; implemented, bounded verification passed, 2026-10-05.**
+The owner found empty OS cards on a user misleading because the former shared Account field list included operatingSystem and operatingSystemVersion for both users and computers.
+He approved class-appropriate Account cards, No captured value with the unset/unavailable explanation, and the fictional-data preview of a working Other captured values section including formerly excluded raw attributes.
+The [isolated checkpoint](../.v-ui-attribute-cards-20261005-c73a/handoff.json) records 544 passing combined checks and all 34 new/adapted cases detecting rebuilt defects with restored controls, preserving captured values and protected selected-only readback without changing saved formats; owner trial and earlier unrelated blockers remain outstanding.
+
+**Capture coverage footer — implemented; bounded verification passed, 2026-10-05.**
+The owner requested removing the dedicated coverage strip above the tree and placing Capture coverage under the grid at the far right of the object page controls.
+The shared footer keeps the incomplete-capture indicator visible across Assets views, opens the existing scrollable details above the footer, and wraps on narrow windows without changing paging or coverage meaning.
+The [isolated checkpoint](../.v-ui-coverage-footer-20261005-9b62/handoff.json) records 483 passing final combined checks and all four new cases detecting six rebuilt defects with restored controls; concurrent publish-output changes were recorded and left as found, earlier campaigns were preserved, and owner visual acceptance and unrelated regression/merge blockers remain outstanding.
+
+**Lower-tree scope presentation — corrected; bounded verification passed, 2026-10-05.**
+The owner liked the card pilot as a starting point but identified the stacked Level controls and prominent directory path as a mismatch with the mockup, then approved correcting just that area.
+The compact horizontal Browsing Scope selector and quieter path are implemented, preserving default Subtree, deliberate scope choices and whole-capture search disabling; the [checkpoint](../.v-ui-scope-20261005-4d91/handoff.json) records 479 passing final combined checks and all five new cases detecting six rebuilt assertion defects.
+Minimum/default tree widths and enlarged layout scale passed, all restored controls and the surviving symmetric-padding attempt are retained, and the owner's package and earlier campaigns remain intact with physical display acceptance and unrelated blockers still outstanding.
+
+**Directory-tree icons — implemented; focused verification passed, 2026-10-05.**
+The approved embedded Microsoft Fluent vectors now distinguish domains, OUs, containers, Configuration and Schema using captured metadata, with generic/slate handling for unknown types and unchanged uncaptured wording.
+The [focused checkpoint](../.v-ui-tree-icons-20261005-4af0/handoff.json) records 268 passing relevant checks and all 24 new/adapted cases detecting ten rebuilt defects with restored controls; Microsoft source/license, existing navigation work and packages were preserved without new dependencies.
+The owner reports that the icons seem to work but requests a wider tree area, while full physical display acceptance, the broader theme and the previous regression/merge blockers remain separate.
+
+**Assets/object-details card pilot — implemented; bounded verification passed, 2026-10-05.**
+After reviewing the coloured-card mockup and preferring inline titles such as Account Name (sAMAccountName), the owner authorized the first bounded WPF implementation with "lets try it".
+The pilot now has coloured attribute cards, responsive one/two/three-column fields, inline LDAP titles, and a 360-pixel adjustable tree retained beside details with the existing section choices above the content; the [isolated checkpoint](../.v-ui-cards-20261005-6e2a/handoff.json) records 474 passing final checks and all 19 new/adapted cases detecting 15 rebuilt defects with restored controls.
+Original values, qualifications, selected-only reads and existing packages were preserved, while owner trial and physical display acceptance remain outstanding, the unrelated regression/merge blockers remain open, and no commit or push was performed.
+
+**Object-section selection during readback — Medium; corrected and negatively verified, 2026-10-05.**
+The real WPF selection check exposed a transient cleared selection when a section placeholder was replaced by its loaded result, producing an out-of-range readback refusal.
+Section navigation now binds by its stable key instead of the replaced content object, preserving selected-only loading without caching other sections.
+Both layout cases pass, the rebuilt former selection binding fails both, and the failed attempts and restored controls are retained in the card-pilot checkpoint.
+
+**Baseline PR integration — High; build corrected, merge still blocked, 2026-10-05.**
+The current solution excludes the obsolete saved-opening driver from compilation and keeps the historical standalone benchmark registered without building it, preserving its sources/results and the source-ownership guard.
+A deterministic executing-statement cancellation check retained its exact interrupted-result assertion and detected a rebuilt missing-handler defect, while CI now isolates unrelated blocking test collections and short TEMP/TMP paths without skipping tests or changing production concurrency.
+The latest #3 check for be596f04f9cfbcec4ff444a81a4aa924ff7195c5 never acquired a GitHub-hosted runner after repeated attempts, so its cancelled job is an infrastructure failure rather than a new test result and the approved merge remains unperformed.
+
+**Navigation final regression — High; blocked at a bounded handoff, 2026-10-05.**
+The implemented navigation slice passed its focused checks and all 33 new/adapted cases have rebuilt negative witnesses, but the full run passed 6,932 of 6,933 tests with a timeout in NewAuditViewModelTests.HowFarTheJudgingHasGotIsShown.
+The timeout's cause is unestablished and the failed run is retained; the owner raised session cost, so do not start another open-ended repair cycle or call the candidate fully verified.
+Use the [blocked handoff](../.v-ui-navigation-20261005-e4b6/handoff-blocked.json), keep navigation edits uncommitted on ui-navigation and preserve the owner's separate lab build and all original evidence.
+
 **Production judgement — completed and published; major runtime improvement confirmed, 2026-10-05.**
 The [retained production log](../.v-production-log-20261005-0708-c2a7/run.log) matches the verified detailed-sealing package and the earlier attempt's exact evidence/derivation inputs, publishing after 4h 37m 25s rather than failing after 15h 44m 7s while answering 110,385 selected questions instead of 50,694.
 The three account-question phases fell from 11h 1m 4.7s to 2m 7.6s and proof writing completed, but the result is CompletedDegraded with seven Indeterminate rules, high recorded memory snapshots and substantial remaining object/control/ownership/path-preparation work.

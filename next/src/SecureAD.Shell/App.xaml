@@ -38,6 +38,11 @@
                 <ResourceDictionary Source="Themes/Tree.xaml" />
                 <ResourceDictionary Source="Themes/Choices.xaml" />
                 <ResourceDictionary Source="Themes/Tabs.xaml" />
+                <ResourceDictionary Source="Themes/Assets.xaml" />
+                <ResourceDictionary Source="Themes/Dashboard.xaml" />
+                <ResourceDictionary Source="Themes/Home.xaml" />
+                <ResourceDictionary Source="Themes/Delegations.xaml" />
+                <ResourceDictionary Source="Themes/Rules.xaml" />
                 <ResourceDictionary Source="Views/Sections/ObjectSectionTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

@@ -131,7 +131,8 @@ internal partial class App : Application
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
             new AssetsViewModel(assets),
             new DashboardViewModel(assets),
-            new SettingsViewModel(concurrency));
+            new SettingsViewModel(concurrency),
+            new RulesViewModel(assets));
 
         // Home is the section already showing, so nothing navigates to it and nothing would
         // otherwise ask the library to read itself before the first screen is painted.

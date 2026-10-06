@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
-             xmlns:views="clr-namespace:SecureAD.Shell.Views">
+             xmlns:views="clr-namespace:SecureAD.Shell.Views"
+             Background="{DynamicResource AssetCanvasBackground}">
     <UserControl.Resources>
 
         <!-- A DataGridColumn is not in the visual tree and cannot find the view model by walking
@@ -14,6 +15,8 @@
         <HierarchicalDataTemplate DataType="{x:Type vm:TreeNodeViewModel}"
                                   ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal" Margin="0,1">
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TreeNodeIcon}"
+                                Focusable="False" IsHitTestVisible="False" />
                 <TextBlock x:Name="Label" Text="{Binding Name}"
                            Foreground="{StaticResource PrimaryTextBrush}" />
                 <TextBlock Text="not captured" Margin="8,0,0,0"
@@ -65,10 +68,21 @@
 
         <Grid Visibility="{Binding HasTree, Converter={StaticResource Shown}}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="300" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="360" MinWidth="270" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" MinWidth="320" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <GridSplitter Grid.Column="1" Grid.RowSpan="2" Width="6" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" ResizeDirection="Columns"
+                          ResizeBehavior="PreviousAndNext" ShowsPreview="True"
+                          Background="{StaticResource AttributeCardBorderBrush}"
+                          AutomationProperties.Name="Resize directory pane"
+                          Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}" />
 
             <TextBlock Grid.Column="2" Text="{Binding LoadingText}"
                        Foreground="{StaticResource SecondaryTextBrush}"
@@ -82,20 +96,35 @@
                          Foreground="{StaticResource FaultBrush}" />
             </StackPanel>
 
-            <!-- THE LEFT COLUMN HOLDS THE TREE WHILE LISTING AND THE OBJECT'S SECTIONS WHILE
-                 READING ONE. Same geometry either way, so nothing reflows and the content half
-                 stays full width. -->
+            <Border Grid.Column="0" Grid.RowSpan="2" Background="{StaticResource AssetNavigationBackground}"
+                    BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="12"
+                    Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}">
             <Grid Grid.Column="0"
                   Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-            <TreeView Grid.Row="0" ItemsSource="{Binding Roots}"
-                     >
+                <StackPanel Grid.Row="0" Margin="0,0,0,8" Background="{StaticResource AttributeHeaderBackground}">
+                    <TextBlock Text="{x:Static vm:ObjectNavigationText.SearchLabel}" Style="{StaticResource BlockLabel}" />
+                    <TextBox Text="{Binding ObjectSearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{x:Static vm:ObjectNavigationText.SearchHint}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchObjectsCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <WrapPanel Margin="0,6,0,0">
+                        <Button Content="{x:Static vm:ObjectNavigationText.SearchAction}" Command="{Binding SearchObjectsCommand}" Margin="0,0,8,0" />
+                        <Button Content="{x:Static vm:ObjectNavigationText.ClearSearch}" Command="{Binding ClearObjectSearchCommand}" />
+                    </WrapPanel>
+                </StackPanel>
+
+            <TreeView Grid.Row="1" ItemsSource="{Binding Roots}"
+                      Background="{StaticResource AssetNavigationBackground}">
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="TreeViewItem"
                            BasedOn="{StaticResource {x:Type TreeViewItem}}">
@@ -113,33 +142,43 @@
                      and that is exactly what it cost.
 
                      THE WORDS ARE THE DIRECTORY'S OWN. Base, one level and subtree are what an
-                     administrator types into every search he runs; the screen used to say "this
-                     object", "one level" and "everything beneath", which made him translate.
-
-                     STACKED, NOT IN A ROW. Three pills across a 300-pixel column clipped the
-                     third off the screen entirely - seen 2026-09-03. One per line also reads as
-                     "pick exactly one" without the operator having to hover to find out. -->
-                <StackPanel Grid.Row="1" Margin="0,12,0,0">
-                    <TextBlock Text="Level" Style="{StaticResource BlockLabel}" />
-                    <RadioButton Style="{StaticResource ChoiceRadio}" Content="Base" GroupName="Scope"
-                                 IsChecked="{Binding ShowsBase, Mode=TwoWay}" />
-                    <RadioButton Style="{StaticResource ChoiceRadio}" Content="One level" GroupName="Scope"
-                                 IsChecked="{Binding ShowsOneLevel, Mode=TwoWay}" />
-                    <RadioButton Style="{StaticResource ChoiceRadio}" Content="Subtree" GroupName="Scope"
-                                 IsChecked="{Binding ShowsSubtree, Mode=TwoWay}" />
+                     administrator types into every search he runs. Equal-width segments must fit
+                     even at the divider's minimum width; the old horizontal pills clipped Subtree. -->
+                <StackPanel Grid.Row="2" Margin="0,12,0,0" IsEnabled="{Binding CanChangeBrowsingScope}">
+                    <TextBlock Text="Browsing Scope" Style="{StaticResource BlockLabel}"
+                               FontSize="{StaticResource CaptionFontSize}"
+                               Foreground="{StaticResource AttributeLabelBrush}" />
+                    <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1"
+                            Background="{StaticResource SurfaceRaisedBackground}" CornerRadius="4"
+                            Padding="1" Margin="0,6,0,0">
+                        <UniformGrid Rows="1" x:Name="ScopeSelector">
+                            <RadioButton Style="{StaticResource BrowsingScopeSegment}" Content="Base" GroupName="Scope"
+                                         IsChecked="{Binding ShowsBase, Mode=TwoWay}" />
+                            <RadioButton Style="{StaticResource BrowsingScopeSegment}" Content="One level" GroupName="Scope"
+                                         IsChecked="{Binding ShowsOneLevel, Mode=TwoWay}" />
+                            <RadioButton Style="{StaticResource BrowsingScopeSegment}" Content="Subtree" GroupName="Scope"
+                                         IsChecked="{Binding ShowsSubtree, Mode=TwoWay}" />
+                        </UniformGrid>
+                    </Border>
                 </StackPanel>
 
                 <!-- Where you are, said once beside the tree rather than once per view. -->
-                <TextBlock Grid.Row="2"
-                           Text="{Binding Selected.DistinguishedName}"
+                <TextBlock Grid.Row="3"
+                           Text="{Binding NavigationLocation}"
                            Style="{StaticResource Identifier}"
+                           FontSize="{StaticResource CaptionFontSize}" FontWeight="Normal"
+                           Foreground="{StaticResource AttributeSourceBrush}"
                            TextWrapping="Wrap"
                            Margin="0,8,0,0" />
-
-                <views:GapsCard Grid.Row="3" />
             </Grid>
+            </Border>
 
             <DockPanel Grid.Column="2" Visibility="{Binding ShowsObjectListing, Converter={StaticResource Shown}}">
+
+                <TextBlock DockPanel.Dock="Top" Text="{Binding ObjectSearchHeading}" Style="{StaticResource RowTitle}"
+                           Margin="0,0,0,6" Visibility="{Binding IsObjectSearch, Converter={StaticResource Shown}}" />
+                <TextBlock DockPanel.Dock="Top" Text="{Binding ObjectSearchEmpty}" TextWrapping="Wrap"
+                           Margin="0,0,0,6" Visibility="{Binding HasEmptyObjectSearch, Converter={StaticResource Shown}}" />
 
                 <!-- A gesture nothing announces is a gesture nobody finds. -->
                 <TextBlock DockPanel.Dock="Top"
@@ -147,18 +186,6 @@
                            VerticalAlignment="Center"
                            Margin="0,0,0,8"
                            Foreground="{StaticResource SecondaryTextBrush}" />
-
-                <!-- The pager. Says which objects of how many, so a page can never be mistaken
-                     for the whole listing. -->
-                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                    <TextBlock Text="{Binding PageDescription}"
-                               Foreground="{StaticResource SecondaryTextBrush}"
-                               VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Button Content="Previous" Command="{Binding PreviousPageCommand}"
-                            IsEnabled="{Binding HasPreviousPage}" Margin="0,0,8,0" />
-                    <Button Content="Next" Command="{Binding NextPageCommand}"
-                            IsEnabled="{Binding HasNextPage}" />
-                </StackPanel>
 
                 <!-- A listing short by an unknown number of objects is not an empty container,
                      and the difference is stated where the objects would be. -->
@@ -198,6 +225,10 @@
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" />
                         <DataGridTextColumn Header="Object Type" Binding="{Binding ObjectType}"
                                             Width="Auto" />
+                        <DataGridTextColumn Header="{x:Static vm:ObjectNavigationText.Domain}" Binding="{Binding Domain}" Width="*"
+                                            Visibility="{Binding Data.IsObjectSearch, Source={StaticResource Screen}, Converter={StaticResource Shown}}" />
+                        <DataGridTextColumn Header="{x:Static vm:ObjectNavigationText.Location}" Binding="{Binding Location}" Width="2*"
+                                            Visibility="{Binding Data.IsObjectSearch, Source={StaticResource Screen}, Converter={StaticResource Shown}}" />
 
                         <!-- Earns its place only when rows come from different containers. Below
                              that it repeats the container just selected on every row, which is
@@ -222,22 +253,41 @@
             <views:LapsInventoryView Grid.Column="2"
                                      Visibility="{Binding ShowsLapsListing, Converter={StaticResource Shown}}" />
 
-            <!-- What the product checked for, and what each check did. The tree stays beside it for
-                 consistency, but nothing here is narrowed by it: a rule is a question asked of the
-                 whole forest, and the screen says so above the list. -->
-            <views:RulesView Grid.Column="2"
-                             Visibility="{Binding ShowsRulesListing, Converter={StaticResource Shown}}" />
-
-            <!-- One object, opened from a row. It replaces the listing and the tree stays: an
-                 operator reading one object is still somewhere in the directory. -->
-            <views:ObjectSectionList Grid.Column="0"
-                                     Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}" />
-
             <views:DelegationsView Grid.ColumnSpan="3"
                                    Visibility="{Binding ShowsDelegationsListing, Converter={StaticResource Shown}}" />
 
             <views:ObjectView Grid.Column="2"
                               Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}" />
+
+            <Grid Grid.Column="2" Grid.Row="1" Margin="0,8,0,0" x:Name="AssetsFooter">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <views:CaptureCoverageView Grid.Row="0"
+                    Visibility="{Binding ShowsCaptureCoverageDetails, Converter={StaticResource Shown}}" />
+                <ItemsControl Grid.Row="1" ItemsPanel="{StaticResource AssetFooterColumns}">
+                    <WrapPanel VerticalAlignment="Center"
+                               Visibility="{Binding ShowsObjectListing, Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding PageDescription}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <Button Content="Previous" Command="{Binding PreviousPageCommand}"
+                                IsEnabled="{Binding HasPreviousPage}" Margin="0,0,8,0" />
+                        <Button Content="Next" Command="{Binding NextPageCommand}"
+                                IsEnabled="{Binding HasNextPage}" />
+                    </WrapPanel>
+                    <WrapPanel HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="CaptureCoverageSummary">
+                        <TextBlock Text="{x:Static vm:ObjectNavigationText.Coverage}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{x:Static vm:ObjectNavigationText.CaptureIncomplete}" VerticalAlignment="Center"
+                                   Margin="0,0,12,0" TextWrapping="Wrap"
+                                   Foreground="{StaticResource FaultBrush}"
+                                   Visibility="{Binding HasCaptureGaps, Converter={StaticResource Shown}}" />
+                        <Button Content="{Binding CaptureCoverageAction}" Command="{Binding ToggleCaptureCoverageCommand}" />
+                    </WrapPanel>
+                </ItemsControl>
+            </Grid>
         </Grid>
     </DockPanel>
 </UserControl>

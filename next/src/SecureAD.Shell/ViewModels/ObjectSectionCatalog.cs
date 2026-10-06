@@ -64,9 +64,8 @@ internal sealed record ObjectSectionDefinition(
 /// <para>
 /// <b>Curation may not hide a captured value.</b> Because the request is unscoped, an object can
 /// carry a value its class does not justify. Anything captured that no section for this class
-/// claims appears under <see cref="OtherValues"/> - and only when it has a value, so a user never
-/// shows an empty computer section. Class decides which sections exist; presence decides only that
-/// one.
+/// claims appears under <see cref="OtherValues"/> as a populated row. That section remains available
+/// with an explicit empty or unread state; an empty computer-oriented card is not added to a user.
 /// </para>
 /// <para>
 /// <b>The gate.</b> <c>ObjectSectionCatalogTests</c> asserts that every attribute a class justifies
@@ -120,7 +119,7 @@ internal static class ObjectSectionCatalog
     /// <summary>Who can do what to this object.</summary>
     public const string Permissions = "Permissions";
 
-    /// <summary>Captured values no section for this class claims. Shown only when there are some.</summary>
+    /// <summary>Populated values no standard section for this class claims, with explicit empty/read states.</summary>
     public const string OtherValues = "OtherValues";
 
     /// <summary>What the rules concluded about this object.</summary>
@@ -159,9 +158,13 @@ internal static class ObjectSectionCatalog
             "accountExpires",
             "lastLogonTimestamp",
             "primaryGroupID",
-            "operatingSystem",
-            "operatingSystemVersion",
         ]);
+
+    // Presentation grouping, not a claim that AD forbids these attributes on other classes.
+    private static readonly ObjectSectionDefinition ComputerAccountSection = AccountSection with
+    {
+        Attributes = [.. AccountSection.Attributes, "operatingSystem", "operatingSystemVersion"],
+    };
 
     /// <summary>
     /// The five ways an account can act as something else, or let something else act as it.
@@ -333,7 +336,7 @@ internal static class ObjectSectionCatalog
             ["computer"] =
             [
                 OverviewSection,
-                AccountSection,
+                ComputerAccountSection,
                 LapsSection,
                 DelegationSection,
                 MembershipSection,
@@ -359,43 +362,20 @@ internal static class ObjectSectionCatalog
         };
 
     /// <summary>
-    /// Attributes deliberately not shown, and why. An attribute in neither a section nor here fails
-    /// the build.
+    /// Attributes not repeated as cards because another part of the object view already shows them.
     /// </summary>
     /// <remarks>
-    /// <b>A reason, written down, rather than an omission.</b> The point of the gate is not that
-    /// everything captured must reach a screen - some values are only ever inputs to a rule. It is
-    /// that the decision is made once, in writing, by somebody who had to think about it, instead
-    /// of an attribute quietly riding in every bundle forever with nothing able to show it.
+    /// Populated attributes without a standard card are shown in Other captured values. Only an
+    /// actual alternative display belongs here, not an unimplemented reader or an interpretation.
     /// </remarks>
     public static IReadOnlyDictionary<string, string> NotShown { get; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["dNSHostName"] =
-                "Retained as source-bound enterprise CA registration and host-matching evidence under P-142. "
-                + "Checkpoint 8 adds no dedicated object-view presentation; path presentation remains separate Stage 7 work.",
-            ["objectCategory"] =
-                "The same fact as objectClass, in a form an operator does not use. The overview "
-                + "shows the class.",
             ["distinguishedName"] =
                 "Shown above every section as the object's own heading, in full and selectable, "
                 + "because an operator reading any section needs to be certain which object this "
                 + "is. A row repeating it inside the overview was on screen 2026-08-18 and read "
                 + "as two facts rather than one.",
-            ["managedBy"] =
-                "Captured but not yet shown. It is the owner of record - a distinguished name the "
-                + "directory carries - and it is a different thing from the security owner the "
-                + "permissions section already shows. Putting the two side by side without "
-                + "wording that distinction would invite an operator to read a contact as a "
-                + "controller, which is the wrong answer to who can change this object.",
-            ["dSHeuristics"] =
-                "The raw form is not the useful form. It is a string in which each character "
-                + "position is a separate forest-wide setting, so the value reads as "
-                + "'000000000100000f' and tells an operator nothing - while the fact it carries, "
-                + "that four operator groups may have been removed from AdminSDHolder "
-                + "protection, belongs beside the protected set where somebody can act on it. It "
-                + "is also a fact about the forest rather than about the object an operator "
-                + "opened, and this view answers questions about one object.",
         };
 
     /// <summary>
@@ -417,63 +397,63 @@ internal static class ObjectSectionCatalog
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["objectClass"] = "Class",
-            ["objectGUID"] = "Object identifier",
-            ["objectSid"] = "Security identifier",
-            ["sAMAccountName"] = "Account name",
-            ["userPrincipalName"] = "User principal name",
+            ["objectGUID"] = "Object Identifier",
+            ["objectSid"] = "Security Identifier",
+            ["sAMAccountName"] = "Account Name",
+            ["userPrincipalName"] = "User Principal Name",
             ["description"] = "Description",
             ["whenCreated"] = "Created",
-            ["accountExpires"] = "Account expires",
-            ["lastLogonTimestamp"] = "Last logon (approximate)",
-            ["sIDHistory"] = "Former identifiers",
-            ["userAccountControl"] = "Account state",
+            ["accountExpires"] = "Account Expires",
+            ["lastLogonTimestamp"] = "Last Logon (approximate)",
+            ["sIDHistory"] = "Former Identifiers",
+            ["userAccountControl"] = "Account State",
             ["adminCount"] = "Protected by AdminSDHolder",
-            ["pwdLastSet"] = "Password last set",
-            ["primaryGroupID"] = "Primary group",
-            ["operatingSystem"] = "Operating system",
-            ["operatingSystemVersion"] = "Operating system version",
-            ["servicePrincipalName"] = "Service principal names",
+            ["pwdLastSet"] = "Password Last Set",
+            ["primaryGroupID"] = "Primary Group",
+            ["operatingSystem"] = "Operating System",
+            ["operatingSystemVersion"] = "Operating System Version",
+            ["servicePrincipalName"] = "Service Principal Names",
             ["msDS-AllowedToDelegateTo"] = "May delegate to",
             ["msDS-AllowedToActOnBehalfOfOtherIdentity"] = "May be acted for by",
-            ["msDS-KeyCredentialLink"] = "Key credentials",
-            ["msDS-SupportedEncryptionTypes"] = "Supported encryption types",
-            ["ms-Mcs-AdmPwdExpirationTime"] = "Legacy LAPS password expires",
-            ["msLAPS-PasswordExpirationTime"] = "Windows LAPS password expires",
+            ["msDS-KeyCredentialLink"] = "Key Credentials",
+            ["msDS-SupportedEncryptionTypes"] = "Supported Encryption Types",
+            ["ms-Mcs-AdmPwdExpirationTime"] = "Legacy LAPS Password Expires",
+            ["msLAPS-PasswordExpirationTime"] = "Windows LAPS Password Expires",
             ["memberOf"] = "Belongs to",
             ["member"] = "Members",
-            ["groupType"] = "Group type",
-            ["msDS-GroupMSAMembership"] = "Password readers",
-            ["minPwdLength"] = "Minimum password length",
-            ["maxPwdAge"] = "Maximum password age",
-            ["minPwdAge"] = "Minimum password age",
-            ["pwdHistoryLength"] = "Passwords remembered",
-            ["pwdProperties"] = "Password options",
+            ["groupType"] = "Group Type",
+            ["msDS-GroupMSAMembership"] = "Password Readers",
+            ["minPwdLength"] = "Minimum Password Length",
+            ["maxPwdAge"] = "Maximum Password Age",
+            ["minPwdAge"] = "Minimum Password Age",
+            ["pwdHistoryLength"] = "Passwords Remembered",
+            ["pwdProperties"] = "Password Options",
             ["lockoutThreshold"] = "Lockout after",
             ["lockoutDuration"] = "Lockout lasts",
             ["lockOutObservationWindow"] = "Failed attempts counted within",
             ["msDS-PasswordSettingsPrecedence"] = "Precedence",
             ["msDS-PSOAppliesTo"] = "Applies to",
-            ["msDS-MinimumPasswordLength"] = "Minimum password length",
-            ["msDS-MaximumPasswordAge"] = "Maximum password age",
-            ["msDS-MinimumPasswordAge"] = "Minimum password age",
-            ["msDS-PasswordHistoryLength"] = "Passwords remembered",
-            ["msDS-PasswordComplexityEnabled"] = "Complexity required",
-            ["msDS-PasswordReversibleEncryptionEnabled"] = "Reversible encryption",
+            ["msDS-MinimumPasswordLength"] = "Minimum Password Length",
+            ["msDS-MaximumPasswordAge"] = "Maximum Password Age",
+            ["msDS-MinimumPasswordAge"] = "Minimum Password Age",
+            ["msDS-PasswordHistoryLength"] = "Passwords Remembered",
+            ["msDS-PasswordComplexityEnabled"] = "Complexity Required",
+            ["msDS-PasswordReversibleEncryptionEnabled"] = "Reversible Encryption",
             ["msDS-LockoutThreshold"] = "Lockout after",
             ["msDS-LockoutDuration"] = "Lockout lasts",
             ["msDS-LockoutObservationWindow"] = "Failed attempts counted within",
-            ["gPLink"] = "Linked policies",
-            ["gPOptions"] = "Inheritance blocked",
-            ["displayName"] = "Display name",
-            ["gPCFileSysPath"] = "Policy files",
-            ["flags"] = "Policy flags",
+            ["gPLink"] = "Linked Policies",
+            ["gPOptions"] = "Inheritance Blocked",
+            ["displayName"] = "Display Name",
+            ["gPCFileSysPath"] = "Policy Files",
+            ["flags"] = "Policy Flags",
             ["versionNumber"] = "Version",
-            ["gPCMachineExtensionNames"] = "Client-side extensions",
-            ["gPCWQLFilter"] = "WMI filter",
-            ["msWMI-Name"] = "Filter name",
-            ["msWMI-ID"] = "Filter identifier",
+            ["gPCMachineExtensionNames"] = "Client-side Extensions",
+            ["gPCWQLFilter"] = "WMI Filter",
+            ["msWMI-Name"] = "Filter Name",
+            ["msWMI-ID"] = "Filter Identifier",
             ["msWMI-Parm2"] = "Query",
-            ["nTSecurityDescriptor"] = "Security descriptor",
+            ["nTSecurityDescriptor"] = "Security Descriptor",
         };
 
     /// <summary>

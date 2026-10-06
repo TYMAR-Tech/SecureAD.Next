@@ -171,14 +171,14 @@ public sealed class AssetsViewModelTests
     // ---------------------------------------------------------------------------------------
 
     /// <summary>
-    /// One level is how a directory is browsed, and what the predecessor showed on arrival.
+    /// Subtree is the owner-selected initial browsing scope.
     /// </summary>
     [Fact]
-    public void AScreenOpensAtOneLevel()
+    public void AScreenOpensAtSubtree()
     {
         var screen = new AssetsViewModel(new FakeAssetSource());
 
-        Assert.Equal(ListingScope.OneLevel, screen.Scope);
+        Assert.Equal(ListingScope.Subtree, screen.Scope);
     }
 
     [Fact]
@@ -188,9 +188,9 @@ public sealed class AssetsViewModelTests
         var screen = new AssetsViewModel(assets);
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
-        screen.Scope = ListingScope.Subtree;
+        screen.Scope = ListingScope.OneLevel;
 
-        Assert.Equal(ListingScope.Subtree, assets.ListedScope);
+        Assert.Equal(ListingScope.OneLevel, assets.ListedScope);
     }
 
     /// <summary>
@@ -202,6 +202,7 @@ public sealed class AssetsViewModelTests
     public void TheParentColumnIsHiddenWhileEveryRowSharesTheSameParent()
     {
         var screen = Showing(TreeOfOneDomain(), APageOfOne());
+        screen.Scope = ListingScope.OneLevel;
 
         Assert.False(screen.ParentIsWorthShowing);
     }
@@ -210,7 +211,7 @@ public sealed class AssetsViewModelTests
     public void TheParentColumnAppearsWhenTheLevelReachesAcrossContainers()
     {
         var screen = Showing(TreeOfOneDomain(), APageOfOne());
-
+        screen.Scope = ListingScope.OneLevel;
         screen.Scope = ListingScope.Subtree;
 
         Assert.True(screen.ParentIsWorthShowing);

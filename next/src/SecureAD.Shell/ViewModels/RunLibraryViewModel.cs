@@ -61,7 +61,10 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     private long _analysisEpoch;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasProblem))]
     private string? _problem;
+
+    public bool HasProblem => !string.IsNullOrWhiteSpace(Problem);
 
     [ObservableProperty]
     private bool _hasLooked;
@@ -83,7 +86,10 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// screen exists to avoid, and naming the run is what stops it being possible.
     /// </remarks>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAnalysisStatus))]
     private string? _analysisStatus;
+
+    public bool HasAnalysisStatus => !string.IsNullOrWhiteSpace(AnalysisStatus);
 
     /// <summary>Creates the run library screen's state.</summary>
     /// <param name="location">Where this installation keeps its runs.</param>

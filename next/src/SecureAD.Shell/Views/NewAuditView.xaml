@@ -433,7 +433,7 @@
                        ANALYSING IS THE DEFAULT. An operator who chooses nothing should get a
                        finished audit; the run that stops early is the one he has to ask for.
 
-                       STACKED, NOT IN A ROW, matching the only other ChoiceRadio in the product:
+                       STACKED, NOT IN A ROW:
                        one per line reads as "pick exactly one" without having to be hovered. -->
                   <TextBlock Text="What this run will do"
                              Style="{StaticResource SectionTitle}" />

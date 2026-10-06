@@ -18,6 +18,10 @@ internal sealed partial class AssetReadRequest(
     public Func<bool> CaptureReadValidity() => () => session is not null && isSelected() && session.IsCurrent;
 
     /// <inheritdoc/>
+    public Result<ObjectSearchPage> SearchObjects(string bundleDirectory, string search, ObjectSearchMark? after) =>
+        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.SearchObjects(search, after, _readCancellation), _readCancellation));
+
+    /// <inheritdoc/>
     public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after) =>
         WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.FindDelegationPrincipals(search, after, _readCancellation), _readCancellation));
 

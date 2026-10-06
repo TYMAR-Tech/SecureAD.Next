@@ -51,6 +51,357 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-confirmed return to core work after a Rules comparison mockup, 2026-10-05.**
+After the remaining-work review, the owner agreed to return to opening-performance and Stage 7
+completion work, but first requested a Rules mockup with a selectable list on the left and the
+selected rule's explanation on the right, instead of expanding cards down the page.
+The comparison preview keeps Rules at top level without a directory tree, with independently
+scrollable list/details, an adjustable divider and unchanged separation of severity, saved outcome
+and guidance.
+This request authorizes a mockup only, not replacement of the implemented WPF Rules layout or new
+measurement/optimization code; other tree and pop-out decisions remain deferred.
+The owner subsequently approved replacing expanded cards with the side-by-side Rules list/detail
+view, then committing and pushing the accumulated UI work in this session.
+Address the outstanding baseline CI/merge issue last before the Stage 7 continuation handoff;
+merge only after the relevant exact-head checks pass, without treating a queued run as success.
+Keep this approval separate from performance optimization, live AD access or pop-out implementation,
+and preserve current packages and all earlier evidence/verification artifacts.
+The full-suite run exposed an older control-edge layout host that did not load the embedded
+object-section navigation, followed by genuine short-window space failures once it did.
+The owner explicitly approved a bounded correction before committing: scroll the object
+header/navigation within a compact area and keep permission tables and proof reachable below it,
+without changing any results.
+Retain the failed full-suite attempt; long qualification text must be scrollable end to end rather
+than falsely required to fit in a single viewport.
+The [list/detail and compact-object checkpoint](../.v-ui-rules-split-20261006-c48a/handoff.json)
+records 95 passing final rebuilt checks and rebuilt negative witnesses for all ten required
+split/layout cases; the retained 7,074-case full run was not green, and the judging-progress
+timeout remains for the final CI correction.
+
+**Rules-tab preview requested, 2026-10-05.**
+The owner selected Rules for a design mockup, specifically asking for better formatting and a
+cleaner interface for the expanded "What this rule looks for" text.
+The proposed preview retains per-rule expansion but separates Looks for, Evidence used and
+Does not establish/exclusions into readable labelled text and bullets, with a separate saved-run
+outcome strip and severity/category labels.
+Use current rule guidance as the source, preserve every qualification and whole-run scope, and
+keep no findings, incomplete, failed and not-run outcomes distinct; fictional preview counts are
+not measurements or a change to any security rule.
+This request authorizes a mockup only, not application edits, new rule claims or pop-out windows;
+the opening-performance investigation remains outstanding.
+The owner approved the proposed Rules presentation, but raised its navigation placement before
+implementation: Rules is a whole-run overview, not tied to the selected asset, and may belong beside
+Home, Dashboard and Assets rather than inside Assets.
+He is deferring the broader decision about directory-tree presence across other views until using
+his external monitor; do not remove their trees as part of this discussion.
+Recommend a top-level Rules page without the tree, bound to the same opened run, and settle that
+specific navigation change before implementation rather than silently moving other views.
+The owner explicitly approved Home | Dashboard | Rules | Assets | Settings, removing the Rules
+subtab from Assets and its tree while keeping all other Assets views unchanged.
+Rules must identify the same selected run, load only its saved executions through the protected
+reader, and keep refusal/loading/not-run states distinct without introducing browsing-time analysis.
+The implemented description layout uses authored guidance paragraphs for Looks for and Scope and
+limitations, and the rule's declared captured/derived inputs for Evidence used, preserving the
+canonical guidance rather than maintaining a second prose copy or guessing sentence boundaries.
+The [standalone Rules checkpoint](../.v-ui-rules-20261005-b61e/handoff.json) records 767 passing
+combined checks and 106 passing focused checks after the post-render correct-source rebuild, with
+all 55 new/adapted cases detecting 19 rebuilt assertion defects and passing restored controls.
+The old Assets rule-reading branch was removed rather than retained as a parallel implementation.
+All 18 rule descriptions have authored scope paragraphs; 17 retain their text unchanged apart from
+whitespace, and SEC-071 gains a report-condition introduction while retaining its existing qualification.
+The real WPF render was checked after the Fluent expansion animation, with copyable guidance,
+declared inputs and Microsoft reference addresses; rule logic, outcomes and saved formats are unchanged.
+Owner visual and physical-display acceptance remain outstanding, as do slow opening and the earlier
+unrelated regression/merge blockers, with no package replacement, commit or push.
+
+**Delegations design preview requested, 2026-10-05.**
+While testing the Home build, the owner requested a Delegations-tab mockup using the current visual
+direction.
+Prepare a fictional-data preview with a compact two-step principal/permission search, a readable
+original-entry table, and a selected-entry panel separating recorded scope from membership attribution.
+Keep direct/group-held and inherited-entry choices, domain disambiguation, visible limitations and
+the recorded-permissions-not-effective-access boundary; preview selection and filter controls do
+not authorize application changes or any new authorization/path analysis.
+This additional mockup does not resolve the reported slow opening or authorize changes to integrity checks.
+The owner approved implementing this Delegations preview within the existing tab, acknowledging
+its information density.
+He will consider whether some application views belong in pop-out windows when using his external
+monitor; no pop-out windows or new window-management behaviour are approved in this slice.
+The [Delegations presentation checkpoint](../.v-ui-delegations-20261005-a92d/handoff.json) records
+721 passing combined checks after a final correct-source rebuild, with all seven new/adapted
+cases detecting seven rebuilt defects and passing restored controls.
+The in-tab layout separates search, original-entry results and selected membership/permission
+evidence, retaining full supporting links rather than replacing them with an incomplete route
+diagram; controls and details scroll on smaller windows while results retain usable height.
+Existing whole-capture coverage remains in the shared Assets footer, and lookup, counting,
+generation binding, cancellation and saved formats remain unchanged.
+Owner visual and physical-display acceptance and earlier unrelated blockers remain outstanding,
+with no package replacement, commit or push.
+
+**Owner feedback and next work — Home preview and slow opening, 2026-10-05.**
+The owner reports that Dashboard looks good, and selected Home as the last immediate UI area,
+requesting a mockup with a short explanation of what SecureAD is and room for design suggestions.
+This is positive Dashboard feedback, not blanket physical-display acceptance or clearance of the
+existing regression/merge blockers.
+He also reports very slow opening, attributes it to hash calculations and suspects costs elsewhere,
+and asked whether to finish the UI redesign before investigating.
+Recommend the Home mockup and one explicitly approved bounded Home implementation, then make
+startup/selected-run opening and repeated verification the next engineering priority; do not turn
+this into further general UI expansion.
+Distinguish startup, metadata-only library listing, selected-run verification, reopening and
+subsequent browsing: Home listing must not hash evidence under the existing accepted decision,
+and verified results are already shared for the protected open-run lifetime.
+The present report has no new timing/build provenance, and earlier retained evidence includes a
+file-open delay rather than hash CPU time; do not assert one confirmed cause for the current delay.
+No integrity-policy change, optimization, live access or new measurement tooling is authorized by
+the preview request.
+The standalone fictional Home preview proposes "Capture once. Investigate offline." with a short
+product explanation, a compact library-location strip, separate Capture/Analysis columns, a
+prominent Open run action and left-aligned name/notes fields in the selected-run panel.
+It demonstrates completed, unassessed and interrupted runs, keeping folder-date qualification and
+baseline grouping, with location and infrequent run actions behind disclosures.
+The owner approved implementing this Home preview.
+Running-analysis status/Stop and action failures must remain directly accessible rather than being
+hidden with the infrequent actions or when another run is selected.
+Preserve metadata-only listing, scope/baseline grouping, explicit confirmation and command gating;
+the slow-opening investigation remains separate, with no integrity or hashing changes in this UI slice.
+The [Home implementation checkpoint](../.v-ui-home-20261005-f82b/handoff.json) records 711 passing
+combined Home/Dashboard/Assets/library checks after a final correct-source rebuild and all nine new
+cases detecting rebuilt defects with restored controls.
+The actual WPF view was rendered with fictional runs; scope headings are explicitly legible,
+unsealed runs have Open disabled while the underlying refusal remains intact, and running analysis
+status/Stop are independent of selected-run disclosures.
+The initial analysis-banner mutation exposed an assertion swallowed inside a simulated callback;
+the corrected check observes state there and asserts afterwards, and both attempts are retained.
+Owner visual and physical-display acceptance remain outstanding, with the earlier regression/merge
+blockers unchanged and no commit, push or package replacement.
+
+**Owner-selected next UI work — Dashboard redesign, 2026-10-05.**
+The owner wants further Assets refinements but is deferring that visual review until his external
+monitor is available because the 13-inch laptop is too small for it.
+He selected Dashboard next and requested a drastic overhaul, supplying its current inventory screen.
+Carry the approved coloured-surface/card direction into a concrete Dashboard preview before WPF
+implementation; retain the accepted coverage-first, per-domain counting and exact Group Policy
+shortfall commitments.
+The remaining Assets and physical display checks stay outstanding, not accepted or prerequisites
+to proceeding with Dashboard design.
+The owner approved a Dashboard mockup first, preserving its coverage-and-inventory purpose rather
+than adding security findings to this slice.
+The standalone fictional preview proposes four inventory cards, a compact per-domain table,
+expandable scope/exclusions and separate Group Policy/membership coverage panels, with scenarios
+for all domains read, a deliberately excluded domain and a domain with no writable controller.
+The owner explicitly approved implementing that preview in WPF: coverage-first header, expandable
+scope, distinct inventory cards, domain table and separate Group Policy/membership coverage panels.
+Retain zero-policy, missing/failed derivation, unread/excluded domain and confidential-attribute
+qualifications; no risk score, finding totals, changed counting semantics or new evidence reads are
+authorized by this redesign.
+The [Dashboard implementation checkpoint](../.v-ui-dashboard-20261005-e19a/handoff.json) records
+610 passing combined Dashboard/Assets checks after a final correct-source rebuild, with all 21 new
+cases detecting ten rebuilt assertion defects and passing restored controls.
+The real WPF presentation was rendered with fictional complete and incomplete captures; the domain
+table preserves uncounted-domain explanations, the membership panel distinguishes known zero from
+missing/failed derivation, and a zero-policy capture has no misleading completion bar.
+Owner visual and physical-display acceptance remain outstanding; this checkpoint does not clear
+the older full-suite timeout or baseline merge blocker, or authorize commit, push or package replacement.
+
+**Owner icon feedback and redesign planning, 2026-10-05.**
+The owner reports that the icons seem to work and supplied a screenshot, but wants the directory
+navigation area a little wider.
+This is positive feedback on the icon presentation, not blanket acceptance of all physical display
+checks or clearance of the existing regression/merge blockers.
+The recommendation is a modestly wider default tree pane with a draggable divider, then one shared
+visual foundation demonstrated on Assets and object details before page-by-page refinement.
+The proposed width/resizing behavior and concrete visual treatment still require presentation
+approval; no broader redesign is authorized merely by discussing the implementation sequence.
+The owner further emphasized a fresh appearance, easy reading and navigation, and strong preference
+for adaptation to monitor size.
+Treat responsive use of available space and per-monitor scaling as design requirements: maintain
+readable text, adapt attribute columns and control wrapping, and keep long values, selected context
+and capture qualifications accessible rather than merely enlarging a fixed layout.
+These requirements are not acceptance of unperformed physical display checks or approval of a
+specific breakpoint, replacement screen or theme.
+The owner approved preparing the same Assets/object-details proposal at laptop and external-monitor
+sizes before implementation.
+The standalone synthetic preview demonstrates a 360-pixel adjustable tree, stronger panel and
+attribute contrast, and two/three-column attributes while retaining the tree beside object details.
+Its HTML is only a visual review aid, not a change from WPF; the concrete presentation still awaits
+owner approval and does not clear the existing verification or merge blockers.
+The owner liked the initial direction but rejected its still predominantly white content area and
+insufficient distinction between attribute titles and values, then suggested cards.
+He approved revising the mockup with blue-grey surroundings, tinted section headings, smaller
+attribute labels and larger dark values; show compact cards and full-width treatment for long values.
+The owner subsequently requested titles in the form "Account Name (sAMAccountName)" and a mockup
+first: keep the technical name inline in parentheses, rather than deliberately placing it on a
+separate line, with natural wrapping when space requires it.
+After viewing that revision, the owner confirmed he prefers the inline parenthesized titles;
+retain this presentation with the technical name visually quieter than the friendly title.
+This approval is for the revised preview only, not implementation in WPF.
+After seeing the card revision, the owner confirmed "now we are getting somewhere": retain this
+colour/card/label-value direction for the next bounded proposal rather than returning to the
+white-on-white treatment.
+This is positive design feedback, not blanket implementation approval or physical display acceptance.
+After approving the inline-title card mockup, the owner said "lets try it" and authorized the first
+bounded Assets/object-details WPF implementation: coloured surfaces, responsive cards, inline LDAP
+titles, a wider adjustable tree retained beside details, and the existing section choices above the
+detail area.
+Preserve every section, selected-only reads, copyable values, original/raw evidence and qualifications;
+this is not approval for unrelated screen redesigns, package replacement, commit or push.
+The [WPF pilot checkpoint](../.v-ui-cards-20261005-6e2a/handoff.json) records implementation on
+ui-navigation with 474 passing bounded checks after a final correct-source rebuild and all 19
+new/adapted cases detecting 15 rebuilt defects with passing restored controls.
+Real WPF rendering and controls were checked offline with synthetic data; physical display and
+owner lab acceptance remain outstanding, and this does not clear the previous full-suite or merge
+blockers.
+The pilot also corrects section selection being cleared during loaded-content replacement by
+binding navigation to the existing section key; it does not broaden reads, change persisted formats
+or require a new capture or judgement.
+The owner tried the pilot and described it as a good starting point, but identified the lower-tree
+scope area as differing from the approved mockup: the implementation still has vertically stacked
+radio buttons under "Level" and a prominent directory path rather than the compact horizontal scope
+control and quieter path.
+Record this as a remaining presentation mismatch, not blanket acceptance of the UI or display checks.
+The owner approved correcting only this lower-tree area to the mockup: "Browsing Scope" above
+horizontal Base / One level / Subtree segments with a blue selected treatment, and a smaller,
+regular-weight directory path underneath.
+Keep scope semantics, initial Subtree, deliberate selection and whole-capture search disabling
+unchanged, and verify that all three options fit at the divider's minimum width.
+The [scope-presentation checkpoint](../.v-ui-scope-20261005-4d91/handoff.json) records 479 passing
+combined checks after the final correct-source rebuild, including actual WPF control checks at
+270/360-pixel navigation widths and 1x/1.5x layout scale.
+All five new cases detected six rebuilt assertion defects with restored controls; the initial
+symmetric-padding variant that survived is retained separately rather than counted as a negative
+witness.
+This correction remains uncommitted, does not change scope semantics or require rejudging, and still
+needs the owner's visual trial rather than treating simulated scale checks as physical display acceptance.
+The owner next requested moving Capture coverage out of the strip above the tree and into the
+bottom-right area under the grid, to the far right of the object paging controls, reclaiming the
+space above the tree and results.
+Keep capture-wide coverage accessible on every Assets view and while reading an object, retain a
+visible incomplete-capture indicator, and show the existing details above the footer with scrolling;
+allow the footer to wrap on narrow windows rather than clipping warnings or paging controls.
+The [coverage-footer checkpoint](../.v-ui-coverage-footer-20261005-9b62/handoff.json) records 483
+passing combined checks after the final correct-source rebuild, with all four new cases detecting
+six rebuilt defects and passing restored controls.
+Synthetic real-WPF checks cover reclaimed top space, right-aligned coverage beside the object
+pager, working page commands, narrow-window wrapping, scrollable details above the footer and
+continued coverage access across Assets views and object details.
+No coverage calculation or saved format changed, and all assistant builds remained isolated;
+concurrent publish-output changes were recorded and left as found rather than restored.
+Owner visual acceptance and the earlier unrelated verification/merge blockers remain outstanding.
+The owner reports that the relocated coverage control is better, then identified empty OS cards
+on a user as misleading: "Not in this bundle" suggests missing information where the normal user
+presentation should not offer computer-oriented fields.
+The owner approved the bounded Account-card correction: computer OS fields should not be empty
+cards on ordinary user accounts, relevant missing fields stay visible, and "No captured value"
+replaces "Not in this bundle" with the explanation "The attribute may be unset or unavailable to
+the capture account"; explicit "Not read" remains distinct.
+Retain the existing distinction between class-based presentation and missing evidence: absence
+alone does not establish that a field is inapplicable, unset or unreadable, and captured values
+outside a class's normal sections must remain accessible.
+Implementation inspection found that Other captured values is still a placeholder, despite the
+catalogue describing it as the destination for unclaimed values.
+Do not remove populated fields from their current presentation until a working readback destination
+exists.
+The owner approved completing Other captured values as part of this correction, with "No additional
+captured values" when there are none and an explicit "Not read" state when evidence was not read.
+When asked whether that section should also expose the catalogue's older exclusions (managedBy,
+dNSHostName, dSHeuristics and objectCategory), he requested a mockup with made-up information first.
+The owner approved the fictional-data preview, including exposing those formerly excluded populated
+attributes under their LDAP names in Other captured values, without treating managedBy as the
+security owner or interpreting raw dSHeuristics settings as a security conclusion.
+Implement the approved Account-card correction and that read-only section together; the
+distinguished name remains in the header rather than being repeated as a card.
+The [class-aware attribute checkpoint](../.v-ui-attribute-cards-20261005-c73a/handoff.json) records
+544 passing combined checks after the final correct-source rebuild, including all 34 new/adapted
+cases detecting rebuilt assertion defects with restored controls.
+Normal Account cards now reserve OS fields for computers; Other captured values displays populated
+unclaimed attributes for the captured class, including the formerly excluded values, while retaining
+stored order and the distinction between empty, unread and refused results.
+Reads remain selected-only and bound to the protected object lifetime; no capture, judgement or
+saved-format change is required, and owner visual acceptance and earlier unrelated blockers remain open.
+The owner next raised the shared Overview cards, specifically a computer showing an empty UPN
+card, as the next class-aware presentation item.
+Apply the same distinction in the proposal: normal presentation is chosen by captured object type,
+not by absence alone, and an unusual populated UPN must remain accessible in Other captured values.
+This discussion is not a blanket instruction to hide every empty attribute or a claim that computers
+cannot carry a UPN.
+The owner requested a comprehensive Microsoft-documentation-backed pass over supported object types
+and captured attributes rather than successive one-card corrections.
+Microsoft's [Computer class](https://learn.microsoft.com/en-us/windows/win32/adschema/c-computer)
+explicitly lists userPrincipalName as an optional inherited User attribute, and
+[class definitions](https://learn.microsoft.com/en-us/windows/win32/ad/characteristics-of-object-classes)
+include superclass and auxiliary-class attributes: schema allowance is not proof of a populated value.
+Microsoft also documents that [read permissions can silently omit properties](https://learn.microsoft.com/en-us/windows/win32/ad/access-control-and-read-operations).
+Do not treat the capture-justification catalogue as a schema applicability authority or published
+standard definitions as proof of every customer's extended schema.
+The current schema capture does not include complete class attribute/inheritance lists, so this UI
+work must not claim to have established forest-specific applicability from the saved data.
+The owner approved a single display policy across all existing attribute-card sections: populated
+captured values by default, with "Show missing attributes" available to reveal omitted cards.
+This supersedes the earlier default of keeping relevant missing cards visible; failed/unperformed
+reads, capture gaps and section-level analysis qualifications remain visible independently.
+The toggle filters already-loaded presentation only, not capture, classification, counts or saved
+results; it starts off when a section is freshly loaded and is not a persisted preference.
+The [shared card-policy checkpoint](../.v-ui-populated-cards-20261005-d81c/handoff.json) records
+556 passing combined checks after the final correct-source rebuild and all 14 new/adapted cases
+detecting rebuilt defects with passing restored controls.
+Overview, Account, the shared attribute sections, linked policies and Other captured values now use
+the same presentation filter; actual recorded empty strings and zero-length byte values are retained,
+while empty optional cards can be revealed without another read.
+This is a Microsoft-grounded presence/absence display policy, not a completed forest-schema
+applicability engine or permission inference; original capture meaning and other section warnings
+remain unchanged.
+
+**Owner-selected next UI slice — directory-tree icons, 2026-10-05.**
+After the navigation lab candidate and its bounded verification handoff, the owner selected icons
+as the next UI item to consider.
+Recommend a tree-only pass using embedded Microsoft Fluent vector assets, distinguishing domains,
+OUs, ordinary containers, Configuration and Schema where captured metadata establishes the type,
+and retaining an explicit generic/uncaptured treatment otherwise.
+The owner approved that tree-only icon set: small dark-blue/slate icons immediately before the
+labels, with domain/network, hierarchy-folder OU, folder container, settings Configuration and
+layered Schema shapes, plus a generic treatment retaining the existing uncaptured indication.
+This does not reopen the unrelated test-repair cycle, authorize a wider theme change, or clear the
+existing merge/final-regression blockers.
+
+**Tree-icon checkpoint — focused verification passed, 2026-10-05.**
+The approved tree-only icons are implemented on ui-navigation using five Microsoft Fluent
+20-pixel vector sources, rendered at 16 pixels with the existing dark-blue/slate brushes; the OU
+combines the folder and organization symbols and the existing uncaptured wording remains visible.
+Object class and partition kind are carried from the captured tables without a persisted-format
+change, and neither names nor missing evidence are used to invent an object type.
+The Microsoft source revision and MIT license are retained and the license is embedded in the app;
+no icon font, new package, capture, rejudging, publication, commit or push was introduced.
+The [focused checkpoint](../.v-ui-tree-icons-20261005-4af0/handoff.json) records 268 passing relevant
+checks after the restored-source rebuild and all 24 new/adapted cases detecting ten rebuilt defects
+with passing restored controls.
+Existing navigation work was preserved; this does not clear the unrelated full-suite timeout or
+the GitHub Actions outage/merge blocker, and owner lab/display acceptance remains outstanding.
+
+**Navigation implementation checkpoint — lab candidate, final verification blocked, 2026-10-05.**
+The approved first navigation slice is implemented and uncommitted on **ui-navigation** in the
+existing Stage 7 checkout: whole-capture object search above the tree, default Subtree browsing,
+search result domain/location, and compact expandable capture coverage.
+All 33 new/adapted navigation cases have rebuilt negative witnesses, and actual navigation and
+coverage controls passed the focused layout checks; the isolated tree-resource test's missing WPF
+startup was corrected without changing the application's startup.
+The full offline run completed **6,932 passed / one failed / 6,933 total**: the existing
+`NewAuditViewModelTests.HowFarTheJudgingHasGotIsShown` timed out, with cause not established.
+The owner raised the cost and length of the session, so no further open-ended test-repair cycle is
+authorized by this checkpoint; retain the failed runs and report the blocker rather than claiming
+the navigation build is fully verified.
+The owner was told the branch is available for a separate-folder lab trial, not production adoption;
+subsequent preservation differences were confined to Release/publish outputs, consistent with that
+build activity, while no unexpected source changes or recorded lab-evidence changes were detected.
+The audit/delegation baseline was committed and pushed in [#3](https://github.com/TYMAR-Tech/SecureAD.Next/pull/3),
+but is **not merged**: the latest exact-head CI run for
+`be596f04f9cfbcec4ff444a81a4aa924ff7195c5` was cancelled, not passed.
+GitHub's subsequently checked annotation states **The job was not acquired by Runner of type
+hosted even after multiple attempts**: this last run never obtained a runner, has no job steps/log,
+and is not evidence of a person cancelling it or another test failure.
+The [blocked handoff](../.v-ui-navigation-20261005-e4b6/handoff-blocked.json) retains the branch,
+test, mutation, preservation and CI references; the broader theme/icon overhaul remains unstarted.
+
 **Owner-selected first UI implementation and production delegation feedback, 2026-10-05.**
 Do the navigation changes first: whole-capture object search above the tree, Subtree as the initial
 browsing scope, and replacement of the large gap box with compact, accessible capture coverage.
@@ -83,6 +434,17 @@ the latter must remain apparent on the relevant screen, with its details still a
 The recommended replacement is a compact **Capture coverage** control with a visible incomplete
 state when this run has capture gaps, while Help explains general exclusions; its concrete design
 and the remaining search interaction are still to be agreed before implementation.
+
+**Owner-approved first navigation layout, 2026-10-05.**
+Use **Search captured objects** above the tree with an explicit Search button and Enter submission,
+not a whole-capture query on every keystroke.
+Show global matches in the **Objects** area with name, type, domain and location; double-click opens
+the selected object, and **Clear search** returns to tree browsing.
+Start browsing at **Subtree** and retain the existing Base and One level alternatives.
+Replace the persistent lower-tree gap card with compact **Capture coverage** above the content;
+its accessible details separate general exclusions from actual run-specific unread/missing data,
+and the latter remains visible as **Capture incomplete**.
+This approved batch excludes a full Help page, theme overhaul and icons, which remain later UI work.
 
 **Owner-stated UI redesign requirements, 2026-10-05.**
 The owner confirmed UI work is next while he tests the latest nested-delegation changes in the lab,

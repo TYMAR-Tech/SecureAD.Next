@@ -60,6 +60,10 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     }
 
     /// <inheritdoc/>
+    public Result<ObjectSearchPage> SearchObjects(string bundleDirectory, string search, ObjectSearchMark? after) =>
+        WithRun(bundleDirectory, reader => reader.SearchObjects(bundleDirectory, search, after));
+
+    /// <inheritdoc/>
     public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after) =>
         WithRun(bundleDirectory, reader => reader.FindDelegationPrincipals(bundleDirectory, search, after));
 

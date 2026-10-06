@@ -10,15 +10,16 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed partial class AssetsViewModel
 {
     private sealed record ListingQuestion(AssetsPane Pane, string Bundle, string? Container,
-        ListingScope? Scope, int Page, FindingsQuery? Findings);
+        ListingScope? Scope, int Page, FindingsQuery? Findings, string? Search);
 
     private readonly Dictionary<AssetsPane, (ListingQuestion Question, Func<bool> IsCurrent)> _pages = [];
 
     private ListingQuestion Question() => new(Pane, BundlePath!,
-        Pane is AssetsPane.Rules or AssetsPane.Delegations ? null : Selected?.DistinguishedName,
-        Pane is AssetsPane.Objects or AssetsPane.Laps ? Scope : null,
-        Pane == AssetsPane.Objects ? PageNumber : 1,
-        Pane == AssetsPane.Findings ? FindingsAsked() : null);
+        Pane is AssetsPane.Delegations || IsObjectSearch ? null : Selected?.DistinguishedName,
+        Pane is AssetsPane.Objects or AssetsPane.Laps && !IsObjectSearch ? Scope : null,
+        Pane == AssetsPane.Objects ? IsObjectSearch ? _objectSearchBack.Count + 1 : PageNumber : 1,
+        Pane == AssetsPane.Findings ? FindingsAsked() : null,
+        IsObjectSearch ? _objectSearchQuery : null);
 
     private void LoadVisible()
     {
@@ -32,7 +33,7 @@ internal sealed partial class AssetsViewModel
 
         var question = Question();
         ClearListing(question.Pane);
-        if (question.Pane is AssetsPane.Objects or AssetsPane.Laps && question.Container is null)
+        if (question.Pane is AssetsPane.Objects or AssetsPane.Laps && question.Container is null && question.Search is null)
         {
             CancelRead();
             Announce();
@@ -46,6 +47,11 @@ internal sealed partial class AssetsViewModel
                 Announce();
                 break;
             case AssetsPane.Objects:
+                if (question.Search is not null)
+                {
+                    await ReadObjectSearchPageAsync(_objectSearchAfter, 0);
+                    break;
+                }
                 await ReadViewAsync(question.Bundle,
                     reader => reader.ListObjects(question.Bundle, question.Container!, question.Scope!.Value, question.Page),
                     (page, current) =>
@@ -114,20 +120,6 @@ internal sealed partial class AssetsViewModel
                     Tier0SummaryText = SavedPathText.Summary(read.Summary);
                     RememberPage(question, current);
                 }, saved: true);
-                break;
-            case AssetsPane.Rules:
-                await ReadViewAsync(question.Bundle, reader => reader.ReadRuleExecutions(question.Bundle),
-                    (read, current) =>
-                    {
-                        var executions = read.Executions.ToDictionary(row => row.RuleId, StringComparer.OrdinalIgnoreCase);
-                        foreach (var rule in RuleCatalogue.All)
-                            RuleRows.Add(new RuleRowViewModel(rule.Definition.Id, rule.Definition,
-                                executions.GetValueOrDefault(rule.Definition.Id)));
-                        var shipped = RuleCatalogue.All.Select(rule => rule.Definition.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                        foreach (var execution in executions.Values.Where(row => !shipped.Contains(row.RuleId)))
-                            RuleRows.Add(new RuleRowViewModel(execution.RuleId, null, execution));
-                        RememberPage(question, current);
-                    }, saved: true);
                 break;
         }
     }
@@ -215,7 +207,6 @@ internal sealed partial class AssetsViewModel
         if (tree) Refusal = ViewRefusal;
         else if (Pane == AssetsPane.Findings) FindingsRefusal = ViewRefusal;
         else if (Pane == AssetsPane.Laps) LapsRefusal = ViewRefusal;
-        else if (Pane == AssetsPane.Rules) RulesRefusal = ViewRefusal;
     }
 
     private void CancelRead()
@@ -272,10 +263,6 @@ internal sealed partial class AssetsViewModel
                 LapsRefusal = null;
                 LapsTotal = 0;
                 LapsShortfall = null;
-                break;
-            case AssetsPane.Rules:
-                RuleRows.Clear();
-                RulesRefusal = null;
                 break;
         }
     }

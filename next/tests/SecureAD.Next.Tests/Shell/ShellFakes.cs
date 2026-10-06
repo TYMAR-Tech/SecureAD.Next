@@ -188,6 +188,14 @@ internal sealed class FakeAssetSource : IAssetSource
     }
 
     public Result<DelegationPrincipalPage> DelegationPrincipals { get; set; } = new DelegationPrincipalPage([], null, true);
+    public Func<string, ObjectSearchMark?, Result<ObjectSearchPage>>? ObjectSearch { get; set; }
+    public List<(string Bundle, string Search, ObjectSearchMark? After)> ObjectSearchQueries { get; } = [];
+    public Result<ObjectSearchPage> SearchObjects(string bundleDirectory, string search, ObjectSearchMark? after)
+    {
+        ObjectSearchQueries.Add((bundleDirectory, search, after));
+        return ObjectSearch?.Invoke(search, after) ?? Result<ObjectSearchPage>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestObjectSearchNotSupplied", ErrorSeverity.Failed, "No object-search answer was supplied by this test.", bundleDirectory));
+    }
     public Func<DelegationQuery, DelegationPageMark?, Result<DelegationPage>>? Delegations { get; set; }
     public List<(DelegationQuery Query, DelegationPageMark? After)> DelegationQueries { get; } = [];
     public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after)

@@ -486,14 +486,14 @@ public sealed class DelegationLookupTests
             if (_domains.Add(domain)) _writer.WriteCoverage(coverage);
             return coverage;
         }
-        internal void Principal(string name, string sid, string domain = "contoso.com") =>
-            Object(name, ["top", "group"], domain, sid);
-        private long Object(string name, string[] classes, string domain, string? sid = null)
+        internal void Principal(string name, string sid, string domain = "contoso.com", string? accountName = null) =>
+            Object(name, ["top", "group"], domain, sid, accountName);
+        private long Object(string name, string[] classes, string domain, string? sid = null, string? accountName = null)
         {
             var attributes = new List<EvidenceAttribute>
             {
                 new("objectClass", StoredAttributeCompleteness.Complete, classes.Select(EvidenceValue.OfText).ToArray()),
-                new("sAMAccountName", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText(name)]),
+                new("sAMAccountName", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText(accountName ?? name)]),
             };
             if (sid is not null) attributes.Add(new("objectSid", StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(Sid.ToBytes(sid)!)]));
             return _writer.WriteObject(new(Coverage(domain), $"CN={name},{Dn(domain)}", Guid.NewGuid(), attributes, Started));

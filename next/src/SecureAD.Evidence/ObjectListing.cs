@@ -41,7 +41,11 @@ public sealed record ListedObject(
     string Name,
     Guid? ObjectGuid,
     string? ObjectClass,
-    string? ParentDistinguishedName);
+    string? ParentDistinguishedName)
+{
+    /// <summary>The domain recorded by capture, never inferred from the displayed name.</summary>
+    public string? DomainFqdn { get; init; }
+}
 
 /// <summary>
 /// One page of objects, and what is true about the whole listing they came from.
