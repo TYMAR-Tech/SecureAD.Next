@@ -1,4 +1,5 @@
 using SecureAD.Evidence;
+using SecureAD.Judgement;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
 using SecureAD.Shell.ViewModels;
@@ -424,8 +425,7 @@ public sealed class PermissionClassificationTests
     }
 
     /// <summary>
-    /// A finding is a rule's verdict, and no rule has been run. This is not zero findings, and the
-    /// counter has to say so rather than print one.
+    /// The strip does not count findings; that must not be presented as zero or as a claim no rule ran.
     /// </summary>
     [Fact]
     public void TheFindingsCounterIsNeverComputedByThisBuild()
@@ -443,7 +443,7 @@ public sealed class PermissionClassificationTests
         var section = Section(Allowing("S-1-5-32-544", WriteDac));
 
         Assert.Contains(
-            "not zero findings",
+            "not counted in this strip",
             Counter(section, "Findings").Explanation,
             StringComparison.Ordinal);
     }
@@ -475,10 +475,9 @@ public sealed class PermissionClassificationTests
     [Fact]
     public void AGuidTheShippedTableDoesNotKnowStillRendersAsAGuid()
     {
-        var section = new PermissionsSectionViewModel(
-            Definition(),
+        var section = Section(
             Permissions(Scoped("S-1-5-32-548", CreateChild, InetOrgPerson)),
-            PermissionVocabulary.Shipped);
+            SchemaGuidCatalog.Embedded);
 
         Assert.Contains(InetOrgPerson, OnlyEntry(section).Right, StringComparison.OrdinalIgnoreCase);
     }
@@ -490,8 +489,7 @@ public sealed class PermissionClassificationTests
     [Fact]
     public void TheSameGuidReadsAsANameWhenTheForestSchemaIsBehindIt()
     {
-        var section = new PermissionsSectionViewModel(
-            Definition(),
+        var section = Section(
             Permissions(Scoped("S-1-5-32-548", CreateChild, InetOrgPerson)),
             ForestKnowing("inetOrgPerson", InetOrgPerson, SchemaGuidKind.ObjectClass));
 
@@ -503,8 +501,7 @@ public sealed class PermissionClassificationTests
     {
         const string PayrollGuid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-        var section = new PermissionsSectionViewModel(
-            Definition(),
+        var section = Section(
             Permissions(Scoped("S-1-5-21-1-2-3-1000", WriteProperty, PayrollGuid)),
             ForestKnowing("contoso-PayrollId", PayrollGuid, SchemaGuidKind.Attribute));
 
@@ -696,12 +693,12 @@ public sealed class PermissionClassificationTests
     // ---------------------------------------------------------------------------------------
 
     /// <summary>A vocabulary over a forest that defined one thing the shipped table has not.</summary>
-    private static PermissionVocabulary ForestKnowing(
+    private static SchemaGuidCatalog ForestKnowing(
         string name, string guid, SchemaGuidKind kind) =>
-        new(SchemaGuidCatalog.CapturedOver(
+        SchemaGuidCatalog.CapturedOver(
             [new SchemaGuidEntry(guid, name, kind, SchemaGuidSource.Captured)],
             SchemaGuidCatalog.Embedded,
-            new Dictionary<string, IReadOnlyList<string>>()));
+            new Dictionary<string, IReadOnlyList<string>>());
     private static PermissionEntryViewModel OnlyEntry(PermissionsSectionViewModel section) =>
         section.Principals.SelectMany(p => p.Entries).Single();
 
@@ -722,7 +719,10 @@ public sealed class PermissionClassificationTests
         section.Counters.Single(c => string.Equals(c.Label, label, StringComparison.Ordinal));
 
     private static PermissionsSectionViewModel Section(params PermissionEntry[] entries) =>
-        new(Definition(), Permissions(entries), PermissionVocabulary.Shipped);
+        Section(Permissions(entries), SchemaGuidCatalog.Embedded);
+
+    private static PermissionsSectionViewModel Section(ObjectPermissions permissions, SchemaGuidCatalog catalog) =>
+        new(Definition(), permissions, null, new PermissionClassificationProducer(catalog).CreateObjectResult(permissions), null);
 
     private static ObjectSectionDefinition Definition() =>
         ObjectSectionCatalog.For("user")
@@ -738,7 +738,7 @@ public sealed class PermissionClassificationTests
         DaclCompleteness.Complete,
         DaclWasCanonical: true,
         IsDaclProtected: false,
-        entries,
+        entries.Select((entry, ordinal) => entry with { Ordinal = ordinal }).ToArray(),
         []);
 
     private static PermissionEntry Allowing(string sid, int mask) =>

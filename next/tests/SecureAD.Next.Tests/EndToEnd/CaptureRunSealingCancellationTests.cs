@@ -13,6 +13,21 @@ namespace SecureAD.Next.Tests.EndToEnd;
 public sealed class CaptureRunSealingCancellationTests(ITestOutputHelper output)
 {
     [Fact]
+    public async Task CaptureRecordsTheDetailedEvidenceSealingWorkAsync()
+    {
+        using var scenario = new Scenario(output, "not-a-real-log-message");
+
+        var result = await scenario.RunAsync();
+
+        Assert.Equal(RunCompletion.Sealed, result.Outcome);
+        var detail = Assert.Single(scenario.SealDetails).ToDictionary(value => value.Name, value => value.Value);
+        Assert.Equal(("Evidence", "none", "Completed"), (detail["artifact"], detail["generation"], detail["outcome"]));
+        Assert.Equal(new FileInfo(BundleLayout.EvidencePath(scenario.Directory)).Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            detail["bytesHashed"]);
+        Assert.Equal(SealState.Intact, BundleSealing.Verify(scenario.Directory).State);
+    }
+
+    [Fact]
     public async Task StopFromTheSealingLogRecordsCancellationAsync()
     {
         using var scenario = new Scenario(output, "sealing the bundle");
@@ -84,6 +99,7 @@ public sealed class CaptureRunSealingCancellationTests(ITestOutputHelper output)
         private readonly string _cancelOn;
         public string Directory { get; } = Path.Combine(Path.GetTempPath(), "securead-p216-capture-" + Guid.NewGuid().ToString("N"));
         public ConcurrentQueue<string> Messages { get; } = new();
+        public ConcurrentQueue<IReadOnlyList<RunLogDetail>> SealDetails { get; } = new();
         public bool CancellationRequested => _cancellation.IsCancellationRequested;
 
         public Scenario(ITestOutputHelper output, string cancelOn)
@@ -113,6 +129,7 @@ public sealed class CaptureRunSealingCancellationTests(ITestOutputHelper output)
         public void Note(string phase, string message, IReadOnlyList<RunLogDetail> details)
         {
             Messages.Enqueue(message);
+            if (message == "file sealing") SealDetails.Enqueue(details.ToArray());
             if (message == _cancelOn)
                 _cancellation.Cancel();
         }

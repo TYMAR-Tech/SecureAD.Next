@@ -103,6 +103,12 @@ public sealed class CoverageIdRecipeTests
 
         // Version 12 records class exclusions separately; the domain identity recipe is unchanged.
         [12] = "57cf8ba5a9e7fb10",
+
+        // Version 13 replaced `ace` with `access_entry` and `descriptor_entry` (P-272). How
+        // permissions are stored says nothing about which domains a run declared or excluded, which
+        // is all this recipe reads, so the same value is the correct outcome rather than a missed
+        // change.
+        [13] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

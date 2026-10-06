@@ -51,9 +51,18 @@ public sealed record PathRequesterFamilyCoverage(PathRequesterFamily Family, int
 /// Failed, cancelled or interrupted attempts are not published over this result.
 /// </summary>
 public sealed record PathRequesterCoverage(string EvidenceSeal, Guid? DerivationGenerationId,
-    PathInputs Inputs, int? SelectionVersion, bool InputScanCompleted,
+    SavedPathInputs Inputs, int? SelectionVersion, bool InputScanCompleted,
     IReadOnlyList<PathRequesterFamilyCoverage> Families, IReadOnlyList<PathRequesterSelectionLimitation> Limitations)
 {
+    /// <summary>Builds saved coverage from complete production inputs while writing or testing.</summary>
+    public PathRequesterCoverage(string evidenceSeal, Guid? derivationGenerationId, PathInputs inputs,
+        int? selectionVersion, bool inputScanCompleted, IReadOnlyList<PathRequesterFamilyCoverage> families,
+        IReadOnlyList<PathRequesterSelectionLimitation> limitations)
+        : this(evidenceSeal, derivationGenerationId, SavedPathInputs.From(inputs), selectionVersion,
+            inputScanCompleted, families, limitations)
+    {
+    }
+
     /// <summary>Whether automatic selection was recorded, independently of explicit requester proofs.</summary>
     public bool SelectionRequested => SelectionVersion.HasValue;
 

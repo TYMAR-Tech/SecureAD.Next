@@ -61,7 +61,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 - For SecureAD explanations, orient the owner within the Stage 6 control-edge work and its Tier 0 purpose before discussing narrow requester fixes. Distinguish existing ownership findings, permission-derived control edges, and later chained paths to Tier 0. Explain incomplete captured evidence separately from unsupported analysis and proposed processing limits. Use Tier 0-relevant examples without implying arbitrary example group names are hard-coded product scope.
 - **For SecureAD.Next Stage 6 work, start from current documented requirements and accepted decisions without asking the owner to restate them.** Present concrete bounded implementation scope and screen wording/grouping for explicit approval before editing. Use synthetic/offline verification only unless separately authorized; preserve frozen evidence/measurement artifacts and subsequent uncommitted work. Do not commit or push without a new request. Keep permission evidence separate from operations, credential extraction, takeover and completed Tier 0 paths.
 - **For SecureAD.Next Stage 6 preparation, keep group-held permission counts independent of member and route counts, distinguish stored membership attribution from concrete requester authorization, preserve resource scope and explicit incomplete results, and retain historical tests, frozen hashes and measurement artifacts.** Production expansion budgets require measurements against the documented nine-domain forest shape, not small fixtures; discovery stays inactive without an approved budget.
-- **For SecureAD.Next Stage 7 work, keep source-backed permission proof distinct from account takeover and completed Tier-0 chains, preserve independent group-held permission counts, exact generation binding, explicit uncertainty and passive readback.** Obtain explicit approval for each concrete new feature scope and UI wording/layout; preserve uncommitted work and frozen evidence.
+- **Clean, readable code is a core purpose of the SecureAD.Next rebuild.** Corrections must replace the flawed production design rather than leave parallel old/new implementations, dead code, confusing fallback paths, or permanent transition scaffolding. Preserve historical evidence and meaningful verification separately; that preservation is not a reason to retain obsolete production code.
 
 ## Ownership-Takeover Analysis
 
@@ -86,3 +86,22 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 ## SecureAD.Next Regression Work
 
 - For SecureAD.Next regression work, mutation-test every new behavior check and explicitly rebuild before running the mutated code and again after restoring it. Keep fixtures focused so an unrelated defect cannot make a test pass with the intended fix removed.
+- Keep deliberately broken variants in isolated source copies/builds, not the active working files; explicitly rebuild the correct sources afterwards and never hand off a deliberate defect in the live workspace.
+- Before a long regression run, smoke-check that the staged tests resolve the real source tree and that short, fresh TEMP/TMP paths were isolated before discovery. Retain failed attempts rather than weakening checks or changing historical fixtures to make the test location work.
+- Keep sessions to one bounded approved correction, batch independent inspection, and automate repeated build/test/provenance steps. Reserve capacity for final validation and an accurate checkpoint in the existing governing documents; do not replace safety checks with speed or ask again for an approval already recorded.
+
+## SecureAD.Next Completed-Run Readback
+
+- For SecureAD.Next completed-run readback, preserve per-right permission classifications, reasons, inheritance/applicability and captured-schema support as saved generation-bound results. Do not substitute control-edge proofs or infer requester authorization, takeover or Tier 0 paths. Use zero backward compatibility, and isolate TEMP/TMP before test-assembly loading, including discovery; preserve prior verification artifacts and failed attempts.
+
+## SecureAD.Next Completed-Run Browsing
+
+- For SecureAD.Next completed-run browsing, load only selected views while preserving exact evidence/derivation/judgement binding and explicit refusals. Do not replace unnecessary reads with stale-result caches, migration, legacy readers, empty-result substitutes, or analysis replay. Preserve historical evidence and verification artifacts; isolate TEMP/TMP before any test-assembly loading, including discovery, and explicitly rebuild deliberate defects and restored code. Concrete UI behavior and wording require owner approval before implementation.
+
+## SecureAD.Next Permission-Classification Storage
+
+- For SecureAD.Next saved permission-classification storage, preserve every original occurrence and saved answer with exact source/resource/generation binding. Bounded paging must not eagerly reconstruct whole objects, derive totals or risk from loaded pages, truncate oversized values, or conflate unloaded pages with incomplete captured evidence. Separate chunking/readback experiments from binary encoding, use fresh controls, preserve historical campaigns/outliers, and obtain explicit approval before implementation, measurement tooling/runs, UI changes or adoption.
+
+## Performance Reviews
+
+- For SecureAD.Next performance reviews, examine end-to-end algorithmic costs and repeated whole-forest work across later analysis/publication stages, not only the currently profiled hot function. Distinguish reachable production paths from disabled features and code-confirmed repeat patterns from measured runtime costs.

@@ -16,7 +16,7 @@ public sealed class SelfMembershipWorkflowTests
     [Theory]
     [InlineData(TargetDn)]
     [InlineData(UserDn)]
-    public void StoredRequesterAnswersReachBothRealObjectViews(string dn)
+    public async Task StoredRequesterAnswersReachBothRealObjectViews(string dn)
     {
         var directory = Bundle();
         Derive(directory);
@@ -25,7 +25,7 @@ public sealed class SelfMembershipWorkflowTests
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
 
-        var section = Open(screen, source, directory, dn);
+        var section = await OpenAsync(screen, source, directory, dn);
 
         Assert.Equal(new[]
         {
@@ -38,7 +38,7 @@ public sealed class SelfMembershipWorkflowTests
     [InlineData(UserSid, "The permission names the requester's current identity directly.")]
     [InlineData(TargetSid, "same-domain global security group with the requester explicitly listed as a member")]
     [InlineData("S-1-5-10", "same-domain global security group with the requester explicitly listed as a member")]
-    public void SelectedProofKeepsTheCapturedTrusteeAndResolvedRoute(string trustee, string explanation)
+    public async Task SelectedProofKeepsTheCapturedTrusteeAndResolvedRoute(string trustee, string explanation)
     {
         var directory = Bundle($"O:SYG:SYD:(OA;;SW;bf9679c0-0de6-11d0-a285-00aa003049e2;;{trustee})");
         var originalSeal = Hash(directory);
@@ -47,7 +47,7 @@ public sealed class SelfMembershipWorkflowTests
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
-        var section = Open(screen, source, directory, TargetDn);
+        var section = await OpenAsync(screen, source, directory, TargetDn);
         Assert.Equal(2, section.RequesterAssessments.Count);
 
         section.SelectedRequesterAssessment = section.RequesterAssessments[1];
@@ -62,7 +62,7 @@ public sealed class SelfMembershipWorkflowTests
     }
 
     [Fact]
-    public void RequesterAnswersDoNotIncreaseTheRealScreenHolderCounts()
+    public async Task RequesterAnswersDoNotIncreaseTheRealScreenHolderCounts()
     {
         // Adding yourself to a group is a route to whatever that group can reach.
         var directory = Bundle(tier0Route: true, tier0RouteFromTarget: true);
@@ -71,13 +71,15 @@ public sealed class SelfMembershipWorkflowTests
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
-        var section = Open(screen, source, directory, TargetDn);
+        var section = await OpenAsync(screen, source, directory, TargetDn);
         Assert.Empty(section.RequesterAssessments);
         Assert.Single(section.Rows);
         var counts = section.Counts;
 
         Judge(directory, TestBudget);
-        section.FirstPageCommand.Execute(null);
+        source.SelectRun(directory);
+        screen.Show(directory, false);
+        section = await OpenAsync(screen, source, directory, TargetDn);
 
         Assert.Equal(2, section.RequesterAssessments.Count);
         Assert.Single(section.Rows);
@@ -85,7 +87,7 @@ public sealed class SelfMembershipWorkflowTests
     }
 
     [Fact]
-    public void RejudgingWithoutDiscoveryCannotRetainAnOlderSelectedAnswer()
+    public async Task RejudgingWithoutDiscoveryCannotRetainAnOlderSelectedAnswer()
     {
         var directory = Bundle();
         Derive(directory);
@@ -94,12 +96,14 @@ public sealed class SelfMembershipWorkflowTests
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
-        var section = Open(screen, source, directory, UserDn);
+        var section = await OpenAsync(screen, source, directory, UserDn);
         Assert.Equal(2, section.RequesterAssessments.Count);
         Assert.NotNull(section.SelectedRequesterAssessment);
 
         Judge(directory, null);
-        section.FirstPageCommand.Execute(null);
+        source.SelectRun(directory);
+        screen.Show(directory, false);
+        section = await OpenAsync(screen, source, directory, UserDn);
 
         Assert.NotEqual(originalGeneration, Summary(directory).GenerationId);
         Assert.Empty(section.RequesterAssessments);
@@ -109,7 +113,7 @@ public sealed class SelfMembershipWorkflowTests
     }
 
     [Fact]
-    public void UnreadableStoredCoverageClearsTheActualScreenWithoutHidingValidHolderEdges()
+    public async Task UnreadableStoredCoverageClearsTheActualScreenWithoutHidingValidHolderEdges()
     {
         var directory = Bundle(tier0Route: true, tier0RouteFromTarget: true);
         Derive(directory);
@@ -117,18 +121,21 @@ public sealed class SelfMembershipWorkflowTests
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
-        var section = Open(screen, source, directory, TargetDn);
+        var section = await OpenAsync(screen, source, directory, TargetDn);
         Assert.Equal(2, section.RequesterAssessments.Count);
         Assert.NotNull(section.SelectedRequesterAssessment);
         var counts = section.Counts;
 
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = "UPDATE self_membership_discovery SET coverage_json = 'null'";
             Assert.Equal(1, command.ExecuteNonQuery());
         });
-        section.FirstPageCommand.Execute(null);
+        source.SelectRun(directory);
+        screen.Show(directory, false);
+        section = await OpenAsync(screen, source, directory, TargetDn);
 
         Assert.Empty(section.RequesterAssessments);
         Assert.Null(section.SelectedRequesterAssessment);
@@ -149,8 +156,9 @@ public sealed class SelfMembershipWorkflowTests
         Assert.Equal(0, summary.AssessmentsStored);
         Assert.Equal(0, summary.Discovery.ObjectsVisited);
         Assert.Equal(SelfMembershipDiscoveryReason.ProductionBudgetNotConfigured, Assert.Single(summary.Discovery.Limitations).Reason);
-        Assert.Contains("Own-account membership questions were not scheduled: no processing limit is configured", completion.JudgingReport);
-        Assert.Contains("This is not a finding that nobody can add themselves to a group", completion.JudgingReport);
+        Assert.Contains("The separate Self-Membership scan was not run because no processing limit is configured", completion.JudgingReport);
+        Assert.Contains("Tier 0 requester checks have their own saved coverage", completion.JudgingReport);
+        Assert.Contains("this does not mean nobody can add themselves to a group", completion.JudgingReport);
     }
 
     [Theory]
@@ -214,15 +222,18 @@ public sealed class SelfMembershipWorkflowTests
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
 
-    private static ControlEdgesSectionViewModel Open(AssetsViewModel screen, BundleAssetSource source, string directory, string dn)
+    private static async Task<ControlEdgesSectionViewModel> OpenAsync(AssetsViewModel screen, BundleAssetSource source, string directory, string dn)
     {
+        await screen.ReadCompletion;
         var result = source.ReadObjectAttributes(directory, dn);
         Assert.True(result.IsSuccess, result.Error?.Description);
         var attributes = Assert.IsType<ObjectAttributes>(result.Value);
         var objectClass = Assert.IsType<string>(attributes.Find("objectClass")?.Values.Last().Text);
         screen.OpenObject(new(new(dn, dn, attributes.ObjectGuid, objectClass, "DC=contoso,DC=com")));
+        await screen.ReadCompletion;
         var opened = Assert.IsType<ObjectViewModel>(screen.Opened);
         opened.Show(ObjectSectionCatalog.ControlEdges);
+        await opened.ReadCompletion;
         return Assert.IsType<ControlEdgesSectionViewModel>(opened.Selected);
     }
 }

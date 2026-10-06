@@ -262,12 +262,12 @@ public sealed class ControlEdgeReadbackSafetyTests
     {
         var source = Source();
         var screen = OpenScreen(source);
-        if (missing) source.Permissions = null;
-        else source.PermissionsFail = Failure;
+        if (missing) source.Attributes = null;
+        else source.AttributesFail = Failure;
         screen.OpenObject(new(new("CN=Other,DC=contoso,DC=com", "Other", Guid.NewGuid(), "group", "DC=contoso,DC=com")));
         Assert.Null(screen.Opened);
         Assert.False(screen.HasOpenObject);
-        Assert.NotNull(screen.Refusal);
+        Assert.NotNull(screen.ViewRefusal);
     }
 
     [Fact]
@@ -275,12 +275,14 @@ public sealed class ControlEdgeReadbackSafetyTests
     {
         var source = Source();
         var screen = OpenScreen(source);
+        screen.Opened!.Show(ObjectSectionCatalog.ControlEdges);
         var controls = Assert.IsType<ControlEdgesSectionViewModel>(screen.Opened!.Section(ObjectSectionCatalog.ControlEdges));
         Assert.Single(controls.RequesterAssessments);
         screen.Show(@"C:\synthetic-runs\second", false);
         controls.FirstPageCommand.Execute(null);
         Assert.Equal((Bundle, (string?)Target, (string?)null), source.ControlQueries[^1]);
         Assert.Equal((Bundle, (string?)Target, (string?)null), source.RequesterQueries[^1]);
+        Assert.Single(source.ControlQueries);
     }
 
     private static ControlEdgesSectionViewModel Section() => new(new(ObjectSectionCatalog.ControlEdges, "Control edges", []));
@@ -316,6 +318,7 @@ public sealed class ControlEdgeReadbackSafetyTests
         var generation = Guid.NewGuid();
         return new()
         {
+            Attributes = FakeAssetSource.CapturedObject(Target, "group"),
             Permissions = new(Target, DescriptorAvailability.Read, null, null, DaclState.Present,
                 DaclCompleteness.Complete, true, false, [], []),
             ControlEdges = Page(generation),

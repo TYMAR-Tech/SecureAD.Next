@@ -44,6 +44,15 @@
     <Color x:Key="Blue600">#FF1A5FCC</Color>
     <Color x:Key="Blue700">#FF13489C</Color>
 
+    <Color x:Key="Slate50">#FFF6F9FD</Color>
+    <Color x:Key="Slate100">#FFEAF1F9</Color>
+    <Color x:Key="Slate200">#FFDFE7F0</Color>
+    <Color x:Key="Slate300">#FFCBDCED</Color>
+    <Color x:Key="Slate400">#FFB9CADA</Color>
+    <Color x:Key="Slate600">#FF536B85</Color>
+    <Color x:Key="Slate700">#FF375571</Color>
+    <Color x:Key="Slate900">#FF102139</Color>
+
     <!-- Green: a question that was asked and answered well. -->
     <Color x:Key="Green100">#FFDFF3E4</Color>
     <Color x:Key="Green500">#FF2E9E52</Color>

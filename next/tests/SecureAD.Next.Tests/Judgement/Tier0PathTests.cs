@@ -19,6 +19,44 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
     private const string RootDn = "DC=contoso,DC=com";
     private const string ConfigurationDn = "CN=Configuration,DC=contoso,DC=com";
 
+    [Fact]
+    public void DisabledRequesterPolicyStillPersistsBaselineMembershipPath()
+    {
+        var directory = Captured(depth: 2);
+        Derive(directory);
+        var result = JudgingRun.JudgeAudit(directory, [], PathRequesterPolicy.Disabled, Started, Started,
+            JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        using var reader = Open(directory);
+
+        Assert.Equal(new[] { (UserDn, GroupDn(1)), (GroupDn(1), CoreDn) },
+            reader.ReadTier0Path(UserDn).Steps.Select(step => (step.From.DistinguishedName, step.To.DistinguishedName)));
+    }
+
+    [Fact]
+    public void EmptyRequesterBatchesKeepThePhaseNotifications()
+    {
+        var directory = Captured(depth: 1);
+        Derive(directory);
+        var progress = new PathPhases();
+        var result = JudgingRun.JudgeAudit(directory, [], PathRequesterPolicy.Disabled, Started, Started,
+            progress, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
+        Assert.True(result.IsSuccess, result.Error?.Description);
+
+        Assert.Equal(new[] { PathRequesterWorkPhase.PreparingPaths, PathRequesterWorkPhase.RequesterDacl,
+            PathRequesterWorkPhase.OwnAccountMembership, PathRequesterWorkPhase.MembershipDacl,
+            PathRequesterWorkPhase.WritingProofs }, progress.Values);
+    }
+
+    private sealed class PathPhases : IProgress<JudgingRun.JudgingProgress>
+    {
+        internal List<PathRequesterWorkPhase> Values { get; } = [];
+        public void Report(JudgingRun.JudgingProgress value)
+        {
+            if (value.RequesterPhase is { } phase) Values.Add(phase);
+        }
+    }
+
     [Theory]
     [InlineData(CoreDn)]
     [InlineData(RootDn)]
@@ -352,23 +390,25 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData("UPDATE tier0_path_calculation SET proof=json_set(proof,'$.Version',999)")]
-    [InlineData("UPDATE tier0_path_calculation SET proof=json_set(proof,'$.Generation','11111111-1111-1111-1111-111111111111')")]
-    [InlineData("UPDATE tier0_path_calculation SET proof=json_set(proof,'$.InputFingerprint','different')")]
-    [InlineData("DELETE FROM tier0_path_node WHERE target LIKE 'CN=Alice,%'; UPDATE tier0_path_calculation SET proof=json_set(proof,'$.NodeCount',(SELECT COUNT(*) FROM tier0_path_node))")]
-    [InlineData("UPDATE tier0_path_node SET proof=json_set(proof,'$.MembershipDistance',0) WHERE target LIKE 'CN=Alice,%'")]
-    [InlineData("UPDATE tier0_path_node SET proof=json_set(proof,'$.MembershipDistance',9) WHERE target LIKE 'CN=Alice,%'")]
-    [InlineData("UPDATE tier0_path_node SET proof=json_set(proof,'$.MembershipNext.MembershipSupport',999) WHERE target LIKE 'CN=Alice,%'")]
-    [InlineData("UPDATE tier0_path_node SET proof=json_set(proof,'$.MembershipNext.To.DistinguishedName','CN=Target,DC=contoso,DC=com') WHERE target LIKE 'CN=Alice,%'")]
-    public void ContradictorySavedPathsAreRefusedEvenWithRefreshedHashes(string sql)
+    [InlineData("tier0_path_calculation", "$.Version", "999")]
+    [InlineData("tier0_path_calculation", "$.Generation", "'11111111-1111-1111-1111-111111111111'")]
+    [InlineData("tier0_path_calculation", "$.InputFingerprint", "'different'")]
+    [InlineData("tier0_path_calculation", "$.NodeCount", "(SELECT COUNT(*) FROM tier0_path_node)")]
+    [InlineData("tier0_path_node", "$.MembershipDistance", "0")]
+    [InlineData("tier0_path_node", "$.MembershipDistance", "9")]
+    [InlineData("tier0_path_node", "$.MembershipNext.MembershipSupport", "999")]
+    [InlineData("tier0_path_node", "$.MembershipNext.To.DistinguishedName", "'CN=Target,DC=contoso,DC=com'")]
+    public void ContradictorySavedPathsAreRefusedEvenWithRefreshedHashes(string table, string path, string value)
     {
         var directory = Captured(depth: 2);
         Derive(directory);
         Judge(directory);
-        Mutate(directory, sql);
+        if (path == "$.NodeCount") Mutate(directory, "DELETE FROM tier0_path_node WHERE target LIKE 'CN=Alice,%'");
+        PathProofVerification.ChangeJson(directory, table, path, value,
+            table == "tier0_path_node" ? "WHERE target LIKE 'CN=Alice,%'" : "");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]
@@ -377,10 +417,10 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
         var directory = Captured(descriptor: $"O:SYG:SYD:(A;;WD;;;{UserSid})");
         Derive(directory);
         Judge(directory);
-        Mutate(directory, "UPDATE tier0_path_node SET proof=json_set(proof,'$.PermissionFingerprint','different') WHERE target LIKE 'CN=Alice,%'");
+        PathProofVerification.ChangeJson(directory, "tier0_path_node", "$.PermissionFingerprint", "'different'", "WHERE target LIKE 'CN=Alice,%'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]
@@ -444,21 +484,6 @@ public sealed class Tier0PathTests(ITestOutputHelper output)
         using var change = connection.CreateCommand();
         change.CommandText = sql;
         change.ExecuteNonQuery();
-        foreach (var table in new[] { "tier0_path_calculation", "tier0_path_node" })
-        {
-            using var query = connection.CreateCommand();
-            query.CommandText = "SELECT rowid,proof FROM " + table;
-            var proofs = new List<(long Id, string Proof)>();
-            using (var read = query.ExecuteReader()) while (read.Read()) proofs.Add((read.GetInt64(0), read.GetString(1)));
-            foreach (var proof in proofs)
-            {
-                using var update = connection.CreateCommand();
-                update.CommandText = "UPDATE " + table + " SET fingerprint=$hash WHERE rowid=$id";
-                update.Parameters.AddWithValue("$hash", SHA256.HashData(Encoding.UTF8.GetBytes(proof.Proof)));
-                update.Parameters.AddWithValue("$id", proof.Id);
-                update.ExecuteNonQuery();
-            }
-        }
     });
 
     private string Captured(int depth = 0, bool primary = false, bool cycle = false, bool shortcut = false,

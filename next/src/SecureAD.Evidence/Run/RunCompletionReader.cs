@@ -8,16 +8,16 @@ namespace SecureAD.Evidence.Run;
 /// <remarks>
 /// <para>
 /// <b>Why this is not <see cref="BundleReader"/>.</b> Opening a bundle through
-/// <see cref="BundleReader.Open"/> verifies the seal, which hashes the whole evidence file. The
-/// library verifies that seal already, once per run, in <see cref="RunStateReader.Observe"/>;
-/// going through the reader as well would hash every bundle in the library twice to fetch one
-/// value. So this reads the one column it needs from a bundle whose seal has just been checked.
+/// <see cref="BundleReader.Open(string, CancellationToken)"/> verifies the seal, which hashes the
+/// whole evidence file. This is called once per run every time the library is listed, so going
+/// through the reader would make drawing a list cost proportional to the evidence in it.
 /// </para>
 /// <para>
-/// <b>Verification is not skipped, only not repeated</b> - the arrangement
-/// <c>BundleAssetSource</c> already has. This is private to the assembly and is called from one
-/// place, immediately after the seal was found intact. It must not be given a second caller that
-/// has not verified first.
+/// <b>The value is read without the seal having been checked, and that is deliberate.</b> It is a
+/// date in a list. <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts the
+/// one verification at the moment a bundle is opened, and a run whose evidence has gone bad is
+/// refused there, before anything is read off it. A wrong date on the Home screen is a wrong label;
+/// a wrong finding is a wrong answer, and only the second is what the seal exists to prevent.
 /// </para>
 /// <para>
 /// The connection is read-only and unpooled, because listing a library must not alter a single
@@ -29,7 +29,7 @@ internal static class RunCompletionReader
     /// <summary>
     /// Reads when the run in <paramref name="bundleDirectory"/> recorded that it completed.
     /// </summary>
-    /// <param name="bundleDirectory">A run whose seal has just been verified as intact.</param>
+    /// <param name="bundleDirectory">A run that left sealed evidence behind it.</param>
     /// <returns>
     /// The recorded moment, or null when it could not be read. Null is returned rather than a
     /// guess: a run whose moment is unknown is placed by the caller and marked as not recorded.

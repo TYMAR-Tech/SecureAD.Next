@@ -2,7 +2,7 @@
 # Windows PowerShell 5.1 reads UTF-8 files as Windows-1252, turning every em dash into three
 # characters. This script writes documents, so running it under 5.1 would corrupt them silently.
 
-$path = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\docs\PUNCH-LIST.md'
+$path = 'C:\Users\jistrand\source\repos\SecureAD.Next\docs\PUNCH-LIST.md'
 $lines = [System.IO.File]::ReadAllLines($path)
 
 function Expect($index, $fragment) {

@@ -2,6 +2,7 @@ using System.Globalization;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
@@ -9,18 +10,18 @@ using SecureAD.Kernel.Security;
 namespace SecureAD.Judgement;
 
 /// <summary>
-/// Judging a sealed bundle: read every object once, offer it to every rule, and write what they
-/// concluded beside the evidence.
+/// Judging a sealed bundle: stream object rules once, then publish qualified path findings
+/// beside the evidence.
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>One pass over the bundle, not one per rule.</b> The evidence is read sequentially and each
-/// object is offered to every scheduled rule while it is in hand. Judging forty rules therefore
+/// object is offered to every scheduled object rule while it is in hand. Judging forty such rules therefore
 /// costs the same read as judging one, and adding a rule costs comparisons rather than another walk
-/// of the forest.
+/// of the forest. SEC-071 consumes the later saved qualification rather than repeating that pass.
 /// </para>
 /// <para>
-/// <b>A rule that throws loses only itself.</b> It is recorded as
+/// <b>An object rule that throws loses only itself.</b> It is recorded as
 /// <see cref="RuleExecutionOutcome.Error"/>, offered no further objects, and the rules beside it
 /// carry on. Its findings are discarded, because a rule that failed part way through has no verdict
 /// and its partial output would read as a complete one.
@@ -40,8 +41,8 @@ namespace SecureAD.Judgement;
 /// </remarks>
 public static class JudgingRun
 {
-    /// <summary>Production activation remains a separate approval from offline integration and measurement.</summary>
-    public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.Disabled;
+    /// <summary>The shared GUI/CLI policy selects the three supported captured-question families.</summary>
+    public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.SupportedCapturedQuestions;
 
     /// <summary>
     /// How far a judging has got.
@@ -330,6 +331,23 @@ public static class JudgingRun
         }
     }
 
+    /// <summary>
+    /// Judges one bundle, and appends what it did to the run's portable summary.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A wrapper, because the summary is read back out of the judgement store</b> and
+    /// <see cref="JudgeIntoStore"/> holds that store open until it returns. Reading it from inside
+    /// the body would be reading a file something still has open, which is the shape P-255 records
+    /// an unexplained SQLite failure against.
+    /// </para>
+    /// <para>
+    /// <b>Nothing is appended for a judging that refused to start.</b> A missing seal or an
+    /// unopenable bundle leaves no store to read and no judging to describe; the run log says what
+    /// happened, and an absent section claims nothing where a section of noughts would claim a
+    /// forest nobody found anything in.
+    /// </para>
+    /// </remarks>
     private static Result<JudgementRunState> JudgeCore(
         string bundleDirectory,
         IReadOnlyList<IRule> rules,
@@ -349,8 +367,134 @@ public static class JudgingRun
         IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
         bool offlineSelection = false)
     {
+        var account = new JudgingAccount();
+        var began = System.Diagnostics.Stopwatch.GetTimestamp();
+        using var status = new JudgingStatus(log, progress, TimeProvider.System, PostPassMemory.Read);
+        try
+        {
+            status.RecordBuildIdentity();
+            var judged = JudgeIntoStore(
+                bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
+                discoveryBudget, memberBudget, startedUtc, evaluationAsOf, status, log, cancellationToken,
+                tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
+                offlineSelection, account);
+
+            if (judged.IsSuccess)
+            {
+                AppendPortableSummary(
+                    bundleDirectory, System.Diagnostics.Stopwatch.GetElapsedTime(began), account);
+            }
+            else
+            {
+                status.RecordRefusal(judged.Error);
+            }
+            return judged;
+        }
+        catch (Exception error) when (status.RecordException(error, cancellationToken.IsCancellationRequested))
+        {
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// What a judging did, gathered as it goes because the objects are streamed and gone.
+    /// </summary>
+    /// <remarks>
+    /// Durations only, and the counts that travel with them. What was found is read back out of
+    /// the store, per the owner's decision of 2026-09-22: a summary that counted its own findings
+    /// would be a second answer to a question the judgement has already answered.
+    /// </remarks>
+    private sealed class JudgingAccount
+    {
+        /// <summary>Where the object pass spent its time, which is what P-257 turns on.</summary>
+        public IReadOnlyList<StageTiming> Phases { get; set; } = [];
+
+        /// <summary>One row per scheduled rule, and what became of it.</summary>
+        public IReadOnlyList<RuleTiming> Rules { get; set; } = [];
+
+        /// <summary>How many captured objects were streamed through the pass.</summary>
+        public long ObjectsJudged { get; set; }
+    }
+
+    /// <summary>
+    /// Appends what this judging did to the run's portable summary.
+    /// </summary>
+    /// <remarks>
+    /// <b>Findings are counted by severity in the database and never listed.</b> A finding names
+    /// the object it is about, so the findings themselves stay in the bundle; how many there were
+    /// of each kind is the part that may travel.
+    /// </remarks>
+    /// <param name="bundleDirectory">The run's directory.</param>
+    /// <param name="elapsed">How long judging took.</param>
+    /// <param name="account">What the run measured while it was happening.</param>
+    private static void AppendPortableSummary(
+        string bundleDirectory, TimeSpan elapsed, JudgingAccount account)
+    {
+        var opened = JudgementReader.Open(bundleDirectory);
+
+        if (!opened.IsSuccess)
+            return;
+
+        using var reader = opened.Value!;
+        var executions = reader.ReadRuleExecutions();
+
+        PortableSummaryFile.AppendJudging(
+            bundleDirectory,
+            PortableSummaryReading.OfJudging(
+                executions.State.ToString(),
+                (long)elapsed.TotalMilliseconds,
+                account.ObjectsJudged,
+                account.Phases,
+                account.Rules,
+                reader.ReadFindingCountsBySeverity(),
+                Problems(executions)));
+    }
+
+    /// <summary>
+    /// Turns the rules that did not reach every verdict into the shape the summary may carry.
+    /// </summary>
+    /// <remarks>
+    /// <b>Counted by outcome rather than named.</b> Which rule stopped is in the run log and on the
+    /// rules table of the summary itself; this is the tally beside it, and the stored error text is
+    /// deliberately not read because a rule that threw quotes what it was looking at.
+    /// </remarks>
+    /// <param name="executions">Every scheduled rule, read back.</param>
+    /// <returns>One error per rule that did not succeed.</returns>
+    private static IEnumerable<AuditError> Problems(StoredRuleExecutions executions) =>
+        executions.Executions
+            .Where(execution => execution.Outcome != RuleExecutionOutcome.Succeeded)
+            .Select(execution => AuditError.Create(
+                ErrorCategory.Evidence,
+                "Rule" + execution.Outcome,
+                ErrorSeverity.Degraded,
+                $"A rule ended as {execution.Outcome} rather than reaching every verdict.",
+                context: null));
+
+    private static Result<JudgementRunState> JudgeIntoStore(
+        string bundleDirectory,
+        IReadOnlyList<IRule> rules,
+        IReadOnlyList<SelfMembershipRequest> selfMembershipRequests,
+        SelfMembershipBudget selfMembershipBudget,
+        bool automaticDiscovery,
+        SelfMembershipDiscoveryBudget? discoveryBudget,
+        MemberAttributionBudget? memberBudget,
+        DateTimeOffset startedUtc,
+        DateTimeOffset evaluationAsOf,
+        JudgingStatus progress,
+        IRunLog log,
+        CancellationToken cancellationToken,
+        bool tier0DiscoveryRequested,
+        IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
+        IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
+        bool offlineSelection,
+        JudgingAccount account)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
+        if (rules.Any(rule => rule is not IObjectRule and not UnexpectedTier0Route))
+            throw new ArgumentException("A scheduled rule has no supported execution stage.", nameof(rules));
+        var pathRule = rules.OfType<UnexpectedTier0Route>().SingleOrDefault();
         ArgumentNullException.ThrowIfNull(selfMembershipRequests);
         ArgumentNullException.ThrowIfNull(selfMembershipBudget);
         ArgumentNullException.ThrowIfNull(progress);
@@ -385,7 +529,7 @@ public static class JudgingRun
         if (selfMembershipRequests.Count > selfMembershipBudget.Requests)
             throw new ArgumentException($"The request batch contains {selfMembershipRequests.Count} requests; its explicit budget is {selfMembershipBudget.Requests}.", nameof(selfMembershipRequests));
 
-        progress.Report(new JudgingProgress(0) { Phase = JudgingPhase.PreparingInputs });
+        Entering(progress, log, JudgingPhase.PreparingInputs, 0);
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(bundleDirectory));
 
         if (seal is null || string.IsNullOrWhiteSpace(seal.Hash))
@@ -401,14 +545,16 @@ public static class JudgingRun
             return refusal;
         }
 
-        var opened = BundleReader.Open(bundleDirectory);
-        if (!opened.IsSuccess)
+        var openedInputs = JudgingInputs.Open(bundleDirectory, cancellationToken);
+        if (!openedInputs.IsSuccess)
         {
-            log.Record(JudgePhase, opened.Error!, []);
-            return Result<JudgementRunState>.Failure(opened.Error!);
+            log.Record(JudgePhase, openedInputs.Error!, []);
+            return Result<JudgementRunState>.Failure(openedInputs.Error!);
         }
-
-        using var bundle = opened.Value!;
+        using var inputs = openedInputs.Value;
+        if (!string.Equals(inputs.EvidenceSeal, seal.Hash, StringComparison.OrdinalIgnoreCase))
+            return Failure("EvidenceChanged", "The evidence seal changed while judging was opening it.", bundleDirectory);
+        var bundle = inputs.Bundle;
 
         var scope = bundle.ReadScope();
         if (!scope.IsSuccess)
@@ -441,7 +587,7 @@ public static class JudgingRun
             // than asking whether a file is present. A derivation belonging to different evidence
             // would produce confidently wrong findings, which docs/decisions/0091 names as the one
             // thing this product must not do.
-            var openedDerivation = DerivationReader.Open(bundleDirectory);
+            var openedDerivation = inputs.OpenDerivation();
 
             if (!openedDerivation.IsSuccess)
             {
@@ -458,7 +604,7 @@ public static class JudgingRun
             }
 
             derivation = openedDerivation.Value!;
-            var stored = derivation.Read();
+            var stored = inputs.Facts;
             derivationGeneration = stored.Description.GenerationId;
 
             var product = stored.ProtectedPrincipals;
@@ -467,8 +613,6 @@ public static class JudgingRun
                     nameof(DerivedFactKind.ProtectedPrincipals), StringComparer.OrdinalIgnoreCase)
                 && product.Availability != ProtectedPrincipalProductAvailability.Available)
             {
-                derivation.Dispose();
-
                 var refusal = Failure(
                     "DerivedFactsAbsent",
                     $"A scheduled rule reads {DerivedFactKind.ProtectedPrincipals}, and this "
@@ -505,8 +649,7 @@ public static class JudgingRun
                 // Read once for the whole forest, not per object. Whether an owner keeps the right
                 // to rewrite an object's permissions turns partly on this, so a rule that could not
                 // read it must refuse rather than assume the permissive default.
-                OwnerImplicitRights = DirectoryHeuristics.OwnerImplicitRights(
-                    bundle.ReadForestHeuristics()),
+                OwnerImplicitRights = inputs.OwnerRights,
             };
 
             // The same refusal for the same reason, and the consequence of skipping it is worse
@@ -521,8 +664,6 @@ public static class JudgingRun
 
                 if (visibility.Availability != AttributeVisibilityAvailability.Available)
                 {
-                    derivation.Dispose();
-
                     var refusal = Failure(
                         "DerivedFactsAbsent",
                         $"A scheduled rule reads {DerivedFactKind.AttributeVisibility}, and this "
@@ -548,8 +689,6 @@ public static class JudgingRun
             {
                 if (!derivation.NestingWasDerived())
                 {
-                    derivation.Dispose();
-
                     var refusal = Failure(
                         "DerivedFactsAbsent",
                         $"A scheduled rule reads {DerivedFactKind.PrincipalExpansion}, and this "
@@ -599,11 +738,11 @@ public static class JudgingRun
         // Optional inputs never turn an evidence-only judging into a falsely complete owner answer.
         if (derivation is null)
         {
-            var ownershipInputs = DerivationReader.Open(bundleDirectory);
+            var ownershipInputs = inputs.OpenDerivation();
             if (ownershipInputs.IsSuccess)
             {
                 derivation = ownershipInputs.Value;
-                var stored = derivation.Read();
+                var stored = inputs.Facts;
                 derivationGeneration = stored.Description.GenerationId;
                 context = context with { ProtectedPrincipals = stored.ProtectedPrincipals.Value };
             }
@@ -624,14 +763,12 @@ public static class JudgingRun
             };
         }
 
-        using var _ = derivation;
-
         if (memberBudget is not null && derivation is null)
             return Failure("MemberAttributionInputUnavailable", MemberAttributionMessages.Get("InputUnavailable"), bundleDirectory);
         CapturedMembershipInput? memberInput = null;
         if (derivation is not null)
         {
-            try { memberInput = derivation.ReadMembershipInput(); }
+            try { memberInput = inputs.ReadMembershipInput(); }
             catch (Exception error) when (error is InvalidOperationException or System.Text.Json.JsonException or Microsoft.Data.Sqlite.SqliteException)
             {
                 var refusal = memberBudget is not null
@@ -642,7 +779,7 @@ public static class JudgingRun
             }
         }
 
-        var namingContexts = bundle.ReadNamingContexts();
+        var namingContexts = inputs.ReadNamingContexts();
         if (!namingContexts.IsSuccess)
         {
             log.Record(JudgePhase, namingContexts.Error, []);
@@ -655,6 +792,7 @@ public static class JudgingRun
             derivationGeneration,
             startedUtc,
             evaluationAsOf);
+        progress.RecordGeneration(writer.GenerationId, seal.Hash, derivationGeneration);
         writer.RecordEvidenceScope(scope.Value!);
 
         log.Note(
@@ -662,7 +800,7 @@ public static class JudgingRun
             "started",
             [new RunLogDetail("rules", rules.Count.ToString(CultureInfo.InvariantCulture))]);
 
-        var tallies = rules.Select(r => new Tally(r)).ToList();
+        var tallies = rules.OfType<IObjectRule>().Select(r => new Tally(r)).ToList();
 
         long objectsRead = 0;
         writer.StartSelfMembershipAssessments();
@@ -672,21 +810,15 @@ public static class JudgingRun
         {
             ForestFqdn = bundle.Description.ForestFqdn,
             SchemaGuids = context.SchemaGuids ?? bundle.ReadSchemaGuids(),
-            OwnerImplicitRights = context.OwnerImplicitRights ?? DirectoryHeuristics.OwnerImplicitRights(bundle.ReadForestHeuristics()),
+            OwnerImplicitRights = context.OwnerImplicitRights ?? inputs.OwnerRights,
             NamingContexts = namingContexts.Value,
             ControlPrincipals = attributes,
         };
-        var domainSids = Memoised(domain =>
-        {
-            var root = bundle.ReadObjectAttributes(string.Join(',', domain.Split('.').Select(part => "DC=" + part)));
-            var value = root?.Find("objectSid")?.OnlyValue;
-            return value?.Bytes is { } bytes ? Sid.ToText(bytes) : value?.Text;
-        });
+        Func<string, string?> domainSids = inputs.ReadDomainSid;
 
         var ownershipDescription = new JudgementDescription(seal.Hash, writer.GenerationId, derivationGeneration,
             JudgementRunState.Running, evaluationAsOf, startedUtc, default);
-        var ownershipBinding = memberInput is not null && derivationGeneration is { } sourceGeneration
-            ? OwnershipAuditRun.Binding(bundleDirectory, seal.Hash, sourceGeneration, bundle.Description.ForestFqdn, namingContexts.Value) : null;
+        var ownershipBinding = memberInput is not null ? inputs.Binding() : null;
 
         // STARTED HERE BECAUSE THE SCOPING FLAG MUST MATCH WHAT ACTUALLY HAPPENS. Discovery needs a
         // pinned derivation binding to qualify seeds against; without one it does not run and every
@@ -697,9 +829,12 @@ public static class JudgingRun
         writer.StartControlEdges(scope.Value!.AllDeclaredDomainsAreComplete, gated);
         writer.StartAutomaticOwnership(ownershipDescription, OwnershipAuditRun.OwnerRightsHash(controlContext.OwnerImplicitRights));
         writer.StartPathInputs(ownershipDescription, tier0DiscoveryRequested);
+        writer.StartLapsInventory();
+        var classificationSchema = controlContext.SchemaGuids
+            ?? throw new InvalidOperationException(nameof(controlContext.SchemaGuids));
+        writer.StartPermissionClassifications(classificationSchema.HasCapturedEntries);
 
-        var scanWatch = new System.Diagnostics.Stopwatch();
-        var discoveryWatch = new System.Diagnostics.Stopwatch();
+        var work = new ObjectWork();
         var unobservedRoots = controlContext.NamingContexts.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var discovery = automaticDiscovery ? new SelfMembershipScheduler(discoveryBudget,
             scope.Value!.AllDeclaredDomainsAreComplete, attributes,
@@ -717,57 +852,157 @@ public static class JudgingRun
                 subject => OwnershipAuditRun.Target(subject, namingContexts.Value), cancellationToken)
             : null;
 
-        progress.Report(new JudgingProgress(0));
-        foreach (var subject in bundle.StreamObjects().Objects)
+        Entering(progress, log, JudgingPhase.EvaluatingObjects, 0);
+        work.Pass.Start();
+        progress.BeginOperation("order-descriptor-groups");
+        work.Order.Start();
+        using var descriptors = bundle.StreamDescriptorObjects(cancellationToken);
+        work.Order.Stop();
+        var permissionPreparation = new PermissionClassificationPreparation(descriptors, classificationSchema, writer.GenerationId);
+        progress.BeginOperation("read-object");
+        foreach (var subject in descriptors.Objects)
         {
             // Checked per object rather than per batch. A rule catalogue that has grown expensive
             // could spend a long time on one object, and a cancel that waits for the batch boundary
             // is a cancel the operator has to press twice to believe.
             cancellationToken.ThrowIfCancellationRequested();
 
+            progress.BeginOperation("store-laps");
+            work.Laps.Start();
+            writer.WriteLapsInventory(subject);
+            work.Laps.Stop();
             unobservedRoots.Remove(subject.DistinguishedName);
-            var permissions = bundle.ReadPermissions(subject.DistinguishedName);
+            progress.BeginOperation("read-permissions");
+            work.Read.Start();
+            var reading = descriptors.ReadPermissions(subject);
+            var permissions = reading.Permissions;
+            work.Read.Stop();
 
             // THE DESCRIPTOR RECORD IS WRITTEN FOR EVERY OBJECT; THE EDGES ARE NOT. Whether the
             // descriptor could be read is cheap and is the difference between "captured but not
             // assessed", "captured and unreadable" and "not captured at all" - three answers a
             // reader must be able to tell apart. Deriving the edges is the expensive part, and it
             // now waits until discovery has said whether this object is in scope.
-            if (tier0Discovery is null)
-                writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
-                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids),
-                    OwnershipAuditRun.Target(subject, namingContexts.Value));
-            else
-            {
-                writer.WriteControlEdges(ControlEdgeDeriver.Derive(subject,
+            //
+            // DERIVING AND STORING ARE CLOCKED SEPARATELY because they are the two halves any
+            // optimisation must choose between, and one combined figure cannot say which.
+            progress.BeginOperation("derive-control-edges");
+            work.ControlDerive.Start();
+            var edges = tier0Discovery is null
+                ? ControlEdgeDeriver.Derive(subject,
+                    permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids)
+                : ControlEdgeDeriver.Derive(subject,
                     permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids)
-                    with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) },
-                    OwnershipAuditRun.Target(subject, namingContexts.Value));
-                discoveryWatch.Start();
+                    with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) };
+            work.ControlDerive.Stop();
+            progress.BeginOperation("store-control-edges");
+            work.ControlWrite.Start();
+            writer.WriteControlEdges(edges, OwnershipAuditRun.Target(subject, namingContexts.Value));
+            work.ControlWrite.Stop();
+            if (tier0Discovery is not null)
+            {
+                progress.BeginOperation("tier0-scan");
+                work.Tier0Scan.Start();
                 tier0Discovery.Observe(subject, permissions);
-                discoveryWatch.Stop();
+                work.Tier0Scan.Stop();
             }
-            scanWatch.Start();
-            discovery?.Observe(subject, permissions);
-            scanWatch.Stop();
 
+            // REACHING A VERDICT AND STORING IT ARE CLOCKED SEPARATELY, and this is the split
+            // P-249 has twice tried to optimise without ever measuring: two storage redesigns were
+            // built and rejected while nothing here could say whether the cost was the verdicts or
+            // the writing of them.
+            progress.BeginOperation("classify-permissions");
+            work.Verdicts.Start();
+            var classified = permissionPreparation.Prepare(reading, writer.PermissionWrites, cancellationToken);
+            work.Verdicts.Stop();
+            progress.BeginOperation("store-permissions");
+            work.StorePermissions.Start();
+            writer.WritePermissionClassification(classified, cancellationToken);
+            work.StorePermissions.Stop();
+            progress.BeginOperation("membership-scan");
+            work.MembershipScan.Start();
+            discovery?.Observe(subject, permissions);
+            work.MembershipScan.Stop();
+
+            // Reuse only the exact lookup already performed for this object. Other names retain
+            // the evidence reader's matching/ambiguity behavior; nothing survives this iteration.
+            var objectContext = context.Permissions is { } readPermissions
+                ? context with
+                {
+                    Permissions = dn => string.Equals(dn, subject.DistinguishedName, StringComparison.Ordinal)
+                        ? permissions : readPermissions(dn),
+                }
+                : context;
+            work.Rules.Start();
             foreach (var tally in tallies)
-                tally.Offer(subject, context);
+            {
+                progress.BeginRule(tally.RuleId);
+                try { tally.Offer(subject, objectContext); }
+                finally { progress.EndRule(tally.RuleId, tally.Elapsed, tally.Judged, tally.NotApplicable); }
+            }
+            work.Rules.Stop();
+
+            progress.BeginOperation("commit");
+            work.Commit.Start();
+            writer.CompleteObject();
+            work.Commit.Stop();
 
             objectsRead++;
+            progress.CompleteObject(objectsRead);
 
             if (objectsRead % ProgressEvery == 0)
                 progress.Report(new JudgingProgress(objectsRead)
                 {
                     Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
-                    Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
+                    Tier0DiscoveryElapsed = work.Tier0Scan.Elapsed,
                 });
+
+            // Copy detailed totals only on the worker thread. The independent status/rule timer
+            // keeps reporting the active operation if this safe boundary cannot be reached.
+            if (progress.AccountingDue())
+            {
+                progress.BeginOperation("write-accounting");
+                work.Note(log, JudgePhase, objectsRead);
+                writer.PermissionWrites.Note(log, JudgePhase);
+            }
+            progress.BeginOperation("read-object");
         }
 
+        descriptors.Dispose();
+        log.Note(JudgePhase, "descriptor preparation", [
+            new RunLogDetail("preparedDescriptors", descriptors.PreparedDescriptors.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("preparedEntries", descriptors.PreparedEntries.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("classifiedDescriptors", permissionPreparation.ClassifiedDescriptors.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("classifiedEntries", permissionPreparation.ClassifiedEntries.ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("orderingMs", ((long)work.Order.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+            new RunLogDetail("orderingTemporaryBytes", descriptors.OrderingTemporaryBytes.ToString(CultureInfo.InvariantCulture)),
+        ]);
+
+        progress.BeginOperation("commit");
+        work.Commit.Start();
+        writer.FlushObjects();
+        work.Commit.Stop();
+
+        progress.BeginOperation("complete-laps");
+        work.LapsComplete.Start();
+        writer.CompleteLapsInventory();
+        work.LapsComplete.Stop();
+        progress.BeginOperation("complete-permissions");
+        work.ClosePermissions.Start();
+        writer.CompletePermissionClassifications(objectsRead);
+        work.ClosePermissions.Stop();
+
+        progress.BeginOperation("unobserved-roots");
+        work.UnobservedRoots.Start();
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",
                 ControlUncertainty.ReplicationRootNotEstablished | ControlUncertainty.DescriptorUnreadable, []),
                 new Tier0Target(null, root, root, null, null, null));
+        writer.FlushObjects();
+        work.UnobservedRoots.Stop();
+        work.Pass.Stop();
+        work.Note(log, JudgePhase, objectsRead);
+        writer.PermissionWrites.Note(log, JudgePhase);
 
         // The last report is unconditional, so a run that ends between two reports does not leave
         // the operator looking at a count short of what was actually read. The discovery figures
@@ -776,28 +1011,30 @@ public static class JudgingRun
         progress.Report(new JudgingProgress(objectsRead)
         {
             Tier0ObjectsObserved = tier0Discovery?.Observed.Count ?? 0,
-            Tier0DiscoveryElapsed = discoveryWatch.Elapsed,
+            Tier0DiscoveryElapsed = work.Tier0Scan.Elapsed,
         });
         if (tier0Discovery is not null)
         {
-            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+            inputs.RequireFor(ownershipDescription);
+            Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
             var admitted = writer.AdmitDiscoveredScope(bundle, ownershipDescription, memberInput, ownershipBinding!,
-                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken);
+                tier0Discovery, controlContext, domainSids, derivationGeneration, cancellationToken, progress,
+                inputs, offlineSelection || membershipDaclRequests.Count != 0);
             log.Note(JudgePhase, "tier0-discovery",
             [
-                new RunLogDetail("scan-ms", ((long)discoveryWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("scan-ms", ((long)work.Tier0Scan.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("candidates", tier0Discovery.Coverage().CandidatesDiscovered.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("admitted", admitted.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("objects", objectsRead.ToString(CultureInfo.InvariantCulture)),
             ]);
         }
         writer.AssessAutomaticOwnership(bundle, ownershipDescription, memberInput, ownershipBinding, controlContext,
-            domainSids, objectsRead, progress, cancellationToken, scopeAlreadyPlanned: tier0Discovery is not null);
+            domainSids, objectsRead, progress, log, cancellationToken, scopeAlreadyPlanned: tier0Discovery is not null);
         writer.CompleteControlEdges();
 
         if (memberInput is not null && memberBudget is not null)
         {
-            progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.AttributingMembers });
+            Entering(progress, log, JudgingPhase.AttributingMembers, objectsRead);
             var memberWatch = System.Diagnostics.Stopwatch.StartNew();
             writer.WriteMemberAttributions(memberInput, memberBudget, bundle.Description.ForestFqdn, namingContexts.Value, cancellationToken);
             log.Note("MemberAttribution", "finished", [new RunLogDetail("elapsedMs",
@@ -815,7 +1052,7 @@ public static class JudgingRun
         // to 8.5 ms as the work grew - the same target's evidence was being re-read once per
         // question. The answers were never affected: this changes the order rows are written in,
         // not what any of them says.
-        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.EvaluatingRequesters });
+        Entering(progress, log, JudgingPhase.EvaluatingRequesters, objectsRead);
         string? loadedTarget = null;
         ObjectPermissions? loadedPermissions = null;
         var loadedEdges = new Dictionary<string, IReadOnlyList<long>>(StringComparer.Ordinal);
@@ -886,14 +1123,14 @@ public static class JudgingRun
             log.Note(JudgePhase, "self-membership",
             [
                 new RunLogDetail("answers", assessed.ToString(CultureInfo.InvariantCulture)),
-                new RunLogDetail("scan-ms", ((long)scanWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
+                new RunLogDetail("scan-ms", ((long)work.MembershipScan.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("read-ms", ((long)readWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("assess-ms", ((long)assessWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("write-ms", ((long)writeWatch.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture)),
             ]);
         }
 
-        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.WritingFindings });
+        Entering(progress, log, JudgingPhase.WritingFindings, objectsRead);
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution());
 
@@ -924,8 +1161,8 @@ public static class JudgingRun
         var pathsCompleted = false;
         try
         {
-            writer.CalculateTier0Paths(ownershipDescription, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
-                cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection, BeginPathPhase);
+            writer.CalculateTier0Paths(ownershipDescription, inputs, requesterQuestions.Values.ToArray(), ownAccountQuestions.Values.ToArray(),
+                cancellationToken, membershipDaclQuestions.Values.ToArray(), offlineSelection, BeginPathPhase, progress);
             pathsCompleted = true;
         }
         finally
@@ -933,9 +1170,37 @@ public static class JudgingRun
             RecordPathPhase(pathsCompleted);
         }
 
+        if (pathRule is not null)
+        {
+            var ruleWatch = System.Diagnostics.Stopwatch.StartNew();
+            var execution = writer.WriteTier0Findings(pathRule, ownershipDescription, inputs, cancellationToken);
+            ruleWatch.Stop();
+            tallies.Add(new Tally(pathRule, execution, ruleWatch.Elapsed));
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
-        progress.Report(new JudgingProgress(objectsRead) { Phase = JudgingPhase.PublishingJudgement });
-        writer.Complete(DateTimeOffset.UtcNow, cancellationToken);
+        Entering(progress, log, JudgingPhase.PublishingJudgement, objectsRead);
+        using (var diagnostic = progress.BeginPostPass("Publishing judgement", writer.GenerationId))
+        {
+            try
+            {
+                diagnostic.Part("protect-input-generation");
+                using (inputs.ProtectPublication(ownershipDescription))
+                    writer.Complete(DateTimeOffset.UtcNow, cancellationToken, diagnostic, progress.DiagnosticLog);
+                progress.PublicationCompleted();
+                diagnostic.Complete();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                diagnostic.Interrupted(cancelled: true);
+                throw;
+            }
+            catch
+            {
+                diagnostic.Interrupted(cancelled: false);
+                throw;
+            }
+        }
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
             && tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
@@ -992,6 +1257,23 @@ public static class JudgingRun
                         CultureInfo.InvariantCulture)),
             ]);
 
+        // HANDED OUT BECAUSE NOTHING PERSISTS IT. The judgement records what each rule concluded;
+        // how long each took, and where the object pass spent its time, are known here and nowhere
+        // afterwards - and the per-phase breakdown is the thing P-257 was found with.
+        account.ObjectsJudged = objectsRead;
+        account.Phases = work.Timings();
+        account.Rules =
+        [
+            .. tallies
+                .OrderByDescending(tally => tally.Elapsed)
+                .Select(tally => new RuleTiming(
+                    tally.RuleId,
+                    tally.Outcome.ToString(),
+                    tally.Judged,
+                    tally.NotApplicable,
+                    (long)tally.Elapsed.TotalMilliseconds)),
+        ];
+
         return state;
     }
 
@@ -1018,12 +1300,42 @@ public static class JudgingRun
     }
 
     /// <summary>
+    /// Reports a phase to the operator watching and to the run log, in one act.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Both, or neither.</b> Every phase already reached <see cref="IProgress{T}"/> and none
+    /// reached the log, which on 2026-09-24 left an eight-hour production judging with a single
+    /// line - <i>Started, rules=17</i> - and an operator with no way to tell work from a hang.
+    /// Reporting through one call is what stops the two drifting apart again: a phase added later
+    /// cannot reach a screen and miss the artefact that outlives it.
+    /// </para>
+    /// <para>
+    /// <b>The log is not a second screen.</b> It is what survives a cancelled run, a closed window
+    /// and a machine walked away from, and it is the only account of a judging that did not finish.
+    /// A line per phase is nine lines in a run measured in hours, so nothing here is written per
+    /// object.
+    /// </para>
+    /// <para>
+    /// <b>A phase name says where judging has got to, never what it concluded.</b>
+    /// <c>WritingFindings</c> means the writing is under way; whether a judgement was published is
+    /// <see cref="JudgementWriter.Complete"/>'s to say, as the remark on
+    /// <see cref="JudgingProgress.Phase"/> records.
+    /// </para>
+    /// </remarks>
+    internal static void Entering(
+        IProgress<JudgingProgress> progress, IRunLog log, JudgingPhase phase, long objectsRead)
+    {
+        progress.Report(new JudgingProgress(objectsRead) { Phase = phase });
+        log.Note(JudgePhase, "phase", [new RunLogDetail("name", phase.ToString())]);
+    }
+
+    /// <summary>
     /// How many objects pass between progress reports.
     /// </summary>
     /// <remarks>
-    /// Chosen so that a forest large enough to take hours still reports often enough to look alive,
-    /// without a run of millions spending its time raising events. It is not tuned against a real
-    /// forest, because no measurement of one exists yet.
+    /// Screen notifications keep their existing cadence. Log status has its own timer and does
+    /// not wait for these notifications, which may be hours apart during an expensive rule.
     /// </remarks>
     private const int ProgressEvery = 1_000;
 
@@ -1089,6 +1401,165 @@ public static class JudgingRun
         : ControlUncertainty.None;
 
     /// <summary>
+    /// Where the object pass spent its time, in buckets that do not contain one another.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The rules were already clocked, and they were not the answer.</b> The offline
+    /// reproduction of the reported 108-second audit spent 115.12 s in object processing, of which
+    /// the per-rule clocks accounted for 7.03 s. The remaining interval was measured by nothing at
+    /// all, and two saved-permission storage redesigns were built and rejected while aimed into it.
+    /// </para>
+    /// <para>
+    /// <b>Flat, never nested.</b> An earlier diagnostic ledger attributed 16.26 s of a 27.69 s run
+    /// to permission storage "including nested work", which cannot be added to anything else and so
+    /// settled nothing. Each watch here brackets one call, no bucket contains another, and the
+    /// figures are therefore meant to be summed.
+    /// </para>
+    /// <para>
+    /// <b>Whatever is left over is printed as its own line.</b> An unexplained interval is the
+    /// finding; absorbing it into the nearest bucket is how it stayed unexplained for eight
+    /// sessions. <see cref="Pass"/> brackets the entire pass, so the remainder is exact.
+    /// </para>
+    /// <para>
+    /// <b>Cost.</b> Two counter reads per bucket per object, on the same argument the per-rule
+    /// clocks already make: a few million reads across a forest of 347,000 objects, against a phase
+    /// measured in minutes.
+    /// </para>
+    /// </remarks>
+    private sealed class ObjectWork
+    {
+        /// <summary>The whole pass, against which every other bucket is accounted.</summary>
+        public System.Diagnostics.Stopwatch Pass { get; } = new();
+
+        /// <summary>Creating the temporary descriptor-group order; sidecar reads remain in the pass.</summary>
+        public System.Diagnostics.Stopwatch Order { get; } = new();
+
+        /// <summary>Preparing each captured descriptor and binding its permissions to each object.</summary>
+        public System.Diagnostics.Stopwatch Read { get; } = new();
+
+        /// <summary>Reaching and validating per-right verdicts and fingerprints once per descriptor.</summary>
+        public System.Diagnostics.Stopwatch Verdicts { get; } = new();
+
+        /// <summary>Storing those verdicts. The half P-249 exists to make cheaper.</summary>
+        public System.Diagnostics.Stopwatch StorePermissions { get; } = new();
+
+        /// <summary>Deriving one object's control edges.</summary>
+        public System.Diagnostics.Stopwatch ControlDerive { get; } = new();
+
+        /// <summary>Storing those control edges.</summary>
+        public System.Diagnostics.Stopwatch ControlWrite { get; } = new();
+
+        /// <summary>Collecting Tier 0 candidates, previously the only clocked part of this loop.</summary>
+        public System.Diagnostics.Stopwatch Tier0Scan { get; } = new();
+
+        /// <summary>Collecting self-membership candidates.</summary>
+        public System.Diagnostics.Stopwatch MembershipScan { get; } = new();
+
+        /// <summary>Offering the object to every rule. The per-rule lines break this down further.</summary>
+        public System.Diagnostics.Stopwatch Rules { get; } = new();
+
+        /// <summary>Writing the LAPS inventory row for one object.</summary>
+        public System.Diagnostics.Stopwatch Laps { get; } = new();
+
+        /// <summary>Closing the LAPS inventory once every object has been offered.</summary>
+        public System.Diagnostics.Stopwatch LapsComplete { get; } = new();
+
+        /// <summary>Closing the saved permission classifications.</summary>
+        public System.Diagnostics.Stopwatch ClosePermissions { get; } = new();
+
+        /// <summary>Recording naming contexts no streamed object accounted for.</summary>
+        public System.Diagnostics.Stopwatch UnobservedRoots { get; } = new();
+
+        /// <summary>Committing the batched transaction the object writes share.</summary>
+        public System.Diagnostics.Stopwatch Commit { get; } = new();
+
+        /// <summary>Writes one line per bucket, slowest first, then the accounting line.</summary>
+        /// <param name="log">The run log this judging is writing to.</param>
+        /// <param name="phase">The phase name the judging coordinator logs under.</param>
+        /// <param name="objects">How many objects the pass read, so a bucket can be read per object.</param>
+        public void Note(IRunLog log, string phase, long objects)
+        {
+            var buckets = Buckets();
+
+            foreach (var bucket in buckets.OrderByDescending(b => b.Elapsed))
+            {
+                log.Note(
+                    phase,
+                    "object work",
+                    [
+                        new RunLogDetail("part", bucket.Part),
+                        new RunLogDetail("ms", Milliseconds(bucket.Elapsed)),
+                    ]);
+            }
+
+            // THE SUM AND THE WHOLE, SIDE BY SIDE. A breakdown that does not say what it failed to
+            // account for invites the reader to assume it accounted for everything.
+            var measured = buckets.Aggregate(TimeSpan.Zero, (total, bucket) => total + bucket.Elapsed);
+            log.Note(
+                phase,
+                "object work accounted",
+                [
+                    new RunLogDetail("passMs", Milliseconds(Pass.Elapsed)),
+                    new RunLogDetail("measuredMs", Milliseconds(measured)),
+                    new RunLogDetail("unaccountedMs", Milliseconds(Pass.Elapsed - measured)),
+                    new RunLogDetail("objects", objects.ToString(CultureInfo.InvariantCulture)),
+                ]);
+        }
+
+        private static string Milliseconds(TimeSpan value) =>
+            ((long)value.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Where the object pass spent its time, slowest first, beside what it failed to account
+        /// for.
+        /// </summary>
+        /// <remarks>
+        /// <b>The same buckets the log gets, from the same list.</b> The portable summary and the
+        /// run log are two readers of one breakdown; building a second list for the summary would
+        /// be two accounts of where a judging's time went, and the first sign of them disagreeing
+        /// would be a customer holding figures the log cannot reproduce.
+        /// </remarks>
+        /// <returns>One timing per bucket, then the interval nothing measured.</returns>
+        public IReadOnlyList<StageTiming> Timings()
+        {
+            var buckets = Buckets();
+            var measured = buckets.Aggregate(TimeSpan.Zero, (total, bucket) => total + bucket.Elapsed);
+
+            return
+            [
+                .. buckets
+                    .OrderByDescending(bucket => bucket.Elapsed)
+                    .Select(bucket => new StageTiming(bucket.Part, (long)bucket.Elapsed.TotalMilliseconds)),
+
+                // AN UNEXPLAINED INTERVAL IS THE FINDING, and absorbing it into the nearest bucket
+                // is how it stayed unexplained for eight sessions. It travels with the breakdown
+                // rather than being left for a reader to subtract.
+                new StageTiming("unaccounted", (long)(Pass.Elapsed - measured).TotalMilliseconds),
+            ];
+        }
+
+        /// <summary>The flat, never-nested buckets the pass measured, in a fixed order.</summary>
+        private (string Part, TimeSpan Elapsed)[] Buckets() =>
+        [
+            ("order-descriptor-groups", Order.Elapsed),
+            ("read-permissions", Read.Elapsed),
+            ("classify-permissions", Verdicts.Elapsed),
+            ("store-permissions", StorePermissions.Elapsed),
+            ("derive-control-edges", ControlDerive.Elapsed),
+            ("store-control-edges", ControlWrite.Elapsed),
+            ("tier0-scan", Tier0Scan.Elapsed),
+            ("membership-scan", MembershipScan.Elapsed),
+            ("rules", Rules.Elapsed),
+            ("commit", Commit.Elapsed),
+            ("store-laps", Laps.Elapsed),
+            ("complete-laps", LapsComplete.Elapsed),
+            ("complete-permissions", ClosePermissions.Elapsed),
+            ("unobserved-roots", UnobservedRoots.Elapsed),
+        ];
+    }
+
+    /// <summary>
     /// What one rule has made of the objects offered to it so far.
     /// </summary>
     /// <remarks>
@@ -1098,6 +1569,15 @@ public static class JudgingRun
     /// </remarks>
     private sealed class Tally(IRule rule)
     {
+        private readonly RuleExecution? _completed;
+        private readonly TimeSpan _completedElapsed;
+
+        public Tally(IRule rule, RuleExecution completed, TimeSpan elapsed) : this(rule)
+        {
+            _completed = completed;
+            _completedElapsed = elapsed;
+        }
+
         private readonly List<Finding> _findings = [];
         private readonly Dictionary<string, int> _missing = new(StringComparer.OrdinalIgnoreCase);
 
@@ -1119,21 +1599,21 @@ public static class JudgingRun
         private string? _error;
 
         public RuleExecutionOutcome Outcome =>
-            _error is not null ? RuleExecutionOutcome.Error
+            _completed?.Outcome ?? (_error is not null ? RuleExecutionOutcome.Error
             : _notJudged > 0 ? RuleExecutionOutcome.Indeterminate
-            : RuleExecutionOutcome.Succeeded;
+            : RuleExecutionOutcome.Succeeded);
 
         /// <summary>Which rule this is tallying, so a log line can name it.</summary>
         public string RuleId => rule.Definition.Id;
 
         /// <summary>How long this rule took, across every object it was offered.</summary>
-        public TimeSpan Elapsed => _clock.Elapsed;
+        public TimeSpan Elapsed => _completed is null ? _clock.Elapsed : _completedElapsed;
 
         /// <summary>How many objects this rule actually judged, as opposed to filtered out.</summary>
-        public int Judged => _judged;
+        public int Judged => _completed?.ObjectsJudged ?? _judged;
 
         /// <summary>How many objects were not this rule's concern.</summary>
-        public int NotApplicable => _notApplicable;
+        public int NotApplicable => _completed?.ObjectsNotApplicable ?? _notApplicable;
 
         /// <summary>
         /// Offers one object to the rule, unless it has already thrown or the rule is not about
@@ -1182,7 +1662,9 @@ public static class JudgingRun
 
             try
             {
-                verdict = rule.Judge(subject, context);
+                if (rule is not IObjectRule objectRule)
+                    throw new InvalidOperationException("A saved-result rule cannot be offered an individual object.");
+                verdict = objectRule.Judge(subject, context);
             }
             catch (Exception error) when (error is not OutOfMemoryException
                                               and not StackOverflowException)
@@ -1222,7 +1704,7 @@ public static class JudgingRun
         }
 
         public RuleExecution ToExecution() =>
-            _error is not null
+            _completed ?? (_error is not null
                 ? RuleExecution.Threw(rule.Definition, _error)
                 : new RuleExecution(
                     rule.Definition,
@@ -1234,6 +1716,6 @@ public static class JudgingRun
                         .OrderBy(m => m.Key, StringComparer.OrdinalIgnoreCase)
                         .Select(m => new MissingInput(m.Key, m.Value))],
                     _findings,
-                    null);
+                    null));
     }
 }

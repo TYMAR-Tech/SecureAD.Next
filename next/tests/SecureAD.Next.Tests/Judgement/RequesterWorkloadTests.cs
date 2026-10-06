@@ -24,7 +24,7 @@ public sealed class RequesterWorkloadTests(RequesterWorkloadTests.Workloads work
         }.ToString());
         connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),(SELECT COUNT(*) FROM ace),(SELECT COUNT(*) FROM member_value) FROM captured_object";
+        command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),(SELECT COUNT(*) FROM descriptor_entry),(SELECT COUNT(*) FROM member_value) FROM captured_object";
         using var rows = command.ExecuteReader();
         Assert.True(rows.Read());
         Assert.Equal(200L, rows.GetInt64(0));
@@ -108,10 +108,31 @@ public sealed class RequesterWorkloadTests(RequesterWorkloadTests.Workloads work
                 When, When, JudgingRun.NobodyIsWatching, log, CancellationToken.None, null);
             Assert.True(judged.IsSuccess, judged.Error?.Description);
             var generation = AnalysisStoreLifecycle.Resolve(bundle, AnalysisStoreKind.Judgement).Value.GenerationId;
-            var output = Path.GetDirectoryName(bundle)!;
-            RequesterMeasurement.ProofCounts(BundleLayout.AnalysisGenerationDataPath(bundle, AnalysisStoreKind.Judgement, generation), output);
-            using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(output, "saved-proof-header.json")));
-            var header = json.RootElement.Clone();
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = BundleLayout.AnalysisGenerationDataPath(bundle, AnalysisStoreKind.Judgement, generation),
+                Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            PathProofVerification.EnableJsonReads(connection);
+            command.CommandText = "SELECT json_extract(path_json(proof),'$.Family'),path_json(source_proof) FROM path_requester_risk ORDER BY id";
+            using var read = command.ExecuteReader();
+            var families = new Dictionary<string, List<JsonElement>>
+            { ["Requesters"] = [], ["OwnAccounts"] = [], ["MembershipDacls"] = [] };
+            while (read.Read())
+            {
+                var family = Enum.Parse<PathRequesterFamily>(read.GetString(0)) switch
+                {
+                    PathRequesterFamily.RequesterDacl => "Requesters",
+                    PathRequesterFamily.OwnAccountMembership => "OwnAccounts",
+                    PathRequesterFamily.MembershipDacl => "MembershipDacls",
+                    _ => throw new InvalidDataException("Unrecognized saved requester family."),
+                };
+                using var json = JsonDocument.Parse(read.GetString(1));
+                families[family].Add(json.RootElement.Clone());
+            }
+            var header = JsonSerializer.SerializeToElement(families, ProofSerialization.Options);
             _headers.Add(separate, header);
             return header;
         }

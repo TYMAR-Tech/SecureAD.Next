@@ -41,22 +41,30 @@ public sealed class JudgementWriter : IDisposable
     private readonly string _bundleDirectory;
     private readonly string _partialPath;
     private readonly SqliteConnection _connection;
+    private readonly IDisposable _writeLock;
+    private readonly PreparedStatements _statements;
+    private readonly PermissionWriteSession _session = new();
+    private SqliteTransaction? _batch;
+    private int _batchObjects;
     private readonly List<RuleExecutionOutcome> _outcomes = [];
     private bool _evidenceIsComplete = true;
     private readonly HashSet<string> _rulesWritten = new(StringComparer.Ordinal);
 
     private long _nextFindingId = 1;
+    private long _lapsComputers;
     private bool _finished;
     private bool _disposed;
 
     /// <summary>The immutable generation this writer will publish.</summary>
     public Guid GenerationId { get; } = Guid.NewGuid();
 
-    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection)
+    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection, IDisposable writeLock)
     {
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
+        _writeLock = writeLock;
+        _statements = new PreparedStatements(connection);
     }
 
     internal void RecordEvidenceScope(RunScope scope)
@@ -66,16 +74,159 @@ public sealed class JudgementWriter : IDisposable
         _evidenceIsComplete = scope.AllDeclaredDomainsAreComplete;
     }
 
+    internal void StartLapsInventory()
+    {
+        ThrowIfFinished();
+        LapsInventoryStorage.Start(_connection, GenerationId);
+    }
+
+    /// <summary>
+    /// The transaction this object's writes belong to, opened on demand and spanning several objects.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>One transaction, not three.</b> Before 2026-09-22 an object's LAPS row ran in autocommit,
+    /// its control edges opened and committed their own transaction, and its permission
+    /// classification opened and committed another - about 25,000 commits on a capture of 8,407
+    /// objects, and an object whose permissions rolled back could still leave its LAPS row behind.
+    /// Sharing one transaction is both stronger and cheaper.
+    /// </para>
+    /// <para>
+    /// <b>DO NOT MAKE JUDGING RECOVER FROM A FAILED OBJECT AND CARRY ON.</b> This batch is what
+    /// makes the commits affordable, and it is only safe because a failure aborts the run: the
+    /// generation is then never marked complete, so it can never be published or read back. Code
+    /// that caught a per-object failure and continued would silently discard every other object in
+    /// the same batch and leave a judgement that looked whole. If that behaviour is ever wanted,
+    /// the batch has to go back to one object first.
+    /// </para>
+    /// <para>
+    /// Whatever is open is rolled back on disposal. An unpublished generation is the correct
+    /// outcome of an abandoned run; a half-written one is not.
+    /// </para>
+    /// </remarks>
+    private SqliteTransaction Batch() => _batch ??= _connection.BeginTransaction();
+
+    /// <summary>How many objects share one transaction.</summary>
+    /// <remarks>
+    /// Chosen to make the commit count negligible without holding an unbounded amount uncommitted:
+    /// 500 objects is roughly 12,500 permission entries on the laboratory capture. Not tuned against
+    /// the production forest, which has never been measured.
+    /// </remarks>
+    private const int BatchObjects = 500;
+
+    /// <summary>Records that an object's writes are finished, committing the batch when it is full.</summary>
+    internal void CompleteObject()
+    {
+        ThrowIfFinishedWithinObject();
+        if (_batch is null || ++_batchObjects < BatchObjects) return;
+        FlushObjects();
+    }
+
+    /// <summary>Commits whatever object writes are outstanding.</summary>
+    internal void FlushObjects()
+    {
+        if (_batch is null) return;
+        _batch.Commit();
+        _batch.Dispose();
+        _batch = null;
+        _batchObjects = 0;
+        // PROMOTED ONLY NOW, because until this commit those rows did not exist and a record
+        // claiming otherwise would let a later object reference an identifier that was rolled back.
+        _session.Promote();
+    }
+
+    internal void WriteLapsInventory(ObjectAttributes subject)
+    {
+        ThrowIfFinishedWithinObject();
+        if (!LapsAttributes.IsComputer(subject)) return;
+        LapsInventoryStorage.Write(_connection, Batch(), LapsInventoryStorage.CreateComputerResult(subject));
+        _lapsComputers++;
+    }
+
+    internal void CompleteLapsInventory()
+    {
+        ThrowIfFinished();
+        LapsInventoryStorage.Complete(_connection, _lapsComputers);
+    }
+
     internal void StartControlEdges(bool captureComplete, bool discoveryScoped = false)
     {
         ThrowIfFinished();
         ControlEdgeStorage.Start(_connection, captureComplete, discoveryScoped);
     }
 
-    internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
+    internal void StartPermissionClassifications(bool hasCapturedSchema)
     {
         ThrowIfFinished();
-        ControlEdgeStorage.Write(_connection, evaluation, ownershipTarget);
+        PermissionClassificationStorage.Start(_connection, GenerationId, hasCapturedSchema);
+    }
+
+    internal void WritePermissionClassification(PermissionClassification result, CancellationToken cancellationToken)
+    {
+        ThrowIfFinishedWithinObject();
+        try
+        {
+            PermissionClassificationStorage.Write(_connection, Batch(), GenerationId, result, PermissionWrites, _statements, _session, cancellationToken);
+        }
+        catch
+        {
+            // THE BATCH GOES WITH IT. Rows written since the last commit no longer exist, so keeping
+            // the identifiers this session remembered for them would let a retry point an entry at a
+            // reading that was rolled back - which is what CancellationRollsBackAndRetryDoesNotReuse
+            // UncommittedSupport exists to catch.
+            AbandonBatch();
+            throw;
+        }
+    }
+
+    internal void WritePermissionClassification(PermissionClassificationPreparation.ObjectWrite prepared,
+        CancellationToken cancellationToken)
+    {
+        ThrowIfFinishedWithinObject();
+        try
+        {
+            prepared.Write(_connection, Batch(), GenerationId, PermissionWrites, _statements, _session, cancellationToken);
+        }
+        catch
+        {
+            AbandonBatch();
+            throw;
+        }
+    }
+
+    /// <summary>Rolls back the open batch and forgets everything it wrote.</summary>
+    private void AbandonBatch()
+    {
+        _batch?.Dispose();
+        _batch = null;
+        _batchObjects = 0;
+        _session.Discard();
+    }
+
+    /// <summary>Where storing the saved permission classifications spent its time.</summary>
+    internal PermissionWriteWork PermissionWrites { get; } = new();
+
+    internal void CompletePermissionClassifications(long objectsRead)
+    {
+        ThrowIfFinished();
+        PermissionClassificationStorage.Complete(_connection, objectsRead);
+    }
+
+    internal void WriteControlEdges(ControlObjectEvaluation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
+    {
+        ThrowIfFinishedWithinObject();
+        try
+        {
+            ControlEdgeStorage.Write(_connection, Batch(), _statements, evaluation, ownershipTarget, _session);
+        }
+        catch
+        {
+            // THE BATCH GOES WITH IT, for the reason the permission classification above gives. This
+            // guard was not needed while the shared entries were cached per transaction and became
+            // needed when P-279 made that cache last the run.
+            AbandonBatch();
+            throw;
+        }
     }
 
     internal void CompleteControlEdges()
@@ -90,13 +241,14 @@ public sealed class JudgementWriter : IDisposable
         PathInputStorage.Start(_connection, description, requested);
     }
 
-    internal void CalculateTier0Paths(JudgementDescription description, IReadOnlyList<RequesterDaclRequest> requests,
+    internal void CalculateTier0Paths(JudgementDescription description, JudgingInputs inputs, IReadOnlyList<RequesterDaclRequest> requests,
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests, CancellationToken cancellationToken,
-        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection, Action<PathRequesterWorkPhase> beginPhase)
+        IReadOnlyList<MembershipDaclRequest> membershipDaclRequests, bool offlineSelection, Action<PathRequesterWorkPhase> beginPhase,
+        JudgingStatus status)
     {
         ThrowIfFinished();
-        Tier0PathStorage.Write(_connection, description, _bundleDirectory, requests, ownAccountRequests, cancellationToken,
-            membershipDaclRequests, offlineSelection, beginPhase);
+        Tier0PathStorage.Write(_connection, description, inputs, requests, ownAccountRequests, cancellationToken,
+            membershipDaclRequests, offlineSelection, beginPhase, status, _statements);
     }
 
     internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
@@ -109,12 +261,12 @@ public sealed class JudgementWriter : IDisposable
     internal void AssessAutomaticOwnership(BundleReader bundle, JudgementDescription description,
         SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding? binding,
         JudgingContext context, Func<string, string?> domainSid, long objectsRead,
-        IProgress<JudgingRun.JudgingProgress> progress, CancellationToken cancellationToken,
+        IProgress<JudgingRun.JudgingProgress> progress, SecureAD.Kernel.IRunLog log, CancellationToken cancellationToken,
         bool scopeAlreadyPlanned = false)
     {
         ThrowIfFinished();
         OwnershipAuditRun.Assess(_connection, bundle, description, input, binding, context, domainSid,
-            objectsRead, progress, cancellationToken, scopeAlreadyPlanned);
+            objectsRead, progress, log, cancellationToken, _statements, _session, scopeAlreadyPlanned);
     }
 
     /// <summary>
@@ -124,11 +276,12 @@ public sealed class JudgementWriter : IDisposable
     internal int AdmitDiscoveredScope(BundleReader bundle, JudgementDescription description,
         SecureAD.Derivation.CapturedMembershipInput? input, SecureAD.Derivation.Tier0InputBinding binding,
         Tier0DiscoveryScheduler discovery, JudgingContext context, Func<string, string?> domainSid,
-        Guid? derivationGeneration, CancellationToken cancellationToken)
+        Guid? derivationGeneration, CancellationToken cancellationToken, JudgingStatus? status,
+        JudgingInputs? sources, bool membershipContinuations)
     {
         ThrowIfFinished();
         return Tier0AdmissionRun.Admit(_connection, bundle, description, input, binding, discovery, context,
-            domainSid, GenerationId, derivationGeneration, cancellationToken);
+            domainSid, GenerationId, derivationGeneration, cancellationToken, status, _statements, _session, sources, membershipContinuations);
     }
 
     internal void WriteMemberAttributions(SecureAD.Derivation.CapturedMembershipInput input,
@@ -230,36 +383,47 @@ public sealed class JudgementWriter : IDisposable
                 + "evidence it judged, so the bundle must exist before it can be judged.");
         }
 
-        var partialPath = BundleLayout.JudgementPartialPath(bundleDirectory);
-        if (File.Exists(partialPath))
-            File.Delete(partialPath);
+        var writeLock = AnalysisStoreLifecycle.LockJudgementWrites(bundleDirectory);
+        SqliteConnection? connection = null;
+        JudgementWriter? writer = null;
+        var transferred = false;
+        try
+        {
+            AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
+            var partialPath = BundleLayout.JudgementPartialPath(bundleDirectory);
+            if (File.Exists(partialPath))
+                File.Delete(partialPath);
 
-        var connection = new SqliteConnection(
-            new SqliteConnectionStringBuilder
+            connection = new SqliteConnection(
+                new SqliteConnectionStringBuilder
+                {
+                    DataSource = partialPath,
+                    Mode = SqliteOpenMode.ReadWriteCreate,
+                    Pooling = false,
+                    ForeignKeys = true,
+                }.ToString());
+            connection.Open();
+            Pragma(connection, "journal_mode = WAL");
+            Pragma(connection, "synchronous = NORMAL");
+            JudgementSchema.CreateTables(connection);
+
+            writer = new JudgementWriter(bundleDirectory, partialPath, connection, writeLock);
+            writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
+            transferred = true;
+            return writer;
+        }
+        finally
+        {
+            if (!transferred)
             {
-                DataSource = partialPath,
-                Mode = SqliteOpenMode.ReadWriteCreate,
-                Pooling = false,
-                ForeignKeys = true,
-            }.ToString());
-
-        connection.Open();
-
-        // Ordered as the evidence writer orders them, and for the same reasons: page size is fixed
-        // when the first table is created and cannot be changed afterwards without a VACUUM, and it
-        // cannot be set at all once write-ahead logging is on.
-        //
-        // The default page size is kept. A judgement holds findings and execution records, which are
-        // small rows - none of the large security descriptors that made 8192 the right answer for
-        // the evidence.
-        Pragma(connection, "journal_mode = WAL");
-        Pragma(connection, "synchronous = NORMAL");
-
-        JudgementSchema.CreateTables(connection);
-
-        var writer = new JudgementWriter(bundleDirectory, partialPath, connection);
-        writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
-        return writer;
+                if (writer is not null) writer.Dispose();
+                else
+                {
+                    try { connection?.Dispose(); }
+                    finally { writeLock.Dispose(); }
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -275,6 +439,20 @@ public sealed class JudgementWriter : IDisposable
     /// The store is already finished, or this rule has been written once already.
     /// </exception>
     public void Write(RuleExecution execution)
+        => WriteExecution(execution, null, CancellationToken.None);
+
+    internal RuleExecution WriteTier0Findings(UnexpectedTier0Route rule, JudgementDescription description,
+        JudgingInputs inputs, CancellationToken cancellationToken)
+    {
+        ThrowIfFinished();
+        var (execution, summary) = rule.JudgeSaved(_connection, description, inputs, cancellationToken);
+        WriteExecution(execution, transaction => Tier0RouteFindingStorage.WriteSummary(_connection, transaction, summary),
+            cancellationToken);
+        return execution;
+    }
+
+    private void WriteExecution(RuleExecution execution, Action<SqliteTransaction>? additional,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(execution);
         ThrowIfFinished();
@@ -322,8 +500,13 @@ public sealed class JudgementWriter : IDisposable
         }
 
         foreach (var finding in execution.Findings)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             WriteFinding(transaction, finding);
+        }
 
+        additional?.Invoke(transaction);
+        cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
         _outcomes.Add(execution.Outcome);
     }
@@ -347,21 +530,42 @@ public sealed class JudgementWriter : IDisposable
     /// </remarks>
     /// <param name="completedUtc">When judging finished.</param>
     /// <param name="cancellationToken">Cancels finalization before the generation is selected for publication.</param>
-    public void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken = default)
+    public void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken = default) =>
+        Complete(completedUtc, cancellationToken, null);
+
+    internal void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken, PostPassDiagnostics? diagnostic) =>
+        Complete(completedUtc, cancellationToken, diagnostic, null);
+
+    internal void Complete(DateTimeOffset completedUtc, CancellationToken cancellationToken, PostPassDiagnostics? diagnostic,
+        SecureAD.Kernel.IRunLog? sealingLog)
     {
         ThrowIfFinished();
         cancellationToken.ThrowIfCancellationRequested();
+        diagnostic?.Part("validate-laps");
+        LapsInventoryStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-permission-classifications");
+        PermissionClassificationStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-path-fragments");
+        PathProofStorage.RequirePublishable(_connection, cancellationToken);
+        diagnostic?.Part("validate-path-questions");
+        PathRequesterRiskStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-tier0-findings");
+        Tier0RouteFindingStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
 
+        diagnostic?.Part("record-completion");
         FinishWithState(state, completedUtc);
 
+        diagnostic?.Part("build-indexes");
         JudgementSchema.CreateDeferredIndexes(_connection);
         cancellationToken.ThrowIfCancellationRequested();
+        diagnostic?.Part("checkpoint-database");
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        diagnostic?.Part("close-database");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
@@ -369,8 +573,18 @@ public sealed class JudgementWriter : IDisposable
             _bundleDirectory,
             AnalysisStoreKind.Judgement,
             GenerationId,
-            cancellationToken);
+            cancellationToken,
+            diagnostic is null ? null : part => diagnostic.Part(part switch
+            {
+                AnalysisPublicationPart.WritePendingManifest => "write-pending-manifest",
+                AnalysisPublicationPart.MoveData => "move-generation-file",
+                AnalysisPublicationPart.SealData => "seal-generation",
+                AnalysisPublicationPart.SelectManifest => "select-generation",
+                _ => throw new ArgumentOutOfRangeException(nameof(part)),
+            }), sealingLog);
         _finished = true;
+        diagnostic?.Part("release-write-lock");
+        _writeLock.Dispose();
     }
 
     /// <summary>
@@ -399,6 +613,7 @@ public sealed class JudgementWriter : IDisposable
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
         _finished = true;
+        _writeLock.Dispose();
     }
 
     /// <inheritdoc />
@@ -407,9 +622,18 @@ public sealed class JudgementWriter : IDisposable
         if (_disposed)
             return;
 
-        RollBackSelfMembershipBatch();
-        _connection.Dispose();
         _disposed = true;
+        try
+        {
+            RollBackSelfMembershipBatch();
+            AbandonBatch();
+            _statements.Dispose();
+        }
+        finally
+        {
+            try { _connection.Dispose(); }
+            finally { _writeLock.Dispose(); }
+        }
     }
 
     /// <summary>Discards an assessment batch that was never completed.</summary>
@@ -508,7 +732,7 @@ public sealed class JudgementWriter : IDisposable
                 command.Parameters.AddWithValue("$rank", (int)finding.Severity);
 
                 command.Parameters.AddWithValue("$dn", finding.DistinguishedName);
-                command.Parameters.AddWithValue("$principal", finding.Subject.Key);
+                command.Parameters.AddWithValue("$principal", finding.PrincipalName);
                 command.Parameters.AddWithValue("$domain", finding.DomainFqdn);
                 command.Parameters.AddWithValue("$class", finding.ObjectClass);
                 command.Parameters.AddWithValue("$detail", finding.Detail);
@@ -531,6 +755,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case Tier0RouteFindingEvidence route:
+                Tier0RouteFindingStorage.WriteEvidence(_connection, transaction, findingId, route);
+                break;
             case UnconstrainedDelegationEvidence delegation:
                 Execute(
                     transaction,
@@ -687,9 +914,9 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_password_reader (finding_id, trustee_sid, "
                     + "trustee_name, broad_principal_sid, broad_principal_name, attribute, "
-                    + "rights, reach, inherited_from, expansion_was_complete) "
+                    + "rights, reach, inherited_from, expansion_was_complete, route_length) "
                     + "VALUES ($id, $trustee, $name, $broad, $broadName, $attribute, $rights, "
-                    + "$reach, $inherited, $complete)",
+                    + "$reach, $inherited, $complete, $length)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -706,6 +933,7 @@ public sealed class JudgementWriter : IDisposable
                             "$inherited", (object?)readers.InheritedFrom ?? DBNull.Value);
                         command.Parameters.AddWithValue(
                             "$complete", readers.ExpansionWasComplete ? 1L : 0L);
+                        command.Parameters.AddWithValue("$length", readers.MembershipPath.Count);
                     });
 
                 // The path, in order. Without it the finding names a broad principal and cannot say
@@ -803,9 +1031,9 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_decryptor (finding_id, policy_display_name, "
                     + "configured_value, form, decryptor_sid, decryptor_name, "
-                    + "broad_principal_sid, broad_principal_name, expansion_was_complete) "
+                    + "broad_principal_sid, broad_principal_name, expansion_was_complete, route_length) "
                     + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $broad, $broadName, "
-                    + "$complete)",
+                    + "$complete, $length)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -823,6 +1051,7 @@ public sealed class JudgementWriter : IDisposable
                             "$broadName", (object?)decryptor.BroadPrincipalName ?? DBNull.Value);
                         command.Parameters.AddWithValue(
                             "$complete", decryptor.ExpansionWasComplete ? 1L : 0L);
+                        command.Parameters.AddWithValue("$length", decryptor.MembershipPath.Count);
                     });
 
                 // The route, in order. Microsoft's supported way to authorize more than one
@@ -933,7 +1162,26 @@ public sealed class JudgementWriter : IDisposable
         }
     }
 
+    /// <summary>
+    /// The guard for everything except the three writes that make up one object.
+    /// </summary>
+    /// <remarks>
+    /// <b>It commits the open object batch, and that is the point.</b> Only
+    /// <see cref="WriteLapsInventory"/>, <see cref="WriteControlEdges"/> and
+    /// <see cref="WritePermissionClassification"/> may run inside the batch; every other statement on
+    /// this connection must set a transaction it cannot see, so it has to find one already committed.
+    /// Putting the flush here rather than in each of twenty methods is deliberate: the first version
+    /// of this change relied on callers remembering, and 398 tests failed inside
+    /// <c>ControlEdgeStorage.Complete</c> because one of them did not.
+    /// </remarks>
     private void ThrowIfFinished()
+    {
+        ThrowIfFinishedWithinObject();
+        FlushObjects();
+    }
+
+    /// <summary>The same guard, for the per-object writes that legitimately run inside the batch.</summary>
+    private void ThrowIfFinishedWithinObject()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 

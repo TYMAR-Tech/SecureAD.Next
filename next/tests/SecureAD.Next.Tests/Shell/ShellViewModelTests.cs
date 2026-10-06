@@ -35,7 +35,37 @@ public sealed class ShellViewModelTests
 
         shell.Show(ShellSection.Assets);
 
-        Assert.Equal(["Objects", "Findings", "LAPS", "Rules"], shell.Views.Select(v => v.Name));
+        Assert.Equal(["Objects", "Findings", "LAPS", "Delegations"], shell.Views.Select(v => v.Name));
+    }
+
+    [Fact]
+    public void SelectingDelegationsShowsTheBuiltDelegationPane()
+    {
+        var shell = AShell();
+        shell.Show(ShellSection.Assets);
+        var tab = Assert.Single(shell.Views, view => view.Name == "Delegations");
+        tab.IsSelected = true;
+
+        Assert.True(tab.IsBuilt);
+        Assert.Same(tab, shell.SelectedView);
+        Assert.Equal(AssetsPane.Delegations, shell.Assets.Pane);
+        Assert.Same(shell.Assets, shell.Current);
+    }
+
+    [Fact]
+    public void ObjectSearchFromAnotherPaneSelectsTheObjectsTab()
+    {
+        var shell = AShell();
+        shell.Show(ShellSection.Assets);
+        shell.Assets.Show(@"C:\synthetic-runs\object-search", false);
+        shell.Views.Single(view => view.Name == "Findings").IsSelected = true;
+        shell.Assets.ObjectSearchText = "Alice";
+
+        shell.Assets.SearchObjectsCommand.Execute(null);
+
+        Assert.Equal(AssetsPane.Objects, shell.Assets.Pane);
+        Assert.Equal("Objects", shell.SelectedView!.Name);
+        Assert.Single(shell.Views, view => view.IsSelected);
     }
 
     /// <summary>
@@ -213,7 +243,7 @@ public sealed class ShellViewModelTests
 
         shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
 
-        Assert.True(shell.Assets.ShowsFindingsListing);
+        Assert.True(shell.Assets.ShowsFindings);
         Assert.False(shell.Assets.ShowsObjectListing);
     }
 
@@ -229,7 +259,7 @@ public sealed class ShellViewModelTests
         shell.Views.Single(v => v.Name == "Findings").IsSelected = true;
         shell.Views.Single(v => v.Name == "Objects").IsSelected = true;
 
-        Assert.True(shell.Assets.ShowsObjectListing);
+        Assert.True(shell.Assets.ShowsObjects);
         Assert.False(shell.Assets.ShowsFindingsListing);
     }
 
@@ -277,17 +307,33 @@ public sealed class ShellViewModelTests
 
     // ---------------------------------------------------------------------------------------
 
+    [Fact]
+    public void ClearingForDiscardRemovesBothScreensOldRun()
+    {
+        var shell = AShell();
+        shell.Assets.Show(@"C:\runs\discard-test", aCaptureIsRunning: false);
+        shell.Dashboard.Show(@"C:\runs\discard-test");
+
+        shell.ClearOpenedRun();
+
+        Assert.Null(shell.Assets.BundlePath);
+        Assert.Null(shell.Assets.Opened);
+        Assert.Null(shell.Dashboard.BundlePath);
+        Assert.False(shell.Dashboard.HasRun);
+    }
+
     private static ShellViewModel AShell()
     {
         var settings = new FakeSettingsStore();
         var location = new RunLibraryLocation(settings);
         var library = new RunLibraryViewModel(
-            location, new FakeRunCatalog(), new FakeConfirmation(), new FakeRunOpener());
+            location, new FakeRunCatalog(), new FakeConfirmation(), new FakeRunOpener(),
+            new FakeDerivationLauncher(), new FakeJudgingLauncher());
 
         return new ShellViewModel(
             new HomeViewModel(location, new FakeFolderPicker(), new FakeNewAuditDialog(), library),
             new AssetsViewModel(new FakeAssetSource()),
             new DashboardViewModel(new FakeAssetSource()),
-            new SettingsViewModel(new DomainConcurrency(settings)));
+            new SettingsViewModel(new DomainConcurrency(settings)), new RulesViewModel(new FakeAssetSource()));
     }
 }

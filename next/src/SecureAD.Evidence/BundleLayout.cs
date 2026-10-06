@@ -206,6 +206,32 @@ public static class BundleLayout
     public const string RunLogFileName = "run.log";
 
     /// <summary>
+    /// The one file of a run that may leave the environment the run happened in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It exists because <see cref="RunLogFileName"/> cannot travel.</b> The log records the
+    /// forest, the controller each partition was read from, naming contexts as distinguished names,
+    /// and the directory's own words when something failed - all of which a customer is right to
+    /// keep inside their environment. Without a second file, bringing anything back at all means
+    /// bringing back all of that, so nothing comes back and a defect cannot be diagnosed.
+    /// </para>
+    /// <para>
+    /// <b>It is assembled, never filtered.</b> Nothing here is derived by stripping the log: a
+    /// denylist over free text eventually misses a distinguished name quoted inside an error
+    /// message, and a file that claims to be safe and is not would be worse than no file. It is
+    /// built from typed values - counts, durations, product codes, and domain names through
+    /// <c>PortableNames.DomainNameOf</c> - so there is no call a name could be passed to.
+    /// </para>
+    /// <para>
+    /// <b>Short, and plain text, because a person has to check it.</b> The operator carrying it out
+    /// is the one answering for it, so he has to be able to read the whole thing and see for
+    /// himself what is in it. Owner-requested 2026-09-22; see <c>P-263</c>.
+    /// </para>
+    /// </remarks>
+    public const string PortableSummaryFileName = "run-summary.txt";
+
+    /// <summary>
     /// The database one parallel reader writes before its rows are folded into the bundle.
     /// </summary>
     /// <remarks>
@@ -245,6 +271,11 @@ public static class BundleLayout
     public static string RunLogPath(string bundleDirectory) =>
         Combine(bundleDirectory, RunLogFileName);
 
+    /// <summary>The run's portable summary in <paramref name="bundleDirectory"/>.</summary>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    public static string PortableSummaryPath(string bundleDirectory) =>
+        Combine(bundleDirectory, PortableSummaryFileName);
+
     /// <summary>The evidence database of a run in progress in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string PartialPath(string bundleDirectory) =>
@@ -269,6 +300,9 @@ public static class BundleLayout
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string JudgementPartialPath(string bundleDirectory) =>
         Combine(bundleDirectory, JudgementPartialFileName);
+
+    internal static string JudgementWriteLockPath(string bundleDirectory) =>
+        Combine(bundleDirectory, "judgement.write.lock");
 
     /// <summary>The judgement seal in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>

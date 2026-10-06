@@ -18,6 +18,14 @@ public enum AnalysisStoreKind
 /// <param name="GenerationId">The identifier from which <see cref="BundleLayout"/> derives its paths.</param>
 public sealed record AnalysisStoreGeneration(AnalysisStoreKind Kind, Guid GenerationId);
 
+internal enum AnalysisPublicationPart
+{
+    WritePendingManifest,
+    MoveData,
+    SealData,
+    SelectManifest,
+}
+
 /// <summary>
 /// Stages and atomically publishes immutable Derivation and Judgement generations.
 /// </summary>
@@ -32,6 +40,84 @@ public static class AnalysisStoreLifecycle
     private sealed record Manifest(int Version, string GenerationId);
 
     private const int ManifestVersion = 1;
+
+    /// <summary>Excludes another judgement writer or an explicitly requested discard in this bundle.</summary>
+    public static IDisposable LockJudgementWrites(string bundleDirectory) =>
+        new FileStream(BundleLayout.JudgementWriteLockPath(bundleDirectory), FileMode.OpenOrCreate,
+            FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+
+    /// <summary>Discards only saved judgement generations after the operator has confirmed their loss.</summary>
+    public static AnalysisStoreGeneration DiscardJudgement(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        using var writing = LockJudgementWrites(bundleDirectory);
+        if (HasUnpublishedChanges(bundleDirectory, AnalysisStoreKind.Judgement)
+            || HasUnpublishedChanges(bundleDirectory, AnalysisStoreKind.Derivation))
+            throw new InvalidOperationException("This run has an unfinished analysis attempt; its judgement was not discarded.");
+        var current = Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
+        if (!current.IsSuccess) throw new InvalidOperationException(current.Error.Description);
+        var derivation = Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
+        if (!derivation.IsSuccess) throw new InvalidOperationException(derivation.Error.Description);
+
+        var manifest = ManifestPath(bundleDirectory, AnalysisStoreKind.Judgement);
+        var files = Directory.EnumerateFiles(bundleDirectory)
+            .Where(IsJudgementGenerationFile).Prepend(manifest).ToArray();
+        var protectedFiles = new List<FileStream>();
+        try
+        {
+            foreach (var path in files)
+            {
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException($"The judgement file '{path}' is a link and was not discarded.");
+                protectedFiles.Add(new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Delete));
+            }
+
+            // Refuse new readers before unselecting the old result. A failed deletion stays visibly unfinished.
+            BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
+            foreach (var path in files) File.Delete(path);
+            File.Delete(manifest + ".partial");
+            return current.Value;
+        }
+        finally
+        {
+            foreach (var file in protectedFiles) file.Dispose();
+        }
+    }
+
+    private static bool IsJudgementGenerationFile(string path)
+    {
+        var name = Path.GetFileName(path);
+        var prefix = Prefix(AnalysisStoreKind.Judgement) + ".";
+        if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            || name.Length < prefix.Length + 32
+            || !Guid.TryParseExact(name.AsSpan(prefix.Length, 32), "N", out var generation))
+            return false;
+        var dataName = Path.GetFileName(BundleLayout.AnalysisGenerationDataPath(
+            ".", AnalysisStoreKind.Judgement, generation));
+        return name.Equals(dataName, StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + ".seal", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + "-wal", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + "-shm", StringComparison.OrdinalIgnoreCase)
+            || name.Equals(dataName + "-journal", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Marks a new attempt before replacing its staging file; failure leaves the attempt visible.</summary>
+    public static void BeginAttempt(string bundleDirectory, AnalysisStoreKind kind)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        WritePendingManifest(ManifestPath(bundleDirectory, kind) + ".partial", new(ManifestVersion, ""));
+    }
+
+    /// <summary>Whether a newer attempt is unfinished, including the interval after its database was renamed.</summary>
+    public static bool HasUnpublishedChanges(string bundleDirectory, AnalysisStoreKind kind) =>
+        Exists(StagingPath(bundleDirectory, kind)) || Exists(ManifestPath(bundleDirectory, kind) + ".partial");
+
+    private static bool Exists(string path)
+    {
+        try { _ = File.GetAttributes(path); return true; }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+    }
 
     /// <summary>Returns the private staging database path used while a generation is being written.</summary>
     public static string StagingPath(string bundleDirectory, AnalysisStoreKind kind)
@@ -66,7 +152,28 @@ public static class AnalysisStoreLifecycle
         string bundleDirectory,
         AnalysisStoreKind kind,
         Guid generationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Publish(bundleDirectory, kind, generationId, cancellationToken, null);
+
+    /// <summary>Publishes with aggregate file-sealing diagnostics, preserving the existing publication boundary.</summary>
+    /// <param name="bundleDirectory">The bundle containing the analysis store.</param>
+    /// <param name="kind">The analysis store being published.</param>
+    /// <param name="generationId">The immutable generation being selected.</param>
+    /// <param name="cancellationToken">The existing pre-publication cancellation boundary.</param>
+    /// <param name="log">The run log receiving aggregate sealing diagnostics.</param>
+    public static AnalysisStoreGeneration PublishWithDiagnostics(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, IRunLog log)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+        return Publish(bundleDirectory, kind, generationId, cancellationToken, null, log);
+    }
+
+    internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart) =>
+        Publish(bundleDirectory, kind, generationId, cancellationToken, beginPart, null);
+
+    internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart, IRunLog? log)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         cancellationToken.ThrowIfCancellationRequested();
@@ -88,16 +195,29 @@ public static class AnalysisStoreLifecycle
                 + "are immutable and cannot be published twice.");
         }
 
-        File.Move(stagingPath, dataPath);
-        BundleSealing.Seal(dataPath, sealPath);
-        cancellationToken.ThrowIfCancellationRequested();
-
         var manifestPath = ManifestPath(bundleDirectory, kind);
         var stagedManifestPath = manifestPath + ".partial";
-        var manifest = JsonSerializer.Serialize(new Manifest(ManifestVersion, generationId.ToString("D")));
+        // The staging database disappears during sealing. Keep the unfinished attempt visible
+        // until the single atomic operation that makes its sealed generation current.
+        beginPart?.Invoke(AnalysisPublicationPart.WritePendingManifest);
+        WritePendingManifest(stagedManifestPath, new(ManifestVersion, generationId.ToString("D")));
 
+        beginPart?.Invoke(AnalysisPublicationPart.MoveData);
+        File.Move(stagingPath, dataPath);
+        beginPart?.Invoke(AnalysisPublicationPart.SealData);
+        // Analysis has always checked cancellation after sealing, immediately before selecting the manifest.
+        if (log is null) BundleSealing.Seal(dataPath, sealPath);
+        else BundleSealing.SealWithDiagnostics(dataPath, sealPath, CancellationToken.None, log, kind, generationId);
+        beginPart?.Invoke(AnalysisPublicationPart.SelectManifest);
+        cancellationToken.ThrowIfCancellationRequested();
+        File.Move(stagedManifestPath, manifestPath, overwrite: true);
+        return generation;
+    }
+
+    private static void WritePendingManifest(string path, Manifest manifest)
+    {
         using (var stream = new FileStream(
-            stagedManifestPath,
+            path,
             FileMode.Create,
             FileAccess.Write,
             FileShare.None,
@@ -105,14 +225,10 @@ public static class AnalysisStoreLifecycle
             FileOptions.WriteThrough))
         using (var writer = new StreamWriter(stream))
         {
-            writer.Write(manifest);
+            writer.Write(JsonSerializer.Serialize(manifest));
             writer.Flush();
             stream.Flush(flushToDisk: true);
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        File.Move(stagedManifestPath, manifestPath, overwrite: true);
-        return generation;
     }
 
     /// <summary>Resolves the complete generation selected by the current manifest.</summary>
@@ -134,7 +250,10 @@ public static class AnalysisStoreLifecycle
 
         try
         {
-            var manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(manifestPath));
+            // Publication replaces this name atomically. A short metadata read must not block
+            // that replacement; its handle still describes the complete old or new manifest.
+            using var stream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            var manifest = JsonSerializer.Deserialize<Manifest>(stream);
             if (manifest is null || manifest.Version != ManifestVersion
                 || !Guid.TryParse(manifest.GenerationId, out var generationId))
             {

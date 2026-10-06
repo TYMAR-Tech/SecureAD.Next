@@ -18,7 +18,7 @@ namespace SecureAD.Measurements;
 [CPUUsageDiagnoser]
 public class LabAuditProfilingBenchmarks
 {
-    private const string ArtifactRoot = @"C:\Users\jistrand\source\repos\razamus\SecureAD.Next\.vs\AuditLab-53015de18a534638b9bf9ea22504410c";
+    private const string ArtifactRoot = @"C:\Users\jistrand\source\repos\SecureAD.Next\next\artifacts\measurement-inputs\AuditLab-53015de18a534638b9bf9ea22504410c";
     private const string EvidenceHash = "1abe920124537ab380ba5a62a2a1d1c742c553fd7deffd6628f473f1fb53cccf";
     private const string DerivationHash = "69a29fd1b6e4b54dbf2ae791a6eb55e7e1c794ba4557168e8dbf92e63396f109";
     private const string DerivationFile = "derivation.c5079293b41047299b1736b45cbbc2f8.db";

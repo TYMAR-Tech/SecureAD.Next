@@ -46,6 +46,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <EmbeddedResource Include="Resources\MicrosoftFluentIcons.LICENSE.txt" />
   </ItemGroup>
 
   <!-- The window exports nothing: a shell offers screens, not types, and a public view model is

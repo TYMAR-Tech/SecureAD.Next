@@ -10,7 +10,7 @@ public sealed class SavedPathOpeningConfiguration : ManualConfig
 {
     public SavedPathOpeningConfiguration()
     {
-        const string temporary = @"C:\Users\jistrand\source\repos\razamus\SecureAD.Next\next\artifacts\p246-ddb2a0ff3ba0473892ce08b417939184\isolated-temp";
+        const string temporary = @"C:\Users\jistrand\source\repos\SecureAD.Next\next\artifacts\p246-ddb2a0ff3ba0473892ce08b417939184\isolated-temp";
         System.IO.Directory.CreateDirectory(temporary);
         AddJob(Job.Default.WithStrategy(RunStrategy.Monitoring).WithLaunchCount(1).WithWarmupCount(0)
             .WithIterationCount(1).WithInvocationCount(1).WithUnrollFactor(1)

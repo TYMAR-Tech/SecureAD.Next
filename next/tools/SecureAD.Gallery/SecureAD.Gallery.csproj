@@ -14,9 +14,9 @@
     would be a stub. Being its own program means it CANNOT appear in SecureAD by a flag, by a
     mistake, or because someone forgot.
 
-    IT IS NOT IN THE SOLUTION and lives outside next/src, so the architecture gates (which scan
-    next/src) do not govern it, and a normal solution build does not build it. Build this project
-    file directly and run the executable it produces, under bin/Debug/net10.0-windows.
+    It lives outside next/src, so the architecture gates (which scan next/src) do not govern it.
+    It is included in the solution and CI builds it with the product. Build this project directly
+    to work on the gallery alone.
 
     DELETE THIS FOLDER when the styling work is done. It shares the paint but not the product, so
     it can drift and show a control the real screens no longer use. That risk is why it is
@@ -42,12 +42,12 @@
     <Page Include="..\..\src\SecureAD.Shell\Themes\*.xaml" Link="Themes\%(Filename)%(Extension)" />
 
     <!--
-      StateMarks.xaml keys its four treatments off the shell's FactState, so the harness needs
-      that type to compile the dictionary. Linked rather than copied, and linked rather than
-      taken by a project reference, because the type is internal to the shell. One source of
-      truth either way: this compiles the shell's own file.
+      Compile the shared themes' internal Shell types into this assembly, where their XAML
+      namespaces resolve. Link the real sources rather than copying or stubbing the controls.
     -->
     <Compile Include="..\..\src\SecureAD.Shell\ViewModels\FactState.cs" Link="FactState.cs" />
+    <Compile Include="..\..\src\SecureAD.Shell\ViewModels\TreeNodeIconKind.cs" Link="TreeNodeIconKind.cs" />
+    <Compile Include="..\..\src\SecureAD.Shell\Views\FieldGrid.cs" Link="FieldGrid.cs" />
     <Content Include="..\..\src\SecureAD.Shell\Views\Sections\ObjectSectionTemplates.xaml" Link="PreviewInputs\ObjectSectionTemplates.xaml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\src\SecureAD.Shell\Views\ObjectView.xaml" Link="PreviewInputs\ObjectView.xaml" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\src\SecureAD.Shell\Views\AssetsView.xaml" Link="PreviewInputs\AssetsView.xaml" CopyToOutputDirectory="PreserveNewest" />

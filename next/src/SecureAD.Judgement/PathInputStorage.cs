@@ -62,16 +62,24 @@ internal static class PathInputStorage
         transaction.Commit();
     }
 
-    internal static PathInputs Read(SqliteConnection connection, JudgementDescription description, string directory,
-        CancellationToken cancellationToken = default)
+    internal static PathInputs Read(SqliteConnection connection, JudgementDescription description,
+        CancellationToken cancellationToken = default) => Read(connection, description, out _, cancellationToken);
+
+    internal static PathInputs Read(SqliteConnection connection, JudgementDescription description,
+        out OwnershipAuditStorage.Snapshot? ownershipInputs, CancellationToken cancellationToken)
     {
+        ownershipInputs = null;
         cancellationToken.ThrowIfCancellationRequested();
         var header = ReadHeader(connection);
         using var anchors = connection.CreateCommand();
         anchors.CommandText = "SELECT target FROM path_anchor ORDER BY target";
         var targetNames = new List<string>();
-        using (var read = anchors.ExecuteReader()) while (read.Read()) targetNames.Add(read.GetString(0));
-        var regions = ReadRegions(connection);
+        using (var read = anchors.ExecuteReader()) while (read.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            targetNames.Add(read.GetString(0));
+        }
+        var regions = ReadRegions(connection, cancellationToken);
         using var product = connection.CreateCommand();
         product.CommandText = "SELECT discovery_scoped FROM control_product WHERE id=1";
         var scoped = Convert.ToInt64(product.ExecuteScalar(), CultureInfo.InvariantCulture) == 1;
@@ -91,25 +99,37 @@ internal static class PathInputStorage
             return Empty(description, header.Availability);
         }
         if (!scoped || header.Input is null || !header.Input.IsSupported) throw InvalidProof();
-        var ownership = OwnershipAuditStorage.ReadHeader(connection, requireComplete: true) ?? throw InvalidProof();
-        if (ownership.Input != header.Input || ownership.Coverage != header.Coverage) throw InvalidProof();
-        var validated = OwnershipAuditValidation.Validate(connection, description, directory, cancellationToken);
-        var fixedTargets = FixedTargets(validated.Classifications).ToArray();
+        ownershipInputs = new OwnershipAuditStorage.Snapshot(connection, description, cancellationToken);
+        var ownership = ownershipInputs.Header ?? throw InvalidProof();
+        if (ownership.Generation != description.GenerationId || ownership.EvidenceSeal != description.EvidenceSeal
+            || ownership.DerivationGeneration != description.DerivationGenerationId
+            || ownership.Input != header.Input || ownership.Coverage != header.Coverage) throw InvalidProof();
+        var seeds = ownershipInputs.Seeds;
+        var targets = ownershipInputs.ByTarget;
+        if (seeds.Length != ownership.SeedCount || targets.Count != ownership.TargetCount
+            || seeds.Any(seed => seed.Classification.Input != header.Input
+                || !targets.TryGetValue(seed.Target, out var target) || target.Identity != seed.Classification.Target
+                || target.Selection != OwnershipScopeState.Included)) throw InvalidProof();
+        var classifications = seeds.Select(seed => seed.Classification).ToArray();
+        var fixedTargets = FixedTargets(classifications).ToArray();
         if (!targetNames.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(fixedTargets.Select(item => item.DistinguishedName)))
             throw InvalidProof();
-        var opened = BundleReader.Open(directory);
-        if (!opened.IsSuccess) throw InvalidProof();
-        using var bundle = opened.Value;
-        var contexts = bundle.ReadNamingContexts();
-        if (!contexts.IsSuccess) throw InvalidProof();
-        if (regions.Count != 0) bundle.PrepareBulkObjectLookup();
-        foreach (var region in regions)
+        var relations = new List<Tier0RelevanceRelation>();
+        foreach (var link in ownershipInputs.Relations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var subject = region.Source.TargetDn is { } dn ? bundle.ReadObjectAttributes(dn) : null;
-            var target = subject is null ? null : OwnershipAuditRun.Target(subject, contexts.Value);
-            if (region != Region(region.Source, target) || !WitnessMatches(region.Source, target, bundle)) throw InvalidProof();
+            if (!targets.TryGetValue(link.Controller, out var controller) || !targets.TryGetValue(link.Affected, out var affected)
+                || controller.Selection != OwnershipScopeState.Included || affected.Selection != OwnershipScopeState.Included)
+                throw InvalidProof();
+            relations.Add(link.EdgeId is { } id
+                ? Tier0RelevanceRelation.FromControlEdge(header.Input, controller.Identity, affected.Identity,
+                    ControlEdgeStorage.ReadExact(connection, description, link.Affected, id))
+                : Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity, affected.Identity,
+                    link.WitnessCapability ?? throw InvalidProof(), new(link.WitnessTarget ?? throw InvalidProof(),
+                        link.WitnessOrdinal, link.WitnessTrustee ?? throw InvalidProof(), link.WitnessIsOwner)
+                        { GroupMembership = link.GroupMembership }));
         }
+        if (relations.Count != ownership.RelationCount) throw InvalidProof();
         // These are references, not a new permission interpretation. Full permission proofs remain
         // behind ReadControlEdges; copying them here would create another forest-wide permission store.
         using var permissions = connection.CreateCommand();
@@ -124,13 +144,66 @@ internal static class PathInputStorage
                 ids.Add(read.GetInt64(0));
             }
         return new(description.GenerationId, header.Availability, header.Input, header.Coverage, fixedTargets,
-            validated.Classifications, validated.Relations, ids, regions, SelfMembershipCoverageStorage.Read(connection, description));
+            classifications, relations, ids, regions, SelfMembershipCoverageStorage.Read(connection, description));
+    }
+
+    // Source qualification belongs to producing a result, never to browsing its saved projection.
+    internal static void ValidateSources(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
+        OwnershipAuditStorage.Snapshot? ownership, PathInputs inputs, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        sources.RequireFor(description);
+        if (inputs.Availability != PathInputAvailability.Recorded) return;
+        var validated = OwnershipAuditValidation.Validate(connection, description, sources,
+            ownership ?? throw InvalidProof(), cancellationToken);
+        if (Tier0PathCalculation.Fingerprint(inputs.Classifications) != Tier0PathCalculation.Fingerprint(validated.Classifications)
+            || Tier0PathCalculation.Fingerprint(inputs.AdmissionRelationships) != Tier0PathCalculation.Fingerprint(validated.Relations))
+            throw InvalidProof();
+        var bundle = sources.Bundle;
+        var contexts = sources.ReadNamingContexts();
+        if (!contexts.IsSuccess) throw InvalidProof();
+        ValidateWitnesses(bundle, contexts.Value, inputs.UncertaintyRegions, cancellationToken);
+        sources.RequireFor(description);
+    }
+
+    internal static void ValidateWitnesses(BundleReader bundle, IReadOnlyDictionary<string, NamingContextKind> contexts,
+        IReadOnlyList<PathUncertaintyRegion> regions, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (regions.Count != 0) bundle.PrepareBulkObjectLookup();
+        foreach (var batch in regions.Select(region =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return region;
+            }).GroupBy(region => region.Source.TargetDn, StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var subject = batch.Key is { } dn ? bundle.ReadObjectAttributes(dn) : null;
+            var target = subject is null ? null : OwnershipAuditRun.Target(subject, contexts);
+            var descriptor = target is not null && batch.Any(region =>
+                region.Source.Reason is not (Tier0DiscoveryReason.CaptureIncomplete or Tier0DiscoveryReason.MissingIdentity))
+                ? bundle.ReadPermissions(target.DistinguishedName) : null;
+            var occurrences = descriptor is not null && batch.Any(region => region.Source.PermissionOrdinal.HasValue)
+                ? descriptor.Entries.Select(entry => (entry.Ordinal, (string?)entry.Trustee.Sid)).ToHashSet() : null;
+            var captureIncomplete = false;
+            if (batch.Any(region => region.Source.Reason == Tier0DiscoveryReason.CaptureIncomplete))
+            {
+                var scope = bundle.ReadScope();
+                captureIncomplete = scope.IsSuccess && !scope.Value.AllDeclaredDomainsAreComplete;
+            }
+            foreach (var region in batch)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (region != Region(region.Source, target)
+                    || !WitnessMatches(region.Source, target, descriptor, occurrences, captureIncomplete)) throw InvalidProof();
+            }
+        }
     }
 
     private static PathInputs Empty(JudgementDescription description, PathInputAvailability availability) =>
         new(description.GenerationId, availability, null, OwnershipAuditStorage.UnavailableCoverage, [], [], [], [], [], null);
 
-    private static IEnumerable<Tier0Target> FixedTargets(IEnumerable<Tier0Classification> classifications) =>
+    internal static IEnumerable<Tier0Target> FixedTargets(IEnumerable<Tier0Classification> classifications) =>
         classifications.Where(item => item.Supports.Any(support => support.Basis is Tier0Basis.Core or Tier0Basis.PartitionRoot
             or Tier0Basis.EnterpriseCaRegistration or Tier0Basis.EnterpriseCaHost))
             .Select(item => item.Target).Distinct().OrderBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase);
@@ -152,27 +225,24 @@ internal static class PathInputStorage
             source.TargetDn is null ? PathTargetScope.Forest : PathTargetScope.Object, target);
     }
 
-    private static bool WitnessMatches(Tier0DiscoveryLimitation source, Tier0Target? target, BundleReader bundle)
+    private static bool WitnessMatches(Tier0DiscoveryLimitation source, Tier0Target? target, ObjectPermissions? descriptor,
+        HashSet<(int Ordinal, string? Sid)>? occurrences, bool captureIncomplete)
     {
         if (source.Reason == Tier0DiscoveryReason.CaptureIncomplete)
-        {
-            var scope = bundle.ReadScope();
-            return source.TargetDn is null && scope.IsSuccess && !scope.Value.AllDeclaredDomainsAreComplete;
-        }
+            return source.TargetDn is null && captureIncomplete;
         if (target is null || source.TargetDn != target.DistinguishedName) return false;
         if (source.Reason == Tier0DiscoveryReason.MissingIdentity) return !target.IsValid;
-        var descriptor = bundle.ReadPermissions(target.DistinguishedName);
         if (source.Reason == Tier0DiscoveryReason.DescriptorUnavailable)
             return descriptor is null || descriptor.Availability != DescriptorAvailability.Read || descriptor.DaclState == DaclState.Unreadable;
         if (descriptor is null) return false;
         if (source.Reason == Tier0DiscoveryReason.DescriptorIncomplete) return descriptor.DaclCompleteness != DaclCompleteness.Complete;
         if (source.Reason == Tier0DiscoveryReason.NullDacl) return descriptor.DaclState == DaclState.Null;
         return source.PermissionOrdinal is { } ordinal
-            ? descriptor.Entries.Any(entry => entry.Ordinal == ordinal && entry.Trustee.Sid == source.TrusteeSid)
+            ? occurrences?.Contains((ordinal, source.TrusteeSid)) == true
             : descriptor.Owner?.Sid == source.TrusteeSid || descriptor.DaclState == DaclState.Null && source.TrusteeSid == "S-1-1-0";
     }
 
-    private static IReadOnlyList<PathUncertaintyRegion> ReadRegions(SqliteConnection connection)
+    private static IReadOnlyList<PathUncertaintyRegion> ReadRegions(SqliteConnection connection, CancellationToken cancellationToken)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT proof,fingerprint FROM path_uncertainty ORDER BY id";
@@ -180,10 +250,13 @@ internal static class PathInputStorage
         var regions = new List<PathUncertaintyRegion>();
         while (read.Read())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var json = read.GetString(0);
             if (!OwnershipAuditStorage.Hash(json).AsSpan().SequenceEqual((byte[])read.GetValue(1))) throw InvalidProof();
             var region = JsonSerializer.Deserialize<PathUncertaintyRegion>(json, ProofSerialization.Options) ?? throw InvalidProof();
-            if (region.Source is null || region.Source.PermissionOrdinal < 0) throw InvalidProof();
+            if (region.Source is null || region.Source.PermissionOrdinal < 0
+                || !Enum.IsDefined(region.Cause) || !Enum.IsDefined(region.Subjects) || !Enum.IsDefined(region.Targets)
+                || region != Region(region.Source, region.RecordedResource)) throw InvalidProof();
             regions.Add(region);
         }
         return regions;

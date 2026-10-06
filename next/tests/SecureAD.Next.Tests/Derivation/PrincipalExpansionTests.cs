@@ -62,6 +62,79 @@ public sealed class PrincipalExpansionTests
     /// </summary>
     private const int DistributionGroup = 0x00000002;
 
+    [Fact]
+    public void DifferentWalksReuseTheReadersIdentityRows()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        var first = reader.MembersOf(Readers, Scope).Members!.Single(member => member.Sid == Alice);
+
+        var second = Assert.Single(reader.MembersOf(Staff, Scope).Members!);
+
+        Assert.Same(first.Sid, second.Sid);
+    }
+
+    [Fact]
+    public void ReusedInputsKeepDifferentRootsIndependent()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope);
+
+        var expansion = reader.MembersOf(Staff, Scope);
+
+        Assert.Equal(new[] { Alice }, expansion.Members!.Select(member => member.Sid));
+    }
+
+    [Fact]
+    public void AShortFirstWalkDoesNotLimitTheNextWalk()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope, budget: 1);
+
+        var expansion = reader.MembersOf(Readers, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, expansion.Outcome);
+    }
+
+    [Fact]
+    public void SeparateReadersNeverShareMembershipInputs()
+    {
+        var firstDirectory = Store(edges: [(0, 1)]);
+        var secondDirectory = Store(edges: [(0, 2)]);
+        using var first = DerivationReader.Open(firstDirectory).Value!;
+        using var second = DerivationReader.Open(secondDirectory).Value!;
+        first.MembersOf(Readers, Scope);
+
+        var expansion = second.MembersOf(Readers, Scope);
+
+        Assert.Equal(new[] { Alice }, expansion.Members!.Select(member => member.Sid));
+    }
+
+    [Fact]
+    public void ReusingInputsKeepsUnidentifiedMembershipExplicit()
+    {
+        var directory = Store(edges: [(0, 1), (1, 2)], unresolvedMembers: [1]);
+        using var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope);
+
+        var expansion = reader.MembersOf(Staff, Scope);
+
+        Assert.Equal(PrincipalExpansionOutcome.ExpandedWithUnidentifiedMember, expansion.Outcome);
+    }
+
+    [Fact]
+    public void CachedInputsCannotBeReadAfterDisposal()
+    {
+        var directory = Store(edges: [(0, 1)]);
+        var reader = DerivationReader.Open(directory).Value!;
+        reader.MembersOf(Readers, Scope);
+        reader.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => reader.MembersOf(Readers, Scope));
+    }
+
 
     /// <summary>
     /// A group that claimed a member nobody captured does not report as fully expanded.
@@ -330,6 +403,44 @@ public sealed class PrincipalExpansionTests
 
         Assert.Equal(PrincipalExpansionOutcome.NoNestingDerived, expansion.Outcome);
         Assert.Null(expansion.Members);
+    }
+
+    [Fact]
+    public void QualifiedNestedWalkKeepsUnperformedWorkDistinctFromAnEmptyGroup()
+    {
+        using var missing = DerivationReader.Open(Store(edges: [], nesting: DerivationPhaseOutcome.DidNotRun)).Value!;
+        using var empty = DerivationReader.Open(Store(edges: [])).Value!;
+        var unperformed = missing.MembersOf(Readers, Scope, (_, _) => true, CancellationToken.None);
+        var performed = empty.MembersOf(Readers, Scope, (_, _) => true, CancellationToken.None);
+        Assert.Equal(PrincipalExpansionOutcome.NoNestingDerived, unperformed.Outcome);
+        Assert.Null(unperformed.Members);
+        Assert.Equal(PrincipalExpansionOutcome.Expanded, performed.Outcome);
+        Assert.Empty(performed.Members!);
+    }
+
+    [Fact]
+    public void QualifiedNestedWalkChecksCancellationAfterTheLastLink()
+    {
+        using var reader = DerivationReader.Open(Store(edges: [(0, 1)])).Value!;
+        using var stopping = new CancellationTokenSource();
+        Assert.Throws<OperationCanceledException>(() => reader.MembersOf(Readers, Scope, (_, _) =>
+        {
+            stopping.Cancel();
+            return true;
+        }, stopping.Token));
+    }
+
+    [Fact]
+    public void QualifiedNestedWalkDoesNotIntroduceTheOrdinaryExpansionCeiling()
+    {
+        var count = DerivationReader.DefaultExpansionBudget + 2;
+        using var reader = DerivationReader.Open(Store(Enumerable.Range(1, count - 1).Select(index => (0, index)).ToArray(),
+            principalCount: count)).Value!;
+        var ordinary = reader.MembersOf(Readers, Scope);
+        var qualified = reader.MembersOf(Readers, Scope, (_, _) => true, CancellationToken.None);
+        Assert.Equal((PrincipalExpansionOutcome.StoppedAtBudget, DerivationReader.DefaultExpansionBudget),
+            (ordinary.Outcome, ordinary.Members!.Count));
+        Assert.Equal((PrincipalExpansionOutcome.Expanded, count - 1), (qualified.Outcome, qualified.Members!.Count));
     }
 
     /// <summary>
@@ -649,6 +760,7 @@ public sealed class PrincipalExpansionTests
     /// Principals, by index, that named a containing group no captured object answers to. Stored
     /// but never consulted by an expansion, which is the asymmetry P-164 requires.
     /// </param>
+    /// <param name="principalCount">The original four identities plus optional ordinary current identities.</param>
     private static string Store(
         (int Group, int Member)[] edges,
         DerivationPhaseOutcome nesting = DerivationPhaseOutcome.Succeeded,
@@ -656,7 +768,8 @@ public sealed class PrincipalExpansionTests
         (int Index, int? GroupType)[]? groupTypes = null,
         (string Sid, int Principal)[]? history = null,
         int[]? unresolvedMembers = null,
-        int[]? unresolvedContainers = null)
+        int[]? unresolvedContainers = null,
+        int principalCount = 4)
     {
         var directory = TempDirectories.Create("expansion-tests");
 
@@ -674,10 +787,11 @@ public sealed class PrincipalExpansionTests
         using (var writer = DerivationWriter.Create(directory, seal, Started))
         {
             writer.WriteSids(
-                [Readers, Staff, Alice, DomainUsers, .. carried.Select(h => h.Sid)],
-                [Scope, Scope, Scope, Scope, .. carried.Select(_ => Scope)]);
+                [Readers, Staff, Alice, DomainUsers, .. Enumerable.Range(4, principalCount - 4).Select(index => $"S-1-5-21-9-9-9-{2000 + index}"),
+                    .. carried.Select(h => h.Sid)],
+                [.. Enumerable.Repeat(Scope, principalCount), .. carried.Select(_ => Scope)]);
 
-            writer.WritePrincipals(Enumerable.Range(0, 4).Select(index => new PrincipalRow(
+            writer.WritePrincipals(Enumerable.Range(0, principalCount).Select(index => new PrincipalRow(
                 index,
                 Guid.Empty,
                 IsGroup: groupIndexes.Contains(index),
@@ -688,10 +802,10 @@ public sealed class PrincipalExpansionTests
 
             writer.WriteSidIdentities(
             [
-                .. Enumerable.Range(0, 4)
+                .. Enumerable.Range(0, principalCount)
                     .Select(index => new SidIdentityRow(index, index, SidIdentityKind.Current)),
                 .. carried.Select((h, offset) =>
-                    new SidIdentityRow(4 + offset, h.Principal, SidIdentityKind.History)),
+                    new SidIdentityRow(principalCount + offset, h.Principal, SidIdentityKind.History)),
             ]);
 
             writer.WriteNestingEdges(edges.Select(e => new NestingEdge(e.Group, e.Member)));
@@ -724,4 +838,3 @@ public sealed class PrincipalExpansionTests
         return directory;
     }
 }
-

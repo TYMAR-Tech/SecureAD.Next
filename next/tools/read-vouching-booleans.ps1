@@ -1,4 +1,4 @@
-$src = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\next\src'
+$src = 'C:\Users\jistrand\source\repos\SecureAD.Next\next\src'
 
 $booleans = @(
     'PermissionWording|RightsAreComplete'

@@ -1,273 +1,199 @@
 <UserControl x:Class="SecureAD.Shell.Views.HomeView" x:ClassModifier="internal"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
-    <!--
-        Home. Where the run library is chosen, where a run is started from, and where the runs
-        already taken are listed.
-
-        0057 made starting an audit a modal act, so this screen carries the button that opens it
-        rather than the rail carrying an entry. Home is also where the operator lands when the
-        window closes, which is why it says what a run is before offering to start one.
-
-        NOTHING HERE REPORTS POSTURE. 0045: no part of this product produces a finding yet, and a
-        card saying "0 findings" would be read as "your directory is clean" rather than "nothing has
-        looked". The card on the right says what became of a run, which was observed.
-
-        Comfortable density, per 0056 decision 8: this is a screen where a decision is made, not a
-        list to be scanned.
-    -->
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource AssetCanvasBackground}">
     <Grid Margin="{StaticResource ScreenPadding}">
         <Grid.ColumnDefinitions>
-            <!-- F-0079-3. The card was a flat 360 pixels, which expresses one monitor: a stamp
-                 beside a wide grid on a large panel, and a crowd on a laptop. Both columns are
-                 now proportional with a floor and a ceiling, so the card SHRINKS IN PLACE
-                 rather than dropping below the grid - the owner's call, 2026-08-21. Nothing
-                 rearranges itself as the window is dragged, and at the narrow end both halves
-                 get tighter together instead of one of them going somewhere else.
-
-                 The ceiling matters as much as the floor: without it the card would keep
-                 growing on a wide monitor and the run list would be squeezed by a card holding
-                 the same seven short fields it holds at any size.
-
-                 ScreenPadding is still one value at every window size. That half of F-0079-3
-                 is untouched and the finding stays open for it. -->
-            <ColumnDefinition Width="2*" MinWidth="320" />
-            <ColumnDefinition Width="*" MinWidth="280" MaxWidth="420" />
+            <ColumnDefinition Width="*" MinWidth="320" />
+            <ColumnDefinition Width="0.48*" MinWidth="280" MaxWidth="420" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-
-        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2">
-            <TextBlock Text="Home" Style="{StaticResource ScreenTitle}" Margin="0,0,0,16" />
-
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="Run library" Style="{StaticResource SectionTitle}" Margin="0,0,0,4" />
-                    <TextBlock Text="{Binding LibraryDescription}"
-                               TextWrapping="Wrap"
-                               Foreground="{StaticResource SecondaryTextBrush}" />
-
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Choose run library..."
-                                Command="{Binding ChooseLibraryCommand}" />
-
-                        <!-- Disabled until a library is chosen. A wizard whose every action refuses
-                             would teach an operator that this product's refusals are noise. -->
-                        <Button Content="New audit"
-                                Command="{Binding NewAuditCommand}"
-                                Style="{StaticResource PrimaryButton}"
-                                Margin="10,0,0,0" />
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2">
+            <Border Style="{StaticResource HomePanel}" Padding="18" Background="{StaticResource AttributeHeaderBackground}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Margin="20,0,0,0" VerticalAlignment="Center">
+                        <Button Content="New audit" Command="{Binding NewAuditCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" />
+                        <TextBlock Text="Review scope before capture starts" Style="{StaticResource Caption}" Margin="0,6,0,0" />
                     </StackPanel>
-
-                    <!-- Read-only TextBox rather than TextBlock: a WPF TextBlock cannot be selected,
-                         and the one thing an operator needs from a failure is to copy it. -->
-                    <TextBox Text="{Binding Location.Problem, Mode=OneWay}"
-                             Style="{StaticResource SelectableMessage}"
-                             Foreground="{StaticResource FaultBrush}"
-                             Margin="0,8,0,0" />
-                </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Active Directory security auditing" Style="{StaticResource Caption}" />
+                        <TextBlock Text="Capture once. Investigate offline." Style="{StaticResource ScreenTitle}" Margin="0,4,0,8" />
+                        <TextBlock Text="SecureAD captures your Active Directory forest as sealed evidence. Explore objects, permissions, group membership and security findings from that saved capture, without reconnecting to the directory."
+                                   Style="{StaticResource BaseTextBlock}" Foreground="{StaticResource AttributeLabelBrush}" />
+                    </StackPanel>
+                </DockPanel>
             </Border>
-
-            <TextBlock Text="Runs taken" Style="{StaticResource SectionTitle}" Margin="0,28,0,4" />
-            <TextBlock Text="Runs are started from New audit. It finds the forest this machine is in, shows you every domain and the controller each would be read from, and starts the run once you have looked."
-                       TextWrapping="Wrap"
-                       Foreground="{StaticResource SecondaryTextBrush}"
-                       Margin="0,0,0,10" />
+            <Border Style="{StaticResource HomePanel}" Margin="0,12,0,14" Padding="12" Background="{StaticResource AttributeHeaderBackground}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Choose run library..." Command="{Binding ChooseLibraryCommand}" Margin="16,0,0,0" VerticalAlignment="Center" />
+                    <StackPanel>
+                        <TextBlock Text="Run library" Style="{StaticResource HomeLabel}" />
+                        <TextBox Text="{Binding LibraryDescription, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}" />
+                        <TextBox Text="{Binding Location.Problem, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
         </StackPanel>
 
-        <!-- Said only when the library was read and genuinely held nothing. "No runs" and
-             "I could not look" are different sentences. -->
-        <TextBlock Grid.Row="1" Grid.Column="0"
-                   Text="This run library holds no runs yet."
-                   VerticalAlignment="Top"
-                   Foreground="{StaticResource SecondaryTextBrush}"
-                   Visibility="{Binding Library.IsEmpty, Converter={StaticResource Shown}}" />
+        <!-- Status belongs to the work's named run, not to whichever row is selected now. -->
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12"
+                    Visibility="{Binding Library.HasAnalysisStatus, Converter={StaticResource Shown}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Stop" Command="{Binding Library.StopAnalysisCommand}"
+                            Style="{StaticResource DangerButton}" Margin="12,0,0,0"
+                            Visibility="{Binding Library.IsAnalysing, Converter={StaticResource Shown}}" />
+                    <TextBox Text="{Binding Library.AnalysisStatus, Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                </DockPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderBrush="{StaticResource FaultBrush}"
+                    Visibility="{Binding Library.HasProblem, Converter={StaticResource Shown}}">
+                <TextBox Text="{Binding Library.Problem, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+            </Border>
+        </StackPanel>
 
-        <DataGrid Grid.Row="1" Grid.Column="0"
-                  ItemsSource="{Binding Library.RunsView}"
-                  ColumnHeaderStyle="{StaticResource TableColumnHeader}"
-                  SelectedItem="{Binding Library.Selected}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  Margin="0,0,20,0">
-            <!-- Runs of one scope are shown together, per 0069: those are the runs that may be
-                 compared with one another, and each group carries its own baseline. The heading
-                 names the domains rather than counting them, because which domain is missing is
-                 what decides whether this group answers the question the operator has. -->
-            <DataGrid.GroupStyle>
-                <GroupStyle>
-                    <GroupStyle.ContainerStyle>
-                        <Style TargetType="GroupItem">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="GroupItem">
-                                        <StackPanel>
-                                            <Border Background="{StaticResource SelectionBrush}"
-                                                    Padding="8,6"
-                                                    Margin="0,10,0,0">
-                                                <StackPanel>
-                                                    <!-- Items[0] rather than Name: the group is
-                                                         keyed on the evidence identity, which is
-                                                         sixteen hex characters and means nothing
-                                                         to a reader. -->
-                                                    <TextBlock
-                                                        Text="{Binding Items[0].GroupHeading}"
-                                                        FontWeight="SemiBold"
-                                                        TextWrapping="Wrap" />
-                                                    <TextBlock
-                                                        Text="{Binding ItemCount, StringFormat={}{0} run(s)}"
-                                                        FontSize="11"
-                                                        Foreground="{StaticResource SecondaryTextBrush}" />
-                                                </StackPanel>
-                                            </Border>
-                                            <ItemsPresenter />
-                                        </StackPanel>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </GroupStyle.ContainerStyle>
-                </GroupStyle>
-            </DataGrid.GroupStyle>
-            <DataGrid.Columns>
-                <!-- Auto with a floor, never *. CORRECTED after testing on a running window:
-                     an earlier version of this comment claimed the star column explained why
-                     no column could be resized. It did not, and it was written before the
-                     screen had been tried. The star column explained the GAP, and only the
-                     gap. Resizing was dead for a separate reason in Controls.xaml - the column
-                     header template had dropped the two Thumb parts a column is resized by -
-                     and it was dead on all four grids, not only this one.
-
-                     What the star column did do: it absorbs whatever width is left over, so
-                     the slack sat INSIDE the table as a gap between Run and When instead of at
-                     the table's right edge, and it could never have been dragged narrower even
-                     with the grippers restored, because it refills the instant it is released.
-                     Guarded by RunLibraryColumnGateTests. -->
-                <DataGridTemplateColumn Header="Run" Width="Auto" MinWidth="160">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Name}" />
-                                <!-- The baseline of this group. Shown on the row rather than only
-                                     in the card, because which run "changed" is measured against
-                                     is a property of the list an operator reads at a glance. -->
-                                <TextBlock Text="baseline"
-                                           FontSize="11"
-                                           Margin="8,1,0,0"
-                                           Foreground="{StaticResource AccentBrush}"
-                                           Visibility="{Binding IsBaseline, Converter={StaticResource Shown}}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <!-- Newest first. A run that recorded no moment of its own is placed by its
-                     folder's date and says so, rather than passing it off as the run's. -->
-                <DataGridTemplateColumn Header="When" Width="Auto">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,4,8,4">
-                                <TextBlock Text="{Binding When}" />
-                                <TextBlock Text="folder date - the run recorded none"
-                                           FontSize="11"
-                                           Foreground="{StaticResource SecondaryTextBrush}"
-                                           Visibility="{Binding WhenWasNotRecorded, Converter={StaticResource Shown}}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <!-- SizeToCells rather than Auto, and a MinWidth: with Auto the header governed the
-                     width and "Outcome" wrapped to three lines while the value below it was clipped
-                     to "Finishe". A truncated outcome is a value the screen has and does not show,
-                     which is worse than an ugly column. Seen on Home 2026-08-21. -->
-                <DataGridTextColumn Header="Outcome"
-                                    Binding="{Binding State}"
-                                    Width="SizeToCells"
-                                    MinWidth="90" />
-            </DataGrid.Columns>
-        </DataGrid>
-
-        <!-- The details card. Only what a listing observed - never coverage, which lives inside the
-             bundle and would have to be opened to be known. -->
-        <Border Grid.Row="1" Grid.Column="1"
-                Style="{StaticResource Card}"
-                VerticalAlignment="Top"
-                Visibility="{Binding Library.HasSelection, Converter={StaticResource Shown}}">
-            <StackPanel>
-                <TextBlock Text="{Binding Library.Selected.Identifier}"
-                           Style="{StaticResource RowTitle}"
-                           TextWrapping="Wrap" />
-
-                <TextBlock Text="{Binding Library.Selected.State}"
-                           Style="{StaticResource FieldLabel}"
-                           Margin="0,10,0,2" />
-                <TextBlock Text="{Binding Library.Selected.Meaning}"
-                           TextWrapping="Wrap"
-                           Foreground="{StaticResource SecondaryTextBrush}" />
-
-                <TextBlock Text="What it recorded"
-                           Style="{StaticResource FieldLabel}"
-                           Margin="0,14,0,2"
-                           Visibility="{Binding Library.Selected.HasDetail, Converter={StaticResource Shown}}" />
-                <TextBox Text="{Binding Library.Selected.Detail, Mode=OneWay}"
-                         Style="{StaticResource SelectableMessage}"
-                         Visibility="{Binding Library.Selected.HasDetail, Converter={StaticResource Shown}}" />
-
-                <TextBlock Text="Where it is"
-                           Style="{StaticResource FieldLabel}"
-                           Margin="0,14,0,2" />
-                <TextBox Text="{Binding Library.Selected.Path, Mode=OneWay}"
-                         Style="{StaticResource SelectableMessage}" />
-
-                <!-- The operator's own name and notes, kept in a sidecar beside the evidence and
-                     never inside the seal, so annotating a run cannot disturb the proof that its
-                     evidence is unmodified. These were on the Runs section only, which is not the
-                     screen the owner works on, so a run could be named nowhere he was looking. -->
-                <TextBlock Text="Call it"
-                           Style="{StaticResource FieldLabel}"
-                           Margin="0,14,0,2" />
-                <TextBox Text="{Binding Library.TypedName, UpdateSourceTrigger=PropertyChanged}" />
-
-                <TextBlock Text="Notes"
-                           Style="{StaticResource FieldLabel}"
-                           Margin="0,10,0,2" />
-                <TextBox Text="{Binding Library.TypedNotes, UpdateSourceTrigger=PropertyChanged}"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         MinHeight="56" />
-
-                <!-- Two rows rather than three buttons abreast. At 320 wide the third was clipped
-                     against the card's edge, and the clipped one was Delete run - a destructive
-                     button half off the screen, which is worse than an ugly card. Seen on Home
-                     2026-08-21.
-
-                     The split also does the job the old margin was doing: Delete is nowhere near
-                     where a hand going for Save lands. -->
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                    <Button Content="Open"
-                            Command="{Binding Library.OpenRunCommand}" />
-
-                    <Button Content="Save"
-                            Command="{Binding Library.SaveAnnotationCommand}"
-                            Margin="8,0,0,0" />
-
-                    <Button Content="Set as baseline"
-                            Command="{Binding Library.MarkAsBaselineCommand}"
-                            Margin="8,0,0,0" />
-                </StackPanel>
-
-                <Button Content="Delete run"
-                        Command="{Binding Library.DeleteRunCommand}"
-                        Style="{StaticResource DangerButton}"
-                        HorizontalAlignment="Left"
-                        Margin="0,16,0,0" />
-            </StackPanel>
+        <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource HomePanel}" Margin="0,0,16,0">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Style="{StaticResource HomePanelHeading}">
+                    <TextBlock Text="Saved runs" Style="{StaticResource SectionTitle}" />
+                </Border>
+                <TextBlock DockPanel.Dock="Top" Text="Select a run to see its details. Runs with the same recorded domain scope are grouped together."
+                           Style="{StaticResource Caption}" Margin="12,10" />
+                <TextBlock DockPanel.Dock="Bottom" Text="Listed capture and analysis states are not a security verdict. Evidence is checked when a run is opened, not merely selected in this list."
+                           Style="{StaticResource Caption}" Margin="12,10" />
+                <TextBlock DockPanel.Dock="Top" Text="This run library holds no runs yet." Style="{StaticResource BaseTextBlock}" Margin="14"
+                           Visibility="{Binding Library.IsEmpty, Converter={StaticResource Shown}}" />
+                <Grid>
+                    <DataGrid x:Name="SavedRunsTable" ItemsSource="{Binding Library.RunsView}" SelectedItem="{Binding Library.Selected, Mode=TwoWay}"
+                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}"
+                              Background="Transparent" BorderThickness="0" ColumnHeaderStyle="{StaticResource HomeColumnHeader}">
+                        <DataGrid.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.ContainerStyle>
+                                    <Style TargetType="GroupItem">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="GroupItem">
+                                                    <StackPanel>
+                                                        <Border Background="{StaticResource SelectionBrush}" Padding="10,8">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Items[0].GroupHeading}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                                           Foreground="{StaticResource AttributeLabelBrush}" />
+                                                                <TextBlock Text="{Binding ItemCount, StringFormat={}{0} run(s)}"
+                                                                           FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                        <ItemsPresenter />
+                                                    </StackPanel>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </GroupStyle.ContainerStyle>
+                            </GroupStyle>
+                        </DataGrid.GroupStyle>
+                        <!-- Keep content-sized, resizable columns rather than hiding long identifiers. -->
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Run" Width="Auto" MinWidth="190">
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                    <StackPanel Margin="8">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource AttributeLabelBrush}" />
+                                        <TextBlock Text="{Binding Identifier}" FontFamily="{StaticResource IdentifierFontFamily}"
+                                                   FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}"
+                                                   Visibility="{Binding IsNamed, Converter={StaticResource Shown}}" />
+                                        <TextBlock Text="Baseline" Foreground="{StaticResource FocusBrush}" FontSize="{StaticResource CaptionFontSize}"
+                                                   Visibility="{Binding IsBaseline, Converter={StaticResource Shown}}" />
+                                    </StackPanel>
+                                </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="When (local time)" Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                    <StackPanel Margin="8" ToolTip="{Binding When}">
+                                        <TextBlock Text="{Binding WhenDate}" />
+                                        <TextBlock Text="{Binding WhenTime}" />
+                                        <TextBlock Text="folder date - the run recorded none" TextWrapping="Wrap" MaxWidth="180"
+                                                   FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}"
+                                                   Visibility="{Binding WhenWasNotRecorded, Converter={StaticResource Shown}}" />
+                                    </StackPanel>
+                                </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Capture" Binding="{Binding State}" Width="Auto" MinWidth="95" ElementStyle="{StaticResource HomeRunCell}" />
+                            <DataGridTextColumn Header="Analysis" Binding="{Binding Analysis, TargetNullValue=Not established}"
+                                                Width="Auto" MinWidth="110" ElementStyle="{StaticResource HomeRunCell}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </DockPanel>
         </Border>
+
+        <ScrollViewer Grid.Row="2" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding Library.HasSelection, Converter={StaticResource Shown}}">
+            <Border Style="{StaticResource HomePanel}">
+                <StackPanel>
+                    <Border Background="{StaticResource AttributeHeaderBackground}" Padding="14" CornerRadius="7,7,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Selected run" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding Library.Selected.Name}" Style="{StaticResource ScreenTitle}" Margin="0,4,0,6" />
+                            <TextBox Text="{Binding Library.Selected.Identifier, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     FontFamily="{StaticResource IdentifierFontFamily}" FontSize="{StaticResource CaptionFontSize}" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Margin="14">
+                        <ItemsControl ItemsPanel="{StaticResource HomeStateColumns}" Margin="0,0,0,12">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Capture" Style="{StaticResource HomeLabel}" />
+                                <TextBlock Text="{Binding Library.Selected.State}" Style="{StaticResource RowTitle}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Analysis" Style="{StaticResource HomeLabel}" />
+                                <TextBlock Text="{Binding Library.Selected.Analysis, TargetNullValue=Not established}" Style="{StaticResource RowTitle}" />
+                            </StackPanel>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding Library.Selected.Meaning}" Style="{StaticResource BaseTextBlock}" Margin="0,0,0,12" />
+                        <Button Content="Open run" Command="{Binding Library.OpenRunCommand}" Style="{StaticResource PrimaryButton}"
+                                IsEnabled="{Binding Library.Selected.FinishedCleanly}" />
+                        <TextBox Text="{Binding Library.Selected.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{StaticResource FaultBrush}" Margin="0,10,0,0"
+                                 Visibility="{Binding Library.Selected.HasDetail, Converter={StaticResource Shown}}" />
+                        <Border Height="1" Background="{StaticResource AttributeCardBorderBrush}" Margin="0,14" />
+                        <TextBlock Text="Run name" Style="{StaticResource HomeLabel}" />
+                        <TextBox Text="{Binding Library.TypedName, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Notes" Style="{StaticResource HomeLabel}" Margin="0,12,0,5" />
+                        <TextBox Text="{Binding Library.TypedNotes, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="68" MaxHeight="160" VerticalScrollBarVisibility="Auto" />
+                        <Button Content="Save name and notes" Command="{Binding Library.SaveAnnotationCommand}" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                        <TextBlock Text="Your name and notes do not change the sealed evidence." Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                        <Expander Header="Run location" Margin="0,14,0,0">
+                            <TextBox Text="{Binding Library.Selected.Path, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,8,0,0" />
+                        </Expander>
+                        <Expander Header="Run actions" Margin="0,12,0,0">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Text="Analysis actions can take time. Replacing results and deleting runs remain separate, confirmed actions."
+                                           Style="{StaticResource Caption}" Margin="0,0,0,10" />
+                                <Button Content="Set as baseline" Command="{Binding Library.MarkAsBaselineCommand}" HorizontalAlignment="Left" Margin="0,0,0,10" />
+                                <Grid>
+                                <Button Content="Derive facts" Command="{Binding Library.DeriveFactsCommand}" HorizontalAlignment="Left" Margin="0,0,0,10"
+                                        Visibility="{Binding Library.CanDerive, Converter={StaticResource Shown}}" />
+                                <Button Content="Judge" Command="{Binding Library.JudgeCommand}" HorizontalAlignment="Left" Margin="0,0,0,10"
+                                        Visibility="{Binding Library.CanJudge, Converter={StaticResource Shown}}" />
+                                <Button Command="{Binding Library.DiscardJudgementAndJudgeAgainCommand}" Style="{StaticResource DangerButton}" Margin="0,0,0,10"
+                                        Visibility="{Binding Library.CanDiscardJudgement, Converter={StaticResource Shown}}">
+                                    <TextBlock Text="Discard judgement and judge again" TextWrapping="Wrap" />
+                                </Button>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource AttributeCardBorderBrush}" Margin="0,6,0,14" />
+                                <Button Content="Delete run" Command="{Binding Library.DeleteRunCommand}" Style="{StaticResource DangerButton}" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
     </Grid>
 </UserControl>

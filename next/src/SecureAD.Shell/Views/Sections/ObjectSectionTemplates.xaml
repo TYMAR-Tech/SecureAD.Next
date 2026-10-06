@@ -3,6 +3,10 @@
                     xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
                     xmlns:views="clr-namespace:SecureAD.Shell.Views">
 
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../../Themes/Assets.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
     <!-- ONE TEMPLATE PER SECTION, PICKED BY TYPE.
 
          The predecessor's object window is 1,311 lines holding sixteen sections in one file, each
@@ -23,34 +27,14 @@
                         <Setter Property="Margin" Value="0,0,0,8" />
                     </Style>
                 </StackPanel.Resources>
-                <TextBlock Text="{Binding ResultHeading}" FontWeight="SemiBold" />
-                <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" />
+                <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" FontWeight="SemiBold" />
+                <TextBlock x:Name="SavedPathSeverity" Text="{Binding Severity}" />
                 <TextBlock Text="{Binding Detail}" />
                 <TextBlock Text="{Binding Boundary}" />
-                <TextBlock x:Name="SavedPathProvenance" Text="{Binding Provenance}" />
-
-                <TextBlock Text="{Binding RouteHeading}" FontWeight="SemiBold" Margin="0,16,0,8" />
-                <TextBlock x:Name="SavedPathDistance" Text="{Binding Distance}" />
-                <TextBlock Text="{Binding Destination}" />
-                <ItemsControl x:Name="SavedPathSteps" ItemsSource="{Binding Steps}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,0,0,12">
-                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
-                                <Expander IsExpanded="False">
-                                    <Expander.Header><TextBlock Text="{Binding EvidenceHeading}" TextWrapping="Wrap" /></Expander.Header>
-                                    <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Margin="8" />
-                                </Expander>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
+                <ItemsControl ItemsSource="{Binding Groups}" />
                 <TextBlock Text="{Binding CoverageHeading}" FontWeight="SemiBold" Margin="0,16,0,8" />
-                <TextBlock Text="{Binding ChecksHeading}" FontWeight="SemiBold" />
                 <TextBlock x:Name="SavedPathChecks" Text="{Binding AutomaticChecks}" />
-                <TextBlock Text="{Binding ChecksCaveat}" />
-                <TextBlock Text="{Binding CoverageScope}" />
+                <TextBlock Text="{Binding Scope}" />
                 <ItemsControl x:Name="SavedPathLimitations" ItemsSource="{Binding Limitations}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -58,12 +42,106 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Expander IsExpanded="False">
-                    <Expander.Header><TextBlock Text="{Binding SavedQuestionsHeading}" TextWrapping="Wrap" /></Expander.Header>
-                    <TextBlock Text="{Binding SavedQuestions}" TextWrapping="Wrap" Margin="8" />
+                <Expander x:Name="SavedPathRecordDetails" IsExpanded="False" Margin="0,8,0,0">
+                    <Expander.Style>
+                        <Style TargetType="Expander">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasRecordDetails}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Expander.Style>
+                    <Expander.Header><TextBlock Text="{Binding RecordDetailsHeading}" TextWrapping="Wrap" /></Expander.Header>
+                    <StackPanel Margin="8">
+                        <TextBlock x:Name="SavedPathProvenance" Text="{Binding Provenance}" />
+                        <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:SavedPathGroupViewModel}">
+                                    <ItemsControl ItemsSource="{Binding Questions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:SavedPathQuestionViewModel}">
+                                                <StackPanel Margin="0,8,0,8">
+                                                    <TextBlock Text="{Binding Heading}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                                    <ItemsControl x:Name="SavedPathRecordFields" ItemsSource="{Binding RecordDetails}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </Expander>
             </StackPanel>
         </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:SavedPathGroupViewModel}">
+        <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,8,0,8">
+            <Expander.Header><TextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" /></Expander.Header>
+            <StackPanel Margin="8">
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding Questions}" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding PageNumber, StringFormat=Page {0}}" TextWrapping="Wrap" Margin="0,0,12,0" />
+                    <Button Command="{Binding PreviousCommand}" IsEnabled="{Binding HasPrevious}" Margin="0,0,8,0">
+                        <TextBlock Text="Previous" TextWrapping="Wrap" />
+                    </Button>
+                    <Button Command="{Binding NextCommand}" IsEnabled="{Binding HasNext}">
+                        <TextBlock Text="Next" TextWrapping="Wrap" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Expander>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:SavedPathQuestionViewModel}">
+        <StackPanel Margin="0,0,0,16">
+            <StackPanel.Resources>
+                <Style x:Key="RecommendationBlock" TargetType="StackPanel">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasRecommendation}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Resources>
+            <TextBlock x:Name="SavedPermissionHeadline" Text="{Binding Heading}" TextWrapping="Wrap" FontWeight="SemiBold" />
+            <StackPanel Style="{StaticResource RecommendationBlock}">
+                <TextBlock Text="{Binding RecommendationHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock x:Name="SavedPermissionChange" Text="{Binding RecommendedChange}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding WhereHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock x:Name="SavedPermissionWhere" Text="{Binding WhereToChange}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding ExplanationHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+            <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+            <StackPanel Style="{StaticResource RecommendationBlock}">
+                <TextBlock Text="{Binding RecommendationBoundaryHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,4" />
+                <TextBlock Text="{Binding RecommendationBoundary}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding PermissionDetailsHeading}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,12,0,4" />
+            <ItemsControl x:Name="SavedPermissionFields" ItemsSource="{Binding PermissionDetails}" />
+            <TextBlock Text="{Binding Membership}" TextWrapping="Wrap" />
+            <ItemsControl x:Name="SavedPathSteps" ItemsSource="{Binding Steps}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:SavedPathStepViewModel}">
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl x:Name="SavedPermissionEntries" ItemsSource="{Binding Entries}" />
+        </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:SavedPathFieldViewModel}">
+        <StackPanel Margin="0,0,0,8">
+            <TextBlock Text="{Binding Label, StringFormat={}{0}:}" TextWrapping="Wrap" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Value}" TextWrapping="Wrap" />
+        </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type vm:ControlEdgesSectionViewModel}">
@@ -137,7 +215,7 @@
                     </DataGrid.Columns>
                 </DataGrid>
                 <Expander Grid.Row="5" x:Name="ControlEvidence" Header="View control evidence and preconditions" Margin="0,8,0,0">
-                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
                         <TextBox Text="{Binding SelectedEdge.Evidence, Mode=OneWay}" IsReadOnly="True"
                                  TextWrapping="Wrap" BorderThickness="0" />
                     </ScrollViewer>
@@ -167,7 +245,7 @@
                             </Style.Triggers>
                         </Style>
                     </Expander.Style>
-                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
                         <TextBox Text="{Binding SelectedRequesterAssessment.Evidence, Mode=OneWay}"
                                  IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" />
                     </ScrollViewer>
@@ -251,19 +329,27 @@
          object: the directory omits an absent attribute without saying whether the caller was
          refused it (docs/decisions/0022). -->
     <DataTemplate DataType="{x:Type vm:AttributeValueViewModel}">
-        <StackPanel Margin="0,0,24,14">
-            <TextBlock Text="{Binding Label}" TextWrapping="Wrap"
-                       Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
+        <Border x:Name="AttributeCardSurface" Style="{StaticResource AttributeCard}">
+        <StackPanel>
+            <Border x:Name="AttributeCardHeader" Background="{StaticResource AttributeHeaderBackground}"
+                    Padding="14,9" CornerRadius="7,7,0,0"
+                    BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="0,0,0,1">
+                <TextBlock x:Name="AttributeTitle" Style="{StaticResource AttributeCardLabel}">
+                    <Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding AttributeCaption, Mode=OneWay}"
+                         FontFamily="{StaticResource IdentifierFontFamily}"
+                         FontSize="{StaticResource CaptionFontSize}" FontWeight="Normal"
+                         Foreground="{StaticResource AttributeSourceBrush}" />
+                </TextBlock>
+            </Border>
 
-            <TextBox Text="{Binding Worded, Mode=OneWay}"
-                     Style="{StaticResource SelectableMessage}"
-                     Margin="0,2,0,0"
-                     Foreground="{StaticResource PrimaryTextBrush}" />
+            <StackPanel Margin="14,10,14,12">
+            <TextBox x:Name="AttributeValue" Text="{Binding Worded, Mode=OneWay}"
+                     Style="{StaticResource AttributeCardValue}" />
 
             <!-- Shown only when the wording is not the stored value, so a field that was not
                  interpreted does not print itself twice. Monospaced, because a SID or a GUID is
                  read character by character and compared by eye. -->
-            <TextBox Text="{Binding Stored, Mode=OneWay}"
+            <TextBox x:Name="AttributeStored" Text="{Binding Stored, Mode=OneWay}"
                      Style="{StaticResource SelectableMessage}"
                      Margin="0,1,0,0"
                      FontFamily="{StaticResource IdentifierFontFamily}"
@@ -273,33 +359,41 @@
 
             <!-- What a reader must know before drawing a conclusion. lastLogonTimestamp is
                  designed to be days out of date, and a dormant-account judgement made without
-                 knowing that is wrong by up to a fortnight. Said on the row, not in a manual. -->
-            <TextBlock Text="{Binding Caveat}" TextWrapping="Wrap" Margin="0,4,0,0"
-                       FontSize="{StaticResource CaptionFontSize}"
-                       Foreground="{StaticResource NotEstablishedBrush}"
-                       Visibility="{Binding HasCaveat, Converter={StaticResource Shown}}" />
+                 knowing that is wrong by up to a fortnight. Said on the row, not in a manual.
 
-            <TextBlock Text="{Binding Attribute}" TextWrapping="Wrap"
-                       Margin="0,1,0,0"
-                       FontSize="{StaticResource CaptionFontSize}"
-                       Foreground="{StaticResource SecondaryTextBrush}" />
+                 Ruled down its left edge so it reads as an aside about the value above rather than
+                 as more of the value. It is the longest thing in any field and was the reason the
+                 old panel inflated every other one. -->
+            <Border Margin="0,5,0,0" Padding="8,0,0,0"
+                    BorderThickness="2,0,0,0"
+                    BorderBrush="{StaticResource NotEstablishedSubtleBrush}"
+                    Visibility="{Binding HasCaveat, Converter={StaticResource Shown}}">
+                <TextBlock x:Name="AttributeCaveat" Text="{Binding Caveat}" TextWrapping="Wrap"
+                           FontSize="{StaticResource CaptionFontSize}"
+                           Foreground="{StaticResource NotEstablishedBrush}" />
+            </Border>
+            </StackPanel>
+        </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- Column count follows available space; a long caveat only enlarges its own row. -->
+    <ItemsPanelTemplate x:Key="FieldColumns">
+        <views:FieldGrid Columns="3" MinimumColumnWidth="340" />
+    </ItemsPanelTemplate>
+
+    <DataTemplate x:Key="AttributeCards" DataType="{x:Type vm:AttributeCardsViewModel}">
+        <StackPanel>
+            <CheckBox Content="Show missing attributes" Style="{StaticResource MissingAttributeToggle}"
+                      IsChecked="{Binding ShowMissingAttributes, Mode=TwoWay}"
+                      Margin="0,0,0,12" Visibility="{Binding HasMissingAttributes, Converter={StaticResource Shown}}" />
+            <ItemsControl ItemsSource="{Binding VisibleValues}" ItemsPanel="{StaticResource FieldColumns}" />
         </StackPanel>
     </DataTemplate>
 
-    <!-- Fields laid out two to a row. A single column down the left of a wide window puts every
-         value in the same narrow strip and leaves two thirds of the screen empty, which was the
-         state on 2026-08-20. -->
-    <ItemsPanelTemplate x:Key="FieldColumns">
-        <UniformGrid Columns="2" />
-    </ItemsPanelTemplate>
-
-    <!-- A LINE OF TEXT HAS A READABLE LENGTH AND A WIDE MONITOR DOES NOT CHANGE IT.
-
-         Left to fill the window, the two-column field grid put a label and its value an inch
-         apart on a 2,048-pixel screen. Capped here rather than on the host, because the
-         permissions section is a table with columns and uses every pixel it is given. -->
     <DataTemplate DataType="{x:Type vm:OverviewSectionViewModel}">
-        <StackPanel MaxWidth="1000" HorizontalAlignment="Left">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
 
             <!-- WHAT THIS RUN ESTABLISHED ABOUT THE OBJECT ITSELF, above what the directory says
                  about it. The owner is here rather than among the permission entries because an
@@ -344,11 +438,9 @@
 
             <!-- WHAT THE DIRECTORY HOLDS, kept apart from the card above it, because those are
                  statements this product makes and these are values it read. -->
-            <Border Style="{StaticResource Card}">
-                <ItemsControl ItemsSource="{Binding Values}"
-                              ItemsPanel="{StaticResource FieldColumns}" />
-            </Border>
+            <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
         </StackPanel>
+        </ScrollViewer>
     </DataTemplate>
 
     <!-- THE NUMBER STAYS BESIDE THE SENTENCES. userAccountControl decides whether an account can
@@ -359,11 +451,9 @@
 
          NOTHING HERE IS A VERDICT. Kerberos pre-authentication being off is stated, not scored. -->
     <DataTemplate DataType="{x:Type vm:AccountSectionViewModel}">
-        <StackPanel MaxWidth="1000" HorizontalAlignment="Left">
-            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
-                <ItemsControl ItemsSource="{Binding Values}"
-                              ItemsPanel="{StaticResource FieldColumns}" />
-            </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
 
             <Border Style="{StaticResource Card}"
                     Visibility="{Binding HasFlags, Converter={StaticResource Shown}}">
@@ -406,6 +496,7 @@
                 </StackPanel>
             </Border>
         </StackPanel>
+        </ScrollViewer>
     </DataTemplate>
 
 
@@ -417,12 +508,9 @@
          Delegation section would hide "we were refused this" behind "there is nothing here", and
          the directory does not let a reader tell those apart. -->
     <DataTemplate DataType="{x:Type vm:AttributeSectionViewModel}">
-        <StackPanel MaxWidth="1000" HorizontalAlignment="Left">
-            <Border Style="{StaticResource Card}"
-                    Visibility="{Binding HasAnyValue, Converter={StaticResource Shown}}">
-                <ItemsControl ItemsSource="{Binding Values}"
-                              ItemsPanel="{StaticResource FieldColumns}" />
-            </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
 
             <Border Style="{StaticResource Card}"
                     Visibility="{Binding HasEmptiness, Converter={StaticResource Shown}}">
@@ -434,6 +522,7 @@
                 </StackPanel>
             </Border>
         </StackPanel>
+        </ScrollViewer>
     </DataTemplate>
 
     <!-- THE POLICIES LINKED TO A CONTAINER, STRONGEST FIRST.
@@ -524,8 +613,7 @@
             </Border>
 
             <Border Style="{StaticResource Card}">
-                <ItemsControl ItemsSource="{Binding Values}"
-                              ItemsPanel="{StaticResource FieldColumns}" />
+                <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
             </Border>
         </StackPanel>
     </DataTemplate>
@@ -566,7 +654,7 @@
                               Margin="16,0,0,0"
                               Content="Highlight risky permissions"
                               Foreground="{StaticResource PrimaryTextBrush}"
-                              ToolTip="Marks entries this build classifies as handing somebody control of this object. It marks and never hides: every entry stays on the list."
+                              ToolTip="{Binding HighlightHelp}"
                               IsChecked="{Binding HighlightRiskyPermissions, Mode=TwoWay}" />
 
                     <ItemsControl ItemsSource="{Binding Counters}">
@@ -586,7 +674,7 @@
 
                                     <!-- The dash alone is a thing to guess at, so the absence is
                                          also stated in words. -->
-                                    <TextBlock Text="not computed"
+                                    <TextBlock Text="{Binding Status}"
                                                FontSize="{StaticResource CaptionFontSize}"
                                                Foreground="{StaticResource NotEstablishedBrush}"
                                                Visibility="{Binding IsNotComputed, Converter={StaticResource Shown}}" />
@@ -852,6 +940,7 @@
 
                                                         <TextBlock Grid.Column="1"
                                                                    Text="{Binding Name}"
+                                                                    ToolTip="{Binding ClassificationReason}"
                                                                    TextWrapping="Wrap">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
@@ -956,10 +1045,20 @@
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type vm:OtherValuesSectionViewModel}">
-        <Border Style="{StaticResource Card}">
-            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}"
-                       Text="Capture asks every object for every attribute, whatever its class, so an object can hold a value its class does not account for. Anything captured that no other section on this object claims will appear here. Nothing does yet, because no section has been written to collect them." />
-        </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,12"
+                           Text="Populated attributes outside this object's standard sections. These are recorded values, not additional security conclusions." />
+                <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
+                <Border Style="{StaticResource Card}" Visibility="{Binding HasEmptiness, Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Emptiness.Title}" Style="{StaticResource RowTitle}" />
+                        <TextBox Text="{Binding Emptiness.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{StaticResource SecondaryTextBrush}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
     </DataTemplate>
 
     <!-- Present and honest rather than absent. Leaving an unbuilt section out would make an object

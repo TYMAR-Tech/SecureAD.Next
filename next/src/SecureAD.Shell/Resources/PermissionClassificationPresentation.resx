@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Unavailable" xml:space="preserve"><value>This run has no saved permission classification.</value></data>
+  <data name="Invalid" xml:space="preserve"><value>Saved permission classification could not be read.</value></data>
+  <data name="RawAvailable" xml:space="preserve"><value>Captured permission entries remain available; risk classification is unavailable.</value></data>
+  <data name="Hidden" xml:space="preserve"><value>Saved classifications are available. Turn on Highlight risky permissions to show them.</value></data>
+  <data name="NotShown" xml:space="preserve"><value>Not shown</value></data>
+  <data name="NotComputed" xml:space="preserve"><value>not computed</value></data>
+  <data name="NotCounted" xml:space="preserve"><value>Not counted here</value></data>
+  <data name="Unknown" xml:space="preserve"><value>{0} rights could not be classified. They are not reported as safe.</value></data>
+  <data name="UnknownDetail" xml:space="preserve"><value>Each right retains the saved reason why it could not be classified.</value></data>
+  <data name="Dangerous" xml:space="preserve"><value>Entries with at least one saved right classified Dangerous. This is not proof that a particular account can take control.</value></data>
+  <data name="Combination" xml:space="preserve"><value>Entries whose highest saved risk is In combination. The necessary combined rights or conditions are not established by this classification.</value></data>
+  <data name="Control" xml:space="preserve"><value>Control totals are not counted in this strip. Read the saved control results separately.</value></data>
+  <data name="Findings" xml:space="preserve"><value>Finding totals are not counted in this strip. Read the Findings section for saved results or why they are unavailable.</value></data>
+  <data name="Empty" xml:space="preserve"><value>The captured permission list contains no entries. This alone does not establish effective access.</value></data>
+  <data name="Order" xml:space="preserve"><value>The captured permission list was not in canonical order. Entries retain their captured order within each principal.</value></data>
+  <data name="Incomplete" xml:space="preserve"><value>The captured permission list is incomplete. Missing entries may change access; this view does not establish effective access.</value></data>
+  <data name="HighlightHelp" xml:space="preserve"><value>Shows saved per-right permission-risk classifications, not proof of effective access or completed takeover. It marks and never hides: every entry stays on the list.</value></data>
+</root>

@@ -27,7 +27,7 @@ public sealed class Tier0DiscoveryAdmissionTests
     public void AnUnrelatedOrdinaryAccountProducesNoCandidateAtAll()
     {
         var lab = new Lab();
-        Assert.DoesNotContain(lab.Run().Candidates(),
+        Assert.DoesNotContain(lab.Run().Candidates(diagnostic: null),
             relation => relation.Controller.DistinguishedName == lab.Jimmy.DistinguishedName);
     }
 
@@ -88,7 +88,7 @@ public sealed class Tier0DiscoveryAdmissionTests
     {
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, ownerSid: null, entries: [lab.Allow(0, lab.Helpdesk, Lab.WriteDacl)]);
-        var candidate = lab.Run().Candidates().Single(item => item.Controller.DistinguishedName == lab.Helpdesk.DistinguishedName);
+        var candidate = lab.Run().Candidates(diagnostic: null).Single(item => item.Controller.DistinguishedName == lab.Helpdesk.DistinguishedName);
         Assert.Equal(ControlCapability.CanWriteDacl, candidate.Capability);
     }
 
@@ -97,7 +97,7 @@ public sealed class Tier0DiscoveryAdmissionTests
     {
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, entries: [lab.Allow(0, lab.Helpdesk, Lab.WriteOwner)]);
-        var candidate = lab.Run().Candidates().Single(item => item.Controller.DistinguishedName == lab.Helpdesk.DistinguishedName);
+        var candidate = lab.Run().Candidates(diagnostic: null).Single(item => item.Controller.DistinguishedName == lab.Helpdesk.DistinguishedName);
         Assert.Equal((ControlCapability.CanSetOwner, Tier0State.Unknown, true),
             (candidate.Capability, candidate.State, candidate.Limitations.HasFlag(Tier0Limitations.ConditionalOperation)));
     }
@@ -107,7 +107,7 @@ public sealed class Tier0DiscoveryAdmissionTests
     {
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, ownerSid: lab.SidOf(lab.Helpdesk));
-        var candidate = lab.Run().Candidates().Single(item => item.Controller.DistinguishedName == lab.Helpdesk.DistinguishedName);
+        var candidate = lab.Run().Candidates(diagnostic: null).Single(item => item.Controller.DistinguishedName == lab.Helpdesk.DistinguishedName);
         Assert.Equal((ControlCapability.IsOwnerAndCanRewriteDacl, true, (int?)null),
             (candidate.Capability, candidate.Witness!.IsOwner, candidate.Witness.PermissionOrdinal));
     }
@@ -117,7 +117,7 @@ public sealed class Tier0DiscoveryAdmissionTests
     {
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, entries: [Tier0DiscoveryEvidence.Deny(0, lab.Helpdesk, Lab.WriteDacl)]);
-        Assert.Empty(lab.Run().Candidates());
+        Assert.Empty(lab.Run().Candidates(diagnostic: null));
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public sealed class Tier0DiscoveryAdmissionTests
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, entries:
             [Tier0DiscoveryEvidence.AllowSid(0, Tier0DiscoveryEvidence.Everyone, Lab.WriteDacl, "Everyone")]);
-        Assert.Empty(lab.Run().Candidates());
+        Assert.Empty(lab.Run().Candidates(diagnostic: null));
     }
 
     [Fact]
@@ -253,7 +253,7 @@ public sealed class Tier0DiscoveryAdmissionTests
         var lab = new Lab();
         lab.Describe(lab.DomainAdmins, entries:
             [Tier0DiscoveryEvidence.AllowSid(0, Tier0DiscoveryEvidence.Self, Lab.WriteDacl, "SELF")]);
-        Assert.Empty(lab.Run().Candidates());
+        Assert.Empty(lab.Run().Candidates(diagnostic: null));
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public sealed class Tier0DiscoveryAdmissionTests
         var lab = new Lab();
         var inheritOnly = lab.Allow(0, lab.Helpdesk, Lab.WriteDacl) with { PropagationFlags = 0x08 };
         lab.Describe(lab.DomainAdmins, entries: [inheritOnly]);
-        Assert.Empty(lab.Run().Candidates());
+        Assert.Empty(lab.Run().Candidates(diagnostic: null));
     }
 
     /// <summary>
@@ -279,9 +279,9 @@ public sealed class Tier0DiscoveryAdmissionTests
         var leaked = new Lab();
         leaked.Describe(leaked.DomainAdmins, entries: [leaked.Allow(0, leaked.Jimmy, Lab.WriteDacl)]);
 
-        var clean = lab.Run().Candidates()
+        var clean = lab.Run().Candidates(diagnostic: null)
             .Any(item => item.Controller.DistinguishedName == lab.Jimmy.DistinguishedName);
-        var leakedResult = leaked.Run().Candidates()
+        var leakedResult = leaked.Run().Candidates(diagnostic: null)
             .Any(item => item.Controller.DistinguishedName == leaked.Jimmy.DistinguishedName);
         Assert.Equal((false, true), (clean, leakedResult));
     }
@@ -317,7 +317,7 @@ public sealed class Tier0DiscoveryAdmissionTests
 
         var coverageFirst = first.Run().Coverage().Limitations.Count;
         var afterCandidates = second.Run();
-        afterCandidates.Candidates();
+        afterCandidates.Candidates(diagnostic: null);
         Assert.Equal(coverageFirst, afterCandidates.Coverage().Limitations.Count);
     }
 
@@ -326,7 +326,7 @@ public sealed class Tier0DiscoveryAdmissionTests
     {
         var lab = new Lab();
         var scheduler = lab.Run();
-        scheduler.Candidates();
+        scheduler.Candidates(diagnostic: null);
         Assert.Throws<InvalidOperationException>(() =>
             scheduler.Observe(lab.Jimmy, lab.Evidence.Permissions(lab.Jimmy.DistinguishedName)));
     }
@@ -384,7 +384,7 @@ public sealed class Tier0DiscoveryAdmissionTests
             var classifications = scheduler.Observed.Values
                 .Select(target => Tier0Classifier.Qualify(Evidence.Binding, target, input, routes: null)).ToArray();
             return OwnershipScopeSelector.Select(Evidence.Binding, Guid.NewGuid(), classifications,
-                scheduler.Candidates(), new(true, true, true, Tier0Limitations.None), CancellationToken.None, progress: null);
+                scheduler.Candidates(diagnostic: null), new(true, true, true, Tier0Limitations.None), CancellationToken.None, progress: null);
         }
     }
 }

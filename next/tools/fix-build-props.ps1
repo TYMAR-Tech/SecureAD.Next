@@ -3,7 +3,7 @@
 # characters. This script writes documents, so running it under 5.1 would corrupt them silently.
 
 $ErrorActionPreference = 'Stop'
-$path = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\Directory.Build.props'
+$path = 'C:\Users\jistrand\source\repos\SecureAD.Next\Directory.Build.props'
 
 $content = @'
 <Project>

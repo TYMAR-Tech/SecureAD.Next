@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using SecureAD.Audit.Capture;
 using SecureAD.Cli;
 using SecureAD.Evidence;
@@ -45,15 +46,94 @@ public sealed partial class OwnAccountMembershipPathTests
     [InlineData("shell")]
     [InlineData("cli-offline")]
     [InlineData("cli-capture")]
-    public async Task CoverageProductionPolicyStillSchedulesNoQuestionsAsync(string host)
+    public async Task CoverageDisabledPolicyStillSchedulesNoQuestionsAsync(string host)
     {
         var directory = CoverageCapture();
 
-        await RunCoverageHostAsync(host, directory, JudgingRun.ProductionPathRequesterPolicy);
+        await RunCoverageHostAsync(host, directory, PathRequesterPolicy.Disabled);
         using var reader = Open(directory);
         var coverage = reader.ReadPathRequesterCoverage();
 
         Assert.Equal((PathRequesterCoverageState.NotRequested, 0), (coverage.Verdict, coverage.Families.Sum(value => value.StoredAssessments)));
+    }
+
+    [Theory]
+    [InlineData("shell")]
+    [InlineData("cli-offline")]
+    [InlineData("cli-capture")]
+    public async Task CoverageProductionHostsEvaluateTheSameThreeFamiliesAsync(string host)
+    {
+        var directory = CoverageCapture();
+        switch (host)
+        {
+            case "shell":
+                Derive(directory);
+                var shell = await new JudgingLauncher(discoveryBudget: null)
+                    .RunAsync(directory, JudgingRun.NobodyIsWatching, CancellationToken.None);
+                Assert.True(shell.IsSuccess, shell.Error?.Description);
+                break;
+            case "cli-offline":
+                Derive(directory);
+                var offline = Assert.IsType<CommandLine>(CommandLine.Parse(["--judge", directory]));
+                Assert.Equal(0, await Program.RunAsync(offline, CancellationToken.None, discoveryBudget: null,
+                    capture: _ => throw new InvalidOperationException("Offline judging must not capture.")));
+                break;
+            case "cli-capture":
+                var capture = Assert.IsType<CommandLine>(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!]));
+                Assert.Equal(0, await Program.RunAsync(capture, CancellationToken.None, discoveryBudget: null,
+                    capture: _ => Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)))));
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(host));
+        }
+
+        using var reader = Open(directory);
+        var coverage = reader.ReadPathRequesterCoverage();
+        Assert.Equal(PathRequesterCoverageState.EvaluatedSupportedQuestions, coverage.Verdict);
+        Assert.Equal(new[] { (PathRequesterFamily.RequesterDacl, 1, 1), (PathRequesterFamily.OwnAccountMembership, 1, 1),
+            (PathRequesterFamily.MembershipDacl, 1, 1) }, coverage.Families
+                .Select(value => (value.Family, value.SelectedQuestions, value.StoredAssessments)).ToArray());
+        Assert.Equal("NotStarted", reader.ReadSelfMembershipSummary()?.Verdict);
+    }
+
+    [Fact]
+    public void CoverageRequesterFamiliesVerifyEachSourceOnce()
+    {
+        var directory = Capture(coreDescriptor: $"O:SYG:SYD:(A;;WD;;;{TargetSid})(A;;WD;;;{UserSid})");
+        Derive(directory);
+        using var counts = new JudgingInputReuseTests.Verifications(directory);
+
+        JudgeCoverage(directory);
+
+        Assert.Equal((1L, 1L, 1L), (counts.Evidence, counts.Derivation, counts.Formats));
+        using var reader = Open(directory);
+        Assert.Equal(new[] { 1, 1, 1 }, reader.ReadPathRequesterCoverage().Families.Select(value => value.StoredAssessments));
+        Assert.Equal(ControlEvaluationState.Established, Assert.Single(reader.ReadTier0Path(UserDn).MembershipDaclAssessments).Authorization);
+    }
+
+    [Fact]
+    public void CoverageRequesterFamiliesLoadTargetsOnce()
+    {
+        var directory = Capture(coreDescriptor: $"O:SYG:SYD:(A;;WD;;;{TargetSid})(A;;WD;;;{UserSid})");
+        Derive(directory);
+        JudgeCoverage(directory);
+        using var reader = Open(directory);
+        Assert.Equal(new[] { 1, 1, 1 }, reader.ReadPathRequesterCoverage().Families.Select(value => value.StoredAssessments));
+        Assert.Equal(ControlEvaluationState.Established, Assert.Single(reader.ReadTier0Path(UserDn).MembershipDaclAssessments).Authorization);
+        var copy = Path.Combine(directory, "requester-reuse.db");
+        File.Copy(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId), copy);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
+        command.ExecuteNonQuery();
+        using var sources = ControlProofVerification.OpenSources(reader);
+        using var trace = new JudgingInputReuseTests.Statements(connection);
+        using var statements = new PreparedStatements(connection);
+
+        Tier0PathStorage.Write(connection, reader.Description, sources, [], [], CancellationToken.None, [], true, _ => { }, null, statements);
+
+        Assert.Single(trace.Sql.Where(sql => sql.StartsWith("SELECT target,identity_json,fingerprint,", StringComparison.Ordinal)));
     }
 
     [Theory]
@@ -254,7 +334,7 @@ public sealed partial class OwnAccountMembershipPathTests
     public void CoverageRejectsChangedQuestionSources(string path, string value)
     {
         var directory = CoveragePrepared();
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
+        PathProofVerification.ChangeJson(directory, "tier0_path_calculation", path, "'" + value + "'");
         using var reader = Open(directory);
 
         Assert.Throws<InvalidDataException>(() => reader.ReadPathRequesterCoverage());

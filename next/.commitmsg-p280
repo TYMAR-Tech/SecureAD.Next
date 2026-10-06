@@ -1,0 +1,84 @@
+Forecast a judgement before writing one, and measure P-280 on the real forest (P-280)
+
+A judging run of the production forest would write 136.5 GiB describing 18.67 GB of
+evidence, and 72% of that is one object name copied three times, 331 million times. A
+real run was abandoned after eight hours at 27 GB still growing, so the size is the run
+time here and not only the disk.
+
+The specification asked for a read-only forecast before any schema change, because the
+owner works only inside the production environment and a scope chosen by guesswork
+costs him a day. This is that forecast, plus what it found and what an outside review
+then found in the proposal built on it.
+
+SecureAD.Measure --judgement-forecast opens a bundle read-only, writes to no database
+in it, and reports the exact occurrence count, the distinguished-name lengths and what
+four candidate storage shapes would cost.
+
+IT COUNTS STORED ENTRIES, NOT PROJECTED ONES, and that is the whole correctness of it.
+descriptor_entry and captured_object.ace_count are one cheap column away and hold the
+canonical projection, sorted and deduplicated by ace_hash. Judging writes one row per
+entry re-parsed from security_descriptor.raw_bytes, where nothing is dropped and
+nothing is reordered; a lab bundle measured 12,603 stored against 12,600 projected. A
+forecast reading the cheap column would have agreed with itself, reported a plausible
+figure and been short by exactly what deduplication removed - which is the shape of
+defect that passes while measuring nothing. The specification's own ~344 million
+estimate was built on that column and is corrected here.
+
+CHECKED AGAINST A REAL JUDGEMENT. On next/artifacts/p279-after it forecast 17,164,866
+occurrences against that judgement's actual 17,164,866 rows, and 46,985 object rows
+against 46,985 captured objects. Without that the projection would be a calculation
+nobody could contradict.
+
+Measured on ad.ssa.gov-20260924-020431: 940,067 objects, 659,196 carrying readable
+permissions, 330,856,576 occurrences, names averaging 106.1 bytes, 238,118,809
+occurrences carrying an object-type GUID and 205,792,883 an inherited one. Keyed per
+descriptor with the entry-derived columns moved onto distinct entries, the occurrence
+table models at 6.9 GiB against 136.5.
+
+THE REVIEW DID NOT LET THAT PROPOSAL THROUGH, and it was right. permission_entry
+already carries target-dependent trustee presentation: WellKnownTrustee renders
+S-1-5-10 as "This object (Alice)" and SharedPermissionStorage writes it into the row.
+Sharing one entry per descriptor would have displayed Alice's name while reading Bob -
+a permission attributed to the wrong object, which is the one thing an audit tool must
+never do. Nothing shipped does this, because ContentKey serialises the whole entry
+including that name so the two never share; the comment above it nevertheless asserts
+"The target never enters it", and the proposal was built on that stated contract rather
+than on the code. Recorded as P-285 along with its live cost - a SELF entry therefore
+never deduplicates, on the commonest ACE in Active Directory.
+
+Three more findings recorded rather than fixed here: P-283, an occurrence is bound to
+its entry but not to its interpretation, so a reading_id can be repointed at another
+valid reading and an allow WRITE_DAC reads as "A deny entry grants no access"; P-284,
+this forecast counts objects with unparseable descriptors as having readable
+permissions, reporting "could not compute" as "found nothing"; and two of my own
+claims withdrawn - the "1.3% agreement between independent methods" was cancellation,
+54N - 36G accounting for the gap exactly, and the 3.5 GB figure is produced by no
+implemented model.
+
+P-282 is fixed here. SecureAD.Measure ran the Self-Membership sweep whenever it did not
+recognise what it was asked for, so a mistyped flag started a twenty-minute synthetic
+benchmark that printed plausible progress while taking no measurement; it cost the
+owner a production session. Now a positive test - only a leading repeat count asks for
+the sweep - and anything else prints the modes and exits 1 naming the unrecognised
+word.
+
+Two defects found by running the build the owner would actually carry rather than the
+one on the bench: provenance hashed the apphost, which is byte-identical between Debug
+and Release and so named no build at all; and hashing the managed assembly instead
+crashed under a single-file publish, where Assembly.Location is empty. Both branches
+are now chosen explicitly, reported, and tested.
+
+27 tests. Each behaviour check mutation-tested with explicit rebuilds before and after
+restoring: counting descriptor_entry instead of parsing raw_bytes, length() instead of
+length(CAST(.. AS BLOB)), dropping the descriptor-reuse multiplier, charging the name
+per object rather than per occurrence, and restoring the sweep fall-through. Each
+killed only its intended check.
+
+The report says "Opened read-only" rather than "nothing was written", because a
+forecast of p279-after left both databases byte for byte identical and both -shm files
+carrying a new timestamp. Small, but an audit tool is not the thing that rounds a claim
+up.
+
+docs/specs/P280-PROPOSAL.md is frozen and carries a do-not-build banner.
+docs/specs/P280-REVIEW-PROMPT.md is what was handed to the reviewer. The living
+specification is P280-JUDGEMENT-OCCURRENCE-ROWS.md and where they disagree it wins.

@@ -47,7 +47,7 @@ namespace SecureAD.Judgement;
 /// acting on a list.
 /// </para>
 /// </remarks>
-public sealed class AdminCountWithoutProtection : IRule
+public sealed class AdminCountWithoutProtection : IObjectRule
 {
     /// <summary>What the rule reads, declared per <c>docs/decisions/0083</c>.</summary>
     /// <remarks>

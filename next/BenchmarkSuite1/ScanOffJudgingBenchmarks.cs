@@ -89,7 +89,7 @@ public class ScanOffJudgingBenchmarks
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = BundleLayout.EvidencePath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
         connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*), COUNT(DISTINCT domain_fqdn), (SELECT COUNT(*) FROM ace) FROM captured_object";
+        command.CommandText = "SELECT COUNT(*), COUNT(DISTINCT domain_fqdn), (SELECT COUNT(*) FROM descriptor_entry) FROM captured_object";
         using var read = command.ExecuteReader();
         if (!read.Read())
             throw new InvalidOperationException("No stored-count result.");

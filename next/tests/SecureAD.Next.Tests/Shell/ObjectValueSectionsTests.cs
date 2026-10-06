@@ -43,7 +43,7 @@ public sealed class ObjectValueSectionsTests
     {
         var row = Row(Overview().Values, "sAMAccountName");
 
-        Assert.Equal("Account name", row.Label);
+        Assert.Equal("Account Name", row.Label);
         Assert.Equal("sAMAccountName", row.Attribute);
     }
 

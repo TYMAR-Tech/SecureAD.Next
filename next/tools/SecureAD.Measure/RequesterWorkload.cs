@@ -138,7 +138,7 @@ internal static class RequesterWorkload
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = BundleLayout.EvidencePath(bundle), Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),AVG(LENGTH(distinguished_name)),(SELECT COUNT(*) FROM ace),(SELECT COUNT(*) FROM member_value) FROM captured_object";
+            command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),AVG(LENGTH(distinguished_name)),(SELECT COUNT(*) FROM descriptor_entry),(SELECT COUNT(*) FROM member_value) FROM captured_object";
             using var rows = command.ExecuteReader();
             if (!rows.Read() || rows.GetInt64(0) != objects || rows.GetInt64(1) != domains || rows.GetInt64(3) != aces || rows.GetInt64(4) != (long)groups * (members + 1))
                 throw new InvalidDataException("Independent stored counts disagree with the requested synthetic shape.");

@@ -146,11 +146,11 @@ public sealed record StoredJudgement(
 /// about every one of them. Refusing here turns a silent wrong answer into a stated one.
 /// </para>
 /// </remarks>
-public sealed class JudgementReader : IDisposable
+public sealed partial class JudgementReader : IDisposable
 {
     private readonly SqliteConnection _connection;
+    private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
-    private bool _ownershipValidated;
 
     private JudgementReader(
         string bundleDirectory, SqliteConnection connection, JudgementDescription description)
@@ -167,45 +167,95 @@ public sealed class JudgementReader : IDisposable
     public JudgementDescription Description { get; }
 
     /// <summary>
-    /// Validates and reads saved path inputs. Replays only stored source witnesses; never discovers
-    /// requesters, evaluates permissions, writes analysis or returns a reachability verdict.
+    /// Reads saved path inputs and their exact source binding, without reclassifying objects,
+    /// replaying source proofs or returning a reachability verdict.
     /// </summary>
     public PathInputs ReadPathInputs()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return PathInputStorage.Read(_connection, Description, BundleDirectory);
+        RequireCurrentPathGeneration();
+        return PathInputStorage.Read(_connection, Description);
     }
 
     /// <summary>
-    /// Validates and reads one saved Tier-0 path result, replaying only saved requester questions
-    /// to verify their source proof. Never discovers new questions, searches paths or publishes results.
+    /// Reads one saved Tier-0 path and its supporting answers without replaying permissions,
+    /// source qualification, requester selection or path calculation.
     /// An uncaptured subject remains Unknown, not NotReachable.
     /// </summary>
-    public Tier0PathResult ReadTier0Path(string subjectDn)
+    internal Tier0PathResult ReadTier0Path(string subjectDn)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
-        return Tier0PathStorage.Read(_connection, Description, BundleDirectory, subjectDn);
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.Read(_connection, Description, subjectDn);
     }
 
-    /// <summary>Projects path and requester coverage from one complete proof replay of this opened generation; nothing is cached.</summary>
-    public (Tier0PathResult Path, PathRequesterCoverage Coverage) ReadTier0PathWithCoverage(
+    /// <summary>Reads path and requester coverage from the same saved inputs and generation, without proof replay.</summary>
+    internal (Tier0PathResult Path, PathRequesterCoverage Coverage) ReadTier0PathWithCoverage(
         string subjectDn, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
         cancellationToken.ThrowIfCancellationRequested();
-        return Tier0PathStorage.ReadWithCoverage(_connection, Description, BundleDirectory, subjectDn, cancellationToken);
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.ReadWithCoverage(_connection, Description, subjectDn, cancellationToken);
     }
 
     /// <summary>
     /// Reads coverage from the saved selection and reconciled proof batches in this exact generation.
-    /// Replays only saved proof questions for validation; never selects new accounts or publishes analysis.
+    /// Never re-evaluates proof questions, selects accounts or publishes analysis.
     /// </summary>
     public PathRequesterCoverage ReadPathRequesterCoverage()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return Tier0PathStorage.ReadCoverage(_connection, Description, BundleDirectory);
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.ReadCoverage(_connection, Description);
+    }
+
+    /// <summary>Reads saved qualification counts for existing requester questions, not whole-forest risk coverage.</summary>
+    public PathRiskCoverage ReadPathRiskCoverage(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        RequireCurrentPathGeneration();
+        return PathRequesterRiskStorage.ReadCoverage(_connection, Description, cancellationToken);
+    }
+
+    /// <summary>Reads only this requester's saved risk qualifications without replaying authorization or expectedness.</summary>
+    internal PathRequesterRiskSet ReadPathRequesterRisks(string requesterDn, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
+        RequireCurrentPathGeneration();
+        return PathRequesterRiskStorage.Read(_connection, Description, requesterDn, cancellationToken);
+    }
+
+    /// <summary>Reads only one saved qualification group and its original proofs for this requester.</summary>
+    public PathRiskPage ReadPathRiskPage(string requesterDn, PathRiskVerdict verdict,
+        PathRiskPageMark? after, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return PathRequesterRiskStorage.ReadPage(_connection, Description, requesterDn, verdict, after, cancellationToken);
+    }
+
+    /// <summary>Reads the complete saved SEC-071 production summary; null means this rule was not scheduled.</summary>
+    public Tier0FindingSummary? ReadTier0FindingSummary(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0RouteFindingStorage.ReadSummary(_connection, Description, cancellationToken);
+    }
+
+    private void RequireCurrentPathGeneration()
+    {
+        var judgement = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Judgement);
+        if (!judgement.IsSuccess || judgement.Value.GenerationId != Description.GenerationId) throw OwnershipAuditStorage.InvalidProof();
+        if (Description.DerivationGenerationId is not { } generation) return;
+        var derivation = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Derivation);
+        if (!derivation.IsSuccess || derivation.Value.GenerationId != generation) throw OwnershipAuditStorage.InvalidProof();
     }
 
     /// <summary>Reads the stored control product, object-first or named-trustee-first, with coverage and hidden counts.</summary>
@@ -215,7 +265,6 @@ public sealed class JudgementReader : IDisposable
         if (target is not null && holderSid is not null)
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
-        ValidateOwnership();
         return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
             with { GenerationId = Description.GenerationId,
                 OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
@@ -230,18 +279,7 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
-        ValidateOwnership();
         return ControlEdgeStorage.ReadExact(_connection, Description, target, id);
-    }
-
-    private void ValidateOwnership()
-    {
-        // The reader holds one opened immutable generation; a new generation gets its own validation.
-        if (!_ownershipValidated)
-        {
-            OwnershipAuditValidation.Validate(_connection, Description, BundleDirectory);
-            _ownershipValidated = true;
-        }
     }
 
     /// <summary>Reads explicit requester assessments object-first, requester-first, or together.</summary>
@@ -264,7 +302,6 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(holderSid);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
-        FullControlStorage.ValidateSelection(_connection, Description, "target = $value COLLATE NOCASE", target, null, null);
         return MemberAttributionStorage.Read(_connection, Description, holderSid, holderScope, target)
             with { GenerationId = Description.GenerationId };
     }
@@ -275,13 +312,7 @@ public sealed class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(memberSid);
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
-        var page = MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
-        foreach (var permission in page.Permissions.DistinctBy(value => (value.Target, value.HolderSid, value.HolderScope)))
-        {
-            FullControlStorage.ValidateSelection(_connection, Description, "target = $value COLLATE NOCASE", permission.Target, null, null);
-            ControlEdgeStorage.ReadHolderEdges(_connection, Description, permission.Target, permission.HolderSid, permission.HolderScope);
-        }
-        return page;
+        return MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
     }
 
     /// <summary>
@@ -321,9 +352,30 @@ public sealed class JudgementReader : IDisposable
                 Pooling = false,
             }.ToString());
 
+        return OpenConnection(bundleDirectory, generation, connection);
+    }
+
+    /// <summary>Opens an independent stored-result reader under an existing protected generation.</summary>
+    public static Result<JudgementReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        if (store.Generation is not { Kind: AnalysisStoreKind.Judgement } generation) throw new ArgumentException(nameof(store));
+        ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
-            connection.Open();
+            var opened = OpenConnection(store.BundleDirectory, generation, lease.Connection);
+            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            return opened;
+        }
+        finally { lease?.Dispose(); }
+    }
+
+    private static Result<JudgementReader> OpenConnection(string bundleDirectory, AnalysisStoreGeneration generation, SqliteConnection connection)
+    {
+        var judgementPath = BundleLayout.AnalysisGenerationDataPath(bundleDirectory, generation.Kind, generation.GenerationId);
+        try
+        {
+            if (connection.State != System.Data.ConnectionState.Open) connection.Open();
             var description = ReadDescription(connection);
 
             if (description is null)
@@ -619,6 +671,56 @@ public sealed class JudgementReader : IDisposable
         return new StoredRuleExecutions(ReadExecutions(), Description.State);
     }
 
+    /// <summary>
+    /// How many findings this judging wrote, by severity, counted in the database.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Counted rather than derived from a list of findings</b>, for the reason
+    /// <see cref="ReadFindingCountsByRule"/> gives: the caller that wants this wants it
+    /// <i>instead of</i> the findings, and a real forest's judgement holds far too many rows to
+    /// read in order to arrive at four numbers.
+    /// </para>
+    /// <para>
+    /// <b>A severity with no findings has no row, and that is not a zero.</b> The dictionary says
+    /// what was found, not what could have been - a caller wanting to know whether anyone looked
+    /// asks <see cref="ReadRuleExecutions"/>, which is the only thing that can answer it.
+    /// </para>
+    /// <para>
+    /// <b>Internal, because the caller that wants it is in this assembly and gate 4 is right about
+    /// the rest.</b> A dictionary of counts handed outside cannot say whether anyone looked, and
+    /// the thing that can - <see cref="ReadRuleExecutions"/> - is a separate call a distant caller
+    /// could forget to make. <c>JudgingRun</c> makes both, together, when it writes the run's
+    /// portable summary.
+    /// </para>
+    /// </remarks>
+    /// <returns>Each severity some finding has, and how many have it.</returns>
+    internal IReadOnlyDictionary<Severity, int> ReadFindingCountsBySeverity()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var counts = new Dictionary<Severity, int>();
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT severity, COUNT(*) FROM finding GROUP BY severity";
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            // A severity this build does not recognise is left out rather than folded into the
+            // nearest one. Counting it as something else would misreport how bad a forest is,
+            // which is the one thing a summary leaving the customer's environment must not do.
+            if (Enum.TryParse<Severity>(reader.GetString(0), out var severity)
+                && Enum.IsDefined(severity))
+            {
+                counts[severity] = reader.GetInt32(1);
+            }
+        }
+
+        return counts;
+    }
+
     private IReadOnlyList<StoredRuleExecution> ReadExecutions()
     {
         var missing = ReadMissingInputs();
@@ -696,7 +798,10 @@ public sealed class JudgementReader : IDisposable
         """
         f.finding_id, f.rule_id, f.subject_kind, f.subject_key, f.object_guid,
         f.severity, f.distinguished_name, f.detail, f.coverage,
-        f.domain_fqdn, f.object_class,
+        f.domain_fqdn, f.object_class, f.principal_name,
+        z.proof                             AS z_proof,
+        z.fingerprint                       AS z_fingerprint,
+        zc.fingerprint                      AS z_calculation_fingerprint,
         d.user_account_control              AS d_user_account_control,
         d.is_computer                       AS d_is_computer,
         d.server_trust_account_bit          AS d_server_trust_account_bit,
@@ -729,6 +834,7 @@ public sealed class JudgementReader : IDisposable
         r.reach                             AS r_reach,
         r.inherited_from                    AS r_inherited_from,
         r.expansion_was_complete            AS r_expansion_was_complete,
+        r.route_length                      AS r_route_length,
         r.finding_id                        AS r_finding_id,
         e.policy_display_name               AS e_policy_display_name,
         e.configured_value                  AS e_configured_value,
@@ -738,6 +844,7 @@ public sealed class JudgementReader : IDisposable
         e.broad_principal_sid               AS e_broad_principal_sid,
         e.broad_principal_name              AS e_broad_principal_name,
         e.expansion_was_complete            AS e_expansion_was_complete,
+        e.route_length                      AS e_route_length,
         e.finding_id                        AS e_finding_id,
         t.trustee_sid                       AS t_trustee_sid,
         t.trustee_name                      AS t_trustee_name,
@@ -768,6 +875,8 @@ public sealed class JudgementReader : IDisposable
         LEFT JOIN finding_laps_decryptor e ON e.finding_id = f.finding_id
         LEFT JOIN finding_object_takeover t ON t.finding_id = f.finding_id
         LEFT JOIN finding_object_ownership w ON w.finding_id = f.finding_id
+        LEFT JOIN finding_tier0_route z ON z.finding_id = f.finding_id
+        LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
     /// <summary>
@@ -834,7 +943,24 @@ public sealed class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (!reader.IsDBNull(delegationUac))
+        if (ruleId == UnexpectedTier0Route.RuleId)
+        {
+            var proof = reader.GetOrdinal("z_proof");
+            var calculation = reader.GetOrdinal("z_calculation_fingerprint");
+            if (reader.IsDBNull(proof) || reader.IsDBNull(calculation)) throw Tier0PathStorage.InvalidProof();
+            var route = Tier0RouteFindingStorage.ReadEvidence(reader.GetString(proof),
+                (byte[])reader.GetValue(reader.GetOrdinal("z_fingerprint")), Description,
+                Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), Convert.ToHexString((byte[])reader.GetValue(calculation)));
+            evidence = route;
+            if (reader.GetString(reader.GetOrdinal("subject_key")) != route.RequesterGuid.ToString("D")
+                || reader.GetString(reader.GetOrdinal("subject_kind")) != nameof(FindingSubjectKind.Account)
+                || reader.GetString(reader.GetOrdinal("severity")) != nameof(Severity.High))
+                throw Tier0PathStorage.InvalidProof();
+        }
+        else if (!reader.IsDBNull(reader.GetOrdinal("z_proof")))
+            throw Tier0PathStorage.InvalidProof();
+        else if (!reader.IsDBNull(delegationUac))
         {
             evidence = new UnconstrainedDelegationEvidence(
                 (uint)reader.GetInt64(delegationUac),
@@ -919,7 +1045,7 @@ public sealed class JudgementReader : IDisposable
                 reader.IsDBNull(reader.GetOrdinal("r_broad_principal_name"))
                     ? null
                     : reader.GetString(reader.GetOrdinal("r_broad_principal_name")),
-                MembershipPaths.TryGetValue(findingId, out var path) ? path : [],
+                ReadLapsRoute("finding_laps_password_reader_path", findingId, reader.GetInt64(reader.GetOrdinal("r_route_length"))),
                 reader.GetString(reader.GetOrdinal("r_attribute")),
                 Enum.Parse<LapsReadRights>(reader.GetString(reader.GetOrdinal("r_rights"))),
                 Enum.Parse<LapsGrantReach>(reader.GetString(reader.GetOrdinal("r_reach"))),
@@ -973,7 +1099,7 @@ public sealed class JudgementReader : IDisposable
                 reader.IsDBNull(decryptorName) ? null : reader.GetString(decryptorName),
                 reader.IsDBNull(broadSid) ? null : reader.GetString(broadSid),
                 reader.IsDBNull(broadName) ? null : reader.GetString(broadName),
-                DecryptorPaths.TryGetValue(findingId, out var route) ? route : [],
+                ReadLapsRoute("finding_laps_decryptor_path", findingId, reader.GetInt64(reader.GetOrdinal("e_route_length"))),
                 reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0);
         }
         else
@@ -996,7 +1122,7 @@ public sealed class JudgementReader : IDisposable
             reader.GetString(reader.GetOrdinal("object_class")),
             reader.GetString(reader.GetOrdinal("detail")),
             Enum.Parse<EvidenceCompleteness>(reader.GetString(reader.GetOrdinal("coverage"))),
-            evidence);
+            evidence) { PrincipalName = reader.GetString(reader.GetOrdinal("principal_name")) };
     }
 
     /// <summary>
@@ -1042,35 +1168,24 @@ public sealed class JudgementReader : IDisposable
 
     private Dictionary<string, MembershipRouteSummary>? _membershipRoutes;
 
-    /// <summary>
-    /// Every stored membership path, by the finding it belongs to, in path order.
-    /// </summary>
-    /// <remarks>
-    /// Read once for the store and sorted by ordinal, for the reason the other child tables are: a
-    /// join would multiply the finding by the length of its path, so a broad principal reached at
-    /// depth six would appear six times in the grid.
-    /// </remarks>
-    private Dictionary<long, List<PathStep>> MembershipPaths =>
-        _membershipPaths ??= ReadPathSteps(
-            "SELECT finding_id, sid, name FROM finding_laps_password_reader_path "
-            + "ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<PathStep>>? _membershipPaths;
-
-    /// <summary>
-    /// Every stored decryptor route, by the finding it belongs to, in path order.
-    /// </summary>
-    /// <remarks>
-    /// Kept apart from <see cref="MembershipPaths"/> rather than unioned with it. The two tables
-    /// answer different questions - who can read the attribute, and who can decrypt what it holds -
-    /// and a finding identifier is only unique within one of them.
-    /// </remarks>
-    private Dictionary<long, List<PathStep>> DecryptorPaths =>
-        _decryptorPaths ??= ReadPathSteps(
-            "SELECT finding_id, sid, name FROM finding_laps_decryptor_path "
-            + "ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<PathStep>>? _decryptorPaths;
+    private IReadOnlyList<PathStep> ReadLapsRoute(string table, long findingId, long expectedLength)
+    {
+        // Table names are fixed callers, never input. The primary key bounds this to one finding;
+        // other pages' routes must neither be decoded nor used to fill missing support here.
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"SELECT ordinal, sid, name FROM {table} WHERE finding_id=$id ORDER BY ordinal";
+        command.Parameters.AddWithValue("$id", findingId);
+        using var reader = command.ExecuteReader();
+        var route = new List<PathStep>();
+        while (reader.Read())
+        {
+            if (reader.GetInt64(0) != route.Count || route.Count >= expectedLength || string.IsNullOrWhiteSpace(reader.GetString(1)))
+                throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+            route.Add(new(reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
+        }
+        if (route.Count != expectedLength) throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+        return route;
+    }
 
     /// <summary>
     /// Every stored takeover route, by the finding it belongs to, in path order.
@@ -1160,6 +1275,7 @@ public sealed class JudgementReader : IDisposable
             return;
 
         _connection.Dispose();
+        _protection?.Dispose();
         _disposed = true;
     }
 

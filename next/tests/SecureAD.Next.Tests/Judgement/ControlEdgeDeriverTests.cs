@@ -16,8 +16,24 @@ public sealed class ControlEdgeDeriverTests
     internal static PermissionEntry Ace(int ordinal, string sid, int mask, string type = "AccessAllowed", byte propagation = 0) =>
         new(ordinal, type, new(sid, sid, "CN=Holder,DC=contoso,DC=com", "contoso.com", null, null, null),
             mask, null, null, false, 0, propagation, false, false, []);
-    internal static ObjectPermissions Permissions(params PermissionEntry[] entries) => new(Subject.DistinguishedName,
-        DescriptorAvailability.Read, null, null, DaclState.Present, DaclCompleteness.Complete, true, false, entries, []);
+    internal static ObjectPermissions Permissions(params PermissionEntry[] entries) =>
+        Permissions(Subject.DistinguishedName, entries);
+
+    /// <summary>One object's permissions, carrying a descriptor identity as the evidence would.</summary>
+    /// <param name="distinguishedName">The object.</param>
+    /// <param name="entries">The entries its descriptor holds.</param>
+    /// <remarks>
+    /// <c>DescriptorId</c> is set because the saved classification is keyed per descriptor
+    /// (<c>P-280</c>), so an object without one has no permissions to store. It is derived from the
+    /// name, so two fixtures named differently get different descriptors by default - which is what
+    /// a test asserting they do not collide needs.
+    /// </remarks>
+    internal static ObjectPermissions Permissions(string distinguishedName, params PermissionEntry[] entries) =>
+        new(distinguishedName, DescriptorAvailability.Read, null, null, DaclState.Present,
+            DaclCompleteness.Complete, true, false, entries, [])
+        {
+            DescriptorId = Math.Abs(StringComparer.Ordinal.GetHashCode(distinguishedName)) + 1L,
+        };
     internal static ControlObjectEvaluation Derive(ObjectPermissions? permissions) => ControlEdgeDeriver.Derive(Subject, permissions,
         JudgingContext.At(DateTimeOffset.UnixEpoch) with { ForestFqdn = "contoso.com" }, Guid.Empty, null, DomainSid);
 

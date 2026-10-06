@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using SecureAD.Kernel;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 
@@ -40,12 +41,12 @@ internal static class OwnershipAuditRun
 
     internal static void Assess(SqliteConnection connection, BundleReader bundle, JudgementDescription description,
         CapturedMembershipInput? input, Tier0InputBinding? binding, JudgingContext context, Func<string, string?> domainSid,
-        long objectsRead, IProgress<JudgingRun.JudgingProgress> progress, CancellationToken cancellationToken,
-        bool scopeAlreadyPlanned = false)
+        long objectsRead, IProgress<JudgingRun.JudgingProgress> progress, IRunLog log, CancellationToken cancellationToken,
+        PreparedStatements statements, PermissionWriteSession session, bool scopeAlreadyPlanned = false)
     {
-        progress.Report(new(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+        var status = progress as JudgingStatus;
+        JudgingRun.Entering(progress, log, JudgingPhase.SelectingOwnershipScope, objectsRead);
         cancellationToken.ThrowIfCancellationRequested();
-        var targets = OwnershipAuditStorage.Targets(connection);
         MembershipRouteSummary? Routes(Tier0Target target) => target.Sid is { } sid
             ? context.ProtectedPrincipals?.Lookup(sid, target.SidScope)?.MembershipRoutes : null;
 
@@ -55,32 +56,54 @@ internal static class OwnershipAuditRun
         // them would be reasoning from its own output.
         if (!scopeAlreadyPlanned)
         {
+            using var diagnostic = status?.BeginPostPass("ownership-scope", description.GenerationId);
+            diagnostic?.Part("load-targets");
+            var targets = OwnershipAuditStorage.Targets(connection);
+            diagnostic?.Counter("classificationTargets", targets.Count);
+            diagnostic?.Counter("membershipInputsAvailable", input is null ? 0 : 1);
             OwnershipScopeSelection? selection = null;
             if (input is not null && binding is not null)
             {
                 var coverage = OwnershipAuditStorage.UnavailableCoverage with { InputsComplete = input.IsComplete,
                     Limitations = OwnershipAuditStorage.UnavailableCoverage.Limitations & ~Tier0Limitations.InputIncomplete };
+                diagnostic?.Part("classify-targets");
                 var classifications = Tier0Classifier.QualifyMany(binding, targets.Select(item => item.Identity), input, Routes, cancellationToken).Classifications;
+                diagnostic?.Part("read-scope-edges");
                 var edges = ControlEdgeStorage.ReadScopeEdges(connection, description);
+                diagnostic?.Part("build-relations");
                 var relations = Relations(binding, targets, edges, ref coverage, cancellationToken);
+                diagnostic?.Counter("resolvedRelations", relations.Count);
+                diagnostic?.Part("select-scope");
                 selection = OwnershipScopeSelector.Select(binding, description.GenerationId, classifications, relations, coverage,
-                    cancellationToken, new ScopeProgress(progress, objectsRead));
+                    cancellationToken, new ScopeProgress(progress, objectsRead, diagnostic?.ScopeProgress));
                 cancellationToken.ThrowIfCancellationRequested();
                 if (selection.WasCancelled) throw new OperationCanceledException(cancellationToken);
             }
             else if (input is not null || binding is not null) throw OwnershipAuditStorage.InvalidProof();
+            diagnostic?.Part("save-scope");
             OwnershipAuditStorage.Plan(connection, selection, Routes, cancellationToken);
+            diagnostic?.Complete();
         }
-        progress.Report(new(objectsRead) { Phase = JudgingPhase.AssessingOwnership });
-        foreach (var target in OwnershipAuditStorage.Targets(connection).Where(item => item.Selection == OwnershipScopeState.Included))
+        JudgingRun.Entering(progress, log, JudgingPhase.AssessingOwnership, objectsRead);
+        using var assessment = status?.BeginPostPass("ownership-assessment", description.GenerationId);
+        assessment?.Part("load-targets");
+        var assessmentTargets = OwnershipAuditStorage.Targets(connection);
+        assessment?.Targets(assessmentTargets.Count(item => item.Selection == OwnershipScopeState.Included));
+        long candidatesRead = 0, candidatesEvaluated = 0;
+        foreach (var target in assessmentTargets.Where(item => item.Selection == OwnershipScopeState.Included))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            assessment?.Part("read-candidates");
             var candidates = ControlEdgeStorage.ReadOwnerCandidates(connection, description, target.Identity.DistinguishedName);
+            candidatesRead += candidates.Count;
+            assessment?.Counter("ownerCandidatesRead", candidatesRead);
             var transitions = new List<ControlEdge>();
             if (candidates.Count != 0)
             {
+                assessment?.Part("read-evidence");
                 var subject = bundle.ReadObjectAttributes(target.Identity.DistinguishedName) ?? throw OwnershipAuditStorage.InvalidProof();
                 var permissions = bundle.ReadPermissions(target.Identity.DistinguishedName) ?? throw OwnershipAuditStorage.InvalidProof();
+                assessment?.Part("evaluate-ownership");
                 foreach (var candidate in candidates)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -94,13 +117,19 @@ internal static class OwnershipAuditRun
                             ? new PermissionTrustee("S-1-1-0", "Everyone", null, null, null, WellKnownSidRole.Principal, null)
                             : throw OwnershipAuditStorage.InvalidProof());
                     transitions.Add(OwnershipControlDeriver.Transition(candidate, subject, permissions, context, holder, domainSid));
+                    assessment?.Counter("ownerCandidateEvaluations", ++candidatesEvaluated);
                 }
             }
-            ControlEdgeStorage.AppendOwnership(connection, description, target.Identity.DistinguishedName, transitions);
+            assessment?.Part("store-ownership");
+            ControlEdgeStorage.AppendOwnership(connection, description, target.Identity.DistinguishedName, transitions,
+                statements, session);
+            assessment?.TargetFinished();
             progress.Report(new(objectsRead) { Phase = JudgingPhase.AssessingOwnership });
         }
         cancellationToken.ThrowIfCancellationRequested();
+        assessment?.Part("complete-check");
         OwnershipAuditStorage.Complete(connection, description);
+        assessment?.Complete();
     }
 
     internal static IReadOnlyList<Tier0RelevanceRelation> Relations(Tier0InputBinding input,
@@ -127,8 +156,13 @@ internal static class OwnershipAuditRun
         return relations;
     }
 
-    private sealed class ScopeProgress(IProgress<JudgingRun.JudgingProgress> progress, long objectsRead) : IProgress<OwnershipScopeProgress>
+    private sealed class ScopeProgress(IProgress<JudgingRun.JudgingProgress> progress, long objectsRead,
+        IProgress<OwnershipScopeProgress>? diagnostic) : IProgress<OwnershipScopeProgress>
     {
-        public void Report(OwnershipScopeProgress value) => progress.Report(new(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+        public void Report(OwnershipScopeProgress value)
+        {
+            diagnostic?.Report(value);
+            progress.Report(new(objectsRead) { Phase = JudgingPhase.SelectingOwnershipScope });
+        }
     }
 }

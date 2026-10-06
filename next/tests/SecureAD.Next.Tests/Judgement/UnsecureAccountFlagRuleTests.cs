@@ -59,7 +59,7 @@ public sealed class UnsecureAccountFlagRuleTests
     [Fact]
     public void AnOrdinaryAccountIsReportedByNoneOfThem()
     {
-        foreach (var rule in new IRule[] { Sec028, Sec029, Sec033 })
+        foreach (var rule in new IObjectRule[] { Sec028, Sec029, Sec033 })
         {
             var verdict = rule.Judge(Account("alice", NormalAccount));
 
@@ -242,7 +242,7 @@ public sealed class UnsecureAccountFlagRuleTests
     }
 
     private static void AssertReports(
-        IRule rule, string ruleId, uint control, Severity severity)
+        IObjectRule rule, string ruleId, uint control, Severity severity)
     {
         var verdict = rule.Judge(Account("svc-target", control));
 

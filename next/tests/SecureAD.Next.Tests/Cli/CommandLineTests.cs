@@ -32,9 +32,62 @@ public sealed class CommandLineTests
     [Theory]
     [InlineData("--derive")]
     [InlineData("--judge")]
+    [InlineData("--describe")]
     public void EnatelScopeCannotChangeAnExistingBundle(string mode)
     {
         Assert.Null(CommandLine.Parse([mode, "synthetic", "--include-enatel-sso"]));
+    }
+
+    [Fact]
+    public void ABundleCanBeDescribedByName()
+    {
+        var options = CommandLine.Parse(["--describe", "D:\\runs\\one"]);
+
+        Assert.Equal(("D:\\runs\\one", false), (options?.DescribeOnly, options?.Sizes));
+    }
+
+    [Fact]
+    public void MeasuringWhereTheSpaceWentIsAskedForRatherThanAssumed()
+    {
+        // It reads every row of every table, so on a bundle of tens of gigabytes it must never
+        // happen merely because somebody asked how many objects there were.
+        var options = CommandLine.Parse(["--describe", "D:\\runs\\one", "--sizes"]);
+
+        Assert.Equal(("D:\\runs\\one", true), (options?.DescribeOnly, options?.Sizes));
+    }
+
+    [Theory]
+    [InlineData("--derive")]
+    [InlineData("--judge")]
+    public void MeasuringSpaceIsRefusedBesideAVerbThatMeasuresNothing(string mode)
+    {
+        // Refused rather than ignored, on the same grounds --concurrent is refused beside
+        // --validate: an operator who states a flag and is silently not given it has been failed.
+        Assert.Null(CommandLine.Parse([mode, "synthetic", "--sizes"]));
+    }
+
+    [Fact]
+    public void MeasuringSpaceIsRefusedWithoutADescriptionAtAll()
+    {
+        Assert.Null(CommandLine.Parse(["--library", "synthetic", "--sizes"]));
+    }
+
+    [Theory]
+    [InlineData("--derive")]
+    [InlineData("--judge")]
+    public void DescribingAndAnalysingAreNotAskedForAtOnce(string other)
+    {
+        // A bundle is described, or derived, or judged. One command doing two would hide which
+        // half failed - the reason --derive and --judge already refuse each other.
+        Assert.Null(CommandLine.Parse(["--describe", "synthetic", other, "synthetic"]));
+    }
+
+    [Fact]
+    public void DescribingNeedsNoLibraryAndRefusesOneOffered()
+    {
+        // It reads a bundle that exists rather than writing a run, so a library says two different
+        // things at once.
+        Assert.Null(CommandLine.Parse(["--describe", "synthetic", "--library", "somewhere"]));
     }
 
     [Fact]

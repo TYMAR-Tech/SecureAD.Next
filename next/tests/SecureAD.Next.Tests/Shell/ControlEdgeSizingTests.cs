@@ -64,7 +64,7 @@ public sealed partial class ControlEdgeSizingTests
         var notice = Notice(pane, nameof(vm.RequesterCoverage));
         Assert.Contains("Synthetic requester read failure", notice.Text);
         var outer = SectionScroll(pane, requester);
-        outer.ScrollToEnd();
+        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(notice, outer));
         Layout(pane, 900, 430);
         AssertInside(notice, outer);
         AssertInside(notice, pane);
@@ -295,9 +295,18 @@ public sealed partial class ControlEdgeSizingTests
             Assert.True(evidence.ActualHeight > 0);
             Assert.True(Top(expander, pane) < pane.ActualHeight && Top(expander, pane) + expander.ActualHeight > 0);
         }
-        outer.ScrollToTop();
+        var scopeNotice = Notice(pane, nameof(vm.SupportedScope));
+        Assert.Equal(vm.SupportedScope, scopeNotice.Text);
+        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(scopeNotice, outer));
         Layout(pane, width, height);
-        AssertInside(Notice(pane, nameof(vm.SupportedScope)), outer);
+        Assert.True(Top(scopeNotice, outer) >= -1);
+        Assert.True(Top(scopeNotice, outer) < outer.ViewportHeight);
+        // A long qualification can span several viewports; both ends must remain reachable.
+        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(scopeNotice, outer)
+            + scopeNotice.ActualHeight - outer.ViewportHeight);
+        Layout(pane, width, height);
+        var scopeBottom = Top(scopeNotice, outer) + scopeNotice.ActualHeight;
+        Assert.InRange(scopeBottom, 1, outer.ViewportHeight + 1);
         Assert.Contains(Descendants<Button>(pane), button => ReferenceEquals(button.Command, vm.FirstPageCommand));
         Assert.Contains(Descendants<Button>(pane), button => ReferenceEquals(button.Command, vm.NextPageCommand));
         Assert.Equal(vm.Coverage, Notice(pane, nameof(vm.Coverage)).Text);
@@ -349,6 +358,13 @@ public sealed partial class ControlEdgeSizingTests
         var objectView = XDocument.Load(Path.Combine(shell, "Views", "ObjectView.xaml")).Root!;
         objectView.Attribute(Xaml + "Class")!.Remove();
         objectView.Attribute(Xaml + "ClassModifier")!.Remove();
+        var sectionList = XDocument.Load(Path.Combine(shell, "Views", "ObjectSectionList.xaml")).Root!;
+        sectionList.Attribute(Xaml + "Class")!.Remove();
+        sectionList.Attribute(Xaml + "ClassModifier")!.Remove();
+        var sectionHost = Assert.Single(objectView.Descendants().Where(element => element.Name.LocalName == "ObjectSectionList"));
+        foreach (var attribute in sectionHost.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration))
+            sectionList.SetAttributeValue(attribute.Name, attribute.Value);
+        sectionHost.ReplaceWith(sectionList);
         objectView.Descendants(Wpf + "ContentControl").Single().Add(new XElement(Wpf + "ContentControl.ContentTemplate", template));
         objectView.SetAttributeValue("Grid.Column", "2");
         var assetsDock = XDocument.Load(Path.Combine(shell, "Views", "AssetsView.xaml")).Root!.Element(Wpf + "DockPanel")!;
@@ -364,7 +380,10 @@ public sealed partial class ControlEdgeSizingTests
             new XElement(Wpf + "DockPanel", new XAttribute("Margin", assetsDock.Attribute("Margin")!.Value),
                 new XElement(Wpf + "Grid", new XElement(columns), objectView)));
         var pane = (FrameworkElement)XamlReader.Parse(root.ToString());
-        pane.DataContext = new { Opened = new { DistinguishedName = "CN=Target,DC=example,DC=invalid", Selected = vm } };
+        var opened = new ObjectViewModel("CN=Target,DC=example,DC=invalid", "group", "group",
+            (_, _) => Task.FromResult<ObjectSectionViewModel>(vm));
+        opened.Show(ObjectSectionCatalog.ControlEdges);
+        pane.DataContext = new { Opened = opened };
         return pane;
     }
 

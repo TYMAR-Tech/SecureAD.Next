@@ -109,8 +109,20 @@ public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
         Judge(directory);
         using var connection = Database(directory);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM (SELECT target,ordinal FROM permission_entry GROUP BY target,ordinal HAVING COUNT(*)>1)";
-        Assert.Equal(0L, command.ExecuteScalar());
+        // The append opens its own transaction outside the judging batch, so it finds what the object
+        // pass already stored only through permission_entry.entry_hash. If that lookup missed, the
+        // unique identity would refuse the insert and this run would not have completed at all; what
+        // is asserted here is the sharing itself - strictly fewer stored entries than stored positions.
+        command.CommandText = """
+            SELECT (SELECT COUNT(*) FROM permission_entry),
+                (SELECT COUNT(*) FROM (SELECT entry_id FROM control_ace
+                    UNION ALL SELECT entry_id FROM full_control_source_entry
+                    UNION ALL SELECT entry_id FROM permission_classification_entry))
+            """;
+        using var read = command.ExecuteReader();
+        Assert.True(read.Read());
+        Assert.True(read.GetInt64(0) < read.GetInt64(1),
+            $"{read.GetInt64(0)} stored entries behind {read.GetInt64(1)} stored positions.");
     }
 
     [Fact]
@@ -169,7 +181,7 @@ public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
         Judge(directory);
         SelfMembershipCoverageTests.Mutate(directory, connection => Execute(connection, mutation));
         using var reader = Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(CoreDn, null, null, true, 0));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, CoreDn, null, null, true, 0));
     }
 
     [Fact]
@@ -190,7 +202,7 @@ public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
             update.ExecuteNonQuery();
         });
         using var reader = Open(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdges(CoreDn, null, null, true, 0));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadPage(reader, CoreDn, null, null, true, 0));
     }
 
     private static string JudgementPath(string directory) => BundleLayout.AnalysisGenerationDataPath(directory,

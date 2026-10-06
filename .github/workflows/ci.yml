@@ -29,10 +29,21 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Isolate verification temporary files
+        shell: pwsh
+        run: |
+          $temporary = Join-Path ([IO.Path]::GetPathRoot($env:RUNNER_TEMP)) ('sa-test-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+          New-Item -ItemType Directory -Path $temporary | Out-Null
+          "TEMP=$temporary" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TMP=$temporary" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       # The solution is named on every step, deliberately. A bare `dotnet restore` at
-      # the repository root finds the tracked but empty SecureAD.Next.sln beside this
-      # file, which restores, builds and tests nothing and reports success - a green
-      # check measuring nothing, which is worse than no check at all. See P-178.
+      # the repository root once found a tracked but empty SecureAD.Next.sln beside this
+      # file, which restored, built and tested nothing and reported success - a green
+      # check measuring nothing, which is worse than no check at all. That file was
+      # deleted when P-178 was settled, and a bare restore at the root now fails with
+      # MSB1003. Naming the solution keeps the trap from being re-laid by anyone who
+      # adds a root solution back.
       #
       # This workflow spent its whole life triggering on `master` in a repository whose
       # branch is `main`, so it had never run once and nothing said so. See P-177.
@@ -43,7 +54,9 @@ jobs:
         run: dotnet build next/SecureAD.Next.sln --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test next/SecureAD.Next.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        # Unrelated blocking fixtures must not starve one another on the shared worker.
+        # Concurrency within each test is unchanged and remains asserted by those tests.
+        run: dotnet test next/SecureAD.Next.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults -- xUnit.ParallelizeTestCollections=false
 
       - name: Upload coverage
         if: always()

@@ -77,6 +77,18 @@ internal sealed record CommandLine(
     string? JudgeOnly,
     int? Concurrency)
 {
+    /// <summary>The bundle to report the contents of, or null when none was asked for.</summary>
+    public string? DescribeOnly { get; init; }
+
+    /// <summary>
+    /// Whether the description should measure where the bytes went.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="DescribeOnly"/> because it costs a full read of the evidence file.
+    /// The counts alone answer in seconds; this reads every row of every table, which on a bundle
+    /// of tens of gigabytes is a job to leave running rather than one to wait for.
+    /// </remarks>
+    public bool Sizes { get; init; }
     private static readonly ResourceManager ScopeWording = new(
         "SecureAD.Cli.Resources.CaptureObjectScope", typeof(CommandLine).Assembly);
 
@@ -105,6 +117,7 @@ internal sealed record CommandLine(
             "           [--include-enatel-sso]",
             "  securead --derive <bundle directory>",
             "  securead --judge <bundle directory>",
+            "  securead --describe <bundle directory> [--sizes]",
             string.Empty,
             "  --library     Where runs are kept. Created if absent. Required for a run or a",
             "                validate: this tool does not choose where several gigabytes of",
@@ -139,7 +152,15 @@ internal sealed record CommandLine(
             "                anything. Contacts no controller and opens the evidence read-only. Use",
             "                it to derive again after this tool has learned something new, or to",
             "                derive a bundle captured elsewhere. Any earlier derivation in that",
-            "                bundle is replaced; the evidence is never written to.");
+            "                bundle is replaced; the evidence is never written to.",
+            "  --describe    Report what a sealed bundle holds: how much was captured, whether",
+            "                security descriptors are being stored once and shared, and everything",
+            "                that could not be read - including every Group Policy object that was",
+            "                missed and what the file system said about it. Contacts nothing and",
+            "                writes nothing, so it is safe against the only copy of a bundle.",
+            "  --sizes       Only with --describe. Also measure which tables the bundle's bytes went",
+            "                into. This reads every row, so on a large bundle it is a job to leave",
+            "                running rather than one to wait for.");
 
     /// <summary>
     /// Reads the arguments, or returns null when they were not understood.
@@ -170,6 +191,8 @@ internal sealed record CommandLine(
         var captureOnly = false;
         string? deriveOnly = null;
         string? judgeOnly = null;
+        string? describeOnly = null;
+        var sizes = false;
         int? concurrency = null;
         var includeEnatelSso = false;
 
@@ -236,18 +259,34 @@ internal sealed record CommandLine(
                     judgeOnly = args[++i];
                     break;
 
+                case "--describe" when i + 1 < args.Length:
+                    describeOnly = args[++i];
+                    break;
+
+                case "--sizes":
+                    sizes = true;
+                    break;
+
                 default:
                     return null;
             }
         }
 
-        // --derive and --judge each read a bundle that already exists, so neither needs a library to
-        // write runs into nor a forest to contact. Naming one alongside them asks for two different
-        // things at once, and guessing which was meant is how an operator ends up with a capture he
-        // did not ask for. They are also mutually exclusive: a bundle is derived and then judged, in
-        // that order, and one command doing both silently would hide which half failed.
-        if (deriveOnly is not null || judgeOnly is not null)
+        // --derive, --judge and --describe each read a bundle that already exists, so none needs a
+        // library to write runs into nor a forest to contact. Naming one alongside them asks for two
+        // different things at once, and guessing which was meant is how an operator ends up with a
+        // capture he did not ask for. They are also mutually exclusive: a bundle is derived and then
+        // judged, in that order, and one command doing both silently would hide which half failed.
+        // --describe joins them rather than standing apart because it is the same kind of verb - it
+        // names a bundle, contacts nothing, and writes nothing.
+        if (deriveOnly is not null || judgeOnly is not null || describeOnly is not null)
         {
+            var named = deriveOnly ?? judgeOnly ?? describeOnly;
+            var verbs =
+                (deriveOnly is not null ? 1 : 0)
+                + (judgeOnly is not null ? 1 : 0)
+                + (describeOnly is not null ? 1 : 0);
+
             var contradicted =
                 validateOnly
                 || previewOnly
@@ -257,15 +296,24 @@ internal sealed record CommandLine(
                 || overrides.Count > 0
                 || concurrency is not null
                 || includeEnatelSso
-                || (deriveOnly is not null && judgeOnly is not null);
-
-            var named = deriveOnly ?? judgeOnly;
+                || verbs > 1
+                // --sizes governs what a description measures, and nothing else performs a
+                // measurement to govern. Refused rather than ignored beside --derive or --judge,
+                // on the same grounds as --concurrent beside --validate below: an operator who
+                // states a flag and is silently not given it has been failed by this file.
+                || (sizes && describeOnly is null);
 
             return contradicted || string.IsNullOrWhiteSpace(named)
                 ? null
                 : new CommandLine(
                     library, forest, overrides, validateOnly, previewOnly, captureOnly, deriveOnly,
-                    judgeOnly, concurrency);
+                    judgeOnly, concurrency) { DescribeOnly = describeOnly, Sizes = sizes };
+        }
+
+        // --sizes outside a description governs nothing at all, and is refused for the same reason.
+        if (sizes)
+        {
+            return null;
         }
 
         // --preview writes nothing, so it does not need somewhere to write to. Requiring a library

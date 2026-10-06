@@ -43,7 +43,7 @@ namespace SecureAD.Judgement;
 /// disabled state travels in the evidence instead, so an operator sees it and decides.
 /// </para>
 /// </remarks>
-public sealed class NoKerberosPreauthentication : IRule
+public sealed class NoKerberosPreauthentication : IObjectRule
 {
     /// <summary>
     /// <c>ADS_UF_DONT_REQUIRE_PREAUTH</c>: this account does not require Kerberos

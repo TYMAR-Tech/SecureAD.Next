@@ -72,7 +72,7 @@ public sealed class BundleWriterCommandReuseTests : IDisposable
         using var writer = Open();
         WriteFull(writer, 1, "BA");
         var before = Commands(writer);
-        Assert.Equal(7, before.Length);
+        Assert.Equal(8, before.Length);
         var parameters = before.Select(c => c.Parameters.Cast<SqliteParameter>().ToArray()).ToArray();
         WriteFull(writer, 2, "WD");
         var after = Commands(writer);
@@ -85,7 +85,8 @@ public sealed class BundleWriterCommandReuseTests : IDisposable
         }
         Finish(writer);
         Assert.Equal(2L, Scalar("SELECT COUNT(*) FROM captured_object"));
-        Assert.Equal(2L, Scalar("SELECT COUNT(*) FROM ace"));
+        Assert.Equal(2L, Scalar("SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(2L, Scalar("SELECT COUNT(*) FROM descriptor_entry"));
     }
 
     [Fact]
@@ -137,7 +138,7 @@ public sealed class BundleWriterCommandReuseTests : IDisposable
         var id = writer.WriteObject(second);
         StoreDescriptor(writer, id, second.ObjectGuid!.Value, "D:(A;;RP;;;WD)");
         Finish(writer);
-        Assert.IsType<DBNull>(Scalar($"SELECT {column} FROM object_security_descriptor AS link JOIN security_descriptor AS d USING (descriptor_id) JOIN ace USING (descriptor_id) WHERE link.object_id = {id}"));
+        Assert.IsType<DBNull>(Scalar($"SELECT {column} FROM object_security_descriptor AS link JOIN security_descriptor AS d USING (descriptor_id) JOIN descriptor_entry USING (descriptor_id) JOIN access_entry USING (entry_id) WHERE link.object_id = {id}"));
     }
 
     [Fact]
@@ -149,8 +150,8 @@ public sealed class BundleWriterCommandReuseTests : IDisposable
         WriteFull(second, 2, "WD");
         var a = Commands(first);
         var b = Commands(second);
-        Assert.Equal(7, a.Length);
-        Assert.Equal(7, b.Length);
+        Assert.Equal(8, a.Length);
+        Assert.Equal(8, b.Length);
         Assert.NotSame(a[0].Connection, b[0].Connection);
         foreach (var command in a) Assert.Same(a[0].Connection, command.Connection);
         foreach (var command in b)
@@ -201,7 +202,7 @@ public sealed class BundleWriterCommandReuseTests : IDisposable
         foreach (var command in after) Assert.Same(after[0].Transaction, command.Transaction);
         Finish(writer);
         foreach (var pair in new[] { ("row1", "S-1-5-32-544"), ("row2", "S-1-1-0"), ("row3", "S-1-5-11") })
-            Assert.Equal(pair.Item2, Scalar($"SELECT t.sid FROM captured_object AS o JOIN object_security_descriptor USING (object_id) JOIN ace USING (descriptor_id) JOIN trustee AS t USING (trustee_id) WHERE o.samaccountname = '{pair.Item1}'"));
+            Assert.Equal(pair.Item2, Scalar($"SELECT t.sid FROM captured_object AS o JOIN object_security_descriptor USING (object_id) JOIN descriptor_entry USING (descriptor_id) JOIN access_entry USING (entry_id) JOIN trustee AS t USING (trustee_id) WHERE o.samaccountname = '{pair.Item1}'"));
     }
 
     [Theory]
@@ -214,7 +215,7 @@ public sealed class BundleWriterCommandReuseTests : IDisposable
         writer.WriteCoverage(Coverage());
         WriteFull(writer, 1, "BA");
         var commands = Commands(writer);
-        Assert.Equal(7, commands.Length);
+        Assert.Equal(8, commands.Length);
         var disposed = new HashSet<SqliteCommand>();
         foreach (var command in commands)
             command.Disposed += (_, _) => disposed.Add(command);

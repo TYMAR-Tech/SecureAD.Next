@@ -44,13 +44,21 @@ public sealed record Tier0PathStep(Tier0Target From, Tier0Target To, Tier0PathSt
 }
 
 /// <summary>
-/// Passive reading of a saved calculation. Inputs retain availability, coverage, scoped uncertainty
+/// Internal certificate inspection for offline proof verification, not completed-run browsing.
+/// Inputs retain availability, coverage, scoped uncertainty
 /// and unpromoted permission references. Missing or unsupported analysis is not a negative answer.
 /// This is a shortest proven route, not a route count, remediation proof or authentication claim.
 /// </summary>
-public sealed record Tier0PathResult(PathInputs Inputs, Tier0Target? Subject, Tier0Reachability Reachability,
+internal sealed record Tier0PathResult(SavedPathInputs Inputs, Tier0Target? Subject, Tier0Reachability Reachability,
     int? ShortestProvenDistance, IReadOnlyList<Tier0PathStep> Steps)
 {
+    /// <summary>Builds a saved result from complete production inputs while writing or testing.</summary>
+    public Tier0PathResult(PathInputs inputs, Tier0Target? subject, Tier0Reachability reachability,
+        int? shortestProvenDistance, IReadOnlyList<Tier0PathStep> steps)
+        : this(SavedPathInputs.From(inputs), subject, reachability, shortestProvenDistance, steps)
+    {
+    }
+
     /// <summary>Saved explicit questions for this requester; an empty set never means discovery ran.</summary>
     public IReadOnlyList<RequesterDaclAssessment> RequesterAssessments { get; init; } = [];
 

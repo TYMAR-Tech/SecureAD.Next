@@ -14,14 +14,14 @@ public sealed class PasswordResetWorkflowTests
     [Theory]
     [InlineData(UserDn, false)]
     [InlineData(TargetDn, true)]
-    public void ResetPermissionAndProofReachBothRealScreenDirections(string dn, bool byHolder)
+    public async Task ResetPermissionAndProofReachBothRealScreenDirections(string dn, bool byHolder)
     {
         var directory = Prepared($"O:SYG:SYD:(OA;;CR;{PasswordResetControlTests.ResetGuid};;{TargetSid})");
         var hash = Hash(directory);
         Judge(directory, null);
         using var source = new BundleAssetSource();
 
-        var section = Open(source, directory, dn, byHolder);
+        var section = await MemberAttributionPresentationTests.OpenAsync(source, directory, dn, byHolder);
 
         // The reset permission is this test's subject. The holder view also carries the existing-owner
         // edge from the fixture's Tier-0 route, which is a real captured fact rather than noise, so
@@ -54,7 +54,7 @@ public sealed class PasswordResetWorkflowTests
     }
 
     [Fact]
-    public void EnablingSyntheticRequesterDiscoveryDoesNotChangeResetHolderCounts()
+    public async Task EnablingSyntheticRequesterDiscoveryDoesNotChangeResetHolderCounts()
     {
         // The requester answers link to self-membership edges on the target group, so the group has
         // to be assessed for those links to exist.
@@ -62,12 +62,13 @@ public sealed class PasswordResetWorkflowTests
             tier0RouteFromTarget: true);
         Judge(directory, null);
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, UserDn, false);
+        var section = await MemberAttributionPresentationTests.OpenAsync(source, directory, UserDn, false);
         Assert.Single(section.Rows);
         var counts = section.Counts;
 
         Judge(directory, TestBudget);
-        section.FirstPageCommand.Execute(null);
+        source.SelectRun(directory);
+        section = await MemberAttributionPresentationTests.OpenAsync(source, directory, UserDn, false);
 
         Assert.Single(section.Rows);
         Assert.Equal(counts, section.Counts);
@@ -80,25 +81,29 @@ public sealed class PasswordResetWorkflowTests
     [Theory]
     [InlineData("UPDATE control_product SET engine_version = 2", "not derived")]
     [InlineData("UPDATE control_edge SET edge_class = 'DirectoryControl' WHERE capability = 'CanResetPassword'", "could not be read")]
-    public void UnsupportedOrContradictoryProductClearsOldScreenProof(string mutation, string notice)
+    public async Task UnsupportedOrContradictoryProductClearsOldScreenProof(string mutation, string notice)
     {
         var directory = Prepared($"O:SYG:SYD:(OA;;CR;{PasswordResetControlTests.ResetGuid};;{TargetSid})");
         Judge(directory, null);
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, UserDn, false);
+        var section = await MemberAttributionPresentationTests.OpenAsync(source, directory, UserDn, false);
         Assert.NotNull(section.SelectedEdge);
         Assert.Single(section.Rows);
 
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = mutation;
             Assert.Equal(1, command.ExecuteNonQuery());
         });
+        source.SelectRun(directory);
         section.FirstPageCommand.Execute(null);
+        await section.ReadCompletion;
 
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);
+        section = await MemberAttributionPresentationTests.OpenAsync(source, directory, UserDn, false);
         Assert.Contains(notice, section.Coverage);
     }
 
@@ -135,17 +140,4 @@ public sealed class PasswordResetWorkflowTests
         Assert.True(result.IsSuccess, result.Error?.Description);
     }
 
-    private static ControlEdgesSectionViewModel Open(BundleAssetSource source, string directory, string dn, bool byHolder)
-    {
-        var screen = new AssetsViewModel(source);
-        screen.Show(directory, false);
-        var attributes = Assert.IsType<ObjectAttributes>(source.ReadObjectAttributes(directory, dn).Value);
-        var objectClass = Assert.IsType<string>(attributes.Find("objectClass")?.Values.Last().Text);
-        screen.OpenObject(new(new(dn, dn, attributes.ObjectGuid, objectClass, "DC=contoso,DC=com")));
-        var opened = Assert.IsType<ObjectViewModel>(screen.Opened);
-        opened.Show(ObjectSectionCatalog.ControlEdges);
-        var section = Assert.IsType<ControlEdgesSectionViewModel>(opened.Selected);
-        section.ByHolder = byHolder;
-        return section;
-    }
 }

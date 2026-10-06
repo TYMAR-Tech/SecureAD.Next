@@ -411,6 +411,55 @@ public sealed class DirectoryTreeTests : IDisposable
             tree.Gaps, g => g.Reason == TreeGapReason.ContainerNeverCaptured);
     }
 
+    [Fact]
+    public void TreePartitionKindsComeFromCapturedCoverage()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteCoverage(new("CN=Settings," + DomainDn, NamingContextKind.Configuration,
+                "dc01.contoso.com", ConnectionSecurityLevel.SignedAndSealed, 1, 0, 0, [], false));
+            writer.WriteCoverage(new("CN=Definitions," + DomainDn, NamingContextKind.Schema,
+                "dc01.contoso.com", ConnectionSecurityLevel.SignedAndSealed, 1, 0, 0, [], false));
+        });
+
+        var roots = ReadTree().Roots;
+
+        Assert.Equal(NamingContextKind.Domain, roots.Single(node => node.DistinguishedName == DomainDn).PartitionKind);
+        Assert.Equal(NamingContextKind.Configuration, roots.Single(node => node.Name == "Settings").PartitionKind);
+        Assert.Equal(NamingContextKind.Schema, roots.Single(node => node.Name == "Definitions").PartitionKind);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TreeKeepsCapturedClassForEmptyAndPopulatedContainers(bool populated)
+    {
+        const string name = "CN=NamedUnlikeAnOu,";
+        WriteBundle(writer =>
+        {
+            writer.WriteObject(ObjectWithClass(name + DomainDn, GuidNumbered(1), "organizationalUnit"));
+            if (populated) writer.WriteObject(ObjectAt("CN=Alice," + name + DomainDn, GuidNumbered(2)));
+        });
+
+        var node = Assert.Single(ReadTree().Roots.Single().Children);
+
+        Assert.Equal("organizationalUnit", node.ObjectClass);
+        Assert.Equal(TreeNodeOrigin.Captured, node.Origin);
+        Assert.Equal(GuidNumbered(1), node.ObjectGuid);
+    }
+
+    [Fact]
+    public void AnUncapturedParentDoesNotGainAClassFromItsName()
+    {
+        WriteBundle(writer => writer.WriteObject(ObjectAt("CN=Alice,OU=Unknown," + DomainDn, GuidNumbered(1))));
+
+        var node = Assert.Single(ReadTree().Roots.Single().Children);
+
+        Assert.Equal(TreeNodeOrigin.NeverCaptured, node.Origin);
+        Assert.Null(node.ObjectClass);
+        Assert.Null(node.PartitionKind);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

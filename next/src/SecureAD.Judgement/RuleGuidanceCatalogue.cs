@@ -27,6 +27,22 @@ public static class RuleGuidanceCatalogue
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
         new RuleGuidance(
+            "SEC-071",
+            "Tier 0",
+            MitreTechnique: null,
+            WhyItMatters:
+                "The saved evidence establishes a supported route to Tier 0 outside this account's expected administrative authority on the reached target.",
+            WhatToDo:
+                "Open View saved routes for the account, target, relevant permission and actual granting entry. "
+                + "Remove only the permission identified there, keeping the entry's other permissions unchanged unless separately reviewed. "
+                + "Group-held and inherited grants must be reviewed at their actual source, including effects on other members and descendants. "
+                + "This addresses the relationship shown, not every possible route. A new capture is needed to verify the change.",
+            About:
+                "Reports saved supported routes to Tier 0 outside an account's expected administrative authority on the reached target.\n\n"
+                + "Saved permission, membership and ownership evidence is not proof of account takeover or a successful live operation.",
+            MicrosoftReference:
+                "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-access-model"),
+        new RuleGuidance(
             "SEC-010",
             "Delegation",
             MitreTechnique: null,
@@ -43,10 +59,10 @@ public static class RuleGuidanceCatalogue
                 + "rather than unsupported, and it is often load-bearing.",
             About:
                 "Reports a user or service account whose account options trust it for "
-                + "unconstrained delegation. It reads that one setting and nothing else: it does "
+                + "unconstrained delegation.\n\nIt reads that one setting and nothing else: it does "
                 + "not report constrained delegation or resource-based constrained delegation, "
                 + "which are the safer forms and are not judged here at all, and it cannot say "
-                + "whether anyone has ever actually authenticated to this account. An account "
+                + "whether anyone has ever actually authenticated to this account.\n\nAn account "
                 + "nothing uses carries the same setting as one every administrator signs in "
                 + "through, and the directory does not record the difference.",
             MicrosoftReference:
@@ -65,10 +81,10 @@ public static class RuleGuidanceCatalogue
                 + "change, find out what depends on it before removing it.",
             About:
                 "Reports a computer trusted for unconstrained delegation that is not a domain "
-                + "controller. Domain controllers are excluded deliberately, because the setting "
+                + "controller.\n\nDomain controllers are excluded deliberately, because the setting "
                 + "is normal on them; a controller identified by any of three independent signals "
                 + "is left alone, and a machine that looks like one by some signals and not others "
-                + "is reported with that disagreement recorded rather than resolved. As with "
+                + "is reported with that disagreement recorded rather than resolved.\n\nAs with "
                 + "SEC-010 it reads one setting: the safer forms of delegation are not judged, and "
                 + "whether the machine has actually collected anyone's tickets cannot be seen from "
                 + "the directory.",
@@ -90,11 +106,11 @@ public static class RuleGuidanceCatalogue
                 + "usually set for a non-Windows Kerberos client that could not send "
                 + "pre-authentication data, so establish what uses the account before clearing it.",
             About:
-                "Reports an account whose account options waive Kerberos pre-authentication. It "
+                "Reports an account whose account options waive Kerberos pre-authentication.\n\nIt "
                 + "judges the setting, not the risk: a long random password makes the offline "
                 + "attack impractical without changing anything this rule can see, so a reported "
                 + "account is not necessarily crackable and an unreported one is not necessarily "
-                + "safe from anything else. It also cannot tell whether the weakness is being used "
+                + "safe from anything else.\n\nIt also cannot tell whether the weakness is being used "
                 + "- that is a question for sign-in telemetry, which this product does not read.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
@@ -118,7 +134,7 @@ public static class RuleGuidanceCatalogue
             About:
                 "Reports an object carrying the AdminSDHolder marker whose permissions still "
                 + "refuse to inherit, where the captured evidence does not establish that "
-                + "AdminSDHolder protects it now. It does not prove the object was ever "
+                + "AdminSDHolder protects it now.\n\nIt does not prove the object was ever "
                 + "privileged - the marker is set when protection begins and is never cleared when "
                 + "it ends, so it records a history nobody can read back - and it does not examine "
                 + "what the frozen access control list actually grants. Whether those permissions "
@@ -148,7 +164,7 @@ public static class RuleGuidanceCatalogue
             About:
                 "Reports an account whose SID history contains an identifier Microsoft documents "
                 + "as privileged - Domain Admins, Enterprise Admins, the built-in operator groups "
-                + "and their like. It ranks a value by the number at the end of it, which it can "
+                + "and their like.\n\nIt ranks a value by the number at the end of it, which it can "
                 + "only do for the identifiers Microsoft publishes. A custom group that was "
                 + "powerful in the old domain has an ordinary, sequentially allocated number, and "
                 + "nothing in that number says what it once granted; if the old domain is gone, "
@@ -175,7 +191,7 @@ public static class RuleGuidanceCatalogue
                 + "given one.",
             About:
                 "Reports an account whose account options exempt it from the domain's minimum "
-                + "password length. It does not report accounts with no password, and the "
+                + "password length.\n\nIt does not report accounts with no password, and the "
                 + "difference matters: the flag says the rule does not apply to this account, not "
                 + "that the account took advantage of it. The directory does not disclose whether "
                 + "a password is set or what it is, and this product never asks - so a reported "
@@ -200,7 +216,7 @@ public static class RuleGuidanceCatalogue
                 + "one stays until the password changes. Find out why it was set - it is usually "
                 + "an application that required it, and that application may stop working.",
             About:
-                "Reports an account set to store its password using reversible encryption. It "
+                "Reports an account set to store its password using reversible encryption.\n\nIt "
                 + "reads the setting, which governs what happens at the next password change; it "
                 + "cannot see whether a reversible copy is stored right now. So an account cleared "
                 + "of the setting but never given a new password still holds one and is not "
@@ -224,7 +240,7 @@ public static class RuleGuidanceCatalogue
                 + "not do better - a legacy appliance or an old integration - so establish what "
                 + "that is before clearing it, or that thing stops authenticating.",
             About:
-                "Reports an account restricted to DES encryption by its account options. It reads "
+                "Reports an account restricted to DES encryption by its account options.\n\nIt reads "
                 + "the account's own setting and not the domain's: what encryption types the domain "
                 + "permits, and which are used for the tickets actually issued, are configured "
                 + "elsewhere and are not judged here. An account without this flag may still be "
@@ -257,7 +273,7 @@ public static class RuleGuidanceCatalogue
                 + "Changing a shared group can affect other accounts. Removing the listed memberships "
                 + "does not establish that every other form of privilege is gone.",
             About:
-                "Reports a service name registered on an account that AdminSDHolder protects. "
+                "Reports a service name registered on an account that AdminSDHolder protects.\n\n"
                 + "Ordinary service accounts with service names are not reported, and that "
                 + "is the rule rather than an omission: a service name on an ordinary account is "
                 + "what a service account is, and reporting every one would report the normal "
@@ -314,16 +330,16 @@ public static class RuleGuidanceCatalogue
             About:
                 "Reports an object over which a principal broad in every organisation effectively "
                 + "holds Full Control, Write DACL, or the ability to take ownership - found by "
-                + "expanding whichever principal the permission actually names all the way down. "
+                + "expanding whichever principal the permission actually names all the way down.\n\n"
                 + "GenericWrite is deliberately excluded: Microsoft's generic mapping shows it "
                 + "does not include the right to change permissions, so it cannot yield control of "
-                + "the list. Taking ownership is reported only where an owner would actually keep "
+                + "the list.\n\nTaking ownership is reported only where an owner would actually keep "
                 + "the implicit right to rewrite permissions; where the object carries an OWNER "
                 + "RIGHTS entry, or the forest has blocked implicit owner rights for computer "
-                + "objects, that route reaches nothing and is not reported. Entries that sit on an "
+                + "objects, that route reaches nothing and is not reported.\n\nEntries that sit on an "
                 + "object only to be inherited by the objects beneath it grant nothing where they "
                 + "sit and are not counted. Deny entries are applied in the order the directory "
-                + "stores them, which is how Windows itself evaluates them. Where the object's "
+                + "stores them, which is how Windows itself evaluates them.\n\nWhere the object's "
                 + "permissions could not be read, or the membership walk did not finish, the rule "
                 + "says so rather than reporting the object as safe.",
             MicrosoftReference:
@@ -358,18 +374,18 @@ public static class RuleGuidanceCatalogue
                 + "exists the object is orphaned and nobody can be asked to hand ownership over, "
                 + "so an administrator must take ownership before anything else can be done.",
             About:
-                "Reports an object whose owner is not an administrative principal. This is latent "
+                "Reports an object whose owner is not an administrative principal.\n\nThis is latent "
                 + "authority and not evidence of wrongdoing - the ordinary cause is that somebody "
-                + "was allowed to create the object, they created it, and they became its owner. "
+                + "was allowed to create the object, they created it, and they became its owner.\n\n"
                 + "An owner accepted through group membership is not reported within that "
                 + "acceptance's scope. The forest-root Schema Admins group and its members are "
                 + "accepted only in that forest's schema partition. Membership is consulted rather "
-                + "than the identifier alone. The rule stays silent where the owner would not "
+                + "than the identifier alone.\n\nThe rule stays silent where the owner would not "
                 + "actually keep the power - an OWNER RIGHTS entry on the object switches off the "
                 + "owner's implicit rights, and so does the forest setting that blocks them, which "
-                + "applies to computer objects owned by non-administrators. Objects that "
+                + "applies to computer objects owned by non-administrators.\n\nObjects that "
                 + "AdminSDHolder protects are reported by SEC-032 instead and never by both, so no "
-                + "object appears twice. Expect this rule to be plentiful in a forest where "
+                + "object appears twice.\n\nExpect this rule to be plentiful in a forest where "
                 + "delegated creation is normal; a large count is information about the estate "
                 + "rather than a defect.",
             MicrosoftReference:
@@ -405,14 +421,14 @@ public static class RuleGuidanceCatalogue
                 + "still be in place.",
             About:
                 "Reports an object protected by AdminSDHolder whose owner is not an administrative "
-                + "principal. It applies the same test as SEC-031 and covers the objects SEC-031 "
+                + "principal.\n\nIt applies the same test as SEC-031 and covers the objects SEC-031 "
                 + "deliberately leaves alone, so the two never report the same object. Where the "
                 + "protection closure is incomplete neither rule reports, because an object that "
-                + "might be protected must not be quietly reported at the lower severity. The "
+                + "might be protected must not be quietly reported at the lower severity.\n\nThe "
                 + "owner is judged by membership as well as by identifier, and the rule stays "
                 + "silent where the owner would not actually keep the power to rewrite the list. "
                 + "Schema Admins and its members are accepted as owners only within the captured "
-                + "forest's schema, not on protected objects elsewhere unless independently accepted. "
+                + "forest's schema, not on protected objects elsewhere unless independently accepted.\n\n"
                 + "This finding is time-sensitive in a way the other rules are not: because "
                 + "AdminSDHolder repairs ownership on its own schedule, the same object may be "
                 + "reported in one run and absent from the next without anybody having fixed "
@@ -454,17 +470,17 @@ public static class RuleGuidanceCatalogue
                 + "equally urgent problem.",
             About:
                 "Reports a Group Policy Object whose authorized Windows LAPS password decryptor "
-                + "is, or contains through nesting, a principal broad in every organisation. The "
+                + "is, or contains through nesting, a principal broad in every organisation.\n\nThe "
                 + "subject is the policy rather than a machine, and that is deliberate: Microsoft "
                 + "states the authorized decryptor cannot be changed after a password is "
                 + "encrypted, so a stored password was encrypted against whatever the policy "
                 + "named at the time, and the directory does not record what that was. Naming "
                 + "affected machines would assert something about the past that no evidence "
-                + "establishes. A policy that sets no decryptor is not reported, because "
+                + "establishes.\n\nA policy that sets no decryptor is not reported, because "
                 + "Microsoft's default is the Domain Admins group of the machine's own domain. A "
                 + "scoped group containing no broad principal is not reported either - delegating "
                 + "to a wrapper group is Microsoft's own documented pattern, since only one "
-                + "principal can be named. Where the configured value could not be resolved to a "
+                + "principal can be named.\n\nWhere the configured value could not be resolved to a "
                 + "principal the finding says so rather than staying silent, and where the "
                 + "membership walk could not finish it says that too.",
             MicrosoftReference:
@@ -499,14 +515,14 @@ public static class RuleGuidanceCatalogue
                 + "directory attribute and cannot be told apart from an unmanaged one here.",
             About:
                 "Reports a computer carrying neither LAPS expiration timestamp, so nothing "
-                + "visible in this directory is rotating its local administrator password. "
+                + "visible in this directory is rotating its local administrator password.\n\n"
                 + "It reads Active Directory only. A machine whose password is backed up to "
                 + "Microsoft Entra ID instead carries no directory attribute at all and looks "
                 + "exactly like an unmanaged one - the likeliest false finding in a real estate, "
-                + "and one the product cannot detect while an administrator can. Domain "
+                + "and one the product cannot detect while an administrator can.\n\nDomain "
                 + "controllers are out of scope, having no ordinary local administrator account to "
                 + "manage, and so are disabled accounts, which have no running machine behind "
-                + "them. A forest whose schema was never extended for either LAPS product is not "
+                + "them.\n\nA forest whose schema was never extended for either LAPS product is not "
                 + "reported at all, machine by machine: no computer in it could carry the "
                 + "attribute, so its absence says nothing about any one of them. Both those "
                 + "populations are listed in the LAPS inventory, which shows every computer "
@@ -537,11 +553,11 @@ public static class RuleGuidanceCatalogue
             About:
                 "Reports a computer capable of running Windows LAPS that carries the legacy "
                 + "timestamp and not the modern one - the absence of the confirmation Microsoft "
-                + "names for a successful deployment. It states what was observed and never "
+                + "names for a successful deployment.\n\nIt states what was observed and never "
                 + "which cause produced it, because the three causes are identical in the "
                 + "directory and what separates them is on the machine: a policy that is not "
                 + "reaching it, a deliberate legacy emulation-mode configuration, or a machine "
-                + "that never took the April 2023 update. Machines too old for Windows LAPS are "
+                + "that never took the April 2023 update.\n\nMachines too old for Windows LAPS are "
                 + "excluded on capability, since Microsoft never shipped it for them. Whether the "
                 + "legacy timestamp is recent or years stale is judged by SEC-092 rather than "
                 + "here.",
@@ -579,16 +595,16 @@ public static class RuleGuidanceCatalogue
                 + "now and the next cycle does the rest.",
             About:
                 "Reports a computer whose stored LAPS expiration time passed more than a day ago, "
-                + "so the password it governs has not rotated. The one-day grace is deliberate: "
+                + "so the password it governs has not rotated.\n\nThe one-day grace is deliberate: "
                 + "Microsoft's own way of forcing an early rotation sets the expiration to the "
                 + "current time and lets the next policy cycle act, and a policy cycle can take "
-                + "two hours, so a healthy machine is briefly past due by design. It never asserts "
+                + "two hours, so a healthy machine is briefly past due by design.\n\nIt never asserts "
                 + "a cause, because a policy that stopped reaching the machine, a failed agent, a "
                 + "machine that cannot reach a controller and a machine switched off for a month "
                 + "are identical in the directory - the finding gives the date and how far overdue "
                 + "it is so that a transient fault can be told from a machine nobody has managed "
-                + "in years. A machine carrying both timestamps is reported only if neither has "
-                + "rotated, since a fresh value proves something is still doing the job. Domain "
+                + "in years.\n\nA machine carrying both timestamps is reported only if neither has "
+                + "rotated, since a fresh value proves something is still doing the job.\n\nDomain "
                 + "controllers and disabled accounts are out of scope for the reasons SEC-091 "
                 + "gives, and a machine carrying no timestamp at all is SEC-091's rather than this "
                 + "rule's. A timestamp dated far in the future is not judged here.",

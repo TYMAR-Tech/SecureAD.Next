@@ -22,10 +22,13 @@ public sealed partial class OwnAccountMembershipPathTests
     {
         var directory = PagingCapture(fullControl);
         Derive(directory);
-        Judge(directory, []);
+        Judge(directory, [], [new(UserDn, CoreDn)]);
         using var source = new BundleAssetSource();
 
-        var saved = source.ReadSavedTier0Path(directory, UserDn);
+        var first = source.ReadSavedTier0Path(directory, UserDn);
+        Assert.True(first.IsSuccess, first.Error?.Description);
+        var group = Enum.GetValues<PathRiskVerdict>().First(value => first.Value!.Page.Counts.For(value) > 0);
+        var saved = source.ReadSavedTier0Path(directory, UserDn, group, null);
 
         Assert.True(saved.IsSuccess, saved.Error?.Description);
         Assert.Equal(PagingSubjectSid, saved.Value!.Permissions.Single().HolderSid);
@@ -59,7 +62,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Mutate(directory, "DELETE FROM full_control_manifest");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdge(TargetDn, id));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadEdge(reader, TargetDn, id));
     }
 
     [Fact]
@@ -69,7 +72,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Mutate(directory, "UPDATE control_object SET principal_sid='S-1-5-21-1-2-3-1998'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidOperationException>(() => reader.ReadControlEdge(TargetDn, id));
+        Assert.Throws<InvalidOperationException>(() => ControlProofVerification.ReadEdge(reader, TargetDn, id));
     }
 
     [Theory]

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>Recorded permissions - not an effective access check</value></data>
+  <data name="SearchTitle" xml:space="preserve"><value>Find recorded delegations</value></data>
+  <data name="PrincipalStep" xml:space="preserve"><value>1  Find the user or group</value></data>
+  <data name="PermissionStep" xml:space="preserve"><value>2  Choose the permissions to find</value></data>
+  <data name="EntriesTitle" xml:space="preserve"><value>Recorded entries</value></data>
+  <data name="SelectedEntryTitle" xml:space="preserve"><value>Selected recorded entry</value></data>
+  <data name="OriginalEvidence" xml:space="preserve"><value>Original entry evidence</value></data>
+  <data name="Boundary" xml:space="preserve"><value>Entire captured forest, AD objects only. Only entries naming the selected SID are included. Permissions through other groups, SID history and implicit owner rights are not included. An Allow entry does not prove the operation would succeed.</value></data>
+  <data name="GroupBoundary" xml:space="preserve"><value>Entire captured forest, AD objects only. Direct entries and group-held entries linked by captured membership are included. SID history and implicit owner rights are not included. A membership chain or an Allow entry does not prove effective access.</value></data>
+  <data name="IncludeGroups" xml:space="preserve"><value>Include group-held permissions</value></data>
+  <data name="PermissionHolder" xml:space="preserve"><value>Permission held by</value></data>
+  <data name="MembershipChain" xml:space="preserve"><value>Membership chain</value></data>
+  <data name="DirectEntry" xml:space="preserve"><value>Direct entry: names the selected principal's SID.</value></data>
+  <data name="PrimaryGroupLink" xml:space="preserve"><value>primary group</value></data>
+  <data name="MemberLink" xml:space="preserve"><value>member of</value></data>
+  <data name="UnknownGroupType" xml:space="preserve"><value>group type not established</value></data>
+  <data name="SupportingLinks" xml:space="preserve"><value>Supporting captured membership links (routes do not multiply permission entries):</value></data>
+  <data name="OneChain" xml:space="preserve"><value>One recorded chain is shown first; the supporting links below retain the other captured routes and cycles. This is not an effective access check.</value></data>
+  <data name="MembershipChanged" xml:space="preserve"><value>The membership generation or delegation question changed. Start the search again.</value></data>
+  <data name="MembershipIdentityMismatch" xml:space="preserve"><value>A saved membership identity does not match the protected captured evidence.</value></data>
+  <data name="MembershipUnavailable" xml:space="preserve"><value>Group-held permission lookup is unavailable for this run. Uncheck Include group-held permissions to search direct entries only.</value></data>
+  <data name="MembershipModeMismatch" xml:space="preserve"><value>The returned membership evidence does not match the requested direct/group-held search.</value></data>
+  <data name="MembershipInvalid" xml:space="preserve"><value>The saved membership explanation cannot be read consistently.</value></data>
+  <data name="MembershipWarnings" xml:space="preserve"><value>Membership limitations:
+{0}</value></data>
+  <data name="HolderDetail" xml:space="preserve"><value>Permission held by: {0} [{1}]</value></data>
+  <data name="NoGroupMatch" xml:space="preserve"><value>No matching recorded entries were found for these choices through the selected principal or the containing groups this capture establishes. Uncaptured or unresolved memberships and permissions, excluded inherited entries, SID history and implicit owner rights are not ruled out.</value></data>
+  <data name="Principal" xml:space="preserve"><value>User or group (name or SID)</value></data>
+  <data name="MatchingPrincipal" xml:space="preserve"><value>Matching principal</value></data>
+  <data name="FindPrincipal" xml:space="preserve"><value>Find principal</value></data>
+  <data name="MorePrincipals" xml:space="preserve"><value>Next principals</value></data>
+  <data name="PrincipalPrompt" xml:space="preserve"><value>Search, then select the principal and its domain.</value></data>
+  <data name="PrincipalNone" xml:space="preserve"><value>No captured user or group matches this search. This is not a statement about permissions; you can search by SID when its object was not captured.</value></data>
+  <data name="PrincipalCount" xml:space="preserve"><value>{0} principals on this page. {1}</value></data>
+  <data name="More" xml:space="preserve"><value>More pages are available.</value></data>
+  <data name="CaptureShort" xml:space="preserve"><value>The run did not read all declared capture scope; uncaptured identities and permissions cannot be ruled out.</value></data>
+  <data name="Permission" xml:space="preserve"><value>Permission</value></data>
+  <data name="All" xml:space="preserve"><value>All recorded permissions</value></data>
+  <data name="ResetPassword" xml:space="preserve"><value>Reset password</value></data>
+  <data name="CreateUser" xml:space="preserve"><value>Create user objects</value></data>
+  <data name="WriteUserProperties" xml:space="preserve"><value>Write user properties</value></data>
+  <data name="IncludeInherited" xml:space="preserve"><value>Include inherited entries</value></data>
+  <data name="FindDelegations" xml:space="preserve"><value>Find delegations</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel search</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>The search was cancelled. No complete answer is displayed.</value></data>
+  <data name="Prompt" xml:space="preserve"><value>Select a principal and choose Find delegations. No search has been completed for these choices.</value></data>
+  <data name="Page" xml:space="preserve"><value>Page {0}: {1} recorded entries on this page. {2}</value></data>
+  <data name="NoMatch" xml:space="preserve"><value>No matching recorded entries were found for these choices. This does not rule out group-derived permissions, inherited entries when excluded, or permissions missing from the capture.</value></data>
+  <data name="Coverage" xml:space="preserve"><value>Capture gaps: {0} objects with unreadable permissions; {1} objects with permissions not attempted; {2} incomplete descriptors; {3} recorded descriptor errors.</value></data>
+  <data name="ExcludedClasses" xml:space="preserve"><value>Object classes excluded from capture: {0}.</value></data>
+  <data name="InheritedNote" xml:space="preserve"><value>Recorded on is where this entry was captured. For inherited entries it does not identify the ancestor that originally supplied it.</value></data>
+  <data name="RecordedOn" xml:space="preserve"><value>Recorded on</value></data>
+  <data name="Domain" xml:space="preserve"><value>Domain</value></data>
+  <data name="AppliesTo" xml:space="preserve"><value>Applies to</value></data>
+  <data name="EntryType" xml:space="preserve"><value>Allow / Deny</value></data>
+  <data name="Inheritance" xml:space="preserve"><value>Explicit / Inherited</value></data>
+  <data name="Explicit" xml:space="preserve"><value>Explicit</value></data>
+  <data name="Inherited" xml:space="preserve"><value>Inherited</value></data>
+  <data name="Allow" xml:space="preserve"><value>Allow</value></data>
+  <data name="Deny" xml:space="preserve"><value>Deny</value></data>
+  <data name="Conditional" xml:space="preserve"><value>Conditional {0}; condition not evaluated</value></data>
+  <data name="Unsupported" xml:space="preserve"><value>Unsupported entry type: {0}</value></data>
+  <data name="Unresolved" xml:space="preserve"><value>SID only; identity not captured</value></data>
+  <data name="DomainSid" xml:space="preserve"><value>Domain-local SID: each result's resource domain is separate.</value></data>
+  <data name="Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Next" xml:space="preserve"><value>Next</value></data>
+  <data name="OpenDetails" xml:space="preserve"><value>Open permission details</value></data>
+  <data name="Detail" xml:space="preserve"><value>{0}
+Original entry position (zero-based): {1}; descriptor: {2}; raw mask: 0x{3:X8}; type: {4}
+Object-type GUID: {5}; inherited-object-type GUID: {6}; inheritance flags: 0x{7:X2}; propagation flags: 0x{8:X2}
+Captured DACL completeness: {9}. {10}</value></data>
+</root>

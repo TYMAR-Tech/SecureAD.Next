@@ -29,6 +29,7 @@
 
     <!-- The name of the screen: "New audit". One per screen. -->
     <sys:Double x:Key="ScreenTitleFontSize">24</sys:Double>
+    <sys:Double x:Key="DashboardMetricFontSize">32</sys:Double>
 
     <!-- A section within a screen. -->
     <sys:Double x:Key="SectionTitleFontSize">18</sys:Double>

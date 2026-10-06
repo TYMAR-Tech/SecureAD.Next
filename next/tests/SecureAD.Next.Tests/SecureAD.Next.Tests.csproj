@@ -21,6 +21,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- This frozen adapter targets the previous screen and its recorded binaries, not the current result contract. -->
+    <Compile Remove="Measurements\SavedPathOpeningMeasurement.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The guards reflect over SecureAD.Shell, which is a WPF assembly, so PresentationFramework
          must resolve here. Taken as a framework reference rather than by setting UseWPF: UseWPF
          swaps the implicit-usings set, which silently removes System.IO from every existing test

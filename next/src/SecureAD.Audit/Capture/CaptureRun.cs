@@ -11,6 +11,31 @@ using SecureAD.Kernel.Naming;
 namespace SecureAD.Audit.Capture;
 
 /// <summary>
+/// How long one domain took to read, and whether it was read from nearby.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Neither value is persisted anywhere, which is the only reason this type exists.</b> The
+/// bundle records what a domain held and what became of reading it; how long that took, and
+/// whether the controller answering was in the capture machine's own site, are known while the run
+/// is happening and nowhere afterwards. Recording them in the evidence would bump its format for a
+/// diagnostic field, so the run hands them to whoever wants them instead.
+/// </para>
+/// <para>
+/// The site relationship is not settled here - it is <c>DomainPreflight.ControllerIsInOperatorSite</c>,
+/// established before any object was read - so this carries only the timing and the naming context
+/// the two are joined by.
+/// </para>
+/// </remarks>
+/// <param name="NamingContext">The domain partition, which is how a caller joins this to anything else.</param>
+/// <param name="ElapsedMilliseconds">
+/// How long the whole domain took, failover attempts included. A domain read twice because its
+/// first controller failed cost both attempts, and that is what an operator asking why the run was
+/// long is asking about.
+/// </param>
+public readonly record struct DomainReadTiming(string NamingContext, long ElapsedMilliseconds);
+
+/// <summary>
 /// What a run produces: the outcome, and where the evidence went.
 /// </summary>
 /// <param name="Outcome">How the run ended.</param>
@@ -21,6 +46,20 @@ public sealed record CaptureRunResult(
 {
     /// <summary>Whether there is a sealed bundle at <see cref="BundleDirectory"/>.</summary>
     public bool ProducedABundle => Outcome == RunCompletion.Sealed;
+
+    /// <summary>
+    /// How long each domain took, in plan order. Empty for a run that ended before the domains
+    /// were read, which is not a claim that they took no time.
+    /// </summary>
+    /// <remarks>
+    /// <b>Internal, and an <c>init</c> property rather than a fourth positional value.</b> The one
+    /// caller is <c>CaptureSession</c>, which writes the run's portable summary; handing a bare
+    /// list outside the assembly would be a collection that cannot say whether it was measured,
+    /// which is gate 4. Positional would mean a run that ended badly - several exits, none with
+    /// timings to give - supplying an empty list at each, and an empty list that was never filled
+    /// reads as a measurement.
+    /// </remarks>
+    internal IReadOnlyList<DomainReadTiming> DomainTimings { get; init; } = [];
 }
 
 /// <summary>
@@ -498,7 +537,8 @@ public sealed class CaptureRun
         try
         {
             sealing = writer.Complete(
-                coverage, _time.GetUtcNow(), reconciliation, plan.ObjectScope, cancellationToken);
+                coverage, _time.GetUtcNow(), reconciliation, plan.ObjectScope, cancellationToken,
+                (data, seal, token) => BundleSealing.SealWithDiagnostics(data, seal, token, _log, null, null));
         }
         catch (OperationCanceledException cancellation) when (
             cancellationToken.IsCancellationRequested && cancellation.CancellationToken == cancellationToken)
@@ -517,7 +557,14 @@ public sealed class CaptureRun
         // capture that spent twenty minutes here should say which of them it was.
         _log.Note(PartitionCapture.PhaseName, "bundle sealed", SealDetail(sealing));
 
-        return new CaptureRunResult(RunCompletion.Sealed, bundleDirectory, Error: null);
+        // CARRIED OUT OF THE RUN BECAUSE NOTHING PERSISTS IT. The bundle says what each domain held
+        // and what became of reading it; how long each took is known here and nowhere afterwards,
+        // and recording it in the evidence would bump the evidence format for a diagnostic figure.
+        return new CaptureRunResult(RunCompletion.Sealed, bundleDirectory, Error: null)
+        {
+            DomainTimings = [.. readDomains.Select(d => new DomainReadTiming(
+                d.Shard.Unit.NamingContext, d.ElapsedMilliseconds))],
+        };
     }
 
     /// <summary>
@@ -602,6 +649,17 @@ public sealed class CaptureRun
         RunEnding? Ending)
     {
         public IReadOnlyList<DomainCaptureFailure> Failures { get; init; } = [];
+
+        /// <summary>
+        /// How long this domain took, failover attempts included.
+        /// </summary>
+        /// <remarks>
+        /// Measured around the whole of <see cref="ReadOneDomainAsync"/> rather than around one
+        /// attempt, because a domain whose first controller refused after ten minutes cost the run
+        /// those ten minutes. Attributing only the attempt that worked would make a slow domain
+        /// look fast and leave the difference in the unexplained remainder.
+        /// </remarks>
+        public long ElapsedMilliseconds { get; init; }
     }
 
     private async Task<DomainRead> ReadOneDomainAsync(
@@ -613,12 +671,15 @@ public sealed class CaptureRun
         CancellationToken cancellationToken,
         CancellationToken failedDomainCancellationToken)
     {
+        var domainStartedUtc = _time.GetUtcNow();
         var alternatives = plan.Failover.TryGetValue(domain.Unit.NamingContext, out var ranked)
             ? ranked : [];
         var controllers = new[] { domain.Unit.DomainController }.Concat(alternatives)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var failures = new List<DomainCaptureFailure>();
         DomainRead? firstFailure = null;
+
+        long Spent() => (long)(_time.GetUtcNow() - domainStartedUtc).TotalMilliseconds;
 
         foreach (var controller in controllers)
         {
@@ -633,7 +694,7 @@ public sealed class CaptureRun
                 .ConfigureAwait(false);
 
             if (read.Ending is null)
-                return read with { Failures = failures };
+                return read with { Failures = failures, ElapsedMilliseconds = Spent() };
 
             // ReadDomainAttemptAsync has disposed the writer, including its transaction and
             // connection. Only now may this domain's stable shard slot be reused; no other
@@ -641,7 +702,7 @@ public sealed class CaptureRun
             File.Delete(BundleLayout.ShardPath(bundleDirectory, domain.Shard));
 
             if (read.Ending.Outcome == RunOutcome.Cancelled)
-                return read;
+                return read with { ElapsedMilliseconds = Spent() };
 
             firstFailure ??= read;
             failures.Add(new DomainCaptureFailure(
@@ -649,7 +710,7 @@ public sealed class CaptureRun
                 attemptStartedUtc, _time.GetUtcNow(), read.Ending.Error!));
         }
 
-        return firstFailure! with { Failures = failures };
+        return firstFailure! with { Failures = failures, ElapsedMilliseconds = Spent() };
     }
 
     /// <summary>

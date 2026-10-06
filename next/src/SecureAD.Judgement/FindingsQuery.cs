@@ -41,7 +41,11 @@ public readonly record struct FindingsPageMark(
     int SeverityRank,
     string RuleId,
     string DistinguishedName,
-    long FindingId);
+    long FindingId)
+{
+    /// <summary>The selected judgement generation that issued this browsing continuation.</summary>
+    public Guid? GenerationId { get; init; }
+}
 
 /// <summary>
 /// What a findings grid's filters may offer.

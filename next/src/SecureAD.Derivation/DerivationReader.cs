@@ -4,6 +4,7 @@ using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Security;
 using SecureAD.Storage;
 
 namespace SecureAD.Derivation;
@@ -93,14 +94,53 @@ public sealed record StoredProtectedPrincipalDerivation(
     IReadOnlyList<StoredProtectedPrincipalFact> Principals,
     ProtectionUnknownReason StatedLimits)
 {
+    private IndexedPrincipals _principals = new(Principals);
+
+    /// <summary>The stored facts, owned as a read-only snapshot with their lookup index.</summary>
+    public IReadOnlyList<StoredProtectedPrincipalFact> Principals
+    {
+        get => _principals;
+        init => _principals = new(value);
+    }
+
     public bool IsComplete => StatedLimits == ProtectionUnknownReason.None;
 
+    /// <summary>Finds the first stored fact for this SID and scope without scanning all principals.</summary>
     public StoredProtectedPrincipalFact? Lookup(string sid, string? scope)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sid);
-        return Principals.FirstOrDefault(fact =>
-            string.Equals(fact.Sid, sid, StringComparison.Ordinal)
-            && string.Equals(fact.Scope, scope, StringComparison.OrdinalIgnoreCase));
+        return _principals.Lookup(sid, scope);
+    }
+
+    // Keeping the index with an owned snapshot avoids stale lookups after a caller changes its
+    // original list or a record copy replaces Principals. A metadata-only copy can share it safely.
+    private sealed class IndexedPrincipals : System.Collections.ObjectModel.ReadOnlyCollection<StoredProtectedPrincipalFact>
+    {
+        private readonly Dictionary<(string Sid, string? Scope), StoredProtectedPrincipalFact> _byIdentity =
+            new(IdentityComparer.Instance);
+
+        internal IndexedPrincipals(IReadOnlyList<StoredProtectedPrincipalFact> principals)
+            : base(principals.ToArray())
+        {
+            foreach (var fact in this)
+                _byIdentity.TryAdd((fact.Sid, fact.Scope), fact);
+        }
+
+        internal StoredProtectedPrincipalFact? Lookup(string sid, string? scope) =>
+            _byIdentity.GetValueOrDefault((sid, scope));
+    }
+
+    private sealed class IdentityComparer : IEqualityComparer<(string Sid, string? Scope)>
+    {
+        internal static readonly IdentityComparer Instance = new();
+
+        public bool Equals((string Sid, string? Scope) left, (string Sid, string? Scope) right) =>
+            string.Equals(left.Sid, right.Sid, StringComparison.Ordinal)
+            && string.Equals(left.Scope, right.Scope, StringComparison.OrdinalIgnoreCase);
+
+        public int GetHashCode((string Sid, string? Scope) value) => HashCode.Combine(
+            StringComparer.Ordinal.GetHashCode(value.Sid),
+            value.Scope is null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(value.Scope));
     }
 }
 
@@ -244,7 +284,17 @@ public sealed record StoredDerivation(
 public sealed class DerivationReader : IDisposable
 {
     private readonly SqliteConnection _connection;
+    private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
+    private ExpansionInputs? _expansionInputs;
+
+    // Owned by this verified reader, not shared between derivation generations. The walks below
+    // never mutate these inputs; their queues, visited sets, paths and budgets remain per request.
+    private sealed record ExpansionInputs(
+        Dictionary<int, List<int>> Edges,
+        Dictionary<int, (string Sid, string Scope)> Identities,
+        Dictionary<int, bool?> Groups,
+        HashSet<int> UnresolvedMembers);
 
     private DerivationReader(
         string bundleDirectory, SqliteConnection connection, DerivationDescription description)
@@ -265,6 +315,25 @@ public sealed class DerivationReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return MembershipInputStorage.Read(_connection, Description.GenerationId);
+    }
+
+    /// <summary>Reads only the saved containing-group relationships reachable from the selected current SID.</summary>
+    public DelegationMembership ReadContainingGroups(string sid, string? domainFqdn, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!NestingWasDerived())
+            throw new InvalidOperationException("Saved group nesting is unavailable. Uncheck Include group-held permissions to search direct entries.");
+        var scope = Sid.IsBuiltinDomain(sid)
+            ? !string.IsNullOrWhiteSpace(domainFqdn) ? domainFqdn.ToLowerInvariant()
+                : throw new ArgumentException("Select a domain-qualified identity for this built-in SID.", nameof(domainFqdn))
+            : "";
+        var root = FindSidId(sid, scope)
+            ?? throw new InvalidOperationException("The selected SID has no saved membership identity. Direct-only lookup remains available.");
+        if (PrincipalCarrying(root) != root)
+            throw new InvalidOperationException("SID history is not group nesting. Select the current principal or use direct-only lookup.");
+        return ContainingGroupReader.Read(_connection, Description, root, cancellationToken);
     }
 
     /// <summary>
@@ -307,9 +376,43 @@ public sealed class DerivationReader : IDisposable
                 Pooling = false,
             }.ToString());
 
+        var opened = OpenConnection(bundleDirectory, generation, connection);
+        if (opened.IsSuccess)
+        {
+            try { _ = opened.Value.Read(); }
+            catch (Exception error) when (error is SqliteException or FormatException or ArgumentException or InvalidOperationException)
+            {
+                opened.Value.Dispose();
+                return Failure("DerivationUnreadable",
+                    $"The seal on the derivation in '{bundleDirectory}' is intact and the store could "
+                    + $"not be read: {error.Message}. The bytes are the bytes that were sealed, so this "
+                    + "is a defect in this build rather than damage to the store.", path);
+            }
+        }
+        return opened;
+    }
+
+    /// <summary>Opens an independent stored-fact reader under an existing protected generation.</summary>
+    public static Result<DerivationReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        if (store.Generation is not { Kind: AnalysisStoreKind.Derivation } generation) throw new ArgumentException(nameof(store));
+        ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
-            connection.Open();
+            var opened = OpenConnection(store.BundleDirectory, generation, lease.Connection);
+            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            return opened;
+        }
+        finally { lease?.Dispose(); }
+    }
+
+    private static Result<DerivationReader> OpenConnection(string bundleDirectory, AnalysisStoreGeneration generation, SqliteConnection connection)
+    {
+        var path = BundleLayout.AnalysisGenerationDataPath(bundleDirectory, generation.Kind, generation.GenerationId);
+        try
+        {
+            if (connection.State != System.Data.ConnectionState.Open) connection.Open();
             var description = ReadDescription(connection);
 
             if (description is null)
@@ -355,9 +458,7 @@ public sealed class DerivationReader : IDisposable
                     path);
             }
 
-            var opened = new DerivationReader(bundleDirectory, connection, description);
-            _ = opened.Read();
-            return opened;
+            return new DerivationReader(bundleDirectory, connection, description);
         }
 
         catch (Exception error) when (
@@ -497,12 +598,31 @@ public sealed class DerivationReader : IDisposable
     /// <param name="scope">The scope its SID is unique within, empty for a forest-wide principal.</param>
     /// <param name="budget">The most principals to return before stopping.</param>
     /// <returns>What is inside it, and what the walk could not reach.</returns>
-    public PrincipalExpansion MembersOf(string sid, string scope, int budget = DefaultExpansionBudget)
+    public PrincipalExpansion MembersOf(string sid, string scope, int budget = DefaultExpansionBudget) =>
+        MembersOf(sid, scope, budget, null, CancellationToken.None);
+
+    /// <summary>
+    /// Walks the same saved nesting with a caller's source-backed link qualification. Only accepted
+    /// links enter the visited set; an unsupported shortcut cannot hide a supported longer route.
+    /// This finite captured-graph walk has no additional result or depth limit.
+    /// </summary>
+    public PrincipalExpansion MembersOf(string sid, string scope,
+        Func<(string Sid, string Scope), (string Sid, string Scope), bool> qualifyLink,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(qualifyLink);
+        return MembersOf(sid, scope, null, qualifyLink, cancellationToken);
+    }
+
+    private PrincipalExpansion MembersOf(string sid, string scope, int? budget,
+        Func<(string Sid, string Scope), (string Sid, string Scope), bool>? qualifyLink,
+        CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(sid);
         ArgumentNullException.ThrowIfNull(scope);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(budget);
+        if (budget is { } ceiling) ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ceiling);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Discriminated on the phase and not on the table being empty, for the reason the schema
         // gives everywhere else in this store: a forest with no nesting in it and a bundle whose
@@ -525,13 +645,15 @@ public sealed class DerivationReader : IDisposable
         // granting access to an empty group, which is the silence a customer cannot see. P-165.
         var walkFrom = PrincipalCarrying(rootId.Value);
 
-        var edges = ReadNestingEdges();
-
-        var identities = ReadSidIdentities();
-
-        var groups = ReadSecurityEnabledByPrincipal();
-
-        var unresolvedMembers = ReadGroupsWithUnresolvedMembers();
+        // A new root needs a new walk, not another read of every relationship in the forest.
+        // Publish only after all four reads succeed, so a failed load cannot leave partial inputs.
+        var inputs = _expansionInputs ??= new ExpansionInputs(
+            ReadNestingEdges(), ReadSidIdentities(), ReadSecurityEnabledByPrincipal(),
+            ReadGroupsWithUnresolvedMembers());
+        var edges = inputs.Edges;
+        var identities = inputs.Identities;
+        var groups = inputs.Groups;
+        var unresolvedMembers = inputs.UnresolvedMembers;
 
         // The path to each principal, kept as the parent that first reached it. Storing one parent
         // rather than a whole path per member keeps this linear in the number of principals; the
@@ -557,13 +679,20 @@ public sealed class DerivationReader : IDisposable
 
         while (queue.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var current = queue.Dequeue();
 
             if (!edges.TryGetValue(current, out var members))
                 continue;
 
-            foreach (var member in members)
+            IEnumerable<int> ordered = qualifyLink is null ? members
+                : members.OrderBy(member => identities[member].Sid, StringComparer.Ordinal)
+                    .ThenBy(member => identities[member].Scope, StringComparer.Ordinal);
+            foreach (var member in ordered)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (qualifyLink is not null && !qualifyLink(identities[current], identities[member]))
+                    continue;
                 // The visited set is what makes a cycle terminate. Without it a loop that Microsoft
                 // says may exist would be walked until something ran out.
                 if (!seen.Add(member))
@@ -571,6 +700,9 @@ public sealed class DerivationReader : IDisposable
 
                 parent[member] = current;
                 order.Add(member);
+                // A qualified group with no resolved children may still name uncaptured members.
+                if (qualifyLink is not null && unresolvedMembers.Contains(member))
+                    throughUnidentifiedMember = true;
 
                 // LISTED EITHER WAY, ENTERED ONLY WHERE THE HOP CARRIES AUTHORIZATION. A
                 // distribution group nested in a security group really is a member of it, so it
@@ -605,7 +737,7 @@ public sealed class DerivationReader : IDisposable
                     }
                 }
 
-                if (order.Count < budget)
+                if (budget is null || order.Count < budget)
                     continue;
 
                 stopped = true;
@@ -620,6 +752,7 @@ public sealed class DerivationReader : IDisposable
 
         foreach (var memberId in order)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var identity = identities.GetValueOrDefault(memberId);
 
             // A member is complete when nothing below it was left unreached. Where the walk stopped,
@@ -1121,6 +1254,8 @@ public sealed class DerivationReader : IDisposable
             return;
 
         _connection.Dispose();
+        _protection?.Dispose();
+        _expansionInputs = null;
         _disposed = true;
     }
 

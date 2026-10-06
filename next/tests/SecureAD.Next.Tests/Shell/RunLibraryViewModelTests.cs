@@ -1,4 +1,8 @@
 using System.Windows.Data;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Markup;
+using System.Xml.Linq;
 using SecureAD.Evidence.Run;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -30,6 +34,10 @@ public sealed class RunLibraryViewModelTests
     /// <summary>Where a run would be opened, without a window existing.</summary>
     private readonly FakeRunOpener _opener = new();
 
+    /// <summary>Deriving and judging, without a bundle on disk or hours of work.</summary>
+    private readonly FakeDerivationLauncher _deriving = new();
+    private readonly FakeJudgingLauncher _judging = new();
+
     [Fact]
     public void WithNoLibraryChosenNothingIsClaimedAboutRuns()
     {
@@ -58,6 +66,47 @@ public sealed class RunLibraryViewModelTests
         screen.Refresh();
 
         Assert.Null(_catalog.AskedFor);
+    }
+
+    /// <summary>
+    /// <b>An operator who picks a run, looks at something else and comes back finds it still
+    /// picked.</b> Arriving at Home reads the library again - that is how a run started elsewhere
+    /// appears - and until 2026-09-24 that threw the selection away, so the details card and the
+    /// analysis buttons emptied every time he navigated back.
+    /// </summary>
+    [Fact]
+    public void RefreshingKeepsTheSelectedRunSelected()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        _catalog.Runs.Add(Listed("b-20260102-000000", @"D:\audits\b"));
+        var screen = Screen(@"D:\audits");
+
+        screen.Refresh();
+        screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
+
+        screen.Refresh();
+
+        Assert.Equal(@"D:\audits\b", screen.Selected?.Path);
+    }
+
+    /// <summary>
+    /// The other half: a run that is no longer there leaves nothing selected, rather than the
+    /// screen choosing a different run on the operator's behalf.
+    /// </summary>
+    [Fact]
+    public void ARunThatHasGoneLeavesNothingSelected()
+    {
+        _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
+        _catalog.Runs.Add(Listed("b-20260102-000000", @"D:\audits\b"));
+        var screen = Screen(@"D:\audits");
+
+        screen.Refresh();
+        screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
+
+        _catalog.Runs.RemoveAll(run => run.Path == @"D:\audits\b");
+        screen.Refresh();
+
+        Assert.Null(screen.Selected);
     }
 
     [Fact]
@@ -144,11 +193,17 @@ public sealed class RunLibraryViewModelTests
     }
 
     /// <summary>
-    /// A selection is a pointer into the list a refresh discards. Left alone, the details card
-    /// would go on describing a run this library may no longer hold.
+    /// A selection must point at a row that is really there. The list is rebuilt from scratch, so
+    /// the run is found again by path rather than the old instance being kept.
     /// </summary>
+    /// <remarks>
+    /// This asserted that a refresh dropped the selection until 2026-09-24. That was right while
+    /// refreshing was something an operator asked for, and wrong once arriving at Home did it for
+    /// him: the concern was a card describing a run the library no longer holds, which
+    /// <see cref="ARunThatHasGoneLeavesNothingSelected"/> now covers directly.
+    /// </remarks>
     [Fact]
-    public void ARefreshDropsTheSelection()
+    public void ARefreshedSelectionPointsAtARowInTheNewList()
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
@@ -157,7 +212,7 @@ public sealed class RunLibraryViewModelTests
 
         screen.Refresh();
 
-        Assert.Null(screen.Selected);
+        Assert.Contains(screen.Selected, screen.Runs);
     }
 
     [Fact]
@@ -221,7 +276,8 @@ public sealed class RunLibraryViewModelTests
             "The drive filled up.",
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             RunAnnotation.None,
-            Scope: null);
+            Scope: null,
+            new RunProducts(HasDerivedFacts: false, HasJudgement: false));
 
     /// <summary>Marking a run as the baseline records it against that run.</summary>
     [Fact]
@@ -292,7 +348,8 @@ public sealed class RunLibraryViewModelTests
             null,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             new RunAnnotation(null, null, isBaseline),
-            RunScope.Of(identity, [DomainCoverage.Read("contoso.com")]));
+            RunScope.Of(identity, [DomainCoverage.Read("contoso.com")]),
+            new RunProducts(HasDerivedFacts: true, HasJudgement: true));
 
     /// <summary>
     /// A sealed run as the library would list it. The moment is recorded, because a sealed run
@@ -307,7 +364,8 @@ public sealed class RunLibraryViewModelTests
             null,
             new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
             RunAnnotation.None,
-            Scope: null);
+            Scope: null,
+            new RunProducts(HasDerivedFacts: true, HasJudgement: true));
 
     /// <summary>
     /// What the operator typed reaches the run he had selected, and not some other run.
@@ -538,6 +596,475 @@ public sealed class RunLibraryViewModelTests
         Assert.Contains(@"E:\elsewhere\b", screen.Problem, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A sealed run holding whichever analysis products a test needs.
+    /// </summary>
+    /// <remarks>
+    /// The scope is absent, which is what a listing carries for a run whose bundle it could not
+    /// open. Nothing in the analysis cases depends on it.
+    /// </remarks>
+    private static RunListing SealedRun(string identifier, string path, RunProducts products) =>
+        new(
+            identifier,
+            path,
+            RunState.Sealed,
+            null,
+            new RunMoment(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), Recorded: true),
+            RunAnnotation.None,
+            Scope: null,
+            products);
+
+    /// <summary>A run whose evidence is sealed and which nothing has been made from.</summary>
+    /// <remarks>
+    /// What <c>--capture</c> has always produced, and what the review page's <i>Capture only</i>
+    /// now produces too. It is complete evidence, not a failure.
+    /// </remarks>
+    private static RunListing CaptureOnly(string identifier, string path) =>
+        SealedRun(identifier, path, new RunProducts(HasDerivedFacts: false, HasJudgement: false));
+
+    /// <summary>A run holding derived facts that nothing has judged.</summary>
+    private static RunListing AwaitingJudgement(string identifier, string path) =>
+        SealedRun(identifier, path, new RunProducts(HasDerivedFacts: true, HasJudgement: false));
+
+    /// <summary>A run that has been judged.</summary>
+    private static RunListing AlreadyJudged(string identifier, string path) =>
+        SealedRun(identifier, path, new RunProducts(HasDerivedFacts: true, HasJudgement: true));
+
+    private RunLibraryViewModel Selecting(RunListing run)
+    {
+        _catalog.Runs.Add(run);
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+        return screen;
+    }
+
+    [Fact]
+    public void ARunHoldingNothingIsOfferedADerivation()
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+
+        Assert.True(screen.CanDerive);
+    }
+
+    [Fact]
+    public void ARunThatAlreadyHoldsFactsIsNotOfferedADerivation()
+    {
+        var screen = Selecting(AwaitingJudgement("a-20260101-000000", @"D:\audits\a"));
+
+        Assert.False(screen.CanDerive);
+    }
+
+    /// <summary>
+    /// Judging rests on derived facts, so a run holding none is offered deriving first rather than
+    /// a judging that would rest on nothing.
+    /// </summary>
+    [Fact]
+    public void ARunHoldingNoFactsIsNotOfferedAJudging()
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+
+        Assert.False(screen.CanJudge);
+    }
+
+    [Fact]
+    public void ARunHoldingFactsAndNoJudgementIsOfferedAJudging()
+    {
+        var screen = Selecting(AwaitingJudgement("a-20260101-000000", @"D:\audits\a"));
+
+        Assert.True(screen.CanJudge);
+    }
+
+    [Fact]
+    public void AnAlreadyJudgedRunIsNotOfferedASecondJudging()
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+
+        Assert.False(screen.CanJudge);
+    }
+
+    [Fact]
+    public void DerivingReadsTheSelectedRunsBundle() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.DeriveFactsAsync();
+
+        Assert.Equal(@"D:\audits\a", _deriving.AskedFor);
+    });
+
+    [Fact]
+    public void JudgingReadsTheSelectedRunsBundle() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AwaitingJudgement("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.JudgeAsync();
+
+        Assert.Equal(@"D:\audits\a", _judging.AskedFor);
+    });
+
+    [Fact]
+    public void WithNothingSelectedNothingIsDerived() => OneThread.Run(async () =>
+    {
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+
+        await screen.DeriveFactsAsync();
+
+        Assert.False(_deriving.WasRun);
+    });
+
+    /// <summary>
+    /// A second judging is refused before anything is opened, rather than started and left to
+    /// discover part way through that it is overwriting a judgement.
+    /// </summary>
+    [Fact]
+    public void AnAlreadyJudgedRunIsRefusedAndNothingIsJudged() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.JudgeAsync();
+
+        Assert.False(_judging.WasRun);
+    });
+
+    /// <summary>
+    /// The refusal is said, not merely enacted by a button that will not press.
+    /// </summary>
+    [Fact]
+    public void AnAlreadyJudgedRunSaysWhyItWasRefused() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.JudgeAsync();
+
+        Assert.Contains("already been judged", screen.Problem, StringComparison.Ordinal);
+    });
+
+    /// <summary>
+    /// A run with no facts is sent to derive them rather than told only that judging is unavailable.
+    /// </summary>
+    [Fact]
+    public void ARunHoldingNoFactsIsToldToDeriveThemFirst() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.JudgeAsync();
+
+        Assert.False(_judging.WasRun);
+        Assert.Contains("Derive facts from it first", screen.Problem, StringComparison.Ordinal);
+    });
+
+    /// <summary>
+    /// <b>The failure this screen exists to prevent.</b> The library is a list the operator goes on
+    /// clicking through while an hour-long judging runs, so the selection when one returns is
+    /// frequently not the run that was read. An outcome written under whatever happens to be
+    /// selected then would attribute one run's results to another.
+    /// </summary>
+    [Fact]
+    public void AnOutcomeNamesTheRunItReadAndNotTheOneSelectedWhenItFinished() =>
+        OneThread.Run(async () =>
+        {
+            _catalog.Runs.Add(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+            _catalog.Runs.Add(CaptureOnly("b-20260202-000000", @"D:\audits\b"));
+            var screen = Screen(@"D:\audits");
+            screen.Refresh();
+            screen.Selected = screen.Runs[0];
+
+            _deriving.WhileRunning = () => screen.Selected = screen.Runs[1];
+
+            await screen.DeriveFactsAsync();
+
+            Assert.Contains("a-20260101-000000", screen.AnalysisStatus, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "b-20260202-000000", screen.AnalysisStatus, StringComparison.Ordinal);
+        });
+
+    /// <summary>
+    /// And his selection is left where he put it. Forcing it back to the analysed run would yank
+    /// the screen out from under him.
+    /// </summary>
+    [Fact]
+    public void TheSelectionTheOperatorMadeDuringAnAnalysisSurvivesIt() => OneThread.Run(async () =>
+    {
+        _catalog.Runs.Add(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+        _catalog.Runs.Add(CaptureOnly("b-20260202-000000", @"D:\audits\b"));
+        var screen = Screen(@"D:\audits");
+        screen.Refresh();
+        screen.Selected = screen.Runs[0];
+
+        _deriving.WhileRunning = () => screen.Selected = screen.Runs[1];
+
+        await screen.DeriveFactsAsync();
+
+        Assert.Equal(@"D:\audits\b", screen.Selected?.Path);
+    });
+
+    /// <summary>
+    /// The library is read again afterwards, so the analysed run's row stops saying it holds
+    /// nothing. Left unread, the screen would go on offering a derivation that has already happened.
+    /// </summary>
+    [Fact]
+    public void AnAnalysedRunsRowIsReadAgainRatherThanAssumed() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+
+        // What the derivation publishes is what the library will find when it reads again.
+        _deriving.WhileRunning = () =>
+        {
+            _catalog.Runs.Clear();
+            _catalog.Runs.Add(AwaitingJudgement("a-20260101-000000", @"D:\audits\a"));
+        };
+
+        await screen.DeriveFactsAsync();
+
+        Assert.False(screen.Runs[0].MayDerive);
+        Assert.True(screen.Runs[0].MayJudge);
+    });
+
+    /// <summary>
+    /// Nothing else is offered while an analysis runs. Two at once over one bundle would have them
+    /// writing the same store.
+    /// </summary>
+    [Fact]
+    public void NoSecondAnalysisIsOfferedWhileOneIsRunning() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+        var offeredMidRun = true;
+
+        _deriving.WhileRunning = () => offeredMidRun = screen.CanDerive;
+
+        await screen.DeriveFactsAsync();
+
+        Assert.False(offeredMidRun);
+    });
+
+    /// <summary>
+    /// Stop reaches the launcher, and what it leaves behind claims nothing was derived.
+    /// </summary>
+    /// <remarks>
+    /// The fake observes the token it is handed, so this proves the screen's own cancellation is
+    /// wired to the work rather than only that a flag was set on the screen.
+    /// </remarks>
+    [Fact]
+    public void StoppingAnAnalysisLeavesNoClaimThatItHappened() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+
+        _deriving.WhileRunning = screen.StopAnalysis;
+
+        await screen.DeriveFactsAsync();
+
+        Assert.Contains("deriving was stopped", screen.AnalysisStatus, StringComparison.Ordinal);
+        Assert.DoesNotContain("principals", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    /// <summary>
+    /// A derivation that refuses says so and says the evidence is still safe - it took hours and
+    /// read a forest that has moved on, and it is the thing the operator cannot get back.
+    /// </summary>
+    [Fact]
+    public void ADerivationThatRefusesSurfacesTheReasonAndSaysTheEvidenceIsSafe() =>
+        OneThread.Run(async () =>
+        {
+            var screen = Selecting(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
+            _deriving.Fails = Failures.Any("The derivation store is locked.");
+
+            await screen.DeriveFactsAsync();
+
+            Assert.Contains(
+                "The derivation store is locked.", screen.AnalysisStatus, StringComparison.Ordinal);
+            Assert.Contains("sealed", screen.AnalysisStatus, StringComparison.Ordinal);
+        });
+
+    /// <summary>
+    /// A defect in judging costs the judging and nothing else. Left to escape it would reach the
+    /// dispatcher unhandled and take the window down with it.
+    /// </summary>
+    [Fact]
+    public void ADefectInJudgingIsReportedRatherThanThrown() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AwaitingJudgement("a-20260101-000000", @"D:\audits\a"));
+        _judging.Throws = new InvalidOperationException("the rule schedule was empty");
+
+        await screen.JudgeAsync();
+
+        Assert.Contains(
+            "the rule schedule was empty", screen.AnalysisStatus, StringComparison.Ordinal);
+        Assert.False(screen.IsAnalysing);
+    });
+
+    [Fact]
+    public void DiscardFirstIsASeparateActionForAlreadyJudgedRuns()
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        Assert.True(screen.CanDiscardJudgement);
+        Assert.False(screen.CanJudge);
+        screen.Selected = new RunSummaryViewModel(AwaitingJudgement("b-20260101-000000", @"D:\audits\b"));
+        Assert.False(screen.CanDiscardJudgement);
+        Assert.True(screen.CanJudge);
+    }
+
+    [Fact]
+    public void DecliningDiscardDoesNotCloseDeleteOrJudge() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Equal(1, _confirmation.TimesAsked);
+        Assert.Contains(@"D:\audits\a", _confirmation.Asked!.Value.Question, StringComparison.Ordinal);
+        Assert.Contains("there will be no completed judgement to open", _confirmation.Asked.Value.Question, StringComparison.Ordinal);
+        Assert.Equal("Discard judgement and judge again", _confirmation.Asked.Value.ConfirmLabel);
+        Assert.Equal(0, _opener.CloseCalls);
+        Assert.Null(_catalog.DiscardedJudgement);
+        Assert.False(_judging.WasRun);
+    });
+
+    [Fact]
+    public void ConfirmedDiscardWaitsForClosedReadersAndKeepsTheOriginallyChosenRun() => OneThread.Run(async () =>
+    {
+        var original = AlreadyJudged("a-20260101-000000", @"D:\audits\a");
+        var screen = Selecting(original);
+        _catalog.Runs.Add(AlreadyJudged("b-20260101-000000", @"D:\audits\b"));
+        screen.Refresh();
+        _confirmation.Answer = true;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _opener.WhenClosing = () => closed.Task;
+        _judging.WhileRunning = () => Assert.Equal(original.Path, _catalog.DiscardedJudgement);
+
+        var attempt = screen.DiscardJudgementAndJudgeAgainAsync();
+        var waiting = screen.IsAnalysing && _catalog.DiscardedJudgement is null && !_judging.WasRun;
+        var offeredWhileBusy = screen.CanDiscardJudgement;
+        var refused = screen.DiscardJudgementAndJudgeAgainAsync();
+        var refusedImmediately = refused.IsCompleted;
+        screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
+        closed.SetResult();
+        await Task.WhenAll(attempt, refused).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(waiting);
+        Assert.False(offeredWhileBusy);
+        Assert.True(refusedImmediately);
+        Assert.Equal(1, _confirmation.TimesAsked);
+        Assert.Equal(1, _opener.CloseCalls);
+        Assert.Equal(original.Path, _catalog.DiscardedJudgement);
+        Assert.Equal(original.Path, _judging.AskedFor);
+        Assert.Equal(@"D:\audits\b", screen.Selected?.Path);
+        Assert.Contains(original.Identifier, screen.AnalysisStatus, StringComparison.Ordinal);
+        Assert.False(screen.IsAnalysing);
+    });
+
+    [Fact]
+    public void ReaderClosureFailurePreventsDiscardAndJudging() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        _opener.WhenClosing = () => Task.FromException(new IOException("The old readers could not be closed."));
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Null(_catalog.DiscardedJudgement);
+        Assert.False(_judging.WasRun);
+        Assert.True(screen.Selected!.HasResults);
+        Assert.Contains("The old readers could not be closed.", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    [Fact]
+    public void FailedDiscardIsReportedAndJudgingNeverStarts() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        _catalog.DiscardFails = SecureAD.Kernel.AuditError.Create(SecureAD.Kernel.ErrorCategory.Shell,
+            "Locked", SecureAD.Kernel.ErrorSeverity.Failed, "The judgement is still open elsewhere.", null);
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Equal(1, _opener.CloseCalls);
+        Assert.False(_judging.WasRun);
+        Assert.Contains(_catalog.DiscardFails.Description, screen.AnalysisStatus, StringComparison.Ordinal);
+        Assert.False(screen.IsAnalysing);
+    });
+
+    [Fact]
+    public void StoppingBeforeReadersCloseDoesNotDiscardTheSavedJudgement() => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _opener.WhenClosing = () => closed.Task;
+        var attempt = screen.DiscardJudgementAndJudgeAgainAsync();
+
+        screen.StopAnalysis();
+        closed.SetResult();
+        await attempt;
+
+        Assert.Null(_catalog.DiscardedJudgement);
+        Assert.False(_judging.WasRun);
+        Assert.True(screen.Selected!.HasResults);
+        Assert.Contains("stopped", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FailedOrStoppedRejudgingLeavesNoCompletedResultAndAllowsOrdinaryRetry(bool stopped) => OneThread.Run(async () =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        _confirmation.Answer = true;
+        if (stopped) _judging.WhileRunning = screen.StopAnalysis;
+        else _judging.Fails = SecureAD.Kernel.AuditError.Create(SecureAD.Kernel.ErrorCategory.Shell,
+            "JudgingFailed", SecureAD.Kernel.ErrorSeverity.Failed, "Synthetic judging failure.", null);
+
+        await screen.DiscardJudgementAndJudgeAgainAsync();
+
+        Assert.Equal(@"D:\audits\a", _catalog.DiscardedJudgement);
+        Assert.True(_judging.WasRun);
+        Assert.False(screen.Selected!.HasResults);
+        Assert.True(screen.CanJudge);
+        Assert.False(screen.CanDiscardJudgement);
+        Assert.Contains(stopped ? "stopped" : "Synthetic judging failure.", screen.AnalysisStatus, StringComparison.Ordinal);
+    });
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(320)]
+    public void ApprovedDiscardButtonBindsAndFitsTheAnalysisArea(int width) => AuditProgressViewTests.OnSta(() =>
+    {
+        var screen = Selecting(AlreadyJudged("a-20260101-000000", @"D:\audits\a"));
+        var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
+        XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var home = XDocument.Load(Path.Combine(shell, "Views", "HomeView.xaml"));
+        var action = Assert.Single(home.Descendants(wpf + "Button").Where(element =>
+            (string?)element.Attribute("Command") == "{Binding Library.DiscardJudgementAndJudgeAgainCommand}"));
+        var assembly = typeof(HomeViewModel).Assembly.GetName().Name;
+        var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
+            .Attributes("Source").Select(attribute => attribute.Value)
+            .Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
+        var root = new XElement(wpf + "Grid",
+            new XElement(wpf + "Grid.Resources", new XElement(wpf + "ResourceDictionary",
+                new XElement(wpf + "ResourceDictionary.MergedDictionaries", sources.Select(source =>
+                    new XElement(wpf + "ResourceDictionary", new XAttribute("Source",
+                        source.StartsWith("pack:", StringComparison.Ordinal) ? source
+                            : $"pack://application:,,,/{assembly};component/" + source)))))),
+            new XElement(action.Parent!));
+        var view = (Grid)XamlReader.Parse(root.ToString());
+        view.DataContext = new { Library = screen };
+        view.Measure(new Size(width, 160));
+        view.Arrange(new Rect(0, 0, width, 160));
+        view.UpdateLayout();
+        var row = Assert.IsType<Grid>(Assert.Single(view.Children.Cast<UIElement>()));
+        var button = Assert.Single(row.Children.OfType<Button>().Where(value =>
+            ReferenceEquals(value.Command, screen.DiscardJudgementAndJudgeAgainCommand)));
+        var text = Assert.IsType<TextBlock>(button.Content);
+
+        Assert.Equal(Visibility.Visible, button.Visibility);
+        Assert.True(button.IsEnabled);
+        Assert.Equal("Discard judgement and judge again", text.Text);
+        Assert.Equal(TextWrapping.Wrap, text.TextWrapping);
+        Assert.InRange(button.ActualWidth, 1, width);
+        if (width == 200) Assert.True(text.ActualHeight > text.FontSize * 1.5);
+    });
+
     private RunLibraryViewModel Screen(string? chosenPath = null)
     {
         _settings.Stored = new ShellSettings(chosenPath, DomainsAtOnce: null);
@@ -545,6 +1072,7 @@ public sealed class RunLibraryViewModelTests
         var location = new RunLibraryLocation(_settings);
         location.Load();
 
-        return new RunLibraryViewModel(location, _catalog, _confirmation, _opener);
+        return new RunLibraryViewModel(
+            location, _catalog, _confirmation, _opener, _deriving, _judging);
     }
 }

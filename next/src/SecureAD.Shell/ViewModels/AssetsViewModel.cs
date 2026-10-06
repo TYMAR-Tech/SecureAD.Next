@@ -37,17 +37,31 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed partial class AssetsViewModel : ObservableObject
 {
     private readonly IAssetSource _assets;
+    private CancellationTokenSource? _pending;
+    private long _revision;
+    private bool _active = true;
+    private bool _resetting;
+    private bool _listingReady;
+    private Func<bool>? _filterValidity;
+    private AssetsPane _objectPane;
+    private Func<bool>? _objectCurrent;
+    private ListingQuestion? _objectQuestion;
 
-    /// <summary>
-    /// The words and verdicts for the run on screen, read on first use and dropped with the run.
-    /// </summary>
-    /// <remarks>
-    /// <b>Tied to the run, and cleared whenever it changes.</b> A catalogue is a fact about one
-    /// forest on one day, so a stale one would label this run's permissions with another forest's
-    /// schema - and the names would look perfectly reasonable while being about the wrong
-    /// directory.
-    /// </remarks>
-    private PermissionVocabulary? _vocabulary;
+    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private string _loadingText = "";
+    [ObservableProperty] private Notice? _viewRefusal;
+
+    /// <summary>The current navigation read, including its publication on the screen.</summary>
+    public Task ReadCompletion { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Whether the content area explains why the requested view could not be read.</summary>
+    public bool HasViewRefusal => ViewRefusal is not null;
+
+    /// <summary>Whether the visible listing has an answer, rather than a pending or refused read.</summary>
+    public bool HasListingResult => _listingReady && !IsLoading && !HasViewRefusal;
+
+    /// <summary>Whether the first captured tree is still being read.</summary>
+    public bool IsOpeningTree => IsLoading && !HasLooked;
 
     [ObservableProperty]
     private string? _bundlePath;
@@ -75,7 +89,14 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private FindingRowViewModel? _selectedFinding;
 
     [ObservableProperty]
-    private ListingScope _scope = ListingScope.OneLevel;
+    [NotifyPropertyChangedFor(nameof(HasTier0Summary))]
+    private string _tier0SummaryText = "";
+
+    public string Tier0SummaryHeading { get; } = SavedPathText.Get("SummaryHeading");
+    public bool HasTier0Summary => !string.IsNullOrEmpty(Tier0SummaryText);
+
+    [ObservableProperty]
+    private ListingScope _scope = ListingScope.Subtree;
 
     [ObservableProperty]
     private int _pageNumber = 1;
@@ -142,9 +163,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Whether the LAPS inventory is the view showing.</summary>
     public bool ShowsLaps => Pane is AssetsPane.Laps;
 
-    /// <summary>Whether the rule listing is the view showing.</summary>
-    public bool ShowsRules => Pane is AssetsPane.Rules;
-
     /// <summary>
     /// Whether the object grid should be on screen: the objects tab, and no object opened from it.
     /// </summary>
@@ -153,22 +171,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// combines them is a view holding a rule about what is visible when - and the day a third
     /// condition arrives it is edited in a place no test reads.
     /// </remarks>
-    public bool ShowsObjectListing => ShowsObjects && ShowsListing;
+    public bool ShowsObjectListing => ShowsObjects && ShowsListing && HasListingResult;
 
     /// <summary>Whether the findings grid should be on screen.</summary>
-    public bool ShowsFindingsListing => ShowsFindings && ShowsListing;
+    public bool ShowsFindingsListing => ShowsFindings && ShowsListing && HasListingResult;
 
     /// <summary>Whether the LAPS inventory grid should be on screen.</summary>
-    public bool ShowsLapsListing => ShowsLaps && ShowsListing;
-
-    /// <summary>
-    /// Whether the rule listing should be on screen.
-    /// </summary>
-    /// <remarks>
-    /// It stands down while an object is open for the same reason the others do: the object fills
-    /// the pane, and two grids in one place is the crowding the predecessor's window suffered.
-    /// </remarks>
-    public bool ShowsRulesListing => ShowsRules && ShowsListing;
+    public bool ShowsLapsListing => ShowsLaps && ShowsListing && HasListingResult;
 
     /// <summary>The severities a finding on this run actually has, worst first.</summary>
     /// <remarks>
@@ -299,23 +308,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     public bool HasLapsShortfall => LapsShortfall is not null;
 
     /// <summary>
-    /// Every rule this build ships, and what became of it on this run.
-    /// </summary>
-    /// <remarks>
-    /// <b>Not scoped by the tree.</b> A rule is a question asked of the whole forest, and showing
-    /// "judged 2,082 objects" narrowed to one organisational unit would be a count of something
-    /// the judging never measured.
-    /// </remarks>
-    public ObservableCollection<RuleRowViewModel> RuleRows { get; } = [];
-
-    /// <summary>Why what the rules did could not be read, or null when it was.</summary>
-    [ObservableProperty]
-    private Notice? _rulesRefusal;
-
-    /// <summary>Whether the rule listing has something to say about why it is empty.</summary>
-    public bool HasRulesRefusal => RulesRefusal is not null;
-
-    /// <summary>
     /// Whether a finding is selected, so there is an explanation to show beneath the grid.
     /// </summary>
     /// <remarks>
@@ -347,20 +339,20 @@ internal sealed partial class AssetsViewModel : ObservableObject
     public bool HasSelection => Selected is not null;
 
     /// <summary>Whether an object is open and its permissions are showing.</summary>
-    public bool HasOpenObject => Opened is not null;
+    public bool HasOpenObject => Opened is not null && Pane == _objectPane;
 
     /// <summary>
     /// Whether the listing is showing. Its own answer rather than the negation of
     /// <see cref="HasOpenObject"/>, for the reason <see cref="HasNoRun"/> gives.
     /// </summary>
-    public bool ShowsListing => Opened is null;
+    public bool ShowsListing => !HasOpenObject;
 
     /// <summary>
     /// Whether the listing was read and the selected part of the directory genuinely holds no
     /// objects. False while nothing is selected and false while the listing is short, so
     /// "nothing here" is only ever said when it was established.
     /// </summary>
-    public bool IsEmpty => HasTree && HasSelection && Objects.Count == 0 && Shortfall is null;
+    public bool IsEmpty => HasListingResult && ShowsObjects && !IsObjectSearch && HasTree && HasSelection && Objects.Count == 0 && Shortfall is null;
 
     /// <summary>
     /// Whether this listing is short by an unknown number of objects, because part of the
@@ -374,7 +366,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// at the narrower levels the column would repeat the container just selected on every row,
     /// which is what the predecessor's grid did.
     /// </summary>
-    public bool ParentIsWorthShowing => Scope == ListingScope.Subtree;
+    public bool ParentIsWorthShowing => !IsObjectSearch && Scope == ListingScope.Subtree;
 
     /// <summary>
     /// Whether the listing shows the selected object alone.
@@ -433,7 +425,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         get
         {
-            if (Total == 0)
+            if (IsObjectSearch && HasListingResult)
+                return ObjectNavigationText.Format("SearchPage", _objectSearchBack.Count + 1, Objects.Count,
+                    _objectSearchNext is null ? "" : ObjectNavigationText.Get("MoreResults"));
+            if (!HasListingResult || Total == 0)
                 return string.Empty;
 
             var first = ((PageNumber - 1) * ObjectPaging.PageSize) + 1;
@@ -444,10 +439,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
     }
 
     /// <summary>Whether there is a page before this one.</summary>
-    public bool HasPreviousPage => PageNumber > 1;
+    public bool HasPreviousPage => HasListingResult && (IsObjectSearch ? _objectSearchBack.Count > 0 : PageNumber > 1);
 
     /// <summary>Whether there is a page after this one.</summary>
-    public bool HasNextPage => PageNumber * ObjectPaging.PageSize < Total;
+    public bool HasNextPage => HasListingResult && (IsObjectSearch ? _objectSearchNext is not null : PageNumber * ObjectPaging.PageSize < Total);
 
     /// <summary>
     /// Shows the assets of the run in <paramref name="bundleDirectory"/>.
@@ -461,27 +456,32 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
+        CancelRead();
+        _assets.SelectRun(bundleDirectory);
+        _active = true;
         BundlePath = bundleDirectory;
         _captureIsRunning = aCaptureIsRunning;
-        _vocabulary = null;
         Read();
     }
 
     /// <summary>Forgets the run being shown, so nothing describes a run no longer chosen.</summary>
     public void Clear()
     {
+        Opened?.Suspend();
+        CancelRead();
+        _resetting = true;
+        _assets.CloseRun();
+        ResetObjectSearch();
+        ShowsCaptureCoverageDetails = false;
         BundlePath = null;
         Refusal = null;
         HasLooked = false;
         Selected = null;
         Opened = null;
-        _vocabulary = null;
         Roots.Clear();
         Gaps.Clear();
         Objects.Clear();
         Findings.Clear();
-        RuleRows.Clear();
-        RulesRefusal = null;
         FindingsRefusal = null;
         NothingWasFound = false;
         Severities.Clear();
@@ -492,6 +492,18 @@ internal sealed partial class AssetsViewModel : ObservableObject
         _findingsFrom = null;
         Total = 0;
         Shortfall = null;
+        LapsComputers.Clear();
+        LapsCounts.Clear();
+        LapsTotal = 0;
+        LapsShortfall = null;
+        LapsRefusal = null;
+        SelectedFinding = null;
+        ClearDelegationSearch();
+        DelegationPrincipalSearch = "";
+        _filterValidity = null;
+        _listingReady = false;
+        ViewRefusal = null;
+        _resetting = false;
         Announce();
         AnnounceFindings();
     }
@@ -500,17 +512,27 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [RelayCommand]
     public void Read()
     {
+        CancelRead();
+        _resetting = true;
         Opened = null;
+        ResetObjectSearch();
+        ShowsCaptureCoverageDetails = false;
         Roots.Clear();
         Gaps.Clear();
-        Objects.Clear();
+        ClearListings();
         Selected = null;
-        Total = 0;
-        Shortfall = null;
+        PageNumber = 1;
+        _findingsBack.Clear();
+        _findingsFrom = null;
+        Severities.Clear();
+        Rules.Clear();
+        SeverityFilter = RuleFilter = Any;
+        _filterValidity = null;
         HasLooked = false;
         Refusal = null;
+        _resetting = false;
 
-        if (BundlePath is null)
+        if (BundlePath is null || !_active)
         {
             Announce();
             return;
@@ -528,49 +550,25 @@ internal sealed partial class AssetsViewModel : ObservableObject
             return;
         }
 
-        var read = _assets.ReadTree(BundlePath);
+        ReadCompletion = ReadTreeAsync(BundlePath);
+    }
 
-        if (!read.IsSuccess)
+    private async Task ReadTreeAsync(string bundle)
+    {
+        var revision = _revision + 1;
+        await ReadViewAsync(bundle, reader => reader.ReadTree(bundle), (tree, _) =>
         {
-            Refusal = new Notice("This run's evidence was not opened", read.Error.Description);
-            Announce();
-            return;
-        }
-
-        foreach (var root in read.Value.Roots)
-            Roots.Add(new TreeNodeViewModel(root));
-
-        // Every node, not only the roots: a tree reports a selection on whichever item was
-        // clicked, however deep.
-        foreach (var node in Roots.SelectMany(r => r.ThisAndBelow()))
-            node.PropertyChanged += OnNodeChanged;
-
-        foreach (var gap in read.Value.Gaps)
-            Gaps.Add(new TreeGapViewModel(gap));
-
-        HasLooked = true;
-
-        // What the filters may offer, asked once for the run. Scoped to the whole judgement rather
-        // than to the selected container, so the lists do not come and go as the operator moves
-        // about the tree - a filter whose options vanish under a held selection clears itself.
-        ReadFindingsFilterValues();
-
-        // Rooted at the forest, so the screen arrives showing something rather than an empty half
-        // and an instruction to click.
-        Selected = Roots.FirstOrDefault();
-
-        // Setting the selection lists the findings through OnSelectedChanged, but only when it
-        // changed. A bundle whose tree has no roots leaves it null, and the findings would never be
-        // asked for at all.
-        if (Selected is null)
-            ListFindings();
-
-        // The rules do not hang off the selection, so nothing above would have re-read them. A run
-        // read again after being judged would otherwise go on saying no rule ran.
-        if (Pane is AssetsPane.Rules)
-            ListRules();
-
-        Announce();
+            foreach (var root in tree.Roots) Roots.Add(new TreeNodeViewModel(root));
+            foreach (var node in Roots.SelectMany(root => root.ThisAndBelow()))
+                node.PropertyChanged += OnNodeChanged;
+            foreach (var gap in tree.Gaps) Gaps.Add(new TreeGapViewModel(gap));
+            _resetting = true;
+            Selected = Roots.FirstOrDefault();
+            _resetting = false;
+            HasLooked = true;
+        }, saved: false, tree: true);
+        if (revision == _revision && _active && HasLooked && BundlePath == bundle)
+            await LoadVisibleAsync();
     }
 
     /// <summary>Shows the page before the one showing.</summary>
@@ -580,8 +578,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (!HasPreviousPage)
             return;
 
+        if (IsObjectSearch)
+        {
+            ReadCompletion = ReadObjectSearchPageAsync(_objectSearchBack.Peek(), -1);
+            return;
+        }
         PageNumber--;
-        ListObjects();
+        LoadVisible();
     }
 
     /// <summary>Shows the page after the one showing.</summary>
@@ -591,8 +594,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (!HasNextPage)
             return;
 
+        if (IsObjectSearch)
+        {
+            ReadCompletion = ReadObjectSearchPageAsync(_objectSearchNext, 1);
+            return;
+        }
         PageNumber++;
-        ListObjects();
+        LoadVisible();
     }
 
     /// <summary>
@@ -620,7 +628,14 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (finding is null || BundlePath is null)
             return;
 
-        Open(finding.DistinguishedName, ObjectSectionCatalog.Findings, knownClass: null);
+        Open(finding.DistinguishedName, ObjectSectionCatalog.Findings);
+    }
+
+    [RelayCommand]
+    private void OpenSavedRoutes(FindingRowViewModel? finding)
+    {
+        if (finding?.HasTier0Routes != true || BundlePath is null) return;
+        Open(finding.DistinguishedName, ObjectSectionCatalog.SavedTier0Path);
     }
 
     /// <summary>
@@ -633,102 +648,19 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (listed is null || BundlePath is null)
             return;
 
-        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview, listed.ObjectClass);
+        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview);
     }
 
-    /// <summary>
-    /// Opens the object named, and selects the section asked for.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>The class is taken from the listing where there is one, and read from the evidence where
-    /// there is not.</b> A row already carries it, and the listing reads it as the highest ordinal
-    /// of <c>objectclass_value</c> - the most specific class the controller sent. Reading it here
-    /// takes the last value of the same attribute, which is the same rule over the same data, so
-    /// the two cannot disagree about what an object is.
-    /// </para>
-    /// <para>
-    /// <b>Preferring the row is not redundancy, it is the stronger evidence.</b> Attribute values
-    /// are read separately and are allowed to fail; the listing has already succeeded by the time a
-    /// row exists. An object reached from a finding has no row, which is the whole reason the
-    /// fallback exists.
-    /// </para>
-    /// </remarks>
-    /// <param name="distinguishedName">The object to open.</param>
-    /// <param name="section">Which of its sections to land on.</param>
-    /// <param name="knownClass">The class the caller already knows, or null when it does not.</param>
-    private void Open(string distinguishedName, string section, string? knownClass)
+    private void Open(string distinguishedName, string section)
     {
-        var bundleDirectory = BundlePath!;
+        if (!_active || BundlePath is null || _captureIsRunning) return;
+        CancelRead();
+        ViewRefusal = null;
+        _objectPane = Pane;
+        _objectQuestion = Question();
         Opened = null;
         Refusal = null;
-        var read = _assets.ReadPermissions(bundleDirectory, distinguishedName);
-
-        if (!read.IsSuccess)
-        {
-            Refusal = new Notice(
-                "This object's permissions were not read", read.Error.Description);
-            Announce();
-            return;
-        }
-
-        // The bundle was read and does not hold the object. That is not a failure of this build,
-        // and it is not an object with no permissions - it is a listing and an evidence file that
-        // disagree, which an operator needs told rather than shown as an empty table.
-        if (read.Value is null)
-        {
-            Refusal = new Notice(
-                "This object is not in this run's evidence",
-                $"'{distinguishedName}' was named but no object of that name was found in the "
-                + "bundle.");
-            Announce();
-            return;
-        }
-
-        // Attribute values are read separately and are allowed to be absent. A failure to read
-        // them is not a reason to refuse the object: the permissions are the reason this screen
-        // exists, and each section says for itself when it has nothing.
-        var attributes = _assets.ReadObjectAttributes(bundleDirectory, distinguishedName);
-        var values = attributes.IsSuccess ? attributes.Value : null;
-
-        // What the rules made of this object, for the findings section. Read the same way: a
-        // judgement that will not open is a fact the section states, not a reason to refuse an
-        // object whose evidence read perfectly.
-        var findings = _assets.ReadFindings(
-            bundleDirectory, FindingsQuery.About(distinguishedName));
-
-        var objectClass = knownClass ?? ClassOf(values);
-
-        Opened = new ObjectViewModel(
-            read.Value,
-            values,
-            objectClass ?? "not recorded",
-            objectClass,
-            Vocabulary(),
-            findings.IsSuccess ? findings.Value : null,
-            findings.IsSuccess ? null : findings.Error.Description);
-
-        var sidValue = values?.Find("objectSid")?.OnlyValue;
-        var principalSid = sidValue?.Bytes is { } sidBytes ? SecureAD.Kernel.Security.Sid.ToText(sidBytes) : sidValue?.Text;
-        var principalScope = principalSid is not null && SecureAD.Kernel.Security.Sid.IsBuiltinDomain(principalSid)
-            ? values?.DomainFqdn : null;
-        if (Opened.Section(ObjectSectionCatalog.ControlEdges) is ControlEdgesSectionViewModel controls)
-        {
-            controls.Configure(principalSid is not null, string.Equals(objectClass, "user", StringComparison.OrdinalIgnoreCase),
-                (byHolder, includeExpected, afterId) =>
-                _assets.ReadControlEdges(bundleDirectory, byHolder ? null : distinguishedName,
-                    byHolder ? principalSid : null, principalScope, includeExpected, afterId),
-                byRequester => _assets.ReadSelfMembershipAssessments(bundleDirectory, byRequester ? null : distinguishedName,
-                    byRequester ? distinguishedName : null));
-            controls.ConfigureMemberAttribution(row => _assets.ReadMemberAttribution(bundleDirectory, row.HolderSid, row.HolderScope, row.Target),
-                principalSid is null ? null : (expected, after) => _assets.ReadPermissionsThroughMembership(bundleDirectory, principalSid, principalScope, expected, after));
-        }
-
-        if (Opened.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
-            path.ConfigureAsync(distinguishedName, token => _assets.ReadSavedTier0PathAsync(bundleDirectory, distinguishedName, token));
-
-        Opened.Show(section);
-        Announce();
+        ReadCompletion = OpenAsync(BundlePath, distinguishedName, section);
     }
 
     /// <summary>
@@ -744,37 +676,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
             ? values[^1].Text
             : null;
 
-    /// <summary>
-    /// The words and verdicts permissions are read with for the run on screen.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>The forest's own schema, where the run captured it.</b> Until this was wired up, every
-    /// GUID on the permissions screen was resolved against the table shipped with the product, so a
-    /// stock class missing from that table - and every attribute a customer had ever added - showed
-    /// as a bare GUID. The bundle held the answer all along.
-    /// </para>
-    /// <para>
-    /// <b>A failure to read it is not a reason to refuse the object.</b> The shipped table still
-    /// resolves what Microsoft publishes, which is most of what an operator is reading, and the
-    /// screen says which of the two kinds of answer it is giving. Refusing the whole object because
-    /// its schema could not be read would hide the permissions over a question about their labels.
-    /// </para>
-    /// </remarks>
-    private PermissionVocabulary Vocabulary()
-    {
-        if (_vocabulary is not null)
-            return _vocabulary;
-
-        var schema = _assets.ReadSchemaGuids(BundlePath!);
-
-        _vocabulary = schema.IsSuccess
-            ? new PermissionVocabulary(schema.Value)
-            : PermissionVocabulary.Shipped;
-
-        return _vocabulary;
-    }
-
     /// <summary>Goes back to the listing the object was opened from.</summary>
     /// <remarks>
     /// <b>The findings are left exactly as they were.</b> Closing an object is a return to what was
@@ -785,232 +686,16 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [RelayCommand]
     public void CloseObject()
     {
+        CancelRead();
         Opened = null;
+        if (_pages.TryGetValue(Pane, out var page) && page.Question == Question() && page.IsCurrent())
+        {
+            ViewRefusal = null;
+            _listingReady = true;
+        }
+        else
+            LoadVisible();
         Announce();
-    }
-
-    /// <summary>Lists the objects of the selected container at the chosen level.</summary>
-    private void ListObjects()
-    {
-        Objects.Clear();
-        Shortfall = null;
-
-        // A new listing is a different question from the one the open object answered. Leaving it
-        // up would show one container's object over another container's list.
-        Opened = null;
-
-        if (BundlePath is null || Selected is null)
-        {
-            Total = 0;
-            Announce();
-            return;
-        }
-
-        var listed = _assets.ListObjects(
-            BundlePath, Selected.DistinguishedName, Scope, PageNumber);
-
-        if (!listed.IsSuccess)
-        {
-            Total = 0;
-            Refusal = new Notice("This run's objects were not read", listed.Error.Description);
-            Announce();
-            return;
-        }
-
-        foreach (var listedObject in listed.Value.Objects)
-            Objects.Add(new ListedObjectViewModel(listedObject));
-
-        Total = listed.Value.Total;
-        Shortfall = listed.Value.ObjectsAreComplete ? null : listed.Value.Shortfall;
-        Announce();
-    }
-
-    /// <summary>
-    /// Lists the LAPS state of the computers in the selected container at the chosen level.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Only when the inventory is the view showing.</b> The listing counts every computer in
-    /// scope to produce its totals, so running it beside the object listing would pay for a scan on
-    /// every container an operator clicks while looking at something else.
-    /// </para>
-    /// <para>
-    /// <b>It reads sealed evidence, so it says nothing about whether the run was judged.</b> The
-    /// findings grid has to explain an empty result - no rules run and a clean forest look the same
-    /// - and this one does not: an empty inventory means this container holds no computers.
-    /// </para>
-    /// </remarks>
-    private void ListLapsComputers()
-    {
-        LapsComputers.Clear();
-        LapsShortfall = null;
-        LapsCounts.Clear();
-
-        if (BundlePath is null || Selected is null)
-        {
-            LapsTotal = 0;
-            Announce();
-            return;
-        }
-
-        var listed = _assets.ListLapsComputers(
-            BundlePath, Selected.DistinguishedName, Scope, PageNumber);
-
-        if (!listed.IsSuccess)
-        {
-            LapsTotal = 0;
-            LapsRefusal = new Notice(
-                "This run's computers were not read", listed.Error.Description);
-
-            Announce();
-            return;
-        }
-
-        foreach (var computer in listed.Value.Computers)
-            LapsComputers.Add(new LapsComputerViewModel(computer));
-
-        // Every state, in the enum's own order, including the ones nothing is in. A rollout report
-        // that stops saying "Not managed" once it reaches zero has stopped saying the thing an
-        // operator was watching for.
-        foreach (var state in Enum.GetValues<LapsManagement>())
-            LapsCounts.Add(new LapsCountViewModel(state, listed.Value.CountOf(state)));
-
-        LapsTotal = listed.Value.Total;
-        LapsShortfall = listed.Value.ComputersAreComplete ? null : listed.Value.Shortfall;
-        Announce();
-    }
-
-    /// <summary>
-    /// Lists every rule this build ships, with what became of it on this run.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>The catalogue is the list and the judgement only annotates it.</b> Reading it the other
-    /// way round would show only the rules that ran, so a rule dropped from a judging would vanish
-    /// from a screen whose whole purpose is to say what was checked.
-    /// </para>
-    /// <para>
-    /// <b>A judgement that will not open leaves every rule saying it did not run</b>, with the
-    /// refusal above the grid saying why. Silently showing eleven rules with no outcomes would
-    /// read as a bundle nobody judged, which is a different fact.
-    /// </para>
-    /// </remarks>
-    private void ListRules()
-    {
-        RuleRows.Clear();
-        RulesRefusal = null;
-
-        if (BundlePath is null || _captureIsRunning)
-        {
-            Announce();
-            return;
-        }
-
-        var read = _assets.ReadRuleExecutions(BundlePath);
-
-        if (!read.IsSuccess)
-        {
-            RulesRefusal = new Notice(
-                "What the rules did was not read", read.Error.Description);
-        }
-
-        var executions = read.IsSuccess
-            ? read.Value!.Executions.ToDictionary(e => e.RuleId, StringComparer.OrdinalIgnoreCase)
-            : [];
-
-        foreach (var rule in RuleCatalogue.All)
-        {
-            RuleRows.Add(new RuleRowViewModel(
-                rule.Definition.Id,
-                rule.Definition,
-                executions.GetValueOrDefault(rule.Definition.Id)));
-        }
-
-        // A judgement outlives the build that wrote it, so it can name a rule this build no longer
-        // ships. Dropping the row would shrink the account of what was actually done to the bundle.
-        var shipped = RuleCatalogue.All
-            .Select(r => r.Definition.Id)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var execution in executions.Values.Where(e => !shipped.Contains(e.RuleId)))
-            RuleRows.Add(new RuleRowViewModel(execution.RuleId, null, execution));
-
-        Announce();
-    }
-
-    /// <summary>
-    /// Fills the filter lists from the findings this run holds.
-    /// </summary>
-    /// <remarks>
-    /// <b>A judgement that will not open leaves the lists empty rather than refusing.</b> The grid
-    /// itself says why in words; a second refusal from the filters would state the same failure
-    /// twice, and the operator cannot act on either until the judgement is fixed.
-    /// </remarks>
-    private void ReadFindingsFilterValues()
-    {
-        Severities.Clear();
-        Rules.Clear();
-
-        Severities.Add(Any);
-        Rules.Add(Any);
-
-        if (BundlePath is null || _captureIsRunning)
-            return;
-
-        var values = _assets.ReadFindingsFilterValues(BundlePath);
-
-        if (!values.IsSuccess)
-            return;
-
-        foreach (var severity in values.Value.Severities)
-            Severities.Add(severity.ToString());
-
-        foreach (var rule in values.Value.Rules)
-            Rules.Add(rule);
-    }
-
-    /// <summary>
-    /// Lists the findings of the selected container, or of the whole run when nothing is selected.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Scoped by the same selection the object listing uses.</b> An operator who has selected
-    /// <c>OU=Servers</c> and switches to findings is still asking about servers, and a grid that
-    /// silently widened to the forest would answer a question he did not ask.
-    /// </para>
-    /// <para>
-    /// <b>Four silences, kept apart.</b> No run chosen, a capture running, a judgement that cannot
-    /// be read, a bundle nobody judged, and a judging that found nothing are different facts, and
-    /// only the last of them means the forest is clean.
-    /// </para>
-    /// </remarks>
-    private void ListFindings()
-    {
-        Findings.Clear();
-        FindingsRefusal = null;
-        NothingWasFound = false;
-
-        if (BundlePath is null || _captureIsRunning)
-        {
-            AnnounceFindings();
-            return;
-        }
-
-        var read = _assets.ReadFindings(BundlePath, FindingsAsked());
-
-        if (!read.IsSuccess)
-        {
-            FindingsRefusal = new Notice("There are no findings to show", read.Error.Description);
-            AnnounceFindings();
-            return;
-        }
-
-        foreach (var finding in read.Value.Findings)
-            Findings.Add(new FindingRowViewModel(finding));
-
-        _findingsFrom = read.Value.Next;
-        NothingWasFound = read.Value.NothingWasFound;
-        AnnounceFindings();
     }
 
     /// <summary>What the findings grid is asking for, as the screen currently stands.</summary>
@@ -1048,11 +733,17 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     private void RefilterFindings()
     {
+        if (_resetting) return;
         _findingsBack.Clear();
         _findingsFrom = null;
+        ClearListing(AssetsPane.Findings);
         OnPropertyChanged(nameof(IsFiltered));
         OnPropertyChanged(nameof(NothingFoundReason));
-        ListFindings();
+        if (Pane == AssetsPane.Findings)
+        {
+            Opened = null;
+            LoadVisible();
+        }
     }
 
     /// <summary>Clears every filter, so the grid shows the whole container again.</summary>
@@ -1063,6 +754,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
         RuleFilter = Any;
     }
 
+    /// <summary>Dismisses the explanation without changing the findings, filters or page.</summary>
+    [RelayCommand]
+    public void CloseFindingDetails() => SelectedFinding = null;
+
     /// <summary>Shows the next page of findings.</summary>
     [RelayCommand(CanExecute = nameof(HasMoreFindings))]
     public void NextFindings()
@@ -1071,11 +766,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
             return;
 
         _findingsBack.Push(mark);
-        ListFindings();
+        LoadVisible();
     }
 
     /// <summary>Whether there is another page of findings after this one.</summary>
-    public bool HasMoreFindings => _findingsFrom is not null;
+    public bool HasMoreFindings => HasListingResult && _findingsFrom is not null;
 
     /// <summary>Goes back to the previous page of findings.</summary>
     [RelayCommand(CanExecute = nameof(HasEarlierFindings))]
@@ -1085,11 +780,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
             return;
 
         _findingsBack.Pop();
-        ListFindings();
+        LoadVisible();
     }
 
     /// <summary>Whether there is a page of findings before this one.</summary>
-    public bool HasEarlierFindings => _findingsBack.Count > 0;
+    public bool HasEarlierFindings => HasListingResult && _findingsBack.Count > 0;
 
     /// <summary>Whether any finding is being shown.</summary>
     public bool HasFindings => Findings.Count > 0;
@@ -1114,24 +809,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
         PreviousFindingsCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Stops saved-result work when its object is no longer visible.</summary>
-    public void CancelSavedPathRead()
-    {
-        if (Opened?.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
-            path.CancelRead();
-    }
-
-    /// <summary>A return to the saved section starts a fresh read rather than showing a retained generation.</summary>
-    public void ResumeSavedPathRead()
-    {
-        if (Pane == AssetsPane.Objects && Opened?.Selected is SavedTier0PathSectionViewModel path
-            && path.Result == SavedPathText.Get("NotRead")) path.Read();
-    }
-
     partial void OnOpenedChanging(ObjectViewModel? oldValue, ObjectViewModel? newValue)
     {
-        if (oldValue?.Section(ObjectSectionCatalog.SavedTier0Path) is SavedTier0PathSectionViewModel path)
-            path.CancelRead();
+        oldValue?.Suspend();
     }
 
     /// <summary>Keeps the three views of the screen from both claiming to be showing.</summary>
@@ -1141,24 +821,41 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </remarks>
     partial void OnPaneChanged(AssetsPane value)
     {
-        if (value != AssetsPane.Objects) CancelSavedPathRead();
-        else ResumeSavedPathRead();
+        CancelRead();
+        if (value != AssetsPane.Objects) ResetObjectSearch();
+        Opened?.Suspend();
+        ViewRefusal = null;
+        if (!_active || _resetting) return;
+        if (!HasLooked && BundlePath is not null && !_captureIsRunning)
+        {
+            Read();
+            return;
+        }
+        if (HasOpenObject && _objectQuestion != Question()) Opened = null;
+        if (HasOpenObject)
+        {
+            if (_objectCurrent?.Invoke() == true)
+            {
+                Opened!.Resume();
+                ReadCompletion = Opened.ReadCompletion;
+            }
+            else
+            {
+                Opened = null;
+                ClearListing(value);
+                RefuseView(SavedPathText.Get("GenerationChanged"));
+            }
+        }
+        else
+            LoadVisible();
         OnPropertyChanged(nameof(ShowsObjects));
         OnPropertyChanged(nameof(ShowsFindings));
         OnPropertyChanged(nameof(ShowsLaps));
-        OnPropertyChanged(nameof(ShowsRules));
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
         OnPropertyChanged(nameof(ShowsLapsListing));
-        OnPropertyChanged(nameof(ShowsRulesListing));
 
-        if (value is AssetsPane.Laps)
-            ListLapsComputers();
-
-        // Unlike the inventory this does not depend on the tree, so it is read here and nowhere
-        // else: no selection or level change can make it stale.
-        if (value is AssetsPane.Rules)
-            ListRules();
+        Announce();
     }
 
     /// <summary>
@@ -1188,12 +885,19 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </remarks>
     partial void OnSelectedChanged(TreeNodeViewModel? value)
     {
+        if (_resetting) return;
+        var leavesDelegationObject = HasOpenObject && ShowsDelegations;
+        ResetObjectSearch();
+        Opened = null;
         PageNumber = 1;
         _findingsBack.Clear();
         _findingsFrom = null;
-        ListObjects();
-        ListFindings();
-        RelistLapsIfShowing();
+        ClearListing(AssetsPane.Objects);
+        ClearListing(AssetsPane.Findings);
+        ClearListing(AssetsPane.Laps);
+        if (leavesDelegationObject) Pane = AssetsPane.Objects;
+        else if (Pane != AssetsPane.Delegations) LoadVisible();
+        Announce();
     }
 
     /// <summary>Changing the level changes the listing, and it starts again at its first page.</summary>
@@ -1206,27 +910,27 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </remarks>
     partial void OnScopeChanged(ListingScope value)
     {
+        if (_resetting) return;
+        if (IsObjectSearch)
+        {
+            OnPropertyChanged(nameof(ShowsBase));
+            OnPropertyChanged(nameof(ShowsOneLevel));
+            OnPropertyChanged(nameof(ShowsSubtree));
+            return;
+        }
         PageNumber = 1;
         OnPropertyChanged(nameof(ParentIsWorthShowing));
         OnPropertyChanged(nameof(ShowsBase));
         OnPropertyChanged(nameof(ShowsOneLevel));
         OnPropertyChanged(nameof(ShowsSubtree));
-        ListObjects();
-        RelistLapsIfShowing();
-    }
-
-    /// <summary>
-    /// Re-reads the LAPS inventory, but only when it is the view showing.
-    /// </summary>
-    /// <remarks>
-    /// <b>The guard is the point.</b> The inventory counts every computer in scope to produce its
-    /// totals, so re-reading it on every tree click while an operator is looking at the objects
-    /// would pay for that scan over and over for a grid nobody is watching.
-    /// </remarks>
-    private void RelistLapsIfShowing()
-    {
-        if (Pane is AssetsPane.Laps)
-            ListLapsComputers();
+        ClearListing(AssetsPane.Objects);
+        ClearListing(AssetsPane.Laps);
+        if (Pane is AssetsPane.Objects or AssetsPane.Laps)
+        {
+            Opened = null;
+            LoadVisible();
+        }
+        Announce();
     }
 
     /// <summary>
@@ -1235,6 +939,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </summary>
     private void Announce()
     {
+        AnnounceObjectNavigation();
+        AnnounceDelegations();
+        OnPropertyChanged(nameof(HasViewRefusal));
+        OnPropertyChanged(nameof(IsOpeningTree));
+        OnPropertyChanged(nameof(HasListingResult));
+        OnPropertyChanged(nameof(HasLapsRefusal));
+        OnPropertyChanged(nameof(HasLapsShortfall));
         OnPropertyChanged(nameof(HasRun));
         OnPropertyChanged(nameof(HasNoRun));
         OnPropertyChanged(nameof(HasRefusal));
@@ -1251,8 +962,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
         OnPropertyChanged(nameof(ShowsLapsListing));
-        OnPropertyChanged(nameof(ShowsRulesListing));
-        OnPropertyChanged(nameof(HasRulesRefusal));
 
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(IsShort));

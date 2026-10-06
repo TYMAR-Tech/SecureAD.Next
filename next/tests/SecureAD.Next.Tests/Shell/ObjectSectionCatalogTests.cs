@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using SecureAD.Kernel.Capture;
 using SecureAD.Shell.ViewModels;
 using Xunit;
@@ -46,11 +47,20 @@ public sealed class ObjectSectionCatalogTests
     public void EveryAttributeAClassJustifiesIsShownOrDeclaredNotShown(string objectClass)
     {
         var shown = ObjectSectionCatalog.AttributesShownFor(objectClass);
+        var captured = new ObjectAttributes("CN=Example,DC=example", Guid.Empty, DateTimeOffset.UnixEpoch,
+            EvidenceCompleteness.Complete,
+            [.. CapturedAttributeCatalog.AttributesJustifiedBy(objectClass)
+                .Select(attribute => new ObjectAttribute(attribute.LdapDisplayName, attribute.Cardinality, [new(0, "0", null)]))],
+            "example");
+        var other = new OtherValuesSectionViewModel(
+            ObjectSectionCatalog.For(objectClass).Single(section => section.Key == ObjectSectionCatalog.OtherValues),
+            captured, objectClass);
 
         var unaccounted = CapturedAttributeCatalog.AttributesJustifiedBy(objectClass)
             .Select(a => a.LdapDisplayName)
             .Where(name => !shown.Contains(name))
             .Where(name => !ObjectSectionCatalog.NotShown.ContainsKey(name))
+            .Where(name => !other.Values.Any(value => value.Attribute.Equals(name, StringComparison.OrdinalIgnoreCase)))
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 

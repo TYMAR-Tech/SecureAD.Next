@@ -171,14 +171,14 @@ public sealed class AssetsViewModelTests
     // ---------------------------------------------------------------------------------------
 
     /// <summary>
-    /// One level is how a directory is browsed, and what the predecessor showed on arrival.
+    /// Subtree is the owner-selected initial browsing scope.
     /// </summary>
     [Fact]
-    public void AScreenOpensAtOneLevel()
+    public void AScreenOpensAtSubtree()
     {
         var screen = new AssetsViewModel(new FakeAssetSource());
 
-        Assert.Equal(ListingScope.OneLevel, screen.Scope);
+        Assert.Equal(ListingScope.Subtree, screen.Scope);
     }
 
     [Fact]
@@ -188,9 +188,9 @@ public sealed class AssetsViewModelTests
         var screen = new AssetsViewModel(assets);
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
-        screen.Scope = ListingScope.Subtree;
+        screen.Scope = ListingScope.OneLevel;
 
-        Assert.Equal(ListingScope.Subtree, assets.ListedScope);
+        Assert.Equal(ListingScope.OneLevel, assets.ListedScope);
     }
 
     /// <summary>
@@ -202,6 +202,7 @@ public sealed class AssetsViewModelTests
     public void TheParentColumnIsHiddenWhileEveryRowSharesTheSameParent()
     {
         var screen = Showing(TreeOfOneDomain(), APageOfOne());
+        screen.Scope = ListingScope.OneLevel;
 
         Assert.False(screen.ParentIsWorthShowing);
     }
@@ -210,7 +211,7 @@ public sealed class AssetsViewModelTests
     public void TheParentColumnAppearsWhenTheLevelReachesAcrossContainers()
     {
         var screen = Showing(TreeOfOneDomain(), APageOfOne());
-
+        screen.Scope = ListingScope.OneLevel;
         screen.Scope = ListingScope.Subtree;
 
         Assert.True(screen.ParentIsWorthShowing);
@@ -370,6 +371,7 @@ public sealed class AssetsViewModelTests
     {
         var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         screen.Selected = screen.Roots[0].Children[0];
@@ -401,6 +403,7 @@ public sealed class AssetsViewModelTests
         };
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         Assert.True(screen.HasFindingsRefusal);
@@ -444,6 +447,7 @@ public sealed class AssetsViewModelTests
         };
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         Assert.True(screen.HasFindingsRefusal);
@@ -551,6 +555,7 @@ public sealed class AssetsViewModelTests
             Page = APageOfOne(),
             FindingsPage = new FindingsPage([AFinding()], null, RulesRan: 2),
             Permissions = SomePermissions(),
+            Attributes = FakeAssetSource.CapturedObject("CN=Alice," + DomainDn, "user"),
         };
 
         var screen = new AssetsViewModel(assets);
@@ -624,10 +629,12 @@ public sealed class AssetsViewModelTests
             Tree = TreeOfOneDomain(),
             Page = APageOfOne(),
             Permissions = SomePermissions(),
+            Attributes = FakeAssetSource.CapturedObject(AFinding().DistinguishedName, "user"),
             FindingsPage = new FindingsPage([AFinding()], null, RulesRan: 2),
         };
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
@@ -674,6 +681,7 @@ public sealed class AssetsViewModelTests
     {
         var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         screen.Selected = screen.Roots[0].Children[0];
@@ -690,6 +698,7 @@ public sealed class AssetsViewModelTests
     {
         var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         screen.SeverityFilter = "High";
@@ -705,6 +714,7 @@ public sealed class AssetsViewModelTests
     {
         var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         screen.RuleFilter = "SEC-010";
@@ -720,6 +730,7 @@ public sealed class AssetsViewModelTests
     {
         var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.SeverityFilter = "High";
         screen.RuleFilter = "SEC-010";
@@ -751,6 +762,7 @@ public sealed class AssetsViewModelTests
         };
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.NextFindingsCommand.Execute(null);
         Assert.NotNull(assets.FindingsAsked!.After);
@@ -806,10 +818,11 @@ public sealed class AssetsViewModelTests
         };
 
         var screen = new AssetsViewModel(assets);
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
-        Assert.Equal([AssetsViewModel.Any], screen.Severities);
-        Assert.Equal([AssetsViewModel.Any], screen.Rules);
+        Assert.Empty(screen.Severities);
+        Assert.Empty(screen.Rules);
         Assert.True(screen.HasFindingsRefusal);
     }
 
@@ -822,9 +835,11 @@ public sealed class AssetsViewModelTests
             Tree = TreeOfOneDomain(),
             Page = APageOfOne(),
             Permissions = SomePermissions(),
+            Attributes = FakeAssetSource.CapturedObject(AFinding().DistinguishedName, "user"),
             FindingsPage = findings,
         });
 
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         return screen;
     }
@@ -837,10 +852,12 @@ public sealed class AssetsViewModelTests
             Tree = TreeOfOneDomain(),
             Page = APageOfOne(),
             Permissions = SomePermissions(),
+            Attributes = FakeAssetSource.CapturedObject(AFinding().DistinguishedName, "user"),
             FindingsPage = findings,
             FilterValues = values,
         });
 
+        screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         return screen;
     }

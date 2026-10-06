@@ -43,16 +43,65 @@ public sealed class RunStateReaderTests : IDisposable
     }
 
     /// <summary>
-    /// The evidence is there and cannot be trusted. That is a different thing from a run that did
-    /// not finish, and the remedy differs: restore or discard, rather than run again.
+    /// <b>Evidence that no longer matches its seal is observed as sealed, and that is deliberate.</b>
+    /// Answering otherwise means hashing the whole evidence file, and this is asked of every run
+    /// each time the Home list is drawn - 1,266 ms per 1.73 GB, measured, on nine occasions
+    /// including every navigation back to Home.
+    /// <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts the one
+    /// verification at the moment a bundle is opened and requires that it not be repeated per
+    /// screen. <see cref="ACorruptedBundleIsStillRefusedWhenItIsOpened"/> is what makes that safe.
     /// </summary>
     [Fact]
-    public void AnEvidenceFileWhoseSealDoesNotMatchIsDamaged()
+    public void AnEvidenceFileWhoseSealDoesNotMatchIsStillSealed()
     {
         WriteEvidenceAndSeal();
-        File.AppendAllText(BundleLayout.EvidencePath(_directory), "tampered");
+        File.AppendAllText(BundleLayout.EvidencePath(_directory), "corrupted");
 
-        Assert.Equal(RunState.Damaged, Observe().State);
+        Assert.Equal(RunState.Sealed, Observe().State);
+    }
+
+    /// <summary>
+    /// The other half of the one above. Nothing is read off corrupted evidence, however it was
+    /// listed - so moving the check to opening loses no protection against a bad file.
+    /// </summary>
+    [Fact]
+    public void ACorruptedBundleIsStillRefusedWhenItIsOpened()
+    {
+        WriteEvidenceAndSeal();
+        File.AppendAllText(BundleLayout.EvidencePath(_directory), "corrupted");
+
+        Assert.False(BundleReader.Open(_directory).IsSuccess);
+    }
+
+    /// <summary>
+    /// <b>Observing a run must not hash its evidence.</b> This is the check that keeps the Home
+    /// screen free, and it measures the thing rather than trusting the comment above: a bundle far
+    /// larger than anything hashed in a test suite is observed, and the time is held well under
+    /// what reading it once would take. Written after the listing was found to hash every bundle
+    /// twice on nine separate triggers, which made the product unusable with a real run in the
+    /// library.
+    /// </summary>
+    [Fact]
+    public void ObservingARunDoesNotReadTheWholeEvidenceFile()
+    {
+        WriteEvidenceAndSeal();
+
+        var evidence = BundleLayout.EvidencePath(_directory);
+        var padded = new byte[64 * 1024 * 1024];
+        using (var stream = new FileStream(evidence, FileMode.Append, FileAccess.Write))
+            stream.Write(padded, 0, padded.Length);
+
+        // Appending broke the seal, which is the point: a check that hashed would have to read all
+        // 64 MB to discover that, and this must not.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var state = Observe().State;
+        clock.Stop();
+
+        Assert.Equal(RunState.Sealed, state);
+        Assert.True(
+            clock.ElapsedMilliseconds < 250,
+            $"Observing took {clock.ElapsedMilliseconds} ms, which is long enough to have hashed "
+            + "the evidence. Drawing a list must not read the whole file.");
     }
 
     [Fact]

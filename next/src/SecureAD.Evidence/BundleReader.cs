@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
@@ -59,7 +60,7 @@ public sealed record BundleDescription(
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>A bundle that does not verify is not opened.</b> <see cref="Open"/> verifies the seal first
+/// <b>A bundle that does not verify is not opened.</b> <see cref="Open(string)"/> verifies the seal first
 /// and returns a failure for every state but <see cref="SealState.Intact"/>, per
 /// <see cref="SealVerdict.MayBeOpened"/>. There is no lenient mode and no argument that suppresses
 /// the check: a reader that can be asked to skip verification is a reader that will be, on the one
@@ -103,11 +104,16 @@ public sealed record BundleDescription(
 /// </remarks>
 public sealed class BundleReader : IDisposable
 {
+    private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
+    private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");
     private readonly SqliteConnection _connection;
+    private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
     private (long ObjectId, string Dn)? _streamedIdentity;
     private bool? _streamedNamesAreUnambiguous;
     private Dictionary<string, long>? _bulkObjectIds;
+    private string? _verifiedFingerprint;
+    private (SchemaGuidCatalog Schema, DelegationCoverage Coverage)? _delegationPreparation;
 
     private BundleReader(
         string bundleDirectory, SqliteConnection connection, BundleDescription description)
@@ -168,9 +174,85 @@ public sealed class BundleReader : IDisposable
                 Pooling = false,
             }.ToString());
 
+        return OpenConnection(bundleDirectory, connection);
+    }
+
+    /// <summary>
+    /// Opens the evidence for reading <b>without verifying the seal</b>, for the run library.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>For drawing a list, never for reading evidence anybody acts on.</b> Verifying hashes the
+    /// whole file, and the library asks this of every run each time the Home screen is drawn - nine
+    /// occasions including every navigation back to it. Measured on a 1.73 GB bundle: 2,400 ms to
+    /// verify, 69 ms to read the scope without verifying.
+    /// </para>
+    /// <para>
+    /// <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts the one
+    /// verification at the moment a bundle is opened and requires that it not be repeated per
+    /// screen. <see cref="Open(string, CancellationToken)"/> is that moment. What this produces is a
+    /// label on a list; a run is still refused there if its evidence has gone bad, before a single
+    /// finding is read off it.
+    /// </para>
+    /// <para>
+    /// The format checks in <see cref="OpenConnection"/> still run, so a bundle from another build
+    /// is refused by name here as everywhere else. Only the seal is skipped.
+    /// </para>
+    /// </remarks>
+    /// <param name="bundleDirectory">The bundle's directory.</param>
+    /// <returns>The open reader, or why the evidence could not be read.</returns>
+    internal static Result<BundleReader> OpenUnverified(string bundleDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+
+        var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
+        var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = ImmutableDataSource(evidencePath),
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+            }.ToString());
+
+        return OpenConnection(bundleDirectory, connection);
+    }
+
+    /// <summary>Opens an independently owned reader under an existing verified file lifetime.</summary>
+    public static Result<BundleReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        if (store.Generation is not null) throw new ArgumentException(nameof(store));
+        ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
-            connection.Open();
+            Result<BundleReader> opened;
+            lock (store.EvidenceDescriptionGate)
+            {
+                // Format validation includes a descriptor-version scan. Its verdict, like the
+                // seal's, is reusable only under this same protected file lifetime.
+                opened = store.EvidenceDescription is { } description
+                    ? new BundleReader(store.BundleDirectory, lease.Connection, description)
+                    : OpenConnection(store.BundleDirectory, lease.Connection);
+                if (opened.IsSuccess) store.EvidenceDescription = opened.Value.Description;
+            }
+            if (opened.IsSuccess)
+            {
+                opened.Value._verifiedFingerprint = store.Fingerprint;
+                opened.Value._protection = lease;
+                lease = null;
+            }
+            return opened;
+        }
+        finally { lease?.Dispose(); }
+    }
+
+    private static Result<BundleReader> OpenConnection(string bundleDirectory, SqliteConnection connection)
+    {
+        var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
+        FormatChecks.Add(1, new KeyValuePair<string, object?>("file", Path.GetFullPath(evidencePath)));
+        try
+        {
+            if (connection.State != System.Data.ConnectionState.Open) connection.Open();
 
             // THE VERSION IS READ ON ITS OWN, AND BEFORE ANYTHING ELSE. Every check below compares
             // a number that lives in a column some earlier build did not write, so reading the
@@ -373,6 +455,10 @@ public sealed class BundleReader : IDisposable
         new(Description.EveryDeclaredUnitRecordedAsRead,
             ObjectStreamReader.Stream(Connection, (id, dn) => _streamedIdentity = (id, dn)));
 
+    /// <summary>Orders the judging pass by captured descriptor within this reader's lifetime.</summary>
+    internal DescriptorObjectStream StreamDescriptorObjects(CancellationToken cancellationToken) =>
+        new(Connection, (id, dn) => _streamedIdentity = (id, dn), StreamedNamesAreUnambiguous(), cancellationToken);
+
     /// <summary>
     /// Reads how much of the forest this run covered, one entry per declared domain.
     /// </summary>
@@ -534,6 +620,53 @@ public sealed class BundleReader : IDisposable
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
         ObjectListingReader.Read(Connection, containerDn, scope, pageNumber);
 
+    /// <summary>Searches all captured objects by name/account name or DN without reading analysis stores.</summary>
+    public ObjectSearchPage SearchObjects(string search, ObjectSearchMark? after, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CapturedObjectSearch.Read(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken);
+    }
+
+    /// <summary>Finds captured user/group identities under a protected evidence lifetime.</summary>
+    public DelegationPrincipalPage FindDelegationPrincipals(string search, DelegationPrincipalMark? after,
+        CancellationToken cancellationToken = default) =>
+        DelegationLookup.FindPrincipals(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken);
+
+    /// <summary>Reads original direct-trustee permission occurrences; never computes effective access.</summary>
+    public DelegationPage ReadDelegations(DelegationQuery query, DelegationPageMark? after,
+        CancellationToken cancellationToken = default, int pageSize = DelegationPage.PageSize)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var fingerprint = ProtectedQueryFingerprint();
+        var preparation = _delegationPreparation ??= (ReadSchemaGuids(), DelegationLookup.ReadCoverage(Connection, Description));
+        return DelegationLookup.Read(Connection, fingerprint, preparation.Coverage, preparation.Schema, query, after, cancellationToken, pageSize);
+    }
+
+    /// <summary>Resolves one saved membership identity without reconstructing the object's attributes or permissions.</summary>
+    public DelegationPrincipal? ResolveDelegationPrincipal(string sid, string scope, Guid? objectGuid)
+    {
+        var bytes = Sid.ToBytes(sid) ?? throw new ArgumentException("Invalid SID.", nameof(sid));
+        using var command = Connection.CreateCommand();
+        command.CommandText = """
+            SELECT object_id, distinguished_name, domain_fqdn FROM captured_object
+            WHERE objectsid=$sid AND ($scope='' OR domain_fqdn=$scope COLLATE NOCASE)
+              AND ($guid IS NULL OR object_guid=$guid COLLATE NOCASE)
+            ORDER BY object_id LIMIT 2
+            """;
+        command.Parameters.Add("$sid", SqliteType.Blob).Value = bytes;
+        command.Parameters.AddWithValue("$scope", scope);
+        command.Parameters.AddWithValue("$guid", objectGuid is { } guid && guid != Guid.Empty ? guid.ToString("D") : (object)DBNull.Value);
+        using var read = command.ExecuteReader();
+        if (!read.Read()) return null;
+        var principal = new DelegationPrincipal(read.GetInt64(0), sid, DnHelper.ExtractFirstRdn(read.GetString(1)),
+            read.GetString(1), read.GetString(2));
+        if (read.Read()) throw new InvalidDataException("The saved membership identity matches more than one captured object.");
+        return principal;
+    }
+
+    private string ProtectedQueryFingerprint() => _verifiedFingerprint
+        ?? throw new InvalidOperationException("Captured-data searches require an open protected evidence lifetime.");
+
     /// <summary>
     /// The name a security identifier is known by in this bundle, for showing a principal a rule
     /// found by identifier alone.
@@ -694,6 +827,27 @@ public sealed class BundleReader : IDisposable
         return ObjectPermissionsReader.Read(connection, distinguishedName);
     }
 
+    /// <summary>
+    /// Reads only the captured descriptor identity for one object, without reconstructing its ACL.
+    /// </summary>
+    public long? ReadDescriptorId(string distinguishedName)
+    {
+        var connection = Connection;
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT d.descriptor_id
+            FROM captured_object AS o
+            LEFT JOIN object_security_descriptor AS d ON d.object_id=o.object_id
+            WHERE o.distinguished_name=$dn COLLATE NOCASE
+            LIMIT 1
+            """;
+        command.Parameters.AddWithValue("$dn", distinguishedName);
+        var value = command.ExecuteScalar();
+        return value is null or DBNull ? null : Convert.ToInt64(value, CultureInfo.InvariantCulture);
+    }
+
     private bool StreamedNamesAreUnambiguous()
     {
         if (_streamedNamesAreUnambiguous is { } known)
@@ -849,20 +1003,14 @@ public sealed class BundleReader : IDisposable
     public SchemaAttributeReading ReadSchemaAttributes() =>
         CapturedSchemaAttributeReader.Read(Connection);
 
-    /// <summary>
-    /// Lists the computers beneath one container with their LAPS state, for the inventory.
-    /// </summary>
-    /// <remarks>
-    /// <b>Every computer, including the ones the LAPS rules exclude.</b> The rules are silent about
-    /// a domain controller and about a disabled account; an operator who could not see them here
-    /// would have no way to tell a machine the product deliberately ignored from one it never
-    /// captured.
-    /// </remarks>
-    /// <param name="containerDn">The container the operator selected.</param>
-    /// <param name="scope">How much of what is beneath it to include.</param>
-    /// <param name="pageNumber">The page to fetch, counting from one.</param>
-    public LapsPage ListLapsComputers(string containerDn, ListingScope scope, int pageNumber) =>
-        LapsInventoryReader.Read(Connection, containerDn, scope, pageNumber);
+    /// <summary>Reads capture completeness for a scope without listing or classifying its objects.</summary>
+    public ListingCoverage ReadListingCoverage(string containerDn, ListingScope scope)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
+        if (!Enum.IsDefined(scope)) throw new ArgumentOutOfRangeException(nameof(scope));
+        var (complete, shortfall) = ObjectListingReader.CoverageOf(Connection, containerDn, scope);
+        return new(complete, shortfall);
+    }
 
     /// <inheritdoc/>
     public void Dispose()
@@ -870,10 +1018,26 @@ public sealed class BundleReader : IDisposable
         if (_disposed)
             return;
 
-        _connection.Close();
-        _connection.Dispose();
-        _bulkObjectIds = null;
         _disposed = true;
+        _bulkObjectIds = null;
+
+        // The lease owns this connection when the reader was opened over a protected file, and its
+        // own disposal closes the connection before releasing the file protection. Release it in a
+        // finally: protection is meant to last while a reader is active, not after it finishes, and
+        // a reader that failed to close its connection must not leave the evidence and its seal
+        // locked until a garbage collection that may never come. Both are idempotent, so the
+        // explicit close above remains correct for a reader that owns its own connection instead.
+        try
+        {
+            _connection.Close();
+            _connection.Dispose();
+        }
+        finally
+        {
+            var protection = _protection;
+            _protection = null;
+            protection?.Dispose();
+        }
     }
 
     /// <summary>

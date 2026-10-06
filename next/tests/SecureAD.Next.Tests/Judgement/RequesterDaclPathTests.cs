@@ -106,10 +106,10 @@ public sealed class RequesterDaclPathTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData(null, ControlEvaluationState.Unknown)]
-    [InlineData(-2147483644L, ControlEvaluationState.Unknown)]
-    [InlineData(-2147483640L, ControlEvaluationState.Unknown)]
+    [InlineData(-2147483644L, ControlEvaluationState.Established)]
+    [InlineData(-2147483640L, ControlEvaluationState.Established)]
     [InlineData(2L, ControlEvaluationState.NotEstablished)]
-    public void UnsupportedOrDistributionGroupsDoNotAuthorizeTheRequester(long? groupType, ControlEvaluationState expected)
+    public void CapturedGroupScopesRetainTheirAuthorizationMeaning(long? groupType, ControlEvaluationState expected)
     {
         var directory = Capture($"O:SYG:SYD:(A;;WD;;;{TargetSid})", groupType: groupType);
         Derive(directory);
@@ -305,10 +305,10 @@ public sealed class RequesterDaclPathTests(ITestOutputHelper output)
         var directory = Capture($"O:SYG:SYD:(A;;WD;;;{UserSid})");
         Derive(directory);
         Judge(directory, [new(UserDn, CoreDn)]);
-        Mutate(directory, $"UPDATE tier0_path_calculation SET proof=json_set(proof,'{path}',{value})");
+        PathProofVerification.AlterRequesterProof(directory, path, value);
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]
@@ -317,10 +317,11 @@ public sealed class RequesterDaclPathTests(ITestOutputHelper output)
         var directory = Capture($"O:SYG:SYD:(A;;WD;;;{TargetSid})");
         Derive(directory);
         Judge(directory, [new(UserDn, CoreDn)]);
-        Mutate(directory, "UPDATE tier0_path_node SET proof=json_set(proof,'$.RequesterRoute',NULL),outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
+        PathProofVerification.ChangeJson(directory, "tier0_path_node", "$.RequesterRoute", "NULL", "WHERE target LIKE 'CN=Alice,%'");
+        Mutate(directory, "UPDATE tier0_path_node SET outcome='Unknown' WHERE target LIKE 'CN=Alice,%'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]
@@ -384,21 +385,6 @@ public sealed class RequesterDaclPathTests(ITestOutputHelper output)
         using var change = connection.CreateCommand();
         change.CommandText = sql;
         change.ExecuteNonQuery();
-        foreach (var table in new[] { "tier0_path_calculation", "tier0_path_node" })
-        {
-            using var query = connection.CreateCommand();
-            query.CommandText = "SELECT rowid,proof FROM " + table;
-            var proofs = new List<(long Id, string Proof)>();
-            using (var read = query.ExecuteReader()) while (read.Read()) proofs.Add((read.GetInt64(0), read.GetString(1)));
-            foreach (var proof in proofs)
-            {
-                using var update = connection.CreateCommand();
-                update.CommandText = "UPDATE " + table + " SET fingerprint=$hash WHERE rowid=$id";
-                update.Parameters.AddWithValue("$hash", SHA256.HashData(Encoding.UTF8.GetBytes(proof.Proof)));
-                update.Parameters.AddWithValue("$id", proof.Id);
-                update.ExecuteNonQuery();
-            }
-        }
     });
 
     private string Capture(string? descriptor, long? groupType = -2147483646, string[]? members = null,

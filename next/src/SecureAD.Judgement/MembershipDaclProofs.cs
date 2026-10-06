@@ -9,38 +9,38 @@ internal sealed record SavedMembershipDaclProof(MembershipDaclAssessment Assessm
 internal static class MembershipDaclProofs
 {
     internal static IReadOnlyList<SavedMembershipDaclProof> Create(SqliteConnection connection,
-        JudgementDescription description, string directory, PathInputs inputs,
+        JudgementDescription description, JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
         IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<MembershipDaclRequest> requests,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, RequesterMembershipContext? membershipContext, OwnAccountMembershipProofs prerequisites)
     {
         if (requests.Count == 0) return [];
+        prerequisites.RequireFor(connection, description, sources, identities, inputs, cancellationToken);
         var questions = requests.Select(request => new OwnAccountMembershipRequest(request.RequesterDn, request.GroupDn)
             { PermissionKind = request.PermissionKind }).DistinctBy(OwnAccountMembershipProofs.Key).ToArray();
-        var memberships = OwnAccountMembershipProofs.Create(connection, description, directory, inputs, nodes,
-            questions, cancellationToken, membershipContinuation: false)
+        var memberships = prerequisites.Create(nodes, questions, membershipContinuation: false)
             .ToDictionary(proof => OwnAccountMembershipProofs.Key(proof.Assessment.Request), StringComparer.Ordinal);
+        var selected = requests.OrderBy(Key, StringComparer.Ordinal).Select(request => (Request: request,
+            Membership: memberships[OwnAccountMembershipProofs.Key(new(request.RequesterDn, request.GroupDn)
+                { PermissionKind = request.PermissionKind })])).ToArray();
+        var daclQuestions = selected.Where(value => value.Membership.Assessment.Obtainability == ControlEvaluationState.Established)
+            .Select(value => new RequesterDaclProofs.Question(new(value.Request.RequesterDn, value.Request.TargetDn), value.Membership.Assessment)).ToArray();
+        var dacls = RequesterDaclProofs.Create(connection, description, sources, identities, inputs, daclQuestions,
+            cancellationToken, membershipContext);
+        var nextDacl = 0;
         var result = new List<SavedMembershipDaclProof>();
-        foreach (var request in requests.OrderBy(Key, StringComparer.Ordinal))
+        foreach (var (request, membership) in selected)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var membership = memberships[OwnAccountMembershipProofs.Key(new(request.RequesterDn, request.GroupDn)
-                { PermissionKind = request.PermissionKind })];
             SavedRequesterDaclProof? dacl = null;
             var state = membership.Assessment.Obtainability;
             var issues = new List<MembershipDaclIssue>();
             IReadOnlyList<Tier0PathStep> steps = [];
             if (state == ControlEvaluationState.Established)
             {
-                dacl = RequesterDaclProofs.Create(connection, description, directory, inputs,
-                    [new(request.RequesterDn, request.TargetDn)], cancellationToken, membership.Assessment).Single();
+                dacl = dacls[nextDacl++];
                 state = dacl.Assessment.Authorization;
                 if (state == ControlEvaluationState.Established)
-                    steps = dacl.Assessment.Steps.Select(step => step with
-                    {
-                        RequesterRequest = null,
-                        OwnAccountRequest = membership.Assessment.Request,
-                        MembershipDaclRequest = request,
-                    }).ToArray();
+                    steps = Steps(dacl.Assessment, membership.Assessment.Request, request);
                 else issues.Add(MembershipDaclIssue.DaclPermissionNotEstablished);
             }
             else issues.Add(MembershipDaclIssue.MembershipNotEstablished);
@@ -55,37 +55,8 @@ internal static class MembershipDaclProofs
         return result;
     }
 
-    internal static void Validate(SqliteConnection connection, JudgementDescription description, string directory,
-        PathInputs inputs, IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<SavedMembershipDaclProof> proofs,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (proofs.Any(proof => proof is null || proof.Assessment is null || !Valid(proof.Assessment.Request))
-            || proofs.Select(proof => Key(proof.Assessment.Request)).Distinct(StringComparer.Ordinal).Count() != proofs.Count)
-            throw Tier0PathStorage.InvalidProof();
-        // Recreate only these saved questions. A refreshed JSON hash cannot vouch a changed
-        // membership assumption, deny decision, generation, permission reference or route.
-        var replay = Create(connection, description, directory, inputs, nodes,
-            proofs.Select(proof => proof.Assessment.Request).ToArray(), cancellationToken);
-        if (Tier0PathCalculation.Fingerprint(proofs) != Tier0PathCalculation.Fingerprint(replay))
-            throw Tier0PathStorage.InvalidProof();
-    }
-
-    internal static MembershipDaclRequest? Best(Tier0PathNode node, IReadOnlyList<SavedMembershipDaclProof> proofs,
-        IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts)
-    {
-        if (node.MembershipDistance == 0) return null;
-        var previous = node.Terminal is not null ? 1 : node.MembershipDistance;
-        if (node.RequesterRoute is { } requester)
-            previous = requesters.Single(proof => proof.Assessment.Request == requester).Assessment.Steps.Count;
-        if (node.OwnAccountRoute is { } ownAccount)
-            previous = ownAccounts.Single(proof => proof.Assessment.Request == ownAccount).Steps.Count;
-        var candidate = proofs.Where(proof => proof.Assessment.Authorization == ControlEvaluationState.Established
-                && proof.Assessment.Membership.Requester == node.Subject && proof.Assessment.Steps.Count != 0)
-            .OrderBy(proof => proof.Assessment.Steps.Count).ThenBy(proof => Key(proof.Assessment.Request), StringComparer.Ordinal).FirstOrDefault();
-        return candidate is not null && (previous is null || candidate.Assessment.Steps.Count < previous)
-            ? candidate.Assessment.Request : null;
-    }
+    internal static Tier0PathStep[] Steps(RequesterDaclAssessment dacl, OwnAccountMembershipRequest membership, MembershipDaclRequest request) =>
+        dacl.Steps.Select(step => step with { RequesterRequest = null, OwnAccountRequest = membership, MembershipDaclRequest = request }).ToArray();
 
     internal static bool Valid(MembershipDaclRequest? request) => request is not null
         && !string.IsNullOrWhiteSpace(request.RequesterDn) && !string.IsNullOrWhiteSpace(request.GroupDn)

@@ -48,4 +48,5 @@ public sealed record RunListing(
     string? Detail,
     RunMoment Moment,
     RunAnnotation Annotation,
-    RunScope? Scope);
+    RunScope? Scope,
+    RunProducts Products);

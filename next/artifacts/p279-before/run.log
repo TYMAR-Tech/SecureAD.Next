@@ -1,0 +1,79 @@
+
+==== 2026-09-24T16:39:00Z  deriving ====
+2026-09-24T16:39:01Z  INFO   AttributeVisibility     started
+2026-09-24T16:39:01Z  INFO   AttributeVisibility     finished outcome=Degraded
+2026-09-24T16:39:01Z  INFO   MembershipAndNesting    started
+2026-09-24T16:39:03Z  INFO   MembershipAndNesting    finished objectsRead=46985
+2026-09-24T16:39:03Z  INFO   Derive                  read the nesting principals=32946 edgesCollected=0 unresolved=0 groupsWithUnidentifiedMembers=0 collapsed=0 unscopedBuiltins=0
+2026-09-24T16:39:05Z  INFO   ExpansionPhase          started
+2026-09-24T16:39:05Z  INFO   ExpansionPhase          finished outcome=Succeeded
+2026-09-24T16:39:05Z  INFO   ProtectedPrincipals     started
+2026-09-24T16:39:05Z  INFO   ProtectedPrincipals     finished outcome=Degraded
+2026-09-24T16:39:05Z  INFO   LatentPrivilegePaths    started
+2026-09-24T16:39:05Z  INFO   LatentPrivilegePaths    finished outcome=Succeeded
+2026-09-24T16:39:05Z  INFO   Derive                  finished state=CompletedDegraded
+
+==== 2026-09-24T16:39:14Z  judging ====
+2026-09-24T16:39:14Z  INFO   Judge                   phase name=PreparingInputs
+2026-09-24T16:39:17Z  INFO   Judge                   started rules=17
+2026-09-24T16:39:17Z  INFO   Judge                   phase name=EvaluatingObjects
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=store-permissions ms=345252
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=commit ms=55420
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=rules ms=53577
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=read-permissions ms=48887
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=complete-permissions ms=27830
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=store-control-edges ms=4227
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=classify-permissions ms=3721
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=tier0-scan ms=567
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=derive-control-edges ms=103
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=store-laps ms=77
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=membership-scan ms=14
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=complete-laps ms=0
+2026-09-24T16:48:19Z  INFO   Judge                   object work part=unobserved-roots ms=0
+2026-09-24T16:48:19Z  INFO   Judge                   object work accounted passMs=541902 measuredMs=539679 unaccountedMs=2222 objects=46985
+2026-09-24T16:48:19Z  INFO   Judge                   permission write part=shared-entry ms=202935
+2026-09-24T16:48:19Z  INFO   Judge                   permission write part=entry-row ms=114698
+2026-09-24T16:48:19Z  INFO   Judge                   permission write part=validate ms=21429
+2026-09-24T16:48:19Z  INFO   Judge                   permission write part=shared-load ms=3163
+2026-09-24T16:48:19Z  INFO   Judge                   permission write part=object-row ms=1146
+2026-09-24T16:48:19Z  INFO   Judge                   permission write part=schema-support ms=489
+2026-09-24T16:48:19Z  INFO   Judge                   permission write accounted totalMs=345221 measuredMs=343862 unaccountedMs=1358 objects=46985 entries=17164866
+2026-09-24T16:48:19Z  INFO   Judge                   phase name=SelectingOwnershipScope
+2026-09-24T16:48:30Z  INFO   Judge                   tier0-discovery scan-ms=567 candidates=0 admitted=0 objects=46985
+2026-09-24T16:48:30Z  INFO   Judge                   phase name=SelectingOwnershipScope
+2026-09-24T16:48:30Z  INFO   Judge                   phase name=AssessingOwnership
+2026-09-24T16:48:30Z  INFO   Judge                   phase name=EvaluatingRequesters
+2026-09-24T16:48:30Z  INFO   Judge                   phase name=WritingFindings
+2026-09-24T16:49:19Z  INFO   Judge                   path-requester-phase generation=48736567-7dc8-4fbc-a868-e2ae8da7ef53 phase=PreparingPaths selection-requested=False completed=True ms=48904.1
+2026-09-24T16:49:19Z  INFO   Judge                   path-requester-phase generation=48736567-7dc8-4fbc-a868-e2ae8da7ef53 phase=RequesterDacl selection-requested=False completed=True ms=10.6
+2026-09-24T16:49:19Z  INFO   Judge                   path-requester-phase generation=48736567-7dc8-4fbc-a868-e2ae8da7ef53 phase=OwnAccountMembership selection-requested=False completed=True ms=25.5
+2026-09-24T16:49:19Z  INFO   Judge                   path-requester-phase generation=48736567-7dc8-4fbc-a868-e2ae8da7ef53 phase=MembershipDacl selection-requested=False completed=True ms=22.5
+2026-09-24T16:49:20Z  INFO   Judge                   path-requester-phase generation=48736567-7dc8-4fbc-a868-e2ae8da7ef53 phase=WritingProofs selection-requested=False completed=True ms=851.5
+2026-09-24T16:49:20Z  INFO   Judge                   phase name=PublishingJudgement
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-010 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-011 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-022 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-028 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-029 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-033 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-060 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-031 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule did not reach a verdict on every object rule=SEC-032 outcome=Indeterminate
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-060 outcome=Indeterminate judged=32946 notAbout=0 ms=50751
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-031 outcome=Indeterminate judged=0 notAbout=0 ms=904
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-010 outcome=Indeterminate judged=32946 notAbout=0 ms=782
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-027 outcome=Succeeded judged=46985 notAbout=0 ms=136
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-011 outcome=Indeterminate judged=32946 notAbout=0 ms=119
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-022 outcome=Indeterminate judged=32946 notAbout=0 ms=119
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-028 outcome=Indeterminate judged=32946 notAbout=0 ms=103
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-030 outcome=Succeeded judged=46985 notAbout=0 ms=95
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-033 outcome=Indeterminate judged=32946 notAbout=0 ms=88
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-021 outcome=Succeeded judged=46985 notAbout=0 ms=85
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-029 outcome=Indeterminate judged=32946 notAbout=0 ms=85
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-032 outcome=Indeterminate judged=14039 notAbout=0 ms=57
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-093 outcome=Succeeded judged=0 notAbout=46985 ms=30
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-090 outcome=Succeeded judged=0 notAbout=46985 ms=29
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-092 outcome=Succeeded judged=0 notAbout=46985 ms=29
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-094 outcome=Succeeded judged=0 notAbout=46985 ms=29
+2026-09-24T16:49:29Z  INFO   Judge                   a rule finished rule=SEC-091 outcome=Succeeded judged=0 notAbout=46985 ms=29
+2026-09-24T16:49:29Z  INFO   Judge                   finished state=CompletedDegraded objects=46985 ruleMs=53480

@@ -1,5 +1,5 @@
-$bin = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows'
-$src = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\next\src'
+$bin = 'C:\Users\jistrand\source\repos\SecureAD.Next\next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows'
+$src = 'C:\Users\jistrand\source\repos\SecureAD.Next\next\src'
 
 Add-Type -AssemblyName System.Runtime | Out-Null
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))

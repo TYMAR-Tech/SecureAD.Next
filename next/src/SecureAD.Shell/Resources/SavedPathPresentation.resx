@@ -4,7 +4,48 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
-  <data name="Title" xml:space="preserve"><value>Saved Tier 0 path</value></data>
+  <data name="Title" xml:space="preserve"><value>Tier 0 findings and routes</value></data>
+  <data name="FindingHeading" xml:space="preserve"><value>SEC-071 — Unexpected route to Tier 0</value></data>
+  <data name="FindingExplanation" xml:space="preserve"><value>The saved evidence establishes a supported route to Tier 0 outside this account's expected administrative authority on the reached target.</value></data>
+  <data name="RiskBoundary" xml:space="preserve"><value>Saved permission, membership and ownership evidence is not proof of account takeover or a successful live operation.</value></data>
+  <data name="RiskScope" xml:space="preserve"><value>Supported checks only; other routes may exist.</value></data>
+  <data name="NoFinding" xml:space="preserve"><value>No SEC-071 finding was established by these checks. This does not establish that no route exists.</value></data>
+  <data name="NoQuestions" xml:space="preserve"><value>No saved access checks for this object. This does not assess accounts that may reach it.</value></data>
+  <data name="GroupUnexpectedRoute" xml:space="preserve"><value>Unexpected routes</value></data>
+  <data name="GroupUnknown" xml:space="preserve"><value>Unresolved access checks</value></data>
+  <data name="GroupExpectedRoute" xml:space="preserve"><value>Expected administration — not findings</value></data>
+  <data name="GroupNotEstablished" xml:space="preserve"><value>Other completed checks — no route established</value></data>
+  <data name="SummaryHeading" xml:space="preserve"><value>Whole-run Tier 0 summary</value></data>
+  <data name="Summary" xml:space="preserve"><value>Accounts with SEC-071 findings: {0:N0}
+Unresolved access checks: {1:N0}
+Supported checks only; other routes may exist.</value></data>
+  <data name="UnresolvedCount" xml:space="preserve"><value>Unresolved access checks: {0:N0}</value></data>
+  <data name="AuthorityUnexpectedOutsideAuthorityScope" xml:space="preserve"><value>The reached target is outside this account's captured administrative authority.</value></data>
+  <data name="AuthorityUnexpectedNotControlPlane" xml:space="preserve"><value>This account has no established expected administrative role on the reached target.</value></data>
+  <data name="AuthorityUnexpectedBroadPrincipal" xml:space="preserve"><value>A broad identity does not establish expected administrative authority.</value></data>
+  <data name="AuthorityExpectedSameDomainControlPlane" xml:space="preserve"><value>The reached target is within this account's captured domain administrative authority.</value></data>
+  <data name="AuthorityExpectedForestControlPlane" xml:space="preserve"><value>The reached target is within this account's captured forest administrative authority.</value></data>
+  <data name="AuthorityExpectedSchemaControlPlane" xml:space="preserve"><value>The reached target is within this account's captured schema administrative authority.</value></data>
+  <data name="AuthorityExpectedPlatformIdentityDirectAce" xml:space="preserve"><value>The saved evidence establishes an expected direct platform permission.</value></data>
+  <data name="AuthorityUnknownMembershipIncomplete" xml:space="preserve"><value>Missing captured membership evidence prevents expected authority from being settled.</value></data>
+  <data name="AuthorityUnknownAuthorityScope" xml:space="preserve"><value>The captured domain or administrative scope could not be verified.</value></data>
+  <data name="AuthorityUnknownHolderIsPlaceholder" xml:space="preserve"><value>The saved identity is a placeholder rather than a verified acting account.</value></data>
+  <data name="AuthorityUnknownDescriptorIncomplete" xml:space="preserve"><value>Missing captured permission evidence prevents expected authority from being settled.</value></data>
+  <data name="AuthorityUnknownCapabilityScope" xml:space="preserve"><value>Unsupported analysis: the required operation's permission scope was not settled.</value></data>
+  <data name="RiskIssueInputsUnavailable" xml:space="preserve"><value>Required saved inputs were unavailable for this access check.</value></data>
+  <data name="RiskIssueAuthorizationNotEstablished" xml:space="preserve"><value>This access check did not establish the required authorization. It does not exclude other routes.</value></data>
+  <data name="RiskIssueAuthorizationUnknown" xml:space="preserve"><value>The saved permission or membership proof could not settle this account's access.</value></data>
+  <data name="RiskIssueContinuationUnavailable" xml:space="preserve"><value>No supported saved continuation to a Tier 0 target was available for this question.</value></data>
+  <data name="RiskIssueRequesterUnresolved" xml:space="preserve"><value>The captured requester identity could not be resolved.</value></data>
+  <data name="RiskIssueAuthorityUnknown" xml:space="preserve"><value>The account's expected administrative authority could not be settled.</value></data>
+  <data name="MembershipStatus" xml:space="preserve"><value>Captured membership: {0}
+Prerequisites for adding this account to the group: {1}</value></data>
+  <data name="MemberPresent" xml:space="preserve"><value>present; no new Add is required</value></data>
+  <data name="MemberAbsent" xml:space="preserve"><value>absent</value></data>
+  <data name="MemberUnknown" xml:space="preserve"><value>unresolved</value></data>
+  <data name="AddEstablished" xml:space="preserve"><value>established in the saved proof; no live operation was performed</value></data>
+  <data name="AddNotEstablished" xml:space="preserve"><value>not established</value></data>
+  <data name="AddUnknown" xml:space="preserve"><value>unresolved</value></data>
   <data name="ResultHeading" xml:space="preserve"><value>Saved result</value></data>
   <data name="RouteHeading" xml:space="preserve"><value>Recorded route</value></data>
   <data name="CoverageHeading" xml:space="preserve"><value>Coverage and limitations</value></data>
@@ -23,7 +64,6 @@
   <data name="SingleStepDistance" xml:space="preserve"><value>Shortest proven route: 1 step</value></data>
   <data name="ShorterUnknown" xml:space="preserve"><value>Unsupported alternatives might be shorter. This is one recorded supported route, not all routes or a remediation recommendation.</value></data>
   <data name="ZeroDistance" xml:space="preserve"><value>Shortest proven route: 0 steps. The object is already a fixed Tier 0 target; no extra hop is added.</value></data>
-  <data name="Destination" xml:space="preserve"><value>Destination: {0}</value></data>
   <data name="Generation" xml:space="preserve"><value>Saved judgement generation: {0}
 Completed: {1:O}
 Evidence seal: {2}
@@ -43,28 +83,7 @@ Derivation generation: {3}</value></data>
   <data name="InvalidEvidence" xml:space="preserve"><value>The saved result or its supporting evidence could not be validated.</value></data>
   <data name="GenerationChanged" xml:space="preserve"><value>The saved result and its source generation do not match, or the selected generation changed while reading. The result is withheld.</value></data>
   <data name="SubjectChanged" xml:space="preserve"><value>The saved result identifies a different object. The result is withheld.</value></data>
-  <data name="EvidenceHeading" xml:space="preserve"><value>Supporting evidence</value></data>
-  <data name="StepMembership" xml:space="preserve"><value>Captured security-group membership</value></data>
-  <data name="StepWriteDacl" xml:space="preserve"><value>Permission to change the target's permissions</value></data>
-  <data name="StepCurrentOwnerDacl" xml:space="preserve"><value>Current owner's supported permission change</value></data>
-  <data name="StepOwnAccountMembership" xml:space="preserve"><value>Own-account membership is obtainable</value></data>
-  <data name="Step" xml:space="preserve"><value>{0}. {1}
-From: {2}
-To: {3}</value></data>
-  <data name="Identity" xml:space="preserve"><value>{0}
-Object: {1}; SID: {2}; naming context: {3}; captured domain: {4}; holder scope: {5}</value></data>
   <data name="NoneRecorded" xml:space="preserve"><value>not recorded</value></data>
-  <data name="MembershipWitness" xml:space="preserve"><value>Captured membership witness: {0}
-Attribute: {1}; value ordinal: {2}; value: {3}</value></data>
-  <data name="MembershipSupport" xml:space="preserve"><value>Saved membership classification: {0}; support: {1}</value></data>
-  <data name="Permission" xml:space="preserve"><value>Original holder permission {0}:
-{1}</value></data>
-  <data name="RequesterProof" xml:space="preserve"><value>Saved concrete requester authorization and ordered permission evidence:
-{0}</value></data>
-  <data name="OwnProof" xml:space="preserve"><value>Saved own-account membership proof ({0}):
-{1}</value></data>
-  <data name="CombinedProof" xml:space="preserve"><value>Saved membership followed by requester authorization:
-{0}</value></data>
   <data name="SelfMembership" xml:space="preserve"><value>Self-Membership validated write</value></data>
   <data name="WriteMembers" xml:space="preserve"><value>ordinary Write Members</value></data>
   <data name="OwnContext" xml:space="preserve"><value>Obtainable membership does not mean an Add was performed. Unknown current membership and unknown ordinary Add readiness remain unknown. The saved proof uses an ordinary authenticated directory user on a writable same-domain replica, with only the user's own membership value; authentication, replication convergence and live success are not proved.</value></data>
@@ -88,4 +107,190 @@ Saved scope and reason: {1}</value></data>
   <data name="Selection" xml:space="preserve"><value>{0}
 Saved selection scope: {1}</value></data>
   <data name="SavedQuestions" xml:space="preserve"><value>Saved questions for this object, including unresolved outcomes and operation assumptions</value></data>
+  <data name="PermissionHeadline" xml:space="preserve"><value>{0} can change permissions on the {1} {2}</value></data>
+  <data name="ExistingMembershipHeadline" xml:space="preserve"><value>{0} is a member of {1} (group)</value></data>
+  <data name="ObtainableMembershipHeadline" xml:space="preserve"><value>{0} can obtain membership in {1} (group)</value></data>
+  <data name="GroupPermissionHeadline" xml:space="preserve"><value>{0} can change permissions on the {1} {2} through membership in {3} (group)</value></data>
+  <data name="ConditionalPermissionHeadline" xml:space="preserve"><value>With membership in {3} (group), {0} would have permission to change permissions on the {1} {2}</value></data>
+  <data name="PermissionWhy" xml:space="preserve"><value>The captured permissions allow {0} to change this {1} object's permissions, but the captured evidence does not establish an expected administrative role for this account on this {1}.</value></data>
+  <data name="RecommendationHeading" xml:space="preserve"><value>Recommended change</value></data>
+  <data name="WhereHeading" xml:space="preserve"><value>Where to change it</value></data>
+  <data name="WhyFindingHeading" xml:space="preserve"><value>Why this is a finding</value></data>
+  <data name="CheckExplanationHeading" xml:space="preserve"><value>Permission-check explanation</value></data>
+  <data name="RecommendationBoundaryHeading" xml:space="preserve"><value>Scope of this recommendation</value></data>
+  <data name="RecommendationBoundary" xml:space="preserve"><value>This addresses the permission shown, not every possible route. A new capture is needed to verify the change.</value></data>
+  <data name="MembershipRecommendationBoundary" xml:space="preserve"><value>This addresses the membership shown, not every possible route. A new capture is needed to verify the change.</value></data>
+  <data name="PermissionDetailsHeading" xml:space="preserve"><value>Permission details</value></data>
+  <data name="RecordDetailsHeading" xml:space="preserve"><value>Record details</value></data>
+  <data name="AccountLabel" xml:space="preserve"><value>Account</value></data>
+  <data name="TargetLabel" xml:space="preserve"><value>Target</value></data>
+  <data name="RelevantPermissionLabel" xml:space="preserve"><value>Relevant permission</value></data>
+  <data name="GrantedToLabel" xml:space="preserve"><value>Granted to</value></data>
+  <data name="AssignmentLabel" xml:space="preserve"><value>Assignment</value></data>
+  <data name="AppliesToLabel" xml:space="preserve"><value>Applies to</value></data>
+  <data name="PermissionCheckLabel" xml:space="preserve"><value>Permission check</value></data>
+  <data name="AccountWithName" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="AccountNameNotRecorded" xml:space="preserve"><value>account name not recorded</value></data>
+  <data name="NamedObject" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="TargetWithKind" xml:space="preserve"><value>{0} — {1}</value></data>
+  <data name="KindDomain" xml:space="preserve"><value>domain</value></data>
+  <data name="KindGroup" xml:space="preserve"><value>group</value></data>
+  <data name="KindComputer" xml:space="preserve"><value>computer</value></data>
+  <data name="KindAccount" xml:space="preserve"><value>account</value></data>
+  <data name="KindOrganizationalUnit" xml:space="preserve"><value>organizational unit</value></data>
+  <data name="KindObject" xml:space="preserve"><value>object</value></data>
+  <data name="KindLabelDomain" xml:space="preserve"><value>Domain</value></data>
+  <data name="KindLabelGroup" xml:space="preserve"><value>Group</value></data>
+  <data name="KindLabelComputer" xml:space="preserve"><value>Computer</value></data>
+  <data name="KindLabelAccount" xml:space="preserve"><value>Account</value></data>
+  <data name="KindLabelOrganizationalUnit" xml:space="preserve"><value>Organizational unit</value></data>
+  <data name="KindLabelObject" xml:space="preserve"><value>Object; kind not recorded in this proof</value></data>
+  <data name="OtherObjectKind" xml:space="preserve"><value>Directory object ({0})</value></data>
+  <data name="ModifyPermissionsRight" xml:space="preserve"><value>{0} (WRITE_DAC)</value></data>
+  <data name="SelfMembershipRight" xml:space="preserve"><value>Self-Membership</value></data>
+  <data name="WriteMembersRight" xml:space="preserve"><value>Write members</value></data>
+  <data name="PermissionNotRecorded" xml:space="preserve"><value>Permission not recorded</value></data>
+  <data name="ExistingMembershipRight" xml:space="preserve"><value>Existing group membership; no new Add is required</value></data>
+  <data name="ExistingMembershipGrant" xml:space="preserve"><value>Captured membership, not a new permission grant</value></data>
+  <data name="ExistingMembershipCheck" xml:space="preserve"><value>No Add permission is needed for the captured existing membership</value></data>
+  <data name="NotApplicable" xml:space="preserve"><value>Not applicable to an identified granting entry</value></data>
+  <data name="GrantNotIdentified" xml:space="preserve"><value>No granting entry identified by this saved check</value></data>
+  <data name="ExplicitAssignment" xml:space="preserve"><value>Explicit; not inherited</value></data>
+  <data name="InheritedAssignment" xml:space="preserve"><value>Inherited; original grant location is not established by the saved evidence</value></data>
+  <data name="PermissionCheckEstablished" xml:space="preserve"><value>Allowed</value></data>
+  <data name="PermissionCheckNotEstablished" xml:space="preserve"><value>Not established by this permission check; other rights or routes are not ruled out</value></data>
+  <data name="PermissionCheckUnknown" xml:space="preserve"><value>Could not be determined from the saved evidence</value></data>
+  <data name="ConditionalAllowed" xml:space="preserve"><value>Allowed under the saved membership assumption; not proof of current access or a completed Add</value></data>
+  <data name="DirectGrantee" xml:space="preserve"><value>{0} directly</value></data>
+  <data name="GroupGrantee" xml:space="preserve"><value>{0} (group); {1}'s access is through this group</value></data>
+  <data name="DomainQualifiedName" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="OtherGrantee" xml:space="preserve"><value>{0}; this is not an identified direct grant to {1}</value></data>
+  <data name="HolderUnresolved" xml:space="preserve"><value>Unresolved permission holder; identifier in Record details</value></data>
+  <data name="RemoveExplicitRight" xml:space="preserve"><value>Remove {0} from {1}'s explicit permissions on {2}. Keep the entry's other permissions unchanged unless they are separately reviewed.</value></data>
+  <data name="RemoveInheritedRight" xml:space="preserve"><value>Locate the original inherited grant of {0} to {1} that applies to {2}, and remove that permission at its source. Keep the entry's other permissions unchanged unless they are separately reviewed. The saved evidence does not establish the original grant location; do not replace this with removal of a direct user grant.</value></data>
+  <data name="EditDomainRight" xml:space="preserve"><value>Active Directory Users and Computers → {0} → Properties → Security → Advanced → {1}'s entry → Edit → clear {2}.</value></data>
+  <data name="EditObjectRight" xml:space="preserve"><value>Active Directory Users and Computers → locate {0} ({3}) → Properties → Security → Advanced → {1}'s entry → Edit → clear {2}.</value></data>
+  <data name="FindInheritedSource" xml:space="preserve"><value>Open {0} → Properties → Security → Advanced → {1}'s inherited entry → inspect Inherited from. Locate and review the original granting object before editing; its location is not established by this saved proof.</value></data>
+  <data name="SharedGroupEffect" xml:space="preserve"><value>This permission is held by {0}, not granted directly to the user. Removing it can affect other members of that group.</value></data>
+  <data name="DescendantEffect" xml:space="preserve"><value>Review effects on descendant objects that inherit this entry; the recommendation does not calculate every affected object.</value></data>
+  <data name="UnknownGrantChange" xml:space="preserve"><value>The saved result does not identify an editable granting entry. Do not remove a direct user grant on this basis.</value></data>
+  <data name="UnknownGrantWhere" xml:space="preserve"><value>The original grant location is not established. Review the labelled permission and membership evidence before choosing an entry to change.</value></data>
+  <data name="RemoveMembership" xml:space="preserve"><value>Remove {0}'s recorded membership from {1} (group) if it is not required. Review the access lost through that group; this does not remove other membership or permission routes.</value></data>
+  <data name="EditMembership" xml:space="preserve"><value>Active Directory Users and Computers → {0} (group) → Properties → Members → {1} → Remove.</value></data>
+  <data name="MembershipOriginUncertain" xml:space="preserve"><value>Review how {0}'s membership in {1} (group) is assigned. The saved proof does not identify a removable direct Members entry; a primary-group assignment must not be treated as one.</value></data>
+  <data name="ReviewMembershipSource" xml:space="preserve"><value>Use the labelled membership evidence and Record details to locate the actual assignment before making a change.</value></data>
+  <data name="MembershipBoundary" xml:space="preserve"><value>No group change was performed. Current membership and the prerequisites for adding the account remain separate saved answers, including any unresolved answer. The model assumes an ordinary authenticated directory user on a writable same-domain replica, changing only the user's own membership value; authentication, replication and live success were not verified.</value></data>
+  <data name="EntryHeading" xml:space="preserve"><value>{0} entry {1} on {2} ({3})</value></data>
+  <data name="EntryDetails" xml:space="preserve"><value>Account or group named by this entry: {0}
+Relevant permission: {1}
+Entry's recorded rights: {2}
+Assignment: {3}
+Applies to: {4}
+Scope check: {5}
+Account matching: {6}</value></data>
+  <data name="Allow" xml:space="preserve"><value>Allow</value></data>
+  <data name="Deny" xml:space="preserve"><value>Deny</value></data>
+  <data name="UnsupportedEntry" xml:space="preserve"><value>Unsupported permission</value></data>
+  <data name="EntryScopeEstablished" xml:space="preserve"><value>applies to the checked permission on this object</value></data>
+  <data name="EntryScopeNotEstablished" xml:space="preserve"><value>does not establish the checked permission on this object</value></data>
+  <data name="EntryScopeUnknown" xml:space="preserve"><value>not determined; the recorded restriction needs further interpretation</value></data>
+  <data name="TrusteeMatches" xml:space="preserve"><value>the saved check matches this account</value></data>
+  <data name="TrusteeDoesNotMatch" xml:space="preserve"><value>the saved check does not match this account</value></data>
+  <data name="TrusteeUnknown" xml:space="preserve"><value>the saved check could not determine whether this entry applies to the account</value></data>
+  <data name="SupportingGrant" xml:space="preserve"><value>This entry supports the saved permission answer.</value></data>
+  <data name="ObtainedTrustee" xml:space="preserve"><value>Matching uses the saved obtainable-membership assumption, not a claim that an Add succeeded.</value></data>
+  <data name="UnnamedRights" xml:space="preserve"><value>additional unnamed rights; exact mask in Record details</value></data>
+  <data name="RecordedPermissionScope" xml:space="preserve"><value>the recorded permission scope (identifier in Record details)</value></data>
+  <data name="RecordedDescendantClass" xml:space="preserve"><value>of the recorded class (identifier in Record details)</value></data>
+  <data name="RelationshipMembership" xml:space="preserve"><value>{0} is a member of {1} (group).</value></data>
+  <data name="RelationshipOwnAccountMembership" xml:space="preserve"><value>{0} can obtain membership in {1} (group) under the saved own-account checks; no Add was performed.</value></data>
+  <data name="RelationshipWriteDacl" xml:space="preserve"><value>{0} holds Modify permissions on {1} ({2}). This is permission to change that object's permissions, not to act as that object.</value></data>
+  <data name="RelationshipCurrentOwnerDacl" xml:space="preserve"><value>{0}'s captured ownership supports the saved permission change on {1} ({2}); this is not account takeover.</value></data>
+  <data name="MembershipEntryWitness" xml:space="preserve"><value>The captured member value at ordinal {0} supports this membership. Its exact directory names are in Record details.</value></data>
+  <data name="PrimaryGroupWitness" xml:space="preserve"><value>The captured primary-group value at ordinal {0} supports this relationship; it is not a direct Members entry.</value></data>
+  <data name="ObtainableWitness" xml:space="preserve"><value>The saved own-account membership assessment supports this relationship. Current membership and Add prerequisites are shown separately.</value></data>
+  <data name="SavedPermissionWitness" xml:space="preserve"><value>The original saved permission supports this relationship; its entry and source reference are retained below.</value></data>
+  <data name="RecordField" xml:space="preserve"><value>{0} — {1}</value></data>
+  <data name="RecordQuestion" xml:space="preserve"><value>Saved question number</value></data>
+  <data name="RecordFamily" xml:space="preserve"><value>Saved question family</value></data>
+  <data name="RecordRisk" xml:space="preserve"><value>Saved risk classification</value></data>
+  <data name="RecordAuthorization" xml:space="preserve"><value>Saved authorization result</value></data>
+  <data name="RecordExpectedness" xml:space="preserve"><value>Expected administration classification</value></data>
+  <data name="RecordExpectednessReason" xml:space="preserve"><value>Expected administration reason</value></data>
+  <data name="RecordIssue" xml:space="preserve"><value>Saved qualification limitation</value></data>
+  <data name="RecordGeneration" xml:space="preserve"><value>Judgement generation</value></data>
+  <data name="RecordDerivation" xml:space="preserve"><value>Derivation generation</value></data>
+  <data name="RecordEvidenceSeal" xml:space="preserve"><value>Evidence seal</value></data>
+  <data name="RecordCalculation" xml:space="preserve"><value>Calculation fingerprint</value></data>
+  <data name="RecordSourceProof" xml:space="preserve"><value>Source proof fingerprint</value></data>
+  <data name="RecordSource" xml:space="preserve"><value>Source evidence fingerprint</value></data>
+  <data name="RecordRequesterDn" xml:space="preserve"><value>Requester distinguished name</value></data>
+  <data name="RecordTargetDn" xml:space="preserve"><value>Target distinguished name</value></data>
+  <data name="RecordGroupDn" xml:space="preserve"><value>Membership group distinguished name</value></data>
+  <data name="RecordPermissionKind" xml:space="preserve"><value>Membership permission kind</value></data>
+  <data name="RecordMembership" xml:space="preserve"><value>Captured membership present</value></data>
+  <data name="RecordAdd" xml:space="preserve"><value>Ordinary Add readiness</value></data>
+  <data name="RecordReachedTarget" xml:space="preserve"><value>Reached Tier 0 target</value></data>
+  <data name="RecordAuthority" xml:space="preserve"><value>Captured administrative authority</value></data>
+  <data name="RecordAuthorityDerivation" xml:space="preserve"><value>Authority derivation generation</value></data>
+  <data name="RecordDerivationSeal" xml:space="preserve"><value>Authority derivation seal</value></data>
+  <data name="RecordMembershipCatalogue" xml:space="preserve"><value>Authority membership catalogue version</value></data>
+  <data name="RecordMembershipSourceAvailable" xml:space="preserve"><value>Captured authority membership source available</value></data>
+  <data name="RecordMembershipFingerprint" xml:space="preserve"><value>Captured authority membership fingerprint</value></data>
+  <data name="RecordMembershipLimits" xml:space="preserve"><value>Captured authority membership limitations</value></data>
+  <data name="RecordAuthorityRoots" xml:space="preserve"><value>Captured administrative authority roots</value></data>
+  <data name="NoAuthorityRoots" xml:space="preserve"><value>No captured authority roots</value></data>
+  <data name="AuthorityRootRecord" xml:space="preserve"><value>Distinguished name: {0}; SID: {1}; scope: {2}</value></data>
+  <data name="RecordStep" xml:space="preserve"><value>Relationship {0}</value></data>
+  <data name="RecordRelationship" xml:space="preserve"><value>Saved relationship kind</value></data>
+  <data name="RecordSourceDn" xml:space="preserve"><value>Source distinguished name</value></data>
+  <data name="RecordPermissionId" xml:space="preserve"><value>Original permission reference</value></data>
+  <data name="RecordMembershipSubject" xml:space="preserve"><value>Membership classification subject</value></data>
+  <data name="RecordMembershipSupport" xml:space="preserve"><value>Membership classification support</value></data>
+  <data name="RecordStepSource" xml:space="preserve"><value>Relationship source</value></data>
+  <data name="RecordStepTarget" xml:space="preserve"><value>Relationship target</value></data>
+  <data name="RecordEntry" xml:space="preserve"><value>Permission on {0}, captured ordinal {1}</value></data>
+  <data name="RecordAceType" xml:space="preserve"><value>Captured entry type</value></data>
+  <data name="RecordHolderDn" xml:space="preserve"><value>Permission holder distinguished name</value></data>
+  <data name="RecordDn" xml:space="preserve"><value>Distinguished name</value></data>
+  <data name="RecordSid" xml:space="preserve"><value>Security identifier (SID)</value></data>
+  <data name="RecordGuid" xml:space="preserve"><value>Object identifier (GUID)</value></data>
+  <data name="RecordDomain" xml:space="preserve"><value>Captured domain</value></data>
+  <data name="RecordNamingContext" xml:space="preserve"><value>Naming context</value></data>
+  <data name="RecordSidScope" xml:space="preserve"><value>SID resource scope</value></data>
+  <data name="RecordMask" xml:space="preserve"><value>Full recorded access mask</value></data>
+  <data name="AccessMaskRecord" xml:space="preserve"><value>{0} (0x{1})</value></data>
+  <data name="RecordObjectType" xml:space="preserve"><value>Permission scope identifier</value></data>
+  <data name="RecordHasObjectType" xml:space="preserve"><value>Permission scope identifier present</value></data>
+  <data name="RecordInheritedObjectType" xml:space="preserve"><value>Inherited class identifier</value></data>
+  <data name="RecordHasInheritedObjectType" xml:space="preserve"><value>Inherited class identifier present</value></data>
+  <data name="RecordInherited" xml:space="preserve"><value>Inherited</value></data>
+  <data name="RecordInheritanceFlags" xml:space="preserve"><value>Inheritance flags</value></data>
+  <data name="RecordPropagationFlags" xml:space="preserve"><value>Propagation flags</value></data>
+  <data name="RecordApplicationData" xml:space="preserve"><value>Application data (hexadecimal)</value></data>
+  <data name="RecordScopeResult" xml:space="preserve"><value>Saved entry scope result</value></data>
+  <data name="RecordTrusteeResult" xml:space="preserve"><value>Saved account matching result</value></data>
+  <data name="RecordTrusteeReason" xml:space="preserve"><value>Saved account matching reason</value></data>
+  <data name="RecordGroupType" xml:space="preserve"><value>Captured group type</value></data>
+  <data name="RecordCapturedUtc" xml:space="preserve"><value>Captured at</value></data>
+  <data name="RecordDirectMember" xml:space="preserve"><value>Direct membership value</value></data>
+  <data name="RecordPermissionFingerprint" xml:space="preserve"><value>Original permission fingerprint</value></data>
+  <data name="RecordPermissionIssues" xml:space="preserve"><value>Requester permission limitations</value></data>
+  <data name="RecordMembershipBasis" xml:space="preserve"><value>Membership assessment basis</value></data>
+  <data name="RecordObtainability" xml:space="preserve"><value>Membership obtainability result</value></data>
+  <data name="RecordMembershipIssues" xml:space="preserve"><value>Membership operation limitations</value></data>
+  <data name="RecordSelfPermissionIssues" xml:space="preserve"><value>Self-Membership permission limitations</value></data>
+  <data name="RecordOperationContext" xml:space="preserve"><value>Saved operation assumptions</value></data>
+  <data name="RecordDescriptor" xml:space="preserve"><value>Saved security descriptor result</value></data>
+  <data name="RecordAccountFlags" xml:space="preserve"><value>Captured account flags</value></data>
+  <data name="RecordOperationEvidence" xml:space="preserve"><value>Membership operation evidence</value></data>
+  <data name="RecordMemberWriteIssues" xml:space="preserve"><value>Write members permission limitations</value></data>
+  <data name="RecordMemberWriteScope" xml:space="preserve"><value>Write members scope evidence on {0}, captured ordinal {1}</value></data>
+  <data name="RecordSchemaValue" xml:space="preserve"><value>Captured schema: {0} — {1}, value {2}</value></data>
+  <data name="RecordCombinedContext" xml:space="preserve"><value>Saved membership-followed-by-permission assumptions</value></data>
+  <data name="RecordCombinedIssues" xml:space="preserve"><value>Membership-followed-by-permission limitations</value></data>
+  <data name="RecordWitnessObject" xml:space="preserve"><value>Witness distinguished name</value></data>
+  <data name="RecordAttribute" xml:space="preserve"><value>Captured attribute</value></data>
+  <data name="RecordOrdinal" xml:space="preserve"><value>Captured value ordinal</value></data>
+  <data name="RecordValue" xml:space="preserve"><value>Captured value</value></data>
 </root>

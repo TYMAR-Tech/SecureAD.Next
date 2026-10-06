@@ -51,17 +51,21 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// </remarks>
     public ShellViewModel(
         HomeViewModel home, AssetsViewModel assets, DashboardViewModel dashboard,
-        SettingsViewModel settings)
+        SettingsViewModel settings, RulesViewModel rules)
     {
         ArgumentNullException.ThrowIfNull(home);
         ArgumentNullException.ThrowIfNull(assets);
         ArgumentNullException.ThrowIfNull(dashboard);
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(rules);
 
         Home = home;
         Assets = assets;
         Dashboard = dashboard;
         Settings = settings;
+        Rules = rules;
+        Assets.PropertyChanged += OnAssetsPaneChanged;
+        Assets.Suspend();
     }
 
     /// <summary>Where the run library is chosen, and where a run is started from.</summary>
@@ -91,6 +95,7 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// an operator a coverage statement from one capture beside a tree from another.
     /// </remarks>
     public DashboardViewModel Dashboard { get; }
+    public RulesViewModel Rules { get; }
 
     /// <summary>
     /// What this installation has been told.
@@ -111,6 +116,7 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>Whether the dashboard section is the one showing.</summary>
     public bool IsDashboard => Section == ShellSection.Dashboard;
+    public bool IsRules => Section == ShellSection.Rules;
 
     /// <summary>Whether the settings section is the one showing.</summary>
     public bool IsSettings => Section == ShellSection.Settings;
@@ -252,6 +258,7 @@ internal sealed partial class ShellViewModel : ObservableObject
             {
                 ShellSection.Assets => Assets,
                 ShellSection.Dashboard => Dashboard,
+                ShellSection.Rules => Rules,
                 ShellSection.Settings => Settings,
                 _ => Home,
             };
@@ -308,6 +315,13 @@ internal sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     public void Show(ShellSection section) => Section = section;
 
+    internal void ClearOpenedRun()
+    {
+        Dashboard.Clear();
+        Rules.Clear();
+        Assets.Clear();
+    }
+
     /// <summary>
     /// Builds the second row of tabs for a section, and selects the first view that works.
     /// </summary>
@@ -327,7 +341,7 @@ internal sealed partial class ShellViewModel : ObservableObject
             Views.Add(SectionView.Built("Objects"));
             Views.Add(SectionView.Built("Findings"));
             Views.Add(SectionView.Built("LAPS"));
-            Views.Add(SectionView.Built("Rules"));
+            Views.Add(SectionView.Built("Delegations"));
         }
 
         foreach (var view in Views)
@@ -353,6 +367,13 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// otherwise read as "nothing is selected" for an instant on every click.
     /// </para>
     /// </remarks>
+    private void OnAssetsPaneChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(AssetsViewModel.Pane) || Section != ShellSection.Assets) return;
+        var selected = Views.FirstOrDefault(view => string.Equals(view.Name, Assets.Pane.ToString(), StringComparison.OrdinalIgnoreCase));
+        if (selected is not null && !selected.IsSelected) selected.IsSelected = true;
+    }
+
     private void OnViewChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(SectionView.IsSelected)
@@ -370,7 +391,7 @@ internal sealed partial class ShellViewModel : ObservableObject
         {
             "Findings" => AssetsPane.Findings,
             "LAPS" => AssetsPane.Laps,
-            "Rules" => AssetsPane.Rules,
+            "Delegations" => AssetsPane.Delegations,
             _ => AssetsPane.Objects,
         };
 
@@ -393,12 +414,15 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSectionChanged(ShellSection value)
     {
-        if (value != ShellSection.Assets) Assets.CancelSavedPathRead();
+        // Rebuilding tabs must not start a read against the previous Assets selection.
+        Assets.Suspend();
+        Rules.Suspend();
         RebuildViews(value);
 
         OnPropertyChanged(nameof(IsHome));
         OnPropertyChanged(nameof(IsAssets));
         OnPropertyChanged(nameof(IsDashboard));
+        OnPropertyChanged(nameof(IsRules));
         OnPropertyChanged(nameof(IsSettings));
         OnPropertyChanged(nameof(IsAudit));
         OnPropertyChanged(nameof(HasViews));
@@ -412,7 +436,6 @@ internal sealed partial class ShellViewModel : ObservableObject
         if (value == ShellSection.Assets)
         {
             ShowAssetsOfTheSelectedRun();
-            Assets.ResumeSavedPathRead();
             return;
         }
 
@@ -421,6 +444,12 @@ internal sealed partial class ShellViewModel : ObservableObject
         if (value == ShellSection.Dashboard)
         {
             ShowDashboardOfTheSelectedRun();
+            return;
+        }
+        if (value == ShellSection.Rules)
+        {
+            if (Library.Selected is { } selected) Rules.Show(selected.Path, selected.Name);
+            else Rules.Clear();
             return;
         }
 

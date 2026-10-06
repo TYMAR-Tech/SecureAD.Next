@@ -95,6 +95,66 @@ public sealed record PermissionTrustee(
     /// </remarks>
     public bool HoldsThePermission =>
         WellKnownRole is null or WellKnownSidRole.Principal or WellKnownSidRole.LogonContext;
+
+    /// <summary>
+    /// <c>PRINCIPAL SELF</c>, the one well-known SID whose displayed name depends on the object it
+    /// is read against.
+    /// </summary>
+    public const string PrincipalSelfSid = "S-1-5-10";
+
+    /// <summary>Whether this is that SID.</summary>
+    public bool IsPrincipalSelf => string.Equals(Sid, PrincipalSelfSid, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The same trustee with nothing in it that depends on the object it was found on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is what may be shared between objects, and <c>P-285</c> is the defect of not
+    /// having it.</b> <see cref="DisplayedAgainst"/> renders <c>S-1-5-10</c> as
+    /// <c>This object (Alice)</c>, and <c>SharedPermissionStorage.ContentKey</c> hashed that
+    /// rendering - so Alice's SELF entry and Bob's hashed differently and never shared a row. That
+    /// kept the judgement correct, because sharing a row would have shown one object's name
+    /// against another object's permission; it also meant the table <c>P-279</c> built to
+    /// deduplicate barely deduplicated at all. Measured on a real forest: 34,593 of 36,484 rows
+    /// were this one SID.
+    /// </para>
+    /// <para>
+    /// <b>The raw access control entry is evidence and the name is presentation.</b> What the
+    /// directory holds is the SID; <c>This object (Alice)</c> is this product saying what that
+    /// means when read against Alice. Storing the first and resolving the second on the way out is
+    /// not replaying a judgement - it is declining to freeze a rendering into a shared value.
+    /// </para>
+    /// </remarks>
+    public PermissionTrustee Shared() =>
+        IsPrincipalSelf
+            ? this with { Name = WellKnownSidCatalog.FindBySid(PrincipalSelfSid)?.DisplayName }
+            : this;
+
+    /// <summary>
+    /// The same trustee as it reads against <paramref name="objectDistinguishedName"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Only the object being read may supply this name.</b> <c>S-1-5-10</c> grants the object
+    /// itself, so an entry naming it on Alice and the identical entry on Bob grant two different
+    /// principals. A caller resolving it against the wrong object would report one object's name
+    /// against another's permission, which is the failure an audit tool cannot have.
+    /// </para>
+    /// <para>
+    /// In the judgement that is why this is applied <b>after</b> the occurrence's fingerprint has
+    /// been verified and never before: the fingerprint is what establishes which object carried
+    /// the entry, so resolving first would be taking the name from an unproven target.
+    /// </para>
+    /// </remarks>
+    public PermissionTrustee DisplayedAgainst(string objectDistinguishedName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(objectDistinguishedName);
+
+        return IsPrincipalSelf
+            ? this with { Name = $"This object ({DnHelper.ExtractFirstRdn(objectDistinguishedName)})" }
+            : this;
+    }
 }
 
 /// <summary>
@@ -151,7 +211,18 @@ public sealed record PermissionEntry(
     byte PropagationFlags,
     bool HasObjectType,
     bool HasInheritedObjectType,
-    byte[] ApplicationData);
+    byte[] ApplicationData)
+{
+    /// <summary>The same entry, with its trustee rendered against the object carrying it.</summary>
+    /// <param name="objectDistinguishedName">The object this entry was found on.</param>
+    /// <remarks>
+    /// Lifts <see cref="PermissionTrustee.DisplayedAgainst"/> to the entry, for callers that hold a
+    /// stored entry rather than a trustee. Only <c>S-1-5-10</c> changes; every other trustee means
+    /// the same thing wherever it is found and is returned untouched.
+    /// </remarks>
+    public PermissionEntry DisplayedAgainst(string objectDistinguishedName) =>
+        this with { Trustee = Trustee.DisplayedAgainst(objectDistinguishedName) };
+}
 
 /// <summary>
 /// Everything a bundle holds about one object's permissions.
@@ -222,6 +293,31 @@ public sealed record ObjectPermissions(
     IReadOnlyList<PermissionEntry> Entries,
     IReadOnlyList<string> Errors)
 {
+    /// <summary>
+    /// Which stored descriptor this object carries, or <c>null</c> when the bundle kept none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the first of the three bindings <c>P-280</c> needs, and the only one that cannot
+    /// live in the judgement.</b> Once the classification is keyed per descriptor, an object
+    /// reaches its permissions through this identity - so if the judgement were allowed to record
+    /// which descriptor an object carries, a store saying <i>X uses D2</i> where the evidence says
+    /// <i>X uses D1</i> would validate every fingerprint it holds and attribute D2's permissions to
+    /// X. A fingerprint cannot stop that, because whoever edited the judgement recomputes it.
+    /// </para>
+    /// <para>
+    /// So it is read here, out of <c>object_security_descriptor</c>, under the evidence seal, and
+    /// the judgement is never asked. It is not part of the descriptor's content and nothing is
+    /// judged from it: it is the join, stated by the only party entitled to state it.
+    /// </para>
+    /// <para>
+    /// <c>null</c> for an object with no stored descriptor - 280,871 of the production capture's
+    /// 940,067 - which is not the same as an object that grants nothing, and is why
+    /// <see cref="Availability"/> exists beside it.
+    /// </para>
+    /// </remarks>
+    public long? DescriptorId { get; init; }
+
     /// <summary>
     /// Whether an <c>OWNER RIGHTS</c> entry restricts what owning this object grants.
     /// </summary>
@@ -327,7 +423,10 @@ internal static class ObjectPermissionsReader
             descriptor.DaclWasCanonical,
             descriptor.IsDaclProtected,
             [.. entries.Select(e => e.WithTrustee(trustees[e.TrusteeSid]))],
-            ErrorsOf(connection, descriptor.DescriptorId, stored));
+            ErrorsOf(connection, descriptor.DescriptorId, stored))
+        {
+            DescriptorId = descriptor.DescriptorId,
+        };
     }
 
     /// <summary>The stored descriptor, before its SIDs have been given names.</summary>
@@ -690,23 +789,23 @@ internal static class ObjectPermissionsReader
     private static PermissionTrustee WellKnownTrustee(
         string sid, WellKnownSid wellKnown, string objectDn)
     {
-        var name = wellKnown.Sid == PrincipalSelfSid
-            ? $"This object ({DnHelper.ExtractFirstRdn(objectDn)})"
-            : wellKnown.DisplayName;
-
+        // Rendered by PermissionTrustee and not here, so capture and the judgement's read path
+        // cannot drift into two spellings of the same sentence. P-285 needs both: this builds the
+        // displayed form from the catalogue name, and SharedPermissionStorage turns it back before
+        // hashing and forward again after verifying.
         return new PermissionTrustee(
             sid,
-            name,
+            wellKnown.DisplayName,
             DistinguishedName: null,
             DomainFqdn: null,
             UnresolvedReason: null,
             wellKnown.Role,
-            wellKnown.Meaning);
+            wellKnown.Meaning).DisplayedAgainst(objectDn);
     }
 
     /// <summary>
     /// <c>PRINCIPAL SELF</c>, the one well-known SID whose meaning depends on the object it is
     /// read against.
     /// </summary>
-    private const string PrincipalSelfSid = "S-1-5-10";
+    private const string PrincipalSelfSid = PermissionTrustee.PrincipalSelfSid;
 }

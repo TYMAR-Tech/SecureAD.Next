@@ -49,7 +49,7 @@ namespace SecureAD.Judgement;
 /// Specified in <c>docs/specs/rules/SEC-091-laps-missing-on-a-computer.md</c>.
 /// </para>
 /// </remarks>
-public sealed class LapsMissingOnComputer : IRule
+public sealed class LapsMissingOnComputer : IObjectRule
 {
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(

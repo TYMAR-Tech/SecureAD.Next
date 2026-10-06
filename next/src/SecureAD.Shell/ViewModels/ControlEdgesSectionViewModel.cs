@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,8 +12,13 @@ namespace SecureAD.Shell.ViewModels;
 /// <summary>Two paged views over the same persisted edge product, never an authorization calculation in the screen.</summary>
 internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewModel
 {
-    private Func<bool, bool, long, Result<ControlEdgePage>>? _read;
-    private Func<bool, Result<SelfMembershipAssessmentSet>>? _readAssessments;
+    private Func<bool, bool, long, CancellationToken, Task<Result<ControlEdgePage>>>? _read;
+    private Func<bool, CancellationToken, Task<Result<SelfMembershipAssessmentSet>>>? _readAssessments;
+    private CancellationTokenSource? _pending;
+    private long _revision;
+    private bool _active;
+    /// <summary>The current control-page read and its dependent saved products.</summary>
+    public Task ReadCompletion { get; private set; } = Task.CompletedTask;
     private bool _selectedIsUser;
     private bool _configuring;
     private long _after;
@@ -48,7 +54,16 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     public void Configure(bool hasPrincipal, bool selectedIsUser,
         Func<bool, bool, long, Result<ControlEdgePage>> read,
         Func<bool, Result<SelfMembershipAssessmentSet>> readAssessments)
+        => ConfigureAsync(hasPrincipal, selectedIsUser,
+            (holder, expected, after, _) => Task.FromResult(read(holder, expected, after)),
+            (requester, _) => Task.FromResult(readAssessments(requester)));
+
+    /// <summary>Binds protected cancellable callbacks for the selected object section.</summary>
+    public void ConfigureAsync(bool hasPrincipal, bool selectedIsUser,
+        Func<bool, bool, long, CancellationToken, Task<Result<ControlEdgePage>>> read,
+        Func<bool, CancellationToken, Task<Result<SelfMembershipAssessmentSet>>> readAssessments)
     {
+        _active = true;
         _configuring = true;
         try
         {
@@ -84,6 +99,29 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     }
     private void Load()
     {
+        if (_active) ReadCompletion = LoadAsync();
+    }
+
+    /// <summary>Prevents retained commands from reading a section that is no longer visible.</summary>
+    public void Suspend()
+    {
+        _active = false;
+        CancelRead();
+    }
+
+    /// <summary>Invalidates all pending and displayed answers when the section is left.</summary>
+    public void CancelRead()
+    {
+        _revision++;
+        var pending = _pending;
+        _pending = null;
+        pending?.Cancel();
+        CancelMemberReads();
+        ClearContent();
+    }
+
+    private void ClearContent()
+    {
         Rows = [];
         SelectedEdge = null;
         ThroughMembership = [];
@@ -94,8 +132,51 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         RequesterCoverage = "Requester assessments have not been read.";
         Coverage = "Control edges have not been read.";
         Counts = "Expected edges hidden: unknown (product not read).";
+        ThroughMembershipCoverage = MemberAttributionPanelViewModel.Text("SelectPermission");
+    }
+
+    private async Task LoadAsync()
+    {
+        CancelRead();
         if (_read is null) return;
-        var result = _read(ByHolder, IncludeExpected, _after);
+        var revision = _revision;
+        var pending = new CancellationTokenSource();
+        _pending = pending;
+        Coverage = NavigationText.Get("SavedLoading");
+        Counts = RequesterCoverage = ThroughMembershipCoverage = "";
+        try
+        {
+            var result = await _read(ByHolder, IncludeExpected, _after, pending.Token);
+            if (revision != _revision || pending.IsCancellationRequested) return;
+            if (result.IsSuccess && !AcceptGeneration(result.Value)) return;
+            Result<SelfMembershipAssessmentSet>? assessments = null;
+            if (result.IsSuccess && _readAssessments is not null && ByHolder == _selectedIsUser)
+                assessments = await _readAssessments(ByHolder, pending.Token);
+            if (revision != _revision || pending.IsCancellationRequested) return;
+            ApplyPage(result, assessments);
+            await MembershipReadCompletion;
+            await MemberReadCompletion;
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            if (revision == _revision && !pending.IsCancellationRequested)
+            {
+                ClearContent();
+                Coverage = NavigationText.Get("Refused") + " " + error.Message;
+                Counts = RequesterCoverage = ThroughMembershipCoverage = "";
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_pending, pending)) _pending = null;
+            pending.Dispose();
+        }
+    }
+
+    private void ApplyPage(Result<ControlEdgePage> result, Result<SelfMembershipAssessmentSet>? assessments)
+    {
         if (!result.IsSuccess)
         {
             Coverage = result.Error.Description;
@@ -104,18 +185,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             return;
         }
         var page = result.Value;
-        if (page.ProductWasDerived && page.GenerationId is null)
-        {
-            WithholdGeneration("The judgement generation is missing. Return to the first page to read the products again.");
-            return;
-        }
-        if (_generation is not null && _generation != page.GenerationId
-            || page.OwnershipCoverage is { } ownership && ownership.GenerationId != page.GenerationId)
-        {
-            WithholdGeneration("The judgement changed while paging. Return to the first page to read the new generation.");
-            return;
-        }
-        if (!LoadRequesterAssessments(page.GenerationId)) return;
+        if (!ApplyRequesterAssessments(page.GenerationId, assessments)) return;
         _generation = page.GenerationId;
         Coverage = !page.ProductWasDerived ? "Control edges were not derived for this selection; re-judge the bundle."
             : $"Capture coverage: {(page.CaptureIsComplete ? "all declared domains read" : "incomplete")}. "
@@ -145,16 +215,31 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         FirstMembershipPermissionPage();
     }
 
-    private bool LoadRequesterAssessments(Guid? generation)
+    private bool AcceptGeneration(ControlEdgePage page)
     {
-        if (_readAssessments is null || ByHolder != _selectedIsUser)
+        if (page.ProductWasDerived && page.GenerationId is null)
+        {
+            WithholdGeneration("The judgement generation is missing. Return to the first page to read the products again.");
+            return false;
+        }
+        if (_generation is not null && _generation != page.GenerationId
+            || page.OwnershipCoverage is { } ownership && ownership.GenerationId != page.GenerationId)
+        {
+            WithholdGeneration("The judgement changed while paging. Return to the first page to read the new generation.");
+            return false;
+        }
+        return true;
+    }
+
+    private bool ApplyRequesterAssessments(Guid? generation, Result<SelfMembershipAssessmentSet>? read)
+    {
+        if (read is not { } result)
         {
             RequesterCoverage = ByHolder
                 ? "Requester assessments are shown when this selected object is the requester."
                 : "Requester assessments are shown when this selected object is the target group.";
             return true;
         }
-        var result = _readAssessments(ByHolder);
         if (!result.IsSuccess)
         {
             RequesterCoverage = result.Error.Description;

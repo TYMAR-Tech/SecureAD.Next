@@ -61,6 +61,13 @@ coverage.cobertura.xml
 # Isolated verification TEMP/TMP roots contain retained test data, not source.
 /t-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
 
+# Local verification records, deliberately broken source copies and isolated temporary data.
+# Preserve these on disk as evidence; they must never enter a source checkpoint commit.
+/.v-*/
+/.vt-*/
+/.t-df-*/
+/.m-df-*/
+
 # DocFX leftovers. The site is no longer built or published; these entries stay so a
 # stale local build cannot be committed by accident.
 _site/
@@ -92,3 +99,11 @@ annotations.db
 # Bundles dropped in for analysis. Local only: this is a real forest's evidence, and the
 # repository is not where it lives.
 Lab Databases/
+
+# Isolated verification TEMP/TMP roots, second naming scheme. Same reason as the /t-xxxxxxxx/
+# rule above: these are retained test data, not source. 38 GB across 218,000 files on
+# 2026-09-23, none of it referenced by the solution, and one `git add -A` away from a push
+# GitHub would reject. The benchmark folders beside it are deliberately NOT ignored - they
+# hold uncommitted measurement source under a gigabyte of build output, and ignoring the
+# folder would hide the source along with it.
+next/.t/

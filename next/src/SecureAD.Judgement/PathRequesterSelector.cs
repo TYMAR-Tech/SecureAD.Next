@@ -5,16 +5,43 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
-internal sealed class PathRequesterSelector(BundleReader bundle, PathInputs inputs,
+internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> readAttributes,
+    Func<string, ObjectPermissions?> readPermissions, PathInputs inputs,
     IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyDictionary<string, NamingContextKind> contexts,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken, PostPassDiagnostics? diagnostic)
 {
-    internal const int Version = 1;
+    internal PathRequesterSelector(BundleReader bundle, PathInputs inputs,
+        IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyDictionary<string, NamingContextKind> contexts,
+        CancellationToken cancellationToken, PostPassDiagnostics? diagnostic)
+        : this(bundle.ReadObjectAttributes, bundle.ReadPermissions, inputs, nodes, contexts, cancellationToken, diagnostic) { }
+
+    internal const int Version = 4;
+    internal RequesterMembershipContext? Memberships { get; init; }
     private const int WriteDacl = 0x40000;
     private readonly Dictionary<string, ObjectAttributes?> _attributes = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ObjectPermissions?> _permissions = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<PathRequesterSelectionLimitation> _limitations = [];
-    private readonly Dictionary<string, PathRequesterCandidate> _candidates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Candidate> _candidates = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string Sid, string? Scope), int> _identityCounts = [];
+    private readonly HashSet<string> _fixedTargets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<PathRequesterSelectionWitness>> _terminals = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _requesterFingerprints = new(StringComparer.OrdinalIgnoreCase);
+    private long _questionsConsidered;
+    private long _sourcesFingerprinted;
+
+    private sealed class Candidate(PathRequesterCandidate original)
+    {
+        private readonly HashSet<PathRequesterSelectionWitness> _seen = new(original.Witnesses);
+        private readonly List<PathRequesterSelectionWitness> _witnesses = new(original.Witnesses);
+
+        internal void Include(IEnumerable<PathRequesterSelectionWitness> witnesses)
+        {
+            foreach (var witness in witnesses)
+                if (_seen.Add(witness)) _witnesses.Add(witness);
+        }
+
+        internal PathRequesterCandidate Finish() => original with { Witnesses = _witnesses.ToArray() };
+    }
 
     internal PathRequesterSelection Select()
     {
@@ -27,7 +54,10 @@ internal sealed class PathRequesterSelector(BundleReader bundle, PathInputs inpu
             return Result(false, []);
         }
 
-        var resources = ResourceScope();
+        var resources = PrepareLookups();
+        diagnostic?.Part("selecting-questions");
+        diagnostic?.Counter("resourcesTotal", resources.Count);
+        var processed = 0L;
         foreach (var dn in resources.Order(StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -39,6 +69,7 @@ internal sealed class PathRequesterSelector(BundleReader bundle, PathInputs inpu
             if (Qualification(dn, dn) is { } resourceIssue)
             {
                 Limit(resourceIssue, dn, null, null);
+                diagnostic?.Counter("resourcesProcessed", ++processed);
                 continue;
             }
             foreach (var entry in permissions?.Entries ?? [])
@@ -78,87 +109,11 @@ internal sealed class PathRequesterSelector(BundleReader bundle, PathInputs inpu
                     }
                 }
             }
+            diagnostic?.Counter("resourcesProcessed", ++processed);
         }
+        diagnostic?.Part("fingerprinting-sources");
         return Result(true, resources.Order(StringComparer.OrdinalIgnoreCase)
             .Select(dn => new PathRequesterSelectionSource(dn, SourceFingerprint(dn))).ToArray());
-    }
-
-    internal void Validate(PathRequesterSelection selection, IReadOnlyList<RequesterDaclRequest> requesters,
-        IReadOnlyList<OwnAccountMembershipRequest> ownAccounts, IReadOnlyList<MembershipDaclRequest> membershipDacls)
-    {
-        if (selection.Version != Version || selection.JudgementGenerationId != inputs.JudgementGenerationId
-            || selection.InputFingerprint != Tier0PathCalculation.Fingerprint(inputs)
-            || selection.InputScanCompleted != (inputs.Availability == PathInputAvailability.Recorded)
-            || selection.Candidates is null || selection.Sources is null || selection.Limitations is null)
-            throw Tier0PathStorage.InvalidProof();
-        if (selection.Candidates.Any(value => value is null || string.IsNullOrWhiteSpace(value.RequesterDn)
-                || string.IsNullOrWhiteSpace(value.TargetDn) || value.Witnesses is null || value.Witnesses.Any(witness => witness is null
-                    || string.IsNullOrWhiteSpace(witness.ResourceDn) || string.IsNullOrWhiteSpace(witness.HolderDn)))
-            || selection.Sources.Any(value => value is null || string.IsNullOrWhiteSpace(value.ResourceDn))
-            || selection.Limitations.Any(value => value is null)) throw Tier0PathStorage.InvalidProof();
-        var expectedScope = inputs.Availability == PathInputAvailability.Recorded ? ResourceScope() : [];
-        if (!selection.Sources.Select(value => value.ResourceDn).Order(StringComparer.OrdinalIgnoreCase)
-            .SequenceEqual(expectedScope.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)) throw Tier0PathStorage.InvalidProof();
-        foreach (var source in selection.Sources)
-            if (source.Fingerprint != SourceFingerprint(source.ResourceDn)) throw Tier0PathStorage.InvalidProof();
-        if (!selection.Limitations.Contains(new(PathRequesterSelectionReason.OtherPathFamiliesNotSelected, null, null, null, null))
-            || selection.Limitations.Contains(new(PathRequesterSelectionReason.InputsUnavailable, null, null, null, null)) != !selection.InputScanCompleted
-            || selection.Limitations.Contains(new(PathRequesterSelectionReason.CapturedInputUncertainty, null, null, null, null)) != (inputs.UncertaintyRegions.Count != 0)
-            || selection.Limitations.Any(value => !Enum.IsDefined(value.Reason)
-                || value.ResourceDn is { } dn && !expectedScope.Contains(dn))) throw Tier0PathStorage.InvalidProof();
-        if (selection.Candidates.Select(Key).Distinct(StringComparer.Ordinal).Count() != selection.Candidates.Count)
-            throw Tier0PathStorage.InvalidProof();
-        // Validate recorded questions and their original witnesses, not Select(): reopening must
-        // neither discover additional requesters nor schedule another assessment scope.
-        foreach (var candidate in selection.Candidates)
-        {
-            if (!Enum.IsDefined(candidate.Family) || string.IsNullOrWhiteSpace(candidate.RequesterDn)
-                || string.IsNullOrWhiteSpace(candidate.TargetDn) || candidate.Witnesses is not { Count: > 0 }
-                || !User(candidate.RequesterDn) || Qualification(candidate.RequesterDn, candidate.TargetDn) is not null
-                || candidate.RequesterFingerprint != Tier0PathCalculation.Fingerprint(Attributes(candidate.RequesterDn))) throw Tier0PathStorage.InvalidProof();
-            var membershipTarget = candidate.Family == PathRequesterFamily.MembershipDacl ? candidate.GroupDn : candidate.TargetDn;
-            if (candidate.Family == PathRequesterFamily.RequesterDacl)
-            {
-                if (!Fixed(candidate.TargetDn) || candidate.GroupDn is not null || candidate.PermissionKind is not null) throw Tier0PathStorage.InvalidProof();
-            }
-            else if (membershipTarget is null || !Global(membershipTarget) || Qualification(candidate.RequesterDn, membershipTarget) is not null
-                || candidate.PermissionKind is not { } kind || !Enum.IsDefined(kind)
-                || candidate.Family == PathRequesterFamily.OwnAccountMembership && (candidate.GroupDn is not null || nodes[membershipTarget].MembershipDistance is null)
-                || candidate.Family == PathRequesterFamily.MembershipDacl && !Fixed(candidate.TargetDn)) throw Tier0PathStorage.InvalidProof();
-            var primary = false;
-            var terminal = false;
-            foreach (var witness in candidate.Witnesses)
-            {
-                var entry = Permissions(witness.ResourceDn)?.Entries.SingleOrDefault(value => value.Ordinal == witness.PermissionOrdinal);
-                if (!expectedScope.Contains(witness.ResourceDn) || entry is null
-                    || (entry.AccessMask & witness.RequiredMask) == 0
-                    || EntryReachReader.FromPropagationFlags(entry.PropagationFlags) != EntryReach.ThisObject
-                    || !Same(Holder(witness.ResourceDn, entry), witness.HolderDn)) throw Tier0PathStorage.InvalidProof();
-                if (candidate.Family == PathRequesterFamily.MembershipDacl && witness.RequiredMask == WriteDacl)
-                {
-                    if (!Same(witness.ResourceDn, candidate.TargetDn) || !Same(witness.HolderDn, candidate.GroupDn)
-                        || witness.MemberDn is not null) throw Tier0PathStorage.InvalidProof();
-                    terminal = true;
-                    continue;
-                }
-                var required = candidate.Family == PathRequesterFamily.RequesterDacl ? WriteDacl : Mask(candidate.PermissionKind!.Value);
-                if (witness.RequiredMask != required || !Same(witness.ResourceDn, membershipTarget)
-                    || Qualification(witness.HolderDn, witness.ResourceDn) is not null) throw Tier0PathStorage.InvalidProof();
-                if (witness.MemberDn is null)
-                {
-                    if (!Same(witness.HolderDn, candidate.RequesterDn)) throw Tier0PathStorage.InvalidProof();
-                }
-                else if (!Same(witness.MemberDn, candidate.RequesterDn) || !Global(witness.HolderDn)
-                    || Attributes(witness.HolderDn)?.Find("member")?.Values.Any(value => Same(value.Text, witness.MemberDn)) != true)
-                    throw Tier0PathStorage.InvalidProof();
-                primary = true;
-            }
-            if (!primary || candidate.Family == PathRequesterFamily.MembershipDacl && !terminal) throw Tier0PathStorage.InvalidProof();
-        }
-        if (!Requests(selection).Select(RequesterDaclProofs.Key).SequenceEqual(requesters.Select(RequesterDaclProofs.Key).Order(StringComparer.Ordinal))
-            || !OwnAccounts(selection).Select(OwnAccountMembershipProofs.Key).SequenceEqual(ownAccounts.Select(OwnAccountMembershipProofs.Key).Order(StringComparer.Ordinal))
-            || !MembershipDacls(selection).Select(MembershipDaclProofs.Key).SequenceEqual(membershipDacls.Select(MembershipDaclProofs.Key).Order(StringComparer.Ordinal)))
-            throw Tier0PathStorage.InvalidProof();
     }
 
     internal static RequesterDaclRequest[] Requests(PathRequesterSelection selection) => selection.Candidates
@@ -173,117 +128,192 @@ internal sealed class PathRequesterSelector(BundleReader bundle, PathInputs inpu
         .Select(value => new MembershipDaclRequest(value.RequesterDn, value.GroupDn!, value.TargetDn) { PermissionKind = value.PermissionKind!.Value })
         .OrderBy(MembershipDaclProofs.Key, StringComparer.Ordinal).ToArray();
 
-    private HashSet<string> ResourceScope()
+    private HashSet<string> PrepareLookups()
     {
+        diagnostic?.Part("indexing-identities");
+        diagnostic?.Counter("identityNodesTotal", nodes.Count);
         var result = inputs.FixedTargets.Select(value => value.DistinguishedName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var target in inputs.FixedTargets) _fixedTargets.Add(target.DistinguishedName);
+        var indexed = 0L;
         foreach (var node in nodes.Values)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (node.Subject.Sid is { } sid)
+            {
+                var key = IdentityKey(sid, node.Subject.SidScope);
+                _identityCounts[key] = _identityCounts.GetValueOrDefault(key) + 1;
+            }
             if (node.MembershipDistance is not null && Group(node.Subject.DistinguishedName)) result.Add(node.Subject.DistinguishedName);
+            diagnostic?.Counter("identityNodesIndexed", ++indexed);
         }
+        diagnostic?.Part("indexing-target-permissions");
+        var permissionsRead = 0L;
         foreach (var target in inputs.FixedTargets)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var entry in Permissions(target.DistinguishedName)?.Entries ?? [])
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                diagnostic?.Counter("targetPermissionsProcessed", ++permissionsRead);
                 if ((entry.AccessMask & WriteDacl) != 0 && EntryReachReader.FromPropagationFlags(entry.PropagationFlags) == EntryReach.ThisObject
-                    && Holder(target.DistinguishedName, entry) is { } holder && Group(holder)) result.Add(holder);
+                    && Holder(target.DistinguishedName, entry) is { } holder && Group(holder))
+                {
+                    result.Add(holder);
+                    if (Qualification(holder, target.DistinguishedName) is not null) continue;
+                    if (!result.TryGetValue(holder, out var group)) throw Tier0PathStorage.InvalidProof();
+                    if (!_terminals.TryGetValue(holder, out var witnesses)) _terminals[holder] = witnesses = [];
+                    witnesses.Add(new(target.DistinguishedName, entry.Ordinal, WriteDacl, group, null));
+                    if (Memberships is null) continue;
+                    foreach (var route in Memberships.Groups(holder))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        result.Add(route.GroupDn);
+                        if (!_terminals.TryGetValue(route.GroupDn, out var continuations)) _terminals[route.GroupDn] = continuations = [];
+                        continuations.Add(new(target.DistinguishedName, entry.Ordinal, WriteDacl, group, null) { Membership = route.Evidence });
+                    }
+                }
             }
+        }
+        foreach (var group in _terminals.Keys)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _terminals[group] = _terminals[group].OrderBy(value => value.ResourceDn, StringComparer.OrdinalIgnoreCase).ToList();
+        }
         return result;
     }
 
-    private IEnumerable<PathRequesterSelectionWitness> TerminalWitnesses(string group)
-    {
-        foreach (var target in inputs.FixedTargets.OrderBy(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (Qualification(group, target.DistinguishedName) is not null) continue;
-            foreach (var entry in Permissions(target.DistinguishedName)?.Entries ?? [])
-                if ((entry.AccessMask & WriteDacl) != 0 && EntryReachReader.FromPropagationFlags(entry.PropagationFlags) == EntryReach.ThisObject
-                    && Same(Holder(target.DistinguishedName, entry), group)) yield return new(target.DistinguishedName, entry.Ordinal, WriteDacl, group, null);
-        }
-    }
+    private IReadOnlyList<PathRequesterSelectionWitness> TerminalWitnesses(string group) =>
+        _terminals.TryGetValue(group, out var witnesses) ? witnesses : [];
 
     private IEnumerable<PathRequesterSelectionWitness> Requesters(string resource, PermissionEntry entry, int mask)
     {
-        var holder = Holder(resource, entry);
+        var sameForest = mask == WriteDacl && Memberships?.HasForestScope == true;
+        var holder = sameForest ? Memberships!.Holder(entry.Trustee, nodes[resource].Subject)?.DistinguishedName : Holder(resource, entry);
         if (entry.Trustee.Sid is "S-1-1-0" or "S-1-5-11")
         {
             Limit(PathRequesterSelectionReason.BroadIdentityNotExpanded, resource, entry, null);
             yield break;
         }
-        if (holder is null || Qualification(holder, resource) is not null)
+        if (holder is null)
         {
-            Limit(holder is null ? PathRequesterSelectionReason.IdentityUnresolved : Qualification(holder, resource)!.Value, resource, entry, null);
+            Limit(PathRequesterSelectionReason.IdentityUnresolved, resource, entry, null);
+            yield break;
+        }
+        if (Qualification(holder, resource, sameForest) is { } issue)
+        {
+            Limit(issue, resource, entry, null);
             yield break;
         }
         if (User(holder)) { yield return new(resource, entry.Ordinal, mask, holder, null); yield break; }
-        if (!Global(holder))
+        if (!Global(holder) && (!sameForest || !Group(holder)))
         {
             Limit(Group(holder) ? PathRequesterSelectionReason.GlobalGroupRequired : PathRequesterSelectionReason.RequesterKindUnsupported, resource, entry, null);
             yield break;
         }
+        if (sameForest && RequesterTrusteeReading.Number(Attributes(holder), "groupType") is { } type
+            && !RequesterTrusteeReading.SupportsSecurityNesting(type, null, true, Sid.IsBuiltinDomain(entry.Trustee.Sid)))
+        {
+            Limit(PathRequesterSelectionReason.PermissionUnsupported, resource, entry, null);
+            yield break;
+        }
         Limit(PathRequesterSelectionReason.MembershipVisibilityUnknown, resource, entry, null);
-        foreach (var member in Attributes(holder)?.Find("member")?.Values ?? [])
+        foreach (var member in Global(holder) ? Attributes(holder)?.Find("member")?.Values ?? [] : [])
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(member.Text)) { Limit(PathRequesterSelectionReason.IdentityUnresolved, resource, entry, null); continue; }
-            if (Qualification(member.Text, resource) is { } issue) { Limit(issue, resource, entry, member.Text); continue; }
-            if (!User(member.Text)) { Limit(PathRequesterSelectionReason.RequesterKindUnsupported, resource, entry, member.Text); continue; }
+            if (Qualification(member.Text, resource, sameForest) is { } memberIssue) { Limit(memberIssue, resource, entry, member.Text); continue; }
+            if (!User(member.Text))
+            {
+                if (mask != WriteDacl || Memberships is null || !Global(member.Text))
+                    Limit(PathRequesterSelectionReason.RequesterKindUnsupported, resource, entry, member.Text);
+                continue;
+            }
             yield return new(resource, entry.Ordinal, mask, holder, member.Text);
         }
+        if (mask != WriteDacl || Memberships is null) yield break;
+        var routes = sameForest ? Memberships.CapturedRequesters(holder) : Memberships.Requesters(holder);
+        foreach (var nested in routes)
+        {
+            if (Global(holder) && nested.Evidence.Links.Count == 1) continue;
+            yield return new(resource, entry.Ordinal, mask, holder, nested.RequesterDn) { Membership = nested.Evidence };
+        }
+        foreach (var limitation in sameForest ? Memberships.CapturedLimitations(holder) : Memberships.Limitations(holder))
+            Limit(limitation.Reason, resource, entry, limitation.Dn);
     }
 
     private void Add(PathRequesterFamily family, string requester, string target, string? group,
         OwnAccountMembershipPermissionKind? kind, PathRequesterSelectionWitness[] witnesses)
     {
-        var candidate = new PathRequesterCandidate(family, requester, target, group, kind,
-            Tier0PathCalculation.Fingerprint(Attributes(requester)), witnesses);
-        var key = Key(candidate);
-        if (_candidates.TryGetValue(key, out var existing)) candidate = existing with { Witnesses = existing.Witnesses.Concat(witnesses).Distinct().ToArray() };
-        _candidates[key] = candidate;
+        cancellationToken.ThrowIfCancellationRequested();
+        diagnostic?.Counter("questionsConsidered", ++_questionsConsidered);
+        var key = Key(family, requester, target, group, kind);
+        if (_candidates.TryGetValue(key, out var existing))
+        {
+            existing.Include(witnesses);
+            return;
+        }
+        if (!_requesterFingerprints.TryGetValue(requester, out var fingerprint))
+        {
+            _requesterFingerprints[requester] = fingerprint = Tier0PathCalculation.Fingerprint(Attributes(requester));
+            diagnostic?.Counter("accountsFingerprinted", _requesterFingerprints.Count);
+        }
+        _candidates.Add(key, new(new(family, requester, target, group, kind, fingerprint, witnesses)));
+        diagnostic?.Counter("distinctQuestions", _candidates.Count);
     }
 
     private PathRequesterSelection Result(bool complete, PathRequesterSelectionSource[] sources) => new(Version, inputs.JudgementGenerationId,
-        Tier0PathCalculation.Fingerprint(inputs), complete, _candidates.Values.OrderBy(Key, StringComparer.Ordinal).ToArray(), sources,
+        Tier0PathCalculation.Fingerprint(inputs), complete, _candidates.Values.Select(candidate => candidate.Finish()).OrderBy(Key, StringComparer.Ordinal).ToArray(), sources,
         _limitations.OrderBy(value => Tier0PathCalculation.Fingerprint(value), StringComparer.Ordinal).ToArray());
-    private static string Key(PathRequesterCandidate value) => value.Family + "\0" + value.RequesterDn.ToUpperInvariant() + "\0"
-        + value.TargetDn.ToUpperInvariant() + "\0" + value.GroupDn?.ToUpperInvariant() + "\0" + value.PermissionKind;
+    private static string Key(PathRequesterCandidate value) => Key(value.Family, value.RequesterDn, value.TargetDn, value.GroupDn, value.PermissionKind);
+    private static string Key(PathRequesterFamily family, string requester, string target, string? group, OwnAccountMembershipPermissionKind? kind) =>
+        family + "\0" + requester.ToUpperInvariant() + "\0" + target.ToUpperInvariant() + "\0" + group?.ToUpperInvariant() + "\0" + kind;
+    private static (string Sid, string? Scope) IdentityKey(string sid, string? scope) => (sid.ToUpperInvariant(), scope?.ToUpperInvariant());
     private static int Mask(OwnAccountMembershipPermissionKind kind) => kind == OwnAccountMembershipPermissionKind.SelfMembership ? 0x08 : 0x20;
     private void Limit(PathRequesterSelectionReason reason, string? resource, PermissionEntry? entry, string? member) =>
         _limitations.Add(new(reason, resource, entry?.Ordinal, entry?.Trustee.Sid, member));
     private static bool Same(string? left, string? right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
-    private bool Fixed(string dn) => inputs.FixedTargets.Any(value => Same(value.DistinguishedName, dn));
+    private bool Fixed(string dn) => _fixedTargets.Contains(dn);
     private bool Group(string dn) => Attributes(dn) is { } value && RequesterTrusteeReading.HasClass(value, "group");
     private bool Global(string dn) => Group(dn) && RequesterTrusteeReading.Number(Attributes(dn), "groupType") is { } type && (type & 0x8000000fL) == 0x80000002L;
     private bool User(string dn) => Attributes(dn) is { } value && RequesterTrusteeReading.HasClass(value, "user") && !RequesterTrusteeReading.HasClass(value, "computer");
     private string? Holder(string resource, PermissionEntry entry) => entry.Trustee.Sid == "S-1-5-10" ? resource : entry.Trustee.DistinguishedName;
     private ObjectAttributes? Attributes(string dn)
     {
-        if (!_attributes.TryGetValue(dn, out var value)) _attributes[dn] = value = bundle.ReadObjectAttributes(dn);
+        if (!_attributes.TryGetValue(dn, out var value)) _attributes[dn] = value = readAttributes(dn);
         return value;
     }
     private ObjectPermissions? Permissions(string dn)
     {
-        if (!_permissions.TryGetValue(dn, out var value)) _permissions[dn] = value = bundle.ReadPermissions(dn);
+        if (!_permissions.TryGetValue(dn, out var value)) _permissions[dn] = value = readPermissions(dn);
         return value;
     }
-    private string SourceFingerprint(string dn) => Tier0PathCalculation.Fingerprint(new
+    private string SourceFingerprint(string dn)
     {
-        Resource = Attributes(dn), Permissions = Permissions(dn),
-        Holders = (Permissions(dn)?.Entries ?? []).Select(entry => Holder(dn, entry)).OfType<string>()
-            .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).Select(Attributes).ToArray(),
-    });
-    private PathRequesterSelectionReason? Qualification(string dn, string resource)
+        cancellationToken.ThrowIfCancellationRequested();
+        var fingerprint = Tier0PathCalculation.Fingerprint(new
+        {
+            Resource = Attributes(dn), Permissions = Permissions(dn),
+            Holders = (Permissions(dn)?.Entries ?? []).Select(entry => Holder(dn, entry)).OfType<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).Select(Attributes).ToArray(),
+        });
+        diagnostic?.Counter("resourcesFingerprinted", ++_sourcesFingerprinted);
+        cancellationToken.ThrowIfCancellationRequested();
+        return fingerprint;
+    }
+    private PathRequesterSelectionReason? Qualification(string dn, string resource) => Qualification(dn, resource, false);
+
+    private PathRequesterSelectionReason? Qualification(string dn, string resource, bool sameForest)
     {
         var value = Attributes(dn);
         if (!nodes.TryGetValue(dn, out var node) || value is null || node.Subject.ObjectGuid is null || !node.Subject.IsValid
             || Tier0Target.From(value, node.Subject.NamingContext) != node.Subject
             || (User(dn) || Group(dn)) && node.Subject.Sid is null
             || RequesterTrusteeReading.HasClass(value, "foreignSecurityPrincipal") || Same(value.Find("isDeleted")?.OnlyValue?.Text, "TRUE")
-            || node.Subject.Sid is { } sid && nodes.Values.Count(other => Same(other.Subject.Sid, sid) && Same(other.Subject.SidScope, node.Subject.SidScope)) != 1)
+            || node.Subject.Sid is { } sid && _identityCounts.GetValueOrDefault(IdentityKey(sid, node.Subject.SidScope)) != 1)
             return PathRequesterSelectionReason.IdentityUnresolved;
         if (!nodes.TryGetValue(resource, out var target) || !Domain(node.Subject) || !Domain(target.Subject)
-            || !Same(node.Subject.DomainFqdn, target.Subject.DomainFqdn)) return PathRequesterSelectionReason.ResourceContextUnsupported;
+            || (sameForest ? !Memberships!.InResourceForest(node.Subject, target.Subject)
+                : !Same(node.Subject.DomainFqdn, target.Subject.DomainFqdn))) return PathRequesterSelectionReason.ResourceContextUnsupported;
         return null;
     }
     private bool Domain(Tier0Target identity) => contexts.TryGetValue(identity.NamingContext, out var kind) && kind == NamingContextKind.Domain

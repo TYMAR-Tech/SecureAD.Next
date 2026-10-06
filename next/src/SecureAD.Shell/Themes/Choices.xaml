@@ -25,7 +25,21 @@
 
     <!-- One option of a choice: a ring, a dot when it is the answer, and its label.
 
-         STACKS RATHER THAN SITTING IN A ROW, which is what the tree column needs. -->
+         STACKS RATHER THAN SITTING IN A ROW, which is what the tree column needs.
+
+         THE BRUSHES INSIDE THE TEMPLATE ARE DYNAMIC, AND THE DIFFERENCE IS NOT COSMETIC. A
+         StaticResource in a template's visual tree is resolved when the template is instantiated,
+         against the lookup chain of the element wearing it - control, view, application, theme -
+         and NOT against this dictionary's siblings. It therefore worked only because
+         Application.Resources happens to be the last stop, and failed outright the first time this
+         style was worn by a view loaded without an application: XamlParseException, "Cannot find
+         resource named 'BorderBrush'". Nothing renders differently; the lookup is simply made in
+         the place it was always being made from.
+
+         THE SAME SHAPE IS STILL PRESENT ELSEWHERE, in the trigger setters of Controls.xaml and
+         Tabs.xaml. Those fire only on hover or focus, so nothing has exercised them outside a
+         running application yet. Left alone here rather than swept up: a reviewed visual file is
+         not the place for an unrequested pass. Recorded as a finding instead. -->
 
     <Style x:Key="ChoiceRadio" TargetType="RadioButton">
         <Setter Property="Margin" Value="0,4,0,0" />
@@ -35,28 +49,28 @@
                     <StackPanel Orientation="Horizontal" Background="Transparent">
                         <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,8,0">
                             <Ellipse x:Name="Ring"
-                                     Stroke="{StaticResource BorderBrush}"
+                                     Stroke="{DynamicResource BorderBrush}"
                                      StrokeThickness="1"
-                                     Fill="{StaticResource SurfaceRaisedBackground}" />
+                                     Fill="{DynamicResource SurfaceRaisedBackground}" />
                             <Ellipse x:Name="Dot"
                                      Width="8" Height="8"
-                                     Fill="{StaticResource AccentBrush}"
+                                     Fill="{DynamicResource AccentBrush}"
                                      Visibility="Collapsed" />
                         </Grid>
                         <TextBlock x:Name="Label"
                                    Text="{TemplateBinding Content}"
                                    VerticalAlignment="Center"
-                                   Foreground="{StaticResource PrimaryTextBrush}" />
+                                   Foreground="{DynamicResource PrimaryTextBrush}" />
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Ring" Property="Stroke"
-                                    Value="{StaticResource AccentBrush}" />
+                                    Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
                             <Setter TargetName="Ring" Property="Stroke"
-                                    Value="{StaticResource AccentBrush}" />
+                                    Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

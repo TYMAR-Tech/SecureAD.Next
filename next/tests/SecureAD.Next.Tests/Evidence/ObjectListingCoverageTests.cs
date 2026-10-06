@@ -1,5 +1,7 @@
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
+using SecureAD.Judgement;
+using SecureAD.Next.Tests.Judgement;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -176,6 +178,19 @@ public sealed class ObjectListingCoverageTests(ITestOutputHelper output)
         Assert.Contains("was recorded as ExcludedForWantOfCandidates", page.Shortfall, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(ListingScope.Base, true)]
+    [InlineData(ListingScope.Subtree, false)]
+    public void P248SavedLapsSharedCoverageKeepsScopeCompleteness(ListingScope scope, bool expected)
+    {
+        var directory = WriteBundle(Exclusion(Child));
+        using var reader = BundleReader.Open(directory).Value;
+
+        var coverage = reader.ReadListingCoverage(Root, scope);
+
+        Assert.Equal(expected, coverage.IsComplete);
+    }
+
     private AttestedExclusion Exclusion(
         string dn, ExclusionKind kind = ExclusionKind.ByChoice, string domain = "renamed.example") =>
         new(dn, domain, kind, "populated-domain", "Operator's test exclusion.",
@@ -243,9 +258,7 @@ public sealed class ObjectListingCoverageTests(ITestOutputHelper output)
 
     private static LapsPage ListLaps(string directory, ListingScope scope)
     {
-        var opening = BundleReader.Open(directory);
-        Assert.True(opening.IsSuccess, opening.Error?.Description);
-        using var reader = opening.Value;
-        return reader.ListLapsComputers(Root, scope, 1);
+        SavedLapsTestRun.Judge(directory);
+        return SavedLapsTestRun.Read(directory, Root, scope);
     }
 }

@@ -7,6 +7,7 @@ using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
+using SQLitePCL;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence;
@@ -39,6 +40,35 @@ public sealed class BundleReaderTests : IDisposable
         using var opening = Open();
 
         Assert.True(opening.IsSuccess);
+    }
+
+    [Fact]
+    public void DescriptorIdentityLookupDoesNotReconstructAccessEntries()
+    {
+        WriteABundleCanonicalisedBy(AceCanonicalization.Version);
+        using var opening = Open();
+        var reconstructedDescriptors = 0;
+        var sentinel = false;
+        strdelegate_trace callback = (_, sql) =>
+        {
+            if (sql == "SELECT 971") sentinel = true;
+            if (sql.Contains("JOIN security_descriptor AS s", StringComparison.Ordinal))
+                reconstructedDescriptors++;
+        };
+        raw.sqlite3_trace(opening.Value.Connection.Handle!, callback, null!);
+        using (var command = opening.Value.Connection.CreateCommand())
+        {
+            command.CommandText = "SELECT 971";
+            command.ExecuteScalar();
+        }
+
+        var descriptor = opening.Value.ReadDescriptorId(AnObject().DistinguishedName);
+
+        raw.sqlite3_trace(opening.Value.Connection.Handle!, (strdelegate_trace)null!, null!);
+        GC.KeepAlive(callback);
+        Assert.True(sentinel);
+        Assert.NotNull(descriptor);
+        Assert.Equal(0, reconstructedDescriptors);
     }
 
     [Fact]
@@ -605,6 +635,43 @@ public sealed class BundleReaderTests : IDisposable
         SqliteConnection.ClearAllPools();
         if (Directory.Exists(_directory))
             Directory.Delete(_directory, recursive: true);
+    }
+
+    /// <summary>
+    /// Closing a reader releases the file protection it holds, not merely its connection.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A reader opened over a <see cref="ProtectedStoreFile"/> takes ownership of that file's
+    /// lease. Protection is meant to last while a reader is active; once the last one finishes,
+    /// the owner must be able to move, replace or delete the closed run. Before this was fixed the
+    /// reader closed only its connection, so the evidence and its seal stayed locked after both
+    /// the reader and the store were disposed.
+    /// </para>
+    /// <para>
+    /// Nothing here forces a collection, deliberately. A release that happens only once a
+    /// finaliser runs is the defect rather than the fix, and a test that collects first would pass
+    /// against the broken code and prove the opposite of what is wanted.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ClosingAReaderReleasesTheFilesItProtected()
+    {
+        WriteABundle();
+
+        var store = ProtectedStoreFile.OpenEvidence(_directory).Value!;
+        var reader = BundleReader.Open(store).Value!;
+
+        store.Dispose();
+        reader.Dispose();
+
+        File.WriteAllText(BundleLayout.EvidencePath(_directory), "replacement");
+        File.WriteAllText(BundleLayout.SealPath(_directory), "replacement");
+
+        Assert.Equal(
+            ("replacement", "replacement"),
+            (File.ReadAllText(BundleLayout.EvidencePath(_directory)),
+             File.ReadAllText(BundleLayout.SealPath(_directory))));
     }
 
     // ---------------------------------------------------------------------------------------

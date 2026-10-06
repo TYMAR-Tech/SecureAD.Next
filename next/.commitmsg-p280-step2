@@ -1,0 +1,45 @@
+P-280 step 2: name which descriptor an object carries, from the evidence
+
+The join P-280 keys on, and the one binding that cannot live in the
+judgement.
+
+Once the classification is keyed per descriptor rather than per object,
+an object reaches its permissions through a descriptor identity. If the
+judgement were allowed to record that identity, a store saying "X uses
+D2" where the evidence says "X uses D1" would validate every fingerprint
+it holds and quietly attribute D2's permissions to X. A fingerprint
+cannot stop that, because whoever edited the judgement recomputes it.
+
+So ObjectPermissions.DescriptorId is read out of object_security_descriptor
+under the evidence seal and the judgement is never asked. It is not part
+of the descriptor's content and nothing is judged from it: it is the
+join, stated by the only party entitled to state it. Null for an object
+with no stored descriptor - 280,871 of the production capture's 940,067 -
+which is not the same as an object that grants nothing, and is why
+Availability exists beside it.
+
+Four checks, each with its opposite:
+
+  AnObjectWithAStoredDescriptorNamesIt
+  TwoObjectsSharingADescriptorNameTheSameOne   - the join itself
+  ObjectsCarryingDifferentDescriptorsNameDifferentOnes - without this, a
+      build returning a constant passes the one above and every object in
+      the forest reads back the first descriptor's permissions
+  AnObjectWithNoStoredDescriptorNamesNone
+
+The third asserts the stored descriptor count beside the two identities.
+A bare NotEqual can only say "they matched" and leaves the cause to
+guesswork - writer deduplicating two distinct descriptors into one, or
+reader reporting one identity for two rows. Stating both halves names
+the guilty one immediately. It was written that way because guessing
+cost most of a session: the test appeared to fail with both ids reading
+1, which looked like an evidence-reader defect serious enough to stop
+the work. It was mutation residue. A `DescriptorId = 1` probe had been
+restored in the source but the test ran --no-build against the assembly
+still holding it. Comparing file timestamps did not catch it; mutating
+to +100 and rebuilding produced 101 and 102 in one run. The standing
+instruction to rebuild explicitly around a mutation exists for exactly
+this, and skipping it manufactured a product defect that was never there.
+
+Mutation-tested with explicit rebuilds before and after restoring.
+2,982 Evidence and Judgement tests green.

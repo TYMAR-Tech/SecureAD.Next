@@ -1,4 +1,4 @@
-$bin = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next\next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows'
+$bin = 'C:\Users\jistrand\source\repos\SecureAD.Next\next\tests\SecureAD.Next.Tests\bin\Debug\net10.0-windows'
 
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Kernel.dll'))
 $null = [System.Reflection.Assembly]::LoadFrom((Join-Path $bin 'SecureAD.Evidence.dll'))

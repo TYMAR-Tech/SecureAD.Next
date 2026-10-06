@@ -16,6 +16,59 @@ public sealed class SysvolWorkerCollection { }
 [Collection(nameof(SysvolWorkerCollection))]
 public sealed class SysvolWorkerTests(ITestOutputHelper output)
 {
+    // The first production capture reached 200 MB of run.log with domains still to go, because
+    // every operation wrote a line before the request and one per worker progress event. These two
+    // checks hold the reduction: an ordinary operation costs one line, and no failure was traded
+    // away to get there.
+    [Fact]
+    public async Task AnOrdinaryOperationCostsOneLineRatherThanOnePerProgressEvent()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "securead-worker-volume-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        output.WriteLine(directory);
+        await File.WriteAllBytesAsync(Path.Combine(directory, "sample.bin"), new byte[512 * 1024]);
+        var log = new RecordingRunLog();
+        await using var reader = new IsolatedSysvolFileReader(() => HostCommand("securead-cli.dll"), TimeSpan.FromSeconds(30), log, TimeProvider.System);
+        var observed = 0;
+        reader.Watching = (_, _) => observed++;
+        var target = GpoTarget.Of(Guid.NewGuid(), "volume policy", directory);
+
+        var result = await reader.ReadFileAsync(target, "sample.bin", CancellationToken.None);
+
+        // A half-megabyte read reports progress repeatedly - once per 64 KB chunk plus the open -
+        // so the events and the lines must differ: were every event still written, the two numbers
+        // would be equal and this would not measure anything.
+        // A half-megabyte read reports progress repeatedly - once per 64 KB chunk plus the open -
+        // so the events and the lines must differ: were every event still written, the two numbers
+        // would be equal and this would not measure anything. The worker-startup line is excluded
+        // because it is written once per worker, not once per operation.
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        Assert.True(observed > 1, $"Expected the worker to report progress more than once, saw {observed}.");
+        Assert.Equal(1, log.Notes.Count(entry => RecordingRunLog.Value(entry.Detail, "operation") != "StartWorker"));
+    }
+
+    [Fact]
+    public async Task AFailedOperationIsStillRecordedInFull()
+    {
+        // A locked file, not a missing one: an absent file is a legitimate "nothing there" and
+        // returns success, so it would not exercise the failure path at all.
+        var directory = Path.Combine(Path.GetTempPath(), "securead-worker-locked-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        output.WriteLine(directory);
+        var locked = Path.Combine(directory, "locked.bin");
+        await File.WriteAllBytesAsync(locked, [1, 2, 3]);
+        using var exclusive = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var log = new RecordingRunLog();
+        await using var reader = new IsolatedSysvolFileReader(() => HostCommand("securead-cli.dll"), TimeSpan.FromSeconds(30), log, TimeProvider.System);
+        var target = GpoTarget.Of(Guid.NewGuid(), "locked policy", directory);
+
+        var result = await reader.ReadFileAsync(target, "locked.bin", CancellationToken.None);
+
+        Assert.False(result.IsSuccess, "A file locked against sharing should not read as evidence.");
+        var failure = Assert.Single(log.Errors);
+        Assert.Equal(target.GpoGuid.ToString("D"), RecordingRunLog.Value(failure.Detail, "gpo"));
+    }
+
     [Theory]
     [InlineData("securead-cli.dll")]
     [InlineData("SecureAD.dll")]
@@ -42,6 +95,7 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
         using var probe = new Probe(output, log);
         var clock = new ControlledClock();
         await using var reader = new IsolatedSysvolFileReader(FixtureCommand, TimeSpan.FromSeconds(30), probe, clock);
+        reader.Watching = probe.Watch;
         using var watchdog = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var pending = reader.ReadFileAsync(Target("hang"), "sample.bin", watchdog.Token);
         await probe.Entered.Task.WaitAsync(watchdog.Token);
@@ -51,7 +105,7 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
 
         Assert.Equal(("Capture.SysvolOperationTimedOut", true, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30), 0),
             (result.Error?.Code, Assert.Single(probe.Workers).HasExited, clock.InitialDelay,
-                IsolatedSysvolFileReader.InactivityLimit, log.Saying("SYSVOL operation completed").Count));
+                IsolatedSysvolFileReader.InactivityLimit, probe.CompletedOperations));
     }
 
     [Fact]
@@ -59,6 +113,7 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
     {
         using var probe = new Probe(output, RunLog.Discarded);
         await using var reader = new IsolatedSysvolFileReader(FixtureCommand, TimeSpan.FromSeconds(30), probe, TimeProvider.System);
+        reader.Watching = probe.Watch;
         using var stopping = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var pending = reader.ReadFileAsync(Target("hang"), "sample.bin", stopping.Token);
         await probe.Entered.Task.WaitAsync(stopping.Token);
@@ -75,6 +130,7 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
         using var probe = new Probe(output, RunLog.Discarded);
         var clock = new ControlledClock();
         await using var reader = new IsolatedSysvolFileReader(FixtureCommand, TimeSpan.FromSeconds(30), probe, clock);
+        reader.Watching = probe.Watch;
         using var watchdog = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var first = reader.ReadFileAsync(Target("hang"), "sample.bin", watchdog.Token);
         await probe.Entered.Task.WaitAsync(watchdog.Token);
@@ -92,6 +148,7 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
         using var probe = new Probe(output, RunLog.Discarded);
         var clock = new ControlledClock();
         await using var reader = new IsolatedSysvolFileReader(FixtureCommand, TimeSpan.FromSeconds(30), probe, clock);
+        reader.Watching = probe.Watch;
         using var watchdog = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
         var result = await reader.ReadFileAsync(Target("progress"), "sample.bin", watchdog.Token);
@@ -107,6 +164,7 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
         using var file = RunLogFile.Open(directory, "test", TimeProvider.System).Value!;
         using var probe = new Probe(output, file);
         await using var reader = new IsolatedSysvolFileReader(FixtureCommand, TimeSpan.FromSeconds(30), probe, TimeProvider.System);
+        reader.Watching = probe.Watch;
         using var stopping = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var target = Target("hang");
         var pending = reader.ReadFileAsync(target, "sample.bin", stopping.Token);
@@ -137,6 +195,8 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
         await File.WriteAllBytesAsync(Path.Combine(directory, "child", "nested.bin"), [2]);
         var log = new RecordingRunLog();
         await using var reader = new IsolatedSysvolFileReader(() => HostCommand("securead-cli.dll"), TimeSpan.FromSeconds(30), log, TimeProvider.System);
+        var observed = new List<SysvolIoEvent>();
+        reader.Watching = (progress, _) => observed.Add(progress);
         var target = GpoTarget.Of(Guid.NewGuid(), "offline metadata", directory);
 
         var acl = await reader.ReadSecurityDescriptorAsync(target, "", CancellationToken.None);
@@ -145,9 +205,9 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
         Assert.True(acl.IsSuccess, acl.Error?.Description);
         Assert.Equal(["child\\nested.bin", "sample.bin"], files.Value!.OrderBy(value => value, StringComparer.Ordinal));
         Assert.Equal(["GetAttributes:Started", "GetAttributes:Completed", "GetAccessControl:Started", "GetAccessControl:Completed"],
-            log.Notes.Where(entry => RecordingRunLog.Value(entry.Detail, "operation") is "GetAttributes" or "GetAccessControl")
-                .Select(entry => RecordingRunLog.Value(entry.Detail, "operation") + ":" + RecordingRunLog.Value(entry.Detail, "state")));
-        Assert.Equal("3", RecordingRunLog.Value(log.Saying("SYSVOL acquisition progress").Last(), "items"));
+            observed.Where(progress => progress.Operation is "GetAttributes" or "GetAccessControl")
+                .Select(progress => progress.Operation + ":" + progress.State));
+        Assert.Equal(3, observed.Last(progress => progress.Operation == "EnumerateFiles").Items);
     }
 
     [Fact]
@@ -220,22 +280,28 @@ public sealed class SysvolWorkerTests(ITestOutputHelper output)
     {
         internal TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal List<Process> Workers { get; } = [];
+        internal int CompletedOperations { get; private set; }
 
-        public void Note(string phase, string message, IReadOnlyList<RunLogDetail> detail)
+        // Watches the reader's progress events rather than its log. These arrive whether or not
+        // the operation was slow enough to be written down, so the harness no longer depends on
+        // how much the product chooses to record.
+        internal void Watch(SysvolIoEvent progress, int? workerPid)
         {
-            sink.Note(phase, message, detail);
-            if (RecordingRunLog.Value(detail, "operation") == "GetAttributes" && RecordingRunLog.Value(detail, "state") == "Started")
+            if (progress.State == "Completed")
+                CompletedOperations++;
+            if (progress.Operation != "GetAttributes" || progress.State != "Started" || workerPid is not { } pid)
+                return;
+            if (!Workers.Any(worker => worker.Id == pid))
             {
-                var pid = int.Parse(RecordingRunLog.Value(detail, "workerPid")!, System.Globalization.CultureInfo.InvariantCulture);
-                if (!Workers.Any(worker => worker.Id == pid))
-                {
-                    var worker = Process.GetProcessById(pid);
-                    _ = worker.SafeHandle;
-                    Workers.Add(worker);
-                }
-                Entered.TrySetResult();
+                var worker = Process.GetProcessById(pid);
+                _ = worker.SafeHandle;
+                Workers.Add(worker);
             }
+            Entered.TrySetResult();
         }
+
+        public void Note(string phase, string message, IReadOnlyList<RunLogDetail> detail) =>
+            sink.Note(phase, message, detail);
 
         public void Record(string phase, AuditError error, IReadOnlyList<RunLogDetail> detail) => sink.Record(phase, error, detail);
 

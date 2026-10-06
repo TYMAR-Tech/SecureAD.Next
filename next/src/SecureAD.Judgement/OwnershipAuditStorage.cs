@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -15,10 +16,61 @@ internal static class OwnershipAuditStorage
         int SelectorVersion, int EvaluatorVersion, int TargetCount, int SeedCount, int RelationCount);
     internal sealed record TargetRow(Tier0Target Identity, OwnershipScopeState Selection,
         OwnershipAssessmentExecution Execution, int Candidates, int Transitions);
-    internal sealed record SeedRow(string Target, MembershipRouteSummary Routes, byte[] Fingerprint);
+    internal sealed record SeedRow(string Target, MembershipRouteSummary Routes, ImmutableArray<byte> Fingerprint,
+        Tier0Classification Classification);
     internal sealed record RelationRow(long? EdgeId, string Controller, string Affected,
         string? WitnessTarget, int? WitnessOrdinal, string? WitnessTrustee, bool WitnessIsOwner,
-        ControlCapability? WitnessCapability);
+        ControlCapability? WitnessCapability)
+    {
+        public RequesterMembershipEvidence? GroupMembership { get; init; }
+    }
+
+    internal sealed class Snapshot
+    {
+        private readonly SqliteConnection _connection;
+        private readonly JudgementDescription _description;
+        private readonly (long Changes, long Version) _revision;
+
+        internal Snapshot(SqliteConnection connection, JudgementDescription description, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _connection = connection;
+            _description = description;
+            _revision = Revision(connection);
+            Header = ReadHeader(connection, requireComplete: true);
+            Targets = Header is null ? [] : OwnershipAuditStorage.Targets(connection, cancellationToken).ToImmutableArray();
+            ByTarget = Targets.ToImmutableDictionary(row => row.Identity.DistinguishedName, StringComparer.OrdinalIgnoreCase);
+            Seeds = Header is null ? [] : OwnershipAuditStorage.Seeds(connection, cancellationToken)
+                .Select(seed => seed with { Routes = JudgingInputs.FreezeRoutes(seed.Routes) }).ToImmutableArray();
+            Relations = Header is null ? [] : OwnershipAuditStorage.Relations(connection, cancellationToken).ToImmutableArray();
+            RequireFor(connection, description);
+        }
+
+        internal Header? Header { get; }
+        internal ImmutableArray<TargetRow> Targets { get; }
+        internal ImmutableDictionary<string, TargetRow> ByTarget { get; }
+        internal ImmutableArray<SeedRow> Seeds { get; }
+        internal ImmutableArray<RelationRow> Relations { get; }
+
+        internal void RequireFor(SqliteConnection connection, JudgementDescription description)
+        {
+            if (!ReferenceEquals(connection, _connection) || description != _description
+                || Header is { } header && (header.Generation != description.GenerationId
+                    || header.EvidenceSeal != description.EvidenceSeal
+                    || header.DerivationGeneration != description.DerivationGenerationId
+                    || header.EvaluationAsOf != description.EvaluationAsOf)
+                || Revision(connection) != _revision) throw InvalidProof();
+        }
+
+        private static (long Changes, long Version) Revision(SqliteConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT total_changes()";
+            var changes = (long)command.ExecuteScalar()!;
+            command.CommandText = "PRAGMA data_version";
+            return (changes, (long)command.ExecuteScalar()!);
+        }
+    }
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
         CREATE TABLE ownership_audit (id INTEGER PRIMARY KEY CHECK(id=1), header TEXT NOT NULL,
@@ -28,7 +80,8 @@ internal static class OwnershipAuditStorage
             execution TEXT NOT NULL, candidate_count INTEGER NOT NULL CHECK(candidate_count>=0),
             transition_count INTEGER NOT NULL CHECK(transition_count>=0));
         CREATE TABLE ownership_seed (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
-            routes TEXT NOT NULL, classification_fingerprint BLOB NOT NULL CHECK(length(classification_fingerprint)=32));
+            routes TEXT NOT NULL, classification_fingerprint BLOB NOT NULL CHECK(length(classification_fingerprint)=32),
+            classification TEXT NOT NULL);
 
         -- A DISCOVERED ROUTE HAS NO CONTROL EDGE TO POINT AT, WHICH IS THE WHOLE POINT OF SCHEMA 28.
         -- Discovery now runs before detailed assessment, so at the moment a route is recorded the
@@ -42,9 +95,10 @@ internal static class OwnershipAuditStorage
             affected_target TEXT NOT NULL COLLATE NOCASE REFERENCES ownership_target(target),
             witness_target TEXT NULL COLLATE NOCASE, witness_ordinal INTEGER NULL CHECK(witness_ordinal IS NULL OR witness_ordinal>=0),
             witness_trustee TEXT NULL, witness_is_owner INTEGER NOT NULL CHECK(witness_is_owner IN (0,1)),
-            witness_capability TEXT NULL,
+            witness_capability TEXT NULL, witness_membership TEXT NULL,
             CHECK((edge_id IS NULL) <> (witness_target IS NULL)),
             CHECK(witness_target IS NULL OR (witness_trustee IS NOT NULL AND witness_capability IS NOT NULL)),
+            CHECK(witness_membership IS NULL OR (edge_id IS NULL AND witness_is_owner=0)),
             CHECK(witness_is_owner = 0 OR witness_ordinal IS NULL));
         CREATE UNIQUE INDEX ux_ownership_relation_edge ON ownership_relation(edge_id) WHERE edge_id IS NOT NULL;
         CREATE UNIQUE INDEX ux_ownership_relation_witness ON ownership_relation(
@@ -117,9 +171,10 @@ internal static class OwnershipAuditStorage
             if (decision.Classification?.State == Tier0State.Established)
             {
                 var summary = routes(target.Identity) ?? MembershipRouteSummary.NotDerived;
-                Execute(connection, transaction, "INSERT INTO ownership_seed VALUES ($target,$routes,$hash)",
+                var classification = JsonSerializer.Serialize(decision.Classification, ProofSerialization.Options);
+                Execute(connection, transaction, "INSERT INTO ownership_seed VALUES ($target,$routes,$hash,$classification)",
                     ("$target", target.Identity.DistinguishedName), ("$routes", JsonSerializer.Serialize(summary, ProofSerialization.Options)),
-                    ("$hash", Hash(JsonSerializer.Serialize(decision.Classification, ProofSerialization.Options))));
+                    ("$hash", Hash(classification)), ("$classification", classification));
                 seeds++;
             }
             foreach (var relation in decision.Reasons)
@@ -141,12 +196,13 @@ internal static class OwnershipAuditStorage
                         || relation.Capability is not { } capability) throw InvalidProof();
                     Execute(connection, transaction, """
                         INSERT INTO ownership_relation (edge_id,controller_target,affected_target,
-                            witness_target,witness_ordinal,witness_trustee,witness_is_owner,witness_capability)
-                        VALUES (NULL,$controller,$affected,$witness,$ordinal,$trustee,$owner,$capability)
+                            witness_target,witness_ordinal,witness_trustee,witness_is_owner,witness_capability,witness_membership)
+                        VALUES (NULL,$controller,$affected,$witness,$ordinal,$trustee,$owner,$capability,$membership)
                         """, ("$controller", relation.Controller.DistinguishedName),
                         ("$affected", relation.Affected.DistinguishedName), ("$witness", witness.TargetDn),
                         ("$ordinal", witness.PermissionOrdinal), ("$trustee", witness.TrusteeSid),
-                        ("$owner", witness.IsOwner), ("$capability", capability.ToString()));
+                        ("$owner", witness.IsOwner), ("$capability", capability.ToString()),
+                        ("$membership", witness.GroupMembership is { } membership ? JsonSerializer.Serialize(membership, ProofSerialization.Options) : null));
                 }
                 else throw InvalidProof();
                 links++;
@@ -240,8 +296,11 @@ internal static class OwnershipAuditStorage
 
     internal static OwnershipAuditCoverage? ReadCoverage(SqliteConnection connection, JudgementDescription description, string? target)
     {
-        var header = ValidateCounts(connection, description);
+        var header = ReadHeader(connection, requireComplete: true);
         if (header is null) return null;
+        if (header.Generation != description.GenerationId || header.EvidenceSeal != description.EvidenceSeal
+            || header.DerivationGeneration != description.DerivationGenerationId || header.EvaluationAsOf != description.EvaluationAsOf)
+            throw InvalidProof();
         // The holder view asks about no target, so neither number was ever produced. It used to
         // report two zeros, which a reader cannot tell from a target assessed and found clean.
         if (target is null) return new(header.Generation, null, header.Input is not null, null, null, header.Coverage,
@@ -272,33 +331,50 @@ internal static class OwnershipAuditStorage
             header.Coverage, OwnershipAuditCount.Of(read.GetInt32(3)), assessed);
     }
 
-    internal static IReadOnlyList<SeedRow> Seeds(SqliteConnection connection)
+    internal static IReadOnlyList<SeedRow> Seeds(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT target,routes,classification_fingerprint FROM ownership_seed ORDER BY target";
+        command.CommandText = "SELECT target,routes,classification_fingerprint,classification FROM ownership_seed ORDER BY target";
         using var read = command.ExecuteReader();
         var seeds = new List<SeedRow>();
-        while (read.Read()) seeds.Add(new(read.GetString(0),
-            JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1), ProofSerialization.Options) ?? throw InvalidProof(),
-            (byte[])read.GetValue(2)));
+        while (read.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var json = read.GetString(3);
+            var fingerprint = (byte[])read.GetValue(2);
+            if (!Hash(json).AsSpan().SequenceEqual(fingerprint)) throw InvalidProof();
+            var classification = JsonSerializer.Deserialize<Tier0Classification>(json, ProofSerialization.Options) ?? throw InvalidProof();
+            if (classification.Target is null || classification.Target.DistinguishedName != read.GetString(0)
+                || classification.Input is null || !classification.Input.IsSupported || classification.Coverage is null
+                || classification.Supports.IsDefaultOrEmpty || classification.Supports.Any(support => support is null
+                    || !Enum.IsDefined(support.Basis) || support.Root is null || support.Evidence.IsDefault)) throw InvalidProof();
+            seeds.Add(new(read.GetString(0),
+                JsonSerializer.Deserialize<MembershipRouteSummary>(read.GetString(1), ProofSerialization.Options) ?? throw InvalidProof(),
+                fingerprint.ToImmutableArray(), classification));
+        }
         return seeds;
     }
 
-    internal static IReadOnlyList<RelationRow> Relations(SqliteConnection connection)
+    internal static IReadOnlyList<RelationRow> Relations(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT edge_id,controller_target,affected_target,witness_target,witness_ordinal,witness_trustee,
-                witness_is_owner,witness_capability
+                witness_is_owner,witness_capability,witness_membership
             FROM ownership_relation ORDER BY id
             """;
         using var read = command.ExecuteReader();
         var rows = new List<RelationRow>();
-        while (read.Read()) rows.Add(new(read.IsDBNull(0) ? null : read.GetInt64(0), read.GetString(1), read.GetString(2),
-            read.IsDBNull(3) ? null : read.GetString(3), read.IsDBNull(4) ? null : read.GetInt32(4),
-            read.IsDBNull(5) ? null : read.GetString(5), read.GetBoolean(6),
-            read.IsDBNull(7) ? null : Enum.TryParse<ControlCapability>(read.GetString(7), out var capability)
-                && Enum.IsDefined(capability) ? capability : throw InvalidProof()));
+        while (read.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            rows.Add(new(read.IsDBNull(0) ? null : read.GetInt64(0), read.GetString(1), read.GetString(2),
+                read.IsDBNull(3) ? null : read.GetString(3), read.IsDBNull(4) ? null : read.GetInt32(4),
+                read.IsDBNull(5) ? null : read.GetString(5), read.GetBoolean(6),
+                read.IsDBNull(7) ? null : Enum.TryParse<ControlCapability>(read.GetString(7), out var capability)
+                    && Enum.IsDefined(capability) ? capability : throw InvalidProof())
+                { GroupMembership = read.IsDBNull(8) ? null : JsonSerializer.Deserialize<RequesterMembershipEvidence>(read.GetString(8), ProofSerialization.Options) ?? throw InvalidProof() });
+        }
         return rows;
     }
 

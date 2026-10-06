@@ -69,6 +69,59 @@ public sealed class ControlEdgeLayoutTests
         [37] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
         // Schema 38 adds CA target/source semantics, with the same observed physical tables.
         [38] = "8ABB2495DA29836B56C18EF844E072446086470EEC05FDBB6D1EC3578708D7B5",
+        // Schema 39 adds the saved classification payload to ownership_seed. Observed from the
+        // approved new build, not an independent historical forest anchor; older hashes stay fixed.
+        [39] = "A6B0B4ED6815AE2CCA67649C64698749291D7365AAB15C00A9DFFD23AD017B21",
+        // Schema 40 adds the completed LAPS inventory and expected LAPS finding-route lengths.
+        // Observed from this approved build; no historical layout value is replaced.
+        [40] = "3738DBBD6C6022DC2025F4C9E78D87217304F9322B8E8F4B0FB074CF461ADF52",
+        // Format 41 saves per-right classification and indexes shared entry lookup during production.
+        // Observed from this approved build, not an independent historical forest anchor.
+        [41] = "B5032FCEDCD701BA82CE5F8468154453FDE4A798974446E8C0C3BA4BA8C78C9B",
+        // Format 42 stores each distinct reading once in permission_classification_reading and has
+        // permission_classification_entry reference it, because the P-251 comparison found 240
+        // distinct readings behind 209,032 entries and half the result file was the duplication.
+        // Observed from this approved build, not an independent historical forest anchor.
+        [42] = "297BED254604EC343AFD4F44FCF47788B3C3CF348692F7D42D776F7344F50B32",
+        // Schema 43 stores each distinct access control entry once in permission_entry and links to
+        // it, so the row loses target and ordinal, gains the entry_hash identity, and drops
+        // ix_permission_entry_target_generation with the column it led on (P-279). Observed from this
+        // approved build, not an independent historical forest anchor.
+        [43] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
+        // Schema 44 stores the shared form of a trustee, so S-1-5-10 is held as the catalogue's
+        // name and resolved against the target on read (P-285). The observed DDL is unchanged -
+        // permission_entry.name already existed and only its content differs - so this repeats 43's
+        // value, the same way 33 through 38 repeated theirs. The version still had to move, because
+        // every occurrence fingerprint is now taken over the shared form and a version 43 store's
+        // would not verify: refused on version rather than reported as tampered proofs.
+        [44] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
+        // Schema 45 folds the reading's digest into the occurrence fingerprint so reading_id cannot
+        // be repointed (P-283). Deliberately no new column - a separate binding would have cost 32
+        // bytes on each of the production capture's 330,856,576 occurrences - so the observed DDL is
+        // again unchanged and this repeats 43's value.
+        [45] = "34228CFB43189731C38955C721DCFBD0A59EEC0BBAE6CA8862F0FE503194B1A7",
+        // Schema 46 keys the saved permission classification per descriptor rather than per object
+        // (P-280). Unlike 44 and 45 this one really does move the DDL: permission_classification_object
+        // loses its descriptor JSON and entry_count and gains descriptor_id, availability and the
+        // unreadable reason; permission_classification_descriptor and _value are new; and
+        // permission_classification_entry loses target, position, fingerprint, right_count,
+        // reading_id and both schema columns to become (descriptor_id, ordinal, entry_id)
+        // WITHOUT ROWID. Observed from this approved build, not an independent historical anchor.
+        [46] = "06F6363EC8C1E35C0A4255B2C0FE4382A09EB9BAE46588A084663CEB2F02F07C",
+        // Observed from the format-47 build adding independent requester-risk records; older checkpoints are unchanged.
+        [47] = "5D9F0069E035B69531D4B86C75F7F6E79752F19E0FCB90625EA9B139C4AF3A19",
+        // Observed format-48 canonical requester proofs and SEC-071 publication; no earlier value is replaced.
+        [48] = "F9E42384A1C323930DD733AD6BB5058129602EE68CB35CAE3EBD0EF1E3A25736",
+        // Schema 49 changes nested requester proof semantics only; keep the schema-48 physical-layout anchor.
+        [49] = "F9E42384A1C323930DD733AD6BB5058129602EE68CB35CAE3EBD0EF1E3A25736",
+        // Observed format-50 layout adds the captured group-nesting admission witness; earlier values stay fixed.
+        [50] = "041C226CA55863BADAF2CE5BFC13AFFA3E90A09039DB66355F476A8364172776",
+        // Format 51 extends saved JSON proof semantics; the format-50 physical layout is unchanged.
+        [51] = "041C226CA55863BADAF2CE5BFC13AFFA3E90A09039DB66355F476A8364172776",
+        // Observed format-52 fragmented path proofs; every earlier layout checkpoint remains unchanged.
+        [52] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
+        // Format 53 changes source-fingerprint meaning, not the independently recorded format-52 layout.
+        [53] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
     };
 
     [Fact]

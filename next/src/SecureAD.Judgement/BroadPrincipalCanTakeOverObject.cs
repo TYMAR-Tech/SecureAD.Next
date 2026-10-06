@@ -39,7 +39,7 @@ namespace SecureAD.Judgement;
 /// <c>docs/specs/rules/SEC-060-broad-principal-can-take-over-an-object.md</c>.
 /// </para>
 /// </remarks>
-public sealed class BroadPrincipalCanTakeOverObject : IRule
+public sealed class BroadPrincipalCanTakeOverObject : IObjectRule
 {
     private const string RuleId = "SEC-060";
 

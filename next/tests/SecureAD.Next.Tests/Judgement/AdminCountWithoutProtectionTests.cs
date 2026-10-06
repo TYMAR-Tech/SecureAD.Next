@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
@@ -142,9 +143,8 @@ public sealed class AdminCountWithoutProtectionTests
     /// U6. The only route runs through a group Microsoft's own pages disagree about.
     /// </summary>
     /// <remarks>
-    /// RID 498 carries <c>PrincipalProtection=Disputed</c> under <c>0089</c>: Appendix C omits it
-    /// while the security-groups page marks it protected. The rule must say the claim is disputed,
-    /// not that something was uncaptured - re-running a capture would not settle it.
+    /// Catalogue version 3 saved RID 498 as disputed under <c>0089</c>. A later catalogue must
+    /// not reinterpret that saved uncertainty when judging the earlier derivation.
     /// </remarks>
     [Fact]
     public void Sec030_ReportsADisputedClaimAsDisputedRatherThanAsMissingEvidence()
@@ -157,7 +157,7 @@ public sealed class AdminCountWithoutProtectionTests
                 Class = "group",
                 AdminCount = 1,
                 DaclProtected = true,
-            });
+            }, historicalDispute: true);
 
         Assert.Equal(0, run.ObjectsJudged);
         var reason = Assert.Single(run.MissingInputs);
@@ -165,6 +165,22 @@ public sealed class AdminCountWithoutProtectionTests
 
         // The negative control that matters: nothing here may look like a capture failure.
         Assert.DoesNotContain(run.MissingInputs, m => m.Attribute.Contains("objectSid", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Sec030_CurrentRid498MarkerIsAssessedRatherThanReportedAsDisputed()
+    {
+        var stored = Stored(Ann() with
+        {
+            Dn = "CN=Enterprise RODC,DC=ad,DC=lab",
+            Sid = DomainSid + "-498",
+            Class = "group",
+            AdminCount = 1,
+            DaclProtected = true,
+        }, null);
+
+        Assert.Equal("SEC-030", Assert.Single(stored.Findings).RuleId);
+        Assert.Empty(Assert.Single(stored.RulesRun).MissingInputs);
     }
 
     /// <summary>
@@ -239,10 +255,10 @@ public sealed class AdminCountWithoutProtectionTests
         Stored(subject, alsoWrite).Findings;
 
     private static StoredRuleExecution JudgeRun(
-        Subject subject, Action<BundleWriter>? alsoWrite = null) =>
-        Assert.Single(Stored(subject, alsoWrite).RulesRun);
+        Subject subject, Action<BundleWriter>? alsoWrite = null, bool historicalDispute = false) =>
+        Assert.Single(Stored(subject, alsoWrite, historicalDispute).RulesRun);
 
-    private static StoredJudgement Stored(Subject subject, Action<BundleWriter>? alsoWrite)
+    private static StoredJudgement Stored(Subject subject, Action<BundleWriter>? alsoWrite, bool historicalDispute = false)
     {
         var directory = Build(subject, alsoWrite);
 
@@ -250,6 +266,9 @@ public sealed class AdminCountWithoutProtectionTests
             Stage2aRun.Derive(
                 directory, ExpansionBudget.Bulk, Started, Stage2aRun.Unwatched,
                 RunLog.Discarded, CancellationToken.None).IsSuccess);
+
+        if (historicalDispute)
+            RestoreSavedVersionThreeDispute(directory, subject.Sid);
 
         var judged = JudgingRun.Judge(
             directory,
@@ -264,6 +283,35 @@ public sealed class AdminCountWithoutProtectionTests
 
         using var reader = JudgementReader.Open(directory).Value!;
         return reader.Read();
+    }
+
+    private static void RestoreSavedVersionThreeDispute(string directory, string sid)
+    {
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation).Value;
+        var path = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId);
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE adminsd_derivation SET catalogue_version=3";
+            Assert.Equal(1, command.ExecuteNonQuery());
+            command.CommandText = """
+                UPDATE adminsd_catalogue_entry SET principal_status='Disputed',
+                    principal_provenance='MicrosoftProductDocumentation',
+                    principal_source_id='MS-APPENDIX-C-VS-GROUP-PAGE-2026-08'
+                WHERE rid=498 AND scope='ForestRootRid'
+                """;
+            Assert.Equal(1, command.ExecuteNonQuery());
+            command.CommandText = """
+                UPDATE protected_principal SET evaluation='Unknown',unknown_reasons=8
+                WHERE sid_id IN (SELECT sid_id FROM sid WHERE sid=$sid)
+                """;
+            command.Parameters.AddWithValue("$sid", sid);
+            Assert.Equal(1, command.ExecuteNonQuery());
+            command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";
+            command.ExecuteNonQuery();
+        }
+        BundleSealing.Seal(path, BundleLayout.AnalysisGenerationSealPath(directory, generation.Kind, generation.GenerationId));
     }
 
     private static string Build(Subject subject, Action<BundleWriter>? alsoWrite)

@@ -68,6 +68,7 @@ public sealed class CaptureReviewBoundaryTests
         using var assets = new BundleAssetSource();
         var dashboard = new DashboardViewModel(assets);
         dashboard.Show(directory);
+        await dashboard.ReadCompletion;
         Assert.Equal((excludedCount, excludedCount, !includeEnatelSso),
             (reader.Description.ExcludedObjectClasses.Count,
                 preflight.RootElement.GetProperty("ExcludedObjectClasses").GetArrayLength(),

@@ -15,4 +15,15 @@
     <ProjectReference Include="..\SecureAD.Kernel\SecureAD.Kernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- BundleContents keeps its collections off the public surface, per gate 4: a bare list
+         cannot say whether it is empty because nothing was found or because nothing looked. The
+         command line formats them into a report, and the tests exercise them. Same narrow grant
+         the audit, derivation, judgement, shell and command line projects already make. -->
+    <InternalsVisibleTo Include="securead-cli" />
+    <InternalsVisibleTo Include="SecureAD.Next.Tests" />
+    <!-- Judging consumes reader-owned descriptor groups; callers cannot forge preparation from IDs. -->
+    <InternalsVisibleTo Include="SecureAD.Judgement" />
+  </ItemGroup>
+
 </Project>

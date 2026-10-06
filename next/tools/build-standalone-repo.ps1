@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Continue'
 $repo = 'C:\Users\jistrand\source\repos\razamus\SecureAD'
-$dest = 'C:\Users\jistrand\source\repos\razamus\SecureAD.Next'
+$dest = 'C:\Users\jistrand\source\repos\SecureAD.Next'
 $wt = Join-Path $env:TEMP 'securead-carry-export'
 
 if (Test-Path $dest) { Write-Host "$dest already exists. Remove it first if you mean to rebuild it."; exit 1 }

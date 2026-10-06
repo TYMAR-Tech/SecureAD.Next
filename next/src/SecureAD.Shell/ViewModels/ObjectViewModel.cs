@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel.Naming;
-using SecureAD.Kernel.Security;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -31,90 +31,74 @@ namespace SecureAD.Shell.ViewModels;
 /// </remarks>
 internal sealed partial class ObjectViewModel : ObservableObject
 {
-    private readonly ObjectPermissions _permissions;
+    private readonly Func<ObjectSectionDefinition, CancellationToken, Task<ObjectSectionViewModel>> _read;
+    private readonly IReadOnlyList<ObjectSectionDefinition> _definitions;
+    private CancellationTokenSource? _pending;
+    private long _revision;
+    private bool _publishing;
+    private bool _active = true;
+
+    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private Notice? _refusal;
+
+    /// <summary>The selected section read, including its publication.</summary>
+    public Task ReadCompletion { get; private set; } = Task.CompletedTask;
+
+    /// <summary>The selected section's content, never a previous section's result.</summary>
+    public ObjectSectionViewModel? Content => IsLoading || HasRefusal || !_active ? null : Selected;
+
+    /// <summary>Whether the selected section could not be read.</summary>
+    public bool HasRefusal => Refusal is not null;
+
+    /// <summary>The approved loading wording for the selected kind of information.</summary>
+    public string LoadingText => NavigationText.Get(Selected?.Key is ObjectSectionCatalog.Findings
+        or ObjectSectionCatalog.Permissions or ObjectSectionCatalog.ControlEdges ? "SavedLoading" : "CapturedLoading");
 
     /// <summary>The section being read.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedKey))]
     private ObjectSectionViewModel? _selected;
 
-    /// <summary>Creates the object view's state.</summary>
-    /// <param name="permissions">What the bundle holds about the object.</param>
-    /// <param name="attributes">
-    /// The object's captured attribute values, or null when they could not be read. Null is not
-    /// nothing: a section handed null says the values were not read, where a section handed an
-    /// empty value says the bundle holds none - and only the second is about the object.
-    /// </param>
-    /// <param name="objectType">
-    /// What kind of object it is, as the listing worded it. Carried across rather than re-read, so
-    /// the row and the object opened from it cannot disagree.
-    /// </param>
-    /// <param name="objectClass">
-    /// The class as the directory spells it, which decides the sections. Null when it did not
-    /// arrive, which is not a reason to show nothing.
-    /// </param>
-    /// <param name="vocabulary">
-    /// The words and verdicts to read permissions with, built over the schema this run captured.
-    /// Stated rather than defaulted: which catalogue named a right is part of what the screen is
-    /// claiming, and a default would let a caller show a forest's permissions under the shipped
-    /// table's names without anyone deciding to.
-    /// </param>
-    /// <param name="findings">
-    /// What the rules found about this object, or null when the judgement could not be read.
-    /// </param>
-    /// <param name="findingsRefusal">
-    /// Why the judgement could not be read, or null when it was.
-    /// </param>
+    /// <summary>Stable navigation identity while a placeholder is replaced by its read result.</summary>
+    public string? SelectedKey
+    {
+        get => Selected?.Key;
+        set
+        {
+            // A selector briefly clears its value when its selected item is replaced. That is
+            // not a request to cancel the read or forget the operator's section choice.
+            if (value is not null && value != Selected?.Key) Show(value);
+        }
+    }
+
+    /// <summary>Creates navigation from captured identity, without preparing any section's content.</summary>
     public ObjectViewModel(
-        ObjectPermissions permissions,
-        ObjectAttributes? attributes,
+        string distinguishedName,
         string objectType,
         string? objectClass,
-        PermissionVocabulary vocabulary,
-        FindingsPage? findings,
-        string? findingsRefusal)
+        Func<ObjectSectionDefinition, CancellationToken, Task<ObjectSectionViewModel>> read)
     {
-        ArgumentNullException.ThrowIfNull(permissions);
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         ArgumentException.ThrowIfNullOrWhiteSpace(objectType);
-        ArgumentNullException.ThrowIfNull(vocabulary);
-
-        _permissions = permissions;
+        ArgumentNullException.ThrowIfNull(read);
+        DistinguishedName = distinguishedName;
         ObjectType = objectType;
-
-        foreach (var definition in ObjectSectionCatalog.For(objectClass))
-        {
-            Sections.Add(Build(
-                definition, permissions, attributes, objectType, vocabulary, findings, findingsRefusal));
-        }
-
-        Selected = Sections.FirstOrDefault();
+        _read = read;
+        _definitions = ObjectSectionCatalog.For(objectClass);
+        foreach (var definition in _definitions) Sections.Add(new UnloadedObjectSectionViewModel(definition));
     }
 
     /// <summary>The object's name.</summary>
-    public string Name => DnHelper.ExtractFirstRdn(_permissions.DistinguishedName);
+    public string Name => DnHelper.ExtractFirstRdn(DistinguishedName);
 
     /// <summary>Its full name, for an operator who needs to be certain which object this is.</summary>
-    public string DistinguishedName => _permissions.DistinguishedName;
+    public string DistinguishedName { get; }
 
     /// <summary>What kind of object it is.</summary>
     public string ObjectType { get; }
 
     /// <summary>The sections this object's class has, in reading order.</summary>
     public ObservableCollection<ObjectSectionViewModel> Sections { get; } = [];
-
-    /// <summary>
-    /// What this run established about the object as a whole.
-    /// </summary>
-    /// <remarks>
-    /// Never <see cref="FactState.EstablishedBad"/>. Nothing in this product judges an object yet,
-    /// and a mark an administrator reads as a security verdict, set by nothing, is the worst thing
-    /// this screen could do (<c>docs/decisions/0045</c>).
-    /// </remarks>
-    public FactState State =>
-        _permissions.Availability == DescriptorAvailability.Read
-        && _permissions.DaclState != DaclState.Unreadable
-        && _permissions.Errors.Count == 0
-            ? FactState.EstablishedGood
-            : FactState.NotEstablished;
 
     /// <summary>
     /// The section with this key, or null when the object's class does not have one.
@@ -135,7 +119,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// <param name="key">The section's stable name, from <see cref="ObjectSectionCatalog"/>.</param>
     public void Show(string key)
     {
-        if (Section(key) is { } section)
+        if ((Section(key) ?? Sections.FirstOrDefault()) is { } section)
             Selected = section;
     }
 
@@ -148,18 +132,10 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// seven built from attributes alone share one type, because they are one behaviour and seven
     /// copies of it would drift.
     /// </remarks>
-    private static ObjectSectionViewModel Build(
-        ObjectSectionDefinition definition,
-        ObjectPermissions permissions,
-        ObjectAttributes? attributes,
-        string objectType,
-        PermissionVocabulary vocabulary,
-        FindingsPage? findings,
-        string? findingsRefusal) =>
+    internal static ObjectSectionViewModel BuildAttributes(
+        ObjectSectionDefinition definition, ObjectAttributes attributes, string? objectClass) =>
         definition.Key switch
         {
-            ObjectSectionCatalog.Overview =>
-                new OverviewSectionViewModel(definition, permissions, attributes, objectType),
             ObjectSectionCatalog.Account =>
                 new AccountSectionViewModel(definition, attributes),
             ObjectSectionCatalog.PolicyLinks =>
@@ -171,18 +147,8 @@ internal sealed partial class ObjectViewModel : ObservableObject
                 or ObjectSectionCatalog.PasswordReaders
                 or ObjectSectionCatalog.Policy =>
                 new AttributeSectionViewModel(definition, attributes),
-            ObjectSectionCatalog.Permissions =>
-                new PermissionsSectionViewModel(definition, permissions, vocabulary),
-            ObjectSectionCatalog.Evidence =>
-                new EvidenceSectionViewModel(definition, permissions),
-            ObjectSectionCatalog.Findings =>
-                new FindingsSectionViewModel(definition, findings, findingsRefusal),
-            ObjectSectionCatalog.ControlEdges =>
-                new ControlEdgesSectionViewModel(definition),
-            ObjectSectionCatalog.SavedTier0Path =>
-                new SavedTier0PathSectionViewModel(definition),
             ObjectSectionCatalog.OtherValues =>
-                new OtherValuesSectionViewModel(definition),
+                new OtherValuesSectionViewModel(definition, attributes, objectClass),
             _ => new NotBuiltSectionViewModel(definition),
         };
 
@@ -193,15 +159,101 @@ internal sealed partial class ObjectViewModel : ObservableObject
     partial void OnSelectedChanged(
         ObjectSectionViewModel? oldValue, ObjectSectionViewModel? newValue)
     {
-        if (oldValue is SavedTier0PathSectionViewModel oldPath)
-            oldPath.CancelRead();
+        if (_publishing) return;
+        StopContent();
         if (oldValue is not null)
+        {
+            if (oldValue is SavedTier0PathSectionViewModel path) path.CancelRead();
+            if (oldValue is ControlEdgesSectionViewModel controls) controls.Suspend();
             oldValue.IsSelected = false;
+            var index = Sections.IndexOf(oldValue);
+            if (index >= 0) Sections[index] = new UnloadedObjectSectionViewModel(_definitions[index]);
+        }
 
         if (newValue is not null)
+        {
             newValue.IsSelected = true;
+            if (_active) ReadCompletion = LoadAsync(newValue.Key);
+        }
+    }
 
-        if (newValue is SavedTier0PathSectionViewModel path)
-            path.Read();
+    /// <summary>Suspends the selected section without changing the operator's section choice.</summary>
+    public void Suspend()
+    {
+        _active = false;
+        StopContent();
+        OnPropertyChanged(nameof(Content));
+    }
+
+    /// <summary>Reads the selected section afresh after the protected object lifetime is checked.</summary>
+    public void Resume()
+    {
+        _active = true;
+        if (Selected is { } selected) ReadCompletion = LoadAsync(selected.Key);
+    }
+
+    private void StopContent()
+    {
+        _revision++;
+        var pending = _pending;
+        _pending = null;
+        pending?.Cancel();
+        if (Selected is SavedTier0PathSectionViewModel path) path.CancelRead();
+        if (Selected is ControlEdgesSectionViewModel controls) controls.Suspend();
+        IsLoading = false;
+    }
+
+    private async Task LoadAsync(string key)
+    {
+        StopContent();
+        var revision = _revision;
+        var pending = new CancellationTokenSource();
+        _pending = pending;
+        IsLoading = true;
+        Refusal = null;
+        AnnounceContent();
+        try
+        {
+            var definition = _definitions.First(item => item.Key == key);
+            var content = await _read(definition, pending.Token);
+            if (revision != _revision || pending.IsCancellationRequested || !_active) return;
+            _publishing = true;
+            var index = Sections.IndexOf(Selected!);
+            Sections[index] = content;
+            Selected = content;
+            content.IsSelected = true;
+            _publishing = false;
+            IsLoading = false;
+            AnnounceContent();
+            if (content is SavedTier0PathSectionViewModel path)
+            {
+                path.Read();
+                await path.ReadCompletion;
+            }
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            if (revision == _revision && !pending.IsCancellationRequested && _active)
+                Refusal = new Notice(NavigationText.Get("Refused"), error.Message);
+        }
+        finally
+        {
+            if (ReferenceEquals(_pending, pending))
+            {
+                _pending = null;
+                IsLoading = false;
+                AnnounceContent();
+            }
+            pending.Dispose();
+        }
+    }
+
+    private void AnnounceContent()
+    {
+        OnPropertyChanged(nameof(Content));
+        OnPropertyChanged(nameof(HasRefusal));
+        OnPropertyChanged(nameof(LoadingText));
     }
 }

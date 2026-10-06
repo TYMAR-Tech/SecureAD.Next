@@ -137,7 +137,7 @@ internal static class UnsecureAccountFlagRules
 /// judgement.</b> See <see cref="UnsecureAccountFlagRules.InterdomainTrustAccount"/>.
 /// </para>
 /// </remarks>
-public sealed class PasswordNotRequired : IRule
+public sealed class PasswordNotRequired : IObjectRule
 {
     /// <summary><c>PASSWD_NOTREQD</c>: no password is required.</summary>
     internal const uint PasswordNotRequiredFlag = 0x00000020;
@@ -184,7 +184,7 @@ public sealed class PasswordNotRequired : IRule
 /// recoverable copy where it was.
 /// </para>
 /// </remarks>
-public sealed class ReversiblePasswordEncryption : IRule
+public sealed class ReversiblePasswordEncryption : IObjectRule
 {
     /// <summary><c>ENCRYPTED_TEXT_PWD_ALLOWED</c>: the user can send an encrypted password.</summary>
     internal const uint ReversibleEncryption = 0x00000080;
@@ -233,7 +233,7 @@ public sealed class ReversiblePasswordEncryption : IRule
 /// what authenticates as the account before the setting is cleared.
 /// </para>
 /// </remarks>
-public sealed class DesEncryptionOnly : IRule
+public sealed class DesEncryptionOnly : IObjectRule
 {
     /// <summary><c>USE_DES_KEY_ONLY</c>: restrict this principal to DES encryption types.</summary>
     internal const uint DesKeyOnly = 0x00200000;

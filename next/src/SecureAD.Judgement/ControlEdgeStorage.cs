@@ -64,10 +64,9 @@ internal static class ControlEdgeStorage
         return result;
     }
 
-    public static void Write(SqliteConnection connection, ControlObjectEvaluation result, Tier0Target? ownershipTarget)
+    public static void Write(SqliteConnection connection, SqliteTransaction transaction, PreparedStatements statements, ControlObjectEvaluation result, Tier0Target? ownershipTarget, PermissionWriteSession session)
     {
-        using var transaction = connection.BeginTransaction();
-        var entries = new SharedPermissionStorage(connection, transaction);
+        var entries = new SharedPermissionStorage(connection, transaction, statements, session);
         Execute(connection, transaction, "INSERT INTO control_object VALUES ($target,$sid,$scope,$outcome,$uncertainty,$complete)",
             ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
             ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
@@ -78,7 +77,6 @@ internal static class ControlEdgeStorage
         }
         var storedEdges = WriteEdges(connection, transaction, result.Edges, entries);
         FullControlStorage.Write(connection, transaction, result, storedEdges, entries);
-        transaction.Commit();
     }
 
     private static IReadOnlyList<ControlEdge> WriteEdges(SqliteConnection connection, SqliteTransaction transaction,
@@ -131,32 +129,50 @@ internal static class ControlEdgeStorage
     /// descriptor was readable and nothing had assessed it. The ownership target row was already
     /// recorded during the stream and is not written again.
     /// </remarks>
-    internal static void Assess(SqliteConnection connection, ControlObjectEvaluation result)
+    internal static void Assess(SqliteConnection connection, PreparedStatements statements,
+        PermissionWriteSession session, ControlObjectEvaluation result)
     {
         using var transaction = connection.BeginTransaction();
-        var entries = new SharedPermissionStorage(connection, transaction);
-        Execute(connection, transaction, """
-            UPDATE control_object SET principal_sid=$sid, principal_scope=$scope, descriptor_outcome=$outcome,
-                uncertainty=$uncertainty, is_complete=$complete WHERE target=$target COLLATE NOCASE
-            """, ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
-            ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
-        var storedEdges = WriteEdges(connection, transaction, result.Edges, entries);
-        FullControlStorage.Write(connection, transaction, result, storedEdges, entries, manifestExists: true);
-        transaction.Commit();
+        try
+        {
+            var entries = new SharedPermissionStorage(connection, transaction, statements, session);
+            Execute(connection, transaction, """
+                UPDATE control_object SET principal_sid=$sid, principal_scope=$scope, descriptor_outcome=$outcome,
+                    uncertainty=$uncertainty, is_complete=$complete WHERE target=$target COLLATE NOCASE
+                """, ("$target", result.Target), ("$sid", result.PrincipalSid), ("$scope", result.PrincipalScope),
+                ("$outcome", result.DescriptorOutcome), ("$uncertainty", (int)result.Uncertainty), ("$complete", result.IsComplete));
+            var storedEdges = WriteEdges(connection, transaction, result.Edges, entries);
+            FullControlStorage.Write(connection, transaction, result, storedEdges, entries, manifestExists: true);
+            transaction.Commit();
+            session.Promote();
+        }
+        catch
+        {
+            session.Discard();
+            throw;
+        }
     }
 
     internal static void AppendOwnership(SqliteConnection connection, JudgementDescription description, string target,
-        IReadOnlyList<ControlEdge> transitions)
+        IReadOnlyList<ControlEdge> transitions, PreparedStatements statements, PermissionWriteSession session)
     {
         if (transitions.Any(edge => edge.Target != target || edge.GenerationId != description.GenerationId
             || edge.DerivationGenerationId != description.DerivationGenerationId
             || edge.Capability != ControlCapability.CanBecomeOwnerAndRewriteDacl)) throw OwnershipAuditStorage.InvalidProof();
         using var transaction = connection.BeginTransaction();
-        var entries = new SharedPermissionStorage(connection, transaction);
-        entries.Load(target, description.GenerationId);
-        WriteEdges(connection, transaction, transitions, entries);
-        OwnershipAuditStorage.Assessed(connection, transaction, target, transitions.Count);
-        transaction.Commit();
+        try
+        {
+            var entries = new SharedPermissionStorage(connection, transaction, statements, session);
+            WriteEdges(connection, transaction, transitions, entries);
+            OwnershipAuditStorage.Assessed(connection, transaction, target, transitions.Count);
+            transaction.Commit();
+            session.Promote();
+        }
+        catch
+        {
+            session.Discard();
+            throw;
+        }
     }
 
     internal static IReadOnlyList<ControlEdge> ReadOwnerCandidates(SqliteConnection connection, JudgementDescription description, string target)
@@ -210,7 +226,6 @@ internal static class ControlEdgeStorage
         if (!derived) return new([], 0, 0, 0, 0, false, capture, false, afterId);
         var predicate = target is not null ? "target = $value COLLATE NOCASE"
             : holderSid is not null ? "holder_sid = $value COLLATE NOCASE AND COALESCE(holder_scope,'') = $scope COLLATE NOCASE" : "1=1";
-        FullControlStorage.ValidateSelection(connection, description, predicate, target, holderSid, holderScope);
         using var counts = connection.CreateCommand();
         counts.CommandText = $"""
             SELECT expectedness,COUNT(*) FROM (
@@ -256,7 +271,7 @@ internal static class ControlEdgeStorage
             while (read.Read()) items.Add((read.GetInt64(0), read.IsDBNull(1) ? null : read.GetInt64(1), read.IsDBNull(2) ? null : read.GetInt64(2)));
         var more = items.Count > 100;
         if (more) items.RemoveAt(100);
-        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadEdge(connection, description, item.Edge!.Value)).ToArray();
+        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadStoredEdge(connection, description, item.Edge!.Value)).ToArray();
         var assessments = items.Where(item => item.Assessment.HasValue).Select(item => FullControlStorage.Read(connection, description, item.Assessment!.Value)).ToArray();
         return new(rows, unexpected, unknown, expected, unanswered, true, capture, more, items.Count == 0 ? afterId : items[^1].Display)
         {
@@ -264,19 +279,6 @@ internal static class ControlEdgeStorage
             FullControlSupports = FullControlStorage.Supports(connection, rows),
             IsScopedToDiscovery = scoped,
         };
-    }
-
-    internal static IReadOnlyList<ControlEdge> ReadHolderEdges(SqliteConnection connection, JudgementDescription description,
-        string target, string holder, string? scope)
-    {
-        using var query = connection.CreateCommand();
-        query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND holder_sid=$holder COLLATE NOCASE AND COALESCE(holder_scope,'')=$scope COLLATE NOCASE ORDER BY id";
-        query.Parameters.AddWithValue("$target", target);
-        query.Parameters.AddWithValue("$holder", holder);
-        query.Parameters.AddWithValue("$scope", scope ?? "");
-        var ids = new List<long>();
-        using (var read = query.ExecuteReader()) while (read.Read()) ids.Add(read.GetInt64(0));
-        return ids.Select(id => ReadEdge(connection, description, id)).ToArray();
     }
 
     internal static ControlEdge ReadExact(SqliteConnection connection, JudgementDescription description, string target, long id)
@@ -288,14 +290,24 @@ internal static class ControlEdgeStorage
         query.Parameters.AddWithValue("$target", target);
         query.Parameters.AddWithValue("$version", EngineVersion);
         if (query.ExecuteScalar() is null) throw FullControlEvaluator.InvalidProof();
-        FullControlStorage.ValidateSelection(connection, description, "target = $value COLLATE NOCASE", target, null, null);
-        return ReadEdge(connection, description, id);
+        return ReadStoredEdge(connection, description, id);
     }
 
     internal static ControlEdge ReadEdge(SqliteConnection connection, JudgementDescription description, long id)
     {
+        var edge = ReadStoredEdge(connection, description, id);
+        ReplicationControlDeriver.ValidateStored(edge);
+        OwnershipControlDeriver.ValidateStored(edge);
+        return edge;
+    }
+
+    // Browsing decodes the published answer; production and offline proof verification opt into replay above.
+    private static ControlEdge ReadStoredEdge(SqliteConnection connection, JudgementDescription description, long id)
+    {
         using var query = connection.CreateCommand();
-        query.CommandText = "SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object USING(target) WHERE id=$id";
+        // Seek with the parent's NOCASE key; the separate BINARY comparison preserves the old
+        // join's exact target binding rather than accepting differently spelled stored references.
+        query.CommandText = "SELECT control_edge.*, control_object.descriptor_outcome FROM control_edge JOIN control_object ON control_object.target = control_edge.target COLLATE NOCASE AND control_object.target = control_edge.target COLLATE BINARY WHERE id=$id";
         query.Parameters.AddWithValue("$id", id);
         var rows = new List<ControlEdge>();
         var evidenceCounts = new Dictionary<long, (int Aces, int Conditions)>();
@@ -321,8 +333,6 @@ internal static class ControlEdgeStorage
                 MembershipRoutes = SharedProofStorage.ReadControlRoutes(connection, edge) };
             if (rows[i].Evidence.Count != evidenceCounts[edge.Id].Aces || rows[i].Preconditions.Count != evidenceCounts[edge.Id].Conditions)
                 throw new InvalidOperationException("Control-edge supporting evidence is missing.");
-            ReplicationControlDeriver.ValidateStored(rows[i]);
-            OwnershipControlDeriver.ValidateStored(rows[i]);
         }
         if (rows.Count != 1) throw FullControlEvaluator.InvalidProof();
         return rows[0];

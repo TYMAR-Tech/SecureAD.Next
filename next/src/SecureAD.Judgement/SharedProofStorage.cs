@@ -8,16 +8,27 @@ using SecureAD.Storage;
 
 namespace SecureAD.Judgement;
 
-// Reuse lasts only for the owning object transaction; rolled-back IDs never escape it.
 internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
-    Func<string, byte[]> lookupHash)
+    Func<string, byte[]> lookupHash, PreparedStatements statements, PermissionWriteSession session)
 {
     internal const int FormatVersion = 1;
-    private readonly Dictionary<string, long> written = new(StringComparer.Ordinal);
     private readonly Func<string, byte[]> lookup = lookupHash ?? throw new ArgumentNullException(nameof(lookupHash));
 
-    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction)
-        : this(connection, transaction, Hash)
+    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
+        PreparedStatements statements, PermissionWriteSession session)
+        : this(connection, transaction, Hash, statements, session)
+    {
+    }
+
+    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
+        Func<string, byte[]> lookupHash, PreparedStatements statements)
+        : this(connection, transaction, lookupHash, statements, new PermissionWriteSession())
+    {
+    }
+
+    internal SharedProofStorage(SqliteConnection connection, SqliteTransaction transaction,
+        PreparedStatements statements)
+        : this(connection, transaction, Hash, statements, new PermissionWriteSession())
     {
     }
 
@@ -38,7 +49,11 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         command.ExecuteNonQuery();
     }
 
-    internal (long? Id, byte[] Fingerprint) WriteMeaning(string target, Guid generation, int ordinal, string? meaning)
+    /// <summary>Stores a permission meaning and binds it to the entry that carries it.</summary>
+    /// <param name="generation">The generation being judged.</param>
+    /// <param name="entryKey">The content key of the entry, which is what the binding names.</param>
+    /// <param name="meaning">The meaning text, or null when the entry has none.</param>
+    internal (long? Id, byte[] Fingerprint) WriteMeaning(Guid generation, string entryKey, string? meaning)
     {
         Active();
         long? id = null;
@@ -46,9 +61,9 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         {
             var key = ValueKey("Meaning", generation, null, 0, meaning);
             id = Put("Meaning", generation, null, 0, meaning, out _);
-            written[key] = id.Value;
+            session.AddProof(key, id.Value);
         }
-        return (id, MeaningBinding(target, generation, ordinal, meaning));
+        return (id, MeaningBinding(generation, entryKey, meaning));
     }
 
     internal void WriteControlRoutes(ControlEdge edge)
@@ -76,13 +91,13 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         if (routes is null || routes.Memberships is null) throw FullControlEvaluator.InvalidProof();
         var payload = JsonSerializer.Serialize(routes);
         var key = ValueKey("MembershipRoutes", generation, derived, catalogue, payload);
-        if (written.TryGetValue(key, out var cached)) return cached;
+        if (session.TryGetProof(key, out var cached)) return cached;
         var id = Put("MembershipRoutes", generation, derived, catalogue, payload, out var created);
         if (created)
             MembershipRouteStorage.Write(connection, transaction, RouteSubject(id), routes);
         else if (JsonSerializer.Serialize(ReadRoutes(connection, id, generation, derived, catalogue)) != payload)
             throw FullControlEvaluator.InvalidProof();
-        written.Add(key, id);
+        session.AddProof(key, id);
         return id;
     }
 
@@ -90,17 +105,20 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
     {
         Active();
         var key = ValueKey(kind, generation, derived, catalogue, payload);
-        if (written.TryGetValue(key, out var cached))
+        if (session.TryGetProof(key, out var cached))
         {
             created = false;
             return cached;
         }
         var bucket = lookup(key);
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "SELECT id,kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE lookup_hash=$lookup ORDER BY id";
-        command.Parameters.AddWithValue("$lookup", bucket);
-        using (var read = command.ExecuteReader())
+        const string select = "SELECT id,kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE lookup_hash=$lookup ORDER BY id";
+        const string insert = """
+            INSERT INTO shared_proof_value(kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint,lookup_hash)
+            VALUES ($kind,$version,$generation,$derived,$catalogue,$payload,$hash,$lookup);
+            SELECT last_insert_rowid();
+            """;
+        var find = statements.Bind(select, transaction, ("$lookup", bucket));
+        using (var read = find.ExecuteReader())
         {
             while (read.Read())
             {
@@ -116,22 +134,15 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
                 }
             }
         }
-        command.Parameters.Clear();
-        command.CommandText = """
-            INSERT INTO shared_proof_value(kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint,lookup_hash)
-            VALUES ($kind,$version,$generation,$derived,$catalogue,$payload,$hash,$lookup);
-            SELECT last_insert_rowid();
-            """;
-        command.Parameters.AddWithValue("$kind", kind);
-        command.Parameters.AddWithValue("$version", FormatVersion);
-        command.Parameters.AddWithValue("$generation", generation.ToString("D"));
-        command.Parameters.AddWithValue("$derived", derived is { } source ? source.ToString("D") : DBNull.Value);
-        command.Parameters.AddWithValue("$catalogue", catalogue);
-        command.Parameters.AddWithValue("$payload", payload);
-        command.Parameters.AddWithValue("$hash", Hash(key));
-        command.Parameters.AddWithValue("$lookup", bucket);
+
+        (string Name, object? Value)[] values =
+        [
+            ("$kind", kind), ("$version", FormatVersion), ("$generation", generation.ToString("D")),
+            ("$derived", derived is { } source ? source.ToString("D") : null), ("$catalogue", catalogue),
+            ("$payload", payload), ("$hash", Hash(key)), ("$lookup", bucket),
+        ];
         created = true;
-        return (long)command.ExecuteScalar()!;
+        return (long)statements.Bind(insert, transaction, values).ExecuteScalar()!;
     }
 
     internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge)
@@ -183,8 +194,13 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         return routes;
     }
 
-    internal static byte[] MeaningBinding(string target, Guid generation, int ordinal, string? value) =>
-        Binding("PermissionMeaning", generation, null, 0, JsonSerializer.Serialize(new object[] { target, ordinal }), value);
+    // THE CONSUMER IS THE ENTRY, NOT THE POSITION IT WAS FOUND AT. It named (target, ordinal) while
+    // permission_entry held one row per object; since P-279 one row is shared by every position that
+    // carries that entry, so a binding naming one of them would refuse all the rest. Nothing weakens:
+    // each link row still carries a fingerprint over target, generation and the complete entry
+    // including its meaning text, so the meaning remains provably the one that object held there.
+    internal static byte[] MeaningBinding(Guid generation, string entryKey, string? value) =>
+        Binding("PermissionMeaning", generation, null, 0, entryKey, value);
 
     private static byte[] ControlBinding(ControlEdge edge, string payload) =>
         Binding("ControlRoutes", edge.GenerationId, edge.DerivationGenerationId, edge.PrincipalCatalogueVersion,

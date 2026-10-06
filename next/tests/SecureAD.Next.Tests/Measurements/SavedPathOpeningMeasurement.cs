@@ -16,7 +16,7 @@ namespace SecureAD.Next.Tests.Measurements;
 /// <summary>Opening-only adapter in the shell's existing friend assembly; never runs judging or capture.</summary>
 public sealed class SavedPathOpeningMeasurement : IDisposable
 {
-    private const string Repository = @"C:\Users\jistrand\source\repos\razamus\SecureAD.Next";
+    private const string Repository = @"C:\Users\jistrand\source\repos\SecureAD.Next";
     private const string Input = Repository + @"\next\artifacts\p242-lookup-optimization\75b787807339426eb8a5023a4ad85154\measure-after-v1\bundle";
     private const string OutputRoot = Repository + @"\next\artifacts\p246-ddb2a0ff3ba0473892ce08b417939184";
     private const string Generation = "5ca58a13-2ac7-4a42-b373-99a9873db814";

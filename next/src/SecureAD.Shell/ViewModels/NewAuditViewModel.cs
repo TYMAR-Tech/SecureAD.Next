@@ -72,6 +72,28 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     [ObservableProperty]
     private string? _problem;
 
+    /// <summary>
+    /// What became of checking the named controller, in the same three states every other answer
+    /// on this screen uses.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Silence used to mean three different things here, which is the defect this exists to
+    /// end.</b> A good check cleared the refusal and returned, so <i>not checked yet</i>,
+    /// <i>checked and usable</i> and <i>the box is empty</i> all drew the same cell - and the only
+    /// way to learn the button had done anything was to provoke a failure. That is the unasked
+    /// question rendered as an answer that <c>docs/decisions/0056</c> exists to forbid, one column
+    /// further along than the columns it was written for.
+    /// </para>
+    /// <para>
+    /// <b>It is reset the moment the name is edited.</b> A check vouches for the host that was
+    /// asked about and for no other, so a state left standing over an edited name would be this
+    /// screen saying a controller had been proved when a different one had.
+    /// </para>
+    /// </remarks>
+    [ObservableProperty]
+    private Established _controllerCheck = Established.NotEstablished;
+
     /// <summary>Creates the row over what the run established about this domain.</summary>
     /// <param name="plan">The domain as discovery, and possibly preflight, described it.</param>
     /// <param name="validate">Checks the named controller against the forest.</param>
@@ -569,6 +591,43 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     private const string NotAskedYet = "Not asked yet.";
 
     /// <summary>
+    /// What the override cell says beside the box, or nothing where nothing has been established.
+    /// </summary>
+    /// <remarks>
+    /// <b>Blank is the honest rendering of an unasked question</b>, and the only one of the three
+    /// that may be silent. The other two are said out loud, because an operator who pressed a
+    /// button is entitled to know whether it answered - and because a refusal that showed only in
+    /// a dialog he has since closed leaves the row looking exactly like one that passed.
+    /// </remarks>
+    public string ControllerCheckText => ControllerCheck switch
+    {
+        Established.Yes => "Checked - serves this domain",
+        Established.No => "Refused - see Details",
+        _ => string.Empty,
+    };
+
+    /// <summary>The sentence moves with the state it describes.</summary>
+    /// <param name="value">What became of the check.</param>
+    partial void OnControllerCheckChanged(Established value) =>
+        OnPropertyChanged(nameof(ControllerCheckText));
+
+    /// <summary>
+    /// Editing the name withdraws whatever was established about the old one.
+    /// </summary>
+    /// <remarks>
+    /// Both the state and the refusal go, because both are about the host that was asked. Leaving
+    /// either would put a verdict on this row that belongs to a name no longer in the box - the
+    /// stale-answer failure, one field over. Whether the run may start is not restored here:
+    /// <c>RunMayProceed</c> stays false until preflight has been put again with the new name.
+    /// </remarks>
+    /// <param name="value">The name as it now stands.</param>
+    partial void OnNamedControllerChanged(string value)
+    {
+        ControllerCheck = Established.NotEstablished;
+        Problem = null;
+    }
+
+    /// <summary>
     /// A refusal appearing or clearing changes whether this domain has anything to say beneath the
     /// table.
     /// </summary>
@@ -824,6 +883,64 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     /// <summary>A running or finished audit cannot have its displayed scope changed.</summary>
     public bool MayChangeObjectScope => !IsBusy && !IsCapturing && !HasFinished;
+
+    private bool _captureOnly;
+
+    /// <summary>
+    /// Whether this run stops once the evidence is sealed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why the choice exists at all.</b> A capture of a real forest takes hours, and until this
+    /// was offered a failure in deriving or judging happened at the end of them, on a directory
+    /// that had already moved on. Separating the two acts means a production capture can be taken
+    /// and walked away from, and analysed afterwards from the sealed bundle as many times as it
+    /// takes. It is what the command line's <c>--capture</c> has always offered; this is the same
+    /// thing in the window.
+    /// </para>
+    /// <para>
+    /// <b>Analysing is the default, deliberately.</b> An operator who wants a finished audit should
+    /// get one without choosing anything, and the run that stops early is the one he has to ask
+    /// for. Reversing that would make the ordinary case the exception.
+    /// </para>
+    /// <para>
+    /// <b>A capture-only run is not a degraded one.</b> Its evidence is complete and sealed, and
+    /// the library says so in words - <i>Evidence sealed - not assessed</i> - rather than showing
+    /// findings, permissions and control edges as zero. See
+    /// <c>docs/decisions/0002-absent-view-means-degraded-run.md</c>: a clean number is the more
+    /// reassuring of the two readings and an operator will take it.
+    /// </para>
+    /// </remarks>
+    public bool CaptureOnly
+    {
+        get => _captureOnly;
+        set
+        {
+            // Frozen once the run is under way, for the reason MayChangeObjectScope is: what the
+            // screen says this run will do must go on describing the run that is happening.
+            if (value && MayChangeObjectScope && SetProperty(ref _captureOnly, true))
+                OnPropertyChanged(nameof(CaptureAndAnalyse));
+        }
+    }
+
+    /// <summary>
+    /// Whether this run derives and judges once the evidence is sealed. The default.
+    /// </summary>
+    /// <remarks>
+    /// The pair are offered as two plain answers rather than as one value a view has to convert,
+    /// following <c>AssetsViewModel.ShowsBase</c>. A converter turning a flag into a tick is a place
+    /// presentation logic accumulates, outside the one layer that has tests. The words themselves
+    /// sit in the view beside the other <c>ChoiceRadio</c> in this product, for the same reason.
+    /// </remarks>
+    public bool CaptureAndAnalyse
+    {
+        get => !_captureOnly;
+        set
+        {
+            if (value && MayChangeObjectScope && SetProperty(ref _captureOnly, false, nameof(CaptureOnly)))
+                OnPropertyChanged(nameof(CaptureAndAnalyse));
+        }
+    }
 
     /// <summary>The exact classes that the current choice leaves unassessed.</summary>
     public IReadOnlyList<string> ExcludedObjectClasses => CaptureObjectScope.For(IncludeEnatelSso).ExcludedClasses;
@@ -1114,10 +1231,11 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         var named = row.NamedController?.Trim();
 
         // An empty box is not a named controller and there is nothing to refuse. The row is
-        // already on the ranked choice.
+        // already on the ranked choice, and nothing has been established about anything.
         if (string.IsNullOrWhiteSpace(named))
         {
             row.Problem = null;
+            row.ControllerCheck = Established.NotEstablished;
             return;
         }
 
@@ -1129,11 +1247,16 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             if (answer.IsUsable)
             {
+                // SAID OUT LOUD, because it used to be said by saying nothing. An operator who
+                // pressed Validate and saw no change could not tell a controller this run had
+                // proved from one it had never asked about.
                 row.Problem = null;
+                row.ControllerCheck = Established.Yes;
                 return;
             }
 
             row.Problem = answer.Refusal;
+            row.ControllerCheck = Established.No;
 
             RunMayProceed = false;
             OnPropertyChanged(nameof(CanStart));
@@ -1142,10 +1265,20 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             Notice = new Notice($"{named} was refused", answer.Refusal!);
 
-            // The box goes back to empty so the domain is read from the ranked choice, and the
-            // refusal stays on the row as the account of why. This used to wait for a message box
-            // to be dismissed first; nothing depended on the waiting.
-            row.NamedController = string.Empty;
+            // THE NAME STAYS IN THE BOX. It used to be cleared here, which silently put the domain
+            // back on the ranked controller and then displayed that controller in the column beside
+            // the refusal - so the screen appeared to hand back the very host it had just refused,
+            // and an operator who dismissed the dialog was left with no sign that his choice had
+            // been dropped at all.
+            //
+            // It is also the rule ControllerSelection already keeps one layer down: an override is
+            // obeyed or the run stops, and never quietly replaced. The predecessor fell back
+            // silently and gave an operator who mistyped a host a successful run against a
+            // controller he did not name. Clearing the box here was that same fallback, moved up
+            // into the window.
+            //
+            // The refusal stays on the row as the account of why, and editing the box withdraws
+            // both. A run may not start while any row carries one.
         }).ConfigureAwait(true);
     }
 
@@ -1164,7 +1297,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// window from being one click away from committing a machine to a capture measured in hours.
     /// </para>
     /// </remarks>
-    [RelayCommand(CanExecute = nameof(CanStart))]
+    [RelayCommand(CanExecute = nameof(CanReview))]
     public async Task ReviewAsync()
     {
         if (!Location.IsChosen)
@@ -1654,6 +1787,31 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         && !IsCapturing
         && Location.IsChosen;
 
+    /// <summary>
+    /// Whether the preflight questions may be put again. Asking is always allowed; it is starting
+    /// that has conditions.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This exists because gating it on <see cref="CanStart"/> was a deadlock, found in the
+    /// field on 2026-09-23 while an operator was trying to capture a production forest.</b> A
+    /// named controller that is refused sets <see cref="RunMayProceed"/> false, and by design
+    /// nothing restores it but a fresh preflight - <see cref="ValidateOverrideAsync"/> deliberately
+    /// does not, because a per-row check establishes nothing about the other domains. But the fresh
+    /// preflight is this command. So the one action that could clear the refusal sat behind the
+    /// refusal, and the screen could not be recovered by any button on it: the operator had named a
+    /// good controller, been told it serves the domain, and still could not go on.
+    /// </para>
+    /// <para>
+    /// <b>Nothing is loosened by this.</b> <see cref="ReviewAsync"/> already re-asks every domain
+    /// and then consults <see cref="CanStart"/> before it moves to the review screen, so the
+    /// conditions that guard a capture are enforced exactly where they were - on the answers, once
+    /// they exist. What changes is that an operator may now ask for those answers while things are
+    /// wrong, which is precisely when he needs to.
+    /// </para>
+    /// </remarks>
+    public bool CanReview => !IsBusy && !IsCapturing && Location.IsChosen;
+
     private bool EveryBlockingDomainIsAttested()
     {
         var attested = Attestations()
@@ -1708,14 +1866,21 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 : null;
 
             // Deriving and judging both follow a capture without being asked for - the owner's
-            // shape, 2026-08-26. The decision to audit was the decision to do both, so there is no
-            // second prompt and no control to press. Only sealed evidence is read: a run that
-            // sealed nothing has nothing for a closure or a rule to read.
+            // shape, 2026-08-26 - unless the operator asked for a capture on its own. The decision
+            // to audit was the decision to do both, so there is no second prompt and no control to
+            // press once the run is under way; the one place it is decided is the review page,
+            // before Start. Only sealed evidence is read: a run that sealed nothing has nothing for
+            // a closure or a rule to read.
+            //
+            // A CAPTURE-ONLY RUN STOPS HERE, AND THAT IS NOT A FAILURE. The evidence is complete
+            // and sealed, and the library will say so - "Evidence sealed - not assessed" - with no
+            // counters at all rather than counters reading zero. It can be derived from and judged
+            // later, from the run library, as many times as it takes.
             //
             // Deriving goes first. What it produces are facts about more than one object, which is
             // what a rule reading a group's membership will rest on - so a judging that ran before
             // it would rest on nothing.
-            if (BundleDirectory is { } sealedEvidence)
+            if (BundleDirectory is { } sealedEvidence && !CaptureOnly)
             {
                 // Each is asked to absorb its own defects. Deriving that threw its way out of here
                 // would skip the judging entirely and land in the catch below, which speaks for a
@@ -2022,9 +2187,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         return Environment.NewLine + requesters.Discovery.Verdict switch
         {
             "NotStarted" =>
-                "Own-account membership questions were not scheduled: no processing limit is "
-                + "configured for that scan. This is not a finding that nobody can add themselves "
-                + "to a group.",
+                "The separate Self-Membership scan was not run because no processing limit is "
+                + "configured. Tier 0 requester checks have their own saved coverage; this does "
+                + "not mean nobody can add themselves to a group.",
             "ExplicitRequestsOnly" =>
                 $"Stored {requesters.AssessmentsStored:N0} own-account membership answer(s) from "
                 + "explicitly requested questions. No automatic scan was run.",

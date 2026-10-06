@@ -1,5 +1,11 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Brushes.xaml" />
+        <ResourceDictionary Source="FluentTreeGeometry.xaml" />
+    </ResourceDictionary.MergedDictionaries>
 
     <!-- The tree. New vocabulary, added for the Assets screen.
 
@@ -10,7 +16,53 @@
          ContentPresenter, so the view supplies a TextBlock with a local Foreground; nothing here
          relies on an inherited value reaching it.
 
-         The expander is drawn in XAML. The product has no icon font and no image assets. -->
+         The expander is drawn in XAML; object-type icons use embedded Microsoft vector geometry. -->
+
+    <Style x:Key="TreeNodeIconPath" TargetType="Path">
+        <Setter Property="Data" Value="{StaticResource FluentTreeFolder}" />
+        <Setter Property="Fill" Value="{StaticResource FocusBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IconKind}" Value="{x:Static vm:TreeNodeIconKind.Domain}">
+                <Setter Property="Data" Value="{StaticResource FluentTreeGlobe}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IconKind}" Value="{x:Static vm:TreeNodeIconKind.Configuration}">
+                <Setter Property="Data" Value="{StaticResource FluentTreeSettings}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IconKind}" Value="{x:Static vm:TreeNodeIconKind.Schema}">
+                <Setter Property="Data" Value="{StaticResource FluentTreeLayer}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IconKind}" Value="{x:Static vm:TreeNodeIconKind.Unknown}">
+                <Setter Property="Fill" Value="{StaticResource SecondaryTextBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <DataTemplate x:Key="TreeNodeIcon">
+        <Viewbox Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"
+                 IsHitTestVisible="False">
+            <Canvas Width="20" Height="20">
+                <Path Style="{StaticResource TreeNodeIconPath}" />
+                <Path Data="{StaticResource FluentTreeOrganization}" Fill="{StaticResource FocusBrush}">
+                    <Path.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform ScaleX="0.48" ScaleY="0.48" />
+                            <TranslateTransform X="5.2" Y="7" />
+                        </TransformGroup>
+                    </Path.RenderTransform>
+                    <Path.Style>
+                        <Style TargetType="Path">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IconKind}" Value="{x:Static vm:TreeNodeIconKind.OrganizationalUnit}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Path.Style>
+                </Path>
+            </Canvas>
+        </Viewbox>
+    </DataTemplate>
 
     <Style x:Key="TreeExpander" TargetType="ToggleButton">
         <Setter Property="Focusable" Value="False" />

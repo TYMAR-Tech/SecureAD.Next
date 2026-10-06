@@ -1,6 +1,7 @@
 <UserControl x:Class="SecureAD.Shell.Views.ObjectView" x:ClassModifier="internal"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SecureAD.Shell.Views">
 
     <!-- ONE OBJECT, READ RATHER THAN JUDGED.
 
@@ -9,31 +10,37 @@
          selected section and WPF picks its template by type. Adding a section touches the catalogue
          and the template dictionary, and never this file.
 
-         THE SECTION LIST IS NOT HERE. It is the left column, where the tree was, so this half stays
-         full width. See ObjectSectionList.
-
          NOTHING HERE IS A VERDICT. Whether a permission is dangerous is a separate question, asked
          only when the operator asks it. -->
 
-    <DockPanel>
-
-        <TextBlock DockPanel.Dock="Top"
-                   Text="{Binding Opened.DistinguishedName}"
-                   Style="{StaticResource Identifier}"
-                   TextTrimming="CharacterEllipsis"
-                   Margin="0,0,0,8" />
-
-        <TextBlock DockPanel.Dock="Top"
+    <Border Background="{StaticResource AssetCanvasBackground}" CornerRadius="8"
+            BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" Padding="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MaxHeight="220" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="2*" />
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <views:ObjectSectionList />
+        </ScrollViewer>
+        <Border Grid.Row="1" Style="{StaticResource ObjectSectionHeading}">
+        <TextBlock
                    Text="{Binding Opened.Selected.Title}"
-                   Style="{StaticResource SectionTitle}"
-                   Margin="0,0,0,8" />
-
-        <!-- A LINE OF TEXT HAS A READABLE LENGTH AND A WIDE MONITOR DOES NOT CHANGE IT.
-
-             Left to fill the window, a two-column field grid put a label and its value an inch
-             apart on a 2,048-pixel screen and an operator had to track across the gap for every
-             one. The permissions table is exempt: it is a table, it has columns, and it uses
-             every pixel it is given. -->
-        <ContentControl Content="{Binding Opened.Selected}" />
-    </DockPanel>
+                   Style="{StaticResource SectionTitle}" />
+        </Border>
+        <Grid Grid.Row="2">
+            <TextBlock Text="{Binding Opened.LoadingText}"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Visibility="{Binding Opened.IsLoading, Converter={StaticResource Shown}}" />
+            <StackPanel Visibility="{Binding Opened.HasRefusal, Converter={StaticResource Shown}}">
+                <TextBlock Text="{Binding Opened.Refusal.Title}" Style="{StaticResource RowTitle}" />
+                <TextBox Text="{Binding Opened.Refusal.Detail, Mode=OneWay}"
+                         Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource FaultBrush}" />
+            </StackPanel>
+            <ContentControl Content="{Binding Opened.Content}" />
+        </Grid>
+    </Grid>
+    </Border>
 </UserControl>

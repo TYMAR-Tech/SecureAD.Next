@@ -1,3 +1,4 @@
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Judgement;
@@ -7,28 +8,81 @@ namespace SecureAD.Shell.ViewModels;
 
 internal sealed partial class ControlEdgesSectionViewModel
 {
-    private Func<ControlEdgeRowViewModel, Result<MemberAttributionDetail>>? _readMembers;
-    private Func<bool, long, Result<MemberPermissionPage>>? _readThroughMembership;
+    private Func<ControlEdgeRowViewModel, CancellationToken, Task<Result<MemberAttributionDetail>>>? _readMembers;
+    private Func<bool, long, CancellationToken, Task<Result<MemberPermissionPage>>>? _readThroughMembership;
+    private CancellationTokenSource? _memberPending;
+    private CancellationTokenSource? _membershipPending;
     private long _memberPermissionAfter;
+    private Func<bool> _memberCurrent = () => false;
+    /// <summary>The selected permission's membership support read.</summary>
+    public Task MemberReadCompletion { get; private set; } = Task.CompletedTask;
+    /// <summary>The current reverse-membership page read.</summary>
+    public Task MembershipReadCompletion { get; private set; } = Task.CompletedTask;
     public MemberAttributionPanelViewModel MemberPanel { get; } = new();
     public string ThroughMembershipHeading => MemberAttributionPanelViewModel.Text("ReverseHeading");
     [ObservableProperty] private string _throughMembershipCoverage = MemberAttributionPanelViewModel.Text("SelectPermission");
     [ObservableProperty] private IReadOnlyList<MemberPermissionRowViewModel> _throughMembership = [];
     [ObservableProperty] private bool _hasMoreThroughMembership;
 
-    public void ConfigureMemberAttribution(Func<ControlEdgeRowViewModel, Result<MemberAttributionDetail>> readMembers,
-        Func<bool, long, Result<MemberPermissionPage>>? readThroughMembership)
+    /// <summary>Binds protected membership reads without preparing hidden support.</summary>
+    public void ConfigureMemberAttributionAsync(
+        Func<ControlEdgeRowViewModel, CancellationToken, Task<Result<MemberAttributionDetail>>> readMembers,
+        Func<bool, long, CancellationToken, Task<Result<MemberPermissionPage>>>? readThroughMembership,
+        Func<bool> isCurrent)
     {
+        ArgumentNullException.ThrowIfNull(isCurrent);
+        _memberCurrent = isCurrent;
         _readMembers = readMembers;
         _readThroughMembership = readThroughMembership;
         OnSelectedEdgeChanged(SelectedEdge);
-        FirstMembershipPermissionPage();
+        if (_generation is not null) FirstMembershipPermissionPage();
     }
 
     partial void OnSelectedEdgeChanged(ControlEdgeRowViewModel? value)
     {
+        var pending = _memberPending;
+        _memberPending = null;
+        pending?.Cancel();
         MemberPanel.Clear();
-        if (value is not null && _readMembers is not null) MemberPanel.Show(_readMembers(value), _generation);
+        if (_active && value is not null && _readMembers is not null)
+            MemberReadCompletion = LoadMembersAsync(value);
+    }
+
+    private async Task LoadMembersAsync(ControlEdgeRowViewModel row)
+    {
+        if (_readMembers is null) return;
+        var pending = new CancellationTokenSource();
+        _memberPending = pending;
+        var generation = _generation;
+        MemberPanel.ShowLoading();
+        try
+        {
+            var result = await _readMembers(row, pending.Token);
+            if (ReferenceEquals(_memberPending, pending) && !pending.IsCancellationRequested)
+                MemberPanel.Show(result, generation, _memberCurrent);
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            if (ReferenceEquals(_memberPending, pending) && !pending.IsCancellationRequested)
+                MemberPanel.ShowRefusal(error.Message);
+        }
+        finally
+        {
+            if (ReferenceEquals(_memberPending, pending)) _memberPending = null;
+            pending.Dispose();
+        }
+    }
+
+    private void CancelMemberReads()
+    {
+        var member = _memberPending;
+        var membership = _membershipPending;
+        _memberPending = _membershipPending = null;
+        member?.Cancel();
+        membership?.Cancel();
+        MemberPanel.Clear();
     }
 
     [RelayCommand]
@@ -46,11 +100,44 @@ internal sealed partial class ControlEdgesSectionViewModel
 
     private void LoadMembershipPermissions()
     {
+        if (_active) MembershipReadCompletion = LoadMembershipPermissionsAsync();
+    }
+
+    private async Task LoadMembershipPermissionsAsync()
+    {
+        var previous = _membershipPending;
+        _membershipPending = null;
+        previous?.Cancel();
         ThroughMembership = [];
         HasMoreThroughMembership = false;
         if (_readThroughMembership is null) return;
-        var result = _readThroughMembership(IncludeExpected, _memberPermissionAfter);
-        if (!result.IsSuccess || _generation is null || result.Value.GenerationId != _generation)
+        var pending = new CancellationTokenSource();
+        _membershipPending = pending;
+        var generation = _generation;
+        ThroughMembershipCoverage = NavigationText.Get("SavedLoading");
+        try
+        {
+            var result = await _readThroughMembership(IncludeExpected, _memberPermissionAfter, pending.Token);
+            if (!ReferenceEquals(_membershipPending, pending) || pending.IsCancellationRequested) return;
+            ApplyMembershipPermissions(result, generation);
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException
+            or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            if (ReferenceEquals(_membershipPending, pending) && !pending.IsCancellationRequested)
+                ThroughMembershipCoverage = NavigationText.Get("Refused") + " " + error.Message;
+        }
+        finally
+        {
+            if (ReferenceEquals(_membershipPending, pending)) _membershipPending = null;
+            pending.Dispose();
+        }
+    }
+
+    private void ApplyMembershipPermissions(Result<MemberPermissionPage> result, Guid? generation)
+    {
+        if (!result.IsSuccess || generation is null || result.Value.GenerationId != generation)
         {
             ThroughMembershipCoverage = MemberAttributionPanelViewModel.Text("InvalidEvidence");
             return;

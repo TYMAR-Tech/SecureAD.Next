@@ -22,6 +22,7 @@ public sealed class ObjectPermissionsTests : IDisposable
 
     private const string DomainDn = "DC=contoso,DC=com";
     private const string AliceDn = "CN=Alice," + DomainDn;
+    private const string SecondDn = "CN=Second," + DomainDn;
     private const string AdminsDn = "CN=Domain Admins," + DomainDn;
     private const string AdminsSid = "S-1-5-21-1111111111-2222222222-3333333333-512";
     private const string OrphanSid = "S-1-5-21-1111111111-2222222222-3333333333-25601";
@@ -742,6 +743,101 @@ public sealed class ObjectPermissionsTests : IDisposable
         return reader.ReadPermissions(distinguishedName);
     }
 
+    // -------------------------------------------------------------------------------------------
+    // Which descriptor an object carries (P-280)
+    // -------------------------------------------------------------------------------------------
+    //
+    // Once the classification is keyed per descriptor, this is how an object reaches its
+    // permissions. It is stated here, under the evidence seal, and the judgement is never asked:
+    // a judgement recording X -> D2 where the evidence says X -> D1 would validate every
+    // fingerprint it holds and attribute D2's permissions to X, and no fingerprint can stop that
+    // because whoever edited the judgement recomputes it.
+
+    /// <summary>An object that has a stored descriptor says which one.</summary>
+    [Fact]
+    public void AnObjectWithAStoredDescriptorNamesIt()
+    {
+        WriteAliceWith(Descriptor(Allowing(AdminsSid, 0x00000010)));
+
+        Assert.NotNull(Read(AliceDn)!.DescriptorId);
+    }
+
+    /// <summary>
+    /// Two objects carrying the same descriptor name the same one, and that is the whole use of it.
+    /// </summary>
+    /// <remarks>
+    /// The join <c>P-280</c> keys on. If these disagreed, two objects with identical permissions
+    /// would still need a row each and the change would save nothing; if they agreed when the
+    /// objects carried <i>different</i> descriptors, one object would be shown the other's
+    /// permissions.
+    /// </remarks>
+    [Fact]
+    public void TwoObjectsSharingADescriptorNameTheSameOne()
+    {
+        var shared = Descriptor(Allowing(AdminsSid, 0x00000010));
+        WriteBundle(writer =>
+        {
+            WriteDescriptor(writer, writer.WriteObject(ObjectAt(AliceDn)), shared);
+            WriteDescriptor(writer, writer.WriteObject(ObjectAt(SecondDn)), shared);
+        });
+
+        Assert.Equal(Read(AliceDn)!.DescriptorId, Read(SecondDn)!.DescriptorId);
+    }
+
+    /// <summary>
+    /// Objects carrying different descriptors name different ones.
+    /// </summary>
+    /// <remarks>
+    /// The negative control. Without it, a build that returned a constant would satisfy the test
+    /// above and every object in the forest would read back the first descriptor's permissions.
+    /// </remarks>
+    [Fact]
+    public void ObjectsCarryingDifferentDescriptorsNameDifferentOnes()
+    {
+        WriteBundle(writer =>
+        {
+            WriteDescriptor(writer, writer.WriteObject(ObjectAt(AliceDn)),
+                Descriptor(Allowing(AdminsSid, 0x00000010)));
+            WriteDescriptor(writer, writer.WriteObject(ObjectAt(SecondDn)),
+                Descriptor(Allowing(AdminsSid, 0x00000020)));
+        });
+
+        Assert.Equal(
+            (2L, false),
+            (StoredDescriptorCount(), Read(AliceDn)!.DescriptorId == Read(SecondDn)!.DescriptorId));
+    }
+
+    /// <summary>How many distinct descriptors the bundle actually stored.</summary>
+    /// <remarks>
+    /// Asserted beside the identities so a failure says which half is wrong: a writer that
+    /// deduplicated two different descriptors into one, or a reader that reports the same identity
+    /// for two different rows. Without it the test can only say "they are equal" and leave the
+    /// cause to guesswork, which cost most of a session once.
+    /// </remarks>
+    private long StoredDescriptorCount()
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.EvidencePath(_directory),
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM security_descriptor";
+        return (long)command.ExecuteScalar()!;
+    }
+
+    /// <summary>An object with no stored descriptor names none, rather than naming a wrong one.</summary>
+    [Fact]
+    public void AnObjectWithNoStoredDescriptorNamesNone()
+    {
+        WriteBundle(writer => writer.WriteObject(ObjectAt(AliceDn)));
+
+        Assert.Null(Read(AliceDn)!.DescriptorId);
+    }
+
     private void WriteAliceWith(AceNormalizationResult normalization) => WriteBundle(writer =>
     {
         var alice = writer.WriteObject(ObjectAt(AliceDn));
@@ -868,7 +964,6 @@ public sealed class ObjectPermissionsTests : IDisposable
         Ace(AceType.AccessDenied, sid, mask);
 
     private static CanonicalAce Ace(AceType type, string sid, int mask) => new(
-        Guid.Empty,
         type,
         sid,
         mask,
@@ -877,6 +972,7 @@ public sealed class ObjectPermissionsTests : IDisposable
         IsInherited: false,
         InheritanceFlags: 0,
         PropagationFlags: 0,
+        ApplicationData: default,
         AceHash: $"{type}-{sid}-{mask:X8}",
         // The version this build actually produces, not a literal. It said 1 until 2026-09, while
         // AceCanonicalization.Version was 3, and nothing noticed because BundleWriter overwrote the

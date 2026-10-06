@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SearchLabel" xml:space="preserve"><value>Search captured objects</value></data>
+  <data name="SearchHint" xml:space="preserve"><value>Name, account name or distinguished name. Searches the entire selected capture.</value></data>
+  <data name="SearchAction" xml:space="preserve"><value>Search</value></data>
+  <data name="ClearSearch" xml:space="preserve"><value>Clear search</value></data>
+  <data name="SearchHeading" xml:space="preserve"><value>Entire selected capture - results for "{0}"</value></data>
+  <data name="SearchEmpty" xml:space="preserve"><value>No captured objects match this search.</value></data>
+  <data name="SearchPage" xml:space="preserve"><value>Page {0}: {1} matches on this page. {2}</value></data>
+  <data name="MoreResults" xml:space="preserve"><value>More results are available.</value></data>
+  <data name="WholeCapture" xml:space="preserve"><value>Searching the entire selected capture</value></data>
+  <data name="Domain" xml:space="preserve"><value>Domain</value></data>
+  <data name="Location" xml:space="preserve"><value>Location</value></data>
+  <data name="Coverage" xml:space="preserve"><value>Capture coverage</value></data>
+  <data name="CaptureIncomplete" xml:space="preserve"><value>Capture incomplete</value></data>
+  <data name="ViewDetails" xml:space="preserve"><value>View details</value></data>
+  <data name="HideDetails" xml:space="preserve"><value>Hide details</value></data>
+  <data name="RunGaps" xml:space="preserve"><value>Run-specific unread or missing directory data</value></data>
+  <data name="ScopeNotes" xml:space="preserve"><value>General product-scope exclusions</value></data>
+  <data name="CoverageBoundary" xml:space="preserve"><value>This describes directory-tree coverage. Individual attributes, permissions and analysis results retain their own missing or incomplete evidence notices.</value></data>
+  <data name="NoTreeGaps" xml:space="preserve"><value>No directory-tree coverage gaps were reported by this capture.</value></data>
+</root>

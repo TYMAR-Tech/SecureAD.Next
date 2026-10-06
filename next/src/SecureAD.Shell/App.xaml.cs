@@ -65,6 +65,29 @@ internal partial class App : Application
         ShellViewModel shell = null!;
         RunLibraryViewModel library = null!;
 
+        // ONE STATEMENT OF WHAT AN ANALYSIS IS, shared by both doors onto it. The audit window
+        // derives and judges straight after a capture; the run library does the same later, for a
+        // run captured without them. Constructing a launcher at each door would be two policies
+        // free to disagree - and the requester policy is what decides how far a judging looks, so
+        // the same bundle would be judged differently depending on which screen asked.
+        //
+        // Sharing the instances is safe where sharing a NewAuditViewModel is not: a launcher holds
+        // no half-planned run, only the decision about what a production analysis does.
+        //
+        // The shared requester policy does not activate the separate legacy membership scan.
+        // That scan still needs its own measured and approved processing limit.
+        var deriving = new DerivationLauncher();
+        var judging = new JudgingLauncher(
+            discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy);
+
+        var assets = new BundleAssetSource();
+        Task CloseOpenedRun()
+        {
+            var closed = assets.CloseRunAsync();
+            shell.ClearOpenedRun();
+            return closed;
+        }
+
         // The wizard opens the run it has just captured, which the library has never listed - it
         // was written after the last read. So this opener adopts the run (read again, select that
         // path) before navigating, where the library's own opener below must not: refreshing there
@@ -78,12 +101,9 @@ internal partial class App : Application
                 {
                     library.Adopt(path);
                     shell.Show(ShellSection.Assets);
-                }),
-                new DerivationLauncher(),
-                // No automatic own-account membership scan runs until a processing limit has been
-                // measured and approved. Passed explicitly so the absence is a stated decision
-                // rather than a default nobody chose.
-                new JudgingLauncher(discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy),
+                }, CloseOpenedRun),
+                deriving,
+                judging,
                 concurrency),
             audit => shell.Begin(audit),
             () => shell.Leave());
@@ -100,18 +120,19 @@ internal partial class App : Application
             //
             // It lands wherever ShellViewModel.ShowOpenedRun says, which is where that product
             // decision is written down and tested. Restating it here would be a second answer.
-            new RunOpener(_ => shell.ShowOpenedRun()));
+            new RunOpener(_ => shell.ShowOpenedRun(), CloseOpenedRun),
+            deriving,
+            judging);
 
         // One asset source for both screens, not one each. It holds the opened bundle so the seal
         // is verified once when the operator arrives at a run; two of them would re-hash gigabytes
         // of evidence every time he moved between the dashboard and the tree.
-        var assets = new BundleAssetSource();
-
         shell = new ShellViewModel(
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
             new AssetsViewModel(assets),
             new DashboardViewModel(assets),
-            new SettingsViewModel(concurrency));
+            new SettingsViewModel(concurrency),
+            new RulesViewModel(assets));
 
         // Home is the section already showing, so nothing navigates to it and nothing would
         // otherwise ask the library to read itself before the first screen is painted.

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Unavailable" xml:space="preserve"><value>This run has no saved LAPS inventory.</value></data>
+  <data name="Invalid" xml:space="preserve"><value>The saved LAPS inventory is incomplete or invalid.</value></data>
+  <data name="InvalidRoute" xml:space="preserve"><value>The saved LAPS finding is missing or has invalid membership-route support.</value></data>
+</root>

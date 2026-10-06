@@ -93,7 +93,8 @@ public sealed class BundleWriter : IDisposable
     private SqliteCommand? _objectInsert;
     private SqliteCommand? _descriptorInsert;
     private SqliteCommand? _descriptorLinkInsert;
-    private SqliteCommand? _aceInsert;
+    private SqliteCommand? _entryInsert;
+    private SqliteCommand? _entryLinkInsert;
     private SqliteCommand? _trusteeInsert;
 
     /// <summary>
@@ -101,6 +102,17 @@ public sealed class BundleWriter : IDisposable
     /// makes the deduplication O(1) per object rather than a query per object.
     /// </summary>
     private readonly Dictionary<string, long> _descriptors = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Distinct access control entries already stored, by <c>ace_hash</c>.
+    /// </summary>
+    /// <remarks>
+    /// <b>The largest thing this writer keeps in memory, and much the smallest of the two it could
+    /// have kept.</b> The production capture of 2026-09-23 held 481,967 distinct entries against
+    /// 141,706,338 stored rows, so this dictionary is the size of the former and saves the latter.
+    /// It grows with what a forest actually says rather than with how many objects say it.
+    /// </remarks>
+    private readonly Dictionary<string, long> _entries = new(StringComparer.Ordinal);
 
     /// <summary>The partition each object was written against, so an unreadable descriptor can be counted against it.</summary>
     private readonly Dictionary<long, long> _objectCoverage = [];
@@ -115,7 +127,7 @@ public sealed class BundleWriter : IDisposable
     private long _nextCoverageId;
     private long _nextDescriptorId;
     private long _nextTrusteeId;
-    private long _nextAceId;
+    private long _nextEntryId;
     private bool _completed;
     private bool _disposed;
     private AttemptCheckpoint? _attempt;
@@ -125,7 +137,7 @@ public sealed class BundleWriter : IDisposable
         long CoverageId,
         long DescriptorId,
         long TrusteeId,
-        long AceId);
+        long EntryId);
 
     private BundleWriter(
         string bundleDirectory,
@@ -149,14 +161,15 @@ public sealed class BundleWriter : IDisposable
         // WHICH IS WHAT HAPPENED. ace_id was missing from this list until 2026-09-13, and the
         // sentence above was already warning about it: entries were the one table left numbering
         // from 1 in every shard. It was never spotted by reading, because ace_id is the only one of
-        // the five the writer does not name in its INSERT - SQLite assigns it - so it is invisible
+        // the five the writer did not name in its INSERT - SQLite assigned it - so it was invisible
         // at the point the other four are obviously being set. The first run of the merge tests
-        // caught it immediately, which is the argument for those tests existing at all.
+        // caught it immediately, which is the argument for those tests existing at all. The table
+        // is access_entry now and the counter is named for it, but the trap is the same one.
         _nextObjectId = shard.FirstId;
         _nextCoverageId = shard.FirstId;
         _nextDescriptorId = shard.FirstId;
         _nextTrusteeId = shard.FirstId;
-        _nextAceId = shard.FirstId;
+        _nextEntryId = shard.FirstId;
     }
 
     /// <summary>Which of a run's parallel readers wrote this, and therefore which identifiers it owns.</summary>
@@ -297,7 +310,7 @@ public sealed class BundleWriter : IDisposable
         }
 
         var checkpoint = new AttemptCheckpoint(
-            _nextObjectId, _nextCoverageId, _nextDescriptorId, _nextTrusteeId, _nextAceId);
+            _nextObjectId, _nextCoverageId, _nextDescriptorId, _nextTrusteeId, _nextEntryId);
         Execute("SAVEPOINT partition_attempt");
         _attempt = checkpoint;
 
@@ -397,6 +410,7 @@ public sealed class BundleWriter : IDisposable
         {
             RemoveValuesAllocatedAtOrAfter(_coverageIds, checkpoint.CoverageId);
             RemoveValuesAllocatedAtOrAfter(_descriptors, checkpoint.DescriptorId);
+            RemoveValuesAllocatedAtOrAfter(_entries, checkpoint.EntryId);
             RemoveValuesAllocatedAtOrAfter(_trustees, checkpoint.TrusteeId);
             RemoveKeysAllocatedAtOrAfter(_objectCoverage, checkpoint.ObjectId);
             RemoveKeysAllocatedAtOrAfter(_objectGuids, checkpoint.ObjectId);
@@ -407,12 +421,17 @@ public sealed class BundleWriter : IDisposable
             _nextDescriptorId = checkpoint.DescriptorId;
             _nextTrusteeId = checkpoint.TrusteeId;
 
-            // Rolled back with the rest, and it has to be. SQLite assigned ace_id until 2026-09-13,
-            // and its implicit counter is max(rowid) + 1 - so a restart reused the numbers the
-            // abandoned attempt had taken. An explicit counter that kept climbing would leave gaps
-            // where there were none, changing the bytes of an unsharded bundle that the frozen
-            // golden hashes cover. Editing one of those is a finding, not a fix.
-            _nextAceId = checkpoint.AceId;
+            // Rolled back with the rest, and it has to be. SQLite assigned the entry identifier
+            // until 2026-09-13, and its implicit counter is max(rowid) + 1 - so a restart reused the
+            // numbers the abandoned attempt had taken. An explicit counter that kept climbing would
+            // leave gaps where there were none, changing the bytes of an unsharded bundle that the
+            // frozen golden hashes cover. Editing one of those is a finding, not a fix.
+            //
+            // THE CACHE HAS TO GO BACK WITH IT, which is new and is why it is named above. An entry
+            // remembered here but rolled back out of the table would be handed out again as the
+            // identifier of a row that no longer exists, and every descriptor linking to it would
+            // point at nothing - or worse, at whatever later took the number.
+            _nextEntryId = checkpoint.EntryId;
             _attempt = null;
         }
     }
@@ -705,8 +724,16 @@ public sealed class BundleWriter : IDisposable
     /// <b>The descriptor is identified by the SHA-256 of its bytes, and stored once.</b> A forest
     /// does not hold one descriptor per object; it holds a few thousand distinct ones repeated
     /// across millions, mostly by inheritance. Two objects sharing a descriptor therefore share one
-    /// stored descriptor and one stored entry set, and the second object costs a hash and one row
+    /// stored descriptor and one stored list, and the second object costs a hash and one row
     /// in <c>object_security_descriptor</c> rather than a parse and an insert per entry.
+    /// </para>
+    /// <para>
+    /// <b>Sharing goes one level deeper than that, and it has to.</b> Two descriptors that are not
+    /// byte-identical still hold most of the same entries, because each container down a tree adds
+    /// entries that everything beneath it inherits. Deduplicating only whole descriptors therefore
+    /// saved almost nothing on a real forest: the production capture of 2026-09-23 stored
+    /// 141,706,338 entries saying 481,967 distinct things. Each distinct entry is now stored once in
+    /// <c>access_entry</c> and pointed at from <c>descriptor_entry</c>, per <c>P-272</c>.
     /// </para>
     /// <para>
     /// <b>The hash is cryptographic and that is load-bearing.</b> A collision here does not corrupt
@@ -832,7 +859,7 @@ public sealed class BundleWriter : IDisposable
         }
 
         for (var ordinal = 0; ordinal < normalization.Aces.Count; ordinal++)
-            WriteAce(descriptorId, ordinal, normalization.Aces[ordinal]);
+            LinkEntry(descriptorId, ordinal, normalization.Aces[ordinal]);
     }
 
     /// <summary>
@@ -1789,8 +1816,8 @@ public sealed class BundleWriter : IDisposable
             UPDATE captured_object
             SET ace_count = (
                 SELECT COUNT(*)
-                FROM ace
-                WHERE ace.descriptor_id = (
+                FROM descriptor_entry
+                WHERE descriptor_entry.descriptor_id = (
                     SELECT link.descriptor_id
                     FROM object_security_descriptor AS link
                     WHERE link.object_id = captured_object.object_id))
@@ -1896,31 +1923,81 @@ public sealed class BundleWriter : IDisposable
         }
     }
 
-    private void WriteAce(long descriptorId, int ordinal, CanonicalAce ace)
+    /// <summary>
+    /// Records that a descriptor holds one entry at one position, storing the entry itself only the
+    /// first time this bundle has seen it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The ordinal goes on the link, and the entry carries no position at all.</b> The same entry
+    /// sits at different positions in different lists, and Windows evaluates a DACL in stored order
+    /// - accumulating granted and denied masks, and adding a deny only for rights that are not
+    /// already granted (<c>[MS-ADTS] 5.1.3.3.2</c>). An order recorded on the shared entry would be
+    /// one object's order imposed on every other object that carries it.
+    /// </para>
+    /// <para>
+    /// <b>Identity is <c>ace_hash</c> and nothing else.</b> It is a SHA-256 over every field that
+    /// distinguishes one entry from another - trustee, mask, type, the two GUIDs, inheritance,
+    /// propagation and the callback condition bytes - and since canonicalization version 4 it names
+    /// no object, which is what lets two objects be seen to hold one entry at all. As with the
+    /// descriptor hash above, a collision here would not corrupt a row: it would quietly give one
+    /// trustee another trustee's rights, so the hash is cryptographic on purpose.
+    /// </para>
+    /// </remarks>
+    private void LinkEntry(long descriptorId, int ordinal, CanonicalAce ace)
     {
-        var command = RetainInsert(ref _aceInsert,
-            """
-            INSERT INTO ace (
-                ace_id, descriptor_id, ordinal, ace_type, trustee_id, access_mask, object_type_guid,
-                inherited_object_type_guid, is_inherited, inheritance_flags, propagation_flags, ace_hash)
-            VALUES ($ace, $descriptor, $ordinal, $type, $trustee, $mask, $objectType,
-                    $inheritedType, $inherited, $inheritance, $propagation, $hash)
-            """,
-            ["$ace", "$descriptor", "$ordinal", "$type", "$trustee", "$mask", "$objectType",
-                "$inheritedType", "$inherited", "$inheritance", "$propagation", "$hash"]);
-        command.Parameters[0].Value = _nextAceId++;
-        command.Parameters[1].Value = descriptorId;
-        command.Parameters[2].Value = ordinal;
-        command.Parameters[3].Value = ace.AceType.ToString();
-        command.Parameters[4].Value = TrusteeId(ace.TrusteeSid);
-        command.Parameters[5].Value = ace.AccessMask;
-        command.Parameters[6].Value = (object?)ace.ObjectTypeGuid ?? DBNull.Value;
-        command.Parameters[7].Value = (object?)ace.InheritedObjectTypeGuid ?? DBNull.Value;
-        command.Parameters[8].Value = ace.IsInherited ? 1 : 0;
-        command.Parameters[9].Value = ace.InheritanceFlags;
-        command.Parameters[10].Value = ace.PropagationFlags;
-        command.Parameters[11].Value = ace.AceHash;
+        var command = RetainInsert(ref _entryLinkInsert,
+            "INSERT INTO descriptor_entry (descriptor_id, ordinal, entry_id) "
+            + "VALUES ($descriptor, $ordinal, $entry)",
+            ["$descriptor", "$ordinal", "$entry"]);
+        command.Parameters[0].Value = descriptorId;
+        command.Parameters[1].Value = ordinal;
+        command.Parameters[2].Value = EntryId(ace);
         command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// The identifier of an entry, adding it to the shared table the first time it is seen.
+    /// </summary>
+    /// <remarks>
+    /// The same shape as <see cref="TrusteeId"/> and <see cref="EnsureDescriptor"/>, and for the
+    /// same reason at a larger scale: a forest does not hold one entry per object, it holds a few
+    /// hundred thousand distinct entries repeated across hundreds of millions of positions, almost
+    /// all of it inheritance. The production capture of 2026-09-23 measured 294 positions per
+    /// distinct entry.
+    /// </remarks>
+    private long EntryId(CanonicalAce ace)
+    {
+        if (_entries.TryGetValue(ace.AceHash, out var existing))
+            return existing;
+
+        var entryId = _nextEntryId++;
+        var command = RetainInsert(ref _entryInsert,
+            """
+            INSERT INTO access_entry (
+                entry_id, ace_type, trustee_id, access_mask, object_type_guid,
+                inherited_object_type_guid, is_inherited, inheritance_flags, propagation_flags,
+                application_data, ace_hash)
+            VALUES ($entry, $type, $trustee, $mask, $objectType,
+                    $inheritedType, $inherited, $inheritance, $propagation, $data, $hash)
+            """,
+            ["$entry", "$type", "$trustee", "$mask", "$objectType",
+                "$inheritedType", "$inherited", "$inheritance", "$propagation", "$data", "$hash"]);
+        command.Parameters[0].Value = entryId;
+        command.Parameters[1].Value = ace.AceType.ToString();
+        command.Parameters[2].Value = TrusteeId(ace.TrusteeSid);
+        command.Parameters[3].Value = ace.AccessMask;
+        command.Parameters[4].Value = (object?)ace.ObjectTypeGuid ?? DBNull.Value;
+        command.Parameters[5].Value = (object?)ace.InheritedObjectTypeGuid ?? DBNull.Value;
+        command.Parameters[6].Value = ace.IsInherited ? 1 : 0;
+        command.Parameters[7].Value = ace.InheritanceFlags;
+        command.Parameters[8].Value = ace.PropagationFlags;
+        command.Parameters[9].Value = ace.ApplicationData.ToArray();
+        command.Parameters[10].Value = ace.AceHash;
+        command.ExecuteNonQuery();
+
+        _entries[ace.AceHash] = entryId;
+        return entryId;
     }
 
     /// <summary>
@@ -2020,7 +2097,8 @@ public sealed class BundleWriter : IDisposable
         }
         _insertCommands.Clear();
         _attributeInserts.Clear();
-        _objectInsert = _descriptorInsert = _descriptorLinkInsert = _aceInsert = _trusteeInsert = null;
+        _objectInsert = _descriptorInsert = _descriptorLinkInsert =
+            _entryInsert = _entryLinkInsert = _trusteeInsert = null;
     }
 
     private void Execute(string sql, Action<SqliteCommand> bind)

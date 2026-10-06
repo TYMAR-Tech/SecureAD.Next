@@ -77,8 +77,49 @@ public static class JudgementSchema
     /// within the path certificate; production scheduling and physical tables are unchanged.</para>
     /// <para>38 binds enterprise CA registration/host classification to the captured configuration
     /// context and admits those fixed targets; permission and path-operation semantics are unchanged.</para>
+    /// <para>39 saves complete Tier-0 classifications rather than only their fingerprints, so path
+    /// readback does not reclassify captured objects. Older formats are refused, never replayed or migrated.</para>
+    /// <para>40 saves all-computer LAPS inventory answers and the expected lengths of LAPS finding routes.</para>
+    /// <para>41 saves all-object per-right permission classifications and their schema support.</para>
+    /// <para>42 stores each distinct reading once in permission_classification_reading and links to it.</para>
+    /// <para>43 stores each distinct access control entry once in permission_entry and links to it, so
+    /// the row no longer names the object it was found on and the ordinal lives on the link (P-279).</para>
+    /// <para>44 stores the shared form of an entry's trustee, so <c>S-1-5-10</c> is held as the
+    /// catalogue's own name rather than as <c>This object (Alice)</c> and is resolved against the
+    /// target on read (P-285). Every occurrence fingerprint is taken over that shared form, so a
+    /// version 43 store's fingerprints do not verify against this build - refused on version rather
+    /// than reported as tampered proofs, which is what the number is for.</para>
+    /// <para>45 binds each occurrence to the reading that explains it, by folding that reading's
+    /// digest into the occurrence's own fingerprint (P-283). Until then <c>reading_id</c> was
+    /// covered by nothing, so an allow <c>WRITE_DAC</c> could be repointed at a deny entry's
+    /// reading and classify <c>NotDangerous</c> with every check still passing. No column was
+    /// added: a separate binding would have cost 32 bytes on each of the production capture's
+    /// 330,856,576 occurrences.</para>
+    /// <para>46 keys the saved permission classification per <b>descriptor</b> rather than per
+    /// object (P-280), because the interpretation of an entry is a function of the entry and the
+    /// run's catalogue and of nothing about the object carrying it. On the production capture
+    /// 940,067 objects carry 267,550 distinct descriptors, so the occurrences fall from 330,856,576
+    /// to 141,693,937; <c>position</c> is dropped as recoverable rank-by-ordinal, the entry-derived
+    /// columns move onto one row per distinct entry, and the occurrence becomes
+    /// <c>WITHOUT ROWID</c> on <c>(descriptor_id, ordinal)</c>. The per-occurrence fingerprint is
+    /// replaced by one per descriptor over its whole ordered list, which is both far cheaper and
+    /// stronger, and an object's descriptor is supplied by the <b>evidence</b> on every read.</para>
+    /// <para>47 saves separate per-question path-risk qualification and coverage, bound to the
+    /// original path calculation and captured pre-change authority; it adds no finding or permission semantics.</para>
+    /// <para>48 stores each original requester proof once beside its qualification, with a certificate
+    /// fingerprint over the complete proof set, and publishes SEC-071 findings and bound summary counts.</para>
+    /// <para>49 retains qualified nested global-group requester witnesses in selected questions and
+    /// ordered permission proofs; member attribution and the other operation families are unchanged.</para>
+    /// <para>50 saves captured group-nesting reasons for assessing membership-edit permissions and
+    /// separates obtained-group continuation witnesses from the user's captured membership proof.</para>
+    /// <para>51 binds captured requester authorization to declared forest domains and the target's
+    /// domain, retaining scoped global/universal/domain-local membership without widening operation proofs.</para>
+    /// <para>52 stores path calculation, node and requester proofs as ordered UTF-8 JSON fragments,
+    /// retaining their exact fingerprints without whole-document text materialization.</para>
+    /// <para>53 binds membership and requester source proofs through versioned component fingerprints,
+    /// retaining complete source coverage without rehashing shared schema/domain/target data per question.</para>
     /// </remarks>
-    public const int Version = 38;
+    public const int Version = 53;
 
     private static readonly string[] TableDdl =
     [
@@ -445,6 +486,7 @@ public static class JudgementSchema
             reach                               TEXT    NOT NULL,
             inherited_from                      TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
+            route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
             PRIMARY KEY (finding_id)
         )
         """,
@@ -578,6 +620,7 @@ public static class JudgementSchema
             broad_principal_sid                 TEXT        NULL,
             broad_principal_name                TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
+            route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
             PRIMARY KEY (finding_id)
         )
         """,
@@ -638,6 +681,10 @@ public static class JudgementSchema
         SelfMembershipStorage.CreateTables(connection);
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
+        PathRequesterRiskStorage.CreateTables(connection);
+        Tier0RouteFindingStorage.CreateTables(connection);
+        LapsInventoryStorage.CreateTables(connection);
+        PermissionClassificationStorage.CreateTables(connection);
     }
 
     /// <summary>
@@ -648,6 +695,7 @@ public static class JudgementSchema
     {
         ArgumentNullException.ThrowIfNull(connection);
         Execute(connection, DeferredIndexDdl);
+        LapsInventoryStorage.CreateIndexes(connection);
     }
 
     private static void Execute(SqliteConnection connection, IEnumerable<string> statements)

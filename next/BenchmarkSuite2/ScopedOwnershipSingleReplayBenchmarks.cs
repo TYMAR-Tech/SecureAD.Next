@@ -22,8 +22,8 @@ namespace SecureAD.Measurements;
 [CPUUsageDiagnoser]
 public class ScopedOwnershipSingleReplayBenchmarks
 {
-    private const string Root = @"C:\Users\jistrand\source\repos\razamus\SecureAD.Next\.vs\ScopedOwnershipSingleReplay-6f33d43a38f54f07aa6f86a3b9e84dcc";
-    private const string Input = @"C:\Users\jistrand\source\repos\razamus\SecureAD.Next\.vs\ScopedOwnershipAssessment-138558efc4054a9bb16d4bc1ef36c400\input-copy";
+    private const string Root = @"C:\Users\jistrand\source\repos\SecureAD.Next\next\artifacts\measurement-inputs\ScopedOwnershipSingleReplay-6f33d43a38f54f07aa6f86a3b9e84dcc";
+    private const string Input = @"C:\Users\jistrand\source\repos\SecureAD.Next\next\artifacts\measurement-inputs\ScopedOwnershipAssessment-138558efc4054a9bb16d4bc1ef36c400\input-copy";
     private const string EvidenceHash = "A6F1F001F53ADD970B42D55A710F3FC3B083AC62C8E54AB1B140955E46EBB16C";
     private const string DerivationHash = "0C2FE5FE6BA7655EC2FFEDF059353524BC1271B22B13AF47BBF817C3CC15F31E";
     private const string DerivationFile = "derivation.c2d92b832e234a1ab6112cca9344cf9f.db";

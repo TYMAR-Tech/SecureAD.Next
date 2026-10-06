@@ -40,7 +40,14 @@ internal static class ObjectStreamReader
     /// <param name="connection">An open connection to the evidence database.</param>
     /// <param name="rememberIdentity">Retains only the current row's identity for the owning reader.</param>
     public static IEnumerable<ObjectAttributes> Stream(
-        SqliteConnection connection, Action<long, string> rememberIdentity)
+        SqliteConnection connection, Action<long, string> rememberIdentity) =>
+        StreamRows(connection, rememberIdentity, null, CancellationToken.None).Select(row => row.Attributes);
+
+    internal sealed record StreamedObject(ObjectAttributes Attributes, long PermissionObjectId,
+        string PermissionDn, long? DescriptorId);
+
+    internal static IEnumerable<StreamedObject> StreamRows(SqliteConnection connection,
+        Action<long, string> rememberIdentity, string? orderTable, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentNullException.ThrowIfNull(rememberIdentity);
@@ -53,23 +60,32 @@ internal static class ObjectStreamReader
             + string.Concat(
                 columns.Select(a => ", o." + BundleSchema.ColumnNameFor(a.LdapDisplayName)))
             + ", c.connection_security, o.domain_fqdn"
-            + " FROM captured_object AS o"
+            + (orderTable is null
+                ? ", o.object_id, o.object_id, o.distinguished_name, NULL FROM captured_object AS o"
+                : $", ordering.position, ordering.permission_object_id, chosen.distinguished_name, ordering.descriptor_id FROM temp.{orderTable} AS ordering"
+                    + " CROSS JOIN captured_object AS o ON o.object_id=ordering.object_id"
+                    + " JOIN captured_object AS chosen ON chosen.object_id=ordering.permission_object_id")
             + " JOIN partition_coverage AS c ON c.coverage_id = o.coverage_id"
-            + " ORDER BY o.object_id";
+            + (orderTable is null ? " ORDER BY o.object_id" : " ORDER BY ordering.position");
 
         using var objects = command.ExecuteReader();
 
-        var sidecars = BundleSchema.MultiValuedTables
-            .Select(a => new ValueTableCursor(connection, a))
-            .ToList();
+        var sidecars = new List<ValueTableCursor>();
 
         try
         {
+            foreach (var attribute in BundleSchema.MultiValuedTables)
+            {
+                token.ThrowIfCancellationRequested();
+                sidecars.Add(new ValueTableCursor(connection, attribute, orderTable));
+            }
             while (objects.Read())
             {
+                token.ThrowIfCancellationRequested();
                 var objectId = objects.GetInt64(0);
                 var dn = objects.GetString(1);
                 var storedGuid = objects.IsDBNull(2) ? null : objects.GetString(2);
+                var position = objects.GetInt64(6 + columns.Count);
 
                 var attributes = new List<ObjectAttribute>
                 {
@@ -94,11 +110,11 @@ internal static class ObjectStreamReader
                     attributes.Add(new ObjectAttribute(
                         sidecar.Attribute.LdapDisplayName,
                         AttributeCardinality.MultiValued,
-                        sidecar.ValuesFor(objectId)));
+                        sidecar.ValuesFor(position)));
                 }
 
                 rememberIdentity(objectId, dn);
-                yield return new ObjectAttributes(
+                var subject = new ObjectAttributes(
                     dn,
                     storedGuid is null ? null : Guid.Parse(storedGuid),
                     DateTimeOffset.Parse(
@@ -110,6 +126,9 @@ internal static class ObjectStreamReader
                     objects.IsDBNull(5 + columns.Count)
                         ? null
                         : objects.GetString(5 + columns.Count));
+                yield return new(subject, objects.GetInt64(7 + columns.Count),
+                    objects.GetString(8 + columns.Count),
+                    objects.IsDBNull(9 + columns.Count) ? null : objects.GetInt64(9 + columns.Count));
             }
         }
         finally
@@ -129,8 +148,8 @@ internal static class ObjectStreamReader
     /// One multi-valued table, walked in step with the object scan.
     /// </summary>
     /// <remarks>
-    /// <b>It only ever moves forward.</b> Both this and the object scan are ordered by
-    /// <c>object_id</c>, so the values for an object are always at or ahead of the cursor: rows for
+    /// <b>It only ever moves forward.</b> Both this and the object scan follow the same position
+    /// (object identity normally, descriptor-group position during judging), so rows for
     /// objects already passed are discarded, and the cursor stops as soon as it reaches an object
     /// beyond the one being asked about. That makes the whole table one sequential read for the
     /// entire bundle rather than a query per object.
@@ -145,17 +164,29 @@ internal static class ObjectStreamReader
         private long _pendingObjectId;
         private AttributeValue? _pending;
 
-        public ValueTableCursor(SqliteConnection connection, CapturedAttribute attribute)
+        public ValueTableCursor(SqliteConnection connection, CapturedAttribute attribute, string? orderTable)
         {
             _attribute = attribute;
 
             _command = connection.CreateCommand();
-            _command.CommandText =
-                $"SELECT object_id, ordinal, value FROM {BundleSchema.ValueTableNameFor(attribute.LdapDisplayName)} "
-                + "ORDER BY object_id, ordinal";
+            var table = BundleSchema.ValueTableNameFor(attribute.LdapDisplayName);
+            _command.CommandText = orderTable is null
+                ? $"SELECT object_id, ordinal, value FROM {table} ORDER BY object_id, ordinal"
+                : $"SELECT ordering.position, v.ordinal, v.value FROM {table} AS v"
+                    + $" JOIN temp.{orderTable} AS ordering ON ordering.object_id=v.object_id"
+                    + " ORDER BY ordering.position, v.ordinal";
 
-            _reader = _command.ExecuteReader();
-            Advance();
+            try
+            {
+                _reader = _command.ExecuteReader();
+                Advance();
+            }
+            catch
+            {
+                _reader?.Dispose();
+                _command.Dispose();
+                throw;
+            }
         }
 
         public CapturedAttribute Attribute => _attribute;

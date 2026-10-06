@@ -41,7 +41,11 @@ public sealed record ListedObject(
     string Name,
     Guid? ObjectGuid,
     string? ObjectClass,
-    string? ParentDistinguishedName);
+    string? ParentDistinguishedName)
+{
+    /// <summary>The domain recorded by capture, never inferred from the displayed name.</summary>
+    public string? DomainFqdn { get; init; }
+}
 
 /// <summary>
 /// One page of objects, and what is true about the whole listing they came from.
@@ -77,6 +81,9 @@ public sealed record ObjectPage(
     int Total,
     bool ObjectsAreComplete,
     string? Shortfall);
+
+/// <summary>Whether the capture covers a selected listing scope, independently of the product being listed.</summary>
+public sealed record ListingCoverage(bool IsComplete, string? Shortfall);
 
 /// <summary>
 /// Lists the objects a bundle captured beneath one container.

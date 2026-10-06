@@ -26,6 +26,9 @@
         <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
             <views:DashboardView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RulesViewModel}">
+            <views:RulesView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <views:SettingsView />
         </DataTemplate>
@@ -82,6 +85,12 @@
                                  IsChecked="{Binding IsDashboard, Mode=OneWay}"
                                  Command="{Binding ShowCommand}"
                                  CommandParameter="{x:Static vm:ShellSection.Dashboard}" />
+
+                    <RadioButton Content="Rules" GroupName="Section"
+                                 Style="{StaticResource PrimaryTab}"
+                                 IsChecked="{Binding IsRules, Mode=OneWay}"
+                                 Command="{Binding ShowCommand}"
+                                 CommandParameter="{x:Static vm:ShellSection.Rules}" />
 
                     <RadioButton Content="Assets" GroupName="Section"
                                  Style="{StaticResource PrimaryTab}"
@@ -159,4 +168,3 @@
         </Border>
     </Grid>
 </Window>
-

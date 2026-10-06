@@ -40,7 +40,7 @@ namespace SecureAD.Judgement;
 /// Specified in <c>docs/specs/rules/SEC-092-laps-rotation-stale.md</c>.
 /// </para>
 /// </remarks>
-public sealed class LapsRotationStale : IRule
+public sealed class LapsRotationStale : IObjectRule
 {
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(

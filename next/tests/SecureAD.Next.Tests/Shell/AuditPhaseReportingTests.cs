@@ -1,6 +1,8 @@
 using SecureAD.Derivation;
+using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Next.Tests.Capture;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.ViewModels;
 using Xunit;
@@ -50,6 +52,66 @@ public sealed class AuditPhaseReportingTests
         Assert.True(result.IsSuccess, result.Error?.Description);
         Assert.Equal(new[] { "WritingMembershipEvidence", "PublishingDerivation", "ReadingDerivedResults" },
             reports.Values.Select(value => value.Phase).Where(phase => phase is "WritingMembershipEvidence" or "PublishingDerivation" or "ReadingDerivedResults"));
+    }
+
+    /// <summary>
+    /// <b>The run log must say which phase judging is in, while it is in it.</b> The owner ran a
+    /// production judging for eight hours on 2026-09-24 and the log held one line - <i>Started,
+    /// rules=17</i> - so there was no way to tell work from a hang, and no way to decide whether to
+    /// abandon it. Every phase reaching <see cref="IProgress{T}"/> already, and none reaching the
+    /// log, is what made the screen the only witness to a run that outlives any screen.
+    /// </summary>
+    /// <remarks>
+    /// Asserted against the log rather than the progress reports on purpose: the log is the
+    /// artefact that survives a cancelled run, a closed window and a machine the operator walked
+    /// away from. <see cref="JudgingReportsPreparationWorkAndPublicationInOrder"/> covers the
+    /// progress side, and passed throughout the eight hours that taught us this.
+    /// </remarks>
+    [Fact]
+    public void JudgingNotesEachPhaseToTheRunLogAsItEntersIt()
+    {
+        var directory = Bundle();
+        Derive(directory);
+        var log = new RecordingRunLog();
+
+        var result = JudgingRun.Judge(
+            directory, [], Started, Started, JudgingRun.NobodyIsWatching, log, CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        Assert.Equal(
+            new[]
+            {
+                nameof(JudgingPhase.PreparingInputs),
+                nameof(JudgingPhase.EvaluatingObjects),
+                nameof(JudgingPhase.SelectingOwnershipScope),
+                nameof(JudgingPhase.AssessingOwnership),
+                nameof(JudgingPhase.EvaluatingRequesters),
+                nameof(JudgingPhase.WritingFindings),
+                nameof(JudgingPhase.PublishingJudgement),
+            },
+            log.Saying("phase").Select(detail => RecordingRunLog.Value(detail, "name")));
+    }
+
+    /// <summary>
+    /// <b>The phases must reach the file on disk, through the launcher the shell actually uses.</b>
+    /// <see cref="JudgingNotesEachPhaseToTheRunLogAsItEntersIt"/> proves judging writes them to an
+    /// <see cref="IRunLog"/>; this proves the shell hands it a real one rather than
+    /// <c>RunLog.Discarded</c>, which is the difference between an operator having an account of an
+    /// abandoned run and having nothing. The command line opens the same file for the same reason.
+    /// </summary>
+    [Fact]
+    public async Task ShellJudgingWritesThePhasesToTheRunLogFile()
+    {
+        var directory = Bundle();
+        Derive(directory);
+
+        var result = await new JudgingLauncher(null).RunAsync(
+            directory, new Collected<JudgingRun.JudgingProgress>(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Error?.Description);
+        var written = await File.ReadAllTextAsync(BundleLayout.RunLogPath(directory));
+        Assert.Contains(nameof(JudgingPhase.EvaluatingObjects), written, StringComparison.Ordinal);
+        Assert.Contains(nameof(JudgingPhase.PublishingJudgement), written, StringComparison.Ordinal);
     }
 
     private sealed class Collected<T> : IProgress<T>

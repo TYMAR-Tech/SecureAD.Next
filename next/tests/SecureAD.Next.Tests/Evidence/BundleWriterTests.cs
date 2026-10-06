@@ -462,7 +462,7 @@ public sealed class BundleWriterTests : IDisposable
         });
 
         // Both have no entries at all...
-        Assert.Equal(0, ScalarLong("SELECT COUNT(*) FROM ace"));
+        Assert.Equal(0, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
 
         // ...and the bundle can still tell them apart, which is the whole reason the error table
         // exists. Without it, "nobody knows what this object grants" reads as "this object grants
@@ -621,7 +621,7 @@ public sealed class BundleWriterTests : IDisposable
                 Descriptor(DaclState.Present, [AceOfType(unmodelled, "S-1-5-32-544", 0x000F01FF)], []));
         });
 
-        Assert.Equal(expected, ScalarText("SELECT ace_type FROM ace"));
+        Assert.Equal(expected, ScalarText("SELECT ace_type FROM access_entry"));
     }
 
     /// <summary>
@@ -647,7 +647,7 @@ public sealed class BundleWriterTests : IDisposable
 
         Assert.Equal(
             1,
-            ScalarLong("SELECT COUNT(*) FROM ace WHERE ace_type GLOB '[0-9]*'"));
+            ScalarLong("SELECT COUNT(*) FROM access_entry WHERE ace_type GLOB '[0-9]*'"));
     }
 
     /// <summary>
@@ -679,12 +679,12 @@ public sealed class BundleWriterTests : IDisposable
 
         Assert.Equal(
             auditType.ToString(),
-            ScalarText("SELECT ace_type FROM ace"));
+            ScalarText("SELECT ace_type FROM access_entry"));
 
         Assert.Equal(
             1,
             ScalarLong(
-                "SELECT COUNT(*) FROM ace WHERE ace_type IN ('SystemAudit', 'SystemAuditObject')"));
+                "SELECT COUNT(*) FROM access_entry WHERE ace_type IN ('SystemAudit', 'SystemAuditObject')"));
     }
 
     [Fact]
@@ -700,7 +700,7 @@ public sealed class BundleWriterTests : IDisposable
                 Descriptor(DaclState.Present, [Ace("S-1-5-32-544", 0x20, inherited: true)], []));
         });
 
-        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM ace WHERE is_inherited = 1"));
+        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM access_entry WHERE is_inherited = 1"));
     }
 
     /// <summary>
@@ -732,7 +732,8 @@ public sealed class BundleWriterTests : IDisposable
             }
         });
 
-        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM ace"));
+        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
         Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM trustee"));
         Assert.Equal(5, ScalarLong("SELECT COUNT(*) FROM object_security_descriptor"));
         Assert.Equal(5, ScalarLong("SELECT COUNT(*) FROM captured_object WHERE ace_count = 1"));
@@ -1086,7 +1087,8 @@ public sealed class BundleWriterTests : IDisposable
         });
 
         Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM security_descriptor"));
-        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM ace"));
+        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
         Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM object_security_descriptor"));
 
         // Both objects reach the one descriptor, and both still report their own entry count.
@@ -1117,7 +1119,113 @@ public sealed class BundleWriterTests : IDisposable
         });
 
         Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM security_descriptor"));
-        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM ace"));
+        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
+    }
+
+    /// <summary>
+    /// Three descriptors holding six entries between them store four rows, because two of the
+    /// entries appear in more than one descriptor.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is P-272 itself, on a fixture small enough to count by hand.</b> Descriptor A holds
+    /// X, Y and Z; descriptor B holds Y and X; descriptor C holds W. That is six positions and four
+    /// distinct entries, worked out before anything was written - which matters, because a
+    /// distinct-entry figure read back out of the same table it is compared with cannot fail, and a
+    /// count that could not fail is how the last two measurement defects here got through.
+    /// </para>
+    /// <para>
+    /// The descriptors are deliberately not byte-identical, so descriptor deduplication contributes
+    /// nothing and what is measured is entry sharing alone. Under the old shape this fixture stored
+    /// six entry rows; on the production capture of 2026-09-23 the same arithmetic ran to
+    /// 141,706,338 rows saying 481,967 things.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TwoDescriptorsSharingAnEntryStoreItOnce()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteCoverage(SomeCoverage());
+
+            var x = Ace("S-1-5-32-544", 0x20);
+            var y = Ace("S-1-5-18", 0x10);
+            var z = Ace("S-1-5-11", 0x40);
+            var w = Ace("S-1-1-0", 0x80);
+
+            WriteDescriptor(
+                writer,
+                writer.WriteObject(ObjectAt("CN=A,DC=contoso,DC=com", GuidNumbered(1))),
+                Descriptor(GuidNumbered(1), DaclState.Present, [x, y, z], []));
+            WriteDescriptor(
+                writer,
+                writer.WriteObject(ObjectAt("CN=B,DC=contoso,DC=com", GuidNumbered(2))),
+                Descriptor(GuidNumbered(2), DaclState.Present, [y, x], []));
+            WriteDescriptor(
+                writer,
+                writer.WriteObject(ObjectAt("CN=C,DC=contoso,DC=com", GuidNumbered(3))),
+                Descriptor(GuidNumbered(3), DaclState.Present, [w], []));
+        });
+
+        Assert.Equal(3, ScalarLong("SELECT COUNT(*) FROM security_descriptor"));
+        Assert.Equal(6, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
+        Assert.Equal(4, ScalarLong("SELECT COUNT(*) FROM access_entry"));
+
+        // Every position still reaches an entry, so the sharing did not lose one.
+        Assert.Equal(
+            0,
+            ScalarLong(
+                """
+                SELECT COUNT(*) FROM descriptor_entry
+                WHERE entry_id NOT IN (SELECT entry_id FROM access_entry)
+                """));
+    }
+
+    /// <summary>
+    /// The shared entry sits at a different position in each descriptor, and each descriptor
+    /// remembers its own.
+    /// </summary>
+    /// <remarks>
+    /// <b>Order is not decoration.</b> Active Directory evaluates a DACL in stored order,
+    /// accumulating granted and denied masks and adding a deny only for rights that are not already
+    /// granted (<c>[MS-ADTS] 5.1.3.3.2</c>) - so an allow read before a deny keeps that deny from
+    /// taking effect. An ordinal recorded on the shared entry would be one object's evaluation
+    /// order imposed on every other object carrying it, which is a wrong answer about who has
+    /// access rather than a tidiness problem. This is the reason the ordinal is on
+    /// <c>descriptor_entry</c> and not on <c>access_entry</c>.
+    /// </remarks>
+    [Fact]
+    public void ASharedEntryKeepsEachDescriptorsOwnOrdinal()
+    {
+        WriteBundle(writer =>
+        {
+            writer.WriteCoverage(SomeCoverage());
+
+            var first = Ace("S-1-5-32-544", 0x20);
+            var second = Ace("S-1-5-18", 0x10);
+
+            WriteDescriptor(
+                writer,
+                writer.WriteObject(ObjectAt("CN=A,DC=contoso,DC=com", GuidNumbered(1))),
+                Descriptor(GuidNumbered(1), DaclState.Present, [first, second], []));
+            WriteDescriptor(
+                writer,
+                writer.WriteObject(ObjectAt("CN=B,DC=contoso,DC=com", GuidNumbered(2))),
+                Descriptor(GuidNumbered(2), DaclState.Present, [second, first], []));
+        });
+
+        // One stored entry per distinct permission, and each sits at both positions once.
+        Assert.Equal(2, ScalarLong("SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(
+            2,
+            ScalarLong(
+                """
+                SELECT COUNT(DISTINCT ordinal) FROM descriptor_entry
+                JOIN access_entry USING (entry_id)
+                JOIN trustee USING (trustee_id)
+                WHERE trustee.sid = 'S-1-5-32-544'
+                """));
     }
 
     /// <summary>
@@ -1141,7 +1249,8 @@ public sealed class BundleWriterTests : IDisposable
         });
 
         // Neither has an entry, which is exactly why they used to be indistinguishable.
-        Assert.Equal(0, ScalarLong("SELECT COUNT(*) FROM ace"));
+        Assert.Equal(0, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
+        Assert.Equal(0, ScalarLong("SELECT COUNT(*) FROM access_entry"));
 
         // The one that could not be read says so, and has no entry count at all.
         Assert.Equal(
@@ -1553,6 +1662,58 @@ public sealed class BundleWriterTests : IDisposable
         Assert.True(shard.Owns(ScalarLong("SELECT MIN(coverage_id) FROM partition_coverage")));
     }
 
+    /// <summary>
+    /// An entry written by an abandoned attempt is forgotten as well as rolled back, so the next
+    /// attempt stores it again rather than pointing at a row that is no longer there.
+    /// </summary>
+    /// <remarks>
+    /// <b>New with <c>P-272</c>, and the one way entry sharing can lose evidence.</b> The writer
+    /// remembers which entries it has already stored so that the second descriptor carrying one
+    /// costs a dictionary lookup instead of an insert. If that memory survived a rollback, the
+    /// entry would be handed out again as the identifier of a row the rollback removed - and every
+    /// descriptor linking to it would point at nothing, or at whatever later took the number. The
+    /// second attempt below writes the same permission the abandoned one did, which is the case
+    /// that goes wrong.
+    /// </remarks>
+    [Fact]
+    public void AnEntryFromAnAbandonedAttemptIsWrittenAgainByTheNextOne()
+    {
+        using (var writer = BundleWriter.Create(_directory, Started))
+        {
+            var coverage = SomeCoverage();
+            writer.BeginPartition(
+                coverage.NamingContextDn, coverage.Kind, coverage.Controller,
+                coverage.ConnectionSecurity);
+
+            var abandoned = writer.WriteObject(ObjectAt("CN=Gone,DC=contoso,DC=com", GuidNumbered(1)));
+            WriteDescriptor(
+                writer,
+                abandoned,
+                Descriptor(GuidNumbered(1), DaclState.Present, [Ace("S-1-5-32-544", 0x20)], []));
+
+            writer.AbortPartition();
+
+            writer.WriteCoverage(coverage);
+            var kept = writer.WriteObject(ObjectAt("CN=Kept,DC=contoso,DC=com", GuidNumbered(2)));
+            WriteDescriptor(
+                writer,
+                kept,
+                Descriptor(GuidNumbered(2), DaclState.Present, [Ace("S-1-5-32-544", 0x20)], []));
+
+            writer.Complete(OneDomainRead(), Finished);
+        }
+
+        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM access_entry"));
+        Assert.Equal(1, ScalarLong("SELECT COUNT(*) FROM descriptor_entry"));
+        Assert.Equal(
+            0,
+            ScalarLong(
+                """
+                SELECT COUNT(*) FROM descriptor_entry
+                WHERE entry_id NOT IN (SELECT entry_id FROM access_entry)
+                """));
+    }
+
     [Fact]
     public void AShardBelowZeroIsRefused() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => BundleShard.Number(-1));
@@ -1729,8 +1890,7 @@ public sealed class BundleWriterTests : IDisposable
             completeness, wasCanonical);
 
     private static CanonicalAce Ace(string trustee, int mask, bool inherited = false) => new(
-        AliceGuid,
-        AceType.AccessAllowed, trustee, mask, null, null, inherited, 0, 0,
+        AceType.AccessAllowed, trustee, mask, null, null, inherited, 0, 0, default,
         $"hash-{trustee}-{mask}-{inherited}", AceCanonicalization.Version);
 
     /// <summary>
@@ -1738,8 +1898,7 @@ public sealed class BundleWriterTests : IDisposable
     /// carrying a recipe this build did not produce can be put through the writer.
     /// </summary>
     private static CanonicalAce AceCanonicalisedBy(string trustee, int mask, int version) => new(
-        AliceGuid,
-        AceType.AccessAllowed, trustee, mask, null, null, false, 0, 0,
+        AceType.AccessAllowed, trustee, mask, null, null, false, 0, 0, default,
         $"hash-{trustee}-{mask}-{version}", version);
 
     /// <summary>
@@ -1747,8 +1906,7 @@ public sealed class BundleWriterTests : IDisposable
     /// be put through the writer.
     /// </summary>
     private static CanonicalAce AceOfType(AceType aceType, string trustee, int mask) => new(
-        AliceGuid,
-        aceType, trustee, mask, null, null, false, 0, 0,
+        aceType, trustee, mask, null, null, false, 0, 0, default,
         $"hash-{aceType}-{trustee}-{mask}", AceCanonicalization.Version);
 
     private SqliteConnection OpenForReading() =>

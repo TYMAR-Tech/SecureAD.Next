@@ -13,6 +13,7 @@ internal sealed partial class MemberAttributionPanelViewModel : ObservableObject
     private static readonly ResourceManager Resources = new("SecureAD.Shell.Resources.MemberAttributionPresentation", typeof(MemberAttributionPanelViewModel).Assembly);
     private MemberAttributionDetail? _detail;
     private int _offset;
+    private Func<bool>? _isCurrent;
     [ObservableProperty] private string _status = Text("SelectPermission");
     [ObservableProperty] private string _evidence = "";
     [ObservableProperty] private IReadOnlyList<MemberAttributionRowViewModel> _rows = [];
@@ -32,9 +33,24 @@ internal sealed partial class MemberAttributionPanelViewModel : ObservableObject
     public string ApplicabilityHeader => Text("ResourceApplicability");
     public string AccountHeader => Text("AccountStatus");
 
+    /// <summary>Withholds prior support while the selected permission's saved support is read.</summary>
+    public void ShowLoading()
+    {
+        Clear();
+        Status = NavigationText.Get("SavedLoading");
+    }
+
+    /// <summary>States the read failure rather than displaying an empty membership result.</summary>
+    public void ShowRefusal(string reason)
+    {
+        Clear();
+        Status = NavigationText.Get("Refused") + " " + reason;
+    }
+
     public void Clear()
     {
         _detail = null;
+        _isCurrent = null;
         Rows = [];
         SelectedRow = null;
         HasMore = false;
@@ -42,9 +58,11 @@ internal sealed partial class MemberAttributionPanelViewModel : ObservableObject
         Status = Text("SelectPermission");
     }
 
-    public void Show(Result<MemberAttributionDetail> result, Guid? generation)
+    public void Show(Result<MemberAttributionDetail> result, Guid? generation, Func<bool> isCurrent)
     {
+        ArgumentNullException.ThrowIfNull(isCurrent);
         Clear();
+        _isCurrent = isCurrent;
         if (!result.IsSuccess) { Status = Text("InvalidEvidence") + " " + result.Error.Description; return; }
         if (generation is null || result.Value.GenerationId != generation) { Status = Text("InvalidEvidence"); return; }
         _detail = result.Value;
@@ -68,6 +86,11 @@ internal sealed partial class MemberAttributionPanelViewModel : ObservableObject
     [RelayCommand] private void NextPage() { if (HasMore) { _offset += 100; LoadPage(); } }
     private void LoadPage()
     {
+        if (_isCurrent?.Invoke() == false)
+        {
+            ShowRefusal(SavedPathText.Get("GenerationChanged"));
+            return;
+        }
         if (_detail?.Expansion is not { } expansion) return;
         var applicability = _detail.ResourceMembers.ToDictionary(item => item.Member, StringComparer.OrdinalIgnoreCase);
         var routes = expansion.Routes.GroupBy(route => route.Member, StringComparer.OrdinalIgnoreCase)

@@ -12,7 +12,6 @@ namespace SecureAD.Next.Tests.Judgement;
 
 public sealed class SelfMembershipStorageTests
 {
-    private const string Seal = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private const string Requester = "CN=Alice,DC=contoso,DC=com";
     private const string Target = "CN=Target,DC=contoso,DC=com";
     private const string RequesterSid = "S-1-5-21-1-2-3-1200";
@@ -189,7 +188,7 @@ public sealed class SelfMembershipStorageTests
             Assert.Equal([edge.Id], assessment.HolderEdgeIds);
             Assert.NotNull(assessment.DerivationGenerationId);
             Assert.Equal(reader.Description.DerivationGenerationId, assessment.DerivationGenerationId);
-            Assert.Equal(Seal, assessment.EvidenceSeal);
+            Assert.Equal(BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash, assessment.EvidenceSeal);
             Assert.Equal(self ? "S-1-5-10" : RequesterSid, Assert.Single(assessment.Evidence).Entry.Trustee.Sid);
         }
         using var source = new BundleAssetSource();
@@ -257,17 +256,17 @@ public sealed class SelfMembershipStorageTests
 
     private static string Store(Action<SqliteConnection>? mutate = null, bool self = false, bool builtin = false)
     {
-        var directory = TempDirectories.Create("self-membership-storage");
-        File.WriteAllText(BundleLayout.SealPath(directory), JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, Seal)));
+        var directory = SelfMembershipDiscoveryTests.Bundle();
+        var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash;
         Guid derivation;
-        using (var derived = DerivationWriter.Create(directory, Seal, DateTimeOffset.UnixEpoch))
+        using (var derived = DerivationWriter.Create(directory, seal, DateTimeOffset.UnixEpoch))
         {
             derivation = derived.GenerationId;
             derived.WriteSids([], []);
             derived.RecordCompleteness(new(true, [], [], [], derivation, ExpansionLimit.None));
             derived.Complete(DateTimeOffset.UnixEpoch.AddSeconds(1));
         }
-        using var writer = JudgementWriter.Create(directory, Seal, derivation, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
+        using var writer = JudgementWriter.Create(directory, seal, derivation, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
         var evidence = Evidence(self, builtin);
         var target = GroupMembershipControlTests.Group with
         {
@@ -283,7 +282,7 @@ public sealed class SelfMembershipStorageTests
         Assert.Single(ids);
         writer.StartSelfMembershipAssessments();
         foreach (var operation in Enum.GetValues<SelfMembershipOperation>())
-            writer.WriteSelfMembershipAssessment(new(new(Requester, Target, operation, null), writer.GenerationId, derivation, Seal,
+            writer.WriteSelfMembershipAssessment(new(new(Requester, Target, operation, null), writer.GenerationId, derivation, seal,
                 RequesterGuid, RequesterSid, TargetGuid, TargetSid, RequesterGuid, RequesterSid,
                 ControlEvaluationState.Established, ControlEvaluationState.Established, ControlEvaluationState.Unknown,
                 "Computed", DateTimeOffset.UnixEpoch, 512, null, [SelfMembershipIssue.LiveOperationNotEvaluated], [evidence], ids));

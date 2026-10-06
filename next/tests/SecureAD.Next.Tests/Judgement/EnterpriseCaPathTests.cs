@@ -1,5 +1,6 @@
 using System.Security.AccessControl;
 using System.Security.Cryptography;
+using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
@@ -57,9 +58,18 @@ public sealed class EnterpriseCaPathTests(ITestOutputHelper output)
     {
         using var reader = Open(Judged());
         var binding = reader.ReadPathInputs().Input;
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.AnalysisGenerationDataPath(reader.BundleDirectory, AnalysisStoreKind.Judgement, reader.Description.GenerationId),
+            Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT schema_version FROM judgement";
+        var storedVersion = Assert.IsType<long>(command.ExecuteScalar());
 
-        Assert.Equal((8, 15, 38, (int?)2, (int?)2, ConfigurationDn),
-            (CapturedAttributeCatalog.Version, DerivationSchema.Version, JudgementSchema.Version,
+        Assert.Equal((8, 15, 53L, (int?)2, (int?)2, ConfigurationDn),
+            (CapturedAttributeCatalog.Version, DerivationSchema.Version, storedVersion,
              binding?.PolicyVersion, binding?.ContractVersion, binding?.ConfigurationNamingContext));
     }
 

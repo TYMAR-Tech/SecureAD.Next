@@ -9,8 +9,8 @@ namespace SecureAD.Next.Tests.Shell;
 public sealed partial class SavedTier0PathSectionTests
 {
     [Theory]
-    [InlineData("SavedPathResult", "Supported route recorded")]
-    [InlineData("SavedPathChecks", "Not requested")]
+    [InlineData("SavedPathResult", "SEC-071 — Unexpected route to Tier 0")]
+    [InlineData("SavedPathChecks", "Supported questions evaluated")]
     public void SavedPathCompiledTemplateBindsItsSavedStates(string name, string expected) => OnPathSta(() =>
     {
         var section = Read(Saved());
@@ -27,9 +27,9 @@ public sealed partial class SavedTier0PathSectionTests
         var section = Read(Saved());
         var (template, pane, presenter) = PathPane(section);
         LayoutPath(pane, 600, 430);
-        var rows = Assert.IsType<ItemsControl>(template.FindName("SavedPathSteps", presenter));
+        var rows = Assert.Single(PathDescendants<ItemsControl>(pane), value => value.Name == "SavedPathSteps");
 
-        Assert.Same(section.Steps[0], Assert.Single(rows.Items.Cast<object>()));
+        Assert.Same(Steps(section)[0], Assert.Single(rows.Items.Cast<object>()));
     });
 
     [Theory]
@@ -60,6 +60,7 @@ public sealed partial class SavedTier0PathSectionTests
         var template = (DataTemplate)resources[new DataTemplateKey(typeof(SavedTier0PathSectionViewModel))];
         var presenter = new ContentPresenter { Content = section, ContentTemplate = template };
         var pane = new Grid();
+        pane.Resources.MergedDictionaries.Add(resources);
         pane.Children.Add(presenter);
         return (template, pane, presenter);
     }

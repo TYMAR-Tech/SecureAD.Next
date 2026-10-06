@@ -349,6 +349,137 @@ public sealed class NewAuditViewModelTests
         Assert.False(_deriving.WasRun);
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Capture and analyse, or capture only. The owner's shape, 2026-09-22: a capture of a real
+    // forest takes hours, and until this was offered a defect in deriving or judging arrived at
+    // the end of them, against a directory that had already moved on. It is what the command
+    // line's --capture has always offered; this is the same thing in the window.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An operator who chooses nothing gets a finished audit. The run that stops early is the one
+    /// he has to ask for, not the other way round.
+    /// </summary>
+    [Fact]
+    public async Task ARunCapturesAndAnalysesUnlessAskedOtherwise()
+    {
+        var screen = await Opened();
+
+        Assert.True(screen.CaptureAndAnalyse);
+        Assert.False(screen.CaptureOnly);
+    }
+
+    /// <summary>
+    /// The two answers are one choice, so taking one gives up the other.
+    /// </summary>
+    [Fact]
+    public async Task TakingOneAnswerGivesUpTheOther()
+    {
+        var screen = await Opened();
+
+        screen.CaptureOnly = true;
+
+        Assert.False(screen.CaptureAndAnalyse);
+    }
+
+    /// <summary>
+    /// A capture-only run still seals its evidence. That is the whole point of it: the evidence is
+    /// the thing that took hours and cannot be got back, and it is complete.
+    /// </summary>
+    [Fact]
+    public async Task ACaptureOnlyRunStillSealsItsEvidence()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.Equal(@"D:\audits\run", screen.BundleDirectory);
+    }
+
+    [Fact]
+    public async Task ACaptureOnlyRunDerivesNothing()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.False(_deriving.WasRun);
+    }
+
+    [Fact]
+    public async Task ACaptureOnlyRunJudgesNothing()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.False(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// <b>Absence, never zero.</b> A run nobody judged has no findings, no derived principals and
+    /// no objects judged - and showing those as counters reading nothing is the failure
+    /// <c>docs/decisions/0002-absent-view-means-degraded-run.md</c> exists to prevent: a clean
+    /// number is the more reassuring of the two readings, and an operator will take it.
+    /// </summary>
+    /// <remarks>
+    /// This asserts the two flags the view gates those blocks on, so a capture-only completion
+    /// screen has nowhere to put a zero rather than being trusted to leave one blank.
+    /// </remarks>
+    [Fact]
+    public async Task ACaptureOnlyRunShowsNoAnalysisCountersAtAll()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        await screen.StartAsync();
+
+        Assert.False(screen.HasDerivationReport);
+        Assert.False(screen.HasJudgingReport);
+        Assert.Empty(screen.Findings);
+    }
+
+    /// <summary>
+    /// Changing his mind back leaves the run doing what it would have done anyway.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the four cases above: without it they would all still pass if the
+    /// choice had disabled analysis permanently rather than for the run he asked it of.
+    /// </remarks>
+    [Fact]
+    public async Task ChoosingToAnalyseAfterAllLeavesTheRunDerivingAndJudging()
+    {
+        var screen = await Opened();
+        screen.CaptureOnly = true;
+
+        screen.CaptureAndAnalyse = true;
+        await screen.StartAsync();
+
+        Assert.True(_deriving.WasRun);
+        Assert.True(_judging.WasRun);
+    }
+
+    /// <summary>
+    /// What the screen says this run will do must go on describing the run that happened.
+    /// </summary>
+    /// <remarks>
+    /// A choice still editable after the fact would let a finished capture-only run read as one
+    /// that analysed, with no analysis behind it.
+    /// </remarks>
+    [Fact]
+    public async Task TheChoiceCannotBeChangedOnceTheRunHasFinished()
+    {
+        var screen = await Opened();
+        await screen.StartAsync();
+
+        screen.CaptureOnly = true;
+
+        Assert.True(screen.CaptureAndAnalyse);
+    }
+
     /// <summary>
     /// Deriving happens before judging.
     /// </summary>
@@ -620,42 +751,26 @@ public sealed class NewAuditViewModelTests
     /// <summary>
     /// The operator sees how far the judging has got.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Waits for the property rather than for a length of time.</b> The window reports progress
-    /// through <c>Progress&lt;T&gt;</c>, which marshals to the thread that created it - that is what
-    /// keeps a judging running on a background thread from touching the interface - so the report
-    /// arrives after the judging returns. A fixed delay would pass on an idle machine and fail on a
-    /// loaded one, which is the shape of a test that teaches people to re-run the build.
-    /// </para>
-    /// <para>
-    /// <b>One report, not two, and that is the point.</b> This waited for the value 2,000 out of a
-    /// pair reported back to back, and failed under a full suite roughly once in three runs.
-    /// <c>Progress&lt;T&gt;</c> posts each report separately and does not promise they arrive in
-    /// the order they were made, so the later one could land first and leave the property showing
-    /// the earlier - the assertion then waited for a value that had already been overtaken. A
-    /// single report cannot be reordered against anything.
-    /// </para>
-    /// </remarks>
     [Fact]
-    public async Task HowFarTheJudgingHasGotIsShown()
+    public void HowFarTheJudgingHasGotIsShown() => OneThread.Run(async () =>
     {
         _judging.Reports = [2_000];
         var screen = await Opened();
 
-        var reported = new TaskCompletionSource();
+        // Deliver posted progress before the fake launcher's queued completion, as a window does.
+        // An unconstrained scheduler can finish judging first; late progress is correctly ignored.
+        var reportedWhileJudging = false;
         screen.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(screen.ObjectsJudged) && screen.ObjectsJudged == 2_000)
-                reported.TrySetResult();
+                reportedWhileJudging = screen.IsJudging;
         };
 
         await screen.StartAsync();
 
-        await reported.Task.WaitAsync(TimeSpan.FromSeconds(10));
-
+        Assert.True(reportedWhileJudging);
         Assert.Equal(2_000, screen.ObjectsJudged);
-    }
+    });
 
     // A domain the forest names no controller for used to stop the run outright, proved here by
     // ADomainTheForestNamesNoControllerForStopsTheRun. That rule was standing in for an attestation
@@ -856,23 +971,56 @@ public sealed class NewAuditViewModelTests
     }
 
     /// <summary>
-    /// A refused name does fall back to the ranked choice - and the operator is told, by name,
-    /// before it does.
+    /// A refusal does not take the preflight away with it. Asking the questions again is how an
+    /// operator recovers, so it stays available exactly when everything else is refused.
+    /// </summary>
+    /// <remarks>
+    /// <b>Found in the field on 2026-09-23, mid-capture against a production forest.</b> Review was
+    /// gated on <c>CanStart</c>, and a refused controller sets <c>RunMayProceed</c> false - which by
+    /// design only a fresh preflight restores, and the fresh preflight is Review. So the one action
+    /// that could clear the refusal sat behind it. The operator named a good controller, was told it
+    /// served the domain, and still could not go on; no button on the screen could recover it.
+    /// </remarks>
+    [Fact]
+    public async Task ARefusedControllerStillLetsThePreflightBePutAgain()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.False(screen.CanStart);
+        Assert.True(screen.CanReview);
+        Assert.True(screen.ReviewCommand.CanExecute(null));
+    }
+
+    /// <summary>
+    /// A refused name is not quietly replaced by the ranked choice: the operator is told, by name,
+    /// and what he asked for stays in front of him.
     /// </summary>
     /// <remarks>
     /// <para>
     /// The predecessor fell back silently, so an operator who mistyped a host name got a successful
-    /// run against a controller he did not name, with nothing recording the substitution. What is
-    /// forbidden is the silence, not the fallback: holding him in a refusal whose only exit is
-    /// closing the window would trade one bad outcome for another.
+    /// run against a controller he did not name, with nothing recording the substitution.
     /// </para>
     /// <para>
-    /// So three things are asserted together, and the first is the one that matters: he was told,
-    /// and told which host. Remove the notice and this fails even though the box still clears.
+    /// <b>This used to assert that the box was cleared, on the reasoning that holding him in a
+    /// refusal whose only exit is closing the window trades one bad outcome for another. The owner
+    /// reversed it on 2026-09-22 (P-265), and the reasoning was wrong in two ways.</b> Clearing put
+    /// the domain back on the ranked controller and then displayed that controller in the column
+    /// beside the refusal, so the screen appeared to hand back the very host it had just refused -
+    /// which is what the owner hit in production. And it was the silent fallback itself, moved up
+    /// into the window from the layer where <c>ControllerSelection</c> forbids it.
+    /// </para>
+    /// <para>
+    /// There is an exit, and it is not closing the window: editing the box withdraws the refusal,
+    /// which the test below holds.
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task AnIneligibleControllerIsNotQuietlyReplacedByTheRankedChoice()
+    public async Task ARefusedNameIsNotQuietlyReplacedByTheRankedChoice()
     {
         var screen = await Opened();
         var row = Assert.Single(screen.Domains);
@@ -884,8 +1032,109 @@ public sealed class NewAuditViewModelTests
         Assert.NotNull(screen.Notice);
 
         Assert.Contains("dc99.ad.lab", screen.Notice!.Title, StringComparison.Ordinal);
-        Assert.Equal(string.Empty, row.NamedController);
+        Assert.Equal("dc99.ad.lab", row.NamedController);
         Assert.False(_capture.WasRun);
+    }
+
+    /// <summary>
+    /// A check that passed says so, rather than saying nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>The defect the owner reported from production.</b> A good check cleared the refusal and
+    /// returned, so pressing Validate on a working controller looked exactly like pressing nothing
+    /// - and the only way to see the button do anything was to make it fail.
+    /// </remarks>
+    [Fact]
+    public async Task AControllerThatPassedIsSaidToHavePassed()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc02.ad.lab";
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Established.Yes, row.ControllerCheck);
+        Assert.NotEqual(string.Empty, row.ControllerCheckText);
+    }
+
+    /// <summary>
+    /// A refused check is left standing on the row, not only in a dialog that can be dismissed.
+    /// </summary>
+    [Fact]
+    public async Task ARefusedControllerIsSaidToHaveBeenRefused()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Established.No, row.ControllerCheck);
+        Assert.NotEqual(string.Empty, row.ControllerCheckText);
+    }
+
+    /// <summary>
+    /// An empty box establishes nothing, and says nothing.
+    /// </summary>
+    /// <remarks>
+    /// The negative control for the two above: blank is reserved for the unasked question, so a
+    /// cell that spoke here would make the other two states meaningless.
+    /// </remarks>
+    [Fact]
+    public async Task AnEmptyBoxEstablishesNothingAndSaysNothing()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+
+        await screen.ValidateOverrideAsync(row);
+
+        Assert.Equal(Established.NotEstablished, row.ControllerCheck);
+        Assert.Equal(string.Empty, row.ControllerCheckText);
+    }
+
+    /// <summary>
+    /// Editing the name withdraws what was established about the old one.
+    /// </summary>
+    /// <remarks>
+    /// <b>A check vouches for the host that was asked about and for no other.</b> A state left
+    /// standing over an edited name would have this screen reporting a controller as proved when a
+    /// different one had been, which is the stale-answer failure one field along.
+    /// </remarks>
+    [Fact]
+    public async Task EditingTheNameWithdrawsWhatWasEstablishedAboutTheOldOne()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc02.ad.lab";
+        await screen.ValidateOverrideAsync(row);
+        Assert.Equal(Established.Yes, row.ControllerCheck);
+
+        row.NamedController = "dc03.ad.lab";
+
+        Assert.Equal(Established.NotEstablished, row.ControllerCheck);
+    }
+
+    /// <summary>
+    /// Editing the name withdraws a refusal too, which is the exit from one.
+    /// </summary>
+    /// <remarks>
+    /// Without this an operator who mistyped a host would be held by a refusal about a name no
+    /// longer in the box, and the run could never start.
+    /// </remarks>
+    [Fact]
+    public async Task EditingTheNameWithdrawsARefusal()
+    {
+        var screen = await Opened();
+        var row = Assert.Single(screen.Domains);
+        row.NamedController = "dc99.ad.lab";
+        _capture.NamedController = new NamedControllerView(IsUsable: false, Refusal);
+        await screen.ValidateOverrideAsync(row);
+        Assert.Equal(Refusal, row.Problem);
+
+        row.NamedController = "dc02.ad.lab";
+
+        Assert.Null(row.Problem);
     }
 
     // The PDC emulator prompt, narrowed.

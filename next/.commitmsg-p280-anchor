@@ -1,0 +1,68 @@
+File the production forest's shape, and repair a punch-list row I truncated (P-280, P-285)
+
+The anchor. Every P-280 figure came off a synthetic bundle this codebase
+generated, so it could only contain assumptions the code already held. This is
+the first measurement of the owner's own forest that can contradict them, taken
+by him inside the production environment on 2026-09-25 with build 3b3e6c0.
+Stored at next/artifacts/p280-shape-profile/ with its full reading, and
+force-added past the artifacts ignore the way p279-before's small results were.
+
+The file is kept exactly as it came out. Editing a measurement by hand is how a
+figure stops being checkable, which is the same reason a golden hash that needs
+changing is a finding rather than a fix. It carries the capture's name on line 2
+- the defect 419f133 fixed - so the README says plainly that this copy is not for
+redistribution, and records the fingerprint e245e7645e764785 that the current
+build reports for the same capture so a future profile can be tied to this one.
+The capture is already named in the specification, so nothing is newly exposed
+by keeping it here.
+
+WHAT IT SETTLED.
+
+The occurrence count is confirmed by two independent routes: 330,856,576,
+identical to what --judgement-forecast reported on 2026-09-24 from a separately
+written pass. This is a real confirmation, unlike the withdrawn "two routes
+agreeing within 1.3%" claim, which was cancellation.
+
+P-285 is measured: 20,454,613 occurrences carry S-1-5-10, 6.2% of the total.
+P-279 took permission_entry from 17,164,866 rows to 24,098 on the bench; on this
+forest SELF alone would put up to twenty million back, because the resolved
+trustee name is inside the sharing identity. That moves P-285 from a tidy-up to
+the question of whether P-279 worked at all outside the laboratory, and it is the
+figure the new sharing unit has to be chosen against.
+
+Reuse is far more skewed than its mean. The median descriptor is carried by ONE
+object and the largest by 4,568, against a mean of 2.46. Shape C still cuts 330
+million rows to 141 million, but the saving comes from a small number of
+enormously shared descriptors rather than from a broad average, and anything
+designed around "descriptors are shared about twice" will be wrong about half the
+table.
+
+Nothing failed to parse: all 659,196 stored descriptors read completely, so
+P-284's distinction was worth making and the honest answer here is none.
+Separately, 280,871 objects - just under a third of the forest - have no
+descriptor stored at all, which is not the same as holding no permissions.
+
+AND ONE THING IT CORRECTS. The specification recorded "Every name is ASCII -
+106.1 bytes and 106.1 characters", concluded from a byte mean and a character
+mean agreeing to one decimal place. They agree because a handful of accented
+names cannot move a mean across 659,196 objects. The profile compares the two
+lengths per object and answers EveryNameIsAscii: false. Nothing rests on it -
+the code already pays in bytes - but a figure that looked checked was not, which
+is the shape this page keeps recording about itself.
+
+A LIMITATION OF THE PROFILE, RECORDED SO IT IS NOT READ AS A FINDING. 904
+distinct object-type GUIDs are outside the catalogue shipped with the product,
+covering 150,184,579 occurrences. That is not 904 customer extensions: the
+shipped catalogue is a curated set of security-relevant GUIDs rather than the
+whole Active Directory schema, so most will be ordinary attributes it does not
+list. The profile cannot tell an unlisted standard GUID from a local extension
+and names neither. Step 2b needs the distinction; the product does not, because
+capture reads the forest's schema partition (decision 0014).
+
+ALSO REPAIRS DAMAGE I DID TO THE PUNCH LIST. Commit 9f280d2 edited the tail of
+the P-285 row and replaced the whole row with that tail: the identifier, the
+substance, the status and the date were all lost, leaving an orphaned fragment
+beginning "Still to do:" between P-284 and P-281. One of three maintained
+documents, silently truncated for two commits. The row is restored from 0c48b61
+with the session's two corrections folded in, and P-283, P-284 and P-285 are
+verified well-formed at five pipe-separated columns each.

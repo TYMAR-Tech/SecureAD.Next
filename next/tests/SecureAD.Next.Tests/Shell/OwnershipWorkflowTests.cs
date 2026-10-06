@@ -17,11 +17,11 @@ public sealed class OwnershipWorkflowTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ExistingOwnerProofReachesBothDirectionsWithoutAClaimedOperation(bool byHolder)
+    public async Task ExistingOwnerProofReachesBothDirectionsWithoutAClaimedOperation(bool byHolder)
     {
         var directory = Prepared($"O:{UserSid}G:SYD:");
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, byHolder ? UserDn : TargetDn, byHolder);
+        var section = await OpenAsync(source, directory, byHolder ? UserDn : TargetDn, byHolder);
         var row = Assert.Single(section.Rows);
         Assert.Equal("Existing-owner permission control", row.Capability);
         Assert.Equal("Established", row.Evaluation);
@@ -102,7 +102,7 @@ public sealed class OwnershipWorkflowTests
     /// counterpart.
     /// </summary>
     [Fact]
-    public void UnselectedTargetRetainsProvenPrimitiveAndShowsNotAssessedStatus()
+    public async Task UnselectedTargetRetainsProvenPrimitiveAndShowsNotAssessedStatus()
     {
         var directory = Prepared($"O:SYG:SYD:(A;;WO;;;{UserSid})(A;;WD;;;S-1-3-4)", tier0Route: false);
         using var reader = JudgementReader.Open(directory).Value;
@@ -112,7 +112,7 @@ public sealed class OwnershipWorkflowTests
         Assert.DoesNotContain(page.Edges, edge => edge.Capability == ControlCapability.CanBecomeOwnerAndRewriteDacl);
         Assert.Equal(OwnershipAssessmentExecution.NotAssessed, page.OwnershipCoverage?.Execution);
         using var source = new BundleAssetSource();
-        Assert.Contains("Not assessed automatically.", Open(source, directory, TargetDn, false).Coverage);
+        Assert.Contains("Not assessed automatically.", (await OpenAsync(source, directory, TargetDn, false)).Coverage);
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public sealed class OwnershipWorkflowTests
     /// products at all, and the screen says nothing assessed it rather than implying it is clean.
     /// </summary>
     [Fact]
-    public void UnadmittedTargetIsNotAssessedAndSaysSoWithoutClaimingSafety()
+    public async Task UnadmittedTargetIsNotAssessedAndSaysSoWithoutClaimingSafety()
     {
         var directory = Prepared($"O:SYG:SYD:(A;;WO;;;{UserSid})(A;;WD;;;S-1-3-4)", tier0Route: false);
         using var reader = JudgementReader.Open(directory).Value;
@@ -128,7 +128,7 @@ public sealed class OwnershipWorkflowTests
         using var source = new BundleAssetSource();
         Assert.Equal((OwnershipAssessmentExecution.NotAssessed, true),
             (page.OwnershipCoverage?.Execution,
-             Open(source, directory, TargetDn, false).Coverage.Contains("Not assessed automatically.", StringComparison.Ordinal)));
+             (await OpenAsync(source, directory, TargetDn, false)).Coverage.Contains("Not assessed automatically.", StringComparison.Ordinal)));
     }
 
     [Theory]
@@ -142,18 +142,24 @@ public sealed class OwnershipWorkflowTests
     [InlineData("UPDATE control_edge SET generation='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'", "could not be read")]
     [InlineData("UPDATE permission_entry SET mask=16 WHERE id IN (SELECT entry_id FROM control_ace)", "could not be read")]
     [InlineData("UPDATE control_precondition SET evidence=json_set(evidence,'$.Setting.Value',2) WHERE name='OwnerSource'; UPDATE control_precondition SET evidence='DefaultedByAbsence:0:2' WHERE name='BlockOwnerImplicitRights'", "could not be read")]
-    public void DamagedProofOrPreviousEngineClearsBothRowsAndSelectedEvidence(string mutation, string notice)
+    public async Task DamagedProofOrPreviousEngineClearsBothRowsAndSelectedEvidence(string mutation, string notice)
     {
         var directory = Prepared($"O:{UserSid}G:SYD:(A;;WD;;;S-1-3-4)");
         using var source = new BundleAssetSource();
-        var section = Open(source, directory, TargetDn, false);
+        var section = await OpenAsync(source, directory, TargetDn, false);
         Assert.Single(section.Rows);
+        // Open results are protected; arrange corruption between reading lifetimes.
+        source.CloseRun();
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
             command.CommandText = mutation;
             Assert.True(command.ExecuteNonQuery() > 0);
         });
+        source.SelectRun(directory);
+        section.Configure(true, false,
+            (_, expected, after) => ControlProofVerification.ReadResult(directory, TargetDn, expected, after),
+            _ => source.ReadSelfMembershipAssessments(directory, TargetDn, null));
         section.FirstPageCommand.Execute(null);
         Assert.Empty(section.Rows);
         Assert.Null(section.SelectedEdge);
@@ -226,16 +232,20 @@ public sealed class OwnershipWorkflowTests
     private static EvidenceAttribute Text(string name, params string[] values) => new(name, StoredAttributeCompleteness.Complete, values.Select(EvidenceValue.OfText).ToArray());
     private static EvidenceAttribute Bytes(string name, byte[] value) => new(name, StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(value)]);
 
-    private static ControlEdgesSectionViewModel Open(BundleAssetSource source, string directory, string dn, bool byHolder)
+    private static async Task<ControlEdgesSectionViewModel> OpenAsync(BundleAssetSource source, string directory, string dn, bool byHolder)
     {
         var screen = new AssetsViewModel(source);
         screen.Show(directory, false);
+        await screen.ReadCompletion;
         var attributes = Assert.IsType<ObjectAttributes>(source.ReadObjectAttributes(directory, dn).Value);
         screen.OpenObject(new(new(dn, dn, attributes.ObjectGuid, attributes.Find("objectClass")?.Values[^1].Text, "DC=contoso,DC=com")));
+        await screen.ReadCompletion;
         var opened = Assert.IsType<ObjectViewModel>(screen.Opened);
         opened.Show(ObjectSectionCatalog.ControlEdges);
+        await opened.ReadCompletion;
         var section = Assert.IsType<ControlEdgesSectionViewModel>(opened.Selected);
         section.ByHolder = byHolder;
+        await section.ReadCompletion;
         return section;
     }
 }

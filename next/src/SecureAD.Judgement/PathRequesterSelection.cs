@@ -47,9 +47,13 @@ public sealed record PathRequesterSelectionLimitation(PathRequesterSelectionReas
 /// <summary>A captured resource and its original attributes, permissions and named-holder fingerprint.</summary>
 public sealed record PathRequesterSelectionSource(string ResourceDn, string Fingerprint);
 
-/// <summary>The captured entry and, when used, the granting group's explicit member value.</summary>
+/// <summary>The captured entry and requester, with the direct member value or qualified nested witnesses.</summary>
 public sealed record PathRequesterSelectionWitness(string ResourceDn, int PermissionOrdinal, int RequiredMask,
-    string HolderDn, string? MemberDn);
+    string HolderDn, string? MemberDn)
+{
+    /// <summary>The actual source-linked chain when the requester is not a direct member of the holder.</summary>
+    public RequesterMembershipEvidence? Membership { get; init; }
+}
 
 /// <summary>Presence of selection-source references, separately from their validation or authorization.</summary>
 public enum PathRequesterSourceState
@@ -74,6 +78,6 @@ public sealed record PathRequesterCandidate(PathRequesterFamily Family, string R
 /// Offline selection bound to one saved path input. A completed supported scan is not complete requester coverage
 /// or NotReachable. A null selection on a path result means this work was not requested.
 /// </summary>
-public sealed record PathRequesterSelection(int Version, Guid JudgementGenerationId, string InputFingerprint,
+internal sealed record PathRequesterSelection(int Version, Guid JudgementGenerationId, string InputFingerprint,
     bool InputScanCompleted, IReadOnlyList<PathRequesterCandidate> Candidates,
     IReadOnlyList<PathRequesterSelectionSource> Sources, IReadOnlyList<PathRequesterSelectionLimitation> Limitations);

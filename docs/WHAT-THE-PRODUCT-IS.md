@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once, offer every object to every scheduled rule, write findings to a separate store | built, 17 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 18 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -51,7 +51,2350 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
-**Owner-approved next work: Stage 7 — paths to Tier 0.** The bounded correctness pass **P-41,
+**Owner-authorized footer-test correction commit and push, 2026-10-06.**
+After all 7,077 offline tests passed with coverage, the owner authorized committing and pushing
+the CI footer viewport fixture correction and its governing checkpoint.
+Production UI is unchanged; integration still requires passing exact-head CI, and this authorization
+does not extend to performance measurement or optimization.
+
+**Owner-approved Gallery CI correction, 2026-10-06.**
+The owner approved fixing the UI Gallery tool after exact-head CI failed to compile its shared
+Shell themes, before any tests ran.
+Keep the correction to the missing shared-source dependencies and isolated validation of the tool
+and full solution, without removing projects from CI or changing application wording/layout.
+The owner subsequently authorized committing and pushing this correction on 2026-10-06; passing
+exact-head CI remains required before integration, and performance measurement or optimization
+remains outside this approval.
+
+**Owner-confirmed return to core work after a Rules comparison mockup, 2026-10-05.**
+After the remaining-work review, the owner agreed to return to opening-performance and Stage 7
+completion work, but first requested a Rules mockup with a selectable list on the left and the
+selected rule's explanation on the right, instead of expanding cards down the page.
+The comparison preview keeps Rules at top level without a directory tree, with independently
+scrollable list/details, an adjustable divider and unchanged separation of severity, saved outcome
+and guidance.
+This request authorizes a mockup only, not replacement of the implemented WPF Rules layout or new
+measurement/optimization code; other tree and pop-out decisions remain deferred.
+The owner subsequently approved replacing expanded cards with the side-by-side Rules list/detail
+view, then committing and pushing the accumulated UI work in this session.
+Address the outstanding baseline CI/merge issue last before the Stage 7 continuation handoff;
+merge only after the relevant exact-head checks pass, without treating a queued run as success.
+Keep this approval separate from performance optimization, live AD access or pop-out implementation,
+and preserve current packages and all earlier evidence/verification artifacts.
+The full-suite run exposed an older control-edge layout host that did not load the embedded
+object-section navigation, followed by genuine short-window space failures once it did.
+The owner explicitly approved a bounded correction before committing: scroll the object
+header/navigation within a compact area and keep permission tables and proof reachable below it,
+without changing any results.
+Retain the failed full-suite attempt; long qualification text must be scrollable end to end rather
+than falsely required to fit in a single viewport.
+The [list/detail and compact-object checkpoint](../.v-ui-rules-split-20261006-c48a/handoff.json)
+records 95 passing final rebuilt checks and rebuilt negative witnesses for all ten required
+split/layout cases; the earlier failed 7,074-case run remains retained.
+The [final CI correction checkpoint](../.v-ci-progress-20261006-a47b/handoff.json) passes all
+7,074 offline tests with coverage after the existing P-261 progress fixture was corrected to
+observe queued messages while judging remains active, without changing the production late-report
+guard; the adapted test detects a rebuilt missing-counter defect and passes restored controls.
+The accumulated UI checkpoint is committed as `b3f18e0` on **ui-navigation**.
+Use a superseding combined baseline/UI pull request rather than silently broadening #3's original
+scope, preserving its failed-run history and requiring passing exact-head CI before merging.
+
+**Rules-tab preview requested, 2026-10-05.**
+The owner selected Rules for a design mockup, specifically asking for better formatting and a
+cleaner interface for the expanded "What this rule looks for" text.
+The proposed preview retains per-rule expansion but separates Looks for, Evidence used and
+Does not establish/exclusions into readable labelled text and bullets, with a separate saved-run
+outcome strip and severity/category labels.
+Use current rule guidance as the source, preserve every qualification and whole-run scope, and
+keep no findings, incomplete, failed and not-run outcomes distinct; fictional preview counts are
+not measurements or a change to any security rule.
+This request authorizes a mockup only, not application edits, new rule claims or pop-out windows;
+the opening-performance investigation remains outstanding.
+The owner approved the proposed Rules presentation, but raised its navigation placement before
+implementation: Rules is a whole-run overview, not tied to the selected asset, and may belong beside
+Home, Dashboard and Assets rather than inside Assets.
+He is deferring the broader decision about directory-tree presence across other views until using
+his external monitor; do not remove their trees as part of this discussion.
+Recommend a top-level Rules page without the tree, bound to the same opened run, and settle that
+specific navigation change before implementation rather than silently moving other views.
+The owner explicitly approved Home | Dashboard | Rules | Assets | Settings, removing the Rules
+subtab from Assets and its tree while keeping all other Assets views unchanged.
+Rules must identify the same selected run, load only its saved executions through the protected
+reader, and keep refusal/loading/not-run states distinct without introducing browsing-time analysis.
+The implemented description layout uses authored guidance paragraphs for Looks for and Scope and
+limitations, and the rule's declared captured/derived inputs for Evidence used, preserving the
+canonical guidance rather than maintaining a second prose copy or guessing sentence boundaries.
+The [standalone Rules checkpoint](../.v-ui-rules-20261005-b61e/handoff.json) records 767 passing
+combined checks and 106 passing focused checks after the post-render correct-source rebuild, with
+all 55 new/adapted cases detecting 19 rebuilt assertion defects and passing restored controls.
+The old Assets rule-reading branch was removed rather than retained as a parallel implementation.
+All 18 rule descriptions have authored scope paragraphs; 17 retain their text unchanged apart from
+whitespace, and SEC-071 gains a report-condition introduction while retaining its existing qualification.
+The real WPF render was checked after the Fluent expansion animation, with copyable guidance,
+declared inputs and Microsoft reference addresses; rule logic, outcomes and saved formats are unchanged.
+Owner visual and physical-display acceptance remain outstanding, as do slow opening and the earlier
+unrelated regression/merge blockers, with no package replacement, commit or push.
+
+**Delegations design preview requested, 2026-10-05.**
+While testing the Home build, the owner requested a Delegations-tab mockup using the current visual
+direction.
+Prepare a fictional-data preview with a compact two-step principal/permission search, a readable
+original-entry table, and a selected-entry panel separating recorded scope from membership attribution.
+Keep direct/group-held and inherited-entry choices, domain disambiguation, visible limitations and
+the recorded-permissions-not-effective-access boundary; preview selection and filter controls do
+not authorize application changes or any new authorization/path analysis.
+This additional mockup does not resolve the reported slow opening or authorize changes to integrity checks.
+The owner approved implementing this Delegations preview within the existing tab, acknowledging
+its information density.
+He will consider whether some application views belong in pop-out windows when using his external
+monitor; no pop-out windows or new window-management behaviour are approved in this slice.
+The [Delegations presentation checkpoint](../.v-ui-delegations-20261005-a92d/handoff.json) records
+721 passing combined checks after a final correct-source rebuild, with all seven new/adapted
+cases detecting seven rebuilt defects and passing restored controls.
+The in-tab layout separates search, original-entry results and selected membership/permission
+evidence, retaining full supporting links rather than replacing them with an incomplete route
+diagram; controls and details scroll on smaller windows while results retain usable height.
+Existing whole-capture coverage remains in the shared Assets footer, and lookup, counting,
+generation binding, cancellation and saved formats remain unchanged.
+Owner visual and physical-display acceptance and earlier unrelated blockers remain outstanding,
+with no package replacement, commit or push.
+
+**Owner feedback and next work — Home preview and slow opening, 2026-10-05.**
+The owner reports that Dashboard looks good, and selected Home as the last immediate UI area,
+requesting a mockup with a short explanation of what SecureAD is and room for design suggestions.
+This is positive Dashboard feedback, not blanket physical-display acceptance or clearance of the
+existing regression/merge blockers.
+He also reports very slow opening, attributes it to hash calculations and suspects costs elsewhere,
+and asked whether to finish the UI redesign before investigating.
+The owner clarified on 2026-10-06 that this report means launching the application in the lab,
+not opening a selected saved run.
+Focus the next bounded investigation on launch through usable Home, including its initial library
+listing; saved-run navigation logs do not by themselves measure that interval.
+Recommend the Home mockup and one explicitly approved bounded Home implementation, then make
+startup/selected-run opening and repeated verification the next engineering priority; do not turn
+this into further general UI expansion.
+Distinguish startup, metadata-only library listing, selected-run verification, reopening and
+subsequent browsing: Home listing must not hash evidence under the existing accepted decision,
+and verified results are already shared for the protected open-run lifetime.
+The present report has no new timing/build provenance, and earlier retained evidence includes a
+file-open delay rather than hash CPU time; do not assert one confirmed cause for the current delay.
+No integrity-policy change, optimization, live access or new measurement tooling is authorized by
+the preview request.
+The standalone fictional Home preview proposes "Capture once. Investigate offline." with a short
+product explanation, a compact library-location strip, separate Capture/Analysis columns, a
+prominent Open run action and left-aligned name/notes fields in the selected-run panel.
+It demonstrates completed, unassessed and interrupted runs, keeping folder-date qualification and
+baseline grouping, with location and infrequent run actions behind disclosures.
+The owner approved implementing this Home preview.
+Running-analysis status/Stop and action failures must remain directly accessible rather than being
+hidden with the infrequent actions or when another run is selected.
+Preserve metadata-only listing, scope/baseline grouping, explicit confirmation and command gating;
+the slow-opening investigation remains separate, with no integrity or hashing changes in this UI slice.
+The [Home implementation checkpoint](../.v-ui-home-20261005-f82b/handoff.json) records 711 passing
+combined Home/Dashboard/Assets/library checks after a final correct-source rebuild and all nine new
+cases detecting rebuilt defects with restored controls.
+The actual WPF view was rendered with fictional runs; scope headings are explicitly legible,
+unsealed runs have Open disabled while the underlying refusal remains intact, and running analysis
+status/Stop are independent of selected-run disclosures.
+The initial analysis-banner mutation exposed an assertion swallowed inside a simulated callback;
+the corrected check observes state there and asserts afterwards, and both attempts are retained.
+Owner visual and physical-display acceptance remain outstanding, with the earlier regression/merge
+blockers unchanged and no commit, push or package replacement.
+
+**Owner-selected next UI work — Dashboard redesign, 2026-10-05.**
+The owner wants further Assets refinements but is deferring that visual review until his external
+monitor is available because the 13-inch laptop is too small for it.
+He selected Dashboard next and requested a drastic overhaul, supplying its current inventory screen.
+Carry the approved coloured-surface/card direction into a concrete Dashboard preview before WPF
+implementation; retain the accepted coverage-first, per-domain counting and exact Group Policy
+shortfall commitments.
+The remaining Assets and physical display checks stay outstanding, not accepted or prerequisites
+to proceeding with Dashboard design.
+The owner approved a Dashboard mockup first, preserving its coverage-and-inventory purpose rather
+than adding security findings to this slice.
+The standalone fictional preview proposes four inventory cards, a compact per-domain table,
+expandable scope/exclusions and separate Group Policy/membership coverage panels, with scenarios
+for all domains read, a deliberately excluded domain and a domain with no writable controller.
+The owner explicitly approved implementing that preview in WPF: coverage-first header, expandable
+scope, distinct inventory cards, domain table and separate Group Policy/membership coverage panels.
+Retain zero-policy, missing/failed derivation, unread/excluded domain and confidential-attribute
+qualifications; no risk score, finding totals, changed counting semantics or new evidence reads are
+authorized by this redesign.
+The [Dashboard implementation checkpoint](../.v-ui-dashboard-20261005-e19a/handoff.json) records
+610 passing combined Dashboard/Assets checks after a final correct-source rebuild, with all 21 new
+cases detecting ten rebuilt assertion defects and passing restored controls.
+The real WPF presentation was rendered with fictional complete and incomplete captures; the domain
+table preserves uncounted-domain explanations, the membership panel distinguishes known zero from
+missing/failed derivation, and a zero-policy capture has no misleading completion bar.
+Owner visual and physical-display acceptance remain outstanding; this checkpoint does not clear
+the older full-suite timeout or baseline merge blocker, or authorize commit, push or package replacement.
+
+**Owner icon feedback and redesign planning, 2026-10-05.**
+The owner reports that the icons seem to work and supplied a screenshot, but wants the directory
+navigation area a little wider.
+This is positive feedback on the icon presentation, not blanket acceptance of all physical display
+checks or clearance of the existing regression/merge blockers.
+The recommendation is a modestly wider default tree pane with a draggable divider, then one shared
+visual foundation demonstrated on Assets and object details before page-by-page refinement.
+The proposed width/resizing behavior and concrete visual treatment still require presentation
+approval; no broader redesign is authorized merely by discussing the implementation sequence.
+The owner further emphasized a fresh appearance, easy reading and navigation, and strong preference
+for adaptation to monitor size.
+Treat responsive use of available space and per-monitor scaling as design requirements: maintain
+readable text, adapt attribute columns and control wrapping, and keep long values, selected context
+and capture qualifications accessible rather than merely enlarging a fixed layout.
+These requirements are not acceptance of unperformed physical display checks or approval of a
+specific breakpoint, replacement screen or theme.
+The owner approved preparing the same Assets/object-details proposal at laptop and external-monitor
+sizes before implementation.
+The standalone synthetic preview demonstrates a 360-pixel adjustable tree, stronger panel and
+attribute contrast, and two/three-column attributes while retaining the tree beside object details.
+Its HTML is only a visual review aid, not a change from WPF; the concrete presentation still awaits
+owner approval and does not clear the existing verification or merge blockers.
+The owner liked the initial direction but rejected its still predominantly white content area and
+insufficient distinction between attribute titles and values, then suggested cards.
+He approved revising the mockup with blue-grey surroundings, tinted section headings, smaller
+attribute labels and larger dark values; show compact cards and full-width treatment for long values.
+The owner subsequently requested titles in the form "Account Name (sAMAccountName)" and a mockup
+first: keep the technical name inline in parentheses, rather than deliberately placing it on a
+separate line, with natural wrapping when space requires it.
+After viewing that revision, the owner confirmed he prefers the inline parenthesized titles;
+retain this presentation with the technical name visually quieter than the friendly title.
+This approval is for the revised preview only, not implementation in WPF.
+After seeing the card revision, the owner confirmed "now we are getting somewhere": retain this
+colour/card/label-value direction for the next bounded proposal rather than returning to the
+white-on-white treatment.
+This is positive design feedback, not blanket implementation approval or physical display acceptance.
+After approving the inline-title card mockup, the owner said "lets try it" and authorized the first
+bounded Assets/object-details WPF implementation: coloured surfaces, responsive cards, inline LDAP
+titles, a wider adjustable tree retained beside details, and the existing section choices above the
+detail area.
+Preserve every section, selected-only reads, copyable values, original/raw evidence and qualifications;
+this is not approval for unrelated screen redesigns, package replacement, commit or push.
+The [WPF pilot checkpoint](../.v-ui-cards-20261005-6e2a/handoff.json) records implementation on
+ui-navigation with 474 passing bounded checks after a final correct-source rebuild and all 19
+new/adapted cases detecting 15 rebuilt defects with passing restored controls.
+Real WPF rendering and controls were checked offline with synthetic data; physical display and
+owner lab acceptance remain outstanding, and this does not clear the previous full-suite or merge
+blockers.
+The pilot also corrects section selection being cleared during loaded-content replacement by
+binding navigation to the existing section key; it does not broaden reads, change persisted formats
+or require a new capture or judgement.
+The owner tried the pilot and described it as a good starting point, but identified the lower-tree
+scope area as differing from the approved mockup: the implementation still has vertically stacked
+radio buttons under "Level" and a prominent directory path rather than the compact horizontal scope
+control and quieter path.
+Record this as a remaining presentation mismatch, not blanket acceptance of the UI or display checks.
+The owner approved correcting only this lower-tree area to the mockup: "Browsing Scope" above
+horizontal Base / One level / Subtree segments with a blue selected treatment, and a smaller,
+regular-weight directory path underneath.
+Keep scope semantics, initial Subtree, deliberate selection and whole-capture search disabling
+unchanged, and verify that all three options fit at the divider's minimum width.
+The [scope-presentation checkpoint](../.v-ui-scope-20261005-4d91/handoff.json) records 479 passing
+combined checks after the final correct-source rebuild, including actual WPF control checks at
+270/360-pixel navigation widths and 1x/1.5x layout scale.
+All five new cases detected six rebuilt assertion defects with restored controls; the initial
+symmetric-padding variant that survived is retained separately rather than counted as a negative
+witness.
+This correction remains uncommitted, does not change scope semantics or require rejudging, and still
+needs the owner's visual trial rather than treating simulated scale checks as physical display acceptance.
+The owner next requested moving Capture coverage out of the strip above the tree and into the
+bottom-right area under the grid, to the far right of the object paging controls, reclaiming the
+space above the tree and results.
+Keep capture-wide coverage accessible on every Assets view and while reading an object, retain a
+visible incomplete-capture indicator, and show the existing details above the footer with scrolling;
+allow the footer to wrap on narrow windows rather than clipping warnings or paging controls.
+The [coverage-footer checkpoint](../.v-ui-coverage-footer-20261005-9b62/handoff.json) records 483
+passing combined checks after the final correct-source rebuild, with all four new cases detecting
+six rebuilt defects and passing restored controls.
+Synthetic real-WPF checks cover reclaimed top space, right-aligned coverage beside the object
+pager, working page commands, narrow-window wrapping, scrollable details above the footer and
+continued coverage access across Assets views and object details.
+No coverage calculation or saved format changed, and all assistant builds remained isolated;
+concurrent publish-output changes were recorded and left as found rather than restored.
+Owner visual acceptance and the earlier unrelated verification/merge blockers remain outstanding.
+The owner reports that the relocated coverage control is better, then identified empty OS cards
+on a user as misleading: "Not in this bundle" suggests missing information where the normal user
+presentation should not offer computer-oriented fields.
+The owner approved the bounded Account-card correction: computer OS fields should not be empty
+cards on ordinary user accounts, relevant missing fields stay visible, and "No captured value"
+replaces "Not in this bundle" with the explanation "The attribute may be unset or unavailable to
+the capture account"; explicit "Not read" remains distinct.
+Retain the existing distinction between class-based presentation and missing evidence: absence
+alone does not establish that a field is inapplicable, unset or unreadable, and captured values
+outside a class's normal sections must remain accessible.
+Implementation inspection found that Other captured values is still a placeholder, despite the
+catalogue describing it as the destination for unclaimed values.
+Do not remove populated fields from their current presentation until a working readback destination
+exists.
+The owner approved completing Other captured values as part of this correction, with "No additional
+captured values" when there are none and an explicit "Not read" state when evidence was not read.
+When asked whether that section should also expose the catalogue's older exclusions (managedBy,
+dNSHostName, dSHeuristics and objectCategory), he requested a mockup with made-up information first.
+The owner approved the fictional-data preview, including exposing those formerly excluded populated
+attributes under their LDAP names in Other captured values, without treating managedBy as the
+security owner or interpreting raw dSHeuristics settings as a security conclusion.
+Implement the approved Account-card correction and that read-only section together; the
+distinguished name remains in the header rather than being repeated as a card.
+The [class-aware attribute checkpoint](../.v-ui-attribute-cards-20261005-c73a/handoff.json) records
+544 passing combined checks after the final correct-source rebuild, including all 34 new/adapted
+cases detecting rebuilt assertion defects with restored controls.
+Normal Account cards now reserve OS fields for computers; Other captured values displays populated
+unclaimed attributes for the captured class, including the formerly excluded values, while retaining
+stored order and the distinction between empty, unread and refused results.
+Reads remain selected-only and bound to the protected object lifetime; no capture, judgement or
+saved-format change is required, and owner visual acceptance and earlier unrelated blockers remain open.
+The owner next raised the shared Overview cards, specifically a computer showing an empty UPN
+card, as the next class-aware presentation item.
+Apply the same distinction in the proposal: normal presentation is chosen by captured object type,
+not by absence alone, and an unusual populated UPN must remain accessible in Other captured values.
+This discussion is not a blanket instruction to hide every empty attribute or a claim that computers
+cannot carry a UPN.
+The owner requested a comprehensive Microsoft-documentation-backed pass over supported object types
+and captured attributes rather than successive one-card corrections.
+Microsoft's [Computer class](https://learn.microsoft.com/en-us/windows/win32/adschema/c-computer)
+explicitly lists userPrincipalName as an optional inherited User attribute, and
+[class definitions](https://learn.microsoft.com/en-us/windows/win32/ad/characteristics-of-object-classes)
+include superclass and auxiliary-class attributes: schema allowance is not proof of a populated value.
+Microsoft also documents that [read permissions can silently omit properties](https://learn.microsoft.com/en-us/windows/win32/ad/access-control-and-read-operations).
+Do not treat the capture-justification catalogue as a schema applicability authority or published
+standard definitions as proof of every customer's extended schema.
+The current schema capture does not include complete class attribute/inheritance lists, so this UI
+work must not claim to have established forest-specific applicability from the saved data.
+The owner approved a single display policy across all existing attribute-card sections: populated
+captured values by default, with "Show missing attributes" available to reveal omitted cards.
+This supersedes the earlier default of keeping relevant missing cards visible; failed/unperformed
+reads, capture gaps and section-level analysis qualifications remain visible independently.
+The toggle filters already-loaded presentation only, not capture, classification, counts or saved
+results; it starts off when a section is freshly loaded and is not a persisted preference.
+The [shared card-policy checkpoint](../.v-ui-populated-cards-20261005-d81c/handoff.json) records
+556 passing combined checks after the final correct-source rebuild and all 14 new/adapted cases
+detecting rebuilt defects with passing restored controls.
+Overview, Account, the shared attribute sections, linked policies and Other captured values now use
+the same presentation filter; actual recorded empty strings and zero-length byte values are retained,
+while empty optional cards can be revealed without another read.
+This is a Microsoft-grounded presence/absence display policy, not a completed forest-schema
+applicability engine or permission inference; original capture meaning and other section warnings
+remain unchanged.
+
+**Owner-selected next UI slice — directory-tree icons, 2026-10-05.**
+After the navigation lab candidate and its bounded verification handoff, the owner selected icons
+as the next UI item to consider.
+Recommend a tree-only pass using embedded Microsoft Fluent vector assets, distinguishing domains,
+OUs, ordinary containers, Configuration and Schema where captured metadata establishes the type,
+and retaining an explicit generic/uncaptured treatment otherwise.
+The owner approved that tree-only icon set: small dark-blue/slate icons immediately before the
+labels, with domain/network, hierarchy-folder OU, folder container, settings Configuration and
+layered Schema shapes, plus a generic treatment retaining the existing uncaptured indication.
+This does not reopen the unrelated test-repair cycle, authorize a wider theme change, or clear the
+existing merge/final-regression blockers.
+
+**Tree-icon checkpoint — focused verification passed, 2026-10-05.**
+The approved tree-only icons are implemented on ui-navigation using five Microsoft Fluent
+20-pixel vector sources, rendered at 16 pixels with the existing dark-blue/slate brushes; the OU
+combines the folder and organization symbols and the existing uncaptured wording remains visible.
+Object class and partition kind are carried from the captured tables without a persisted-format
+change, and neither names nor missing evidence are used to invent an object type.
+The Microsoft source revision and MIT license are retained and the license is embedded in the app;
+no icon font, new package, capture, rejudging, publication, commit or push was introduced.
+The [focused checkpoint](../.v-ui-tree-icons-20261005-4af0/handoff.json) records 268 passing relevant
+checks after the restored-source rebuild and all 24 new/adapted cases detecting ten rebuilt defects
+with passing restored controls.
+Existing navigation work was preserved; this does not clear the unrelated full-suite timeout or
+the GitHub Actions outage/merge blocker, and owner lab/display acceptance remains outstanding.
+
+**Navigation implementation checkpoint — lab candidate, final verification blocked, 2026-10-05.**
+The approved first navigation slice is implemented and uncommitted on **ui-navigation** in the
+existing Stage 7 checkout: whole-capture object search above the tree, default Subtree browsing,
+search result domain/location, and compact expandable capture coverage.
+All 33 new/adapted navigation cases have rebuilt negative witnesses, and actual navigation and
+coverage controls passed the focused layout checks; the isolated tree-resource test's missing WPF
+startup was corrected without changing the application's startup.
+The full offline run completed **6,932 passed / one failed / 6,933 total**: the existing
+`NewAuditViewModelTests.HowFarTheJudgingHasGotIsShown` timed out, with cause not established.
+The owner raised the cost and length of the session, so no further open-ended test-repair cycle is
+authorized by this checkpoint; retain the failed runs and report the blocker rather than claiming
+the navigation build is fully verified.
+The owner was told the branch is available for a separate-folder lab trial, not production adoption;
+subsequent preservation differences were confined to Release/publish outputs, consistent with that
+build activity, while no unexpected source changes or recorded lab-evidence changes were detected.
+The audit/delegation baseline was committed and pushed in [#3](https://github.com/TYMAR-Tech/SecureAD.Next/pull/3),
+but is **not merged**: the latest exact-head CI run for
+`be596f04f9cfbcec4ff444a81a4aa924ff7195c5` was cancelled, not passed.
+GitHub's subsequently checked annotation states **The job was not acquired by Runner of type
+hosted even after multiple attempts**: this last run never obtained a runner, has no job steps/log,
+and is not evidence of a person cancelling it or another test failure.
+The [blocked handoff](../.v-ui-navigation-20261005-e4b6/handoff-blocked.json) retains the branch,
+test, mutation, preservation and CI references; the broader theme/icon overhaul remains unstarted.
+
+**Owner-selected first UI implementation and production delegation feedback, 2026-10-05.**
+Do the navigation changes first: whole-capture object search above the tree, Subtree as the initial
+browsing scope, and replacement of the large gap box with compact, accessible capture coverage.
+The broader palette, typography and icon redesign follows rather than being bundled into this
+first implementation.
+The owner reports that the delegation build is working well in production and results are quick
+to retrieve; this is positive usability feedback, not a new instrumented timing, a binary identity
+record or acceptance of every membership/security case.
+The owner explicitly approved a local checkpoint commit of the currently verified work on
+**stage7-completion**, followed by creation of **ui-navigation** in the same existing
+`C:\Users\jistrand\source\repos\SecureAD.Next-stage7` checkout.
+The owner subsequently approved pushing that verified audit/delegation checkpoint, opening a pull
+request into **main**, and merging it only after its build and test checks pass.
+Create **ui-navigation** from the same saved baseline while those checks run, so no navigation edits
+enter the audit/delegation pull request.
+This does not authorize a new checkout/worktree, package replacement or automatic commit/push of
+the subsequent UI changes; use the same existing checkout throughout.
+
+**Owner-requested navigation changes, 2026-10-05.**
+Add an object-search field above the directory navigation tree; the predecessor screenshot is a
+placement reference only, not a request to copy its styling, layout or architecture.
+The owner selected **Entire selected capture** as the search scope, not the currently selected
+subtree and not merely the containers already visible in the tree.
+Search results must make domain and location clear so similarly named objects can be distinguished.
+Change the initial listing scope to **Subtree**, retaining Base and One level as deliberate alternatives.
+Remove the large persistent **Not shown, and why** box beneath the tree so that navigation regains
+the space; the owner permits general explanations in Help or a better on-screen presentation.
+Separate general product-scope explanations from run-specific unread or incomplete evidence:
+the latter must remain apparent on the relevant screen, with its details still accessible.
+The recommended replacement is a compact **Capture coverage** control with a visible incomplete
+state when this run has capture gaps, while Help explains general exclusions; its concrete design
+and the remaining search interaction are still to be agreed before implementation.
+
+**Owner-approved first navigation layout, 2026-10-05.**
+Use **Search captured objects** above the tree with an explicit Search button and Enter submission,
+not a whole-capture query on every keystroke.
+Show global matches in the **Objects** area with name, type, domain and location; double-click opens
+the selected object, and **Clear search** returns to tree browsing.
+Start browsing at **Subtree** and retain the existing Base and One level alternatives.
+Replace the persistent lower-tree gap card with compact **Capture coverage** above the content;
+its accessible details separate general exclusions from actual run-specific unread/missing data,
+and the latter remains visible as **Capture incomplete**.
+This approved batch excludes a full Help page, theme overhaul and icons, which remain later UI work.
+
+**Owner-stated UI redesign requirements, 2026-10-05.**
+The owner confirmed UI work is next while he tests the latest nested-delegation changes in the lab,
+and asked for design consideration during that test rather than changes to the tested package.
+Keep the UI's packages first-party Microsoft and make the application as sleek
+and modern as WPF permits, with clearly readable attributes and strong distinction between an
+attribute's title and its value.
+The directory navigation tree must have recognizable icons, comparable in usefulness to ADUC;
+the icons need not be identical to ADUC's.
+This adds concrete requirements to the white-on-white overhaul, not approval of a particular
+replacement layout or palette; retain the accepted light-theme and truthful-state distinctions,
+preserve LDAP names/raw values/capture qualifications, and obtain approval for the concrete design
+before changing UI code.
+
+**Owner-returned production judgement — published, 2026-10-05.**
+The [retained production log](../.v-production-log-20261005-0708-c2a7/run.log), SHA-256
+`7D1EB652BB9C3567B97945F8E210907E56FAAF1B11C41051EB6A6BE8E472B33B`, matches the previously
+verified detailed-sealing lab package: executable `3404F82A5DA39EE33CD6DF1A0F84884BC8B8101CEF5CD08280BE3DFDB1348AE6`
+and judging module `4a1dba56-cf2c-47be-b7c4-0aceb4e26b92`.
+Judgement `6e5e694d-96c1-4565-8c2f-21996fb6a28e` used the same evidence seal and derivation generation
+as the retained failed production attempt, with 940,067 objects, 267,550 descriptors and 141,693,937
+permission-entry positions.
+The attempt ran from 02:29:22 to 07:06:47 UTC, **4h 37m 25s to Published**, versus 15h 44m 7s to the
+old failure; the observed elapsed reduction is 70.6%, not a controlled equal-work benchmark.
+It completed 110,385 selected questions rather than 50,694: requester permissions increased from
+7,150 to 66,841, while own-account membership and combined questions remained 28,790 and 14,754.
+Those three answering phases together fell from 11h 1m 4.7s to 2m 7.6s, and proof writing completed
+in 8m 53.8s instead of throwing an out-of-memory exception.
+The result state is **CompletedDegraded**, with 11 rules Succeeded and seven Indeterminate, not an
+all-clear or proof that every object received a definite answer; the log gives no per-object causes
+for all of those qualifications.
+The judgement file was 22,001,786,880 bytes, with sealing at 69.4 seconds and opening at 1.674 ms,
+so the ten-second lab file-open pause was not observed here.
+The largest recorded private-memory snapshot was 12.04 GiB, not a measured whole-process peak;
+successful proof publication does not establish a generally small memory footprint.
+The object pass still took 1h 55m 30s, control assessment 43m 23.7s and ownership assessment
+41m 21.2s, while path preparation was 44m 42.2s; scope selection and control assessment were slower
+than in the prior attempt, so the improvement is not uniform across phases.
+The [source-bound review](../.v-production-log-20261005-0708-c2a7/review.json) retains exact comparisons
+without summing repeated cumulative progress records.
+Publication and production-scale judging improvement are now demonstrated, while completed-run
+browsing, saved-answer equivalence and demo acceptance still need the owner's local checks; no
+production database/export is requested, and this review authorizes no new optimization or live action.
+
+**Owner-approved nested delegation presentation, 2026-10-05.**
+Extend Assets -> Delegations with **Include group-held permissions**, on by default, and a
+**Permission held by** result column distinguishing the selected principal's entries from a
+containing group's entries.
+Selecting a group-held entry must explain the **Membership chain**, including captured primary-group
+membership and ordinary nesting, without multiplying an original permission occurrence by its
+membership routes.
+Missing membership evidence and uncertain group types must remain explicit, and distribution-group
+links must not be presented as usable security-group routes.
+Retain **Recorded permissions - not an effective access check**, preserve resource/domain scope,
+and read the current evidence plus saved membership data without changing persisted formats or
+requiring the production judgement to be repeated; unchecking the option retains direct-only lookup.
+This is the next approved implementation, followed by a separately presented broader UI overhaul.
+
+**Nested delegation checkpoint, offline verified, 2026-10-05.**
+The approved default-on group-held lookup is implemented using the saved reverse membership index,
+with primary-group links, cycle-safe containing-group traversal and retained alternative supporting
+links; original permission occurrences are not multiplied by route count.
+Holder GUID/SID/resource-domain identity and the exact evidence/derivation generation bind each
+page, while missing nesting is refused rather than replaced by direct-only success.
+The [retained checkpoint](../.v-delegation-nesting-20261005-7ac2/handoff.json) records 6,905 passing
+offline tests and all 31 new/adapted cases detecting 25 rebuilt defects with restored controls;
+the initial inlined-SQL query-plan check that survived its defect was corrected and the failed
+attempt retained.
+Verification includes a 2,000-link chain with unrelated nodes, primary/ordinary witnesses, multiple
+routes, cycles, scoped built-in groups and real direct/group-mode WPF controls at both checked sizes;
+these are correctness/work-shape checks, not production query-speed measurements or a nesting limit.
+Current persisted formats, the owner's packages and screenshot, all original evidence and prior
+verification artifacts remain unchanged, with no assistant publication, live AD access, commit or push.
+Owner lab/demo acceptance and physical display checks remain open, and the broader visual redesign
+is the next work to present for approval.
+
+**Owner-approved delegation follow-up order, 2026-10-05.**
+The owner reported that the matching-principal picker was hard to see against the otherwise white
+screen and approved automatically selecting the sole match, with a **Matching principal** label.
+Only a first page containing exactly one result with no continuation may select automatically;
+multiple matches still require a deliberate choice of domain/SID.
+Fix this selection step first, add nested-group delegation visibility next, and then address the
+broader UI: the owner wants a substantial overhaul of the white-on-white presentation, not merely
+an extra-click fix.
+The nesting goal is approved as the next work, while its concrete bounded scope and presentation
+must still be put to the owner before editing; the later visual overhaul likewise needs a concrete
+presentation approval rather than speculative theme changes now.
+
+**Principal-selection correction, offline verified, 2026-10-05.**
+The picker now has its approved **Matching principal** label and automatically selects a sole
+first-page match without cancelling the completing read or starting a delegation search unasked.
+Ambiguous, empty, continuing and single-tail pages still require selection, and late results from a
+cancelled or superseded search cannot supply the selected identity.
+The [retained checkpoint](../.v-delegation-selection-20261005-19c3/handoff.json) records 1,459 passing
+Shell/Architecture tests and all 12 new/adapted cases detecting seven rebuilt defects with restored
+controls; the real small/large-window tests now reach Find delegations without choosing the sole
+result for the operator.
+The owner screenshot, current owner-built packages, original evidence and prior verification artifacts
+were preserved, with no format, query-semantics, publication, live AD, commit or push change; nesting
+and the broader visual overhaul are not delivered by this correction.
+
+**Owner-approved direct-entry demo delegation lookup and parallel UI work, 2026-10-04.**
+The owner confirmed production judging has started and asked to work on UI while that unchanged
+build runs, with a demo request to find where a selected user or group has delegated permissions in
+a long-lived forest, including password reset and creating/modifying users.
+This is a request for a guided read-only lookup over captured evidence, consistent with the retained
+[query-tool specification](specs/the-query-tool.md), not approval for live directory changes or an
+arbitrary access/takeover claim.
+The lookup must not be limited to current Tier-0 findings or scoped control-edge assessment, and
+must distinguish recorded grants, inheritance/applicability, denies and incomplete capture from
+effective requester authorization or completed paths.
+The owner approved **Assets -> Delegations** for the first version: a name/SID principal picker
+with domain disambiguation; All recorded permissions, Reset password, Create user objects and
+Write user properties filters; recorded-on object/container, domain, permission, applies-to,
+Allow/Deny and Explicit/Inherited results; explicit entries initially, with Include inherited entries;
+and navigation to permission details.
+Broader permissions containing the selected right must be included, and an inherited entry must
+not invent its originating ancestor.
+The screen must say **Recorded permissions - not an effective access check** and explicitly state
+that only entries naming the selected principal are included; group-derived permissions are not.
+Use read-only, bounded queries with capture coverage, no severity, SQL editor, export, live AD,
+format change or requirement to recapture/rejudge the run now in progress.
+The owner deferred nested-group lookup from this first slice, not because it is unwanted or
+inherently unsafe, and requested it immediately afterwards: deep group nesting obscures delegation
+in real environments.
+That next extension must show the permission-holding group and membership route with resource/domain
+scope and missing-evidence qualifications, not equate membership attribution with effective access;
+its concrete presentation and implementation scope remain to be approved separately.
+
+**Direct-entry delegation lookup checkpoint, offline verified, 2026-10-05.**
+The approved screen is implemented as an AD-object evidence lookup, so it does not require a
+completed judgement or change the current Evidence 8 / Derivation 15 / Judgement 53 formats.
+Reverse indexes locate candidate descriptors only: results retain the original entries, duplicates,
+order, raw shorthand, conditions, resource domain and capture qualifications, with evidence-bound
+continuations and no result cap or inferred whole-search total.
+Write-user-property entries with unresolved descendant-class applicability remain explicitly
+qualified rather than being silently discarded or presented as confirmed user scope.
+The [retained checkpoint](../.v-delegations-20261005-4c91/handoff.json) records 6,866 passing offline
+tests and all 61 new/adapted checks detecting 38 rebuilt defects with restored controls, including
+real WPF control/layout checks at 900x470 and 1300x700 logical view sizes.
+The current production package, original evidence and prior verification artifacts were preserved;
+no assistant publication, live AD access, commit or push occurred, and owner lab/demo acceptance,
+physical laptop/external-monitor checks and the ongoing production judgement result remain outstanding.
+
+**Owner-run production test and parallel read-only review, 2026-10-04.**
+The owner will take the same build just tested in the lab to production and start a test, then supply
+only the run log under the existing production-disclosure restriction.
+The lab reference is the detailed-sealing package identified below; do not infer a production result
+or exact workload before the new log arrives.
+While that owner-run test proceeds, inspect current code read-only for further performance
+opportunities through publication, separating confirmed repetition from measured runtime cost.
+Preserve source, packages, original evidence and all prior artifacts; this does not authorize agent
+production access, live AD actions, a new measurement campaign, further implementation, packaging,
+commit or push.
+
+**Owner-reported demo deadline and sealing frequency, 2026-10-04.**
+The owner has a demo in two days and asked whether the measured file-open delay should take
+priority over further judging-performance work.
+Creating a seal happens once per newly completed Evidence, Derivation or Judgement file, not per
+object, permission or requester question; closing/reopening a run separately verifies the required
+files again, with those checks shared while the selected run remains open rather than repeated
+per screen.
+The current post-judging portable-summary path also opens and verifies the completed judgement,
+so the end-of-run seal must not be described as the only file read or integrity check.
+The observed ten-second file-open pause is not guaranteed to occur only once or scale with file size;
+its cause and behaviour on the production machine remain unestablished.
+The recommendation is to prioritize a completed, browseable demo candidate and production-scale
+judging evidence over speculative sealing changes, escalating the file-open investigation if it
+blocks completion or usable reopening; this is not owner approval for a production run, new
+measurement campaign, further code changes, packaging, commit or push.
+
+**Owner-run detailed-sealing checkpoint, 2026-10-04: the pause is in opening the judgement file.**
+The [retained log](../.v-lab-log-20261004-51b9/run.log), SHA-256
+`5A2D72B71166E6CABE89C16A2007DA3B5125D41E2C60B0B9E838E38A01C82231`, matches the exact
+owner-published executable fingerprint
+`3404F82A5DA39EE33CD6DF1A0F84884BC8B8101CEF5CD08280BE3DFDB1348AE6` and verified engine module
+`4a1dba56-cf2c-47be-b7c4-0aceb4e26b92`; the publish reported during final verification contained
+the checked diagnostic build.
+All 18 rules and 459 selected questions completed for the same reported 8,441 objects, and the
+judgement was published successfully without logged errors or cancellation.
+Judgement sealing took 10,279.312 ms, with **10,042.115 ms inside the data-file open call** before
+reading began; reading 48,369,664 bytes took 31.793 ms, hashing took 203.755 ms, data-file close
+0.118 ms and seal-record writing 1.279 ms.
+The 592 reads included EOF, and the longest read and hash calls were 1.176 and 2.472 ms; evidence
+and derivation file opens in the same run were 1.024 and 2.477 ms.
+This localizes the observed pause to opening the completed judgement database, not checksum
+calculation, sustained reads, seal-record writing or the earlier permission checks.
+The log does not identify the Windows/file-system component responsible; a local lab file-access
+trace of the slow open is the next diagnostic, not disabling security software, changing the hash
+algorithm or removing corruption checks on speculation.
+Any such trace stays in the lab for local inspection, and this review performed no tracing, live AD
+operation, code change, package replacement, commit or push.
+
+**Owner-approved detailed sealing diagnostics, 2026-10-04.**
+The owner approved adding useful performance detail to the run log after judgement sealing was
+measured at 9.956 seconds, specifically to separate data-file opening/reading, hashing and seal-record
+writing instead of guessing at the cause.
+Record aggregate timings, bytes, read calls and completion/failure/cancellation for capture and
+analysis sealing, without object-level exports, new live access or a timed measurement campaign.
+Keep the checksum algorithm and bytes, read buffer, file-sharing/write behaviour, corruption checks,
+generation binding, cancellation/publication boundaries and saved formats unchanged; the existing
+seal-file write operation remains intact and its timing includes opening/writing/closing that small file.
+
+**Detailed sealing diagnostic outcome, 2026-10-04: implemented and offline verified.**
+Normal capture, derivation and judging now write one aggregate `file sealing` record identifying the
+artifact and analysis generation, completed/failed/cancelled outcome and any interrupted operation.
+Separate elapsed timings cover data-file open, reads, hash updates/finalization, data-file close,
+seal serialization and the unchanged seal-record write; bytes read/hashed, read calls including EOF,
+longest read/hash call, buffer size and unaccounted time are recorded without per-buffer log output.
+The timings describe elapsed operations rather than CPU time and stop before the diagnostic log
+write; seal-record writing still includes its original open/write/close operation.
+The [validated checkpoint](../.v-seal-detail-20261004-f31e/handoff.json) records 6,807 passing offline
+tests, all 22 new checks plus one strengthened diagnostic-isolation check detecting 19 useful rebuilt
+defects with restored controls, and 944 matching build inputs in the now-71-path uncommitted tree.
+Failed attempts are retained: the original log-isolation check missed a sealing-record retry after
+post-pass logging had failed, and the first full run caught a timing-method ownership name and
+null-default collaborators; the checks were strengthened and production corrected, not waived.
+Checksum bytes, the 81,920-byte read buffer, file sharing/write operations, corruption verification,
+saved formats and publication/cancellation boundaries are unchanged; historical evidence and all
+earlier verification artifacts remain preserved.
+The owner reported pressing Publish during final verification: nine ordinary Release/publish files
+changed without source/evidence changes, and read-only inspection matched the replacement engines
+and their published symbols to 273 final source documents rather than restoring over the owner's work.
+Evidence 8, Derivation 15, Judgement 53, path calculation 9, requester selection 4 and all 18 rules
+retain their versions, and all 39 recorded layouts remain unchanged.
+This adds diagnosis rather than a sealing-speed fix: the subsequent owner log above isolates the
+file-open step, while the responsible component and production acceptance remain unestablished.
+No agent live access, new timed campaign, package replacement, commit or push was performed.
+
+**Corruption protection, not deliberate-tampering or court proof — owner reaffirmed, 2026-10-04.**
+The owner requires protection against data corruption but not proof against a person intentionally
+editing captured files, and does not require court-use or forensic authenticity.
+This reaffirms accepted [0020](decisions/0020-the-seal-detects-corruption-not-tampering.md) and
+[0030](decisions/0030-the-product-produces-sealed-evidence-never-signed.md), rather than introducing
+a new threat model: the adjacent checksum is a corruption control, not a signature or protection
+against alteration followed by recomputing that checksum.
+Keep corruption detection, coherent completed publication and exact evidence/derivation/judgement
+binding distinct from malicious-tampering claims; this clarification does not authorize removing
+those safeguards or changing the current on-open verification lifetime.
+The detailed timings and subsequent owner log now isolate the file-open step; the responsible
+component still needs identification before choosing a correction.
+
+**Owner clarification of the performance goal, 2026-10-04.**
+The predecessor's 4-6-hour whole-audit time is not the target for an audit that now captures additional
+SYSVOL evidence; the owner explicitly expects that extra capture work to take time.
+The requirement is demonstrable improvement in judging the large production forest, without reduced
+coverage, weaker evidence or conflating capture time with analysis time.
+No numeric judging ceiling, production retry or new measurement campaign was authorized by this
+clarification.
+
+**Owner-selected next work — whole-audit memory/performance, in a fresh session, 2026-10-04.**
+After the production out-of-memory failure and the coverage-preserving efficiency review, the owner
+said "i want this to be the next work but lets do it in a new session".
+Make this the next priority ahead of further Stage 7 feature expansion, starting with one bounded
+proof-storage memory correction before tackling shared prerequisite/source preparation and other
+repeated work.
+Keep every original occurrence, permission/membership witness, saved answer, exact generation binding
+and explicit uncertainty; speed must not come from truncation, reduced coverage or weaker checks.
+Carry forward the approved direction without another general efficiency-proposal session, while
+raising any new product/public-contract decision concretely before implementation.
+This does not authorize a new timed measurement campaign, production retry, original-bundle
+rejudging, live AD work, package overwrite, new checkout/worktree, commit or push.
+
+**Owner-approved versioned source-fingerprint reuse, 2026-10-04.**
+Fingerprint shared source/schema/domain material and prepared target evidence once, then bind each
+membership and requester-permission proof to those components without removing evidence, witnesses,
+independent authorization or explicit uncertainty.
+The owner explicitly approved Judgement format 53 for the changed source-fingerprint method:
+source fingerprints intentionally change, while security answers and original evidence remain intact.
+Older saved judgements are refused rather than migrated; using the new reader for them requires
+rejudging, and historical results, hashes and verification artifacts must not be overwritten.
+Verification remains isolated and offline, with exact-answer comparisons, independent component
+binding checks, work counts and rebuilt defects/restored controls; no production run, timed campaign,
+live access, package replacement, UI change, commit or push is authorized.
+
+**Owner-run format-53 lab checkpoint, 2026-10-04: completed; publication pause localized to sealing.**
+The [retained log](../.v-lab-log-20261004-23d0/run.log), SHA-256
+`4DC2EDB7A2EEB46E0121BB03FD1ED80D0472174844470988C7C2607C55C51A12`, records all 18 rules
+succeeding and all 459 selected questions completing for the same reported 8,441 objects,
+381 descriptors and 11,189 entry positions, without logged errors or cancellation.
+Engine module identity `b276c67c-5223-4188-bd03-836ae7e06cb0` matches the local Release engine and
+its 106 compiler-recorded source checksums, with all 942 build inputs matching the format-53
+checkpoint; executable SHA-256 is
+`191EDA9442D763EB855B48F2CF629E994AB09CA65B47E5E365D69199D98F9A06`.
+Requester checks took 604.4 ms versus 726.0, own-account checks 857.0 versus 1,016.7, and combined
+checks 475.1 versus 567.0 in the preceding log, while proof writing increased from 1,422.3 to
+1,990.2 ms and the object pass from 4,478 to 4,729 ms.
+Publication completed in 10,048 ms, of which 9,956 ms was `seal-generation`; final proof validation,
+index creation, database checkpointing and manifest selection were not the long step in this run.
+Sealing includes opening/reading/hashing the judgement file and writing its seal record, which are
+not separately timed, so the internal cause remains unknown rather than attributed to disk,
+antivirus or hashing CPU without evidence.
+Judging was approximately 29 seconds versus 18, so this is not an overall judging speedup claim;
+the comparison is between owner-run captures with matching reported counts, not controlled
+same-evidence performance or saved-answer equivalence verification.
+No code, lab configuration, package or original evidence was changed by this review.
+
+**Versioned source-fingerprint outcome, 2026-10-04: implemented and offline verified.**
+Judgement 53 uses versioned component fingerprints for membership and requester source proofs:
+shared schema/domain/context material is hashed once per preparation, target evidence once per batch,
+and repeated obtained-membership assessments once within the requester producer.
+Each question still binds its complete requester data, applicable membership witnesses and resource
+context to the exact evidence, derivation and judgement generations; source hashes intentionally
+change, while all security answers, original source fields, occurrence order and uncertainty remain.
+No encoded whole-source cache is introduced; retained bookkeeping is digests and references within
+the existing preparation lifetime, and aggregate generation-tagged hash counters expose work without
+object-level data.
+The [validated checkpoint](../.v-source-fp-20261004-e5d2/handoff.json) records 6,785 passing offline
+tests in one final full regression, all 54 new cases plus 53 adapted checks detecting 22 rebuilt
+defects with restored controls, and 942 matching build inputs in the now-63-path uncommitted tree.
+Normal proof creation for 16 synthetic accounts and two groups produces 64 membership questions
+with one shared and two target hashes, while 32 combined questions across two permission targets
+hash their 16 distinct obtained-membership assessments once each.
+A separate 50,694-call repeated-input check with nine synthetic domain labels keeps shared, target
+and unchanged-requester preparation at one hash each; this is an algorithmic work-count check, not a
+representative forest, production timing result or memory acceptance campaign.
+Evidence 8, Derivation 15, path calculation 9, requester selection 4 and all 18 rules are unchanged,
+and format 53 keeps the physical layout of 52 while preserving all 38 earlier layout hashes.
+The new reader refuses older judgements rather than migrating them; original evidence, historical
+results, prior lab-tested packages and all earlier verification attempts remain preserved.
+The subsequent owner-run format-53 completion is recorded above; production judging benefit,
+detailed saved-output/display and wider acceptance remain outstanding.
+No agent live access, original-bundle rejudging, production retry, timed campaign, package
+replacement, UI change, commit or push was performed.
+Repeated permission-entry interpretation across descriptors remains the next recorded performance
+opportunity, and demonstrable production judging improvement remains unaccepted.
+
+Work stays in the existing `C:\Users\jistrand\source\repos\SecureAD.Next-stage7`
+checkout on `stage7-completion`; this correction started at HEAD
+`3d9177a6cad7009e779d1b181c08e9b4641448f5` plus all 22 then-current changed/new paths,
+including the uncommitted same-forest extension and corrected SEC-071 account-count wording.
+The starting 924 build inputs matched the 6,574-test [checkpoint](../.v-sameforest-20261004-b72f/handoff.json);
+its Judgement 51/path 9/selection 4 source was preserved, not replaced by the older format-48
+production package, and the verified storage correction below advances only the Judgement format.
+Preserve both original production-log snapshots, every prior verification artifact, the retained lab
+setup, other checkouts and existing packages; use new isolated source/build copies with short
+TEMP/TMP before discovery and rebuilt deliberate-defect/restored controls for new behavior checks.
+
+**Owner-run proof-work lab checkpoint, 2026-10-04: completed, publication delay not reproduced.**
+The [latest retained log](../.v-lab-log-20261004-8a91/run.log), SHA-256
+`F82E9D766BDAD3E121888F6989B520709FF2C8C53AFFEE62F338858CA996C56D`, records all 18 rules
+succeeding and publication completing for the same reported 8,441 objects, 381 descriptors,
+11,189 entry positions and 459 selected questions, with no logged errors or cancellation.
+The engine module identity `565f87a0-e143-46a4-af9d-0e5583db700e` matches the local Release build
+and its 105 compiler-recorded source checksums; all 938 build inputs match the proof-work checkpoint,
+and executable SHA-256 is `0A17811107120675C668AD2E705E0FB29CCC3C9B0710489B5117E6C34C71EF70`.
+Judging completed in approximately 18 seconds, with proof writing at 1,422.3 ms; the new publication
+breakdown completed in 285 ms, including generation sealing at 203 ms, path-fragment validation at
+38 ms, database checkpointing at 16 ms and pending-manifest writing at 9 ms.
+The earlier ten-second publication delay did not recur, so this run does not identify or prove a fix
+for its cause; capture sealing again took 8.9 seconds versus 0.1 in the preceding run.
+The log establishes successful current-build lab completion and working publication diagnostics,
+not a controlled speedup, identical-answer comparison, production-scale memory acceptance or
+attribution of the intermittent sealing/finalization delay.
+No code, lab configuration or package was changed by this log review.
+
+**Owner-approved proof-work and publication-diagnostics batch, 2026-10-04.**
+After reviewing the target-preparation lab log, the owner approved reusing unchanged original-entry
+fingerprints within prepared requester targets, reusing the path-node insert command, and adding
+stage-only publication timings to explain the otherwise unattributed finalization delay.
+Keep exact saved answers, fingerprints, formats, source/generation binding, original occurrences,
+cancellation and durability unchanged; no object-level logging, UI change or new whole-run cache.
+Use isolated offline work/allocation and correctness checks, rebuilt defects and restored controls,
+then one final full regression; broader source/schema fingerprint redesign and cross-descriptor
+interpretation remain later work, with no live access, timed campaign, production retry, packaging,
+automatic build-identification change, commit or push.
+
+**Proof-work and publication-diagnostics outcome, 2026-10-04: implemented and offline verified.**
+Original-entry equality now reuses complete fingerprints and witness sets within each prepared
+requester target, and path-node writes reuse the writer's existing statement helper; source hashes,
+saved answers, original occurrences, ordering and all persisted formats remain unchanged.
+Failed source reads cannot supply a partial cached set, numeric edge IDs cannot borrow another
+prepared edge's originals, and ignored/cancelled node writes cannot commit a prefix.
+Publication now records fifteen execution-only timing parts across source protection, final checks,
+completion recording, indexing, database checkpoint/close, pending-manifest writing, generation
+move/seal/selection and lock release, without object-level data or altered durability.
+Failure and cancellation retain the active unfinished part; unavailable diagnostic logging does not
+abort or retry the underlying publication.
+The [validated checkpoint](../.v-proof-work-20261004-c24f/handoff.json) records 6,731 passing offline
+tests in one final full regression, all 35 new cases plus one adapted boundary check detecting
+19 rebuilt defects with restored controls, and 938 matching build inputs in the now-59-path
+uncommitted working tree.
+The synthetic matching control reads three originals once across 100 matches, and 2,000 warm
+matches stay below 64 KiB of managed allocation; these are bounded work/allocation checks, not a
+production runtime claim.
+Judgement 52/path 9/selection 4, all 18 rules and all 38 historical layout hashes are unchanged.
+The prior lab-tested engine and every earlier artifact were preserved during implementation; the
+subsequent owner-run completion and publication breakdown are recorded above, while the earlier
+ten-second delay remains unattributed because it did not recur.
+Broader source/schema fingerprint reuse and cross-descriptor interpretation remain later work,
+without UI/build-workflow changes, live access, timed campaigns, production retry, packaging, commit or push.
+
+**Owner-run target-preparation lab checkpoint, 2026-10-04: completed and published.**
+The [new retained log](../.v-lab-log-20261004-7e2a/run.log), SHA-256
+`E2C8B516000634A68E8954B56D86AE11A8090C0F30C895F5465727834DEBD11D`, records all 18 rules
+succeeding and the same 8,441 objects, 381 descriptors, 11,189 entry positions and 459 selected
+questions as the preceding lab run, with no logged errors or cancellation.
+The current target-preparation engine is confirmed by module identity
+`f7fcd1f9-3058-4b21-b5b8-d497de0e5fbf`, matching local Release symbols and all 105 recorded source
+checksums, with all 934 build inputs then checked matching the offline checkpoint; executable SHA-256 is
+`B44237A32472657CC31292B294327C46EAE6E639B8F879E7EFECEF0DF559B319`.
+Path preparation was 3,777.6 ms versus 5,861.9, requester permissions 729.1 versus 1,811.0,
+combined checks 569.7 versus 1,880.4, and proof writing 1,608.9 versus 1,622.3 in the prior log.
+However, final publication took approximately ten seconds, so total judging was about 29 seconds
+versus 23; capture sealing also varied in the opposite direction, from 9.0 to 0.1 seconds.
+These are two owner-run captures with matching reported counts, not a controlled same-evidence
+timing campaign or proof of identical saved answers, production speedup or customer-scale memory safety.
+Publication succeeded at 20:48:19 UTC; its final checks, indexing, checkpoint and sealing costs are
+not separately timed, so the ten-second delay remains unattributed rather than blamed on one operation.
+The owner requested continuing the remaining performance work, not automatic build identification,
+live access, package replacement, a production retry, commit or push.
+
+**Owner-approved target-by-target permission preparation, 2026-10-04.**
+After the successful lab run, the owner chose to continue making audits faster and approved the
+combined batch: shared target evidence for direct and combined requester-permission checks, plus
+one source reading per target while validating original path witnesses.
+Keep every account/resource/obtained-membership authorization independent, preserve every original
+permission occurrence and witness check, exact source fingerprints, saved ordering, uncertainty and
+generation binding, and release target preparation between batches instead of retaining a new
+whole-forest permission cache.
+Use fresh isolated offline answer/work-count tests, rebuilt defects and restored controls followed
+by one final full regression; this does not approve general fingerprint redesign, cross-descriptor
+interpretation, node-command cleanup, automatic build identification, UI changes, live access,
+timed campaigns, production retry, package replacement, commit or push.
+
+**Target-by-target preparation outcome, 2026-10-04: implemented and offline verified.**
+Direct and combined requester checks now prepare permissions, holder source values and original
+saved entries by exact target, retaining every independent requester/obtained-membership evaluation,
+duplicate question, saved ordering and original source fingerprint.
+Path-witness validation reads each exact target once and checks every original region and
+ordinal/SID witness, without merging capture gaps, unsupported analysis, missing identities,
+descriptor states or owner evidence.
+Temporary grouping holds references to existing questions/witnesses; prepared permissions are local
+to the active target batch, not a new whole-forest permission or verdict cache.
+The [validated checkpoint](../.v-target-prep-20261004-9b31/handoff.json) records 6,696 passing offline
+tests in one final full regression, all 62 new checks detecting 23 rebuilt defects with restored
+controls, and 934 matching build inputs in the now-50-path uncommitted working tree.
+A synthetic 32-question batch reads two target descriptors, and 4,000 path-witness occurrences
+require two descriptor and two attribute reads while retaining all checks; these are verified work
+counts, not measured production timing or memory savings.
+Judgement 52/path 9/selection 4, all 18 rules and all 38 historical layout hashes are unchanged.
+The previous lab-tested engine and symbols, original evidence/logs, prior verification attempts and
+all owner work were preserved during implementation; the subsequent owner-run completion is recorded
+above, while detailed saved-output/display and production acceptance remain outstanding.
+General fingerprint reuse, cross-descriptor entry interpretation and prepared node inserts were the
+next performance work at this checkpoint; exact-entry matching fingerprints and node inserts are
+now covered by the proof-work outcome above.
+No build-workflow change, UI change, live access, timed campaign, production retry, package
+replacement, commit or push was performed.
+
+**Owner-run lab checkpoint, 2026-10-04: the preceding two corrections completed and published.**
+The owner paused implementation to test both efficiency corrections, then supplied the
+[retained lab log](../.v-lab-log-20261004-d8c4/run.log), SHA-256
+`826D2C3A7D51DBDB9A0035F6C514F6CDFF99BEB5B66A9EA403DF4AB9658F1313`.
+Capture began at 19:16:14 UTC and judgement publication finished at 19:17:06 UTC: approximately
+52 seconds for 8,441 objects across three domains, including about 23 seconds of judging.
+All 18 rules report Succeeded, all 459 selected questions completed (215 requester permissions,
+60 own-account memberships and 184 combined questions), proof writing completed in 1,622.3 ms,
+and the final records explicitly say Completed and Published with no logged errors or cancellation.
+SEC-071's `judged=8` is eight accounts assessed, not eight findings or individual permission questions.
+
+The logged executable SHA-256 is
+`3D2767ED4248A3DF38265C2AD0FD6BF82D2AA06ED2B73AB360DA4D964C7834FC` and engine module identity is
+`e6cc0da9-3920-42ad-81de-2e883b020da6`; a read-only check matched that engine to the existing local
+Release assembly and its bound compiler symbols, whose 105 recorded source checksums match the
+verified membership-reuse checkpoint, with all 929 build inputs then checked matching that source.
+The owner builds the tested Release executable in Visual Studio and wants confirmation of the exact
+tested build to fit that workflow, rather than requiring manual source/build investigation.
+This establishes that checkpoint's lab completion, not acceptance of the later target-preparation
+batch, customer-scale memory acceptance, a controlled
+before/after speedup, saved-screen correctness or a 4-6-hour production audit.
+Path preparation was the largest logged path phase at 5,861.9 ms, but the log does not isolate its
+individual costs; remaining efficiency recommendations and other unperformed acceptance checks stay open.
+Only the supplied log and existing local build metadata were inspected: no agent-run AD operation,
+new measurement campaign, packaging, code change, commit or push was performed.
+
+**Owner-approved combined membership-reuse correction, 2026-10-04.**
+The owner asked to combine related improvements to reduce session overhead while keeping correctness
+first, and explicitly approved shared pre-change membership answers together with their common and
+per-group input preparation.
+Reuse only an identical account/group/permission-kind question within the same protected judging
+attempt; keep subsequent permission checks, family-specific continuations, every saved answer and
+source fingerprint unchanged, and release group-specific preparation after each batch rather than
+retaining a whole-forest descriptor cache.
+Use fresh isolated offline source copies, exact-answer and work-count checks, rebuilt defects and
+restored controls followed by one final full regression run; no UI change, live access, production
+retry, timed campaign, budget change, package replacement, commit or push is authorized.
+The proof-storage checkpoint and all subsequent owner work remain preserved; general fingerprint
+reuse, later source-witness reread reductions, entry interpretation and node-command improvements
+remain separate work.
+
+**Combined membership-reuse outcome, 2026-10-04: implemented and offline verified.**
+One protected judging attempt now shares identical account/group/permission-kind pre-change answers
+between standalone and combined checks, with common schema/domain preparation and group-at-a-time
+permission/holder preparation; it does not share later authorization verdicts across resources.
+Exact source-name lookup, original occurrence order, duplicate saved questions, source fingerprints,
+family-specific continuations and missing/unsupported/unperformed distinctions remain unchanged,
+with source-generation and cancellation checks still applied on reuse.
+The [validated checkpoint](../.v-prerequisites-20261004-a63e/handoff.json) records 6,634 passing offline
+tests in one final full regression, all 36 new checks plus one adapted identity-index check detecting
+15 rebuilt defects with restored controls, and 929 build inputs matching the active source.
+In the synthetic 16-account/two-group/two-permission-kind batch, 64 distinct questions require two
+group-descriptor reads and four saved-edge selection queries; repeating those exact questions makes
+no additional evidence or judgement queries, while separate questions retain separate answers.
+These are verified work counts, not a production timing or memory campaign; no whole-audit runtime
+saving or production acceptance is claimed.
+Judgement 52/path 9/selection 4 and all 18 rules are unchanged, all 38 historical layout hashes remain
+intact, and the original 38 uncommitted paths and proof-storage checkpoint were preserved beneath
+the now-42-path working tree in the same checkout.
+Requester-DACL preparation and per-witness descriptor rereads were the next work at this checkpoint
+and are now covered by the target-preparation outcome above; general fingerprint reuse, entry
+interpretation and prepared node writes remain later work.
+Existing lab/display and new-judging-cancellation acceptance is unchanged, with no UI change, live
+access, timed campaign, production retry, package replacement, commit or push performed.
+
+**Owner-approved bounded proof-storage replacement, 2026-10-04.**
+Save path calculation, node and requester-proof JSON incrementally as ordered, size-bounded database
+fragments, with strict length, ordering and fingerprint validation and passive selected readback.
+Preserve the exact JSON meaning, every original witness and saved answer, generation binding,
+counting, uncertainty and atomic publication/cancellation; there is no screen change or result cap.
+The practical cost is additional storage rows and a new Judgement format; older formats are refused,
+not migrated, and path-calculation/requester-selection semantics are unchanged.
+Verification uses fresh isolated synthetic/offline sources, capacity checks and explicitly rebuilt
+defects and restored controls; production timing, original-bundle rejudging, live AD, package
+replacement, another checkout, commit and push remain unauthorized.
+
+**Bounded proof-storage outcome, 2026-10-04: implemented and offline verified, not production acceptance.**
+Judgement 52 saves the same path calculation, node and requester-proof JSON in ordered fragments of
+at most 64 KiB, with incremental writes/readback and strict completeness, ordering and fingerprint
+checks; that fragment size is storage granularity, not a record or coverage limit.
+Path calculation 9, requester selection 4 and all 18 rules retain their meanings, including original
+occurrences, membership witnesses, generation binding, uncertainty, counts and passive selected pages.
+The [validated checkpoint](../.v-proofstore-20261004-e91c/handoff.json) records 6,598 passing offline
+tests, all 24 new behavior checks plus 20 related contract/readback cases detecting 15 explicitly
+rebuilt defects with restored controls, 927 matching build inputs and all 37 earlier layout hashes
+preserved.
+The exact current header type saved **1,594,000,714 generated JSON bytes** in 24,323 fragments under a
+256 MiB managed-heap ceiling with an independently checked full length and digest; the rebuilt
+whole-value writer ran out of memory, and changed stored bytes were rejected.
+Those two million occurrences repeat nine synthetic uncertainty witnesses, not a customer forest:
+loaded result graphs and individual large scalar values still need memory, the precise production
+payload/allocation remains unknown, and there is no production-completion or 4-6-hour runtime claim.
+All owner work, original logs, packages, lab setup and prior artifacts remain preserved, including
+failed verification attempts; broader reuse work and outstanding lab/display/new-judging-cancellation
+acceptance remain separate, with no production retry, timed campaign, live AD action, package
+replacement, commit or push performed.
+
+**Owner-requested whole-audit efficiency review without coverage loss, 2026-10-04.**
+The owner asked whether analysis can be made faster without truncating results or limiting coverage.
+The review distinguishes already implemented descriptor sharing, prepared/batched object writes,
+run-bound identity/membership indexes and automatic permission-led selection from remaining
+repeated proof/source preparation, cross-family membership-prerequisite evaluation, per-witness
+source rereading and whole-value proof serialization.
+Reusing identical immutable inputs and answers, or staging every result in bounded writes, is not
+permission to reuse an authorization verdict across different resources, requesters, membership
+assumptions or generations.
+The recommended trade-offs are additional storage/reference-management complexity and controlled
+memory/disk use, not reduced evidence or certainty; no new implementation, performance campaign,
+production-budget change or runtime guarantee is approved by this discussion.
+
+**Production judgement failed during path-proof storage, 2026-10-04.**
+The subsequent [failure log](../.v-production-failure-20261004-1452/run.log), SHA-256
+`7726BCD36E5A220B1257DE367A8AAEBC27A89B27664E019BE42A52D458659750`, is the same executable,
+evidence, derivation and judgement attempt as the partial snapshot below.
+All 50,694 requester questions completed: 7,150 requester-permission, 28,790 own-account membership
+and 14,754 combined questions; the combined batch finished at 14:50:27 UTC after about 71 minutes.
+At 14:52:07 UTC, after **15 hours 44 minutes** overall and about 100 seconds of `WritingProofs`,
+the attempt failed with `System.OutOfMemoryException`, `publication=NotStarted` and cancellation false.
+No completed judgement was published by this attempt.
+
+The stack identifies `JsonReaderHelper.TranscodeHelper` and `JsonSerializer.WriteString` called
+directly by `Tier0PathStorage.Write`, not the incremental fingerprint buffer.
+The failure-generation writer created JSON strings for individual nodes and a single calculation
+header containing the selection and saved input/coverage projection; that same shape was present
+in the source at the start of the bounded correction now verified above.
+The whole-header allocation is the leading code-level suspect, but the stack carries neither a
+source line nor allocation length, so the exact payload and physical-memory pressure are not yet
+measured.
+The identity-index correction addresses a separate repeated-work pattern; the storage replacement
+above, not that earlier correction, removes whole-value materialization from this proof-writing path.
+
+The recommendation is a bounded proof-storage memory correction and end-to-end performance
+verification before another production attempt or further workload growth, preserving every
+permission/membership witness, exact bindings, passive selected readback and explicit incomplete
+results.
+Do not substitute a RAM recommendation, silently drop large records, or equate the offline storage
+correction with a proven successful production rerun.
+Both log snapshots and original files are retained; this review performed no code change,
+rejudging, recapture, AD operation, measurement campaign, package replacement, commit or push.
+
+**Owner-reported production runtime concern and log review, 2026-10-04.**
+The owner reports that the predecessor usually completed a whole new audit in 4-6 hours and is
+concerned that much longer judging would prevent customers using this product.
+This is a usability requirement to address, not approval to discard permission proof, silently cap
+coverage or change production budgets.
+The owner requested feedback on the supplied log only; no new optimization, measurement campaign,
+production operation or package replacement is authorized by that request.
+
+The [retained log snapshot](../.v-production-log-20261004-1435/run.log), SHA-256
+`E5950891C819FACF240DFF1F05C0E5325BC773574708B4841ACFC22D0EB052F9`, starts the current judgement at
+2026-10-03 23:08:00 UTC and ends at 2026-10-04 14:35:00 UTC: **15 hours 27 minutes**, with no
+completed publication or ERROR/WARN line.
+Its process fingerprint, `29CD08D7520CA2602F0FB7AABE7F79E057AFE8B614EE9C79E5B7EE7DF671D7A8`,
+matches the package recorded before the nested-group slices; the format-48 baseline and its sources
+are preserved separately from the current implementation.
+The run binds judgement `d6f0fb2a-c7d2-4fc1-8381-55401c2d987e` to evidence
+`9fbb1177cb4e33602dd5f9f2121845d38c9b435d6d80b9ffbaf04b7e898acbd2` and derivation
+`119282fd-d97e-47f8-8cb5-6865b5e3a7e9`; the shared informational commit string alone does not identify
+the executable's uncommitted source generation.
+
+The 940,067-object pass took about 1 hour 58 minutes and processed 141,693,937 permission-entry
+positions, followed by 7 minutes of scope selection, 37 minutes of detailed control assessment,
+42 minutes of ownership assessment and 74 minutes of path preparation.
+The earlier selection/matching corrections are visible: 50,694 questions for 5,621 accounts were
+selected in 22.2 seconds, and matching the completed answer batches took 371 and 483 milliseconds.
+The 7,150 requester-permission checks completed in 21 minutes; the **28,790 own-account membership
+checks took 9 hours 29 minutes**, completing at 13:39:28 UTC.
+The remaining combined family contains 14,754 questions by subtraction from the selected total;
+at cutoff it had occupied about 55 minutes without a completion marker.
+Subsequent proof writing, qualification, finding publication and sealing were still unconfirmed.
+
+The preserved running-build code scans the entire identity collection to qualify each requester,
+group and relevant holder, and rebuilds per-question source material; the combined family also
+calls the own-account evaluator for its distinct prerequisite questions rather than consuming the
+preceding family's answers.
+These are code-confirmed repeated-work patterns, not a measured attribution of all 9.5 hours to
+one function.
+The newer implementation already replaces the operation identity scans with its run-bound index,
+with work-count regression and rebuilt-defect evidence, but no same-workload production after-result
+establishes the saving.
+Heartbeat/object counters do not establish progress within the current combined batch or an ETA;
+the completion at 13:39 is real progress and must not be described as an all-night hang.
+A bounded performance-acceptance checkpoint before further workload growth is the recommendation,
+not a newly approved optimization or production run; production evidence remains log-only.
+
+**Owner-authorized same-forest permission slice and domain labels, 2026-10-04.**
+Begin with ordinary users' already captured global/universal/domain-local group membership and
+Modify permissions on fixed Tier 0 targets in verified domain naming contexts, including another
+captured domain of the same forest.
+Keep the membership-change families at their already tested boundary in this slice; do not expand
+primary-group, SID-history, computer-actor or cross-forest authorization, and preserve the documented
+configuration/schema resource-context limits.
+The owner explicitly approved domain-qualified names on cross-domain results in the existing
+account, target, granting-group and relationship labels, for example "Alice (ad.lab)" and
+"Domain Admins (ba.ad.lab)", without adding panels or authorizing the larger presentation redesign.
+Forest membership must come from the sealed run's declared domain scope, not from a shared DNS suffix.
+
+**Same-forest captured-permission checkpoint — implemented and offline verified, 2026-10-04.**
+Ordinary users' captured global/universal/domain-local membership can now support Modify permissions
+on fixed Tier 0 targets in another verified domain of the same captured forest.
+The declaration of read domains and each captured domain's SID/identity establish the context,
+including domains in different DNS trees; a matching DNS suffix is not the evidence.
+Global and universal nesting constraints are retained, domain-local groups apply in the resource's
+own domain, and repeated BUILTIN SIDs resolve to that domain's captured group rather than the
+requester's domain.
+BUILTIN groups are supported as resource-domain holders, not transferable nested identities.
+
+Normal GUI/CLI question selection, fixed High SEC-071, original permission entries and direct
+membership witnesses, source/generation bindings and selected passive readback carry these results.
+The approved existing labels show domain-qualified account, target, granting-group and relationship
+names when the result crosses domains, without new panels or the deferred information-layout redesign.
+The membership-change families remain at their preceding tested boundary; broader post-membership
+resource contexts are not silently enabled by this captured-membership slice.
+Primary-group, SID-history, computer-actor and cross-forest authorization remain unexpanded, and the
+documented configuration/schema resource-context refusal remains intact.
+
+Binding now compares a grant with the exact stored original entries rather than a display projection
+that drops trustee detail, retaining the same counted permission record.
+This fixes a false reference-unavailable result for BUILTIN and the already-supported SELF
+substitution; it changes no generic-mask interpretation or permission-holder counting policy.
+The [validated checkpoint](../.v-sameforest-20261004-b72f/handoff.json) records **6,574 passing offline
+tests** after a final correct-source rebuild, with all **38 new and 29 adapted cases** detecting
+assertion failures across **31 useful rebuilt defects**, and **33 passing restored controls** with
+failed attempts retained.
+Judgement format **51**, path-calculation version **9** and requester-selection version **4** carry
+the extension; Evidence/Derivation formats, all 18 rules and historical layout hashes remain unchanged,
+and format 51 retains format 50's physical tables.
+The new same-forest results and labels have no live-lab or physical-display acceptance yet; the
+earlier two slices' lab checkpoint remains valid, with no new AD operation, package overwrite,
+measurement campaign, commit or push performed here.
+
+**Owner-authorized source handoff to the lab machine, 2026-10-03.**
+The owner installed VS Code on the lab machine and requested that all current product work be
+committed and pushed to the repository so it can be downloaded there.
+Publish the existing `stage7-completion` branch without merging or overwriting `main`; source,
+tests and governing decisions travel together, while local verification folders, captured runs,
+credentials and built packages remain excluded from Git.
+The owner intends to authorize help with AD test setup and inspection on that machine; individual
+live checks or changes still need a concrete lab scope, and this source handoff performs none.
+Production remains owner-operated with run-log-only export, and combined lab and display acceptance
+remain outstanding.
+
+**Owner-authorized combined nested-slice lab campaign, 2026-10-04.**
+The owner confirmed `ba.ad.lab` as the authorized laboratory domain and approved the bounded setup,
+fresh capture and saved-result verification for the two completed nested-group slices, including
+eight temporary test permission entries on the real BA Domain Admins object.
+Use only the named isolated OU, ordinary test users and same-domain global security groups; preserve
+separate existing-membership, Self-Membership, Write members, deny, loop, expected-administrator and
+unrelated controls, with no test principal added to Domain Admins and no credential retained.
+The owner explicitly requested that all test objects, memberships and permission entries remain after
+testing for future campaigns; retain the manifest and rollback tooling, but do not perform cleanup
+without a new request.
+After the first capture showed the two deny controls also made unrelated positive checks explicitly
+unknown, the owner approved a second isolated capture with only those two recorded deny entries
+temporarily removed, followed by exact restoration so the retained lab setup finishes unchanged.
+
+**Combined nested-slice lab checkpoint — live AD and saved results validated, 2026-10-04.**
+The `ba.ad.lab` campaign passed 520 focused offline cases before live work, created the approved
+23 marked objects, 13 memberships, three group permission entries and eight Domain Admins permission
+entries, and retained that full setup exactly as the owner requested. The two fresh three-domain
+captures each recorded 8,441 objects and 11,388 permission entries; after the isolated positive
+capture, both deny entries were restored exactly once and the live Domain Admins DACL again matched
+the completed setup fingerprint.
+
+The deny-enabled saved result proves that the existing-membership and proposed-membership denies are
+`NotEstablished` in captured entry order. The isolated positive result proves the existing nested
+route, separate Self-Membership and Write members continuations, and terminating loop traversal;
+normal GUI and CLI judging both completed all 18 rules with 34 findings, 13 accounts judged by SEC-071,
+no unjudged SEC-071 accounts and the same seven High SEC-071 findings. The unrelated account has no
+saved authorization, the expected administrator's 78 saved questions remain expected rather than
+SEC-071 findings, and each of the six granting groups retains exactly one counted `WRITE_DAC` grant
+regardless of members, route questions or the loop.
+
+Protected passive readback verified the original permission entries, granting groups, direct
+membership witnesses and exact Evidence/Derivation/Judgement bindings in both GUI and CLI results.
+Saved paging returned every expected-administrator question without repetition, cancellation of a
+saved read was honored, and all checked result files remained byte-for-byte unchanged; cancellation
+of a new live judging attempt was not exercised. This is laboratory functional evidence, not wider
+resource-context, production-scale or production acceptance.
+
+The owner passed the findings screen on the laptop for readability and operation, but found the
+amount of relationship-target information confusing and questioned how much of it an administrator
+needs to see. Do not remove or regroup that evidence yet: the owner will review it on an external
+monitor and then decide what should be pared down, so external-monitor acceptance and the concrete
+presentation decision remain outstanding. No UI wording or layout change is authorized by this
+checkpoint.
+
+**Owner-authorized second bounded completion slice and lab plan, 2026-10-03.**
+The owner requested "begin next slice" after the first slice and its passive lab check: implement one
+obtainable own-account membership followed by captured same-domain global-security-group nesting and
+Modify permissions on a fixed Tier 0 target, keeping Self-Membership and Write members separate.
+The owner will prepare the lab to test the combined work after this slice; that planned test is not
+yet acceptance or authorization for agent-operated live changes, rejudging, recapture or publication.
+Reuse the approved presentation where accurate, retain pre-change authorization and post-change
+ordered denies, and do not let the proposed membership authorize itself or become a second operation.
+
+**Second bounded completion checkpoint — obtained membership through existing nesting, implemented and offline verified, 2026-10-03.**
+The normal GUI and both CLI judging paths now select and save one supported own-account membership
+outcome followed by captured same-domain global-group nesting and Modify permissions on a fixed
+Tier 0 target.
+Self-Membership and Write members remain different permissions, and the original permission to
+obtain membership is checked before considering that membership.
+The existing direct-user/single-global-group boundary for that initial permission remains; this
+slice extends the continuation after it, not every possible way to obtain the first membership.
+
+A group whose membership can be edited can now be admitted for assessment through its captured
+nesting to the actual granting group, without classifying it as a fixed Tier 0 target or treating
+membership alone as permission proof.
+Saved results retain that assessment reason, each direct membership witness, both original
+permissions, ordered existing and newly applicable denies, the actual granting group and exact
+Evidence/Derivation/Judgement bindings.
+Captured existing membership does not become a fictional Add, unknown current membership and
+ordinary Add readiness remain explicit, and cycles do not add counted permissions or operations.
+The same run-bound identity and membership indexes are reused across assessment, question selection
+and permission proofs; no new forest-wide membership engine, processing limit or measurement
+campaign was introduced.
+
+The [validated checkpoint](../.v-obtained-nesting-20261003-f7b2/handoff.json) records **6,536 passing
+offline tests** after the final correct-source rebuild, and all **54 new plus 20 adapted cases**
+detecting assertion failures across **31 rebuilt defects with 31 passing restored controls**.
+Judgement format **50**, path-calculation version **8** and requester-selection version **3** carry
+the saved extension; Evidence/Derivation formats and the 18-rule catalogue remain unchanged, and all
+earlier layout hashes, failed attempts, supplied lab files and verification checkpoints are retained.
+The approved screen wording/layout is reused unchanged; owner-operated combined lab coverage,
+physical-display checks and production acceptance remain outstanding.
+Broader resource contexts, saved distance/route/coverage summaries and SEC-052 remain later Stage 7
+work; no live directory operation, original-bundle rejudging, package overwrite, commit or push was
+performed.
+
+**Owner-approved bounded Stage 7 completion scope, 2026-10-03; begin in a fresh session.**
+After the difficulty/usability assessment, the owner said "i agree with this" and requested that the
+work begin in a new session while the current build is moved to the production forest for a new
+judgement of the existing sealed capture.
+The owner explicitly clarified that rejudging, not recapturing, is the intended production check.
+Carry this approval forward without reopening the overall scope or treating it as approval to build
+an unrestricted attack-path simulator.
+
+- Extend concrete requester permission checks through supported captured nested security-group
+  memberships, reusing existing membership/cycle facts and preserving relevant allows, denies,
+  identity, resource scope and exact source bindings.
+- Extend the existing one-obtained-membership model through supported existing nested memberships
+  to a permission on a fixed Tier 0 target, keeping Self-Membership and Write members distinct.
+- Add meaningful same-forest authorization contexts in bounded slices, including the applicable
+  global/universal/domain-local group semantics; this is not a blanket promise of every cross-domain
+  or cross-forest case, and unresolved resource context remains explicit.
+- Complete saved distance, best-supported-route ordering and whole-run Tier 0/route/coverage
+  summaries, preserving the distinction between a supported route's length and an established
+  overall minimum, classified Tier 0 objects and other reachers, and findings and unresolved or
+  unassessed work.
+  This does not create Tier 1/2 classifications or change SEC-071's fixed High severity.
+- Deliver SEC-052 circular-group findings as contained rule work over the existing persisted cycle
+  product, including P-125's known self-referencing-group gap; cycle findings remain separate from
+  proof of a route to Tier 0.
+
+The first bounded implementation should be nested-group requester authorization in the existing
+ordinary-user, same-domain context, before expanding resource contexts or adding another operation.
+Preserve the captured direct membership witnesses rather than treating a flattened membership set
+as sufficient proof of every permission.
+General sequences of several hypothetical membership changes, arbitrary permission-rewrite and
+account-takeover simulations, and exhaustive path enumeration are not this completion requirement.
+Proven complete remediation remains Stage 8; P-143 and cosmetic UI redesign remain deferred.
+Functional paging, cancellation and selected-only passive readback are part of usability, not
+deferred visual polish.
+Concrete new screen wording/layout, changed production budgets and new measurement campaigns still
+need their own bounded approval; no new live operation, package overwrite, commit or push is
+authorized for the agent.
+
+**First bounded completion checkpoint — nested requester permissions, implemented and offline verified, 2026-10-03.**
+Ordinary users' explicit captured `member` chains through same-domain global security groups now
+support concrete `WRITE_DAC` (Modify permissions) checks on fixed Tier 0 targets.
+The normal GUI and both CLI judging paths select these questions automatically; ordered allows and
+denies, each direct membership witness, complete identities and exact source/generation bindings
+remain in the saved proof, risk qualification, fixed High SEC-071 findings and selected passive readback.
+The existing saved nesting walk is reused, with per-group member lookup and shared link/route evidence;
+cycles do not add permissions, and member counts do not multiply group-held permission counts.
+
+This slice does not extend own-account operations, primary-group or SID-history authorization,
+universal/domain-local or cross-domain contexts, or computer actors.
+It requires explicit group `member` witnesses; a primary-group link, `memberOf` alone or a nesting
+step through a group carrying captured SID history is not promoted into this new proof.
+Missing captured evidence, unsupported reasoning and unperformed work remain distinct, and existing
+permission-reference refusals remain refusals even when membership or target-relative SELF is resolved.
+No new screen wording/layout, processing ceiling, production budget, discovery activation or
+measurement campaign was introduced.
+
+The [validated checkpoint](../.v-nested-requester-20261003-c8e1/handoff.json) records **6,482 passing
+offline tests** after a final correct-source rebuild, with all **51 new and 30 adapted cases**
+detecting assertion failures across **38 useful rebuilt defects**, and **40 passing restored controls**
+including the retained unsuccessful mutation attempts.
+Judgement format **49**, path-calculation version **7** and requester-selection version **2** carry
+the new proof semantics; Evidence/Derivation formats, all 18 rules and every historical layout hash
+are preserved, with format 49 using format 48's unchanged physical layout.
+The later approved completion items remain work, not delivered features; Stage 7, physical-display
+acceptance and owner-operated log-only production acceptance are not declared complete.
+
+**Owner-supplied nested-slice build lab run, checked passively, 2026-10-03.**
+The supplied `ad.lab-20261004-011642` records completed judging of 8,418 objects in 28.3 seconds,
+with 18 rules and Judgement 49/path 7/selection 2.
+Its bundled executable is recorded as SHA-256
+`3F2E2C5276B039704E932CC1ACF5162E6DF9BAFFA890409B9FF5AED427691BDD`, with judging-module identity
+`8e9a71a3-c9d5-4d8a-955f-30bb04c360cf`; these are the owner's run identities, not a claim that its
+published binary is byte-identical to the separate offline verification build.
+All 337 saved questions for seven accounts read successfully on a fresh copy: 336 expected
+administration answers and Barbara Hernandez's one High SEC-071 permission finding.
+The [passive check](../.v-nested-lab-20261003-e40d/passive-lab-ready-result.json) verified three seals,
+replayed no analysis and left all 16 original and copied files unchanged.
+
+None of those questions contains a newly qualified nested-group permission route, so this run does
+not supply a positive lab witness for the new slice; the synthetic/offline verification remains its
+positive evidence.
+The saved broader coverage limitations and 42 questions with unknown current membership/ordinary Add
+readiness remain explicit, and this is not production-scale or physical-display acceptance.
+No subsequent implementation was started during that lab check; the second checkpoint above records
+the later implementation of the already-approved obtainable-membership continuation.
+
+**Session-entry baseline and preservation.**
+Continue in the existing `C:\Users\jistrand\source\repos\SecureAD.Next-stage7` checkout on
+`stage7-completion`, HEAD `98cd4d094326ec8ff2719c321da5d759e7a11a99` plus all current uncommitted
+work, not the bare commit; 84 changed/new paths were inherited at this session's entry.
+At entry, all 912 executable-source files matched the preceding
+[verified checkpoint](../.v-sec071-admin-20261003-a4c6/handoff.json), with 6,431 passing offline tests
+and 53 rebuilt defects/restored controls; that checkpoint and its tested sources remain historical evidence,
+not a replacement for the newly verified current files.
+Do not create another checkout/worktree, alter the owner's other checkouts or rebuild/publish over
+existing lab/production outputs.
+Preserve all prior verification and evidence, including `.v-sec071-20261003`,
+`.v-requester-reuse-20261003` and `.v-sec071-admin-20261003-a4c6`.
+Use isolated source/build copies for verification, short source paths where the unchanged fixtures
+require them, and fresh short TEMP/TMP before test-assembly loading or discovery; retain failed
+attempts, mutation-test new behavior in isolated sources, rebuild defects and restored controls
+explicitly, and finish with a correct-source rebuild.
+
+**Owner-confirmed completion order, 2026-10-03: finish the remaining Stage 7 analysis before rules.**
+The owner explicitly declined closing Stage 7 as only the three currently supported families:
+finish the wider supported path combinations and remaining distance/tier summaries first, so the
+judging workload being accepted represents the completed stage rather than a smaller implementation.
+This is a delivery priority, not measured evidence that path analysis is the largest runtime cost.
+P-143 customer-declared assets are deferred until after the main feature/rule work and no longer gate
+Stage 7 completion; its entry workflow remains undecided, and future rules must continue to use the
+shared authoritative Tier 0 definition rather than introducing private lists.
+
+The owner likes the corrected SEC-071 information in the supplied lab screenshot, but describes the
+presentation as a "white wall of text"; a modern visual redesign is deferred until the main features
+work, not approved as the next session.
+This is positive owner feedback on the displayed information, not acceptance of every physical
+laptop/external-monitor check.
+The owner is moving the lab-tested build to production to rejudge the existing sealed capture and
+check whether judging time improves; recapture is not planned for these analysis/presentation changes.
+Keep the original evidence, previous results and logs preserved, and identify the build and retained
+derived inputs when comparing timings.
+No new production result is reported, and a timing for the current families does not establish the
+cost of the remaining Stage 7 analysis.
+Production validation stays owner-operated and log-only; no agent-operated live access, package
+overwrite, new measurement campaign, commit or push is authorized by this discussion.
+
+**Earlier blocking priority, 2026-10-02: get production-scale judging to finish before further
+Stage 7 work, new rules or UI performance/redesign.** The owner cannot complete that work while a
+production-sized judgement fails. The bounded memory correction below builds on the verified,
+uncommitted input-reuse work rather than restarting that completed investigation.
+Getting past one exception is a checkpoint, not acceptance: judging must finish, publish its exact
+source-bound result and reopen it correctly at representative scale. Small-fixture gains alone do
+not meet that goal, and no customer-runtime ceiling has been agreed. This priority does not itself
+approve a new implementation scope, measurement campaign, publication or production retry.
+
+**Owner's three-day demonstration deadline, 2026-10-02:** review further improvements and prepare
+future publishing while the owner publishes and tests the verified `4deef9f` baseline.
+The owner requested follow-up work on a new branch rather than holding all preparation for the
+production result; use a separate checkout so the Visual Studio checkout and its test build do not
+change underneath him.
+The current follow-up is `p280-judging-followup`, including repeatable normal Release publishing
+and a review of remaining judging/completion/readback risks, not a restart of the completed benchmarks.
+Specific optimization and measurement scopes still require bounded approval; preserve permission
+answers, bindings, incompleteness and historical evidence, with no new UI presentation, production
+operations, commit or push authorized by this request.
+
+**Owner-reported browsing usability, 2026-10-02:** the owner reports that browsing the current
+implementation is unusably slow even in the small laboratory, not only at production scale.
+This is a usability observation, not a measured timing or identification of the exact running build.
+The existing calculate-once/stored-readback requirement remains in force across completed-result
+browsing; faster judging alone does not establish that the application is usable.
+The proposed larger correction must consider both result production and selected-result reading,
+while keeping the known whole-forest saved-path read separate from unconfirmed causes of other
+screen delays.
+This clarification does not approve a broader implementation, presentation change, measurement
+campaign or change to the owner's current production test.
+
+**Owner direction, 2026-10-02: ready to start the larger correction.**
+The owner wants the coordinated calculate-once/result-production and selected-result-reading fix,
+not another sequence of disconnected optimizations, and asks for navigation performance logging
+like the predecessor's if that data is needed.
+Use the existing separate checkout and preserve its verified uncommitted work; keep the active
+Visual Studio checkout, running judgement and historical evidence untouched.
+The concrete implementation/verification boundary and any visible loading or warning presentation
+still need to be stated before editing those surfaces; no live access, production retry, commit or
+push follows from this direction.
+
+**Owner-approved coordinated implementation scope, 2026-10-02.**
+Carry prepared evidence, saved-proof references and writing state through later judging stages;
+replace unnecessary whole-forest selected-result reads, preserve the protected open-run lifetime,
+and keep slow reading off the UI thread.
+Add local navigation diagnostics covering the action, run/build identity, opening/checking, queries,
+time until results are applied, and success/refusal/cancellation, without live-directory access.
+The owner explicitly approved Dashboard wording **"Loading saved results..."** and
+**"Saved membership results could not be read."**, rather than reporting failed reads as absent
+derivation.
+Saved-path limitations use 100-entry pages, matching object listing, with
+**"Showing X-Y of Z saved limitations"** and Previous/Next controls; retain every limitation and
+the distinction between missing captured evidence and unsupported analysis.
+This is a display page size, not an analysis budget.
+Approval includes exact-answer/fingerprint equivalence, source/generation and cancellation
+regressions, explicitly rebuilt isolated defects and correct rebuilds, and bounded fresh offline
+comparisons of judging, reopening and selected-view reads with a five-minute stop per invocation.
+Do not expand inconclusive measurements automatically or claim production acceptance from small
+fixtures.
+Use the separate checkout, preserve existing follow-up work and failed attempts, and do not change
+the running judgement, original checkout, rules, Tier-0 policy or discovery settings; no production
+retry, commit or push is authorized.
+
+**Owner-approved navigation-logging correction, 2026-10-02.**
+The owner approved replacing navigation's repeated executable hashing with one successful
+fingerprint calculation per running application, retaining that exact fingerprint in every entry.
+Keep each action's run, evidence and judgement-generation identity and outcome independent;
+this is not a cache of saved results and does not remove any captured-evidence verification.
+The first navigation can still pay the one-time identification cost, which remains included in
+its recorded total; subsequent navigation must not read the executable again for logging.
+Use bounded offline verification with rebuilt isolated defects, preserve the supplied lab log,
+and do not infer publication, a new lab/production measurement run, commit or push approval.
+
+**Owner direction for risk-first path presentation, 2026-10-02.**
+The owner rejects the raw whole-analysis diagnostic block in the normal object view:
+**"this is a security audit tool, the user need to know where risk is."**
+The normal presentation must lead with the selected object's supported security risk and the
+permission, membership or ownership evidence behind it, not thousands of serialized uncertainty
+records from across the run.
+Relevant missing evidence, unsupported analysis and work that was not run still need concise,
+plain-language explanations; removing the diagnostic block must not turn an unknown answer into
+"no risk" or turn an expected administrative relationship into a security finding.
+Keep the underlying saved proofs and coverage records intact.
+This establishes the product direction, not approval of a particular replacement layout, new path
+semantics, requester activation or a restarted measurement campaign; the existing Stage 7 completion
+requirements and bounded approval boundaries below remain in force.
+
+**Owner rejection of the positive SEC-071 presentation, 2026-10-03.**
+The owner supplied `ad.lab-20261003-192529` and a screenshot, reporting that the route's
+**From/To** distinguished names read as "change Barbara to DC" rather than explaining her permission.
+The owner requires actionable administrator wording, exemplified by removing **Modify permissions**
+from Barbara, and explicitly rejects raw JSON as user-facing supporting evidence.
+The screen must name the affected account, permission, actual target and place where the grant
+can be changed; a domain distinguished name must not read as a domain-controller computer.
+This supersedes treating generic guidance and expanded serialized proofs as an adequate SEC-071
+presentation, while leaving the saved proofs, rule semantics and severity unchanged.
+The approved replacement below is implemented and offline verified in the existing
+`stage7-completion` checkout; existing lab and production packages remain unchanged.
+
+Read-only inspection of that sealed lab run verifies one High SEC-071 finding for `bhernandez`,
+with a direct, non-inherited allow entry on the `ba.ad.lab` domain object, applying to that object
+only and including `WRITE_DAC`.
+The entry also contains other rights, so removing the relevant **Modify permissions** right must
+not be phrased as deleting every permission in the entry without separate review.
+The run completed judging in 28.0 seconds with 28 total findings; all three seals and the unexpected
+question/source fingerprints verify, and all 16 supplied files remained unchanged.
+No permission was changed, no analysis replayed and no production operation performed during review.
+Permission-specific change guidance must not claim a proven complete fix for every route or mark a
+finding resolved without new captured evidence.
+
+**Owner-approved SEC-071 administrator presentation correction, 2026-10-03; implemented and offline verified.**
+The owner selected **"Approve for the next implementation session"** for the following bounded
+wording/layout correction, preserving the current uncommitted work and lab/production packages.
+The subsequent **"implement"** authorizes this exact correction, followed immediately by the owner's
+request to continue in a fresh session because the current context is long.
+Carry that approval forward without asking again, work in the existing `stage7-completion` checkout,
+and preserve all current working files rather than restoring `98cd4d0` over the uncommitted changes.
+No UI implementation was begun before this handoff.
+For the supplied Barbara case, the approved presentation is:
+
+> **High · SEC-071**
+>
+> **Barbara Hernandez can change permissions on the ba.ad.lab domain**
+>
+> **Recommended change**
+>
+> Remove **Modify permissions** from **Barbara Hernandez's explicit permissions** on
+> **ba.ad.lab (domain)**. Keep the entry's other permissions unchanged unless they are separately reviewed.
+>
+> **Where to change it**
+>
+> Active Directory Users and Computers → ba.ad.lab → Properties → Security → Advanced →
+> Barbara Hernandez's entry → Edit → clear **Modify permissions**.
+>
+> **Why this is a finding**
+>
+> The captured permissions allow Barbara to change this domain object's permissions, but the
+> captured evidence does not establish an expected administrative role for her on this domain.
+>
+> **Scope of this recommendation**
+>
+> This addresses the permission shown, not every possible route. A new capture is needed to verify the change.
+
+Remove the **From/To** block, duplicate **Supporting evidence** sections and all raw JSON from
+administrator-facing SEC-071 evidence.
+Use one **Permission details** section with the following labelled information:
+
+| Field | Supplied Barbara example |
+|---|---|
+| Account | Barbara Hernandez (`bhernandez`) |
+| Target | ba.ad.lab — Domain |
+| Relevant permission | Modify permissions (`WRITE_DAC`) |
+| Granted to | Barbara Hernandez directly |
+| Assignment | Explicit; not inherited |
+| Applies to | This object only |
+| Permission check | Allowed |
+
+Show relevant captured allow/deny entries and membership evidence as labelled rows and sentences,
+not serialized records.
+Exact directory names, SIDs, object identifiers and saved-run identity remain available in a collapsed
+**Record details** area as labelled fields, also without JSON.
+
+- Apply readable relationship wording to all three currently supported SEC-071 families: direct
+  permission, existing membership and supported own-account membership followed by permission.
+- For group-held or inherited access, name the actual granting group and source rather than telling
+  the operator to remove a direct user grant that does not exist.
+  Explain when a change affects other members or descendants, or when the original grant location
+  is not established.
+- Keep missing evidence and unknown membership/Add prerequisites explicit in plain language;
+  an uncertain operation must not become a claim that it succeeded.
+- Keep finding identity, High severity, risk classifications, independent counts and paging unchanged.
+  Read only selected saved results, preserving original proofs and exact generation bindings.
+- This is permission-specific guidance, not automatic AD remediation or a new engine claiming a
+  complete fix across all routes.
+
+Verify the supplied case and synthetic direct/group/inherited/unknown cases, readable evidence,
+exact permission wording, cancellation and laptop-sized layouts with rebuilt negative controls.
+Preserve the supplied image/bundle, existing work and lab/production packages.
+No directory change, recapture, original-bundle rejudging, new measurement, package overwrite,
+commit or push is included.
+
+**Validated checkpoint, 2026-10-03:** the [retained handoff](../.v-sec071-admin-20261003-a4c6/handoff.json)
+records 6,431 passing offline tests after the final correct-source rebuild, with assertion witnesses
+for all 32 new and 15 adapted behavior cases across 53 rebuilt isolated defects and passing restored
+controls.
+The supplied positive case matches the approved headline, permission-specific change and editor
+location on a fresh copy, with three verified seals, no analysis replay and all 16 copied files unchanged.
+Its explanation uses the full captured name and "this account": this capture does not supply a given
+name or pronouns, and neither is guessed from the directory name.
+Original evidence and image, prior verification artifacts and both other checkouts/packages remain
+unchanged, and the owner's pre-existing work is preserved; physical laptop/external-monitor checks
+and owner-operated, log-only production acceptance remain outstanding, with no publication, commit
+or push performed.
+
+**Owner clarification: findings must represent risk, not ownership inventory, 2026-10-02.**
+After the computer-owned Windows Virtual Machine service record was shown as SEC-031, the owner
+stated that this creates noise and that expected ownership must be established and excluded from
+findings.
+A technically correct ownership capability is not, by itself, sufficient justification for a
+risk finding; retain the captured ownership and permission evidence even when a supported
+expectation excludes the relationship from findings.
+This supersedes the earlier SEC-031 justification that the self-owned service-record pattern
+necessarily belongs in findings merely because its non-administrative ownership is real.
+It does not approve blanket exclusions for computer accounts, service accounts or service-connection
+points, and uncertain expectedness must not be silently treated as expected.
+Clarify Stage 7 completion before starting finding tuning; the existing Stage 7-first delivery order
+remains, with concrete expected-ownership criteria, implementation and presentation still requiring
+a bounded proposal rather than being inferred from this direction.
+
+**Owner-confirmed path-analysis outcome and continuation, 2026-10-02.**
+The owner confirmed that the goal is one coherent, automatic analysis of unintended control leading
+to Tier 0, not a permission inventory presented as findings or a menu of separately requested paths.
+Connect the supported membership, ownership, permission and operation evidence into justified chains;
+the three currently exercised requester families are a foundation, not the completion definition.
+Expected administration must be distinguished from risk without erasing relationships an unexpected
+principal could use, and missing evidence or unsupported reasoning must remain explicit.
+Valid independent security-rule findings remain separate from path findings; proven source-action
+remediation, reports and run comparisons remain the later product stages already specified.
+
+The owner will take a build to the production environment, rejudge there and return **only the run
+log**; no other production data can be exported.
+Do not request bundles, databases, proof dumps, separate summaries or other exports, or work around
+that boundary by adding object-level data dumps to logging.
+The log can establish recorded execution, build/generation identity, timings, failures and recorded
+readback outcomes, but phase completion alone does not prove nonempty requester work, every saved
+answer, or complete production acceptance; further checks must remain on site and be explicitly
+approved if needed.
+This is owner-operated validation, not permission for the agent to access AD, replay production
+evidence, restart paused measurements, expand logging or change production budgets.
+
+Continue implementation preparation in `stage7-completion` at
+`C:\Users\jistrand\source\repos\SecureAD.Next-stage7`, independently of that production run.
+The existing `p280-judging-followup` checkout remains the owner's build source, with its uncommitted
+RID 498 correction preserved; do not change it or its published executables underneath the owner.
+The separate checkout carries the same verified code and preceding documentation changes without a
+new commit, while historical evidence and verification artifacts remain in the original checkouts.
+The next Stage 7 implementation still needs a concrete bounded scope; this continuation does not
+approve general finding tuning, new screen wording/layout, further optimization, commit or push.
+
+**Production-check workflow clarification, 2026-10-03 (P-110).**
+The current GUI offers **Derive facts** only for sealed evidence with no existing analysis;
+it cannot rebuild facts for an already derived run.
+**Discard judgement and judge again** deletes only saved judgements and invokes judging against
+the retained evidence and derived facts, keeping the log; cancellation or failure can therefore
+leave no completed judgement to reopen.
+This judgement-only workflow can exercise the new Stage 7 requester analysis without rederiving,
+but does not apply the RID 498 correction to an older saved protection catalogue.
+Do not make the independent catalogue correction or missing GUI refresh action a prerequisite for
+that requester check, or describe judgement-only output as testing refreshed derived facts.
+The CLI's separate derive command exists, but no new GUI workflow, manual deletion, recapture or
+agent-operated production run is authorized by this clarification.
+
+**Owner-reported production preparation, 2026-10-03.**
+The owner moved both existing derivation and judgement files into another folder, reopened the GUI
+and was then offered **Derive facts**, with judgement to follow.
+This is an owner-operated refresh of both implemented analysis stages from the retained capture,
+not a new GUI refresh feature or permission for the agent to move production files.
+The refreshed run can exercise the current protection catalogue as well as requester analysis, but
+its outcome is still to be established and it cannot verify Stage 7 features not yet implemented.
+Only its run log may be returned, and development continues independently in `stage7-completion`.
+
+**Owner-supplied partial production log and planned lab test, 2026-10-03.**
+The owner reports that the overnight judgement is still unfinished and supplied
+`C:\Users\jistrand\Downloads\new\run.log`, with older derivation/judgement sections removed for
+readability; use the new analysis markers rather than the original capture date for elapsed time.
+The supplied excerpt identifies the preserved format-46 production-test executable by its recorded
+fingerprint, with 17 rules and 940,067 objects, starting judgement at **04:30:12 UTC** and still
+reporting status at **15:46:13 UTC**.
+Its last completed requester subphase is **PreparingPaths at 08:30:26 UTC**; the matching code places
+the following uncompleted interval in account/question selection, but the log does not identify an
+inner hot function, establish continuing progress or provide a completion forecast.
+The owner will test the new SEC-071 candidate in the laboratory independently of this production run.
+That is not production performance acceptance or authorization for agent-operated lab/production
+access, optimization, new measurement tooling/runs, extra logging or changing the running package.
+Compared with this production package, the candidate adds both saved risk qualification and SEC-071
+publication; its correctness verification does not establish their incremental production runtime.
+
+**Owner-operated corrected-build lab run, supplied 2026-10-03.**
+The owner supplied `C:\Users\jistrand\Downloads\ad.lab-20261003-184702` for read-only inspection.
+Its Release executable fingerprint is
+`31195D043235EDC59B58BB16EF533F621F57E2E9A6F5FB0D975A1E17B89EDFB1`,
+with judgement-engine MVID `8fa900d7-938e-42c5-93cc-9b0ed5dbf254`.
+The run captures 8,418 objects across `ad.lab`, `ba.ad.lab` and `ph.ad.lab`, completes derivation in
+2.8 seconds and judging in 29.3 seconds, and publishes judgement
+`919487dc-82a1-4542-990f-4d9b3e2f73dc` against derivation
+`186898a4-b81b-4408-8316-f91f8c61c3a8`.
+The new diagnostics establish that the corrected selection/matching code ran: the whole selection
+phase took 258.1 ms (246 ms inside its diagnostic scope), indexed all 8,418 identities and completed
+48 resources, producing 336 distinct questions for six accounts.
+The three answer batches retain 92 requester-permission, 60 own-account membership and 184 combined
+answers, with matching scopes totaling approximately 42 ms.
+
+SEC-071's finding-publication work took 153 ms, not the entire path-analysis or qualification cost.
+All 336 saved qualifications are expected same-domain administration, so the rule ran but emitted
+no SEC-071 finding; 27 separate-rule findings remain.
+All three database seals, every saved question/source-proof fingerprint and their evidence,
+derivation and calculation bindings were checked read-only, and all 16 supplied files, including
+database sidecars, remained byte-for-byte unchanged.
+The log records successful saved findings and Tier-0 section navigation, including a 68.1 ms Tier-0
+read, but does not establish a new-process reopen or physical-display acceptance.
+
+This run does not establish forest-wide safety: saved path coverage still distinguishes incomplete
+inputs from unsupported analysis, and 42 own-account questions retain unknown current membership and
+ordinary Add readiness under the existing two-case proof.
+Read-only clarification of those 42 answers: 21 use Self-Membership and 21 use ordinary Write Members,
+and the applicable permission is established in every case; these are questions, not 42 accounts or
+failed directory modifications.
+The saved issues include `MembershipStateUnknown` and `LiveOperationNotEvaluated`, because not seeing
+the account's membership value is not treated as proof of absence.
+The two-case answer means membership is already available if present, or the supported permission
+allows adding the account's own value if absent; it does not assert that an ordinary Add is ready or
+that any live operation succeeded.
+All 184 combined lab answers use existing membership; a positive SEC-071 finding and hypothetical
+new-membership combinations remain covered by synthetic verification rather than demonstrated by
+this captured run.
+This is useful packaged lab execution/readback evidence, not a controlled before/after timing
+comparison, a forecast for the 940,067-object production capture, or production acceptance.
+Any production retry remains separately authorized, owner-operated and log-only.
+
+**Owner-approved requester repeated-work correction, 2026-10-03; implemented and offline verified.**
+The owner selected **"Approve for the next implementation session"** for one coordinated correction
+to account/question selection and matching its saved answers back to objects.
+The subsequent **"begin implementation"** authorizes that recorded correction now, without expanding
+its measurement, production, package or publication boundaries.
+The owner asked whether the overnight production run must continue: it is not a prerequisite for
+this correction, and normal application cancellation with the log and run files retained was
+recommended, not agent-operated termination or a claim of production acceptance.
+Whether the owner actually cancels the run is not yet reported.
+The final correct-source rebuild in an isolated short-path source copy passes **6,399 offline tests**
+with coverage, and all **31 new behavior/work-counter cases** detect assertion failures across
+**17 rebuilt isolated defects** and pass restored controls.
+The [verified correction checkpoint](../.v-requester-reuse-20261003/handoff.json) retains the prior
+source/binary baseline, independent earlier-algorithm references, failed attempts and exact build
+provenance; the seven retained lab-baseline binaries and all 27 published files remain unchanged.
+The saved format remains **48** and no security semantics, scope, numerical analysis budget or UI
+wording/layout changed.
+These checks establish removal of the repeated work and preservation of answers, not a measured
+production runtime reduction or completed production acceptance.
+Start from the current uncommitted SEC-071 working files in the existing `stage7-completion`
+checkout, not by restoring the bare `98cd4d0` commit or a verification snapshot over subsequent work.
+The owner-operated SEC-071 lab test remains separate, and its baseline and package must be preserved.
+
+- Build one identity lookup for the current bound run, keyed by security identity and domain scope,
+  instead of scanning the entire path-node collection for each qualification.
+  Duplicate or unresolved identities remain unresolved; never select whichever object appeared first.
+- Work out each group's relevant target-permission references once and reuse those references when
+  selecting questions for its members.
+  A group's permission is not the member's authorization: every required account-specific permission
+  and membership check still runs with its original resource and pre-change/obtained-membership context.
+- Reuse each account's unchanged fingerprint and accumulate duplicate supporting references without
+  repeatedly rebuilding growing lists.
+  Retain every original witness, the existing deduplication meaning and output ordering.
+- Index saved answers by the correct requester identity before matching them back to objects, rather
+  than searching whole proof lists for each object after every family.
+  Preserve the existing route-choice and tie-breaking rules, permission classifications, expectedness,
+  SEC-071 findings, independent holder/account/question counts and explicit incomplete outcomes.
+
+Reuse the existing periodic diagnostics for aggregate-only log progress covering
+**"Selecting account checks"** and **"Matching saved answers"**.
+Report the current step, resources processed/total, distinct access checks selected, answers processed,
+elapsed time and completed/cancelled/failed status, with the existing build/run/generation identity.
+A resource here means a group or target being examined.
+Add no account names, SIDs, object names or proof dumps, and change no screen wording or layout.
+These counters describe execution progress, not security-analysis completeness.
+
+Verification compares before/after questions, witnesses, permission answers, findings and independent
+counts on offline fixtures under properly bound generations.
+Work-count regression checks must prove that more questions do not cause another full-object scan per
+question, another full-target scan per member or another full-answer scan per object.
+Exercise ambiguous identities, domain scope, duplicate evidence, cancellation and failed publication,
+with explicitly rebuilt isolated deliberate defects and restored controls, then a correct-source
+rebuild and the existing offline regression suite.
+Preserve historical fixtures, hashes, failed attempts and prior verification records rather than
+changing expected values to bless a different answer.
+
+The accepted engineering trade-off is temporary lookup memory for the duration of the run, referencing
+existing data rather than copying whole evidence or proof objects.
+This removes avoidable repetition, not genuine required work, and does not promise a particular runtime
+reduction or accept production scale.
+No new checkout, analysis limit, security-semantic change, measurement-campaign restart, live access,
+production retry, publication, commit or push is authorized.
+Do not overwrite the production-test or lab package.
+The already-running process cannot benefit from a code change; any later production test remains
+separately authorized, owner-operated and log-only.
+
+**Owner-approved SEC-071 findings and minimum risk-first readback, 2026-10-03.**
+The owner selected **"Approve this proposal for the next implementation session"**.
+This approves the following bounded scope, wording and grouping, not implementation during the
+proposal session or completion of Stage 7.
+The owner's subsequent **"begin"** authorizes implementation of this recorded slice; it does not
+expand the scope or the separate production, measurement and publication boundaries.
+**Status: implemented and offline verified in judgement format 48.**
+The final correct-source Release rebuild passes all **6,368 offline tests**, with coverage witnesses
+for the new components; all **55 selected new or changed behavior and public-contract cases** detect
+assertion failures across **31 rebuilt isolated defects** and pass restored controls.
+The [verified checkpoint](../.v-sec071-20261003/handoff.json) retains failed attempts, source/build
+identity and preservation checks, including the unchanged production-test executable and all earlier
+layout hashes.
+Physical laptop/external-monitor checks and representative production acceptance remain outstanding;
+no measurement restart, production operation, application publication, commit or push occurred.
+Continue from `98cd4d0` on `stage7-completion` in the existing
+`C:\Users\jistrand\source\repos\SecureAD.Next-stage7` checkout; do not create another checkout.
+
+- Produce SEC-071 automatically during normal GUI/CLI judging, after the existing saved
+  qualification, from every qualified unexpected result across requester permission, own-account
+  membership, and membership followed by requester permission.
+  Do not add path combinations or change qualification, permission semantics or the authoritative
+  Tier-0 definition.
+- Produce one finding per affected account for the overall Tier-0 control plane, following the
+  [canonical identity specification](specs/JUDGEMENT-HALF.md).
+  Multiple destinations and supporting questions belong under that finding rather than producing
+  duplicates; its identity survives route and account-name changes.
+  Use one fixed **High** severity for SEC-071, with no severity split or grading by path length.
+- Expected routes, unresolved answers and questions that did not establish a route remain saved
+  but produce no SEC-071 finding.
+  An expected route must not hide another unexpected route for the same account, and merely being
+  a Tier-0 target is not a finding.
+- Save findings, supporting proof references, rule-execution status and whole-run counts with the
+  same evidence and analysis generation; cancellation or validation failure must not publish a
+  partial result.
+  Opening a screen reads only saved results for the selected account and never reruns analysis.
+  Account, access-check and group-held permission counts remain independent, and displayed pages
+  must not supply whole-run totals.
+- Retain original permission, membership and ownership evidence, captured membership and the
+  separate state of ordinary Add prerequisites.
+  An unresolved prerequisite remains unresolved rather than becoming proof that an operation or
+  takeover succeeded.
+
+Reuse the existing **Findings** screen, keeping severity ordering and filters, with this compact,
+explicitly whole-run summary:
+
+> **Whole-run Tier 0 summary**
+>
+> **Accounts with SEC-071 findings: {N}**
+>
+> **Unresolved access checks: {U}**
+>
+> Supported checks only; other routes may exist.
+
+An access check means one saved question about an account's access, not a distinct account or a
+unique route.
+Counts come from the complete saved result, not the displayed page; missing or unperformed analysis
+shows its status instead of zero.
+
+Rename the existing **"Saved Tier 0 path"** section to **"Tier 0 findings and routes"**, with no new
+top-level screen.
+A SEC-071 finding offers **"View saved routes"**, opening that same account-specific section.
+The approved grouping and order are:
+
+| Group | Default presentation |
+|---|---|
+| **Unexpected routes** | Open first: finding, reached target, why authority is unexpected, readable steps, then expandable supporting evidence. |
+| **Unresolved access checks** | A concise warning when present, distinguishing missing captured evidence, unsupported analysis and unfinished work. |
+| **Expected administration — not findings** | Collapsed, preserving the relationship and its evidence. |
+| **Other completed checks — no route established** | Collapsed, explicitly not a safety verdict. |
+
+Finding heading:
+
+> **SEC-071 — Unexpected route to Tier 0**
+
+Explanation:
+
+> The saved evidence establishes a supported route to Tier 0 outside this account's expected
+> administrative authority on the reached target.
+
+Boundary:
+
+> Saved permission, membership and ownership evidence is not proof of account takeover or a
+> successful live operation.
+
+Show existing membership and whether the prerequisites for adding the account to a group were
+established or remain unresolved wherever relevant.
+Label a displayed route **"Saved supporting route"**, not "best route", "shortest attack" or a complete
+fix; all supporting questions remain accessible through paging.
+
+When assessed questions produce no finding:
+
+> No SEC-071 finding was established by these checks. This does not establish that no route exists.
+
+When none were recorded:
+
+> No saved access checks for this object. This does not assess accounts that may reach it.
+
+Retain explicit existing not-run, unavailable, unfinished and wrong-generation refusals.
+Replace the whole-analysis raw diagnostic block with concise relevant explanations while preserving
+the underlying records, and keep a selected object's existing Tier-0 classification informational
+and separate from findings.
+The new rule's **"What to do"** guidance is:
+
+> Review the recorded permission or membership relationship and its scope before making changes.
+> This finding does not establish a complete remediation for all routes.
+
+Verification covers duplicate-free stable account identity, all-question coverage, mixed expected
+and unexpected cases, exact independent counts, operation-readiness caveats, publication rollback
+and passive generation-bound reopening.
+Use offline fixtures and rebuilt isolated deliberate-defect checks for every new behavior check,
+with explicit correct-source rebuilds, preserving frozen values, historical evidence and failed
+attempts.
+Include normal layout checks; any unperformed physical-display checks remain outstanding.
+
+This requires saved finding/evidence integration, not just wording, and older saved analyses are
+not rewritten or migrated.
+No broader path composition, declared-asset work, incoming-route browser, remediation engine,
+SEC-031 or general finding tuning, dashboard redesign, new budgets, measurement restart,
+production operation, package change, new checkout, commit or push is authorized.
+Preserve the production-test checkout/package and historical evidence; production validation remains
+owner-operated.
+Only its run log may leave that environment; do not add object-level export logging.
+Stage 7 completion and production acceptance remain separate and outstanding.
+
+**Owner-approved saved path-risk qualification checkpoint, 2026-10-03.**
+Qualify every saved question in the three existing concrete-requester proof families against the
+requester's captured, pre-change authority on the actual reached target, reusing the existing scoped
+control-plane policy.
+Save a proven unexpected route, a proven expected route, a route not established for that question,
+or an unresolved answer; none is a whole-forest safety verdict.
+Do not inherit expectedness from a granting group, use obtained membership to justify its own
+escalation, hide out-of-scope control because the requester is Tier 0 elsewhere, or inspect only the
+route selected for display.
+Keep original permission and operation proofs, ordinary Add readiness, current membership,
+generation binding and group-held permission counts independent.
+This checkpoint saves qualification for later SEC-071 production but emits no findings and changes
+no screens, path combinations, Tier-0 definition or permission semantics.
+Use synthetic/offline verification and preserve historical data and the owner's production-test
+checkout/package, with no production access, measurement campaign, commit or push.
+Implemented in **judgement format 47**, with **6,341 tests passing**, **582 focused coverage
+cases** and assertion-based witnesses for all **30 new behavior cases** across **16 rebuilt
+isolated defects**, followed by restored controls and an explicit correct-source rebuild.
+The [checkpoint handoff](../.v-path-risk-20261003/handoff.json) preserves source/build identities,
+earlier failures, original evidence and the untouched production-test package.
+The format-47 selected requester readback kept explicit requested/unavailable/no-recorded-question
+states internal until consumer approval; the format-48 paged consumer is approved above, and no
+public-surface gate was exempted.
+Older judgement formats are refused by this branch rather than migrated or reinterpreted, while
+the owner's frozen format-46 production-test application remains unchanged.
+This is the saved qualification needed before SEC-071, not SEC-071 delivery or completed Stage 7.
+
+**Owner-approved requester activation candidate and lab-first verification, 2026-10-02.**
+Enable the existing shared GUI/CLI supported-question policy in the local candidate without
+changing permission semantics, the three supported families, budgets, path compositions, rules
+or screens; the separate legacy membership scan stays inactive.
+The owner approved using the supplied copy at
+`C:\Users\jistrand\source\repos\SecureAD.Next\next\artifacts\ad.lab-20261002-225337`
+directly for the first real-capture check, rather than requiring another synthetic bundle or
+another copy of this laboratory audit.
+Preserve the existing judgement, manifest, summary and log before rejudging, hash-check the
+sealed evidence and derivation, and retain earlier results and failed attempts.
+The supplied audit records 8,418 objects and the domains `ad.lab`, `ba.ad.lab` and `ph.ad.lab`;
+report what this capture demonstrates, not unverified cross-forest or production-scale coverage.
+Synthetic verification remains necessary for precise edge cases and rebuilt deliberate defects.
+The candidate must retain meaningful work and saved answers for each supported family, exact
+source bindings, independent holder counts, explicit uncertainty, cancellation rollback and passive
+reopening; a missing family is a verification gap, not a reason to manufacture a lab finding.
+This is local candidate approval, not production readiness or permission to publish it: a later
+production acceptance run and final activation decision remain separate, and no live access,
+recapture, paused-campaign restart, optimization, new budget, UI change, commit or push is authorized.
+
+**Separately approved requester-input reuse prerequisite, 2026-10-02.**
+After the candidate exposed repeated capture verification in the existing source-reuse tests,
+the owner approved carrying the existing protected capture reader and target lookup through
+requester selection and all three proof families before the lab check.
+Replace repeated opening/rebuilding in that branch without changing permission semantics,
+source/generation checks, saved answers, counting or uncertainty; preserve the first failing
+verification and exercise established combined questions with rebuilt isolated defects.
+This bounded correction does not restart measurements, change processing limits, authorize
+further optimization or waive the later production acceptance and activation decision.
+
+**Owner-approved completion-message correction, 2026-10-02.**
+The real lab candidate completed supported requester work while both hosts' existing wording
+said membership questions were not scheduled; that sentence described a different, inactive scan.
+The owner approved replacing only that message in CLI and GUI completion with:
+"The separate Self-Membership scan was not run because no processing limit is configured.
+Tier 0 requester checks have their own saved coverage; this does not mean nobody can add
+themselves to a group."
+This changes no layout, permission calculation, risk classification or scan, and does not
+authorize repeating the completed lab judgement or implementing the broader risk-first presentation.
+
+**Requester candidate checkpoint, 2026-10-02: implemented and real-lab verified, not production acceptance.**
+The current unpublished candidate enables the shared supported-question policy in both hosts;
+the old production-disabled statements below describe the earlier P-242 checkpoints, not this
+local candidate.
+The [verified handoff](../.v-requester-20261002/handoff.json) retains the source/build identities,
+6,300-test pass, rebuilt defect checks, single lab invocation and unchanged original security
+answers, including the first failures rather than replacing them with the later passes.
+The lab's combined answers all use existing memberships; hypothetical new-membership combinations
+remain synthetic verification, and the lab does not establish production resource requirements.
+Peak memory was not obtained from this invocation, ordinary Add readiness remains separately
+qualified, and neither completed supported questions nor a readable result constitutes all-path
+coverage, a new SEC-071 finding or live takeover.
+Representative production acceptance, final activation/release approval and the risk-first
+presentation remain owed; no additional run, campaign, optimization, budget or publication follows
+automatically from this checkpoint.
+
+**Owner-approved RID 498 evidence check, 2026-10-02 (P-88).**
+The owner approved comparing Enterprise Read-only Domain Controllers with protected and
+unprotected controls and the AdminSDHolder template in the existing sealed lab audit, read-only.
+The [captured comparison](../.v-lab-readback-20261003-011110/captured-protection-comparison.json)
+corroborates the MS-ADTS reading that RID 498 is not automatically protected: its ordered permission
+list matches Domain Users and inherits, while Domain Admins and RID 521 match AdminSDHolder and
+block inheritance, in the captured Windows Server 2022 root-domain context.
+This is one saved state, not observed SDProp execution, universal Windows-version proof, or a
+decision about protection passed to members.
+The subsequent **"ok make the correction"** approves only the bounded principal-claim correction:
+RID 498 does not automatically confer AdminSDHolder protection, while independently established
+membership protection still applies and its member-propagation claim remains unverified.
+This supersedes only the RID 498 principal-protection position in `0089`, using the MS-ADTS
+protected-set definition with the captured lab corroboration, not an assertion that Microsoft's
+conflicting group-reference page was corrected or that every Windows version was observed.
+Advance the protection catalogue version and retain saved older answers without reinterpretation;
+do not change accepted owners, the authoritative Tier-0 definition, permission evaluation or screens.
+Verification is synthetic/offline; original captures, frozen expectations and prior failures remain,
+with no live testing, historical-bundle rederivation/rejudgement, publication, commit or push authorized.
+The correction is implemented as protection catalogue **version 4** and offline verified with
+**6,311 passing tests**, **120 focused coverage cases** and **15 new/updated behavior cases**
+that detect nine isolated rebuilt defects, with correct sources explicitly rebuilt after restoration.
+The [verified correction handoff](../.v-rid498-20261002/handoff.json) retains the initial fixture
+failure, source/build identities and unchanged original evidence.
+Existing version-3 derivations still carry their original disputed answer: applying this correction
+to an older capture requires new derivation and judgement, not merely reopening it or using the
+judgement-only discard action, and no original lab bundle was changed for this verification.
+
+**Implementation checkpoint, 2026-10-02: the coordinated correction is offline-verified.**
+The follow-up carries prepared statements and committed proof identities through later judging
+transactions without allowing rolled-back identities to escape; selected saved paths retain an
+explicit bounded, fingerprinted input projection, and completed-run permission classification
+obtains only the descriptor identity it needs.
+Dashboard reading runs off the UI thread and distinguishes loading, absent derivation and failed
+saved membership; saved limitations retain every entry behind the approved 100-entry pages, and
+local navigation diagnostics record build/run identity, opening, query, application and outcome.
+A fresh Release rebuild and all 6,268 ordinary tests pass, and eight explicitly rebuilt isolated
+defects are detected before the corrected isolated source is rebuilt and passes all controls.
+The bounded fresh witness comparison preserves the exact selected answer, evidence seal,
+generation, source binding, fixed targets, uncertainty, requester-family coverage and limitations;
+its small-fixture timings are evidence about that fixture only, not a production speed claim.
+
+**Production completion checkpoint, 2026-10-02.**
+The owner's supplied `run6.log` is from the same `4deef9f` Release executable recorded in the
+handoff and reaches terminal `CompletedDegraded` after proof writing and publication for 940,067
+objects, with no logged warning or error and approximately 4 hours 42 minutes elapsed.
+That establishes completed production judging, but the log does not establish that the result was
+successfully reopened or browsed, and the follow-up source has not been run in production.
+The original `SecureAD.Next` checkout remains at `4deef9f`; no live access, production retry,
+application publication, commit or push occurred in the follow-up.
+
+**Owner-approved discard-first rejudging, 2026-10-02.**
+The owner has limited disk space and explicitly chose **"Discard judgement and judge again"**:
+losing the existing judgement is acceptable during testing, so a whole-bundle copy or keeping both
+old and new judgements must not be required by this action.
+Reuse the same captured evidence and derived facts, preserve the run log, and discard only the
+selected run's judgement before invoking the existing judging engine.
+This is an explicit exception to retaining the previous judgement on cancellation: once discard
+has succeeded, stopping or failing the new attempt leaves no completed judgement to open.
+Do not present unfinished work as results, delete evidence or derived facts, access AD, or invoke
+this action against the owner's production bundle from an implementation/verification session.
+The owner approved the action in Home's existing analysis-action area for an already-judged run,
+with one confirmation naming the run: **"This deletes this run's saved judgement before starting
+again. Captured evidence, derived facts and the run log are kept. If judging is stopped or fails,
+there will be no completed judgement to open."**
+Use the existing judging progress and Stop control; ordinary Judge remains non-destructive.
+
+**Owner-supplied running snippet, 2026-10-02:** the corrected source is
+`C:\Users\jistrand\Downloads\new\run5.log`, preserved unchanged with its SHA-256 under
+`.v-pipeline-61f8b32d/production-run5/`.
+The logged executable SHA-256 matches the owner's local normal Release publish output and the
+engine identifies `4deef9f`; the evidence seal and derivation generation match the earlier run.
+The 940,067-object pass completes in 6,331,774 ms, scope selection in 453,488 ms and detailed
+control assessment in 2,224,368 ms, including 1,974,764 ms in its storage step.
+At the last supplied checkpoint, `2026-10-02T16:41:36Z`, ownership is still running with
+2,315 of 7,225 targets completed and no path-writing, publication, failure or successful-finish
+record; this is operational evidence, not a controlled comparison or a completed-run acceptance.
+
+**Owner-approved follow-up trial, 2026-10-02: witness-grouped validation only.**
+Within ownership/path source validation, prepare one resource's captured permissions once and check
+all of its saved witnesses before discarding that preparation.
+Preserve captured-owner and permission-entry checks, stored-edge proofs, original output order,
+exact fingerprints, resource/source/generation binding, incomplete results and cancellation; do not
+introduce a forest-wide permission cache, change analysis policy or activate requester discovery.
+Approval includes focused regressions with explicitly rebuilt isolated defects and correct rebuilds,
+complete saved-answer comparisons, and a fresh bounded before/after offline comparison of
+repeated-witness and no-reuse cases, with a five-minute stop per invocation.
+Do not automatically expand or repeat an inconclusive comparison; this tests the bounded change,
+not production-scale acceptance.
+Work only in the separate `p280-judging-followup` checkout while the owner tests `4deef9f`;
+future publishing setup remains separate, with no production operation, UI change, commit or push.
+
+**Witness-grouped trial outcome, 2026-10-02: isolated implementation verified, not adopted for
+production.** All 849 directly related regression cases pass, and all 10 new checks detect their
+intended explicitly rebuilt defects across five isolated variants before passing on correct rebuilds.
+Both fresh before/after pairs agree across all 61 saved tables and all 603 objects' complete permission
+answers, with exact source bindings, original occurrences and degraded results verified.
+In the repeated-witness case, validation reads fall from 594 to 18, phase time from 909.3502 to
+238.3459 ms and allocation from 297,692,496 to 18,781,936 bytes; complete judging plus reopening
+changes from 5,410.7821 to 4,209.4049 ms.
+The no-reuse case stays at 18 reads but is slower: validation 205.3262 to 248.8114 ms and complete
+judging plus reopening 2,043.7705 to 2,661.5928 ms, with essentially unchanged allocation.
+These are single fresh comparisons of small nine-domain synthetic fixtures, not representative
+forest measurements or a universal speedup, and the slowdown remains an open finding rather than
+being explained away or used to authorize more trials.
+The [verification record](../.v-witness-a6d9712f/validation-summary.json) retains binaries, source
+identities, input seals, failed attempts, comparisons and rebuilt controls.
+The owner's original checkout remains clean at `4deef9f`; the follow-up stays uncommitted and
+unpublished with no new production operation.
+
+**Future normal Release publishing is prepared on the follow-up branch.**
+`pwsh -File .\next\tools\Publish-Release.ps1` uses the existing GUI `FolderProfile`, includes the
+current working sources, creates fresh output/build folders and records source and package hashes;
+`-WhatIf` previews without building.
+Eight isolated script checks detect eight deliberately broken script variants and pass with correct
+scripts, including existing-output refusal, native failures, changed sources and dependency restoration.
+No real application package or startup verification was performed in this follow-up.
+
+**Earlier owner-approved priority, 2026-10-01: descriptor-first permission preparation and its
+bounded offline validation, before further UI polish.** After the end-to-end design review, the owner
+explicitly approved the first implementation scope below and requested a new-session handoff before
+work starts. The goal is an audit that actually finishes in a realistic time, not just a faster object
+counter; no numeric customer-runtime commitment has been agreed. Approval covers this bounded
+implementation and validation on isolated offline inputs, not unrestricted optimization, new
+measurement harnesses beyond the separately approved runner below, later-stage redesign, live
+access or changes to the active production run.
+
+### First redesign: approved scope and offline validation
+
+**Status: approved small-fixture offline validation complete; not published or accepted at
+production scale.**
+**What was implemented versus what this continuation finished:** the main-pass application change
+and its 31 new test cases were already in local WIP commit `8858a3a` before the VS Code handoff.
+The VS Code continuation completed their outstanding review, verification and measurement without
+another application-code edit; the benchmark compares the preserved old implementation with that
+already-modified implementation, not the working files at the start and end of the VS Code session.
+At that checkpoint later ownership/path stages still prepared inputs independently; the separately
+approved input-reuse follow-up below is now offline verified, but the overall performance redesign
+and production-scale acceptance are not complete.
+
+The owner approved the defined scope with: *"Approve this implementation scope and its bounded
+offline validation"* and subsequently said *"implement it"*; do not ask for that approval again.
+The prior review-only restriction is lifted only for this scope. The fresh logging-corrected
+before-control and current checkpoint are linked from [the work queue](PUNCH-LIST.md#current-bounded-correction).
+**The owner approved resuming the same scope in VS Code, 2026-10-01, from current working files,
+never by restoring a checkpoint over them.** That continuation completed implementation review,
+all 31 new checks' deliberate-defect witnesses and a fresh Release rebuild with all 6,197 ordinary
+offline cases passing. All six frozen before/after pairs agree across all 61 saved tables and every
+object's complete permission answer, with their own seals, original occurrences, resource scope,
+generation bindings and degraded outcomes verified; eight comparison controls also reject an
+explicitly rebuilt implementation that compares nothing, then pass after a correct rebuild.
+The [current checkpoint](../.v-dfirst-cb4a8c95/checkpoint-03/handoff.json) preserves the previous
+checkpoints, interrupted attempts and exact measured binaries; no production or test source was
+changed or restored during this continuation.
+
+The [unchanged CPU benchmark comparison](../.v-dfirst-cb4a8c95/continuation-03-563b1149/benchmark-comparison.json)
+records lab 12.820 → 9.875 seconds, shared 5.003 → 3.210 seconds, and distinct 6.527 → 7.094 seconds,
+with allocation, memory, temporary/final storage, later phases and reopening retained for every
+invocation. Repeated main-pass preparation is removed on these inputs, but the no-sharing slowdown
+remains an open performance finding; these one-iteration synthetic/lab measurements do not establish
+representative nine-domain performance, a customer-runtime ceiling or production readiness.
+Further optimization or later-stage redesign needs a separate bounded approval, and this build must
+not replace the owner's separately published diagnostic build; during that validation no application
+publication, commit, push, live-forest access, production-run change, discovery activation or budget
+change occurred.
+Before the VS Code continuation, the owner authorized a **local work-in-progress commit** of the
+accumulated source, tests and governing-document changes. That saved unfinished work, not an accepted
+implementation; retained verification folders stay on disk outside Git, and that authorization did not include
+pushing, publishing, restarting validation or changing the production run.
+
+**New owner authorization, 2026-10-01: commit the completed checkpoint locally, then investigate and
+propose bounded reuse of verified inputs through the currently active ownership/path-preparation
+stages.** The local commit records the completed main-pass verification and its limits; retained
+evidence and verification folders remain outside Git, and no push or publication is authorized.
+That read-only investigation is complete. **The owner approved its bounded replacement and offline
+validation on 2026-10-01: "approved lets implement it".** Reuse protected evidence and derivation
+readers and their already-validated membership inputs within one judging attempt, then load finished
+ownership records once for path preparation; never reuse pre-assessment status/counts as final.
+Preserve source qualification and saved-witness checks, exact evidence/derivation/judgement binding,
+resource scope, original occurrences, independent group-held counts, explicit incompleteness,
+cancellation and file-handle lifetime. Keep reusable inputs privately owned; do not retain decoded
+descriptors or extend classifier-index lifetimes across stages.
+
+Approval includes focused regression checks with explicitly rebuilt isolated defects and correct
+sources, complete saved-answer equivalence, and fresh control/candidate runs using unchanged
+BenchmarkSuite7 and its frozen inputs/settings. Isolate short fresh TEMP/TMP before any test assembly
+loading or discovery, retain exact binary provenance and failed attempts, and measure publication and
+reopening as well as the earlier phases. This is not approval for extra measurement instrumentation,
+UI changes, formats/migration, cross-run caches, parallel judging, requester activation, budgets,
+live access, publication, production operations, another commit or push; customer-scale acceptance
+and the no-sharing slowdown remain outstanding.
+
+**Bounded input-reuse outcome, 2026-10-02: implemented and offline verified, not published.**
+The attempt owns protected source readers and immutable membership inputs; path preparation shares
+one finished ownership snapshot while retaining source qualification and saved-witness checks.
+The selected derivation manifest is held only across final publication so it cannot change between
+the last source check and selecting the new judgement. All 6,236 ordinary offline cases pass, and
+all 39 new cases detect their intended explicitly rebuilt defects across 18 isolated variants before
+passing on correct rebuilds. All six fresh control/candidate pairs agree across all 61 saved tables
+and complete permission answers; comparison controls also reject a rebuilt empty comparison.
+
+The [retained comparison](../.v-inputs-8f3a2c91/benchmark-comparison.json) records lab 15.417 to 9.239
+seconds, shared 5.628 to 3.520, and distinct 10.889 to 6.758 on unchanged BenchmarkSuite7, with
+fresh controls rather than the earlier descriptor-first timings. Lab path preparation is 5,390.8
+to 3,004.8 ms and allocation 2,047.57 to 1,947.94 MiB; sampled working-set peaks fall on lab/shared
+but rise from 109.28 to 110.28 MiB on distinct. There is substantial object-pass timing variation
+too, so one configured iteration cannot attribute the whole elapsed difference to input reuse or
+establish a repeatable percentage gain. Exact builds, source snapshots, every invocation, publication
+and reopening, resource records, rebuilt defects and failed attempts are retained under
+`.v-inputs-8f3a2c91/`; this does not fix the production path-proof memory failure below, establish
+nine-domain viability, or authorize another correction, measurement campaign, publication or commit.
+
+**Continuation approved, 2026-10-01; the separate production interruption remains an open investigation.**
+The owner approved continuing and supplied `run3.log`, then clarified the observation: the Judge
+button was clickable again in the morning, no error was visible, and completion was an assumption,
+not an explicit success message. Do not ask for that observation again or record it as a successful
+judgement. The preserved file ends with `WritingProofs completed=False`, before any publication or
+successful-finish marker. The owner also supplied Windows report
+`b033d7cb-c426-4bad-8692-47aa4d4b439e` and then its event XML: `AppHangTransient` was logged at
+`2026-10-01T14:36:09.6863424Z`, 4 hours 8 minutes 17.6863424 seconds after the last judging record.
+That is the reporting time, not a proven hang-start time; event-emitting PID 9104 does not identify
+the hung application or contradict judging PID 4980. Three temporary attachments are listed, but
+their availability has not been checked and neither process termination nor causation is established.
+The timestamp question is answered and must not be asked again. Source review found a terminal-error
+logging gap on the normal production route; **the owner approved the judging failure-logging correction
+and offline checks, 2026-10-01**, prioritizing getting the logging right. Record failures/cancellation,
+phase, attempt/generation and exception details without masking the original failure or changing
+publication safeguards; this approval does not include UI changes, a production rerun or changes to
+the frozen measurement runner. **The bounded logging correction is implemented and offline verified;
+the rerun's executable hash, engine module identity and matching PDB source checksums now
+confirm that it contains the validated logging correction, while the earlier failure's underlying cause
+remains unknown.** The prepare-once approval remains intact, and the production log remains operational
+evidence rather than the controlled baseline; [the work queue](PUNCH-LIST.md#current-bounded-correction)
+records the retained observations and next proposed correction.
+
+**Owner-supplied terminal rerun log, 2026-10-01:** `run4.log` reports attempt
+`a7600b99-bcb7-419a-80d0-04c133869032` failing at `2026-10-02T03:00:13Z` with
+`System.OutOfMemoryException` in JSON text conversion called by `Tier0PathStorage.Write`,
+after 940,067 objects, during `WritingProofs`, with `publication=NotStarted` and cancellation false.
+The executable SHA-256 and engine module identity match the previously verified logging-corrected
+diagnostic build; this is not the in-progress input-reuse implementation, and an ended attempt is
+not a completed judgement. Path preparation completed in 8,007,370 ms with requester selection
+disabled; that operational observation is not a controlled comparison or a measurement of the
+individual repeated reads. The preserved copy and hash are under
+`.v-inputs-8f3a2c91/production-run4/`; the downloaded original was not changed.
+The stack names JSON serialization but not an exact call site or allocation size: the whole-input
+fingerprint's monolithic serialization is a concrete suspect, not a proven allocation-level cause.
+Input reuse does not remove that operation and must not be described as fixing this failure;
+the earlier run's unlogged failure is still not established to have the same cause.
+
+**Owner-approved bounded memory correction, 2026-10-02:** replace only the shared path fingerprint
+helper's whole-document JSON text/byte copies with streamed SHA-256 over exactly the same JSON bytes.
+Keep serialization settings, ordering, fingerprint text, permission answers, source/generation
+bindings and incomplete results unchanged; no format, graph, cache, processing-limit or UI change.
+The owner approved the correction and bounded offline checks, including a small test-only stress
+runner: compare with the existing algorithm, exercise at least 1 GiB of generated JSON under a
+256 MiB managed-heap ceiling, verify its full digest and length, and demonstrate the allocation
+failure in an explicitly rebuilt isolated old implementation.
+That ceiling is a test safeguard, not a product budget; every new behavior check requires a rebuilt
+defect witness and a correct rebuild, with short isolated TEMP/TMP set before test discovery.
+Preserve the current verified input-reuse files and all earlier evidence.
+This scope does not authorize a new end-to-end measurement campaign, production retry, publication,
+commit or push; representative nine-domain judging completion, isolated result publication and
+reopening still require separate authorization and remain the acceptance gate.
+
+**Bounded fingerprint-memory outcome, 2026-10-02: implemented and offline verified, not production
+acceptance.** All 6,250 ordinary offline tests pass; all 14 new checks detect their intended defects
+across three explicitly rebuilt isolated variants and pass after correct rebuilds.
+The approved stress check hashes 1,444,886,835 generated JSON bytes with the exact reference digest
+under a 256 MiB managed-heap ceiling; the rebuilt old algorithm runs out of memory, and a rebuilt
+dropped-byte variant is rejected rather than accepted merely for finishing.
+Its 940,067 occurrences repeat nine synthetic relation templates, so this is a serialization-capacity
+check, not a nine-domain forest-completion measurement.
+The [retained verification](../.v-pathmem-13a79d2e/validation-summary.json) includes source/build
+provenance, rebuilt controls and failed attempts; verified input reuse and earlier evidence remain
+unchanged, and no live source was restored.
+Loaded input graphs and individual large values still require memory, the exact allocation in
+`run4.log` remains unproven, and representative judging completion/publication/readback remain
+unaccepted and separately gated, with no production retry, publication, commit or push.
+
+**Owner authorization, 2026-10-02: publish the normal Release GUI application.** After confirming
+that the existing `FolderProfile` includes the current uncommitted input-reuse and memory corrections,
+the owner said *"ok publish it"*.
+Use the existing Windows x64, self-contained, single-file profile and preserve older packages by
+publishing into a fresh output folder; retain exact source and package identity.
+This authorizes local application packaging and its verification, not a new judging attempt,
+judgement-result publication, production access, recapture, measurement campaign, commit or push.
+
+**Owner follow-up, 2026-10-02: commit locally; the owner will publish in Visual Studio.**
+The owner stopped agent packaging and authorized committing the verified current source, tests and
+governing documents so he can publish his normal Release build without further packaging work here.
+No publish command had run; retained verification/evidence folders stay outside Git, and no push or
+agent-run judging retry is authorized.
+
+**Additional production observations, supplied with that approval:** Home shows capture `Finished`
+and analysis `Facts derived — not judged`, while Dashboard says `Group membership has not been
+worked out yet` and that deriving has not run. The owner reports unusably slow screen changes and
+Assets spending minutes loading before withholding a saved result for a source/generation mismatch
+or a generation change during reading. Source review confirmed that Dashboard currently maps a failed
+membership read to the same state as no derivation; that reporting defect remains unfixed, and the
+Assets refusal/loading cause is still unconfirmed. Do not equate a stored derivation with a successfully
+verified reading, weaken the refusal, change screen wording without approval, or substitute stale/empty
+results to make the screens agree.
+
+**Readback investigation follow-up:** the source retains unfinished judgement markers after a failed
+attempt, and the screen reader treats a pending judgement as a blocker even when reading derived
+facts; its captured-data validity check can also reject the read for that pending state. **The owner's
+pre-rerun inventory confirmed both `judgement.db.partial` and `judgement.current.json.partial`,
+with no published judgement manifest/database listed.** The recorded derivation was selected as
+`ce5b7114-14af-44da-95d7-acdca87a9015`, matching the judging log; its database and seal are present.
+The declared evidence seal also matches that log, but database bytes have not been rehashed. The
+pending files are sufficient to trigger the observed refusal path; their empty pending generation ID
+is the normal start-of-attempt marker, not something to repair manually. That historical inventory gave
+18.67 GiB of evidence, 2.84 GiB of derived facts, 12.42 GiB of failed judgement and 48.04 GiB free;
+it is not current capacity, a replay guarantee or evidence of free space when the failure occurred.
+Preserve failed output deliberately: starting another judgement replaces its staging database.
+**Owner clarification, 2026-10-01:** the owner wants to use the normal Release publish to obtain the
+better log, not wait for screen fixes or a special CLI package, and does not have space to duplicate
+the whole captured run. The normal GUI uses the corrected judging engine; a separate CLI package is
+optional, not a requirement. Begin investigation with a read-only file inventory, free-space reading,
+small current/pending manifests and seals, and the already supplied log; do not require database copies
+for that metadata check. This cannot recover an exception that was never logged. Any replay still
+replaces the failed staging database and needs space for new results, so decide explicitly what failed
+output to retain before overwriting it; lack of space is not permission to delete evidence or clear
+markers to bypass a refusal. No agent publication or replay has occurred, and this diagnostic priority
+does not accept the screen defects as fixed or establish production readiness.
+**Owner update, 2026-10-01: the new judgement is already running.** The owner reports deleting the
+partial judgement for space while doing other concurrent work unknown to the assistant; the exact
+deletion timing relative to the new attempt was not stated. The proposed archive plan is superseded,
+not a reason to stop the run, recreate the removed file or seek retroactive approval. Keep the active
+attempt's files untouched, use actual current free space, and retain
+the resulting log; the earlier log/inventory remain available but the removed database cannot be
+assumed available for post-mortem reading. Do not treat this shared-machine diagnostic run as a
+controlled performance comparison, or assume exclusive access to the owner's disk or other work.
+**Verified rerun checkpoint:** attempt `a7600b99-bcb7-419a-80d0-04c133869032` produces generation
+`d82215e2-0d2d-4af7-8b4d-a7f933d76db5` against the same evidence seal and derivation generation as
+the previous attempt. The supplied excerpt reaches 475,499 objects at `2026-10-01T20:57:36Z`, still
+in the object pass, with no terminal failure or publication shown; this is progress, not a completion
+forecast or proof that the later failing stage is repaired. Build/source verification and the checkpoint
+are retained alongside the previous log under `next/artifacts/production-run3-review-20261001-b03b6a84/`.
+
+**The unit of preparation is the captured descriptor, not each object carrying it.** During the main
+judging pass, decode the original descriptor bytes, retain capture/re-parsing errors and completeness,
+classify and validate its entries, and calculate its saved fingerprints once within the exact evidence,
+catalogue/parser/producer and analysis context. Hold an immutable prepared result; a repeated numeric
+descriptor ID supplied by a caller is never sufficient proof that reuse is valid. Process descriptor
+groups explicitly and stream their objects, rather than retaining the decoded forest or materializing
+an entire object's group in memory; ordering and temporary preparation costs belong in the measurement.
+
+**Object-specific work stays object-specific.** Every applicable object still reaches the existing
+rules, LAPS inventory and Tier-0 observation. Its identity, captured readability, SELF presentation,
+resource scope and requester authorization must not be inferred from another object's shared result.
+Grouping must preserve existing name-ambiguity behavior, logical answers and counting semantics;
+group-held permission counts remain independent of member/route counts. Write each descriptor's
+classifications once and retain every required object link, with pending identities trusted only in
+their transaction and promoted after commit or discarded on rollback.
+
+**Boundaries.** Preserve the saved format and completed-run reading contract, all original entry
+occurrences/ordinals/order/raw masks/application data, per-right meanings and reasons, inheritance and
+captured-schema support, and exact object/source/generation binding. Do not substitute canonicalized
+permissions, change rules or the authoritative Tier-0 definition, enable requester discovery, choose
+new production limits, introduce cross-run caches, migration or legacy readers, or combine this with
+binary encoding, a database replacement or parallel execution. Replace repeated main-pass preparation
+without permanent competing implementations or an unchecked fast path. Protected input reuse through
+later ownership/path stages is covered by the separately approved follow-up above; neither change
+claims to make every later permission read occur once.
+
+**Offline validation is part of the approval, under these conditions:**
+
+- Before production edits, preserve the current uncommitted source and establish a measured baseline
+  with an existing suitable artifact that exercises the changed paths; use exact executable hashes
+  and module identities, not a Git revision alone. Any new measurement harness or extension still
+  requires separate approval. Freeze the measurement artifact and rerun the same workload after the
+  change, with identical evidence, derivation, rules, evaluation time, feature policy, runtime and
+  hardware; never treat the other machine's live log as a controlled before/after baseline.
+- **Separate measurement approval, 2026-10-01:** the owner approved *"the isolated measurement
+  runner and bounded offline baseline"*. Add a separate retained-output runner for the current
+  `JudgingRun.JudgeAudit` policy, initially covering shared/distinct synthetic descriptors and the
+  verified saved laboratory input, without changing the historical runners or their execution
+  guards. Isolate temporary files before assembly loading, identify the exact measured binaries,
+  keep requester discovery disabled and freeze the new runner after its first successful run;
+  this does not authorize live access, production-scale readiness claims or broader measurement
+  campaigns, and the remaining boundaries below still apply.
+- Use fresh isolated copies of sealed evidence and matching derivation, never the active run or
+  originals. Set TEMP/TMP before any test discovery or assembly loading. Retain failed attempts,
+  outliers, frozen evidence, historical measurements and subsequent uncommitted work; do not delete
+  originals, recapture, access a live forest, publish a package, commit or push.
+- Cover shared and distinct descriptors, SELF/owner/cross-domain cases, duplicate entries and
+  ordinal gaps, raw generic masks, inheritance, unsupported entries, missing/unreadable/malformed/
+  partial/null/empty DACLs, context isolation, reordered object processing, cancellation and rollback.
+  Prepared data must resist caller mutation and cannot be reused under a different bound context.
+- Independently test all three bindings in `docs/specs/P280-JUDGEMENT-OCCURRENCE-ROWS.md`:
+  evidence object-to-descriptor, descriptor/ordinal-to-entry, and entry-to-saved-interpretation.
+  Corrupted associations must be refused, including wrong descriptors with equal counts and
+  substituted otherwise-valid readings. Keep frozen hashes and Microsoft-anchored expectations;
+  needing to edit a golden value is a stop-and-review finding, not a test repair.
+- Mutation-test every new behavior check, explicitly rebuilding both the deliberately broken and
+  restored code. Compare saved logical fields and outcomes, not only aggregate counts; preserve
+  degraded/unknown answers rather than forcing success, and verify each result's own seals and
+  bindings even where generation identifiers or storage row ordering legitimately differ.
+- Validate focused synthetic cases, then lab integration, then representative nine-domain
+  production-scale evidence. A small or sharing-heavy synthetic capture cannot establish production
+  runtime, memory limits or readiness. Record actual descriptor preparation/classification counts,
+  preparation and object-pass timings, later phases, publication, reopening, peak memory and
+  temporary/final disk use; record cancellation and preserve the previously published generation.
+- Acceptance requires demonstrated removal of repeated preparation, reproducible runtime benefit
+  with resource trade-offs reported, unchanged security answers and successful publication/reopening.
+  Moving time into preparation or later stages is not an end-to-end gain. If occurrence-row writes
+  remain dominant, stop at the approved boundary and propose storage work separately; do not expand
+  this implementation or declare customer readiness without an agreed end-to-end runtime ceiling.
+
+The preservation snapshot is `next/artifacts/descriptor-first-handoff-20261001-7a23c981/`; its manifest
+records source state, copied supplied logs and the unchanged published GUI. It is not a measured
+baseline and must never be automatically restored over later work. P-191 remains implemented and
+offline verified in `.v-p191-0e09e3d1/`; the owner has begun a lab review but has not yet reported
+physical display or packaged-UI acceptance.
+
+**Previously approved bounded UI work, 2026-10-01: the Findings-screen pass (P-191).**
+While the existing production judgement runs, keep the findings list, add **Close details**, correct
+explanation contrast, and separate the existing **Why it matters**, **What to do**, and **What this
+rule looks for** sections. Verify navigation, filtering, selection and dismissal offline, with normal
+laptop/external-monitor checks remaining explicit if unperformed; preserve the running job, published
+package, evidence and prior uncommitted work. That approval moved this bounded presentation session
+ahead of further Stage 7 work, not a general UI redesign, rule expansion, reports, performance work,
+live access, publication, commit or push.
+
+**The next feature remains Stage 7 — paths to Tier 0, behind the performance-first priority above.** The bounded correctness pass **P-41,
 P-136, P-162, P-173** is implemented and offline verified, as recorded in
 [the work queue](PUNCH-LIST.md#agreed-next-work); P-136's reported case was already guarded and
 received regression coverage rather than a production change. Do not replace the next feature with
@@ -63,13 +2406,120 @@ inventory additions, and speculative performance tuning are deferred as listed i
 [the work queue](PUNCH-LIST.md#deferred-from-the-next-pass). P-217 gates deletion of valuable evidence;
 P-157 must be addressed before relying on the affected LAPS results, without automatically blocking all
 path development. P-93 remains a Stage 10 acceptance-lifecycle question and P-96 waits for actual path
-results; production requester discovery and P-143 declarations remain Stage 7 work, while P-142's
-bounded enterprise CA classification is implemented and offline verified.
+results; production requester acceptance and wider supported paths remain Stage 7 work, while
+P-143 declarations are deferred until after main feature/rule delivery under the 2026-10-03 decision.
+P-142's bounded enterprise CA classification is implemented and offline verified.
 This order does not accept unperformed laboratory, customer-scale or display checks, authorize new
 live access, or waive the normal approval of concrete product and UI changes.
 
+**What the product is for, and what it is not for — the owner, 2026-09-22.** The focus is **control
+edges, the rules, and pathing to Tier 0**. Reading an individual object's permissions is not where
+users spend their time; most of the time nobody will open that screen. Performance work therefore
+belongs on **judging**, and specifically on the object interval where 98.6% of the added elapsed
+cost sits — not on making saved results pleasanter to browse.
+
+**The consequence, applied the same day.** The bounded paging reader and the Permissions-screen
+paging were cut from P-249 rather than built, and the work retained at
+`next/artifacts/p249-final-b/continuation-06/reverted/`. The trial's own evidence agreed with the
+owner before he was asked: `run-1-a/reader-3.json` measured the largest object in the laboratory
+capture at 79 entries, materialised whole in 4.25 ms using 1.1 MB, with the other sampled extremes
+at 2.23–3.43 ms. A screen change costing an owner approval and a session of work, to save four
+milliseconds on a screen nobody opens, is the wrong target however well it is built.
+
+**One premise of that paragraph was wrong by thirty times, corrected 2026-09-24.** It said the
+production forest averages about 17 access control entries per object against the laboratory's 25,
+and concluded production objects are *smaller* on average. **They are not.**
+`--judgement-forecast` measured `ad.ssa.gov-20260924-020431` directly: **330,856,576 permission
+occurrences across 659,196 objects carrying readable permissions is 502 entries per object**, and
+the descriptors themselves average 521. The owner confirmed the 17 was wrong and believes it was a
+laboratory figure that got attached to the wrong forest.
+
+**The decision to cut paging still stands, on its other ground.** Performance work belongs on
+judging because that is where the cost is, and `P-280` has since measured exactly how much — a
+production judgement would be 136.5 GiB, of which 72% is one name copied three times. That argument
+never needed the 17. But the *reason* given for it — that production objects are small — is deleted
+rather than repaired, and **nothing may be designed on the belief that an object carries a couple
+of dozen entries.** If paging is ever reconsidered, it must be against 502.
+
+**Owner-approved rule-path correction, 2026-09-27:** implement reuse of membership traversal inputs
+within one verified derivation reader, indexed protected-principal lookup, and reuse of the current
+object's permission reading across its rules, with correctness testing but no new performance
+campaign. The owner subsequently approved one quick bounded before/after measurement using existing
+offline inputs, not repeated trials or a profiler session; an inconclusive result is reported rather
+than used to start more measurements automatically. Preserve security answers, uncertainty, domain scope and generation
+binding; this does not authorize changing the running production job, the pending logging work,
+analysis budgets, publishing, committing or pushing. The supplied first-100,000-object checkpoint
+attributes 24,016,043 of 24,951,583 milliseconds to rules; it does not measure the later hours or
+establish a speedup for these corrections.
+
+**Owner-approved logging and carry-build follow-up, 2026-09-27:** replace callback-dependent logging
+with independent one-minute status in both CLI and UI judging, including the current rule/operation,
+completed-object count and elapsed activity, and five-minute per-rule detail including a rule that
+has not returned. Validate no-callback and shutdown behavior, then publish new self-contained CLI/UI
+packages containing the rule-path improvements without overwriting prior packages or touching the
+running production job; no further benchmark campaign, commit or push is authorized.
+
+**Owner-approved permission-storage follow-up:** implement the reviewed identity-only classification
+write, same-instance equality shortcut, mutation-safe reuse of schema serialization, and a single
+per-descriptor occurrence-count pass with link-integrity checks; validate correctness and provide
+fresh self-contained CLI/UI packages for owner-run production testing. Preserve existing proof
+formats, every permission occurrence, incomplete results and transaction behavior; no running-job
+interference, additional benchmark campaign, commit or push is authorized. Broader membership,
+trustee-resolution and later control/path optimizations remain outside this bounded change.
+
+**Owner-approved first post-object correction:** remove the redundant full SID-index search after
+an exact missing non-BUILTIN lookup, skip empty requester enrichment without skipping baseline paths
+or phase notifications, and avoid loading ownership targets before an already-planned scope branch.
+Validate exact identity/ambiguity, fallback names, unresolved witnesses, nonempty requester behavior
+and cancellation, then provide a separately named self-contained CLI/UI package; preserve the
+current production run and old packages. Witness-grouped validation and broader representation/cache
+changes are separate follow-ups; this scope authorizes no benchmark campaign, cleanup, commit or push.
+
+**Owner-approved quick post-object measurement, 2026-09-28:** compare the published
+`carry-storage-497ca6b5` and `carry-postpass-0290f7e7` CLI packages once each on separate copies of
+the same sealed lab input, with a two-minute limit per run and retained binary/input identities,
+logs and outcomes. This narrow follow-up authorizes no profiler, repeated campaign, new measurement
+harness, optimization, production access, cleanup, commit or push; a lab result is not a production
+runtime forecast.
+
+**Owner-approved bounded post-pass lookup correction and offline runner, 2026-09-29:** reuse the
+existing reader-local object-identity lookup before the first admitted target's evidence read and
+make stored candidate-edge parent lookup use its existing key while retaining exact target matching.
+The owner separately approved a new offline measurement runner because the existing judging
+benchmarks bypass discovery-gated admission: use a fixed forest-sized synthetic lookup population
+and fresh copies of retained sealed lab input, establish a baseline before either production change,
+then compare the same workload and mutation-verify the new behavior checks.
+Preserve permission proof, counting, ambiguity, incompleteness, generation binding, all prior work,
+original evidence, packages and failed attempts; isolate temporary directories before test loading.
+Stop on an unexpected measurement failure rather than repeating a campaign automatically; this
+approval does not authorize live access, production interruption, new budgets, UI changes,
+publishing, cleanup, commits or pushes, or establish the running production executable's identity.
+
+**Owner-approved bounded post-pass diagnostics and a separate validation package, 2026-09-29:**
+add run-log timings for candidate resolution, scope selection, admitted permission-proof reading,
+evaluation and storage, ownership assessment and completion checks, with distinct execution/traversal
+counters, process-memory snapshots and executable/engine identity.
+These are diagnostics, not security-completeness claims or UI changes; validate offline and produce
+a separately named CLI/UI package without replacing existing packages or disturbing the running audit.
+Preserve uncommitted work, sealed evidence, prior measurements, failed attempts and historical tests;
+isolate temporary storage before test discovery and rebuild deliberate defects and restored code.
+A representative full-sized offline run remains a separate approval: no live forest access,
+production interruption, recapture, new budgets, cleanup, commit or push is authorized here.
+
+**Owner-approved correctness follow-up after repository recovery:** finish the required-argument
+and architecture-check repairs, retain portable-summary read failures, and complete the existing
+diagnostics verification before producing separate CLI/UI validation packages.
+Keep the existing summary presentation and error vocabulary; distinguish run completion from evidence
+coverage rather than introducing a blanket completion flag or exempting the summary from checks.
+Use synthetic/offline verification, rebuild deliberate defects and restored sources, and preserve
+prior work, evidence, measurement records and failed attempts.
+Package startup checks must not change the operator's settings or browse the original library merely
+to obtain a passing check; record unperformed UI and display checks as outstanding, not accepted.
+This continuation authorizes no live access, new performance campaign, production-sized replay,
+production budget or discovery change, cleanup, commit or push.
+
 **Owner-approved follow-on order: finish Stage 7, then reconcile the reviewed replacement rule
-specifications and implement the remaining rule coverage.** The review and its retained source set are
+specifications and implement the remaining rule coverage; reaffirmed 2026-10-03 with P-143 deferred.** The review and its retained source set are
 recorded as P-235–P-239 in [the work queue](PUNCH-LIST.md#rule-specification-review--after-stage-7).
 The proposed handoff is a basis for later bounded implementation, not blanket approval of its severities,
 thresholds, collection extensions, compatibility requirements or screen changes; inventory/correlation
@@ -83,13 +2533,26 @@ A normal GUI or CLI audit must select the relevant account questions from captur
 Stage 7 analysis, and save its findings, routes and coverage without an administrator-maintained
 requester list or a separate per-object analysis step. This completion requirement covers the remaining
 Stage 7 scope, not merely automatic execution of the three currently supported requester families;
-SEC-071 findings, broader approved compositions, P-143 declarations and run-wide presentation/counts
-remain owed. Screens read and validate saved results rather than starting new analysis, and missing
+SEC-071 findings, broader approved compositions and run-wide presentation/counts remain required.
+P-143 declarations remain owed but were explicitly deferred beyond this milestone on 2026-10-03.
+Screens read and validate saved results rather than starting new analysis, and missing
 evidence, unsupported analysis and failed or unfinished work remain explicit rather than becoming safe
 answers. Automatic analysis does not authorize changes to AD; the existing separate approval boundaries
 for production activation, budgets and paused measurements still apply.
 
-**Owner-selected next Stage 7 priority: production requester coverage**, before broader path
+**Stage 7 completion clarification, 2026-10-02:** the successful requester-enabled packaged GUI
+lab audit verifies the three existing supported families, not the full Stage 7 requirement above.
+The approved SEC-071 checkpoint now provides findings and risk-first saved readback for the three
+current qualified families, including whole-run counts.
+Remaining approved path combinations and distance/tier summaries, with their corresponding findings
+and presentation, are still unfinished; the owner confirmed on 2026-10-03 that these must be completed
+before closing Stage 7 rather than deferred with P-143.
+Representative production execution/readback acceptance remains outstanding separately.
+General finding tuning must not replace this work, but deciding which paths represent actual risk
+rather than expected administration is part of delivering Stage 7's own findings, not something that
+can all be deferred until after Stage 7 is called complete.
+
+**Earlier owner-selected Stage 7 priority: production requester coverage**, before broader path
 compositions, P-143 declarations, SEC-071 findings and path presentation. Start from checkpoint 7's
 offline permission-led selector and checkpoint 8's shared targets, and prepare a bounded proposal
 for normal GUI/CLI account selection, execution and coverage accounting, including the representative
@@ -332,6 +2795,570 @@ presented for approval before implementation; this requirement does not authoriz
 checks, changing UI presentation, new measurement-harness code, migration, recapture or production activation.
 File-fingerprint verification still reads file bytes, so its opening cost must be distinguished from proof
 replay and measured rather than described as free or accepted at customer scale without evidence.
+
+**Owner decision, 2026-09-24 — the seal is verified when a bundle is opened, and nowhere else.**
+Drawing the Home run list must not hash evidence: it reads state, coverage and completion time directly,
+and paying a hash to draw a label made the product unusable once a real bundle was in the library
+(measured: 3.7 s per 1.73 GB run, on nine triggers including every navigation to Home, because
+`RunStateReader.Observe` and `ScopeOf` each verified the same file). A bundle that has gone bad therefore
+reads as finished in the list until it is opened, which is accepted: opening is where the evidence is
+about to be believed, so opening is where it is checked. **Export will not verify either.** The owner's
+reasoning is decisive and closes the question rather than deferring it: an export is CSV, and a hash of
+the source database says nothing about a text file that anyone can edit afterwards — so verifying on
+export would cost real time and protect nothing. This is not a weakening of [0020](decisions/0020-the-seal-detects-corruption-not-tampering.md);
+that decision already requires the verdict to be held for the open-file lifetime and **not repeated per
+screen**, and already refuses a size/timestamp cache as a substitute. Per-navigation hashing was a defect
+against it, not a trade-off within it. The product defends against corruption — a truncated file, a bad
+sector, a half-finished copy — and makes no claim against deliberate alteration, per
+[0030](decisions/0030-the-product-produces-sealed-evidence-never-signed.md). It is offered free to
+administrators who want to understand their own risk; misuse by the person running it is not a threat
+it is built to answer.
+
+**Owner-approved P-248 checkpoint 1:** “begin” authorizes the local implementation branch, explicit
+analysis-attempt publication state, a protected selected-run reading lifetime, and findings/filter/rule
+execution reads through that boundary, with isolated regression and rebuilt deliberate-defect verification.
+Stop at that checkpoint; it does not authorize the later control/path/LAPS/classification conversion,
+database-schema or UI changes, new measurement tooling, migration, recapture, activation, commit or push.
+The owner requires a clean replacement of the flawed design, not parallel production implementations,
+dead code or permanent transition scaffolding; preserved historical evidence is not a reason to retain
+obsolete production code. Preserve the existing instruction-file edit and all retained P-243–P-246 work.
+
+**Owner-approved P-248 checkpoint 2:** continue on `p248-stored-readback` with saved control-edge
+and permission evidence, the existing Full Control/ownership conclusions used by those lists,
+saved Self-Membership answers, and forward/reverse membership attribution. Replace browsing-time
+analysis with saved-result reads through checkpoint 1's protected selected-run lifetime, preserving
+exact evidence/derivation/judgement binding, supporting evidence, independent holder/member/route
+counts, resource scope and explicit incomplete results. Preserve pre-existing edits, including the
+work queue, and all historical artifacts; isolate TEMP/TMP before loading tests and explicitly rebuild
+both deliberate defects and restored code. This approval does not reopen checkpoint 1's completed
+mutation work or authorize UI/schema changes, later checkpoints, live AD, activation, new measurement
+tooling, commit or push; P-241 and unperformed physical-display checks remain open.
+
+**Owner-approved P-248 checkpoint 3:** “approve begin implementation” authorizes the proposed saved
+Tier 0 path, path-input and requester-coverage readback replacement through the protected selected-run
+lifetime, preserving result-production checks, exact generations, supporting evidence, uncertainty,
+independent counts and existing presentation. Verification is synthetic/offline with rebuilt deliberate
+defects; checkpoint 1 and 2 verification campaigns are not restarted, and P-241 remains open.
+UI/schema changes, live AD, activation, new measurement tooling, commit and push remain unauthorized.
+
+**Owner-approved checkpoint 3 storage correction — zero backward compatibility.**
+Before this correction, `ownership_seed` stored routes and a classification fingerprint, not the full
+`Tier0Classification`; `PathInputs.Classifications` had to be reconstructed by the classifier.
+The owner approved storing the complete classifications and advancing the judgement format, explicitly
+requiring **zero backward compatibility because this product has never shipped**. This supersedes
+checkpoint 3's no-schema-change and existing-format compatibility limits only: refuse older formats,
+with no migration, legacy reader, empty-evidence substitute or hidden replay fallback. Preserve original
+evidence/results and historical verification separately; regenerating old results remains outside this
+approval, as do UI changes, live AD, activation, new measurement tooling, commit and push.
+
+**Checkpoint 3 is implemented and offline verified in judgement format 39.** All 5,665 offline tests
+and all 21 new focused coverage cases pass; every new case detected a relevant defect across four
+explicitly rebuilt variants, with successful restoration builds and unchanged original artifact metadata.
+The retained verification handoff is
+`next/artifacts/p248-c3-6cec41d134044638b2d3d70df7528756/handoff.json`.
+Later P-248 checkpoints, P-241, physical-display checks and customer-scale opening-cost acceptance
+remain open; this is neither complete P-248 nor complete Stage 7, and requester activation is unchanged.
+
+**Owner-approved P-248 checkpoint 4:** “approved and begin implementation” authorizes judgement
+format 40 with a complete all-computer LAPS inventory produced during judging, saved-result reads
+through the protected selected-run lifetime, and requested-finding-only SEC-090/093 route reads
+with recorded support lengths. Inventory includes healthy, disabled and domain-controller computers
+independently of findings; captured support, scoped capture shortfalls and incomplete results survive.
+Inventory now requires a completed saved product rather than calculation before judging: the existing
+refusal panel says **This run has no saved LAPS inventory.** Raw object attributes remain readable.
+Missing or unreadable account flags must remain Unknown rather than Disabled; the existing skip-reason
+column says **Account state unknown** or **Domain controller; account state unknown** as applicable.
+No layout or finding-text changes are authorized. Replace the old analytical inventory reader rather
+than retain a fallback, refuse older formats with zero backward compatibility, and do not regenerate
+original results. Verification is synthetic/offline with TEMP/TMP isolated before test-assembly loading
+and every new behavior check witnessed by rebuilt deliberate defects and restoration builds; do not
+restart checkpoint 1–3 verification campaigns. Preserve intervening work and all historical artifacts,
+including failures; P-157, P-174, P-241, later permission/navigation checkpoints, physical-display checks
+and customer-scale opening-cost acceptance remain open. No live AD, activation, production-budget
+changes, new measurement tooling, commit or push is authorized.
+
+**Checkpoint 4 is implemented and offline verified in judgement format 40.** All 5,705 offline tests
+pass, including all 5,665 historical cases and 40 new cases passing under coverage; every new case
+detected a relevant defect across seven explicitly rebuilt variants, with successful restoration builds.
+The qualified handoff, including retained failed attempts and preservation checks, is
+`next/artifacts/p248-c4-6596977645534ef5b49c3893ec5dcd55/handoff.json`.
+No original results were regenerated; this completes only the approved LAPS readback checkpoint,
+not P-248 or Stage 7, and the independent constraints listed above remain open.
+
+**Owner-approved P-248 checkpoint 5:** “approved and begin implementation” authorizes format 41
+saved per-right permission classification, produced during the existing all-object judging stream
+and read through the protected selected-run lifetime. Preserve each right's bits, wording, verdict,
+reason, original ACE identity/order, inheritance/applicability, captured-schema context and explicit
+unclassifiable outcomes; this is not requester authorization, takeover proof or a completed Tier 0 path.
+Missing/invalid saved products refuse classification while raw evidence remains readable, with zero
+backward compatibility and no migration, regeneration or replay fallback. Keep the grouping, columns,
+colors and default-off highlighting, with the approved unavailable/unclassifiable notices, saved-result
+counter explanations, per-right reason tooltips and corrected incomplete/order/empty-list statements.
+Use isolated offline verification, with TEMP/TMP isolated before test-assembly loading and every new
+behavior check witnessed by rebuilt defects and restoration builds; preserve all historical cases,
+hashes, artifacts and failures without restarting checkpoint 1–4 campaigns. Hidden navigation, P-157,
+P-174, P-241, physical-display checks and customer-scale opening/browsing acceptance remain open;
+no live AD, activation, budget changes, new measurement tooling, original-result regeneration,
+commit or push is authorized. Approval is not a claim that this checkpoint has been implemented or verified.
+
+**Checkpoint 5 is implemented and offline verified in judgement format 41.** All 5,768 offline
+cases pass with no skips, retaining all 5,705 historical cases by test identity; all 63 new cases
+pass under coverage and detect relevant defects across ten explicitly rebuilt variants, followed
+by exact source restoration and successful restoration builds. The qualified handoff, including
+earlier failures, is `next/artifacts/p248-c5-51372c69f37e4fefbaab3133567312c6/handoff.json`.
+Saved permission classification retains its evidence and uncertainty without browsing-time risk
+replay; unread descriptors are not described as observed noncanonical or incomplete lists.
+This completes only checkpoint 5: hidden navigation, P-157, P-174, P-241, physical-display checks
+and customer-scale opening/browsing acceptance remain open, with no Stage 7 completion,
+activation, original-result regeneration, commit or push.
+
+**Owner-approved P-248 checkpoint 6:** “approved begin implementation” authorizes visible-only
+completed-run browsing without changing format 41. Load only the visible listing and selected object
+section; resolve the object's captured identity/class before selecting the requested section, without
+preparing other sections or their rows. Findings-filter choices load on first Findings display and
+belong only to that protected run lifetime. Keep section availability/order, result meanings, columns,
+grouping, colors and the existing geometry; replace eager production paths rather than retain a parallel
+implementation. An open object belongs to its originating Assets tab: another tab displays its listing
+and suspends object reads, while returning reloads the selected section if the run and shared selection
+remain valid. Back retains the originating page/position only after checking its protected lifetime,
+generation and query; superseding selections cancel reads and reject late success or failure. Tree,
+filter and applicable level changes invalidate affected pages but read only the visible destination;
+Rules remain whole-run. LAPS starts at its own first page rather than inheriting the Objects page,
+without new paging controls or closure of P-174. Leaving Assets cancels work; re-entry retains the
+current Objects/root landing behavior. Missing products, changed generations and unpublished attempts
+remain explicit refusals, never cached results, empty substitutes or hidden analysis replay.
+
+The approved additional content-area wording is **Loading captured information…**, **Loading saved
+results…**, and **This view could not be read.** followed by the underlying reason. Keep the existing
+Saved Tier 0 path wording **Loading and validating saved results...**. Loading/refused views do not
+present old rows, old finding guidance, zero counts or “nothing found” as current answers; genuine
+empty results retain their existing wording. Verification is synthetic/offline with TEMP/TMP isolated
+before any test-assembly loading, including discovery; every new behavior check requires a relevant
+rebuilt deliberate defect and exact restoration build. Preserve historical cases, frozen values,
+measurement tooling, artifacts, failed attempts and intervening work without restarting checkpoint 1–5
+campaigns. P-157, P-174, P-241 and independent verification/readiness, physical-display and customer-scale
+acceptance remain open; no live AD, activation, budgets, migration, original-result regeneration,
+new measurement tooling, commit or push is authorized. Approval is not implementation or verification.
+
+**Checkpoint 6 is implemented and offline verified in judgement format 41:** its corrected protected-read prerequisite passes all 5,784
+offline cases, retaining all 5,768 historical cases. All 16 new checks pass under coverage and detect
+relevant defects across seven explicitly rebuilt variants with exact restoration; the qualified results
+and retained failed attempts are recorded at
+`next/artifacts/p248-c6-40e79c89c1e04f049c8ccac4b001e8bc/handoff.json`.
+The approved navigation implementation passes all 5,826 offline cases, retaining all 5,784 prior
+cases by stable identity; all 42 new cases pass under coverage and detect relevant assertion failures
+across five explicitly rebuilt variants, each followed by exact restoration and a passing rebuild.
+The qualified navigation handoff and retained failed attempts are
+`next/artifacts/p248-c6-navigation-f8a15ebd7cd5463ab874c71f06d2389c/handoff.json`.
+This completes checkpoint 6 implementation, not P-248 or Stage 7: P-157/P-174/P-241, independent
+verification/readiness, physical-display and customer-scale opening/browsing acceptance remain open.
+The owner subsequently authorized committing and publishing this checkpoint; no migration,
+regeneration, activation, live access or new measurement tooling was authorized, and completed
+prerequisite campaigns were not restarted.
+
+**Owner-approved bounded offline judging diagnosis (P-249):** “Approve bounded offline judging
+profiling after identifying the lab build and obtaining an isolated sealed-run copy” authorizes
+measurement only after both prerequisites are met. Identify the executable/build for every timing;
+the reported previous approximately 40 seconds remains an estimate until comparable baseline
+evidence is available, and the current checkout is not proof of the lab executable. Use isolated
+sealed-evidence copies offline, with TEMP/TMP isolated before any test-assembly loading or discovery,
+and distinguish saved-result production, evidence reads, scope assessment and path preparation.
+Preserve original evidence/results, the supplied log, historical measurements, failed attempts and
+intervening work; do not restart completed checkpoint or mutation campaigns. This approval does not
+authorize optimization, new measurement tooling, live forest access, recapture, original-result
+regeneration/deletion, production requester activation/budget changes, UI changes, commits or pushes.
+The reported successful lab screen navigation is functional feedback, not physical-display or
+customer-scale acceptance.
+
+**P-249 input handoff:** the owner supplied
+`C:\Users\jistrand\Downloads\ad.lab-20260919-223420` and confirmed that everything there is a copy,
+with the application inside its `secure` folder. Preserve that supplied copy as the intake and use
+separate fingerprint-verified working copies for the approved offline investigation. The supplied
+application identifies the binaries to investigate; its embedded commit stamp alone does not prove
+a clean source revision. This handoff does not authorize new measurement tooling or optimization.
+
+**Owner-approved P-249 profiling driver:** “Approve the dedicated offline profiling driver and bounded
+judging profile” now authorizes a separate measurement program for this supplied capture and application
+package, superseding the no-new-measurement-tooling boundary only for this driver. Run the normal
+17-rule `JudgeAudit` configuration using the fingerprinted supplied libraries, with requester selection
+disabled and isolated temporary storage before execution or discovery; do not load the test assembly
+or repoint historical benchmarks. Retain provenance, phase timing, result/count checks and all attempts
+on fresh working copies without changing production code, security conclusions, budgets or screens.
+This approval does not authorize optimization, live access, recapture, original-result changes,
+restarting completed verification campaigns, commits or pushes.
+
+**P-249 follow-up scope after the two unsuccessful profiler attempts:** the owner requested
+inspection of the second failure and preservation verification **without rerunning judging**, then
+authorized retrying the canceled inspection. This follow-up is inspection only, not a further
+profiling attempt, driver repair, build, test run or optimization; retain both failed attempts and
+any unsuccessful verification records alongside the corrected verification result.
+
+**Owner-approved P-249 build-only repair:** “Fix the profiling driver and validate its build without
+rerunning judging” authorizes correcting only the dedicated driver's build/reference wiring and
+compiling a separate copy of the failed generated runner. Preserve the supplied binaries, original
+generated files, failed attempts and previous verification records; do not invoke benchmark setup,
+judging, readback, test discovery or profiling during this repair. A passing build is not a timing
+measurement, execution validation or approval of any optimization.
+
+**Owner clarification for P-249:** the supplied run is already a copy; stop creating additional
+evidence snapshots and repeating broad preservation reports during driver repair. Keep only the
+input/build identification needed for valid measurements, leave existing historical artifacts alone,
+and focus on the fix with brief updates. This does not request deletion or a further judging run.
+
+**Owner resumed P-249 profiling after the build repair:** “ok do the profiling” authorizes the
+bounded offline profile with the repaired driver and supplied libraries. This supersedes the
+build-only pause, not the restrictions on production changes, optimization, live access or budgets.
+
+**Owner-approved bounded P-249 optimization:** implement command/parameter reuse and transaction-local
+deduplication of identical schema support in `PermissionClassificationStorage.Write`, keeping one
+transaction per object, exact conflict checks, cancellation/rollback, all permission rows and proof
+binding unchanged. Approval includes a separate matched before/after configuration against newly built
+libraries, focused regression checks with rebuilt deliberate defects, and offline remeasurement; the
+supplied-binary benchmark remains frozen. No shared-proof redesign, cross-object batching, format/UI
+change, live access, activation, new production budgets, commit or push is authorized.
+
+**Owner-selected order for the P-248 review follow-up:** address P-250 (evidence-reader lease
+disposal), then P-251 (exact saved-interpretation sharing), then P-252 (subject-specific path reads).
+Use separate bounded sessions; the order does not authorize later format/UI changes, optimization
+or new measurements in the lease-repair session. Keep updates brief and do not restart broad
+preservation inventories for the supplied copied run.
+
+**Owner-approved bounded P-251 implementation and offline verification:** “Approve the bounded P-251
+storage change, separate comparison adapter and offline verification” authorizes generation-local
+sharing of exact saved permission interpretations, judgement format 42 and its selected-object reader,
+without changing interpretation calculations, individual permission identities/order/duplicates/counts,
+schema support, uncertainty or security conclusions. Retain exact-content checks after indexed lookup,
+entry/generation binding, one transaction per object, cancellation/rollback and explicit refusals;
+replace the old repeated representation with no compatibility reader, migration, analysis replay,
+forest-wide memory cache or UI change. The separate P-251 comparison adapter must preserve the frozen
+P-249 tooling, establish an identified original-writer baseline before production edits, then use the
+same sealed input and procedure for three matched pairs with alternating run order and fresh processes;
+retain every timing, build/input identity and failure. Approval includes focused offline correctness
+checks with rebuilt deliberate defects and restoration builds, with TEMP/TMP isolated before test
+assembly loading or discovery; a smaller store alone is not an accepted judging-speed fix. Preserve
+historical evidence, hashes, verification artifacts and pre-existing work; no live access, recapture,
+requester activation, production budgets, computation sharing, commits or pushes are authorized.
+
+**Owner-approved bounded permission-entry command reuse:** “Approve the bounded permission-entry
+command-reuse change and offline verification” authorizes a lazily prepared insert/read-ID command
+and 21 reusable parameters in `SharedPermissionStorage`, with disposal at the four transaction-owning
+sites in `ControlEdgeStorage` and `PermissionClassificationStorage`. Keep judgement format 41, the
+SQL and stored values, exact keys, fingerprints, entry identities/order/duplicates/counts, shared-proof
+behavior and security conclusions unchanged; no interpretation/computation sharing, reader/UI change,
+cross-object batching, run-wide cache, discovery or budget change is included. Use the frozen P-251
+comparison adapter unchanged, an original control before production edits and three matched pairs
+with alternating order and identified fresh-process builds; retain supplementary invocations and
+failed attempts separately, and verify the other affected writer paths with focused offline scenarios.
+Approval includes new reuse/lifetime/value/rollback checks and relevant existing storage checks, with
+TEMP/TMP isolated before test loading/discovery and rebuilt deliberate defects/restoration for every
+new behavior check. Accept only repeatable whole-judging improvement with identical security outputs
+and no material allocation, memory or readback regression; otherwise restore the original and retain
+the trial without broadening it. Preserve pre-existing work and historical evidence/artifacts; no new
+measurement program, live access, recapture, commits or pushes are authorized.
+
+**Owner-approved current-object permission-reuse trial:** “OK TEST IT” authorizes testing the
+reviewed first scope: reuse the current object's already-read captured permissions when offering that
+object to rules, including repeated ownership lookups, while preserving independent mutable inputs
+for each lookup and expiring reuse at the end of that object's processing. Preserve exact-name and
+ambiguous-name behavior, other-target lookups, missing/unreadable/empty distinctions, resource scope,
+reader lifetime and evidence/generation binding; a missing permission provider stays missing. Keep
+format 41, all security decisions, path-validation reads, discovery, budgets and UI unchanged. Use the
+frozen offline comparison and focused regression checks with rebuilt deliberate defects/restoration,
+isolating TEMP/TMP before test loading/discovery and retaining pre-existing work, original evidence,
+all measurements and failed attempts; no new measurement program, live access, recapture, commit or
+push is authorized. This is permission-reading reuse, not interpretation sharing or removal of checks.
+
+**Owner-approved bounded diagnostic-only timing and verification:** “Approve the bounded
+diagnostic-only timing and verification scope” authorizes an unchanged offline reproduction check
+using the supplied build/evidence, then a separate source-matched diagnostic build and diagnostic
+copy of the existing runner to account for elapsed judging time, not another optimization. Identify
+actual binaries, source relationship, runtime, machine and host context; a fast developer-machine
+run must not be presented as an explanation of the lab's 108 seconds, and a lab execution, if needed,
+must be an explicit offline command/package using copied evidence rather than another capture.
+Keep frozen benchmarks and normal production untouched; aggregate exclusive phase timings and work
+counts, label nested detail and the unattributed remainder, include enumeration advancement, and
+separate permission reading/interpretation/storage, other writes/rules, scope/ownership, path-source
+validation/calculation and publication from completion-screen loading. Verify result equivalence,
+timing attribution and instrumentation overhead with an uninstrumented/diagnostic/uninstrumented
+comparison and rebuilt deliberate defects/restoration; stop and state the limitation if source
+equivalence, reproduction or overhead cannot be established. Isolate TEMP/TMP before test loading
+or discovery and preserve all prior work, original evidence, measurements and failed attempts; no
+rule/result/format/UI change, discovery/budget change, live access, recapture, deletion of originals,
+commit or push is authorized.
+
+**Owner-approved pre-P-248/current offline judging comparison:** “lets do it” authorizes isolated
+rebuilds of pre-P-248 `efb6fb076ee586cb6fe5dfee8ade8457a630a82e` and current
+`2c2b3e3b305347c1cc85ce6beb84d3a3470ead27`, plus a separate small comparison runner that handles
+their different saved-judgement formats without changing the frozen runners. Use the same existing
+copied evidence and derivation, evaluation date, rules, runtime and disabled requester policy; run
+old/current then current/old in four fresh processes without added diagnostic instrumentation, compare
+common results, and report P-248's additional saved products separately. This is a contemporary
+source-rebuild comparison, not reconstruction of an old lab executable or timing; preserve current
+uncommitted work and all original evidence, measurements and failures, isolate TEMP/TMP before loading
+any test assembly, and do not recapture, access live AD, optimize, change production behavior, commit
+or push. No older audit or application needs to be supplied by the owner for this comparison.
+
+**Owner-approved P-249 per-object permission storage correction:** “Create the branch and implement
+the bounded per-object permission storage correction” authorizes work on
+`p249-object-permission-storage`, created from `p248-stored-readback` at `2c2b3e3`, with existing
+uncommitted work preserved. Replace the per-entry classification persistence with one complete,
+ordered saved permission-result payload per object and separately shared schema support; classification
+alone must no longer populate the shared control-proof permission tables, while their actual control
+proof uses remain intact. Keep permission calculations and public results unchanged, including every
+entry, original ordinal, duplicate, raw value, per-right verdict/reason, applicability, inheritance,
+captured-schema support, resource scope and missing/empty/unreadable/incomplete distinctions. Preserve
+exact evidence/derivation/judgement/object binding, independent counts, publication checks, one
+transaction per object and cancellation/rollback; the matching selected-object reader reads saved
+answers without analytical replay. This authorizes a distinct new judgement storage format and its
+reader, not reuse of the rejected format-42 interpretation-sharing trial, compatibility readers,
+migration, UI changes, cross-object batching or a forest-wide cache. Remove superseded production
+write/read paths and unused helpers as part of the same correction, not as later cleanup; retain
+historical source/tests/fixtures, frozen benchmarks, measurements and failed attempts separately.
+
+Use the retained offline comparison procedure with a separate adapter copy extended to verify every
+saved permission interpretation as well as the common results; do not modify frozen runners or
+restart completed profiling/mutation campaigns. Run a current control before editing production,
+then candidate/candidate/current to complete four fresh-process runs on identical copied inputs,
+evaluation date, rules, runtime and disabled requester policy, without added diagnostic timers.
+Approval includes focused correctness and damaged-data/binding/order/schema-conflict/cancellation
+checks with rebuilt deliberate defects and restored builds, and measurement of judging, output size,
+allocations, memory and selected-object reading; isolate TEMP/TMP before any test loading/discovery.
+Adoption requires a repeatable whole-judging benefit with identical answers and no material readback,
+memory or cancellation regression, not merely fewer writes; otherwise stop and retain the trial
+without leaving parallel production implementations. The earlier pre-P-248 comparison is complete
+and must not be repeated; laboratory results do not establish nine-domain production performance.
+No live AD, recapture, original-result deletion/regeneration, discovery activation, production budgets,
+rule/security-result changes, commit or push is authorized, and implementation needs no further
+approval within these boundaries.
+
+**P-249 trial disposition, 2026-09-21:** the approved four-run comparison is complete, with every
+saved permission answer and all common results matching, but the format-43 candidate is **not adopted**:
+repeatable faster judging did not satisfy the no-material-regression gate because peak memory,
+full-heap collection frequency and maximum selected-object read latency increased. Original format-41
+production and matching tests are restored; the candidate and its verification remain separately at
+`next/artifacts/p249-object-storage/comparison-result.json`. P-254/P-255 keep the full-suite failures
+explicit, and neither this trial nor its lab speed gain establishes nine-domain production acceptance.
+
+**Owner-approved P-200 SQLite-cache comparison:** following preparation, “Run the bounded 64 MiB
+writer-cache comparison” authorizes the four-run comparison, its separate adapter changes and
+isolated candidate build described below, but not adoption or a production default change.
+The earlier P-200 reader-cache experiments remain recorded as historical results for their builds,
+inputs and combined settings, not evidence that reader-cache tuning cannot benefit today's code.
+Do not rerun those historical builds as this comparison's baseline: use fresh current-build controls.
+A separately bounded current-build reader-cache experiment would be new evidence, not an unnecessary
+repeat; the proposed writer-only first contrast does not rule it out or authorize it automatically.
+The proposed first contrast keeps the restored format-41 implementation and changes only the single
+judgement writer connection's `main.cache_size`: its observed default versus `-65536` (64 MiB).
+That is an experimental allowance, not a hard process-memory cap, a proposed production default or
+a budget for the nine-domain forest; evidence/derivation/selected-object readers, memory mapping,
+temporary storage, page size, journaling, durability and transaction boundaries remain unchanged.
+
+Use a separate copy of the retained full-answer comparison adapter and isolated builds,
+leaving active production and frozen runners untouched; reuse the existing sealed 2026-09-19 copied
+input, derivation, evaluation date, 17 rules, runtime and disabled requester policy without new captures
+or extra preservation snapshots. First verify the current default through its real writer in a
+separate untimed preflight process; stop if it is already at least 64 MiB rather than claiming an
+increased-cache comparison that changed nothing. Run a fresh current control before introducing
+the isolated candidate change, then verify the candidate's effective setting in an untimed preflight,
+with a rebuilt negative control that omits the change and an explicitly rebuilt restoration.
+Only then run candidate/candidate/current, completing four fresh uninstrumented judging processes;
+keep settings checks, semantic comparisons and tests outside the measured interval.
+
+Compare every saved permission answer and the existing common results with exact input/generation
+binding, plus whole judging, CPU time, result size, allocations, memory, GC and selected-object reads;
+retain forced cancellation/rollback checks instead of relying on a timer that fires after a read ends.
+Use short isolated TEMP/TMP before any test loading or discovery, rebuild new deliberate defects and
+restorations, and preserve failed attempts and the unresolved P-254/P-255 qualifications.
+More cache memory is an intended trade-off, not an automatic failure: report its absolute cost,
+observed growth and read/cancellation effects alongside both timing pairs without inventing an
+acceptance threshold from the lab. This comparison alone authorizes no adoption, additional cache
+sizes, tuning of other connections, UI changes, live access, recapture, discovery activation,
+production-budget changes, commits or pushes; execution within this bounded scope is approved.
+
+**P-200 writer-cache comparison completed, 2026-09-21:** effective writer settings were verified at
+2,000 KiB for the current build and 65,536 KiB for the isolated candidate; the only candidate source
+change was the cache pragma, with SQLite's derived spill threshold following that allowance.
+The four current/candidate/candidate/current runs took 51.675/46.675/229.851/48.325 s and every saved
+permission answer and all 28 comparison categories matched, but the long second candidate means
+no repeatable speed benefit is established; it is retained rather than discarded or rerun.
+Its existing object-processing interval grew from 37.786 to 214.474 s between candidate runs,
+without establishing why; mean peak process memory rose from 289.153 to 367.147 MB and result size
+was unchanged. Forced cancellation/rollback/retry checks passed on both builds after rebuilt negative
+controls and restoration; active production, tests and frozen historical runners were never changed,
+and no setting is adopted. `next/artifacts/p200-writer-cache/comparison-result.json` retains build
+identities, settings, complete results and limitations; P-254/P-255 remain unresolved, and neither
+current reader-cache tuning nor nine-domain production performance is settled by this writer-only trial.
+
+**Bounded saved-permission blocks — design-only handoff:** following the external review and its
+corrections, the next deliverable is a concrete storage-and-read contract and bounded comparison plan
+for owner review, not implementation, new measurement code or execution approval. Keep evidence →
+derivation → judgement and completed-run saved answers; the candidate under discussion changes only
+permission-classification persistence and retrieval inside SQLite. Preserve the analysis stages,
+genuine control-proof products, one transaction per object, cancellation/rollback and generation
+publication; exclude cross-object batching, parallel workers, cross-generation reuse, incremental
+findings and external payload files from this first candidate. Reviewer recommendations are proposals,
+not newly accepted product decisions, and any visible browsing behavior or wording needs approval.
+
+The predecessor was subsequently inspected at
+`C:\Users\jistrand\source\repos\razamus\SecureAD\src` (the alternative lab profile is
+`C:\Users\ba.admin\source\repos\razamus\SecureAD\src`). Its
+`SecureAD.Infrastructure/Storage/MaterializedAclPayload.cs` demonstrates binary records with a local
+string dictionary, but `DirectAceWriter.cs` feeds it normalized entries from
+`SecureAD.Core/Security/AceNormalizer.cs`: generic rights are expanded, entries sorted and duplicates
+removed. That payload lacks Next's original ordinals, callback application data and richer saved
+answers; its nullable-string encoding merges null and empty and its reader materializes the whole
+object. The predecessor also retains per-entry rows and computes permission aggregation during
+object-detail loading in `SecureAD.UI/ViewModels/ObjectDetailPanelViewModel.cs`; inherit the technique,
+not its evidence semantics, workload or timing baseline. Its `SecureAD.Infrastructure/Findings/FindingsService.cs`
+uses separate readers for parallel evaluators, not a shared connection that would justify parallelizing
+Next's existing loop.
+
+The draft contract must make the following concrete before any implementation:
+- Ordered SQLite payload blocks and their searchable object/page metadata, bounded encoding and
+  decoding buffers, dictionary scope/lifetime and explicit overflow/continuation for an oversized
+  entry, string, schema-support record or application-data value; no truncation or arbitrary security
+  processing limit disguised as a storage bound.
+- Lossless original order, ordinal, occurrence position, duplicates, raw masks/types/flags, GUID
+  presence flags, application data, owner/descriptor states, errors, per-right verdicts/reasons,
+  applicability/inheritance, schema support, resource scope and missing/empty/unreadable/incomplete
+  distinctions; saved interpretations remain distinct from authorization, takeover and Tier-0 paths.
+- Exact evidence/derivation/judgement/object binding and reference integrity, independently reconciled
+  object/entry/right counts, ordered manifests, block sequence/length/offset/integrity checks,
+  complete-object publication and explicit refusals for missing, duplicated, damaged or unsupported
+  data; a truncated payload and a correspondingly truncated manifest must not validate each other.
+- A genuinely bounded read contract and identified consumers: first page, continuation, total counts,
+  ordering/grouping/filtering and cancellation; never silently return a partial object from a
+  whole-object API or infer totals/risk from loaded rows. Partial loading is not incomplete captured
+  evidence, and a complete-object result must not be rebuilt eagerly behind the paging API.
+- Stage-aware interactions: in the scoped flow the first pass records descriptor coverage and
+  candidates; detailed control assessment arrives after admission. Coordinate within producing stages,
+  not by retaining every object until all later products exist. Schema interpretation is already
+  memoized by `PermissionClassificationProducer`; writer-side reuse must still detect conflicting
+  values for the same identifier and cannot cache rolled-back database identities as committed.
+
+Keep the two experimental questions separate: first bounded chunking/readback using the same encoding
+as the retained format-43 design where practical, then compact binary encoding of that bounded
+representation. Format 41 remains the production reference; format 43 changed several mechanisms and
+its historical timings are not a fresh control. Define first-use/first-page, subsequent-page and full
+object measurements separately, compare every answer across all blocks, and include whole judging,
+CPU, output size, allocations, peak memory, actual GC pause time and cancellation. Do not call reading
+one page a whole-object speedup, or choose production limits from the small lab; extra 35 MB or a
+46 ms read is not by itself proof of an unacceptable trade-off. Any later experiment needs its own
+approved bounds, current measured control before optimization, unchanged-input/build/runtime provenance,
+and retained outliers; do not silently restart completed campaigns or modify frozen runners.
+
+**Remaining diagnostic questions and evidence anchors for this review:** the returned BAWK1 offline
+reproduction took 133.74 s, including 115.12 s of object processing and about 7.03 s of nested rule
+clocks, leaving about 108.09 s outside those clocks in that interval; this is not the original reported
+108-second audit reconstructed. The supplied libraries and input also ran in about 26.86 s on
+S2DMEASOFT; BAWK1 used .NET 10.0.10/eight logical processors and S2DMEASOFT .NET 10.0.12/twenty,
+without proving which host/runtime/work effects explain the gap. Returned lab records remain under
+`C:\Users\jistrand\Downloads\judging-reproduction-results-20260921-010007-4ef019f0d6d24b3d88e0ee5a750dba7c`.
+The latest local diagnostic ledger attributed about 16.26 s of a 27.69 s run to permission storage
+including nested work, but controls of 34.18/31.11 s did not establish its timing overhead; do not
+double-count children or claim that ledger explains the slow lab or 229.85 s cache-trial execution.
+Use `next/artifacts/judging-walltime-diagnostic/timing-continuation/completed-comparison.json`, not
+the earlier paused handoff, for that qualification. Pre-P-248/current rebuilt Next comparisons show
+9.677→26.956 s mean judging, 23.245→352.264 MB output and 98.6% of the added elapsed cost in the object
+interval, but the current build additionally produces required saved products: this is not identical
+workload or a comparison against the predecessor application.
+
+All trial outcomes, identities and failures remain in `next/artifacts/`:
+`p249-pre248-comparison/comparison-result.json`, `p249-storage-comparison/result.json`,
+`permission-entry-command-reuse/comparison-result.json`, `current-object-permission-reuse/comparison-result.json`,
+`p251-storage-comparison/comparison-result.json`, `p249-object-storage/comparison-result.json` and
+`p200-writer-cache/comparison-result.json`. Active production is restored format 41, with no trial
+optimization adopted; P-254/P-255 remain open. The design session should extend an appropriate
+specification under `docs/specs/` (or create a clearly marked draft specification if none fits), not
+a new session-history document or tests comparing prose to code. Read the existing judgement specs
+first, preserve uncommitted work and all original/frozen artifacts, and stop at a concrete proposal
+for owner approval; no new builds/tests/profiling are required to draft it, and no live access,
+recapture, discovery activation, production-budget change, UI change, commit or push is authorized.
+
+The concrete proposal is now [P-249: bounded saved-permission blocks — draft](specs/P249-SAVED-PERMISSION-BLOCKS-DRAFT.md).
+It specifies the lossless storage/read contract, actual caller changes and separately bounded chunking
+and encoding comparisons; the subsequent bounded trial approval below supersedes its original design-only
+restriction for candidate B only, while format 41 stays active. The historical outcomes and unresolved
+qualifications above are unchanged; candidate C and production adoption remain unapproved.
+
+**Owner-approved final bounded P-249 trial:** after clarifying that paging already exists for object
+listings and control/membership results, but not for the complete permission list inside one object's
+Permissions section, the owner selected **“Approve the complete final trial”** in response to the
+explicit scope question covering implementation, offline verification, the Permissions-screen change
+and four comparison runs. Implement the draft's **B / chunked JSON** storage and genuinely bounded
+readback in an isolated candidate, including its proposed principal/entry paging and explicit large-value
+continuation presentation using the existing app pattern; do not change existing object-list or
+control/membership pagers. This includes the separate comparison-adapter work and contrast I:
+four fresh format-41/candidate/candidate/format-41 judging processes, with the first current control
+before candidate optimization, the draft's bounded reader workloads and complete saved-answer comparison.
+Preserve the input/build/runtime identities, every original occurrence and interpretation, genuine proof
+products, one transaction per object, rollback and generation publication; isolate TEMP/TMP before test
+loading/discovery and rebuild new deliberate defects and restorations. Active production remains format
+41; trial UI changes belong to the isolated candidate, and adoption requires a subsequent owner decision.
+
+The owner is being asked by a customer to provide a usable product: **this is one final bounded attempt,
+not an open-ended storage optimization campaign**. If it does not demonstrate a worthwhile benefit,
+retain its results and return to **finishing Stage 7, then the remaining rule coverage**, rather than
+starting another storage experiment; report practical speed/read/memory/cancellation trade-offs without
+inventing a lab-derived acceptance threshold. No binary-encoding candidate C, cache tuning, fifth judging
+run or extra run to chase a better timing is authorized. Preserve all pre-existing work, historical
+campaigns/outliers and the unresolved P-254/P-255 qualifications; the 133.74-second and 229.85-second runs
+remain unexplained. No live AD, recapture, original-result regeneration/deletion, discovery activation,
+production-budget/security-rule changes, migration/legacy readers, commit or push is authorized.
+
+**Final-trial execution checkpoint — unfinished, not a candidate verdict:** the first fresh format-41
+control and its bounded selected-object whole-reading workload are retained under
+`next/artifacts/p249-final-b/`, with the execution plan, exact source/build/input identities and all failed
+attempts. The owner explicitly resumed from that checkpoint without repeating run 1. The preservation
+check had found a changed timestamp on the retained original judgement's
+SQLite shared-memory companion file during selection preparation; the sealed database hashes still match,
+but the prior companion-file bytes were not hashed, so full artifact preservation cannot be claimed
+(`P-256`). Protected immutable access and write-denying input protection are now verified with a rebuilt
+deliberate defect and restoration; the historical uncertainty remains. B's isolated storage now holds block
+framing, exact value fragments, independent producer/source expectations, the publication ledger, exact
+large-value continuation, schema reuse with conflict refusal, and the whole per-object answer: descriptor,
+trustee, entry and right records, the `pc_group` and `pc_occurrence` directories a principal selection needs,
+the object and group projections computed with the screen's existing risk, denial and rights-summary rules,
+an independent stored readback that decodes every record again and compares typed values rather than only
+digests, and one transaction per object wired through the ledger with rollback and cancellation. Entry
+application data required exact byte values, so the value stream was extended to carry bytes as well as
+UTF-16 through the fragment layer's existing byte path. 154 focused offline checks pass, with ten rebuilt
+deliberate defects this session; one of them found a real fault in the new code, where two places decided
+one question about whether a value is stored by reference, and one check was split because it carried two
+independent claims. **The candidate still writes format 41 and is not qualified**: generation publication in
+the candidate writer, bounded readback, the Permissions screen and the remaining B/B/A runs are all still
+owed. Those must land as **one change**, because a candidate that writes blocks before its reader exists
+would produce a judgement it cannot itself open, and format 44 is selected only when that switchover is
+complete; the binding adapter carrying captured object, coverage and descriptor identities also needs a new
+public read path in `SecureAD.Evidence`. `next/artifacts/p249-final-b/continuation-04/result.json` records
+the bounded checkpoint and verification limits. Format 41 remains active, slot 1 is consumed and must not be
+silently repeated, and neither a completed comparison nor a benefit/failure of B has been established.
+
+**Owner priority reaffirmed:** continue the approved storage trial now, before finishing Stage 7 and
+the remaining rules, so a worthwhile storage improvement can be in place for later rule work. This
+continues the existing B-only implementation and remaining B/B/A comparison, not a new experiment,
+permission to repeat run 1 or approval to adopt an unverified candidate; improvements to saved-permission
+storage do not promise that every future rule's own calculation will become faster.
+
+**Owner decision, 2026-09-22: small fixed memory differences are not an acceptance criterion.**
+His words: *"memory is less of a concern to me. most modern systems have 16 GB of memory, if I run this
+on a server it would have a lot more than that, I don't want to quibble over 40 MB of memory."*
+A peak working set measured in tens or low hundreds of megabytes is therefore **not** a reason to
+reject a candidate or to complicate a design, and no session should trade clarity, fidelity or speed
+for a saving of that size. This supersedes the memory half of the P-249 adoption gate recorded above:
+judging speed, answer equality, browsing responsiveness and cancellation still decide adoption, and a
+memory figure is reported as information rather than weighed against them. It does **not** retire the
+*other* two regressions that stopped format 43 — maximum selected-object read latency and full-heap
+collection frequency — because those are felt as a screen that stalls, which is a responsiveness
+question and not a memory one.
+
+**What this decision does not yet settle:** whether memory that grows with the size of the forest is
+equally unimportant. Tens of megabytes on a laboratory of 8,383 objects is a different thing from a
+design that holds whole objects, whole principal lists or whole result sets at 347,000 objects and
+5.9 million access control entries, where the same shape reaches many gigabytes. Bounded reading is
+still required for **time to first screen** and for cancellation, not only for memory. Do not read this
+decision as permission for unbounded growth, and do not read it as a prohibition either; ask the owner
+when a specific design actually raises it.
 
 **Owner-approved next implementation session: one object's saved path evidence.** After reconciliation
 against the existing specifications, the owner selected "Approve for next implementation session" for
@@ -1507,6 +4534,47 @@ monitor-check session or a prerequisite to continuing R2, R7 and R8.
 Those checks have not occurred here; preview approval is not real-product or forest acceptance.
 No directory operation or retained-Evidence access is authorized by this presentation decision.
 
+**Where judging time actually goes, measured 2026-09-22 — and it is not the storage format.** The
+object pass had one clock on it, covering the rules, and the rules were 7.03 s of a 115.12 s interval
+in the reproduction of the reported 108-second audit. The rest was measured by nothing, and three
+saved-permission storage redesigns were aimed into it. The first breakdown, on the sealed laboratory
+capture of 8,407 objects, put **15,544 ms of a 21,341 ms object pass into storing the saved
+permission classifications, against 297 ms to reach the verdicts being stored** — writing cost about
+fifty times more than deciding, and accounts for roughly 90% of the 17.3 s that P-248's saved
+products added. Deriving the control edges, which is the analysis this product exists for, was
+**19 ms**.
+
+**Splitting that write twice over says the cost is SQL statements.** Shared entries 35.8%,
+transaction commits 30.5% at 587 µs across 8,407 commits, entry rows 16.5%, schema support 10.2%;
+and inside shared entries, 68.2% the insert and 19.4% a nested trustee-meaning proof write, with the
+JSON comparison key only 6.1%. About **1.25 million statements** are issued per run, each on a newly
+created command with its SQL re-prepared, plus a verification `SELECT` after every schema write,
+twice per entry, against a table holding a few hundred rows.
+
+**This is why the storage trials failed, and it was knowable at any point.** P-251 halved the result
+file, 352,264,192 to 187,617,280 bytes, with no repeatable judging gain; P-249's first candidate
+allocated 8.65% less and ran slower. **Fewer bytes is not fewer statements**, and no format redesign
+changes the command, transaction, nested-write or verification counts. The format-44 candidate would
+have done the same thing, and its three remaining judging runs were not spent finding that out.
+Artifacts are under `next/artifacts/judging-object-breakdown/`; the instrumentation is permanent and
+travels to the laboratory and to production, which has still never been measured.
+
+**What was done about it, the same day.** Four changes, none of which alters a decision, a rule or an
+answer: statements compiled once and rebound instead of a command created and parsed per row; schema
+support verified once per distinct payload per run rather than twice per entry; the three per-object
+writes sharing **one** transaction batched across 500 objects, which is stronger atomicity than the
+three separate commits it replaced as well as cheaper; and **format 42**, storing each distinct
+reading once under a SHA-256 fingerprint. On the laboratory capture the object pass fell
+**21,211 → 12,766 ms (−39.8%)**, the permission write **15,410 → 7,157 ms (−53.6%)** and the
+judgement file **352,264,192 → 180,301,824 bytes (−48.8%)**, with identical output throughout.
+
+**Two limits on that, stated because they are easy to forget.** Every figure above is the sealed
+laboratory capture judged on the development laptop. The 2026-09-22 laboratory run on standard SSD
+put **18,463 ms** of a 49,919 ms object pass into commits against 1,979 ms for the same work on the
+laptop, so the storage-dependent part of this is untested after the fixes — halving the bytes is
+expected to help most exactly where it has not yet been measured. And the batch size of 500 is a
+chosen number, not a tuned one; the laboratory showed its cost depends on the disk underneath it.
+
 ## The forest this is built for
 
 **The owner's production forest is the scale that matters, and the laboratory is not it.** Recorded
@@ -1519,15 +4587,73 @@ will reach a confident wrong answer.
 | Domains | 9 |
 | Objects | ~347,000 |
 | Access control entries | ~5.9 million |
+| Group Policy objects | ~3,500-4,000 |
 | Control edges the predecessor produced | ~9 million |
 | Delegations | ~1.3 million |
 | Findings | ~34,000 |
 | Directory depth | deep, average distinguished name about 97 characters |
+| Predecessor's stored output after a production run | ~17 GB |
+
+**The Group Policy count is the owner's estimate of 2026-09-22, not a measurement.** It was recorded because it changes the arithmetic of the SYSVOL pass by an order of magnitude and nothing else in this document carried it; the exact figure comes out of any capture, one row per declared policy in `gpo_coverage`, and should replace the estimate once a run seals.
+
+**Every figure in this table came from the predecessor, and the rebuild captures more than it did.** Recorded 2026-09-22 after the owner corrected a comparison built on it: the object, ACE and control-edge counts describe what the OLD application gathered, so they are a FLOOR for this product and not its scale. Treating them as equivalent makes the rebuilt store look bloated when it may simply hold more. Until a sealed run reports its own counts, no size, budget or storage conclusion may rest on comparing a SecureAD.Next figure with the ~17 GB predecessor output or with any row above.
+
+**Measured, 2026-09-23, from the first sealed nine-domain production capture.** These supersede the predecessor figures above for every purpose: the rebuild captures 2.7 times the objects and 24 times the access control entries the old application did, so any argument resting on the older numbers is wrong by that much. Taken with `securead-cli --describe`.
+
+| | |
+|---|---|
+| Objects captured | 939,700 |
+| Access control entries | 141,706,338 |
+| Distinct access control entries among them | 481,967 |
+| Times each distinct entry is stored | 294 |
+| Distinct security descriptors | 271,845 |
+| Entries per descriptor, average | 521 |
+| Trustees | 189,192 |
+| Group Policy objects | 3,453 |
+| Objects whose permissions could not be read | 280,782 (30%) |
+| Sealed evidence file | 51.08 GB |
+
+**The 294 is the shape of a defect, and it was fixed on 2026-09-23 under `P-272`.** Each distinct
+entry is now stored once and pointed at, so the row above describes how many times an entry is
+*referenced* rather than how many times it is written. It is kept because it is the measurement the
+redesign rests on, and because a figure taken from a bundle sealed before that date still means what
+it says.
+
+**What the fix is worth, measured rather than projected.** A synthetic bundle at this shape was
+written by the real capture writer twice, at 5% scale, once on each side of the change. Both hold
+identical evidence - 46,985 objects, 13,592 descriptors, 7,081,432 entry positions, 24,098 distinct
+entries - and the only difference is how many rows were needed to say it.
+
+| | Before | After |
+|---|---|---|
+| Rows stored to hold the entries | 7,081,432 | 24,098 |
+| Entry tables, content | 676.4 MB | 78.5 MB |
+| All tables, content | 946.2 MB | 348.3 MB |
+| Sealed evidence file | 1,853,292,544 bytes | 620,806,144 bytes |
+| Time to write it | 180.4 s | 89.7 s |
+
+**Two-thirds of the file went, and it is 66.5% on a measurement rather than an estimate.** The part
+that is arithmetic rather than measurement is what this means at full production scale: by content
+per row the entry tables go from 23.10 GB to roughly 1.6 GB, which leaves `raw_bytes` - the sealed
+original descriptor bytes, 7.73 GB - as the largest single thing in the file and the subject of
+`P-269`. **The synthetic model's own before figure is 37 GB at full scale against the real capture's
+51.08 GB**, because its trustees and descriptors are smaller than a real forest's; the ratio is what
+the two runs measure, not the absolute size of a customer bundle.
+
 
 **Where these come from, exactly.** They were first found in the predecessor's
 `tests/SecureAD.Infrastructure.Tests/Performance/ObjectDetailProfiler.cs`, which states them as the
 production environment it profiles against. **The owner confirmed them as still correct on
 2026-09-07.** They are the shape to design and measure against.
+
+**The 17 GB is the owner's own figure for the predecessor's production output, supplied 2026-09-22,**
+and it is the only production *size* measurement this project has. Treat it as the order of magnitude
+to plan against, not as a budget the rebuild must beat: the predecessor stored a deduplicated,
+canonically ordered, generic-expanded ACL projection and **no raw descriptor bytes at all**, while
+this product keeps the sealed original bytes and every distinction that projection dropped. The two
+are not measuring the same thing, and the rebuild also splits its output into a sealed evidence file
+and a separate judgement file. No production size has been measured for this product, and the
+approved P-249 comparison runs are laboratory runs, so they will not establish one.
 
 **The laboratory is `ad.lab`, about 8,383 objects, and the owner's words for it are that it "falls
 far short" of production in both scale and complexity.** It is genuinely useful for testing
@@ -1555,6 +4681,13 @@ prevent.
 
 ## What it deliberately is not
 
+- **Not intended to replace BloodHound, clarified by the owner on 2026-10-03.** The owner wants the
+  richest practical evidence-backed rule and path coverage while keeping both judging and navigation
+  usable, and requested an engineering assessment of which remaining path capabilities are too
+  difficult or costly for that goal.
+  This direction does not approve every possible path family, a processing limit or a new measurement
+  campaign; the next implementation scope must distinguish established permissions, supported
+  operations and capabilities that the captured evidence cannot prove.
 - **Not a live tool.** No live effective access, inheritance, ACL compare or delegation reporting
   (`0008`).
 - **Not a policy compliance checker.** Password policy is captured and shown; nothing grades it.
@@ -1626,32 +4759,28 @@ Thirty-nine of seventy-nine decision records reference it. The load-bearing diff
 ### Why it took hours, and why that is not inherent
 
 **The owner's measurement, 2026-09-03: capture took 30 to 45 minutes across nine domains, and the
-run took three to five hours.** Capture was never the problem. The time went on the graph.
+run took three to five hours.** The difference was after capture; that observation alone does not
+separate path calculation from the other analysis phases.
 
-Its own CONTROL-EDGES-AND-PATHS document, under docs/ in the predecessor tree, says how, and it is
-costs stacked on each other:
+**Correction, 2026-10-02: that timing does not establish the cause, and the old code currently on disk
+already searches backwards from its targets.** In frozen predecessor `f0726569`,
+`EscalationPathService.BuildAllPathsAsync` builds a compact graph, computes one reverse-distance
+index starting at all high-value targets, then reconstructs representative shortest paths.
+The default depth is five and the retained-candidate ceiling is 250,000; both belong to the old
+product, not to approved rebuild budgets.
+The old per-source forward-search API still exists, but it is not the active batch implementation.
+Its classifiers still use the stored transitive membership closure, while path links use direct
+memberships.
 
-- **`fact_group_membership_closure`** — the full transitive closure of every group, materialised.
-  Quadratic in the forest.
-- **"Traversal: BFS from each non-high-value principal to discover shortest paths to targets."**
-  With a hundred thousand principals that is a hundred thousand traversals of a graph holding
-  millions of edges.
-
-**Neither is required by the question being asked.** *Who can reach Tier 0* is answered by walking
-**backwards from the targets** — there are perhaps dozens of high-value targets against a hundred
-thousand principals, so the same answers cost three or four orders of magnitude less. The old
-application even built the reverse graph, as step 3 of that document, and then traversed forward
-from every principal anyway.
-
-**So the hours were an algorithmic choice, not the price of the analysis.** This matters now because
-escalation paths are unbuilt here and will be asked for eventually. Two things follow:
-
-- The closure is already refused: `what-stage-2a-derives.md` walks membership on demand, because
-  *the transitive closure of every group is quadratic in a real forest, while every consumer asks
-  about a handful of named principals*. That decision was taken for a different reason and happens
-  to remove the first cost entirely.
-- **When paths are built, traverse from the targets.** Reverse traversal needs `memberOf` edges,
-  which are linear in memberships and already persisted, and never needs the closure.
+The earlier account here relied on the predecessor's CONTROL-EDGES-AND-PATHS description and
+incorrectly attributed its reported hours to a forward search from every principal.
+Neither that attribution nor the claimed orders-of-magnitude advantage is established for the
+frozen code; the rebuild also searches backwards for its supported membership paths, and no new
+old/new runtime comparison was performed.
+The old selected-path detail reads an already-retained path and requests its individual permission
+evidence, rather than rebuilding whole-forest path inputs for every selected path.
+Preserving the rebuild's stronger source and permission qualification does not require that
+whole-forest readback cost; the separate saved-path browsing finding remains open.
 
 **One correction to a claim made in this session and left here so it is not repeated.** SYSVOL was
 suspected of being a runtime risk on the strength of lab capture rising from 7 to 11 seconds when it
@@ -1863,15 +4992,18 @@ nothing else in the roadmap depends on it. Deferring it costs nothing but the fi
 audit, if the user hit stop, it should get thrown away. im not going to try and figure out how to
 handle incomplete data from a user hitting stop."* **This is already how capture, derivation and
 judging behave** - each writes `<name>.db.partial` and renames it as its last act, so a run that was
-stopped has no file under the name a reader opens. A cancelled re-judging leaves the previous
-judgement intact, which is the same guarantee a crash gets by the same mechanism.
+stopped has no file under the name a reader opens. Ordinary re-judging leaves the previous
+judgement intact on cancellation, which is the same guarantee a crash gets by the same mechanism;
+the explicitly confirmed discard-first action approved on 2026-10-02 is the deliberate exception,
+because its previous judgement has already been removed before the new attempt starts.
 
-**The rule is recorded here because the shell cannot yet re-judge or re-derive, and will be able
-to.** `securead-cli` has `--derive` and `--judge` for a bundle already captured; the shell has no
-equivalent command, only *New audit*. When those buttons are built they must follow the rule above -
-delete whatever the interrupted attempt produced rather than keeping it for the operator to
-interpret. **No screen may offer partial results from a stop**, and nothing may ask an operator to
-decide what an incomplete judgement means.
+**The rule also governs analysis started from Home.** The shell offers initial deriving and judging,
+and the confirmed discard-first rejudging action described above reuses captured evidence and derived
+facts without copying the bundle.
+Stopping still requires deleting the interrupted attempt's output rather than keeping it for the
+operator to interpret; the remaining unfinished-file cleanup gap is recorded in `PUNCH-LIST.md`.
+**No screen may offer partial results from a stop**, and nothing may ask an operator to decide what
+an incomplete judgement means; unfinished diagnostic files on disk are not completed results.
 
 ## What a control edge means, decided 2026-09-05
 
@@ -2002,6 +5134,18 @@ to watch and hides nothing. Declaring a principal would hide edges by default an
 depend on local configuration. A specific edge that is fine here is handled by accepting the finding,
 which stays on the record. **A declaration never moves a severity** - that is fixed by the rule
 (`0066`, `0082`).
+
+**P-143 is deferred until after the main feature/rule work; its entry workflow remains undecided, 2026-10-03.**
+The owner explicitly lowered this feature's priority rather than making it a Stage 7 completion
+prerequisite; the wider supported paths and remaining distance/tier summaries are not deferred with it.
+The owner is considering the workflow while testing the latest SEC-071 correction in the laboratory;
+neither a captured-object-only picker nor manual pre-run entry has implementation approval.
+The owner notes that selecting objects from an earlier audit preserves recorded names, whereas
+manual entry before a run introduces misspellings and other typing errors.
+A small live name-validation step before adding an asset was raised as a possible alternative, not
+authorized live access or an approved design.
+Keep this decision pending: any proposed connected validation must respect capture's exclusive
+directory-access boundary, and saved-result browsing must remain passive.
 
 ## What was settled alongside the control plane, 2026-09-06
 
@@ -2298,4 +5442,3 @@ that obligation.
 
 **A question the owner has already answered is a defect in this repository.** When he answers one,
 it belongs here, in the same turn.
-

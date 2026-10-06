@@ -5,6 +5,7 @@ using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Schema;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
@@ -75,6 +76,20 @@ internal sealed class FakeRunCatalog : IRunCatalog
 
     public AuditError? DeletionFails { get; set; }
 
+    public string? DiscardedJudgement { get; private set; }
+    public AuditError? DiscardFails { get; set; }
+    public Action? WhenDiscarding { get; set; }
+
+    public Result<string> DiscardJudgement(string bundleDirectory)
+    {
+        WhenDiscarding?.Invoke();
+        if (DiscardFails is { } error) return Result<string>.Failure(error);
+        DiscardedJudgement = bundleDirectory;
+        var index = Runs.FindIndex(run => run.Path == bundleDirectory);
+        if (index >= 0) Runs[index] = Runs[index] with { Products = Runs[index].Products with { HasJudgement = false } };
+        return Result<string>.Success(bundleDirectory);
+    }
+
     public Result<string> Delete(string bundleDirectory)
     {
         if (DeletionFails is { } error)
@@ -93,6 +108,15 @@ internal sealed class FakeRunCatalog : IRunCatalog
 /// </summary>
 internal sealed class FakeRunOpener : IRunOpener
 {
+    public Func<Task>? WhenClosing { get; set; }
+    public int CloseCalls { get; private set; }
+
+    public Task CloseAsync()
+    {
+        CloseCalls++;
+        return WhenClosing?.Invoke() ?? Task.CompletedTask;
+    }
+
     /// <summary>The run last opened, or null if nothing was.</summary>
     public string? Opened { get; private set; }
 
@@ -138,12 +162,87 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    private int _lifetime;
+    private bool _selected;
+    public bool IsCurrent { get; set; } = true;
+    public Func<object, CancellationToken, Task<object>>? CompleteRead { get; set; }
+    public List<string> Reads { get; } = [];
+    internal static ObjectAttributes CapturedObject(string distinguishedName, string objectClass) => new(
+        distinguishedName, Guid.NewGuid(), DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete,
+        [new ObjectAttribute("objectClass", AttributeCardinality.MultiValued, [new AttributeValue(0, objectClass, null)])],
+        DomainFqdn: "contoso.com");
+    public Func<bool> CaptureReadValidity()
+    {
+        var lifetime = _lifetime;
+        return () => _selected && IsCurrent && lifetime == _lifetime;
+    }
+    public void SelectRun(string bundleDirectory) { _lifetime++; _selected = true; }
+    public void CloseRun() { _lifetime++; _selected = false; }
+    public async Task<T> ReadAsync<T>(string bundleDirectory, Func<IAssetReader, CancellationToken, T> read,
+        CancellationToken cancellationToken)
+    {
+        var value = read(this, cancellationToken);
+        return CompleteRead is { } complete
+            ? (T)await complete(value!, cancellationToken)
+            : value;
+    }
+
+    public Result<DelegationPrincipalPage> DelegationPrincipals { get; set; } = new DelegationPrincipalPage([], null, true);
+    public Func<string, ObjectSearchMark?, Result<ObjectSearchPage>>? ObjectSearch { get; set; }
+    public List<(string Bundle, string Search, ObjectSearchMark? After)> ObjectSearchQueries { get; } = [];
+    public Result<ObjectSearchPage> SearchObjects(string bundleDirectory, string search, ObjectSearchMark? after)
+    {
+        ObjectSearchQueries.Add((bundleDirectory, search, after));
+        return ObjectSearch?.Invoke(search, after) ?? Result<ObjectSearchPage>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestObjectSearchNotSupplied", ErrorSeverity.Failed, "No object-search answer was supplied by this test.", bundleDirectory));
+    }
+    public Func<DelegationQuery, DelegationPageMark?, Result<DelegationPage>>? Delegations { get; set; }
+    public List<(DelegationQuery Query, DelegationPageMark? After)> DelegationQueries { get; } = [];
+    public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after)
+    {
+        Reads.Add("DelegationPrincipals");
+        return DelegationPrincipals;
+    }
+    public Result<DelegationPage> ReadDelegations(string bundleDirectory, DelegationQuery query, DelegationPageMark? after)
+    {
+        Reads.Add("Delegations");
+        DelegationQueries.Add((query, after));
+        return Delegations?.Invoke(query, after) ?? Result<DelegationPage>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestDelegationsNotSupplied", ErrorSeverity.Failed, "No delegation answer was supplied by this test.", bundleDirectory));
+    }
+
+    public Result<SavedPermissionClassification> PermissionClassification { get; set; } =
+        Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell,
+            "PermissionClassificationUnavailable", ErrorSeverity.Failed,
+            "This run has no saved permission classification.", "test"));
+
+    public Result<SavedPermissionClassification> ReadPermissionClassification(string bundleDirectory, string distinguishedName)
+    {
+        Reads.Add("Classification");
+        return PermissionClassification;
+    }
+
     public Result<SavedTier0Path?> SavedPath { get; set; } = Result<SavedTier0Path?>.Success(null);
     public List<(string Bundle, string Subject)> PathQueries { get; } = [];
     public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName)
     {
         PathQueries.Add((bundleDirectory, distinguishedName));
         return SavedPath;
+    }
+
+    public Func<PathRiskVerdict, PathRiskPageMark?, Result<SavedTier0Path?>>? PathPage { get; set; }
+    public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName,
+        PathRiskVerdict group, PathRiskPageMark? after)
+    {
+        PathQueries.Add((bundleDirectory, distinguishedName));
+        return PathPage is { } page ? page(group, after) : SavedPath;
+    }
+
+    public Result<Tier0FindingSummary?> Tier0Summary { get; set; } = Result<Tier0FindingSummary?>.Success(null);
+    public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory)
+    {
+        Reads.Add("Tier0Summary");
+        return Tier0Summary;
     }
 
     public Result<MemberAttributionDetail> ReadMemberAttribution(string bundleDirectory, string holderSid, string? holderScope, string target) =>
@@ -182,6 +281,8 @@ internal sealed class FakeAssetSource : IAssetSource
     public ListingScope ListedScope { get; private set; }
 
     public int ListedPage { get; private set; }
+    public int ObjectListings { get; private set; }
+    public int LapsListedPage { get; private set; }
 
     public ObjectPermissions? Permissions { get; set; }
 
@@ -204,6 +305,7 @@ internal sealed class FakeAssetSource : IAssetSource
         ListedContainer = containerDn;
         ListedScope = scope;
         ListedPage = pageNumber;
+        ObjectListings++;
 
         return ListingFails is { } error
             ? Result<ObjectPage>.Failure(error)
@@ -265,6 +367,7 @@ internal sealed class FakeAssetSource : IAssetSource
         string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
     {
         LapsListedContainer = containerDn;
+        LapsListedPage = pageNumber;
         LapsListedScope = scope;
         LapsListings++;
 
@@ -276,6 +379,7 @@ internal sealed class FakeAssetSource : IAssetSource
     public Result<ObjectPermissions?> ReadPermissions(
         string bundleDirectory, string distinguishedName)
     {
+        Reads.Add("Permissions");
         OpenedObject = distinguishedName;
 
         return PermissionsFail is { } error
@@ -288,10 +392,13 @@ internal sealed class FakeAssetSource : IAssetSource
     public AuditError? AttributesFail { get; set; }
 
     public Result<ObjectAttributes?> ReadObjectAttributes(
-        string bundleDirectory, string distinguishedName) =>
-        AttributesFail is { } error
+        string bundleDirectory, string distinguishedName)
+    {
+        Reads.Add("Attributes");
+        return AttributesFail is { } error
             ? Result<ObjectAttributes?>.Failure(error)
             : Result<ObjectAttributes?>.Success(Attributes);
+    }
 
     /// <summary>
     /// The schema this run is pretending to have captured. The shipped table by default, so a test
@@ -699,6 +806,17 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
     /// </remarks>
     public IList<string> Order { get; set; } = [];
 
+    /// <summary>
+    /// Runs while the judging is still in flight, so a test can change the screen underneath it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The same reason <see cref="FakeRunOpener.WhenOpening"/> exists.</b> A judging of a real
+    /// forest takes long enough that the operator goes on clicking through the library while it
+    /// runs, and what a screen does with a selection that moved mid-judging cannot be observed by
+    /// checking afterwards that both things happened.
+    /// </remarks>
+    public Action? WhileRunning { get; set; }
+
     public async Task<Result<JudgingOutcome>> RunAsync(
         string bundleDirectory,
         IProgress<JudgingRun.JudgingProgress> progress,
@@ -710,6 +828,12 @@ internal sealed class FakeJudgingLauncher : IJudgingLauncher
 
         foreach (var read in Reports)
             progress.Report(new JudgingRun.JudgingProgress(read));
+
+        WhileRunning?.Invoke();
+
+        // Observed rather than ignored, so a screen's Stop is proved to reach the launcher and not
+        // merely to have set a flag on itself. A real judging does the same.
+        cancellationToken.ThrowIfCancellationRequested();
 
         await Task.Yield();
 
@@ -764,6 +888,11 @@ internal sealed class FakeDerivationLauncher : IDerivationLauncher
     /// <summary>Where each phase writes its name as it runs. See <see cref="FakeJudgingLauncher.Order"/>.</summary>
     public IList<string> Order { get; set; } = [];
 
+    /// <summary>
+    /// Runs while the derivation is still in flight. See <see cref="FakeJudgingLauncher.WhileRunning"/>.
+    /// </summary>
+    public Action? WhileRunning { get; set; }
+
     public Task<Result<DerivingOutcome>> RunAsync(
         string bundleDirectory,
         IProgress<DerivationProgress> progress,
@@ -775,6 +904,11 @@ internal sealed class FakeDerivationLauncher : IDerivationLauncher
 
         foreach (var read in Reports)
             progress.Report(new DerivationProgress("Fake", read));
+
+        WhileRunning?.Invoke();
+
+        // Observed rather than ignored. See <see cref="FakeJudgingLauncher"/>.
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (Cancels)
             throw new OperationCanceledException();

@@ -45,7 +45,7 @@ public static class AceNormalizer
 
         foreach (var ace in parsed.DaclAces)
         {
-            var canonical = NormalizeAce(objectGuid, ace, errors);
+            var canonical = NormalizeAce(ace, errors);
             if (canonical is not null)
             {
                 canonicalAces.Add(canonical);
@@ -66,7 +66,7 @@ public static class AceNormalizer
     /// <summary>
     /// Normalizes a single parsed ACE into canonical form.
     /// </summary>
-    private static CanonicalAce? NormalizeAce(Guid objectGuid, ParsedAce ace, List<string> errors)
+    private static CanonicalAce? NormalizeAce(ParsedAce ace, List<string> errors)
     {
         try
         {
@@ -77,13 +77,12 @@ public static class AceNormalizer
             var inheritedObjectTypeGuid = NormalizeGuid(ace.InheritedObjectTypeGuid);
 
             var aceHash = ComputeAceHash(
-                objectGuid, ace.TrusteeSid, expandedMask,
+                ace.TrusteeSid, expandedMask,
                 objectTypeGuid, inheritedObjectTypeGuid,
                 ace.IsInherited, ace.InheritanceFlags, ace.PropagationFlags,
                 ace.AceType, ace.ApplicationData);
 
             return new CanonicalAce(
-                ObjectGuid: objectGuid,
                 AceType: ace.AceType,
                 TrusteeSid: ace.TrusteeSid,
                 AccessMask: expandedMask,
@@ -92,6 +91,7 @@ public static class AceNormalizer
                 IsInherited: ace.IsInherited,
                 InheritanceFlags: ace.InheritanceFlags,
                 PropagationFlags: ace.PropagationFlags,
+                ApplicationData: ace.ApplicationData.ToArray(),
                 AceHash: aceHash,
                 CanonicalizationVersion: AceCanonicalization.Version);
         }
@@ -119,7 +119,7 @@ public static class AceNormalizer
 
     /// <summary>
     /// Computes a deterministic SHA-256 hash from the canonical ACE fields:
-    /// object_guid, trustee_sid, access_mask, object_type_guid, inherited_object_type_guid,
+    /// trustee_sid, access_mask, object_type_guid, inherited_object_type_guid,
     /// is_inherited, inheritance_flags, propagation_flags, ace_type, application_data.
     /// </summary>
     /// <remarks>
@@ -138,14 +138,22 @@ public static class AceNormalizer
     /// non-callback ACE type, which is the overwhelming majority. See <c>F-S58-11</c>.
     /// </para>
     /// <para>
-    /// Both fields are appended rather than inserted, so a version 3 input string is exactly a
-    /// version 2 input string plus <c>|{application_data}</c>, which is in turn a version 1 input
-    /// string plus <c>|{ace_type}</c>. That keeps each change inspectable by eye against the values
-    /// recorded before it.
+    /// <b>The object's own GUID came out in canonicalization version 4, and that is what makes an
+    /// entry storable once.</b> While it was in, the same inherited entry found on two objects
+    /// hashed differently, so no two objects could ever be seen to hold one entry and every
+    /// inherited entry was written again for every descendant - 294 times over, on the production
+    /// capture of 2026-09-23. An entry is a trustee, a mask, a type and its inheritance; the object
+    /// it was found on is a fact about where it was found, which <c>descriptor_entry</c> now
+    /// records as a link. See <c>P-272</c>.
+    /// </para>
+    /// <para>
+    /// Every version so far has been inspectable by eye against the one before it. A version 4
+    /// input string is a version 3 input string with its leading <c>{object_guid}|</c> removed,
+    /// which is in turn a version 2 input string plus <c>|{application_data}</c>, which is a version
+    /// 1 input string plus <c>|{ace_type}</c>.
     /// </para>
     /// </remarks>
     internal static string ComputeAceHash(
-        Guid objectGuid,
         string trusteeSid,
         int accessMask,
         string? objectTypeGuid,
@@ -159,7 +167,6 @@ public static class AceNormalizer
         // Build pipe-delimited input. Realistic max is ~200 chars for the longest
         // SIDs and two GUIDs, but we avoid any fixed-size assumption.
         var input = string.Concat(
-            objectGuid.ToString("D"), "|",
             trusteeSid, "|",
             accessMask.ToString(), "|",
             objectTypeGuid ?? "", "|",

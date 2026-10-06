@@ -349,10 +349,10 @@ public sealed partial class OwnAccountMembershipPathTests
         Derive(directory);
         Judge(directory, [WriteMembersRequest()]);
         using (var intact = Open(directory)) Assert.Single(Assessment(intact).Permissions);
-        Mutate(directory, "UPDATE tier0_path_calculation SET proof=json_set(proof,'" + path + "','" + value + "')");
+        PathProofVerification.AlterRequesterProof(directory, path, "'" + value + "'");
         using var reader = Open(directory);
 
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0Path(UserDn));
+        Assert.Throws<InvalidDataException>(() => PathProofVerification.ReadPath(reader, UserDn));
     }
 
     [Fact]

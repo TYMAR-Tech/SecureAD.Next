@@ -186,6 +186,7 @@ public sealed class HomeViewModelTests
         return new HomeViewModel(
             location, _picker, _newAudit,
             new RunLibraryViewModel(
-                location, _catalog, new FakeConfirmation(), new FakeRunOpener()));
+                location, _catalog, new FakeConfirmation(), new FakeRunOpener(),
+                new FakeDerivationLauncher(), new FakeJudgingLauncher()));
     }
 }

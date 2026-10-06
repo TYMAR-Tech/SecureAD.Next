@@ -102,7 +102,7 @@ internal static class OwnAccountMembershipEvaluator
         JudgementDescription description, IReadOnlyDictionary<string, Tier0Target> identities,
         Func<string, ObjectAttributes?> attributes, ObjectPermissions? permissions,
         IReadOnlyList<ObjectAttributes> schema, SchemaGuidCatalog catalogue, IReadOnlyDictionary<string, NamingContextKind> contexts,
-        IReadOnlyList<ControlEdge> edges, string forest, CancellationToken cancellationToken)
+        IReadOnlyList<ControlEdge> edges, string forest, CancellationToken cancellationToken, RequesterMembershipContext? memberships)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var requester = identities.GetValueOrDefault(request.RequesterDn);
@@ -231,7 +231,9 @@ internal static class OwnAccountMembershipEvaluator
             return result;
         }
 
-        bool Qualified(ObjectAttributes? value, Tier0Target? identity) => value is not null && identity is { ObjectGuid: not null, Sid: not null }
+        bool Qualified(ObjectAttributes? value, Tier0Target? identity) => memberships is not null
+            ? identity?.Sid is not null && memberships.Qualified(value, identity)
+            : value is not null && identity is { ObjectGuid: not null, Sid: not null }
             && identity.IsValid && Tier0Target.From(value, identity.NamingContext) == identity
             && !RequesterTrusteeReading.HasClass(value, "foreignSecurityPrincipal")
             && !Same(value.Find("isDeleted")?.OnlyValue?.Text, "TRUE")

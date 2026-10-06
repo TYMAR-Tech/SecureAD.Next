@@ -154,7 +154,7 @@ internal static class RequesterMeasurement
         var tables = new List<(string Name, string Sql)>();
         using (var rows = command.ExecuteReader()) while (rows.Read()) tables.Add((rows.GetString(0), rows.GetString(1)));
         Save(output, "schema.json", tables.Select(t => new { t.Name, t.Sql }));
-        command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),AVG(LENGTH(distinguished_name)),COALESCE(SUM(ace_count),0),(SELECT COUNT(*) FROM ace) FROM captured_object";
+        command.CommandText = "SELECT COUNT(*),COUNT(DISTINCT domain_fqdn),AVG(LENGTH(distinguished_name)),COALESCE(SUM(ace_count),0),(SELECT COUNT(*) FROM descriptor_entry) FROM captured_object";
         using (var rows = command.ExecuteReader())
         {
             Require(rows.Read(), "Missing stored counts.");
@@ -166,9 +166,9 @@ internal static class RequesterMeasurement
             command.CommandText = "SELECT COUNT(*) FROM \"" + table.Name.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
             counts.Add(table.Name, Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture));
         }
-        command.CommandText = "SELECT COUNT(*) FROM ace WHERE (access_mask & 262144) != 0";
+        command.CommandText = "SELECT COUNT(*) FROM descriptor_entry JOIN access_entry USING (entry_id) WHERE (access_mask & 262144) != 0";
         counts.Add("PhysicalWriteDacAces", Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture));
-        command.CommandText = "SELECT COUNT(*) FROM ace WHERE (access_mask & 40) != 0 AND lower(object_type_guid)='bf9679c0-0de6-11d0-a285-00aa003049e2'";
+        command.CommandText = "SELECT COUNT(*) FROM descriptor_entry JOIN access_entry USING (entry_id) WHERE (access_mask & 40) != 0 AND lower(object_type_guid)='bf9679c0-0de6-11d0-a285-00aa003049e2'";
         counts.Add("PhysicalMemberWriteOrSelfMembershipAces", Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture));
         Save(output, "stored-input-indicators.json", counts);
         Console.WriteLine($"Inspected isolated evidence: {bundle}");

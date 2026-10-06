@@ -1,9 +1,9 @@
 using System.Reflection;
-using System.Text.Json;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SecureAD.Next.Tests.Judgement;
 
@@ -35,11 +35,9 @@ namespace SecureAD.Next.Tests.Judgement;
 /// has replaced them - that is <c>P-182</c>.
 /// </para>
 /// </remarks>
-public sealed class EvidenceKindCoverageTests
+public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
 {
     private const string ThisCapture = "0f9c1d2e3a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5";
-
-    private static readonly DateTimeOffset Started = new(2026, 8, 25, 9, 0, 0, TimeSpan.Zero);
 
     /// <summary>
     /// One finding per kind of evidence, with what a reader must get back.
@@ -52,6 +50,21 @@ public sealed class EvidenceKindCoverageTests
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        new Sample(
+            new UnexpectedTier0Route().Definition,
+            "CN=Alice,DC=contoso,DC=com",
+            new Tier0RouteFindingEvidence(Guid.NewGuid(), null, ThisCapture, new('a', 64),
+                "Tier0ControlPlane", Guid.NewGuid(), "S-1-5-21-1-2-3-1100", "CN=Alice,DC=contoso,DC=com", 3, new('b', 64)),
+            read =>
+            {
+                var evidence = Assert.IsType<Tier0RouteFindingEvidence>(read);
+                Assert.Equal("Tier0ControlPlane", evidence.Anchor);
+                Assert.Equal(3, evidence.UnexpectedChecks);
+                Assert.NotEqual(Guid.Empty, evidence.GenerationId);
+                Assert.NotEqual(Guid.Empty, evidence.RequesterGuid);
+                Assert.Equal(64, evidence.CalculationFingerprint.Length);
+                Assert.Equal(64, evidence.QualificationFingerprint.Length);
+            }),
         new Sample(
             Definition("SEC-010", "Unconstrained delegation on an account"),
             "CN=svc-delegation,OU=Service Accounts,DC=contoso,DC=com",
@@ -395,26 +408,14 @@ public sealed class EvidenceKindCoverageTests
     [Fact]
     public void EveryEvidenceKindSurvivesTheGridsPagingPath()
     {
-        var directory = ADirectory();
-
-        using (var writer = JudgementWriter.Create(
-            directory, ThisCapture, derivationGenerationId: null, Started, Started))
-        {
-            foreach (var sample in Samples)
-                writer.Write(RuleExecution.Judged(sample.Rule, 1, 0, [sample.Finding]));
-
-            writer.Complete(Started);
-        }
-
-        using var reader = Opened(directory);
-        var page = reader.ReadPage(FindingsQuery.Everything());
-
-        Assert.True(page.IsSuccess, page.Error?.Description);
+        var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
+            Samples.Where(sample => sample.Evidence is not Tier0RouteFindingEvidence)
+                .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output);
 
         foreach (var sample in Samples)
         {
             var found = Assert.Single(
-                page.Value!.Findings, f => f.RuleId == sample.Rule.Id);
+                findings, f => f.RuleId == sample.Rule.Id);
 
             sample.AssertRead(found.Evidence);
         }
@@ -431,26 +432,11 @@ public sealed class EvidenceKindCoverageTests
     private static RuleDefinition Definition(string id, string title) =>
         new(id, title, Severity.High, 1, ["user"], ["objectClass"], RequiredDerivedFacts: []);
 
-    private static JudgementReader Opened(string directory)
+    private sealed class SampleRule(Sample sample) : IObjectRule
     {
-        var opened = JudgementReader.Open(directory);
-        Assert.True(opened.IsSuccess, opened.Error?.Description);
-        return opened.Value!;
-    }
-
-    private static string ADirectory()
-    {
-        var directory = TempDirectories.Create("evidence-kinds");
-
-        Directory.CreateDirectory(directory);
-
-        // Written before the writer opens, because a judgement records the seal of the evidence it
-        // was made against and refuses to open beside one that does not match.
-        File.WriteAllText(
-            BundleLayout.SealPath(directory),
-            JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, ThisCapture)));
-
-        return directory;
+        public RuleDefinition Definition => sample.Rule;
+        public RuleVerdict Judge(ObjectAttributes subject) => RuleVerdict.Judged(
+            subject.DistinguishedName == "CN=Alice,DC=contoso,DC=com" ? [sample.Finding] : []);
     }
 
     /// <summary>One kind of evidence, as a finding that can be stored and read back.</summary>

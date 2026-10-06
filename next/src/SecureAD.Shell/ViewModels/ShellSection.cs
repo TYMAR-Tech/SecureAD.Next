@@ -33,6 +33,9 @@ internal enum ShellSection
     /// </remarks>
     Dashboard,
 
+    /// <summary>Saved rule outcomes and guidance for the opened run.</summary>
+    Rules,
+
     /// <summary>What the selected run captured: the directory as its evidence can rebuild it.</summary>
     Assets,
 
