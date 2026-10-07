@@ -13,10 +13,10 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Local artifact consolidation — owner authorized; inventory pending, 2026-10-07.**
-The owner requested a source commit/push followed by local cleanup, replacing blanket artifact retention with selective preservation of useful history, especially future performance evidence.
-Inventory physical paths and sizes, distinguish rebuildable copies and synthetic test outputs from unique correctness/performance anchors, and consolidate references before removing reviewed disposable material.
-No artifact deletion has occurred under this request yet; the current lab package, active checkouts and valuable captures must be distinguished from cleanup candidates.
+**Local artifact consolidation — first disposable-TEMP pass completed, 2026-10-07.**
+The owner authorized selective cleanup after source commit `1e60014` was pushed to `ui-navigation`, extended the read-only inventory to all three checkouts and project-linked temporary folders, and explicitly approved deleting the confirmed disposable verification-TEMP list.
+The [cleanup record](../.v-local-cleanup-20261007-c00a/cleanup-result.json) records 1,545 resolved non-junction temporary directories and 848,927 files removed, totaling 98.19 GiB, with source/build/test records retained and each directory revalidated against its inventory before deletion.
+Performance campaigns and inputs, lab captures, packages and all checkouts remain intact; the original checkout has 110.64 GiB of performance artifacts for a later selective consolidation pass, and both older checkouts contain uncommitted or unpushed work that must not be discarded.
 
 **New audit wizard — implemented and offline verified, 2026-10-07.**
 The owner-approved two-step presentation now shows readiness issues above the table and beside the retry action, clearer capture-mode choices, persistent reported activity and separate evidence/derivation/judgement outcomes; original exclusions and controller checks remain, and confirmed stopping preserves already-sealed evidence.

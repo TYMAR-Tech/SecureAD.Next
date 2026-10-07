@@ -62,6 +62,14 @@ preserving every copied build, synthetic test database or failed attempt by defa
 This changes the earlier blanket retention direction for local disposable artifacts; it does not
 authorize deleting valuable capture evidence without identifying it, changing measurement results,
 or publishing private evidence with the source checkpoint.
+The owner extended read-only inventory to all three SecureAD.Next checkouts and project-linked
+temporary folders, leaving the predecessor and unrelated temporary files outside scope.
+He then explicitly approved the first disposable-TEMP list: the
+[completed cleanup](../.v-local-cleanup-20261007-c00a/cleanup-result.json) removed 98.19 GiB of
+generated verification data while preserving its reports/provenance and all performance campaigns,
+captures, packages and source checkouts.
+Deleted temporary paths in historical verification records are now provenance, not promises that
+their generated test databases still exist; the original measurements and records were not rewritten.
 
 **Owner-requested New audit wizard preview, 2026-10-07.**
 While testing the connected Tier 0 presentation in the laboratory, the owner requested a fictional
