@@ -36,8 +36,9 @@ audit.db-shm
 verification-output/
 
 # Judged evidence kept beside the tree as proof a change altered nothing. Documents cite these
-# paths (the judgement store, WHAT-THE-PRODUCT-IS.md) and the files must stay on disk, but they
-# are recorded outputs and not source: 1.6 GB across next/artifacts/ and the lab-validation
+# paths (the judgement store, WHAT-THE-PRODUCT-IS.md). Retain unique inputs and compact records
+# under the owner's selective retention policy, not every generated output. These are not source:
+# 1.6 GB across next/artifacts/ and the lab-validation
 # folders on 2026-09-07, with single judgement databases over 200 MB - past GitHub's 100 MB
 # hard limit, so one `git add -A` would have produced a rejected push and a rewritten history.
 # Ignored by pattern rather than trusted to habit. A run brought back from the laboratory is
@@ -62,7 +63,8 @@ coverage.cobertura.xml
 /t-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
 
 # Local verification records, deliberately broken source copies and isolated temporary data.
-# Preserve these on disk as evidence; they must never enter a source checkpoint commit.
+# Keep compact verification provenance; generated copies follow the selective retention policy.
+# They must never enter a source checkpoint commit.
 /.v-*/
 /.vt-*/
 /.t-df-*/

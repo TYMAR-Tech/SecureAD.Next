@@ -69,6 +69,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 
 ## Repository Practices
 
+- **Local artifact retention — owner changed the policy on 2026-10-07.** Keep compact test results, source/binary fingerprints, workload generators/settings and meaningful before/after performance records; do not retain every copied build, generated database, successful test TEMP tree or failed attempt by default. Keep unique real captures and frozen correctness anchors, and retain a large failing input only while it is needed to explain an unresolved defect. Reuse one hash-verified copy of duplicate inputs/binaries/traces, recording the mapping; generated outputs may be removed after validation and a compact cleanup record. This supersedes older blanket artifact-retention wording below, but never authorizes deleting unreviewed captures or changing historical measurements.
 - Preserve pre-existing uncommitted work and frozen historical evidence.
 - Use bounded, validated sessions and update existing governing documents rather than creating session-history documents.
 - Explain results in plain language for an AD/security administrator.

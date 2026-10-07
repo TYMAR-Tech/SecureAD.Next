@@ -74,6 +74,11 @@ files preserved and hash-verified; deleting their directories remains a separate
 **Owner-authorized source checkpoint and local artifact cleanup, 2026-10-07.**
 The owner requested committing and pushing the completed work, then reducing local project storage,
 estimated by him at 400-500 GB, rather than retaining every historical verification artifact.
+He subsequently approved making the active checkout independent, consolidating a compact useful
+performance reference set, removing reviewed generated bulk and retiring the older checkouts.
+Future runs should retain compact results and reproducible workload definitions by default, not
+every intermediate database or failed attempt; unique real inputs and frozen correctness anchors
+remain distinct from disposable benchmark output.
 He authorizes consolidating relevant history and discarding material that has no continuing value,
 with particular care for evidence needed by future performance investigations.
 Inventory actual paths and sizes before deletion; retain unique source, frozen correctness anchors
@@ -90,6 +95,17 @@ generated verification data while preserving its reports/provenance and all perf
 captures, packages and source checkouts.
 Deleted temporary paths in historical verification records are now provenance, not promises that
 their generated test databases still exist; the original measurements and records were not rewritten.
+The subsequent [repository consolidation](../.v-repository-consolidation-20261007-a118/cleanup-summary.json)
+made the current stage7 checkout independent and reclaimed another 101.86 GiB without changing
+application/test/tool sources, for 200.05 GiB reclaimed across both cleanup passes.
+Retained original inputs, raw traces, reports, fingerprints, source snapshots, packages and the older
+working files are now under `next/artifacts`; its [history index](../next/artifacts/history-index.json)
+maps retired paths and explains which paths in old records are historical rather than still-present outputs.
+The retained historical tree is 40.96 GiB, not a new claim that every remaining byte is permanently required.
+The former original-checkout path now holds only a relocation marker for this VS Code session,
+and the followup has no files but retains an empty directory held open by Windows.
+Open `SecureAD.Next-stage7` as the VS Code folder; its main history, full solution build and 229
+architecture/frozen-hash checks were verified after retirement.
 
 **Owner-requested New audit wizard preview, 2026-10-07.**
 While testing the connected Tier 0 presentation in the laboratory, the owner requested a fictional
