@@ -1611,8 +1611,9 @@ public sealed class BundleWriter : IDisposable
             Execute(
                 """
                 INSERT INTO sysvol_gpo_coverage (
-                    gpo_guid, display_name, file_sys_path, outcome, reason)
-                VALUES ($gpo, $name, $path, $outcome, $reason)
+                    gpo_guid, display_name, file_sys_path, outcome, reason,
+                    gpp_password_scan_outcome, gpp_password_scan_reason)
+                VALUES ($gpo, $name, $path, $outcome, $reason, $gppOutcome, $gppReason)
                 """,
                 command =>
                 {
@@ -1623,6 +1624,10 @@ public sealed class BundleWriter : IDisposable
                     command.Parameters.AddWithValue("$outcome", policy.Outcome.ToString());
                     command.Parameters.AddWithValue(
                         "$reason", (object?)policy.Reason ?? DBNull.Value);
+                    command.Parameters.AddWithValue(
+                        "$gppOutcome", policy.GppPasswordScanOutcome.ToString());
+                    command.Parameters.AddWithValue(
+                        "$gppReason", (object?)policy.GppPasswordScanReason ?? DBNull.Value);
                 });
         }
 

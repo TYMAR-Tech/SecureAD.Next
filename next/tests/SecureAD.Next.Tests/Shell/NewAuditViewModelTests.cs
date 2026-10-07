@@ -30,6 +30,46 @@ public sealed class NewAuditViewModelTests
     private readonly FakeJudgingLauncher _judging = new();
 
     [Fact]
+    public void GppPasswordScanningStartsUnchecked()
+    {
+        Assert.False(Screen().ScanGppPasswords);
+    }
+
+    [Fact]
+    public void GppPasswordScanningExplainsItsCostAndAnUnscannedVerdict()
+    {
+        var screen = Screen();
+
+        Assert.Equal(
+            "Scan Group Policy XML for legacy stored passwords",
+            screen.ScanGppPasswordsLabel);
+        Assert.Contains("significant SYSVOL time", screen.ScanGppPasswordsHelp, StringComparison.Ordinal);
+        Assert.Contains("Not scanned - not Passed", screen.ScanGppPasswordsHelp, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TheGppPasswordChoiceReachesTheCaptureLauncher(bool scanGppPasswords)
+    {
+        var screen = await Planned();
+        screen.ScanGppPasswords = scanGppPasswords;
+
+        await screen.StartAsync();
+
+        Assert.Equal((bool?)scanGppPasswords, _capture.AskedToScanGppPasswords);
+    }
+
+    [Fact]
+    public void GppPasswordScanningIsNotRememberedByANewWizard()
+    {
+        var first = Screen();
+        first.ScanGppPasswords = true;
+
+        Assert.False(Screen().ScanGppPasswords);
+    }
+
+    [Fact]
     public void EnatelInclusionStartsUnchecked()
     {
         Assert.False(Screen().IncludeEnatelSso);

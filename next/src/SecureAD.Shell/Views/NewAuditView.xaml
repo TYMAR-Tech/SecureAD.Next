@@ -243,6 +243,15 @@
                                             <ItemsControl ItemsSource="{Binding ExcludedObjectClasses}" />
                                         </StackPanel>
                                     </Expander>
+                                    <Expander Header="Optional SYSVOL check" Margin="0,10,0,0">
+                                        <StackPanel Margin="8">
+                                            <CheckBox Content="{Binding ScanGppPasswordsLabel}"
+                                                      IsChecked="{Binding ScanGppPasswords,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEnabled="{Binding MayChangeObjectScope}" />
+                                            <TextBlock Text="{Binding ScanGppPasswordsHelp}" Style="{StaticResource WizardText}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Expander>
                                     <TextBlock Text="No directory modifications or remediation. A successful read can still contain limitations."
                                                Style="{StaticResource WizardText}" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,12,0,0" />
                                 </StackPanel>

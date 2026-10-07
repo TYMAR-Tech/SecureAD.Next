@@ -89,6 +89,32 @@ The owner subsequently requested committing and pushing SEC-026 on the existing 
 and providing a new-session handoff for the next rule; this does not approve SEC-083's proposed
 Critical severity or implementation scope, replace the production package, or authorize a merge to main.
 
+**SEC-083 is an opt-in capture, disabled by default, 2026-10-07.**
+The owner chose the predecessor's model for Group Policy Preferences password detection: checking
+every XML file beneath every GPO adds too much recurring SYSVOL capture time for one legacy
+condition that a customer can check deliberately once, then normally leave disabled on later
+audits if the environment was clean.
+Enabling the option scans for non-empty `cpassword` occurrence metadata and preserves known
+occurrences beside explicit enumeration, read and parse gaps; disabling it must record that
+SEC-083 was not scanned and must never turn finding absence into a clean verdict.
+The ordinary SYSVOL capture remains enabled for its other evidence, and neither a previous clean
+scan nor a disabled later scan proves that no policy changed between captures.
+The owner approved placing an unchecked **Optional SYSVOL check** in the existing **Scope you are
+authorizing** card, never remembering the choice between audits, with the label **Scan Group
+Policy XML for legacy stored passwords** and wording that states the recursive cost and that
+disabled means **Not scanned**, not **Passed**.
+The unattended equivalent is `--scan-gpp-passwords`.
+Implemented and offline verified on `rules-delivery`: ordinary captures no longer enumerate or
+read XML files for this check, while an opted-in capture retains occurrence metadata and records
+`NotRequested`, `Read`, `PartiallyRead` or `Unreadable` independently for every policy.
+Evidence format 14 stores that capability-specific coverage; the full solution rebuilt
+successfully, 346 focused tests passed with noncompeting test collections, and four isolated
+rebuilt defects were detected before a forced restored-source rebuild passed.
+The first attempted restored control reused mutated incremental-build output and was rejected;
+forcing `Rebuild` established the accepted provenance.
+Finding wording, file-level grouping and severity remain approval-gated, and the owner's running
+production audit and package were not accessed or changed.
+
 **Owner-directed rule delivery during production acceptance, 2026-10-07.**
 While the owner-operated production audit runs, the owner requested the remaining-rule inventory
 and practical implementation groupings, and wants rule work to proceed on one branch in the

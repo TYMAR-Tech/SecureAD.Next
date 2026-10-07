@@ -22,6 +22,22 @@ public enum GpoReadOutcome
     Unreadable,
 }
 
+/// <summary>What became of the optional SEC-083 scan beneath one policy folder.</summary>
+public enum GppPasswordScanOutcome
+{
+    /// <summary>The operator left the optional scan disabled.</summary>
+    NotRequested,
+
+    /// <summary>Every XML file beneath this policy was enumerated, read and parsed.</summary>
+    Read,
+
+    /// <summary>Known XML evidence was retained, but some files were unreadable or unparseable.</summary>
+    PartiallyRead,
+
+    /// <summary>The scan was requested but no complete inventory could be obtained.</summary>
+    Unreadable,
+}
+
 /// <summary>
 /// What became of one Group Policy object's files on the SYSVOL share.
 /// </summary>
@@ -47,13 +63,17 @@ public sealed record GpoCoverage
         string displayName,
         string? fileSysPath,
         GpoReadOutcome outcome,
-        string? reason)
+        string? reason,
+        GppPasswordScanOutcome gppPasswordScanOutcome = GppPasswordScanOutcome.NotRequested,
+        string? gppPasswordScanReason = null)
     {
         GpoGuid = gpoGuid;
         DisplayName = displayName;
         FileSysPath = fileSysPath;
         Outcome = outcome;
         Reason = reason;
+        GppPasswordScanOutcome = gppPasswordScanOutcome;
+        GppPasswordScanReason = gppPasswordScanReason;
     }
 
     /// <summary>The policy's <c>objectGUID</c>, which is what its folder on the share is named.</summary>
@@ -77,6 +97,28 @@ public sealed record GpoCoverage
     /// <see cref="Outcome"/> is <see cref="GpoReadOutcome.Read"/>, and never null otherwise.
     /// </summary>
     public string? Reason { get; }
+
+    /// <summary>Whether the optional SEC-083 XML scan ran for this policy.</summary>
+    public GppPasswordScanOutcome GppPasswordScanOutcome { get; }
+
+    /// <summary>Why the requested SEC-083 scan was incomplete; null when disabled or complete.</summary>
+    public string? GppPasswordScanReason { get; }
+
+    /// <summary>Returns this policy coverage with its independently measured SEC-083 scan result.</summary>
+    public GpoCoverage WithGppPasswordScan(GppPasswordScanOutcome outcome, string? reason = null)
+    {
+        var complete = outcome is GppPasswordScanOutcome.NotRequested or GppPasswordScanOutcome.Read;
+        if (complete != string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException(
+                "A disabled or complete GPP password scan has no failure reason; an incomplete scan requires one.",
+                nameof(reason));
+        }
+
+        return new GpoCoverage(
+            GpoGuid, DisplayName, FileSysPath, Outcome, Reason, outcome,
+            complete ? null : Require(reason!));
+    }
 
     /// <summary>Records a policy whose files were all read.</summary>
     /// <param name="gpoGuid">The policy's <c>objectGUID</c>.</param>

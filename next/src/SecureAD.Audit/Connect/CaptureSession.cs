@@ -293,7 +293,9 @@ public sealed class CaptureSession
         IReadOnlyDictionary<string, AttestedExclusion> exclusions,
         Action<PreflightReport>? reportPreflight,
         CancellationToken cancellationToken) =>
-        RunAsync(typedName, overrides, exclusions, reportPreflight, CaptureObjectScope.Default, cancellationToken);
+        RunAsync(
+            typedName, overrides, exclusions, reportPreflight, CaptureObjectScope.Default,
+            CaptureOptions.Default, cancellationToken);
 
     /// <summary>Starts a capture with its explicit per-run object-class scope.</summary>
     /// <param name="typedName">The optional forest or controller name.</param>
@@ -308,11 +310,26 @@ public sealed class CaptureSession
         IReadOnlyDictionary<string, AttestedExclusion> exclusions,
         Action<PreflightReport>? reportPreflight,
         CaptureObjectScope objectScope,
+        CancellationToken cancellationToken) =>
+        await RunAsync(
+                typedName, overrides, exclusions, reportPreflight, objectScope,
+                CaptureOptions.Default, cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <summary>Starts a capture with explicit object scope and per-run optional reads.</summary>
+    public async Task<Result<CaptureRunResult>> RunAsync(
+        string? typedName,
+        IReadOnlyDictionary<string, string> overrides,
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions,
+        Action<PreflightReport>? reportPreflight,
+        CaptureObjectScope objectScope,
+        CaptureOptions options,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(overrides);
         ArgumentNullException.ThrowIfNull(exclusions);
         ArgumentNullException.ThrowIfNull(objectScope);
+        ArgumentNullException.ThrowIfNull(options);
 
         // MEASURED HERE BECAUSE NOTHING PERSISTS IT. The bundle records what was read; how long
         // preflight and the reading each took is known only while the run is happening, and the
@@ -399,6 +416,7 @@ public sealed class CaptureSession
                         .ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("excluded", exclusions.Count.ToString(CultureInfo.InvariantCulture)),
                 new RunLogDetail("excludedObjectClasses", string.Join(", ", objectScope.ExcludedClasses)),
+                new RunLogDetail("scanGppPasswords", options.ScanGppPasswords.ToString()),
             ]);
 
         var connections = _connections(new ConnectionSecurityLog());
@@ -427,6 +445,7 @@ public sealed class CaptureSession
                 report.Plan.Excluding(exclusions.Keys),
                 directory.Value!,
                 exclusions,
+                options,
                 cancellationToken)
             .ConfigureAwait(false);
 

@@ -13,15 +13,20 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Production judgement exhausted disk during Tier-0 path work — P1 open, 2026-10-07.**
+The owner reports the production run failed with a full disk after starting with about 90 GB free, leaving a roughly 60 GB `judgement.db.partial-shm` beside 19.5 GB Evidence and 2.8 GB Derivation; these owner-observed figures strongly implicate judgement/path processing but do not establish which table, transaction or algorithm caused the growth.
+Preserve the failed run and its exact files, executable provenance and logs without opening the live forest, replacing the package, deleting evidence or accepting the partial database as a result.
+The next bounded session must inspect a sealed offline copy, account for bytes and repeated whole-forest work across Tier-0 path selection/storage/publication, and present measured corrective scope before optimization or another production run.
+
 **SEC-026 duplicate SPNs — implemented and offline verified on rules-delivery, 2026-10-07.**
 The owner approved fixed High per-owner findings for duplicate complete captured SPN values after checking Microsoft documentation; the rule preserves original occurrences, distinct forest-scoped owners, ports/instances/suffixes, explicit incomplete evidence and special-name review without claiming alias equivalence or authentication/takeover success.
 The [verified checkpoint](../.v-sec026-20261007-67ac/handoff.json) records a successful full solution build, 550 affected-area tests passing with coverage after a correct-source rebuild using CI's noncompeting test-collection setting, 1,030 matching code/configuration inputs and all 54 required behavior checks detecting 17 rebuilt defects with restored controls; the initial parallel UI/logging timeouts are retained as failed attempts, not accepted passes.
 The catalogue now contains 20 rules and Judgement format is 61, with capture/Derivation unchanged and no recapture needed to judge existing sealed evidence; lab/display/production acceptance remains outstanding, and the owner subsequently authorized committing and pushing this checkpoint without changing the production audit, package or budgets.
 
-**Next recommended rule — SEC-083 preparation, not implementation approval, 2026-10-07.**
-The next bounded proposal is a stored Group Policy Preferences credential-artifact finding using captured non-empty `cpassword` occurrence metadata, with file-level grouping and explicit SYSVOL enumeration/read/parse coverage.
-Check the reviewed Group Policy/SYSVOL specification against current code and Microsoft guidance, preserve known occurrences despite partial scans or missing GPO enrichment, and never read back or expose passwords, ciphertext, decryption keys, secret hashes or raw XML.
-Critical severity and the concrete finding scope/guidance remain proposed until approved; stay on `rules-delivery` in the sole checkout, leave the production audit/package alone, and retain only compact verification records plus necessary correctness anchors.
+**Next recommended rule — SEC-083 opt-in capture implemented; finding behavior not approved, 2026-10-07.**
+The unchecked per-audit GUI option and `--scan-gpp-passwords` CLI switch now skip the recursive XML read by default, while opted-in captures preserve non-empty `cpassword` occurrence metadata and per-policy `NotRequested`/`Read`/`PartiallyRead`/`Unreadable` coverage without secret material.
+Evidence format 14, the full solution rebuild and 346 focused passing tests were verified after four isolated rebuilt defects were detected and restored sources were forcibly rebuilt; an earlier incremental restored control was rejected because it reused mutated output.
+Concrete finding wording, file-level grouping and proposed Critical severity remain approval-gated, no SEC-083 judgement ships in this pass, and the production audit/package were not accessed or changed.
 
 **Remaining-rule delivery — owner-selected single branch; inventory reconciled, 2026-10-07.**
 The owner requested adding rules while his production audit runs, using only local branch `rules-delivery` in the existing checkout and no additional worktrees.

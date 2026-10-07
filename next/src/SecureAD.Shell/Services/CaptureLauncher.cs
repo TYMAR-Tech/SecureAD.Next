@@ -105,7 +105,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
         CancellationToken cancellationToken) =>
-        RunAsync(libraryRoot, forest, overrides, exclusions, domainsAtOnce, false, cancellationToken);
+        RunAsync(libraryRoot, forest, overrides, exclusions, domainsAtOnce, false, false, cancellationToken);
 
     /// <inheritdoc/>
     public async Task<Result<CaptureOutcome>> RunAsync(
@@ -115,6 +115,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
         bool includeEnatelSso,
+        bool scanGppPasswords,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
@@ -132,6 +133,7 @@ internal sealed class CaptureLauncher : ICaptureLauncher
                 exclusions.ToDictionary(e => e.NamingContext, Describe, StringComparer.OrdinalIgnoreCase),
                 reportPreflight: null,
                 CaptureObjectScope.For(includeEnatelSso),
+                new CaptureOptions(scanGppPasswords),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -311,4 +313,3 @@ internal sealed class CaptureLauncher : ICaptureLauncher
             ? domain.ReadFromPdcEmulator ? Established.Yes : Established.No
             : Established.NotEstablished;
 }
-
