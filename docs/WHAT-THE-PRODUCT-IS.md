@@ -51,6 +51,15 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-authorized reconciliation and main integration, 2026-10-07.**
+The owner requested reconciling uncommitted/unpushed work across the local checkouts and merging
+the current good build to main before further repository cleanup.
+Preserve the older dirty working trees while accounting for their contents; duplicated corrections
+already present in the current build need no second implementation, and stale status wording or
+local-only tool configuration must not replace current product decisions.
+This authorizes branch integration, commit, push and pull-request merge, not package replacement,
+live directory access or a new claim of lab/production acceptance.
+
 **Owner-authorized source checkpoint and local artifact cleanup, 2026-10-07.**
 The owner requested committing and pushing the completed work, then reducing local project storage,
 estimated by him at 400-500 GB, rather than retaining every historical verification artifact.

@@ -13,6 +13,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Repository reconciliation — current build preserved for integration to main, 2026-10-07.**
+The owner authorized reconciling local uncommitted/unpushed work and merging the good current build to main; every local branch tip is already an ancestor of `ui-navigation`, and the older followup checkout's RODC production/test changes match current files exactly.
+Older document differences are superseded status wording, while the original checkout's remaining instruction edit is a stray `how` prefix and its untracked MCP configuration is local-only; neither belongs in the integration, and both older working trees remain untouched.
+The integration branch merges current main history without changing executable code, tests or build configuration from `0d6ed1f`; full integrated verification and pull-request publication are the remaining merge gates, not new lab acceptance.
+
 **Local artifact consolidation — first disposable-TEMP pass completed, 2026-10-07.**
 The owner authorized selective cleanup after source commit `1e60014` was pushed to `ui-navigation`, extended the read-only inventory to all three checkouts and project-linked temporary folders, and explicitly approved deleting the confirmed disposable verification-TEMP list.
 The [cleanup record](../.v-local-cleanup-20261007-c00a/cleanup-result.json) records 1,545 resolved non-junction temporary directories and 848,927 files removed, totaling 98.19 GiB, with source/build/test records retained and each directory revalidated against its inventory before deletion.
