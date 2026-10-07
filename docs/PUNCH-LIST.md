@@ -13,6 +13,36 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**SEC-026 duplicate SPNs — implemented and offline verified on rules-delivery, 2026-10-07.**
+The owner approved fixed High per-owner findings for duplicate complete captured SPN values after checking Microsoft documentation; the rule preserves original occurrences, distinct forest-scoped owners, ports/instances/suffixes, explicit incomplete evidence and special-name review without claiming alias equivalence or authentication/takeover success.
+The [verified checkpoint](../.v-sec026-20261007-67ac/handoff.json) records a successful full solution build, 550 affected-area tests passing with coverage after a correct-source rebuild using CI's noncompeting test-collection setting, 1,030 matching code/configuration inputs and all 54 required behavior checks detecting 17 rebuilt defects with restored controls; the initial parallel UI/logging timeouts are retained as failed attempts, not accepted passes.
+The catalogue now contains 20 rules and Judgement format is 61, with capture/Derivation unchanged and no recapture needed to judge existing sealed evidence; lab/display/production acceptance remains outstanding, and the owner subsequently authorized committing and pushing this checkpoint without changing the production audit, package or budgets.
+
+**Next recommended rule — SEC-083 preparation, not implementation approval, 2026-10-07.**
+The next bounded proposal is a stored Group Policy Preferences credential-artifact finding using captured non-empty `cpassword` occurrence metadata, with file-level grouping and explicit SYSVOL enumeration/read/parse coverage.
+Check the reviewed Group Policy/SYSVOL specification against current code and Microsoft guidance, preserve known occurrences despite partial scans or missing GPO enrichment, and never read back or expose passwords, ciphertext, decryption keys, secret hashes or raw XML.
+Critical severity and the concrete finding scope/guidance remain proposed until approved; stay on `rules-delivery` in the sole checkout, leave the production audit/package alone, and retain only compact verification records plus necessary correctness anchors.
+
+**Remaining-rule delivery — owner-selected single branch; inventory reconciled, 2026-10-07.**
+The owner requested adding rules while his production audit runs, using only local branch `rules-delivery` in the existing checkout and no additional worktrees.
+The 13-file reviewed handoff matches its retained hashes; the initial inventory had 19 registrations and 21 proposed new finding/assessment candidates, with SEC-026 now delivered above bringing the shipping catalogue to 20.
+Group subsequent additions only where their evidence and decision scope genuinely overlap, preserve existing shared control products instead of adding duplicate wrapper findings, and settle proposed severities/thresholds/scope before each implementation batch.
+
+**Owner production run — in progress; local cleanup paused, 2026-10-07.**
+The owner reports starting a fresh production audit with his latest build and expects it to run for many hours.
+No new execution log or executable fingerprint has been inspected, so completion, runtime improvement and saved-result acceptance remain unverified.
+Cleanup is paused at his request; the next feature queue remains completion of bounded Stage 7 acceptance followed by reconciling the reviewed rule handoff, with separately recorded reliability corrections and later remediation/report/comparison stages.
+
+**Project TEMP followup — verified test/empty-folder cleanup completed, 2026-10-07.**
+The owner approved cleaning verified project TEMP leftovers in both `C:\Temp` and the user TEMP directory, leaving unrelated applications' files alone.
+The [cleanup record](../.v-temp-inventory-20261007-663a/cleanup-result.json) records 13.96 GiB removed from 1,942 identified synthetic test roots plus 118,828 empty directory nodes removed non-recursively, with available result/provenance records retained.
+The remaining inventoried project-named data is 2.96 GiB, including lab/benchmark bundles, packages and unclassified files; all junctions and unrelated TEMP contents remain untouched, and no source or build behavior changed.
+
+**Stray sibling cleanup — completed after owner-approved inspection, 2026-10-07.**
+The renamed active checkout is `SecureAD.Next` on main, the empty followup sibling was removed non-recursively, and the previously missed `SecureAD.Next-stray-2026-09-30` sibling was inspected rather than treated as disposable by its name.
+The [cleanup record](../.v-stray-cleanup-20261007-4f82/cleanup-result.json) records 41.45 GiB reclaimed from 27 abandoned synthetic test roots and 2,445 SHA-256-identical duplicate files, with 9.13 GiB of unique remaining material moved under `next/artifacts/retired-stray-20260930` and a [duplicate reconstruction map](../.v-stray-cleanup-20261007-4f82/duplicate-path-map.csv).
+Original byte/file totals reconcile exactly with deleted and retained files, canonical copies were rehashed, and the stray sibling was removed only once empty; application source, packages and unique historical inputs were not changed.
+
 **Repository storage — independent checkout and selective consolidation completed, 2026-10-07.**
 The active stage7 checkout now owns its Git database and main history, while retained material from both retired checkouts is consolidated under `next/artifacts` with a [path index](../next/artifacts/history-index.json), original measurements/source snapshots preserved and no application changes.
 The [cleanup summary](../.v-repository-consolidation-20261007-a118/cleanup-summary.json) records another 101.86 GiB reclaimed, 200.05 GiB across both cleanup passes, and 40.96 GiB of retained historical inputs/records/packages; removed material comprises reviewed generated outputs, processed trace caches, abandoned synthetic tests and rebuildable binaries rather than unique capture evidence.

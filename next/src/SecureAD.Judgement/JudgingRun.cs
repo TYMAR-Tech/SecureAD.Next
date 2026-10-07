@@ -492,9 +492,10 @@ public static class JudgingRun
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
-        if (rules.Any(rule => rule is not IObjectRule and not UnexpectedTier0Route))
+        if (rules.Any(rule => rule is not IObjectRule and not UnexpectedTier0Route and not DuplicateServicePrincipalNames))
             throw new ArgumentException("A scheduled rule has no supported execution stage.", nameof(rules));
         var pathRule = rules.OfType<UnexpectedTier0Route>().SingleOrDefault();
+        var duplicateSpnRule = rules.OfType<DuplicateServicePrincipalNames>().SingleOrDefault();
         ArgumentNullException.ThrowIfNull(selfMembershipRequests);
         ArgumentNullException.ThrowIfNull(selfMembershipBudget);
         ArgumentNullException.ThrowIfNull(progress);
@@ -833,6 +834,9 @@ public static class JudgingRun
             [new RunLogDetail("rules", rules.Count.ToString(CultureInfo.InvariantCulture))]);
 
         var tallies = rules.OfType<IObjectRule>().Select(r => new Tally(r)).ToList();
+        var duplicateSpns = duplicateSpnRule is null ? null : new DuplicateSpnAssessment(duplicateSpnRule,
+            bundle.Description.ForestFqdn, seal.Hash, bundle.Description.EveryDeclaredUnitRecordedAsRead);
+        var spnWatch = new System.Diagnostics.Stopwatch();
 
         long objectsRead = 0;
         writer.StartSelfMembershipAssessments();
@@ -905,6 +909,12 @@ public static class JudgingRun
             work.Laps.Stop();
             progress.BeginOperation("store-group-inventory");
             writer.WriteGroupInventory(subject);
+            if (duplicateSpns is not null)
+            {
+                spnWatch.Start();
+                try { duplicateSpns.Add(subject, cancellationToken); }
+                finally { spnWatch.Stop(); }
+            }
             unobservedRoots.Remove(subject.DistinguishedName);
             progress.BeginOperation("read-permissions");
             work.Read.Start();
@@ -1167,8 +1177,18 @@ public static class JudgingRun
         }
 
         Entering(progress, log, JudgingPhase.WritingFindings, objectsRead);
+        if (duplicateSpns is not null)
+        {
+            progress.BeginRule(duplicateSpnRule!.Definition.Id);
+            spnWatch.Start();
+            RuleExecution execution;
+            try { execution = duplicateSpns.Complete(cancellationToken); }
+            finally { spnWatch.Stop(); }
+            tallies.Add(new Tally(duplicateSpnRule, execution, spnWatch.Elapsed));
+            progress.EndRule(duplicateSpnRule.Definition.Id, spnWatch.Elapsed, execution.ObjectsJudged, execution.ObjectsNotApplicable);
+        }
         foreach (var tally in tallies)
-            writer.Write(tally.ToExecution());
+            writer.Write(tally.ToExecution(), cancellationToken);
 
         var pathWatch = new System.Diagnostics.Stopwatch();
         PathRequesterWorkPhase? pathPhase = null;

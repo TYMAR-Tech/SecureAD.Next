@@ -26,6 +26,14 @@ public static class RuleGuidanceCatalogue
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-026", "Kerberos", MitreTechnique: null,
+            WhyItMatters: DuplicateServicePrincipalNames.Explanation,
+            WhatToDo: DuplicateServicePrincipalNames.Guidance,
+            About: "Reports the same complete service principal name on distinct captured objects in this forest, using Windows case-insensitive comparison.\n\n"
+                + "Ports, instance names and service-name suffixes remain part of the match; HOST registrations are not blanket-exempt. "
+                + "SPN aliases, other forests, live service identity and successful authentication are not assessed. "
+                + "Known duplicates remain findings when incomplete evidence prevents a complete inventory.",
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/administration/windows-commands/setspn"),
         new RuleGuidance(
             "SEC-052", "Group membership", MitreTechnique: null,
             WhyItMatters: CircularGroupMembership.Explanation,

@@ -50,6 +50,15 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        new Sample(new DuplicateServicePrincipalNames().Definition, "CN=SPN owner,DC=contoso,DC=com",
+            new DuplicateSpnEvidence(ThisCapture, "contoso.com", Guid.NewGuid(), [], []),
+            read =>
+            {
+                var evidence = Assert.IsType<DuplicateSpnEvidence>(read);
+                Assert.Equal(2, evidence.Duplicates.Count);
+                Assert.Equal(3, evidence.Duplicates[0].Occurrences.Count);
+                Assert.All(evidence.Duplicates, match => Assert.Equal(2, match.Owners.Count));
+            }),
         new Sample(
             new CircularGroupMembership().Definition,
             "CN=Cycle A,DC=contoso,DC=com",
@@ -423,8 +432,9 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     public void EveryEvidenceKindSurvivesTheGridsPagingPath()
     {
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
-            Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence))
-                .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output);
+            Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence))
+                .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output)
+            .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1)).ToArray();
 
         foreach (var sample in Samples)
         {

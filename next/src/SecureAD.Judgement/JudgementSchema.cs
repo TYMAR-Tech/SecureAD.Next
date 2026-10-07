@@ -132,7 +132,8 @@ public static class JudgementSchema
     /// <para>60 saves distinct structural member totals and separate missing-reference and evidence
     /// limitations, using member links only and excluding the starting group.</para>
     /// </remarks>
-    public const int Version = 60;
+    // Format 61 adds generation-bound SEC-026 duplicate-SPN evidence without changing capture.
+    public const int Version = 61;
 
     private static readonly string[] TableDdl =
     [
@@ -695,6 +696,7 @@ public static class JudgementSchema
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
         CircularMembershipStorage.CreateTables(connection);
+        DuplicateSpnStorage.CreateTables(connection);
         GroupInventoryStorage.CreateTables(connection);
         PathRequesterRiskStorage.CreateTables(connection);
         Tier0RouteFindingStorage.CreateTables(connection);

@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 19 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 20 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -50,6 +50,81 @@ via CLI, so it can run overnight."* So the command line is not capture-only fore
 unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
+
+**Owner-approved SEC-026 implementation and Microsoft verification, 2026-10-07.**
+The owner approved the proposed bounded duplicate-SPN rule on `rules-delivery`, with fixed High
+severity, and required the proposal to be checked against Microsoft documentation before delivery.
+Compare complete captured SPN values case-insensitively across the one captured forest, retaining
+ports, instance names, service-name suffixes, original occurrences and distinct GUID-based owners;
+do not exempt identical HOST/RestrictedKrbHost values or turn repeated values on one owner into duplicates.
+Persist one finding per affected owner with all known matching owners, and keep known duplicates
+when missing evidence prevents a complete inventory; neither finding absence nor recorded attribute
+values prove live authentication, complete attribute visibility or takeover.
+Microsoft's MS-ADTS uniqueness constraints distinguish exact values from alias checking; this
+bounded delivery does not compare sPNMappings aliases or other forests and must say so.
+New guidance explains authentication-name conflicts, requires confirming the intended service owner
+before removing an erroneous registration, and warns against removing Kerberos system registrations.
+High severity and per-owner finding grouping are approved product choices, not Microsoft ratings.
+Sources checked: [SPN format](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/cd328386-4d97-4666-be33-056545c1cad2),
+[uniqueness constraints](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/3c154285-454c-4353-9a99-fb586e806944),
+[setspn and Windows case behavior](https://learn.microsoft.com/windows-server/administration/windows-commands/setspn)
+and [duplicate-SPN troubleshooting](https://learn.microsoft.com/troubleshoot/windows-server/windows-security/kerberos-error-kdc-err-s-principal-unknown-or-not-unique).
+No live query, production-audit change, new capture requirement, package replacement, commit or push
+is included in this rule implementation authorization.
+The [SEC-026 checkpoint](../.v-sec026-20261007-67ac/handoff.json) records a successful full solution
+build and 550 passing affected-area tests with coverage after the final correct-source rebuild,
+with 1,030 matching code/configuration inputs and all 54 required checks detecting rebuilt defects
+across 17 variants with restored controls.
+The final run uses CI's noncompeting test-collection setting; preceding parallel-run UI/logging
+timeouts remain recorded rather than described as a successful run.
+Normal GUI and CLI judging now schedule SEC-026 during the existing captured-object pass and
+publish its full-value duplicate assessment afterward; saved readback validates typed owner/occurrence
+evidence against the selected evidence seal and judgement generation without rerunning analysis.
+Judgement format 61 stores this evidence; Evidence and Derivation remain unchanged, so judging the
+owner's completed sealed capture can add SEC-026 without another capture.
+The owner's in-progress production run and existing package were not changed, and lab/display/
+production acceptance remains outstanding.
+
+The owner subsequently requested committing and pushing SEC-026 on the existing rules branch
+and providing a new-session handoff for the next rule; this does not approve SEC-083's proposed
+Critical severity or implementation scope, replace the production package, or authorize a merge to main.
+
+**Owner-directed rule delivery during production acceptance, 2026-10-07.**
+While the owner-operated production audit runs, the owner requested the remaining-rule inventory
+and practical implementation groupings, and wants rule work to proceed on one branch in the
+existing checkout rather than creating separate trees.
+The local `rules-delivery` branch was created in the sole active `SecureAD.Next` checkout, carrying
+existing uncommitted governing-document updates without altering the production package.
+This supersedes waiting for the running audit to finish before preparing rule delivery; production
+acceptance remains open, and individual rule severity, scope and evidence-extension decisions in
+the reviewed handoff remain approval-gated rather than implicitly accepted.
+All 13 retained rule-handoff documents were verified against their saved SHA-256 manifest before
+planning; the migration map is a proposed disposition, not a requirement to create every old ID.
+
+**Owner-started production audit and cleanup pause, 2026-10-07.**
+The owner reports a new production audit running with his latest build and expects it to take
+many hours; he directed stopping local cleanup for now and requested the remaining application
+work to be laid out.
+This records an owner-operated run in progress, not verified executable provenance, successful
+completion or acceptance of the saved results, and grants no agent access to the production forest.
+
+**Owner-approved project TEMP followup, 2026-10-07.**
+The owner approved cleaning verified SecureAD temporary leftovers from `C:\Temp` and the user
+TEMP directory while preserving unique lab/performance inputs and unrelated applications' files.
+The [completed pass](../.v-temp-inventory-20261007-663a/cleanup-result.json) removed 13.96 GiB of
+identified synthetic tests and empty directory trees, retaining available reports and leaving
+2.96 GiB of unclassified project/lab/benchmark/package contents plus junctions for separate review.
+
+**Owner-completed folder rename and stray-folder cleanup approval, 2026-10-07.**
+The owner renamed the independent active checkout from `SecureAD.Next-stage7` to `SecureAD.Next`;
+its branch remains main and its Git storage remains local and independent.
+He then approved inspecting and cleaning the previously uninventoried sibling
+`SecureAD.Next-stray-2026-09-30`, preserving useful measurements and unique inputs rather than
+deleting its 50.58 GiB by name; the empty followup directory was removed non-recursively.
+Historical stage7 absolute paths refer to the same checkout before this rename.
+The [stray cleanup](../.v-stray-cleanup-20261007-4f82/cleanup-result.json) subsequently reclaimed
+41.45 GiB, retaining 9.13 GiB of unique material under `next/artifacts/retired-stray-20260930`
+with a hash-verified duplicate mapping; both obsolete sibling folders are now removed.
 
 **Owner-authorized reconciliation and main integration, 2026-10-07.**
 The owner requested reconciling uncommitted/unpushed work across the local checkouts and merging

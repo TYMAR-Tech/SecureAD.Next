@@ -465,6 +465,9 @@ public sealed class JudgementWriter : IDisposable
     public void Write(RuleExecution execution)
         => WriteExecution(execution, null, CancellationToken.None);
 
+    internal void Write(RuleExecution execution, CancellationToken cancellationToken)
+        => WriteExecution(execution, null, cancellationToken);
+
     internal RuleExecution WriteTier0Findings(UnexpectedTier0Route rule, JudgementDescription description,
         JudgingInputs inputs, CancellationToken cancellationToken)
     {
@@ -783,6 +786,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case DuplicateSpnEvidence duplicate:
+                DuplicateSpnStorage.Write(_connection, transaction, findingId, GenerationId, duplicate);
+                break;
             case CircularMembershipEvidence cycle:
                 CircularMembershipStorage.Write(_connection, transaction, findingId, GenerationId, cycle);
                 break;
