@@ -30,9 +30,15 @@ public sealed class GroupsViewTests
     {
         var (model, _) = Model();
         var view = View(model);
-        DashboardRedesignTests.InWindow(view, width, height, () =>
+        // A hosted view still exercises real input/visibility, but its test viewport must not
+        // shrink to the CI desktop's dimensions.
+        view.Width = width;
+        view.Height = height;
+        DashboardRedesignTests.InWindow(view, 600, 400, () =>
         {
             Layout(view, width, height);
+            Assert.Equal(width, view.ActualWidth);
+            Assert.Equal(height, view.ActualHeight);
             var grid = Assert.Single(Descendants<GroupInventoryGrid>(view));
             Assert.Equal(7, grid.Columns.Count);
             Assert.Equal(model.Groups.Count, grid.Items.Count);
